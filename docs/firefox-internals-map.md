@@ -143,6 +143,15 @@ Research current window mediator APIs, browser-window startup topics, document r
 
 Research current manifest registration, `nsIComponentRegistrar.autoRegister`, module import timing, startup cache, and resource accessibility. Record the exact current Firefox source and loader revisions.
 
+Phase 0.5 records the following policy evidence from Mozilla's Chrome Registration documentation at Firefox source revision [`8b6198f56d80ba962e0570e5ae8a3c257e2e7bce`](https://searchfox.org/firefox-main/rev/8b6198f56d80ba962e0570e5ae8a3c257e2e7bce/build/docs/chrome-registration.rst). This is a source review, not a substitute for the runtime tests owned by #3.
+
+| Dependency | Source-backed behavior | Initial policy | Remaining evidence |
+|---|---|---|---|
+| `content my-firefox-shell content/` | Registers `chrome://my-firefox-shell/content/...` | Provisional initial declaration | Import the project entry and attempt ordinary-web-content access on the supported Firefox build |
+| `contentaccessible=yes` | Explicitly permits untrusted content to reference a content package | Omit and reject by default | A dedicated security issue is required before any use |
+| `resource my-firefox-shell ...` | Mozilla documentation warns that web content is not prevented from including files at `resource:` aliases | Reserve the namespace but omit the alias initially | If later needed, map an exact inert/public inventory and test content access; never include privileged modules, maps, debug data, or private assets |
+| `override` | Replaces a registered Firefox resource | Prohibited during the initial roadmap | Dedicated issue, ADR, source pin, tests, update procedure, and removal plan |
+
 ## 5. Phase 0 development-profile dependencies
 
 These dependencies are development-only. They are owned by `scripts/lib/FirefoxDevProfile.psm1`, do not enter the installed runtime, and were verified on Firefox 153.0.4 release, build ID `20260810162159`, source stamp `54be19de0e08edff0b797e55fd935dd3978b0a6d`, on Windows 11 25H2.

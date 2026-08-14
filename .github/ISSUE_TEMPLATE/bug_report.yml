@@ -77,3 +77,10 @@ body:
       description: Explain safe-start, emergency fallback, uninstall, or native-UI behavior.
     validations:
       required: true
+  - type: textarea
+    id: security_boundary
+    attributes:
+      label: Security, privacy, and resource-boundary result
+      description: After redaction, state whether private windows, native security UI, installer paths, dependencies, or ordinary-web-content access to project resources are affected. Do not disclose an exploitable vulnerability here.
+    validations:
+      required: true

@@ -10,6 +10,8 @@ Every implementation or research change should be linked to a GitHub issue. Befo
 4. Inspect the current repository and relevant recent commits.
 5. Restate the issue scope and acceptance criteria in the working notes.
 6. Identify which steps require real Firefox evidence rather than unit tests.
+7. Check the triggers in `docs/security-controls.md`; link a dedicated review before implementing a triggered change.
+8. For any dependency addition or upgrade, complete `docs/dependency-review-template.md` before installation or lockfile mutation.
 
 For Windows Firefox work, create and verify the disposable direct-path profile by following `docs/development-setup.md` before changing privileged runtime or browser chrome.
 
@@ -58,8 +60,9 @@ For a privileged integration change:
 4. Add development-profile smoke instrumentation without exposing browsing data.
 5. Test while native Firefox UI remains visible.
 6. Add failure injection and verify fail-open behavior.
-7. Update internals, security, testing, and decision documentation.
-8. Only then consider activation or native-UI hiding effects.
+7. For a production build, commit the exact artifact inventory and run `scripts/check-production-artifacts.ps1`.
+8. Update internals, security, testing, and decision documentation.
+9. Only then consider activation or native-UI hiding effects.
 
 ## 5. Pull-request evidence
 
@@ -70,6 +73,8 @@ A pull request should include:
 - Firefox version, build ID, channel, operating system, profile type, and project commit;
 - upstream and loader sources consulted;
 - architecture, security, privacy, and resource-exposure effects;
+- dedicated security-trigger and dependency-review records, when applicable;
+- exact manifest lines, mapped files, artifact inventory, installer scope, private-window policy, and native security-UI effects;
 - commands run;
 - results for unit, build, static, and Firefox smoke tests;
 - failure-injection results;
@@ -90,6 +95,9 @@ Reviewers should check:
 - fail-closed behavior that could hide native UI;
 - unscoped CSS;
 - remote runtime dependencies;
+- unresolved dependency lifecycle scripts, native binaries, or transitive/network effects;
+- HMR, endpoints, source maps, bare/dynamic imports, debug code, or unexpected files in production artifacts;
+- `contentaccessible=yes` or `resource:` mappings without exact exposure evidence;
 - logging of browsing data;
 - unsafe install or deletion paths;
 - undocumented Firefox symbols or source references;
@@ -106,5 +114,6 @@ A change is ready to merge when:
 - CI passes where available;
 - real Firefox smoke tests are recorded where required;
 - recovery behavior remains available;
+- required dependency, resource, artifact, installer, private-window, and native security-UI evidence is complete;
 - no unresolved security-sensitive review finding remains;
 - follow-up work is tracked rather than hidden in comments.

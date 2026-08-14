@@ -13,13 +13,13 @@ Stock Firefox
   └─ minimal AutoConfig bootstrap
       └─ register chrome.manifest
           ├─ chrome://my-firefox-shell/...
-          └─ resource://my-firefox-shell/...
-              └─ privileged runtime and Firefox bridge
-                  └─ Svelte shell
-                      ├─ tabs
-                      ├─ navigation
-                      ├─ address input
-                      └─ sidebar
+          │   └─ privileged runtime and Firefox bridge
+          │       └─ Svelte shell
+          │           ├─ tabs
+          │           ├─ navigation
+          │           ├─ address input
+          │           └─ sidebar
+          └─ resource://my-firefox-shell/... (reserved; omitted until exposure review)
 ```
 
 The project keeps Firefox's core browser infrastructure, including `gBrowser`, web-content containers, SessionStore, Places, Downloads, commands, permissions, dialogs, notifications, and DevTools. Native visible UI is hidden only after the custom shell mounts and passes health checks. It is not deleted during startup.
@@ -64,6 +64,8 @@ The project keeps Firefox's core browser infrastructure, including `gBrowser`, w
 - [Research and debugging playbook](docs/research-playbook.md)
 - [Testing and recovery](docs/testing-and-recovery.md)
 - [Security and privacy](docs/security-and-privacy.md)
+- [Operational security controls and threat model](docs/security-controls.md)
+- [Dependency review template](docs/dependency-review-template.md)
 - [Development workflow](docs/development-workflow.md)
 - [Windows Firefox development setup](docs/development-setup.md)
 - [Contributing](CONTRIBUTING.md)

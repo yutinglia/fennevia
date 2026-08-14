@@ -46,6 +46,21 @@ The project must account for at least:
 8. A documented policy for source maps and installed debug artifacts.
 9. A process for recording and resolving security-sensitive Firefox compatibility changes.
 
+## Operational artifacts
+
+Issue #17 establishes the reusable Phase 0.5 controls in:
+
+- `docs/security-controls.md`: threat model, logging contract and example, Chrome/resource review, installer preflight and rejected-target record, private-window rules, review triggers, and ownership;
+- `docs/dependency-review-template.md`: required addition and upgrade record;
+- `docs/dependency-reviews/frontend-toolchain-2026-08-14.md`: preliminary no-install Svelte/Vite/TypeScript example;
+- `scripts/check-production-artifacts.ps1`: exact-inventory and leakage gate;
+- `tests/production-artifacts.Tests.ps1`: PowerShell 7 and Windows PowerShell 5.1 regression coverage;
+- repository issue and pull-request templates: required security, privacy, resource, dependency, installer, private-window, artifact, and recovery evidence.
+
+Later issues own integration evidence. In particular, #3 owns the real manifest/content-access test, #4 owns installer mutation and rollback, #5 and #9 own runtime/private-window isolation, #8 owns the resolved dependency graph and real production bundle, and #16 owns CI enforcement and upgrade review.
+
+The security-foundation gate is complete only when #17 is merged. This plan does not claim that the later implementation controls or a formal security audit are complete.
+
 ## Acceptance criteria
 
 - The threat model covers runtime, build, resource registration, UI data, logging, installation, and recovery.
