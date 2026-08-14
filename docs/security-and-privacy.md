@@ -98,6 +98,21 @@ Install, update, and uninstall scripts must:
 - handle partial failure with rollback or clear manual recovery instructions;
 - never silently choose a daily-use profile.
 
+### Development-profile helper
+
+The Phase 0 Windows helper is not an installer, but its profile deletion is still destructive and follows the same path-safety principles:
+
+- it manages only `%LOCALAPPDATA%\my-firefox-shell\profiles\...`;
+- it rejects Firefox-registered profiles, broad paths, files, reparse points, non-empty unowned directories, and active profiles;
+- it requires a valid `.mfs-dev-profile.json` ownership marker and explicit `-Force` before recursive deletion;
+- it supports `-WhatIf` and never changes `profiles.ini`;
+- its Phase 0 clean-environment gate detects existing AutoConfig declarations, enterprise-policy sources, profile add-ons, and profile chrome customizations without removing them;
+- normal output redacts the Firefox executable and profile paths;
+- revealing local paths requires explicit `-RevealPaths` opt-in and that output must not be shared;
+- Browser Toolbox support keeps `devtools.debugger.prompt-connection=true` and limits the default scope to the parent process.
+
+The full procedure and evidence are in `docs/development-setup.md`.
+
 ## 8. Native security UI preservation
 
 During the initial roadmap, Firefox remains responsible for:
