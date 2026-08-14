@@ -41,17 +41,22 @@ Also inspect:
 
 Record the exact commit SHA or source revision used for every unstable reference.
 
-## Suggested temporary layout
+## Validated package layout
 
 ```text
-spikes/bootstrap/
-  program/
-    defaults/pref/fennevia.js
-    fennevia.cfg
-  profile/chrome/fennevia/
-    chrome.manifest
-    content/Bootstrap.sys.mjs
+package-manifest.json
+program/
+  defaults/pref/fennevia.js
+  fennevia.cfg
+profile/chrome/fennevia/
+  chrome.manifest
+  content/Bootstrap.sys.mjs
 ```
+
+Issue #3 proved this content in a temporary spike tree. Issue #4 promoted it to
+the repository-root package boundary, made `package-manifest.json` the exact
+hash inventory, and added the ownership-guarded lifecycle documented in
+`docs/installation.md`.
 
 The first manifest should contain only the project-owned content-package declaration:
 

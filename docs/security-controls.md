@@ -25,8 +25,8 @@ Status terms:
 | Page titles, URLs, favicon values, and address input | Page-controlled strings are interpreted as HTML, CSS, code, privileged URIs, or native API arguments without validation | Chrome injection, spoofing, unintended navigation, or privileged API misuse | Text rendering only, typed bridge boundary, runtime validation, no arbitrary HTML | Implement per-feature validation and hostile-string tests | [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#11](https://github.com/yutinglia/fennevia/issues/11), [#12](https://github.com/yutinglia/fennevia/issues/12), [#13](https://github.com/yutinglia/fennevia/issues/13), [#14](https://github.com/yutinglia/fennevia/issues/14) |
 | Normal diagnostics and shared evidence | URLs, titles, queries, history, local paths, secrets, or private-window state enter logs or screenshots | Browsing-data or identity disclosure | Allowlisted logging schema and line-preserving redaction in section 4; no network sink | Implement bootstrap/runtime logger adapters and redaction tests | [#3](https://github.com/yutinglia/fennevia/issues/3), [#5](https://github.com/yutinglia/fennevia/issues/5) |
 | Private-window per-window state | Private tab data is copied to process-global state, normal windows, persisted preferences, or diagnostics | Private-browsing disclosure after or during the session | Section 8 requires per-window memory, no browsing-derived persistence, and native fallback on uncertainty | Validate lifecycle, disposal, and bridge behavior in real private windows | [#5](https://github.com/yutinglia/fennevia/issues/5), [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#12](https://github.com/yutinglia/fennevia/issues/12), [#13](https://github.com/yutinglia/fennevia/issues/13), [#14](https://github.com/yutinglia/fennevia/issues/14) |
-| Installer, updater, and uninstaller | Relative, broad, reparse-point, wrong-install, or daily-profile targets cause path escape, overwrite, or recursive deletion | Firefox damage or loss of unrelated profile files | Canonical preflight, dry run, ownership manifest, staged writes, rollback, exact deletion rules in section 7 | Implement and test all rejection and partial-failure cases | [#4](https://github.com/yutinglia/fennevia/issues/4) |
-| Startup cache and installed stale state | Removed or replaced privileged code continues to execute from stale state | Old vulnerable behavior survives update, disable, or uninstall | Evidence-first cleanup; complete installed-file inventory; no arbitrary cache deletion | Record real startup-cache behavior for bootstrap and installer operations | [#3](https://github.com/yutinglia/fennevia/issues/3), [#4](https://github.com/yutinglia/fennevia/issues/4) |
+| Installer, updater, and uninstaller | Relative, broad, reparse-point, wrong-install, or daily-profile targets cause path escape, overwrite, or recursive deletion | Firefox damage or loss of unrelated profile files | Canonical preflight, redacted dry run, dual ownership manifest, same-volume staging, recovery journal, rollback, and exact deletion rules in section 7 | Repeat the real-Firefox lifecycle on each supported installer/platform change | [#4](https://github.com/yutinglia/fennevia/issues/4) |
+| Startup cache and installed stale state | Removed or replaced privileged code continues to execute from stale state | Old vulnerable behavior survives update, disable, or uninstall | Evidence-first cleanup; complete installed-file inventory; installer reports `startupCacheAction=none`; no arbitrary cache deletion | Revalidate only when a Firefox update or observed stale-code symptom supplies evidence | [#3](https://github.com/yutinglia/fennevia/issues/3), [#4](https://github.com/yutinglia/fennevia/issues/4) |
 | Native permission, authentication, certificate, extension-install, file-picker, and download-safety UI | The custom shell hides, replaces, overlays, or makes a prompt unreachable | Spoofing, unsafe consent, or inability to respond to Firefox security state | Firefox ownership is accepted in ADR-014; native UI remains on fail-open path | Verify hosts do not obstruct prompts, then test before hiding native visible UI | [#6](https://github.com/yutinglia/fennevia/issues/6), [#7](https://github.com/yutinglia/fennevia/issues/7), [#15](https://github.com/yutinglia/fennevia/issues/15) |
 | Window/runtime listeners, mappings, styles, and roots | Incomplete cleanup retains privileged state or duplicates handlers across windows | Cross-window data leaks, stale actions, or repeated privileged effects | One process runtime, one idempotent disposer per window, deterministic cleanup invariant | Implement and exercise second/private window close and disposal | [#5](https://github.com/yutinglia/fennevia/issues/5), [#6](https://github.com/yutinglia/fennevia/issues/6), [#9](https://github.com/yutinglia/fennevia/issues/9) |
 | Third-party source and copied snippets | Incompatible, absent, or unclear licensing and provenance | Legal inability to distribute, stale vulnerable code, or lost attribution | Record source URL, commit, license, modifications, and attribution; unlicensed code is unavailable | Select project license and attribution policy before copying implementation code | [#18](https://github.com/yutinglia/fennevia/issues/18) |
@@ -49,7 +49,10 @@ Every production build must have a committed, reviewed inventory. Example:
 }
 ```
 
-The paths are illustrative until #3 and #8 settle the package layout. The build issue must replace them with the exact generated file set; globs are prohibited because they cannot detect an unexpected chunk.
+The current bootstrap inventory is the exact `expectedFiles` list in
+`package-manifest.json`. The paths above remain illustrative only for the future
+#8 frontend build. That issue must add its exact generated file set; globs are
+prohibited because they cannot detect an unexpected chunk.
 
 Run the gate with:
 
@@ -166,7 +169,8 @@ evidence are recorded in `docs/research/fennevia-identity-migration.md`.
 
 ## 7. Installer preflight, mutation, and rollback
 
-Issue #4 must implement this order before its first write:
+The issue #4 package helper implements this order before its first managed-file
+write:
 
 1. Require explicit Firefox program and profile targets; never discover a daily-use profile as a mutation default.
 2. Expand environment variables, require absolute paths, canonicalize with operating-system APIs, and verify every existing ancestor is not a reparse point.
@@ -174,9 +178,9 @@ Issue #4 must implement this order before its first write:
 4. Prove the program target with `firefox.exe` and `application.ini`; prove the profile target with an explicit user selection and project/development marker policy.
 5. Load and validate a versioned owned-file manifest containing only normalized relative paths, file hashes, and ownership metadata. Reject traversal, absolute paths, alternate data streams, duplicates, reparse points, and collisions with non-project files.
 6. Refuse update or uninstall if an existing project-owned file has an unexplained hash/ownership mismatch. Do not adopt or overwrite it silently.
-7. Produce a redacted dry-run plan of exact relative creates, replaces, backups, and removals. Dry run performs no write, rename, cache action, or process termination.
-8. Stage new files below a validated project-owned staging directory, verify hashes, back up only project-owned replaced files, and then use same-volume atomic replacement where available.
-9. On failure, stop further mutation and restore replaced project-owned files from the transaction backup. Emit exact manual recovery steps if rollback is incomplete.
+7. Produce a redacted dry-run plan of exact relative creates, replaces, backups, and removals plus a deterministic plan SHA-256. Dry run performs no write, rename, cache action, or process termination; execution replans and rejects a digest mismatch before transaction creation.
+8. Stage new files below marker-owned same-volume transaction directories, verify hashes, back up only project-owned files, and write a relative-path/hash journal before using same-volume atomic replacement where available.
+9. On failure, stop further mutation and restore replaced, removed, moved, and newly created project-owned paths from snapshots. Preserve the journal and exact transaction directories if rollback is incomplete; any residue blocks later actions.
 10. Uninstall only manifest-listed files whose ownership is still proven; remove project directories only when empty. Never recursively delete a program, profile, `chrome`, or parent directory.
 11. Treat startup-cache cleanup and Firefox restart as explicit evidence-based operations after file rollback is possible, not as path cleanup.
 
@@ -193,6 +197,20 @@ reason: target is a filesystem root
 ```
 
 The rejection occurs before directory creation, backup, cache action, or file mutation. Additional mandatory rejection fixtures for #4 are `<USER_HOME>`, `<APPDATA_ROOT>`, the Firefox profiles collection, a relative target, a junction escaping the selected root, a program directory without the selected Firefox identity, an unmarked daily-use profile, and an owned-manifest path containing `..`.
+
+The automated suite also covers unknown same-name content, a simulated staging
+permission denial, interrupted-transaction residue, dry-run immutability and
+redaction, identical dual ownership, idempotent install/update/disable/uninstall,
+missing runtime files, stale-file removal, unrelated profile chrome content,
+owned-file hash conflicts, and rollback after an injected partial mutation. Run:
+
+```powershell
+pwsh -NoProfile -File .\tests\installer.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
+```
+
+The exact package and manual interrupted-operation recovery procedure are in
+`docs/installation.md`.
 
 ## 8. Private-window isolation and persistence
 

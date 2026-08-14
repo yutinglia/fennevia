@@ -67,10 +67,11 @@ Assert-True -Condition ($unexpectedLegacyReferences.Count -eq 0) -Message (
 )
 
 $requiredPaths = @(
-    "spikes/bootstrap/program/defaults/pref/fennevia.js",
-    "spikes/bootstrap/program/fennevia.cfg",
-    "spikes/bootstrap/profile/chrome/fennevia/chrome.manifest",
-    "spikes/bootstrap/profile/chrome/fennevia/content/Bootstrap.sys.mjs"
+    "program/defaults/pref/fennevia.js",
+    "program/fennevia.cfg",
+    "profile/chrome/fennevia/chrome.manifest",
+    "profile/chrome/fennevia/content/Bootstrap.sys.mjs",
+    "package-manifest.json"
 )
 foreach ($relativePath in $requiredPaths) {
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $repositoryRoot $relativePath) -PathType Leaf) -Message "The canonical Fennevia path is missing: $relativePath"
@@ -79,14 +80,17 @@ foreach ($relativePath in $requiredPaths) {
 $removedPaths = @(
     "spikes/bootstrap/program/defaults/pref/my-firefox-shell.js",
     "spikes/bootstrap/program/my-firefox-shell.cfg",
-    "spikes/bootstrap/profile/chrome/my-firefox-shell"
+    "spikes/bootstrap/profile/chrome/my-firefox-shell",
+    "spikes/bootstrap/program",
+    "spikes/bootstrap/profile",
+    "spikes/bootstrap/package-inventory.json"
 )
 foreach ($relativePath in $removedPaths) {
     Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot $relativePath))) -Message "A legacy bootstrap path is still present: $relativePath"
 }
 
-$manifest = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot "spikes/bootstrap/profile/chrome/fennevia/chrome.manifest")
-$config = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot "spikes/bootstrap/program/fennevia.cfg")
+$manifest = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot "profile/chrome/fennevia/chrome.manifest")
+$config = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot "program/fennevia.cfg")
 Assert-True -Condition ($manifest.Trim() -ceq "content fennevia content/") -Message "The manifest must expose only the Fennevia content package."
 Assert-True -Condition ($config.Contains('"chrome://fennevia/content/Bootstrap.sys.mjs"')) -Message "AutoConfig must import the fixed Fennevia Chrome URI."
 Assert-True -Condition ($config.Contains('"fennevia.safeStart"')) -Message "AutoConfig must use the Fennevia safe-start preference."
