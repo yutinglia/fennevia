@@ -9,7 +9,9 @@ identity. The migration from the provisional name is recorded in ADR-017 and
 
 The project is not intended to become another general-purpose `userChrome.js` loader, and its primary architecture is not an indefinitely growing collection of DOM patches. The goal is to use a minimal AutoConfig entry point to register a project-owned Chrome Registry package, load privileged ES modules, and build a replacement visible browser shell with a modern frontend toolchain.
 
-> Status: planning and feasibility-validation stage. No daily-driver implementation is available yet.
+> Status: planning and feasibility-validation stage. A Windows-first,
+> ownership-guarded development package workflow is available for isolated
+> Firefox copies; no daily-driver or end-user release is available yet.
 
 ## Architecture direction
 
@@ -73,6 +75,7 @@ The project keeps Firefox's core browser infrastructure, including `gBrowser`, w
 - [Dependency review template](docs/dependency-review-template.md)
 - [Development workflow](docs/development-workflow.md)
 - [Windows Firefox development setup](docs/development-setup.md)
+- [Installation and package lifecycle](docs/installation.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 
@@ -91,3 +94,8 @@ Until that decision is complete, agents may research external implementations bu
 ## Safety warning
 
 This project executes system-principal code and relies on Firefox internal APIs that Mozilla does not promise to keep stable. A defect can make browser chrome unusable. Development and testing must use a separate Firefox profile, preserve native-UI fallback, and follow the recovery procedures before any daily-use profile is considered.
+
+Preview every package action with `scripts/fennevia-package.ps1 -WhatIf`. The
+current installer is for an explicitly selected copied stock Firefox program and
+marker-owned, unregistered development profile; see
+`docs/installation.md` before running it.

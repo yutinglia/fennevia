@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "packageId": "fennevia",
+  "packageVersion": "0.1.0-dev",
+  "expectedFiles": [
+    "chrome.manifest",
+    "content/Bootstrap.sys.mjs"
+  ],
+  "files": [
+    {
+      "scope": "program",
+      "path": "defaults/pref/fennevia.js",
+      "sha256": "e2674a2829e27ddc2a82f4b48ab0179e8360245eec49c7683dbbb077c3a00693"
+    },
+    {
+      "scope": "program",
+      "path": "fennevia.cfg",
+      "sha256": "4a6c664259b6013319da193be14692369279bf02bb46bdd9d6d11676c22a91b7"
+    },
+    {
+      "scope": "profile",
+      "path": "chrome/fennevia/chrome.manifest",
+      "sha256": "2cfb5dc44a66f3089c2d4a63f4188e746df89f31a018f44807fc09062f72b6f7"
+    },
+    {
+      "scope": "profile",
+      "path": "chrome/fennevia/content/Bootstrap.sys.mjs",
+      "sha256": "76cdcc8230fd02fad0f7ee4379e5f68cdb26cbe9203fbab4dbd412d4203c12a4"
+    }
+  ]
+}

@@ -37,14 +37,13 @@ function Assert-Match {
 }
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$spikeRoot = Join-Path $repositoryRoot "spikes\bootstrap"
-$programRoot = Join-Path $spikeRoot "program"
-$packageRoot = Join-Path $spikeRoot "profile\chrome\fennevia"
+$programRoot = Join-Path $repositoryRoot "program"
+$packageRoot = Join-Path $repositoryRoot "profile\chrome\fennevia"
 $prefPath = Join-Path $programRoot "defaults\pref\fennevia.js"
 $configPath = Join-Path $programRoot "fennevia.cfg"
 $manifestPath = Join-Path $packageRoot "chrome.manifest"
 $entryPath = Join-Path $packageRoot "content\Bootstrap.sys.mjs"
-$inventoryPath = Join-Path $spikeRoot "package-inventory.json"
+$inventoryPath = Join-Path $repositoryRoot "package-manifest.json"
 $contentProbePath = Join-Path $repositoryRoot "tests\bootstrap-content-access.mjs"
 $contentFixturePath = Join-Path $repositoryRoot "tests\fixtures\bootstrap-content-access.html"
 $scannerModule = Join-Path $repositoryRoot "scripts\lib\SecurityChecks.psm1"
@@ -110,7 +109,7 @@ $manifestLines = @(
     Get-Content -LiteralPath $manifestPath |
         Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 )
-Assert-True -Condition ($manifestLines.Count -eq 1) -Message "The spike manifest must have exactly one declaration."
+Assert-True -Condition ($manifestLines.Count -eq 1) -Message "The package manifest must have exactly one Chrome Registry declaration."
 Assert-True -Condition ($manifestLines[0] -ceq "content fennevia content/") -Message "The manifest must map only the project content directory."
 
 $entryContent = Get-Content -Raw -LiteralPath $entryPath

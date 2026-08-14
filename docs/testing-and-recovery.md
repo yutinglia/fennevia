@@ -101,14 +101,21 @@ Safe start may load minimal logging needed for diagnosis, but it must not mount 
 
 ### Hard disable and uninstall
 
-Document a recovery procedure that does not require deleting the entire profile:
+The package helper provides a recovery procedure that does not require deleting
+the entire profile:
 
 1. Close Firefox.
-2. Disable or remove the project AutoConfig entry in the exact program directory.
-3. Disable or rename the project manifest, or remove the project-owned profile package.
-4. Apply only the validated startup-cache cleanup step if required.
-5. Restart Firefox and confirm that native UI appears and Browser Console contains no project startup error.
-6. Run the ownership-manifest-based uninstaller when available.
+2. Preview and run `scripts/fennevia-package.ps1 Disable` against the explicit
+   program and profile targets. This moves the owned AutoConfig preference even
+   when the manifest or runtime entry is missing.
+3. Restart Firefox and confirm that native UI appears and Browser Console
+   contains no Fennevia startup record.
+4. Preview and run the ownership-manifest-based `Uninstall` action.
+5. Cold-start stock Firefox and confirm no Fennevia record or manifest error.
+6. Apply startup-cache cleanup only if an observed stale-code symptom remains.
+
+Exact commands, ownership rules, and interrupted-operation recovery are in
+`docs/installation.md`.
 
 ## 4. Diagnostic tools
 
@@ -209,8 +216,8 @@ Static and syntax checks:
 ```powershell
 pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\bootstrap-spike.Tests.ps1
-Get-Content -Raw .\spikes\bootstrap\program\fennevia.cfg | node --check -
-node --check .\spikes\bootstrap\profile\chrome\fennevia\content\Bootstrap.sys.mjs
+Get-Content -Raw .\program\fennevia.cfg | node --check -
+node --check .\profile\chrome\fennevia\content\Bootstrap.sys.mjs
 node --check .\tests\bootstrap-content-access.mjs
 ```
 
@@ -259,7 +266,52 @@ immediate recovery, ordinary-content denial, second and private windows,
 graceful cleanup, and complete Fennevia-file removal without clearing startup
 cache.
 
-## 8. Firefox stable-update procedure
+## 8. Phase 1 package-lifecycle evidence
+
+Issue #4 stabilized the package at `program/`, `profile/chrome/fennevia/`, and
+`package-manifest.json`, then validated `scripts/fennevia-package.ps1` on the
+same copied Firefox 153.0.4 program and marker-owned development profile used by
+the identity regression. No system Firefox or registered/daily-use profile was
+modified.
+
+Automated installer tests passed in PowerShell 7 and Windows PowerShell 5.1.
+They cover unsafe targets, reparse points, path traversal, unknown collisions,
+redacted dry run, ownership and hash conflicts, changing/stale package updates,
+missing files, unrelated profile content, staging permission denial,
+interrupted-transaction rejection, and injected partial-failure rollback:
+
+```powershell
+pwsh -NoProfile -File .\tests\installer.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
+```
+
+Observed real-Firefox results:
+
+| Case | Result |
+|---|---|
+| Install preview | 10 exact operations; program/profile tree fingerprint unchanged |
+| Install and repeat | Preview/result plan digests matched; 10 applied mutations, exact hashes, byte-identical ownership pair, no transaction residue; repeat was a zero-operation no-op |
+| Three cold starts | Exactly one success per process and zero Fennevia fatal records |
+| Second and private windows | Two native normal windows or one native private window remained usable; no duplicate initialization |
+| Same-package update | `already-current`, zero operations |
+| Disable and enable | Disabled cold start had zero Fennevia records; enable restored one success on the next cold start |
+| Missing runtime entry | Hard disable still completed; disabled cold start had native UI and zero Fennevia/manifest/uncaught records |
+| Uninstall preview | 9 exact operations because the entry was already missing; tree fingerprint unchanged |
+| Uninstall and repeat | All remaining owned files/metadata removed, development marker and parents retained, no transaction residue; repeat was a zero-operation no-op |
+| Final stock cold start | Native UI present; zero Fennevia records, manifest errors, uncaught, or unhandled signals |
+| Final state | Clean-environment verification passed; no Firefox process remained |
+
+All GUI processes exited through Firefox's graceful quit API. Startup cache was
+not cleared at any point; each state transition appeared on the immediately
+following cold start. One Firefox-owned missing Crash Reports directory message
+was observed as an unrelated baseline and was not suppressed by mutating that
+non-project directory.
+
+The exact environment, operation counts, security review, and complete matrix
+are in `docs/research/fennevia-installer-validation.md`. The operator and
+interrupted-operation recovery contract is in `docs/installation.md`.
+
+## 9. Firefox stable-update procedure
 
 For every stable update:
 
@@ -274,7 +326,7 @@ For every stable update:
 
 Never claim compatibility from version-number inspection alone.
 
-## 9. Automation boundary
+## 10. Automation boundary
 
 Suitable for automation:
 

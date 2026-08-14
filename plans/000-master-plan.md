@@ -166,7 +166,11 @@ docs/
 plans/
 ```
 
-The exact installed layout remains provisional until the Phase 1 spike validates it.
+Issue #3 validated the minimal bootstrap files, and issue #4 stabilized their
+source and installed boundaries through `package-manifest.json`, `program/`,
+and `profile/chrome/fennevia/`. The future generated `runtime/` and `shell/`
+contents remain provisional until the frontend build spike supplies a reviewed
+artifact inventory.
 
 ## 7. Major risks and mitigations
 

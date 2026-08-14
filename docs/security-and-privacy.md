@@ -94,7 +94,7 @@ The initial manifest omits `contentaccessible=yes` and omits the `resource` dire
 
 ## 7. Installation and file-system safety
 
-Install, update, and uninstall scripts must:
+Install, update, disable, enable, and uninstall scripts:
 
 - require an explicit Firefox program directory and profile directory;
 - resolve and validate canonical paths;
@@ -107,7 +107,15 @@ Install, update, and uninstall scripts must:
 - handle partial failure with rollback or clear manual recovery instructions;
 - never silently choose a daily-use profile.
 
-The mandatory preflight sequence, transaction/rollback requirements, redacted rejection record, and unsafe-target fixture set are in `docs/security-controls.md`. Issue #4 must implement them before its first write; documentation alone does not authorize installer mutation.
+The issue #4 implementation enforces these controls in
+`scripts/fennevia-package.ps1` and `scripts/lib/FenneviaInstaller.psm1`.
+`package-manifest.json` is the committed source/hash inventory; byte-identical
+ownership records are installed in both selected roots. New content is staged
+and verified before mutation, existing owned files are backed up, a relative-path
+recovery journal is written, and caught partial failure rolls back. Any
+interrupted transaction blocks later actions until explicit recovery. The
+mandatory sequence and test evidence are in `docs/security-controls.md`; the
+operator and manual-recovery contract is in `docs/installation.md`.
 
 ### Development-profile helper
 
@@ -122,12 +130,12 @@ The Phase 0 Windows helper is not an installer, but its profile deletion is stil
 - its Phase 0 clean-environment gate detects existing AutoConfig declarations, enterprise-policy sources, profile add-ons, and profile chrome customizations without removing them;
 - normal output redacts the Firefox executable and profile paths;
 - revealing local paths requires explicit `-RevealPaths` opt-in and that output must not be shared;
+- Browser Toolbox support keeps `devtools.debugger.prompt-connection=true` and limits the default scope to the parent process.
 
 ADR-017 makes Fennevia the sole active identity. The migration adds no alias,
 new mapping, dependency, runtime network behavior, or broader deletion scope;
 its security regression is recorded in
 `docs/research/fennevia-identity-migration.md`.
-- Browser Toolbox support keeps `devtools.debugger.prompt-connection=true` and limits the default scope to the parent process.
 
 The full procedure and evidence are in `docs/development-setup.md`.
 

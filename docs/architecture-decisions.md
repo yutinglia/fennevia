@@ -181,3 +181,38 @@ installer or supported user migration to preserve, and silently adopting or
 removing a differently named profile would weaken ownership checks. Historical
 Phase 1 literals remain in their research record and in the superseded portions
 of these decisions.
+
+## ADR-018: Use a manifest-driven dual-root transaction for package lifecycle
+
+**Status:** Accepted
+
+Stabilize the Phase 1 installable source at `program/` and
+`profile/chrome/fennevia/`, with `package-manifest.json` as the sole versioned
+path and SHA-256 inventory. Install identical ownership records below
+`<PROGRAM>/.fennevia/` and `<PROFILE>/.fennevia/`; each record binds one
+installation UUID, package version/state, source-manifest hash, exact files,
+installed relative paths, and only the profile directories created by the
+package action.
+
+Every non-empty mutation uses marker-owned same-volume transaction roots. It
+stages and verifies new bytes, backs up only ownership-proven existing files,
+writes a relative-path/hash recovery journal, rechecks old hashes before
+replacement, rolls back caught partial failure, and rejects later actions while
+transaction residue exists. Hard disable moves the AutoConfig preference out of
+the active `defaults/pref/*.js` set and therefore does not depend on a working
+manifest or runtime entry. Startup-cache mutation remains evidence-driven and is
+never part of normal file cleanup.
+
+**Reasoning:** Installation spans a Firefox program and one explicitly selected
+profile, so a single-root copy script cannot prove atomicity or safe removal.
+Byte-identical records prevent either root from silently claiming a different
+installation. Exact hashes distinguish owned content from same-name foreign or
+manually changed files. Same-volume staging and journals make ordinary failure
+rollback deterministic and interrupted-operation recovery inspectable without
+recording absolute personal paths.
+
+The installer never adopts arbitrary customizations, scans for generic scripts,
+chooses a default/registered profile, recursively removes a Firefox, profile, or
+general `chrome` parent, or clears arbitrary cache directories. The Windows-first
+development workflow and its current copied-program support boundary are
+documented in `docs/installation.md`.

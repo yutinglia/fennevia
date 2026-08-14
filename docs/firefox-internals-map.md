@@ -187,7 +187,26 @@ These dependencies are development-only. They are owned by `scripts/lib/FirefoxD
 
 Revalidate the preference names and command-line flags when the supported Firefox stable changes. The authoritative setup and captured evidence are in `docs/development-setup.md`.
 
-## 7. Native-handle rules
+## 7. Phase 1 package-lifecycle dependencies
+
+These dependencies are owned by `scripts/lib/FenneviaInstaller.psm1`; they do
+not enter the privileged Firefox runtime. Their normative operator contract is
+in `docs/installation.md`.
+
+| Dependency | Installer use | Failure behavior |
+|---|---|---|
+| Selected `firefox.exe` plus sibling `application.ini` `[App] Name` and `BuildID` | Prove the explicit program root is a source-identifiable stock Firefox build | Reject before transaction creation when identity is absent or ambiguous |
+| `<PROGRAM>/defaults/pref` and `general.config.filename` declarations | Install or move the one Fennevia AutoConfig preference and detect another loader declaration | Reject unknown AutoConfig rather than replacing or composing with it |
+| Firefox `profiles.ini` and `installs.ini` beneath the current user's Firefox data root | Reject registered/default-style profiles from the development-stage workflow | Never select, register, mutate, or delete a profile entry |
+| `.fennevia-dev-profile.json` | Prove a new explicit profile is owned by the project helper | A valid existing dual ownership pair is the only accepted proof after installation |
+| Windows process `ExecutablePath` and `CommandLine` | Refuse mutation while the selected executable or profile is active | If Firefox is running but process identity cannot be inspected, fail closed |
+| Same-volume `.fennevia-transaction-<UUID>` roots and .NET file replacement | Stage, hash, journal, back up, atomically replace where available, and roll back exact paths | Any residue blocks future actions; recursive cleanup requires an exact marker-owned, no-reparse transaction tree |
+| Firefox startup cache | No automatic mutation; Phase 1 observed corrected/removal state on the next cold start | Escalate to Firefox's `about:support` action only after a concrete stale-code symptom |
+
+No new privileged Firefox API or content-accessible mapping is introduced by
+the installer.
+
+## 8. Native-handle rules
 
 - Native tab, browser, window, controller, and result objects remain inside bridge or runtime modules.
 - UI uses project-generated opaque IDs and immutable snapshots.
@@ -196,7 +215,7 @@ Revalidate the preference names and command-line flags when the supported Firefo
 - Translate native callbacks into ordinary application events at the boundary.
 - Validate a native handle before every action that can outlive a prior snapshot.
 
-## 8. Dependency inventory fields
+## 9. Dependency inventory fields
 
 Every implemented dependency should eventually record:
 
@@ -212,7 +231,7 @@ Every implemented dependency should eventually record:
 | Tests | Unit, static, or dev-profile smoke coverage |
 | Replacement or removal plan | How dependency could be reduced later |
 
-## 9. High-risk areas requiring separate decisions
+## 10. High-risk areas requiring separate decisions
 
 - complete `browser.xhtml` override;
 - tab custom-element or internal-script override;

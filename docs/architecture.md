@@ -40,7 +40,13 @@ AutoConfig performs only these tasks:
 
 It does not implement script discovery, hot reload, metadata parsing, sandbox abstraction, frontend UI, or application logic.
 
-The Phase 1 implementation lives under `spikes/bootstrap/`. AutoConfig and the entry each use a process guard. The entry uses Firefox 153's loader-defined `Services` global after a runtime capability check; `Services.sys.mjs` is not packaged in the supported build. Structured records include phase, stable code, Firefox version, build ID, and a path/URL-redacted stack.
+The stabilized Phase 1 package lives in the repository-root `program/` and
+`profile/chrome/fennevia/` trees and is inventoried by
+`package-manifest.json`. AutoConfig and the entry each use a process guard. The
+entry uses Firefox 153's loader-defined `Services` global after a runtime
+capability check; `Services.sys.mjs` is not packaged in the supported build.
+Structured records include phase, stable code, Firefox version, build ID, and a
+path/URL-redacted stack.
 
 ### Chrome Registry package
 
@@ -169,9 +175,15 @@ Therefore:
 - regression tests and a removal plan are mandatory;
 - overriding the complete `browser.xhtml` is prohibited during the initial roadmap.
 
-## 9. Build and artifacts
+## 9. Build, package, and artifacts
 
-The source of truth is `src/`. Production artifacts must be:
+Application and frontend source belongs in `src/`. The current directly authored
+bootstrap package is rooted at `program/` and `profile/`; installable files and
+their committed hashes are defined only by `package-manifest.json`. Future
+generated frontend/runtime artifacts must enter that inventory through their
+documented build rather than by editing `dist/` or installed files.
+
+Production artifacts must be:
 
 - deterministic;
 - self-contained;
@@ -185,6 +197,14 @@ Each production build also has an exact reviewed file inventory and passes `scri
 Whether the final entry is an IIFE, ES module, or mixed runtime is decided by the bootstrap and frontend spikes from real Firefox evidence, not fixed in advance.
 
 Source-map policy must distinguish local development artifacts from installed artifacts. Privileged source maps must not be unintentionally exposed through a content-accessible mapping.
+
+`scripts/fennevia-package.ps1` owns the Windows-first package lifecycle. It
+accepts explicit program and profile targets, emits a redacted exact dry run,
+requires paired hash-based ownership records, stages and journals changes on the
+same volumes, rolls back partial failure, hard-disables by moving the AutoConfig
+preference, and uninstalls only exact owned files. The normative contract and
+interrupted-operation recovery procedure are in `docs/installation.md` and
+ADR-018.
 
 ## 10. Security and privacy model
 
