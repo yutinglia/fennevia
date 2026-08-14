@@ -74,6 +74,12 @@ Implementation is tracked through GitHub Issues. An agent must read `AGENTS.md`,
 
 Start with the tracking issue, then follow the dependency order. Do not begin by hiding Firefox native UI.
 
+## License status
+
+No repository license has been selected yet. Public visibility does not grant permission to copy, redistribute, or incorporate the code. The owner decision, contribution terms, and third-party attribution policy are tracked in issue #18.
+
+Until that decision is complete, agents may research external implementations but must not directly copy third-party code without independently verifying and recording its license and provenance.
+
 ## Safety warning
 
 This project executes system-principal code and relies on Firefox internal APIs that Mozilla does not promise to keep stable. A defect can make browser chrome unusable. Development and testing must use a separate Firefox profile, preserve native-UI fallback, and follow the recovery procedures before any daily-use profile is considered.
