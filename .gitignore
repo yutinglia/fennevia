@@ -1,0 +1,46 @@
+# Dependencies and package-manager state
+node_modules/
+.pnpm-store/
+
+# Build and test caches
+.vite/
+.svelte-kit/
+coverage/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+
+# Disposable Firefox development state
+.dev-profile/
+dev-profile/
+firefox-profile/
+.mfs-local/
+local-artifacts/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/settings.local.json
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# Generated production artifacts are intentionally not ignored yet.
+# Their repository policy will be decided by the build and installation spikes.

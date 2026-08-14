@@ -1,0 +1,61 @@
+name: Firefox research spike
+description: Investigate an unstable Firefox internal, compatibility break, or architectural unknown.
+title: "[Research] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Research must produce reproducible evidence and a decision, not only a collection of links. Follow `docs/research-playbook.md`.
+  - type: textarea
+    id: question
+    attributes:
+      label: Research question
+      description: State the exact uncertainty that blocks implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Required environment record
+      description: Firefox version, build ID, channel, operating system, profile, and project commit.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Symptom or minimal reproduction
+      description: Describe the first observable failure or experiment.
+    validations:
+      required: true
+  - type: checkboxes
+    id: sources
+    attributes:
+      label: Required source classes
+      options:
+        - label: Alice0775 current relevant implementation or issue
+        - label: fx-autoconfig current relevant implementation or issue
+        - label: xiaoxiaoflood current relevant implementation or issue
+        - label: aminomancer current relevant implementation or issue
+        - label: Searchfox definition, callers, tests, and blame
+        - label: Official Firefox commit, documentation, or Bugzilla when relevant
+  - type: textarea
+    id: outputs
+    attributes:
+      label: Required outputs
+      description: Define the evidence, options, minimum adaptation, validation, and documentation updates expected.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security and privacy considerations
+      description: State whether URLs, private-window data, privileged resources, dependencies, or security UI are involved.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: "- [ ] Upstream change is identified..."
+    validations:
+      required: true

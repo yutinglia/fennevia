@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Project plans and architecture
+    url: https://github.com/yutinglia/my-firefox-shell/tree/main/plans
+    about: Review the roadmap and blockers before opening implementation work.
+  - name: Firefox research playbook
+    url: https://github.com/yutinglia/my-firefox-shell/blob/main/docs/research-playbook.md
+    about: Follow this process for Firefox internal API or update-related failures.
+  - name: Security reporting
+    url: https://github.com/yutinglia/my-firefox-shell/blob/main/SECURITY.md
+    about: Do not disclose exploitable privileged-code details in a public issue.

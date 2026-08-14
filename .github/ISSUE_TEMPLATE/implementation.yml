@@ -1,0 +1,73 @@
+name: Implementation task
+description: Propose a scoped implementation aligned with the existing roadmap.
+title: "[Phase X] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read `AGENTS.md`, the master plan, relevant documentation, and all blockers before submitting.
+  - type: input
+    id: tracking
+    attributes:
+      label: Tracking issue and blockers
+      description: List the tracking issue and every blocker.
+      placeholder: "Tracking: #1; Blocked by: #..."
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: State the user-visible or architectural outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List the exact work included.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Explicit non-goals
+      description: State what this issue must not expand into.
+    validations:
+      required: true
+  - type: textarea
+    id: research
+    attributes:
+      label: Required Firefox research
+      description: Identify canaries, Searchfox paths, official source, and evidence that must be collected.
+    validations:
+      required: true
+  - type: textarea
+    id: architecture
+    attributes:
+      label: Architecture and ownership boundaries
+      description: Explain bridge, DOM ownership, lifecycle, and cleanup effects.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security and privacy effects
+      description: Cover privilege, logging, resources, dependencies, installer behavior, and native security UI.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use verifiable checklist items.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Required validation
+      description: Include unit, build, real Firefox smoke, cleanup, and failure-injection requirements.
+    validations:
+      required: true

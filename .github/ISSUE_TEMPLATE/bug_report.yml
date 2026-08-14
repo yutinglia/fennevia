@@ -1,0 +1,79 @@
+name: Bug or Firefox compatibility regression
+description: Report a reproducible failure in the development profile or after a Firefox update.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include secrets, cookies, private URLs, full profile paths, or exploitable security details. Use `SECURITY.md` for sensitive reports.
+  - type: input
+    id: version
+    attributes:
+      label: Firefox version and build ID
+      placeholder: "Version; build ID; channel"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Project commit
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Profile type
+      options:
+        - Clean development profile
+        - Existing development profile
+        - Daily-use profile, unsupported
+    validations:
+      required: true
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Symptom
+      description: Describe what happened and whether native Firefox fallback remained available.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      placeholder: "1. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: causal_error
+    attributes:
+      label: First causal error
+      description: Paste the first relevant Browser Console error and stack after redaction.
+      render: text
+    validations:
+      required: true
+  - type: checkboxes
+    id: isolation
+    attributes:
+      label: Isolation checks
+      options:
+        - label: Reproduced in the clean development profile
+        - label: Removed unrelated userChrome, loader, extension, and policy effects
+        - label: Checked for stale build artifacts and startup-cache behavior
+  - type: textarea
+    id: research
+    attributes:
+      label: Sources already checked
+      description: Include loader canaries, Searchfox, official source, commits, or Bugzilla.
+  - type: textarea
+    id: recovery
+    attributes:
+      label: Recovery result
+      description: Explain safe-start, emergency fallback, uninstall, or native-UI behavior.
+    validations:
+      required: true
