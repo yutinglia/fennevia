@@ -3,8 +3,8 @@
 ## Status
 
 - Review date: 2026-08-14
-- Owning issue: [#17](https://github.com/yutinglia/my-firefox-shell/issues/17)
-- Installation/build owner: [#8](https://github.com/yutinglia/my-firefox-shell/issues/8)
+- Owning issue: [#17](https://github.com/yutinglia/fennevia/issues/17)
+- Installation/build owner: [#8](https://github.com/yutinglia/fennevia/issues/8)
 - Decision: **defer installation and final approval to #8**
 - Evidence command: `npm view <package>@<version> ... --json` with npm 11.16.0 on Node.js 24.18.0
 

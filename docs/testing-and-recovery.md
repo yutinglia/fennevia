@@ -20,7 +20,7 @@ The development profile should:
 - contain the minimum necessary extensions;
 - be reproducible from a script or documented procedure;
 - permit Browser Console and Browser Toolbox use;
-- have an unambiguous name such as `my-firefox-shell-dev`;
+- have an unambiguous name such as `fennevia-dev`;
 - be disposable without affecting another profile.
 
 Before each integration test, confirm the profile path, Firefox version, build ID, channel, executable, and project commit.
@@ -64,7 +64,7 @@ Every recorded result must be `pass`, `fail`, `blocked`, or `not run`, with evid
 
 ### Health and activation gate
 
-Native-UI hiding must depend on `data-mfs-active`. Set it only after all required steps succeed:
+Native-UI hiding must depend on `data-fennevia-active`. Set it only after all required steps succeed:
 
 1. process runtime initialized;
 2. window accepted by lifecycle policy;
@@ -93,7 +93,7 @@ Choose a binding that does not conflict with common Firefox or OS shortcuts. Doc
 
 Select at least one mechanism that can be evaluated before shell activation:
 
-- a preference such as `myFirefoxShell.safeStart=true`;
+- a preference such as `fennevia.safeStart=true`;
 - a sentinel file in the project profile package;
 - another source-validated early mechanism.
 
@@ -117,11 +117,11 @@ Document a recovery procedure that does not require deleting the entire profile:
 Use for AutoConfig, registration, module import, lifecycle, bridge, and frontend exceptions. Logs should have stable prefixes such as:
 
 ```text
-[MFS bootstrap]
-[MFS runtime]
-[MFS window]
-[MFS bridge]
-[MFS shell]
+[Fennevia bootstrap]
+[Fennevia runtime]
+[Fennevia window]
+[Fennevia bridge]
+[Fennevia shell]
 ```
 
 Normal logs must follow the privacy policy and avoid complete browsing data.
@@ -142,7 +142,7 @@ Use it to:
 A later runtime may expose a read-only local debug object such as:
 
 ```text
-window.MyFirefoxShellDebug
+window.FenneviaDebug
 ```
 
 It must be development-only, must not expose sensitive browsing state, and must never become a production UI dependency.
@@ -179,16 +179,27 @@ Do not clear Firefox's startup cache routinely. First record a causal startup or
 
 ## 7. Phase 1 bootstrap evidence
 
-The minimal startup chain was validated on 2026-08-14 with Firefox 153.0.4 release, build ID `20260810162159`, source stamp `54be19de0e08edff0b797e55fd935dd3978b0a6d`, on Windows 11 25H2. Testing used a project-owned copy of the stock Firefox program under `%LOCALAPPDATA%` and a separate marker-owned direct-path profile. No system Firefox files, registered profiles, or daily-use profiles were modified.
+The minimal startup chain was first validated under the provisional identity on
+2026-08-14 with Firefox 153.0.4 release, build ID `20260810162159`, source stamp
+`54be19de0e08edff0b797e55fd935dd3978b0a6d`, on Windows 11 25H2. The exact
+historical literals remain in `docs/research/firefox-153-bootstrap.md`. The
+current Fennevia paths shown below were revalidated on the same Firefox build on
+2026-08-15; the identity-specific matrix is in
+`docs/research/fennevia-identity-migration.md`.
+
+Both runs used a project-owned copy of the stock Firefox program under a
+marker-owned local test root and a separate marker-owned direct-path profile.
+No system Firefox files, registered profiles, or daily-use profiles were
+modified.
 
 The installed test layout was:
 
 ```text
 <FIREFOX_PROGRAM_COPY>/
-  defaults/pref/my-firefox-shell.js
-  my-firefox-shell.cfg
+  defaults/pref/fennevia.js
+  fennevia.cfg
 
-<MFS_DEV_PROFILE>/chrome/my-firefox-shell/
+<FENNEVIA_DEV_PROFILE>/chrome/fennevia/
   chrome.manifest
   content/Bootstrap.sys.mjs
 ```
@@ -198,8 +209,8 @@ Static and syntax checks:
 ```powershell
 pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\bootstrap-spike.Tests.ps1
-Get-Content -Raw .\spikes\bootstrap\program\my-firefox-shell.cfg | node --check -
-node --check .\spikes\bootstrap\profile\chrome\my-firefox-shell\content\Bootstrap.sys.mjs
+Get-Content -Raw .\spikes\bootstrap\program\fennevia.cfg | node --check -
+node --check .\spikes\bootstrap\profile\chrome\fennevia\content\Bootstrap.sys.mjs
 node --check .\tests\bootstrap-content-access.mjs
 ```
 
@@ -208,7 +219,7 @@ The ordinary-content probe uses only Node's standard library, binds an ephemeral
 ```powershell
 node .\tests\bootstrap-content-access.mjs `
   --firefox '<FIREFOX_PROGRAM_COPY>\firefox.exe' `
-  --profile '<MFS_DEV_PROFILE>' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
   --screenshot '<NEW_LOCAL_SCREENSHOT_PATH>'
 ```
 
@@ -224,14 +235,14 @@ Observed real-Firefox matrix:
 | Incorrect entry URI | `bootstrap.fatal`, phase `entry-import`, fixed project URI identified | Native Firefox window present |
 | Entry syntax error | `bootstrap.fatal`, phase `entry-import`, `SyntaxError` | Native Firefox window present |
 | Duplicate cfg evaluation | One success plus one `bootstrap.duplicate`; no fatal record | Second evaluation skipped with prior result `ready` |
-| `myFirefoxShell.safeStart=true` | One `bootstrap.skipped`; no registration or import | Native Firefox window present |
+| `fennevia.safeStart=true` | One `bootstrap.skipped`; no registration or import | Native Firefox window present |
 | Ordinary HTTP content fetch | Probe reported `blocked`; screenshot displayed the PASS state | No `contentaccessible=yes`; no resource alias |
 | Corrected entry after syntax failure | Success on the immediately following cold start | No startup-cache clearing performed |
 | AutoConfig pref, cfg, and package removed | Zero project records in a new Browser Console | Stock native startup; no residual project error |
 
-When safe start is injected through `user.js`, Firefox copies that value into the profile preference store. Restoring `user.js` alone is not a reset. The test must explicitly set `myFirefoxShell.safeStart=false`, complete a cold start, restore the original `user.js`, and confirm that the final bootstrap succeeds and no stale `true` value remains in `prefs.js`.
+When safe start is injected through `user.js`, Firefox copies that value into the profile preference store. Restoring `user.js` alone is not a reset. The test must explicitly set `fennevia.safeStart=false`, complete a cold start, restore the original `user.js`, and confirm that the final bootstrap succeeds and no stale `true` value remains in `prefs.js`.
 
-Fatal records use the `[MFS bootstrap]` prefix and include `event`, `phase`, stable `code`, context, safe error name/message, full stack array, Firefox version, and build ID. Remote URLs, file URLs, Windows paths, opaque URLs, and control characters are redacted or removed. They do not include browsing URLs, page titles, search text, profile paths, or private-window state.
+Fatal records use the `[Fennevia bootstrap]` prefix and include `event`, `phase`, stable `code`, context, safe error name/message, full stack array, Firefox version, and build ID. Remote URLs, file URLs, Windows paths, opaque URLs, and control characters are redacted or removed. They do not include browsing URLs, page titles, search text, profile paths, or private-window state.
 
 The validated cache procedure is evidence-first:
 
@@ -241,7 +252,12 @@ The validated cache procedure is evidence-first:
 4. Do not clear startup cache for ordinary source replacement or removal on the validated build; neither recovery test required it.
 5. Only if an actual stale artifact remains after file and profile verification, use Firefox's **Clear startup cache** action in `about:support`, restart, and record the before/after evidence.
 
-The detailed upstream research and exact canary revisions are in `docs/research/firefox-153-bootstrap.md`.
+The detailed upstream research and exact canary revisions are in
+`docs/research/firefox-153-bootstrap.md`. The 2026-08-15 regression additionally
+confirmed three cold starts, safe start and reset, missing-manifest fail-open and
+immediate recovery, ordinary-content denial, second and private windows,
+graceful cleanup, and complete Fennevia-file removal without clearing startup
+cache.
 
 ## 8. Firefox stable-update procedure
 

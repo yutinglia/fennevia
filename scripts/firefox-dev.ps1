@@ -39,9 +39,9 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 
 switch ($Action) {
     "Initialize" {
-        $selectedFirefox = Get-MfsFirefoxExecutable -FirefoxPath $FirefoxPath
-        $status = Initialize-MfsFirefoxDevProfile -ProfilePath $ProfilePath
-        Write-Output "Initialized the marker-owned Firefox development profile at <MFS_DEV_PROFILE>."
+        $selectedFirefox = Get-FenneviaFirefoxExecutable -FirefoxPath $FirefoxPath
+        $status = Initialize-FenneviaFirefoxDevProfile -ProfilePath $ProfilePath
+        Write-Output "Initialized the marker-owned Firefox development profile at <FENNEVIA_DEV_PROFILE>."
         Write-Output "DevTools chrome debugging is enabled; the remote connection confirmation remains enabled."
         if ($RevealPaths) {
             Write-Warning "Local-only Firefox executable: $selectedFirefox"
@@ -49,15 +49,15 @@ switch ($Action) {
         }
     }
     "Verify" {
-        $status = Test-MfsFirefoxDevProfile -ProfilePath $ProfilePath
+        $status = Test-FenneviaFirefoxDevProfile -ProfilePath $ProfilePath
         if (-not $status.IsValid) {
             throw ($status.Problems -join " ")
         }
 
-        $firefox = Get-MfsFirefoxDetails -FirefoxPath (Get-MfsFirefoxExecutable -FirefoxPath $FirefoxPath)
-        $autoConfig = Get-MfsAutoConfigAudit -ProgramRoot $firefox.ProgramRoot
-        $policyAudit = Get-MfsFirefoxPolicyAudit -ProgramRoot $firefox.ProgramRoot
-        $profileAudit = Get-MfsProfileContaminationAudit -ProfilePath $status.ProfilePath
+        $firefox = Get-FenneviaFirefoxDetails -FirefoxPath (Get-FenneviaFirefoxExecutable -FirefoxPath $FirefoxPath)
+        $autoConfig = Get-FenneviaAutoConfigAudit -ProgramRoot $firefox.ProgramRoot
+        $policyAudit = Get-FenneviaFirefoxPolicyAudit -ProgramRoot $firefox.ProgramRoot
+        $profileAudit = Get-FenneviaProfileContaminationAudit -ProfilePath $status.ProfilePath
         if (($RequireNoAutoConfig -or $RequireCleanEnvironment) -and $autoConfig.HasDeclarations) {
             throw "AutoConfig declarations were detected in the selected Firefox program directory; the Phase 0 stock-program check failed."
         }
@@ -79,7 +79,7 @@ switch ($Action) {
         }
     }
     "Launch" {
-        $process = Start-MfsFirefoxDevProfile `
+        $process = Start-FenneviaFirefoxDevProfile `
             -FirefoxPath $FirefoxPath `
             -ProfilePath $ProfilePath `
             -Page $Page `
@@ -87,17 +87,17 @@ switch ($Action) {
             -BrowserToolbox:$BrowserToolbox `
             -SecondWindow:$SecondWindow `
             -PrivateWindow:$PrivateWindow
-        Write-Output "Launched Firefox process $($process.Id) with the explicit <MFS_DEV_PROFILE> path and --no-remote."
+        Write-Output "Launched Firefox process $($process.Id) with the explicit <FENNEVIA_DEV_PROFILE> path and --no-remote."
     }
     "Environment" {
-        Get-MfsFirefoxEnvironmentRecord `
+        Get-FenneviaFirefoxEnvironmentRecord `
             -FirefoxPath $FirefoxPath `
             -ProfilePath $ProfilePath `
             -ProjectRoot $projectRoot `
             -RevealPaths:$RevealPaths
     }
     "Remove" {
-        $removed = Remove-MfsFirefoxDevProfile `
+        $removed = Remove-FenneviaFirefoxDevProfile `
             -ProfilePath $ProfilePath `
             -Force:$Force `
             -WhatIf:$WhatIfPreference `

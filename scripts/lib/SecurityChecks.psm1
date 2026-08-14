@@ -15,7 +15,7 @@ $script:TextExtensions = @(
 )
 $script:ExecutableBinaryExtensions = @(".dll", ".exe", ".node", ".wasm")
 
-function ConvertTo-MfsCanonicalArtifactPath {
+function ConvertTo-FenneviaCanonicalArtifactPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -40,7 +40,7 @@ function ConvertTo-MfsCanonicalArtifactPath {
     return $fullPath.TrimEnd("\", "/")
 }
 
-function Assert-MfsArtifactPathHasNoReparseAncestor {
+function Assert-FenneviaArtifactPathHasNoReparseAncestor {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -65,7 +65,7 @@ function Assert-MfsArtifactPathHasNoReparseAncestor {
     }
 }
 
-function ConvertTo-MfsArtifactRelativePath {
+function ConvertTo-FenneviaArtifactRelativePath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -79,7 +79,7 @@ function ConvertTo-MfsArtifactRelativePath {
     return $relativePath.Replace("\", "/")
 }
 
-function ConvertTo-MfsExpectedArtifactPath {
+function ConvertTo-FenneviaExpectedArtifactPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -104,7 +104,7 @@ function ConvertTo-MfsExpectedArtifactPath {
     return $normalizedPath
 }
 
-function Test-MfsArtifactDisplayPathSafe {
+function Test-FenneviaArtifactDisplayPathSafe {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -114,21 +114,21 @@ function Test-MfsArtifactDisplayPathSafe {
     return $Path -match '^[A-Za-z0-9._/-]+$'
 }
 
-function ConvertTo-MfsArtifactDisplayPath {
+function ConvertTo-FenneviaArtifactDisplayPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string] $Path
     )
 
-    if (Test-MfsArtifactDisplayPathSafe -Path $Path) {
+    if (Test-FenneviaArtifactDisplayPathSafe -Path $Path) {
         return $Path
     }
 
     return "<UNSAFE_ARTIFACT_PATH>"
 }
 
-function New-MfsArtifactFinding {
+function New-FenneviaArtifactFinding {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -142,12 +142,12 @@ function New-MfsArtifactFinding {
 
     return [pscustomobject]@{
         Rule = $Rule
-        Path = ConvertTo-MfsArtifactDisplayPath -Path $Path
+        Path = ConvertTo-FenneviaArtifactDisplayPath -Path $Path
         Line = $Line
     }
 }
 
-function Get-MfsLineNumberAtIndex {
+function Get-FenneviaLineNumberAtIndex {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -164,14 +164,14 @@ function Get-MfsLineNumberAtIndex {
     return ([regex]::Matches($Content.Substring(0, $Index), "`r`n|`n|`r")).Count + 1
 }
 
-function Get-MfsArtifactInventory {
+function Get-FenneviaArtifactInventory {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string] $InventoryPath
     )
 
-    $canonicalInventory = ConvertTo-MfsCanonicalArtifactPath -Path $InventoryPath
+    $canonicalInventory = ConvertTo-FenneviaCanonicalArtifactPath -Path $InventoryPath
     if (-not (Test-Path -LiteralPath $canonicalInventory -PathType Leaf)) {
         throw "The artifact inventory file does not exist."
     }
@@ -210,7 +210,7 @@ function Get-MfsArtifactInventory {
 
     $normalizedFiles = @(
         $expectedFiles |
-            ForEach-Object { ConvertTo-MfsExpectedArtifactPath -Path ([string] $_) } |
+            ForEach-Object { ConvertTo-FenneviaExpectedArtifactPath -Path ([string] $_) } |
             Sort-Object -Unique
     )
 
@@ -224,7 +224,7 @@ function Get-MfsArtifactInventory {
     }
 }
 
-function Get-MfsArtifactFiles {
+function Get-FenneviaArtifactFiles {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -242,12 +242,12 @@ function Get-MfsArtifactFiles {
     while ($pendingDirectories.Count -gt 0) {
         $directory = $pendingDirectories.Dequeue()
         foreach ($child in @(Get-ChildItem -Force -LiteralPath $directory)) {
-            $relativePath = ConvertTo-MfsArtifactRelativePath -ArtifactRoot $ArtifactRoot -FullPath $child.FullName
-            if (-not (Test-MfsArtifactDisplayPathSafe -Path $relativePath)) {
-                $Findings.Add((New-MfsArtifactFinding -Rule "ARTIFACT_UNSAFE_PATH" -Path $relativePath))
+            $relativePath = ConvertTo-FenneviaArtifactRelativePath -ArtifactRoot $ArtifactRoot -FullPath $child.FullName
+            if (-not (Test-FenneviaArtifactDisplayPathSafe -Path $relativePath)) {
+                $Findings.Add((New-FenneviaArtifactFinding -Rule "ARTIFACT_UNSAFE_PATH" -Path $relativePath))
             }
             if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-                $Findings.Add((New-MfsArtifactFinding -Rule "ARTIFACT_REPARSE_POINT" -Path $relativePath))
+                $Findings.Add((New-FenneviaArtifactFinding -Rule "ARTIFACT_REPARSE_POINT" -Path $relativePath))
                 continue
             }
 
@@ -266,7 +266,7 @@ function Get-MfsArtifactFiles {
     return $files.ToArray()
 }
 
-function Add-MfsPatternFindings {
+function Add-FenneviaPatternFindings {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -314,8 +314,8 @@ function Add-MfsPatternFindings {
 
     foreach ($definition in $patterns) {
         foreach ($match in [regex]::Matches($Content, $definition.Pattern)) {
-            $line = Get-MfsLineNumberAtIndex -Content $Content -Index $match.Index
-            $Findings.Add((New-MfsArtifactFinding -Rule $definition.Rule -Path $RelativePath -Line $line))
+            $line = Get-FenneviaLineNumberAtIndex -Content $Content -Index $match.Index
+            $Findings.Add((New-FenneviaArtifactFinding -Rule $definition.Rule -Path $RelativePath -Line $line))
         }
     }
 
@@ -327,13 +327,13 @@ function Add-MfsPatternFindings {
             -not $specifier.StartsWith("/") -and
             $specifier -notmatch '^(?i:chrome|resource)://'
         ) {
-            $line = Get-MfsLineNumberAtIndex -Content $Content -Index $match.Index
-            $Findings.Add((New-MfsArtifactFinding -Rule "ARTIFACT_BARE_IMPORT" -Path $RelativePath -Line $line))
+            $line = Get-FenneviaLineNumberAtIndex -Content $Content -Index $match.Index
+            $Findings.Add((New-FenneviaArtifactFinding -Rule "ARTIFACT_BARE_IMPORT" -Path $RelativePath -Line $line))
         }
     }
 }
 
-function Test-MfsProductionArtifacts {
+function Test-FenneviaProductionArtifacts {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -343,7 +343,7 @@ function Test-MfsProductionArtifacts {
         [string] $InventoryPath
     )
 
-    $canonicalRoot = ConvertTo-MfsCanonicalArtifactPath -Path $ArtifactRoot
+    $canonicalRoot = ConvertTo-FenneviaCanonicalArtifactPath -Path $ArtifactRoot
     if (-not (Test-Path -LiteralPath $canonicalRoot -PathType Container)) {
         throw "The production artifact root does not exist."
     }
@@ -351,11 +351,11 @@ function Test-MfsProductionArtifacts {
         throw "The production artifact root must not be a filesystem root."
     }
 
-    Assert-MfsArtifactPathHasNoReparseAncestor -Path $canonicalRoot
+    Assert-FenneviaArtifactPathHasNoReparseAncestor -Path $canonicalRoot
 
-    $inventory = Get-MfsArtifactInventory -InventoryPath $InventoryPath
+    $inventory = Get-FenneviaArtifactInventory -InventoryPath $InventoryPath
     $findings = New-Object "Collections.Generic.List[object]"
-    $artifactFiles = @(Get-MfsArtifactFiles -ArtifactRoot $canonicalRoot -Findings $findings)
+    $artifactFiles = @(Get-FenneviaArtifactFiles -ArtifactRoot $canonicalRoot -Findings $findings)
     $actualPaths = New-Object "Collections.Generic.HashSet[string]" ([StringComparer]::OrdinalIgnoreCase)
     $expectedPaths = New-Object "Collections.Generic.HashSet[string]" ([StringComparer]::OrdinalIgnoreCase)
 
@@ -366,13 +366,13 @@ function Test-MfsProductionArtifacts {
     foreach ($artifactFile in $artifactFiles) {
         [void] $actualPaths.Add($artifactFile.RelativePath)
         if (-not $expectedPaths.Contains($artifactFile.RelativePath)) {
-            $findings.Add((New-MfsArtifactFinding -Rule "ARTIFACT_UNEXPECTED_FILE" -Path $artifactFile.RelativePath))
+            $findings.Add((New-FenneviaArtifactFinding -Rule "ARTIFACT_UNEXPECTED_FILE" -Path $artifactFile.RelativePath))
         }
     }
 
     foreach ($expectedPath in $inventory.ExpectedFiles) {
         if (-not $actualPaths.Contains($expectedPath)) {
-            $findings.Add((New-MfsArtifactFinding -Rule "ARTIFACT_MISSING_FILE" -Path $expectedPath))
+            $findings.Add((New-FenneviaArtifactFinding -Rule "ARTIFACT_MISSING_FILE" -Path $expectedPath))
         }
     }
 
@@ -382,19 +382,19 @@ function Test-MfsProductionArtifacts {
         $extension = [IO.Path]::GetExtension($relativePath).ToLowerInvariant()
 
         if ($relativePath -match '(?i)(^|/)(?:node_modules|src|test|tests|__tests__|coverage)(?:/|$)' -or $extension -in @(".svelte", ".ts", ".tsx")) {
-            $findings.Add((New-MfsArtifactFinding -Rule "ARTIFACT_DEVELOPMENT_FILE" -Path $relativePath))
+            $findings.Add((New-FenneviaArtifactFinding -Rule "ARTIFACT_DEVELOPMENT_FILE" -Path $relativePath))
         }
         if ($extension -eq ".map") {
-            $findings.Add((New-MfsArtifactFinding -Rule "ARTIFACT_SOURCE_MAP_FILE" -Path $relativePath))
+            $findings.Add((New-FenneviaArtifactFinding -Rule "ARTIFACT_SOURCE_MAP_FILE" -Path $relativePath))
         }
         if ($extension -in $script:ExecutableBinaryExtensions) {
-            $findings.Add((New-MfsArtifactFinding -Rule "ARTIFACT_EXECUTABLE_BINARY" -Path $relativePath))
+            $findings.Add((New-FenneviaArtifactFinding -Rule "ARTIFACT_EXECUTABLE_BINARY" -Path $relativePath))
         }
         if ($extension -notin $script:TextExtensions) {
             continue
         }
         if ($artifactFile.Item.Length -gt $script:MaximumScannableTextBytes) {
-            $findings.Add((New-MfsArtifactFinding -Rule "ARTIFACT_TEXT_FILE_TOO_LARGE" -Path $relativePath))
+            $findings.Add((New-FenneviaArtifactFinding -Rule "ARTIFACT_TEXT_FILE_TOO_LARGE" -Path $relativePath))
             continue
         }
 
@@ -402,12 +402,12 @@ function Test-MfsProductionArtifacts {
             $content = Get-Content -Raw -LiteralPath $artifactFile.Item.FullName
         }
         catch {
-            $findings.Add((New-MfsArtifactFinding -Rule "ARTIFACT_TEXT_READ_FAILED" -Path $relativePath))
+            $findings.Add((New-FenneviaArtifactFinding -Rule "ARTIFACT_TEXT_READ_FAILED" -Path $relativePath))
             continue
         }
 
         $scannedTextFileCount += 1
-        Add-MfsPatternFindings -Content $content -RelativePath $relativePath -Findings $findings
+        Add-FenneviaPatternFindings -Content $content -RelativePath $relativePath -Findings $findings
     }
 
     $orderedFindings = @(
@@ -426,4 +426,4 @@ function Test-MfsProductionArtifacts {
     }
 }
 
-Export-ModuleMember -Function "Test-MfsProductionArtifacts"
+Export-ModuleMember -Function "Test-FenneviaProductionArtifacts"

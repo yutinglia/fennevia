@@ -148,7 +148,7 @@ Gate: an agent who did not implement the original code can reproduce the update 
 
 ```text
 program/                       # Minimal files installed in the Firefox program directory
-profile/chrome/my-firefox-shell/
+profile/chrome/fennevia/
   chrome.manifest
   runtime/                     # Installed privileged runtime artifacts
   shell/                       # Installed production UI assets

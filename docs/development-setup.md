@@ -6,10 +6,10 @@ The helper in `scripts/firefox-dev.ps1` does not install AutoConfig, modify Fire
 
 ## 1. Safety model
 
-The managed profile has the fixed logical name `my-firefox-shell-dev` and lives below this dedicated root:
+The managed profile has the fixed logical name `fennevia-dev` and lives below this dedicated root:
 
 ```text
-%LOCALAPPDATA%\my-firefox-shell\profiles\my-firefox-shell-dev
+%LOCALAPPDATA%\fennevia\profiles\fennevia-dev
 ```
 
 The helper intentionally uses Firefox's direct `--profile <path>` mode instead of adding an entry to `profiles.ini`. Every launch also uses `--no-remote` and `--new-instance`. This ensures the command names the profile path explicitly, cannot forward the request to a daily-use Firefox process, and cannot silently select Firefox's default profile.
@@ -18,11 +18,16 @@ The helper enforces these controls:
 
 - profile paths must be absolute and remain below the dedicated managed root;
 - registered Firefox profile paths, the user directory, AppData roots, drive roots, files, reparse points, and non-empty unowned directories are rejected;
-- initialization writes `.mfs-dev-profile.json` as an ownership marker;
+- initialization writes `.fennevia-dev-profile.json` as an ownership marker;
 - recursive deletion requires the valid marker, a closed profile, `-Force`, a path below the managed root, and a tree containing no junction or symbolic-link reparse point;
 - `-WhatIf` previews deletion without changing files;
-- normal output uses `<FIREFOX_PROGRAM>` and `<MFS_DEV_PROFILE>` instead of local paths;
+- normal output uses `<FIREFOX_PROGRAM>` and `<FENNEVIA_DEV_PROFILE>` instead of local paths;
 - `-RevealPaths` is an explicit local-only diagnostic mode whose output must not be pasted into issues or pull requests.
+
+The Fennevia helper never adopts, mutates, or deletes a profile or marker from
+the provisional project identity. Such a directory is unowned from the current
+helper's perspective and must be handled manually only after its purpose is
+known.
 
 The generated `user.js` changes only the preferences required for browser-chrome inspection and suppresses the default-browser prompt:
 
@@ -42,7 +47,7 @@ The remote-debugging confirmation remains enabled. Do not change it to `false` m
 - stock Firefox stable;
 - PowerShell 7 (`pwsh`) or Windows PowerShell 5.1;
 - a clean repository checkout;
-- no Firefox process using `<MFS_DEV_PROFILE>`.
+- no Firefox process using `<FENNEVIA_DEV_PROFILE>`.
 
 Use an explicit Firefox executable when more than one installation or channel is present. The tested stock 64-bit location was:
 
@@ -90,7 +95,7 @@ pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Launch -FirefoxPath $firefox -Pa
 The effective Firefox command is:
 
 ```powershell
-& '<FIREFOX_PROGRAM>\firefox.exe' --no-remote --new-instance --profile '<MFS_DEV_PROFILE>' --new-window about:support
+& '<FIREFOX_PROGRAM>\firefox.exe' --no-remote --new-instance --profile '<FENNEVIA_DEV_PROFILE>' --new-window about:support
 ```
 
 The helper validates the marker before launch and refuses to start a second process while the managed profile is already running. Open additional windows from the running browser with `Ctrl+N` and `Ctrl+Shift+P`, or use the isolated smoke modes below after closing the prior instance:
@@ -208,7 +213,11 @@ The direct-path design means this sequence does not add, remove, rename, or sele
 
 ## 9. Validated Phase 0 baseline
 
-The following evidence was captured on 2026-08-14 from base project commit `947be49dcb789f989ecb1fd4f4ece8a33a762c6e` plus the #2 working-tree implementation:
+The following evidence was captured on 2026-08-14 from base project commit
+`947be49dcb789f989ecb1fd4f4ece8a33a762c6e` plus the #2 working-tree
+implementation under the then-provisional identity. Logical path labels in the
+table use the current Fennevia terminology; the observed safety behavior is
+unchanged.
 
 | Field | Observed result |
 |---|---|
@@ -220,7 +229,7 @@ The following evidence was captured on 2026-08-14 from base project commit `947b
 | Stock-program AutoConfig audit | No `general.config.filename` declaration detected |
 | Enterprise policy audit | No registry policy source or `distribution\policies.json` detected |
 | Profile contamination audit | No profile-installed add-on or profile `chrome` customization detected |
-| Explicit profile launch | Pass; running Firefox command line contained `<MFS_DEV_PROFILE>` |
+| Explicit profile launch | Pass; running Firefox command line contained `<FENNEVIA_DEV_PROFILE>` |
 | Browser Console | Pass; Parent process Browser Console opened |
 | Browser Toolbox | Pass; parent-process Inspector exposed `html#main-window` from `browser.xhtml` |
 | Second normal window | Pass; two normal Firefox top-level windows observed |
@@ -231,3 +240,13 @@ The following evidence was captured on 2026-08-14 from base project commit `947b
 | PowerShell safety tests | Pass in PowerShell 7.6.4 and Windows PowerShell 5.1 |
 
 Window-title inspection and the `profiles.ini` hash comparison were local-only evidence. No profile path, browsing URL, title, query, or private-window browsing state is included here.
+
+## 10. Fennevia identity revalidation
+
+On 2026-08-15, issue #22 repeated the PowerShell safety suites in PowerShell 7
+and Windows PowerShell 5.1 and exercised the renamed helper and artifacts in a
+fresh marker-owned profile and copied stock Firefox 153.0.4 program. The helper
+created only the Fennevia root and marker, did not register a profile, and the
+final `Verify -RequireCleanEnvironment` check passed after complete project-file
+removal. No provisional profile was adopted or deleted. See
+`docs/research/fennevia-identity-migration.md` for the complete regression matrix.

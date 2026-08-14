@@ -1,6 +1,11 @@
-# my-firefox-shell
+# Fennevia
 
-An experimental custom browser chrome and browser shell for **stock Firefox**.
+Fennevia is an experimental custom browser chrome and browser shell for
+**stock Firefox**.
+
+`Fennevia` and the `fennevia` package slug are the project's sole active
+identity. The migration from the provisional name is recorded in ADR-017 and
+`docs/research/fennevia-identity-migration.md`.
 
 The project is not intended to become another general-purpose `userChrome.js` loader, and its primary architecture is not an indefinitely growing collection of DOM patches. The goal is to use a minimal AutoConfig entry point to register a project-owned Chrome Registry package, load privileged ES modules, and build a replacement visible browser shell with a modern frontend toolchain.
 
@@ -12,14 +17,14 @@ The project is not intended to become another general-purpose `userChrome.js` lo
 Stock Firefox
   └─ minimal AutoConfig bootstrap
       └─ register chrome.manifest
-          ├─ chrome://my-firefox-shell/...
+          ├─ chrome://fennevia/...
           │   └─ privileged runtime and Firefox bridge
           │       └─ Svelte shell
           │           ├─ tabs
           │           ├─ navigation
           │           ├─ address input
           │           └─ sidebar
-          └─ resource://my-firefox-shell/... (reserved; omitted until exposure review)
+          └─ resource://fennevia/... (reserved; omitted until exposure review)
 ```
 
 The project keeps Firefox's core browser infrastructure, including `gBrowser`, web-content containers, SessionStore, Places, Downloads, commands, permissions, dialogs, notifications, and DevTools. Native visible UI is hidden only after the custom shell mounts and passes health checks. It is not deleted during startup.

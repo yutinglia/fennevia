@@ -2,7 +2,7 @@
 
 ## Project stage
 
-`my-firefox-shell` is experimental and currently targets development profiles only. It executes system-principal code and uses unsupported Firefox internal APIs. It has not completed a formal security audit and must not be treated as a hardened production security boundary.
+`fennevia` is experimental and currently targets development profiles only. It executes system-principal code and uses unsupported Firefox internal APIs. It has not completed a formal security audit and must not be treated as a hardened production security boundary.
 
 ## Supported versions
 

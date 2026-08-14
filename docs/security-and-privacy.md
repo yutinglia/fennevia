@@ -113,13 +113,20 @@ The mandatory preflight sequence, transaction/rollback requirements, redacted re
 
 The Phase 0 Windows helper is not an installer, but its profile deletion is still destructive and follows the same path-safety principles:
 
-- it manages only `%LOCALAPPDATA%\my-firefox-shell\profiles\...`;
+- it manages only `%LOCALAPPDATA%\fennevia\profiles\...`;
 - it rejects Firefox-registered profiles, broad paths, files, reparse points, non-empty unowned directories, and active profiles;
-- it requires a valid `.mfs-dev-profile.json` ownership marker and explicit `-Force` before recursive deletion;
+- it requires a valid `.fennevia-dev-profile.json` ownership marker and explicit `-Force` before recursive deletion;
 - it supports `-WhatIf` and never changes `profiles.ini`;
+- it does not adopt, mutate, or delete a profile or ownership marker from the
+  provisional project identity;
 - its Phase 0 clean-environment gate detects existing AutoConfig declarations, enterprise-policy sources, profile add-ons, and profile chrome customizations without removing them;
 - normal output redacts the Firefox executable and profile paths;
 - revealing local paths requires explicit `-RevealPaths` opt-in and that output must not be shared;
+
+ADR-017 makes Fennevia the sole active identity. The migration adds no alias,
+new mapping, dependency, runtime network behavior, or broader deletion scope;
+its security regression is recorded in
+`docs/research/fennevia-identity-migration.md`.
 - Browser Toolbox support keeps `devtools.debugger.prompt-connection=true` and limits the default scope to the parent process.
 
 The full procedure and evidence are in `docs/development-setup.md`.
