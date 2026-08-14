@@ -41,16 +41,16 @@ It does not implement script discovery, hot reload, metadata parsing, sandbox ab
 
 ### Chrome Registry package
 
-The package provides stable logical URIs:
+The package reserves stable project-owned logical URIs:
 
 ```text
 chrome://my-firefox-shell/content/...
 resource://my-firefox-shell/...
 ```
 
-The initial manifest uses only source-validated `content` and `resource` declarations. Use of manifest `style` is decided by the CSS spike. `override` is disabled by default.
+The initial manifest registers only a `content my-firefox-shell ...` package without `contentaccessible=yes`. The `resource://my-firefox-shell/` alias is reserved but omitted until a dedicated exposure review identifies an exact inert/public file inventory and #3 validates ordinary-web-content behavior. Use of manifest `style` is decided by the CSS spike. `override` is disabled by default.
 
-A `resource://` mapping may be reachable from contexts beyond the privileged runtime depending on registration details. Do not place secrets, private data, source maps, or unintended content-accessible assets in exposed mappings. Do not use `contentaccessible=yes` without a dedicated security review.
+Current Mozilla Chrome Registration documentation states that web content is not prevented from including files from `resource:` aliases. Treat every such mapping as content-visible unless current source and runtime evidence prove a narrower boundary. Never map privileged implementation, secrets, private data, source maps, or diagnostics there. Do not use `contentaccessible=yes` without a dedicated security review.
 
 ## 3. Runtime layer
 
@@ -176,6 +176,8 @@ The source of truth is `src/`. Production artifacts must be:
 - reproducible through documented package-manager commands;
 - checked for unexpected bare imports, chunks, dynamic fetches, and debug content.
 
+Each production build also has an exact reviewed file inventory and passes `scripts/check-production-artifacts.ps1`. Unexpected files, including dynamically emitted chunks, fail the gate rather than being accepted by a glob. The operational rule set is in `docs/security-controls.md`.
+
 Whether the final entry is an IIFE, ES module, or mixed runtime is decided by the bootstrap and frontend spikes from real Firefox evidence, not fixed in advance.
 
 Source-map policy must distinguish local development artifacts from installed artifacts. Privileged source maps must not be unintentionally exposed through a content-accessible mapping.
@@ -193,7 +195,7 @@ The runtime has system-principal capability. Consequently:
 - keep security-sensitive prompts owned by Firefox;
 - review resource exposure and dependency upgrades explicitly.
 
-The normative policy is in `docs/security-and-privacy.md`.
+The normative policy is in `docs/security-and-privacy.md`. The threat model, logging schema, manifest review, installer preflight, private-window rules, security triggers, and automated artifact gate are in `docs/security-controls.md`.
 
 ## 11. Initial module boundaries
 

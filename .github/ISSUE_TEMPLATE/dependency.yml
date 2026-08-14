@@ -1,0 +1,71 @@
+name: Dependency addition or upgrade
+description: Review a package before adding, upgrading, replacing, or newly executing it.
+title: "[Dependency] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Complete `docs/dependency-review-template.md` and link the committed record. Do not install or merge the package before its execution lifecycle and resolved graph are reviewed.
+  - type: input
+    id: package
+    attributes:
+      label: Package and exact proposed version
+      placeholder: "package-name@1.2.3"
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Owning implementation issue and consumer
+      placeholder: "#8; production frontend build"
+    validations:
+      required: true
+  - type: textarea
+    id: purpose
+    attributes:
+      label: Purpose, platform gap, and alternatives
+      description: Explain why the platform or a small local module is insufficient and compare alternatives.
+    validations:
+      required: true
+  - type: textarea
+    id: provenance
+    attributes:
+      label: Registry, source, integrity, license, and maintenance
+      description: Record the registry integrity, source tag/commit correspondence, license file, release activity, changelog, and advisory review.
+    validations:
+      required: true
+  - type: textarea
+    id: lifecycle
+    attributes:
+      label: Execution lifecycle and host effects
+      description: List install/prepare/postinstall scripts, code generation, native/Wasm binaries, child processes, network access, environment and filesystem reads/writes, and phases where code executes.
+    validations:
+      required: true
+  - type: textarea
+    id: graph
+    attributes:
+      label: Resolved direct and transitive graph
+      description: Link the exact lockfile diff; enumerate direct/transitive/optional/peer changes, lifecycle scripts, version skew, and the scripts-disabled comparison.
+    validations:
+      required: true
+  - type: textarea
+    id: runtime
+    attributes:
+      label: Privileged runtime and artifact effects
+      description: State bundle/runtime inclusion, chunks, maps, dynamic imports, remote endpoints, resource exposure, private-window/logging flows, and scanner results.
+    validations:
+      required: true
+  - type: textarea
+    id: removal
+    attributes:
+      label: Upgrade, rollback, and removal plan
+      description: Define version policy, owner, rollback, generated files, replacement cost, and proof of removal from production artifacts.
+    validations:
+      required: true
+  - type: input
+    id: record
+    attributes:
+      label: Committed dependency review record
+      placeholder: "docs/dependency-reviews/...md"
+    validations:
+      required: true

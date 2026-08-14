@@ -6,6 +6,8 @@ This project executes privileged code in Firefox browser chrome. A defect or com
 
 This document defines project policy; it does not claim that a formal security audit has been completed.
 
+`docs/security-controls.md` is the operational companion: it contains the structured threat model, logging record schema and example, production-artifact gate, proposed manifest review, installer preflight, private-window rules, and security-review trigger evidence.
+
 ## 2. Security objectives
 
 - Preserve Firefox security boundaries and native security-sensitive prompts.
@@ -52,6 +54,8 @@ This document defines project policy; it does not claim that a formal security a
 
 Detailed local debugging, when unavoidable, must require explicit opt-in, remain local, be disabled by default, and be removed or redacted before sharing an issue or pull request.
 
+Normal logger APIs must accept allowlisted fields rather than arbitrary context objects or native Firefox values. Error messages are untrusted; use a stable project error code and preserve each stack frame only after URLs, local paths, user names, queries, and fragments are replaced. If redaction fails, emit a minimal code-only record. The normative field schema and privacy-safe bootstrap example are in `docs/security-controls.md`.
+
 ## 5. Dependency and supply-chain policy
 
 Before adding a runtime or build dependency, record:
@@ -65,6 +69,8 @@ Before adding a runtime or build dependency, record:
 - bundle-size and attack-surface effect;
 - removal or replacement cost.
 
+Use `docs/dependency-review-template.md` for additions and upgrades, store accepted records under `docs/dependency-reviews/`, and link the record from the issue and pull request. `docs/dependency-reviews/frontend-toolchain-2026-08-14.md` is the preliminary no-install example for Svelte, the Svelte Vite plugin, Vite, and TypeScript.
+
 Requirements:
 
 - Commit the lockfile.
@@ -73,6 +79,7 @@ Requirements:
 - Avoid dependencies with unnecessary postinstall scripts or remote download behavior.
 - Do not add a component library solely for convenience when a small local component is sufficient.
 - CI should verify the production bundle contains no unexpected remote endpoints or runtime loaders.
+- The resolved lockfile review must enumerate lifecycle scripts, native/platform binaries, optional packages, network behavior, and the difference when installation scripts are disabled; top-level registry metadata alone is not approval.
 
 ## 6. Chrome and resource exposure
 
@@ -82,6 +89,8 @@ Requirements:
 - Review every manifest `content`, `resource`, `skin`, `style`, and `override` entry.
 - `contentaccessible=yes` requires a dedicated security rationale and test.
 - A resource override requires the additional review defined in the override policy.
+
+The initial manifest omits `contentaccessible=yes` and omits the `resource` directive. Current Mozilla documentation warns that web content can include files from `resource:` aliases, so a future project alias is treated as exposed unless current source and runtime evidence prove otherwise. It may contain only a reviewed inert/public inventory and never privileged modules, source maps, debug data, diagnostics, or private assets.
 
 ## 7. Installation and file-system safety
 
@@ -97,6 +106,8 @@ Install, update, and uninstall scripts must:
 - avoid recursively deleting directories not proven to be project-owned;
 - handle partial failure with rollback or clear manual recovery instructions;
 - never silently choose a daily-use profile.
+
+The mandatory preflight sequence, transaction/rollback requirements, redacted rejection record, and unsafe-target fixture set are in `docs/security-controls.md`. Issue #4 must implement them before its first write; documentation alone does not authorize installer mutation.
 
 ### Development-profile helper
 
@@ -134,6 +145,8 @@ Hiding or replacing a visible toolbar must not remove the underlying prompt, pop
 - Do not persist private-window feature state that can reveal browsing activity.
 - Do not include private-window URLs, titles, queries, or tab state in diagnostics.
 - Project-global state must not accidentally share private-window browsing data with normal windows.
+- Only schema-defined shell preferences whose values are independent of browsing activity may persist; private tabs, titles, URLs, favicons, queries, recent items, selection, and feature usage never persist.
+- A feature that cannot prove per-window memory, synchronous disposal, and normal/private separation must use complete native fallback in private windows.
 
 ## 10. Source maps and debug artifacts
 
@@ -141,6 +154,7 @@ Hiding or replacing a visible toolbar must not remove the underlying prompt, pop
 - Installed source maps require an explicit decision based on debugging value and exposure risk.
 - Source maps must not be published through a content-accessible resource mapping by accident.
 - Development-only failure-injection and debug APIs must be excluded or disabled in installed production artifacts.
+- Production builds require an exact file inventory and must pass `scripts/check-production-artifacts.ps1`; scanner findings have no silent bypass.
 
 ## 11. Security review triggers
 
@@ -156,6 +170,8 @@ A dedicated security review is required before:
 - processing untrusted HTML rather than text;
 - changing installer deletion scope;
 - adding telemetry or crash upload.
+
+The evidence required for each trigger is defined in `docs/security-controls.md`. A triggered change links a dedicated security issue or review before implementation; an ordinary “no impact” checkbox is not a waiver.
 
 ## 12. Reporting
 

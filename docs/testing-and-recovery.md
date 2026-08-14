@@ -55,6 +55,8 @@ Normal output redacts the executable and profile paths. `-RevealPaths` is local-
 | Customize mode | Native toolbox cannot become inaccessible or corrupt the layout |
 | Browser Toolbox | Shell and retained native chrome remain inspectable |
 | Install, update, uninstall | Only project-owned files are changed and stock startup is restored |
+| Production artifact inventory | Exact files only; no remote endpoint, runtime network API, HMR, bare/dynamic import, source map, dev marker, unexpected chunk, or executable binary |
+| Unsafe installer target | Preflight rejects before writes, backups, cache actions, or process changes |
 
 Every recorded result must be `pass`, `fail`, `blocked`, or `not run`, with evidence. A check mark alone is not sufficient.
 
@@ -200,6 +202,15 @@ Suitable for automation:
 - pure bridge mapping and state-reducer tests;
 - install-layout and owned-file validation;
 - checks for HMR, CDN, remote fonts, unexpected fetches, bare imports, and unexpected chunks.
+
+The Phase 0.5 artifact baseline is exercised in both PowerShell runtimes with:
+
+```powershell
+pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\production-artifacts.Tests.ps1
+```
+
+When #8 creates real build output, commit its exact inventory and run `scripts/check-production-artifacts.ps1` against that output. Passing fixture tests alone is not evidence that a production bundle is clean.
 
 Likely to require real Firefox smoke testing:
 

@@ -6,6 +6,9 @@ contact_links:
   - name: Firefox research playbook
     url: https://github.com/yutinglia/my-firefox-shell/blob/main/docs/research-playbook.md
     about: Follow this process for Firefox internal API or update-related failures.
+  - name: Security controls and dependency review
+    url: https://github.com/yutinglia/my-firefox-shell/blob/main/docs/security-controls.md
+    about: Check security triggers, artifact rules, resource exposure, installer safety, and dependency review requirements.
   - name: Security reporting
     url: https://github.com/yutinglia/my-firefox-shell/blob/main/SECURITY.md
     about: Do not disclose exploitable privileged-code details in a public issue.

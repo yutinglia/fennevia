@@ -70,3 +70,5 @@ Before copying code:
 ## Security-sensitive changes
 
 Read `docs/security-and-privacy.md` and `SECURITY.md`. A dedicated review is required for runtime network access, dynamic code generation, privileged dependencies, content-accessible resources, security-prompt replacement, resource overrides, new persistence, installer deletion changes, or telemetry.
+
+Use `docs/security-controls.md` for the trigger-specific evidence and `docs/dependency-review-template.md` for every dependency addition or upgrade. Production build changes must commit an exact artifact inventory and pass `scripts/check-production-artifacts.ps1`; scanner findings cannot be waived without a visible security review and policy change.

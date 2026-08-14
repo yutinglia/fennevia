@@ -19,7 +19,7 @@ This spike does not create a general-purpose loader, scan scripts, parse metadat
 1. Which globals and privileged APIs are available when AutoConfig runs?
 2. Does `UChrm` reliably resolve the active profile chrome directory?
 3. Is `Components.manager.QueryInterface(Ci.nsIComponentRegistrar).autoRegister(manifestFile)` available on the current stable build?
-4. Can `ChromeUtils.importESModule()` immediately load an entry through a newly registered `chrome://` or `resource://` URI?
+4. Can `ChromeUtils.importESModule()` immediately load an entry through the newly registered `chrome://my-firefox-shell/` content package?
 5. Does registration occur early enough for the required first-window lifecycle hook?
 6. How are an existing normal window, a second window, and a private window observed?
 7. How do manifest and bundle changes interact with startup cache, and what deterministic invalidation procedure is required?
@@ -53,14 +53,15 @@ spikes/bootstrap/
     Bootstrap.sys.mjs
 ```
 
-The first manifest should contain only project-owned namespace declarations, for example:
+The first manifest should contain only the project-owned content-package declaration:
 
 ```text
 content my-firefox-shell ./
-resource my-firefox-shell ./
 ```
 
-Do not use `override` in this spike. Do not add `contentaccessible=yes` without a separately documented requirement.
+The `resource://my-firefox-shell/` namespace is reserved but the initial alias is omitted. Current Mozilla documentation warns that web content is not prevented from including files from `resource:` aliases; adding one requires the exact inert/public file inventory and content-access tests defined by ADR-015 and `docs/security-controls.md`.
+
+Do not use `override` in this spike. Do not add `contentaccessible=yes` without a separately documented requirement and dedicated security review.
 
 ## Bootstrap behavior requirements
 

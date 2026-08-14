@@ -33,17 +33,27 @@ Use `not applicable` only when the change does not depend on Firefox internals.
 - Firefox internal dependencies added or changed:
 - Bridge boundary effects:
 - DOM ownership effects:
-- Chrome/resource manifest effects:
+- Exact Chrome/resource manifest lines and mapped file inventory:
+- Ordinary-web-content accessibility result:
 - Override introduced: yes / no
 
 ## Security and privacy
 
+- Security-review triggers: none / linked issue or review
+- Data classifications and normal log fields added or changed:
+- Private-window state, persistence, and fallback effects:
+- Dependency review record and exact lockfile delta:
+- Lifecycle scripts, native binaries, code generation, and install-time network effects:
+- Production artifact inventory and scanner result:
+- Installer targets, ownership manifest, dry run, rollback, and deletion effects:
 - [ ] No runtime remote executable dependency was added.
-- [ ] Logging remains free of complete URLs, titles, queries, profile paths, and private-window data.
-- [ ] Resource accessibility and source-map exposure were reviewed.
-- [ ] Installer or deletion scope was reviewed, or is not applicable.
+- [ ] Normal logging uses allowlisted fields and remains free of complete URLs, titles, queries, local/profile paths, and private-window browsing data.
+- [ ] Resource accessibility, `resource:` exposure, and source-map/debug-file placement were reviewed.
+- [ ] Every dependency addition or upgrade has a linked review covering purpose, license, lifecycle, transitive graph, network behavior, and removal.
+- [ ] Installer or deletion scope was reviewed with preflight and rollback evidence, or is precisely not applicable.
+- [ ] Private-window data remains per-window and non-persistent, or complete native fallback is documented.
 - [ ] Native security-sensitive UI remains available, or a dedicated review is linked.
-- Dependency or supply-chain changes:
+- [ ] Any triggered dedicated security review is linked before implementation.
 
 ## Validation
 
@@ -53,11 +63,15 @@ Use `not applicable` only when the change does not depend on Firefox internals.
 | Typecheck | not run | |
 | Unit tests | not run | |
 | Production build | not run | |
+| Exact production artifact inventory / security scan | not run | |
+| Chrome/resource ordinary-content access | not run | |
 | Clean cold start | not run | |
 | Second normal window | not run | |
 | Private window or complete fallback | not run | |
 | Cleanup / disposal | not run | |
 | Failure injection / fail-open recovery | not run | |
+| Installer unsafe-target / rollback | not run | |
+| Native security UI reachability | not run | |
 | Browser Console regression check | not run | |
 
 Allowed status values: `pass`, `fail`, `blocked`, `not run`, `not applicable`.
@@ -71,6 +85,8 @@ Allowed status values: `pass`, `fail`, `blocked`, `not run`, `not applicable`.
 - [ ] `docs/firefox-internals-map.md`
 - [ ] `docs/testing-and-recovery.md`
 - [ ] `docs/security-and-privacy.md`
+- [ ] `docs/security-controls.md`
+- [ ] Dependency review under `docs/dependency-reviews/`, if applicable
 - [ ] No documentation change required, with explanation below
 
 ## Known limitations and follow-up issues

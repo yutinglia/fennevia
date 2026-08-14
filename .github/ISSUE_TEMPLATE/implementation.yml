@@ -53,7 +53,29 @@ body:
     id: security
     attributes:
       label: Security and privacy effects
-      description: Cover privilege, logging, resources, dependencies, installer behavior, and native security UI.
+      description: Cover privilege, allowlisted logging fields, untrusted input, private windows, persistence, resources, dependencies, installer behavior, and native security UI.
+    validations:
+      required: true
+  - type: textarea
+    id: security_triggers
+    attributes:
+      label: Dedicated security-review triggers
+      description: Check every trigger in docs/security-controls.md. Link the dedicated review, or state none with a concrete rationale.
+      placeholder: "Trigger: resource alias; Review: #... / None: ..."
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies_resources
+    attributes:
+      label: Dependency, artifact, and resource exposure evidence
+      description: Link dependency records; list lifecycle/native/network behavior; give exact manifest lines, mapped files, content-access result, source-map policy, and artifact inventory/checks.
+    validations:
+      required: true
+  - type: textarea
+    id: recovery_private
+    attributes:
+      label: Recovery, installer, and private-window policy
+      description: Define fail-open behavior, cleanup, private-window isolation/fallback, installer preflight/dry-run/rollback, and unsafe-target tests as applicable.
     validations:
       required: true
   - type: textarea

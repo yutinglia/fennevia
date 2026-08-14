@@ -49,7 +49,14 @@ body:
     id: security
     attributes:
       label: Security and privacy considerations
-      description: State whether URLs, private-window data, privileged resources, dependencies, or security UI are involved.
+      description: Cover log data classes, private-window state, exact resource exposure, dependencies, installer scope, security-review triggers, and native security UI.
+    validations:
+      required: true
+  - type: textarea
+    id: recovery
+    attributes:
+      label: Failure, cleanup, and recovery evidence
+      description: Define fail-open behavior, deterministic cleanup, safe-start/uninstall or rollback evidence, and what remains native.
     validations:
       required: true
   - type: textarea

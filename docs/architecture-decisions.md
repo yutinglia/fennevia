@@ -22,7 +22,7 @@ Alice0775, fx-autoconfig, and similar projects are compatibility research source
 
 ## ADR-003: Use Chrome Registry as the resource boundary
 
-**Status:** Accepted pending spike validation
+**Status:** Accepted pending spike validation; initial exposure policy amended by ADR-015
 
 Register project-owned `chrome://my-firefox-shell/` and `resource://my-firefox-shell/` URIs so privileged modules, UI assets, and styles do not depend on absolute file paths.
 
@@ -107,3 +107,13 @@ Normal diagnostics exclude complete URLs, page titles, search text, history, pro
 Permissions, authentication, certificates, file pickers, extension installation, download safety, and other security-sensitive prompts remain native Firefox infrastructure during the initial roadmap.
 
 **Reasoning:** Replacing these surfaces safely is a separate security project and is not required to replace the everyday visible shell.
+
+## ADR-015: Default Chrome and resource exposure to zero
+
+**Status:** Accepted for the initial manifest; runtime validation remains required in Phase 1
+
+Reserve both project-owned namespaces, but initially register only `content my-firefox-shell ...` without `contentaccessible=yes`. Omit a `resource://my-firefox-shell/` alias until a dedicated review defines an exact inert/public file inventory and validates access from ordinary web content.
+
+**Reasoning:** Mozilla's current Chrome Registration documentation says `contentaccessible=yes` explicitly exposes a content package to untrusted references and separately warns that web content is not prevented from including files at `resource:` aliases. A dedicated project name prevents namespace collision; it does not create a privilege boundary.
+
+Privileged modules, source maps, debug artifacts, diagnostics, and private assets must not be placed in a resource alias. Any later alias or content-accessibility flag is a security-review trigger and must include the exact manifest lines, mapped file inventory, callers, content-context tests, and removal behavior.
