@@ -65,6 +65,7 @@ The project keeps Firefox's core browser infrastructure, including `gBrowser`, w
 - [Testing and recovery](docs/testing-and-recovery.md)
 - [Security and privacy](docs/security-and-privacy.md)
 - [Development workflow](docs/development-workflow.md)
+- [Windows Firefox development setup](docs/development-setup.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 

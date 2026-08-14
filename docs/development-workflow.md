@@ -11,6 +11,8 @@ Every implementation or research change should be linked to a GitHub issue. Befo
 5. Restate the issue scope and acceptance criteria in the working notes.
 6. Identify which steps require real Firefox evidence rather than unit tests.
 
+For Windows Firefox work, create and verify the disposable direct-path profile by following `docs/development-setup.md` before changing privileged runtime or browser chrome.
+
 Do not silently expand the issue. Create a follow-up issue for work that is useful but not required by the current acceptance criteria.
 
 ## 2. Branch and commit conventions

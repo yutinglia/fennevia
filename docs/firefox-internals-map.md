@@ -143,7 +143,30 @@ Research current window mediator APIs, browser-window startup topics, document r
 
 Research current manifest registration, `nsIComponentRegistrar.autoRegister`, module import timing, startup cache, and resource accessibility. Record the exact current Firefox source and loader revisions.
 
-## 5. Native-handle rules
+## 5. Phase 0 development-profile dependencies
+
+These dependencies are development-only. They are owned by `scripts/lib/FirefoxDevProfile.psm1`, do not enter the installed runtime, and were verified on Firefox 153.0.4 release, build ID `20260810162159`, source stamp `54be19de0e08edff0b797e55fd935dd3978b0a6d`, on Windows 11 25H2.
+
+| Dependency | Purpose and observed evidence | Current source or documentation | Failure behavior |
+|---|---|---|---|
+| `--profile <path>` | Select the dedicated profile by absolute path; the running process command line contained the expected managed path | Firefox Source Docs, `browser/CommandLineParameters`; local `firefox.exe --help` | Launch is refused before Firefox starts if the marker or managed path is invalid |
+| `--no-remote`, `--new-instance` | Prevent forwarding to another Firefox process and force a separate instance | Firefox Source Docs, `browser/CommandLineParameters`; local `firefox.exe --help` | A daily-use process cannot silently receive the launch request |
+| `--new-window`, `--private-window` | Exercise normal, second-normal-window, and private-window startup | Firefox Source Docs, `browser/CommandLineParameters`; two normal windows and one isolated private launch observed | `SecondWindow` and `PrivateWindow` modes are kept separate and an invalid combination is rejected |
+| `--jsconsole`, `Ctrl+Shift+J` | Open the Browser Console | `devtools/startup/DevToolsStartup.sys.mjs`; Firefox Browser Console docs | Missing console is recorded as a failed GUI check; it does not alter the profile helper's ownership state |
+| `--jsdebugger`, `Ctrl+Alt+Shift+I` | Open the Browser Toolbox | `devtools/startup/DevToolsStartup.sys.mjs`; `devtools/client/framework/browser-toolbox/Launcher.sys.mjs`; Firefox Browser Toolbox docs | Firefox reports that required preferences are missing, or the GUI check remains failed |
+| `devtools.chrome.enabled=true` | Permit browser-chrome tools and Browser Console command input | `modules/libpref/init/all.js`; `devtools/startup/DevToolsStartup.sys.mjs`; Browser Console docs | Browser-chrome tools remain unavailable; native Firefox remains unchanged |
+| `devtools.debugger.remote-enabled=true` | Allow the local Browser Toolbox connection | `modules/libpref/init/all.js`; `devtools/startup/DevToolsStartup.sys.mjs`; Browser Toolbox docs | Browser Toolbox launch is rejected by Firefox |
+| `devtools.debugger.prompt-connection=true` | Retain explicit approval for an incoming local debugger connection | `modules/libpref/init/all.js`; `devtools/shared/security/auth.js` | The user must approve each Browser Toolbox connection; the helper does not bypass it |
+| `devtools.browsertoolbox.scope="parent-process"` | Restrict the initial Toolbox scope to browser chrome while keeping `browser.xhtml` inspectable | `browser/app/profile/firefox.js`; `devtools/client/framework/components/ChromeDebugToolbar.js` | The GUI check fails if `html#main-window` is not exposed in the Inspector |
+| `chrome://browser/content/browser.xhtml`, `#main-window` | Identify the retained stock Firefox browser window in Browser Toolbox | `browser/base/content/browser.xhtml`; Inspector exposed `html#main-window` during the validated smoke test | Do not claim Browser Toolbox validation without observing the root document |
+| `general.config.filename` | Phase 0 audit signal for an existing AutoConfig declaration in `defaults/pref/*.js` | Mozilla AutoConfig documentation and current Firefox preference files | `Verify -RequireNoAutoConfig` fails without deleting or changing the declaration |
+| `application.ini` fields `Version`, `BuildID`, `SourceRepository`, `SourceStamp` | Record the selected Firefox build without launching the default profile | Installed Firefox application metadata; cross-checked with `firefox.exe --full-version` | Environment-record generation fails rather than inventing build metadata |
+| `app.update.channel` in `defaults/pref/channel-prefs.js` | Record the selected Firefox update channel | Installed Firefox channel preference | The record uses `unknown` if the channel cannot be read |
+| `browser.shell.checkDefaultBrowser=false` | Avoid a default-browser prompt in the disposable profile | `browser/app/profile/firefox.js` | Only the disposable profile may show the native prompt; no security UI is replaced |
+
+Revalidate the preference names and command-line flags when the supported Firefox stable changes. The authoritative setup and captured evidence are in `docs/development-setup.md`.
+
+## 6. Native-handle rules
 
 - Native tab, browser, window, controller, and result objects remain inside bridge or runtime modules.
 - UI uses project-generated opaque IDs and immutable snapshots.
@@ -152,7 +175,7 @@ Research current manifest registration, `nsIComponentRegistrar.autoRegister`, mo
 - Translate native callbacks into ordinary application events at the boundary.
 - Validate a native handle before every action that can outlive a prior snapshot.
 
-## 6. Dependency inventory fields
+## 7. Dependency inventory fields
 
 Every implemented dependency should eventually record:
 
@@ -168,7 +191,7 @@ Every implemented dependency should eventually record:
 | Tests | Unit, static, or dev-profile smoke coverage |
 | Replacement or removal plan | How dependency could be reduced later |
 
-## 7. High-risk areas requiring separate decisions
+## 8. High-risk areas requiring separate decisions
 
 - complete `browser.xhtml` override;
 - tab custom-element or internal-script override;

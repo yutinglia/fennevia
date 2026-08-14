@@ -4,6 +4,16 @@
 
 Do not develop the browser shell in a daily-use profile.
 
+The normative Windows procedure and tested commands are in `docs/development-setup.md`. The project helper creates a marker-owned direct-path profile and launches it with explicit `--profile`, `--no-remote`, and `--new-instance` arguments:
+
+```powershell
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Initialize
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Verify -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' -RequireCleanEnvironment
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Launch -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' -Page about:support
+```
+
+The profile is intentionally not added to Firefox's `profiles.ini`. This prevents the helper from changing the default-profile selection and makes complete deletion independent of daily-use profile registration.
+
 The development profile should:
 
 - contain no unrelated userChrome, userContent, or custom loader;
@@ -14,6 +24,14 @@ The development profile should:
 - be disposable without affecting another profile.
 
 Before each integration test, confirm the profile path, Firefox version, build ID, channel, executable, and project commit.
+
+Generate the privacy-safe portion of that record with:
+
+```powershell
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Environment -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe'
+```
+
+Normal output redacts the executable and profile paths. `-RevealPaths` is local-only and must not be pasted into issues or pull requests.
 
 ## 2. Minimum test matrix
 
@@ -143,7 +161,21 @@ Development builds should provide controlled ways to simulate:
 
 Failure injection must be impossible or explicitly disabled in installed production artifacts unless a documented local diagnostic mode is enabled.
 
-## 6. Firefox stable-update procedure
+## 6. Phase 0 profile reset and cache evidence
+
+Preview and perform a complete disposable-profile reset only after all managed Firefox and Browser Toolbox processes are closed:
+
+```powershell
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Remove -WhatIf
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Remove -Force
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Initialize
+```
+
+Deletion is restricted to the dedicated managed root and requires the valid project marker. A missing marker, registered Firefox profile, broad path, or active process is a hard refusal.
+
+Do not clear Firefox's startup cache routinely. First record a causal startup or stale-artifact symptom. If evidence still indicates startup-cache state after source artifacts and the active profile are verified, use Firefox's **Clear startup cache** action in `about:support`, restart, and record the before-and-after result. Phase 0 observed no project AutoConfig declaration and did not require cache clearing. Issue #3 owns the first evidence about whether the future startup chain needs that operation.
+
+## 7. Firefox stable-update procedure
 
 For every stable update:
 
@@ -158,7 +190,7 @@ For every stable update:
 
 Never claim compatibility from version-number inspection alone.
 
-## 7. Automation boundary
+## 8. Automation boundary
 
 Suitable for automation:
 
