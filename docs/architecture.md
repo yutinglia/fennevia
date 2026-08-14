@@ -32,12 +32,15 @@ This project owns the visible browser shell and a privileged integration runtime
 
 AutoConfig performs only these tasks:
 
-1. Locate the active profile's project manifest.
-2. Register the Chrome Registry manifest.
-3. Import one privileged bootstrap entry point.
-4. Report fatal failure and exit without hiding native UI.
+1. Stop before registration when Firefox safe mode or `myFirefoxShell.safeStart` is active.
+2. Resolve the active profile's project manifest through `UChrm`.
+3. Register the Chrome Registry manifest through `nsIComponentRegistrar.autoRegister()`.
+4. Resolve and import one privileged `Bootstrap.sys.mjs` entry.
+5. Validate the entry contract and report success, duplicate evaluation, or fatal failure without hiding native UI.
 
 It does not implement script discovery, hot reload, metadata parsing, sandbox abstraction, frontend UI, or application logic.
+
+The Phase 1 implementation lives under `spikes/bootstrap/`. AutoConfig and the entry each use a process guard. The entry uses Firefox 153's loader-defined `Services` global after a runtime capability check; `Services.sys.mjs` is not packaged in the supported build. Structured records include phase, stable code, Firefox version, build ID, and a path/URL-redacted stack.
 
 ### Chrome Registry package
 
@@ -48,9 +51,9 @@ chrome://my-firefox-shell/content/...
 resource://my-firefox-shell/...
 ```
 
-The initial manifest registers only a `content my-firefox-shell ...` package without `contentaccessible=yes`. The `resource://my-firefox-shell/` alias is reserved but omitted until a dedicated exposure review identifies an exact inert/public file inventory and #3 validates ordinary-web-content behavior. Use of manifest `style` is decided by the CSS spike. `override` is disabled by default.
+The initial manifest registers only `content my-firefox-shell content/` without `contentaccessible=yes`. The `resource://my-firefox-shell/` alias is reserved but omitted because Phase 1 has no consumer and every mapping expands the audited surface. Use of manifest `style` is decided by the CSS spike. `override` is disabled by default.
 
-Current Mozilla Chrome Registration documentation states that web content is not prevented from including files from `resource:` aliases. Treat every such mapping as content-visible unless current source and runtime evidence prove a narrower boundary. Never map privileged implementation, secrets, private data, source maps, or diagnostics there. Do not use `contentaccessible=yes` without a dedicated security review.
+Firefox 153's `toolkit/docs/internal-urls.md` states that both `chrome:` and `resource:` mappings are restricted to privileged code by default. `contentaccessible=yes` hole-punches that restriction for the whole mapped package. Phase 1 confirmed from an ordinary loopback HTTP page that the project entry is not content-accessible. Any future mapping still requires an exact inventory and current runtime test; never use `contentaccessible=yes` or map secrets, private data, source maps, diagnostics, or privileged implementation without a dedicated security review.
 
 ## 3. Runtime layer
 

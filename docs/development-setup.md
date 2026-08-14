@@ -182,7 +182,7 @@ Use this escalation order later:
 4. Do not manually delete arbitrary Firefox cache directories or another profile's files.
 5. For a completely clean Phase 0 profile, perform the marker-guarded full removal and reconstruction below.
 
-The `about:support` operation is Firefox-owned and, according to current Mozilla UI text, does not change settings or remove extensions. Issue #3 must record whether AutoConfig and Chrome Registry work require it in practice; this document does not assume they do.
+The `about:support` operation is Firefox-owned and, according to current Mozilla UI text, does not change settings or remove extensions. Phase 1 testing on Firefox 153.0.4 restored a syntax-broken privileged entry and then loaded the corrected entry on the next cold start without clearing startup cache. It also removed all project startup files and observed a stock startup with no residual project record. Therefore routine AutoConfig or Chrome Registry changes do not currently require cache clearing; keep the evidence-first escalation above for a future observed stale-state symptom.
 
 Residual program-directory AutoConfig files are not owned by #2. Do not delete an existing `config.js`, preference file, or other customization merely because the audit detects it. Future project-owned program files require an ownership manifest and the installation workflow from #4.
 

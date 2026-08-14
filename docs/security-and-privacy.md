@@ -90,7 +90,7 @@ Requirements:
 - `contentaccessible=yes` requires a dedicated security rationale and test.
 - A resource override requires the additional review defined in the override policy.
 
-The initial manifest omits `contentaccessible=yes` and omits the `resource` directive. Current Mozilla documentation warns that web content can include files from `resource:` aliases, so a future project alias is treated as exposed unless current source and runtime evidence prove otherwise. It may contain only a reviewed inert/public inventory and never privileged modules, source maps, debug data, diagnostics, or private assets.
+The initial manifest omits `contentaccessible=yes` and omits the `resource` directive. Firefox 153's current internal-URL documentation defines both `chrome:` and `resource:` mappings as privileged-only by default and defines `contentaccessible=yes` as an explicit hole punch. Phase 1 verified that an ordinary loopback HTTP page could not fetch the project Chrome entry. A future resource alias is still omitted until a real consumer, exact inventory, current-source review, content-context test, and removal test exist. No content-accessible mapping may contain privileged modules, source maps, debug data, diagnostics, private data, or secrets.
 
 ## 7. Installation and file-system safety
 

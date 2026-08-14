@@ -175,9 +175,75 @@ pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Initialize
 
 Deletion is restricted to the dedicated managed root and requires the valid project marker. A missing marker, registered Firefox profile, broad path, or active process is a hard refusal.
 
-Do not clear Firefox's startup cache routinely. First record a causal startup or stale-artifact symptom. If evidence still indicates startup-cache state after source artifacts and the active profile are verified, use Firefox's **Clear startup cache** action in `about:support`, restart, and record the before-and-after result. Phase 0 observed no project AutoConfig declaration and did not require cache clearing. Issue #3 owns the first evidence about whether the future startup chain needs that operation.
+Do not clear Firefox's startup cache routinely. First record a causal startup or stale-artifact symptom. If evidence still indicates startup-cache state after source artifacts and the active profile are verified, use Firefox's **Clear startup cache** action in `about:support`, restart, and record the before-and-after result. Phase 0 observed no project AutoConfig declaration and did not require cache clearing. The Phase 1 evidence below confirms that entry replacement and complete project-file removal also took effect without it on Firefox 153.0.4.
 
-## 7. Firefox stable-update procedure
+## 7. Phase 1 bootstrap evidence
+
+The minimal startup chain was validated on 2026-08-14 with Firefox 153.0.4 release, build ID `20260810162159`, source stamp `54be19de0e08edff0b797e55fd935dd3978b0a6d`, on Windows 11 25H2. Testing used a project-owned copy of the stock Firefox program under `%LOCALAPPDATA%` and a separate marker-owned direct-path profile. No system Firefox files, registered profiles, or daily-use profiles were modified.
+
+The installed test layout was:
+
+```text
+<FIREFOX_PROGRAM_COPY>/
+  defaults/pref/my-firefox-shell.js
+  my-firefox-shell.cfg
+
+<MFS_DEV_PROFILE>/chrome/my-firefox-shell/
+  chrome.manifest
+  content/Bootstrap.sys.mjs
+```
+
+Static and syntax checks:
+
+```powershell
+pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\bootstrap-spike.Tests.ps1
+Get-Content -Raw .\spikes\bootstrap\program\my-firefox-shell.cfg | node --check -
+node --check .\spikes\bootstrap\profile\chrome\my-firefox-shell\content\Bootstrap.sys.mjs
+node --check .\tests\bootstrap-content-access.mjs
+```
+
+The ordinary-content probe uses only Node's standard library, binds an ephemeral `127.0.0.1` port, requires explicit absolute Firefox/profile/screenshot paths, and refuses to overwrite a screenshot:
+
+```powershell
+node .\tests\bootstrap-content-access.mjs `
+  --firefox '<FIREFOX_PROGRAM_COPY>\firefox.exe' `
+  --profile '<MFS_DEV_PROFILE>' `
+  --screenshot '<NEW_LOCAL_SCREENSHOT_PATH>'
+```
+
+Observed real-Firefox matrix:
+
+| Case | Browser Console or page result | Native/recovery result |
+|---|---|---|
+| Three cold starts | Exactly one `bootstrap.success` per process; `initializationCount=1` | Native `about:support` window present each time |
+| Second normal window | One process success record | Two native Firefox windows; no second process initialization |
+| Private window | One process success record | Native Firefox private-browsing window present |
+| Missing manifest | `bootstrap.fatal`, phase `manifest-locate`, complete redacted stack | Native Firefox window present |
+| Malformed manifest | `bootstrap.fatal`, phase `entry-resolve`, `NS_ERROR_FILE_NOT_FOUND` | Native Firefox window present |
+| Incorrect entry URI | `bootstrap.fatal`, phase `entry-import`, fixed project URI identified | Native Firefox window present |
+| Entry syntax error | `bootstrap.fatal`, phase `entry-import`, `SyntaxError` | Native Firefox window present |
+| Duplicate cfg evaluation | One success plus one `bootstrap.duplicate`; no fatal record | Second evaluation skipped with prior result `ready` |
+| `myFirefoxShell.safeStart=true` | One `bootstrap.skipped`; no registration or import | Native Firefox window present |
+| Ordinary HTTP content fetch | Probe reported `blocked`; screenshot displayed the PASS state | No `contentaccessible=yes`; no resource alias |
+| Corrected entry after syntax failure | Success on the immediately following cold start | No startup-cache clearing performed |
+| AutoConfig pref, cfg, and package removed | Zero project records in a new Browser Console | Stock native startup; no residual project error |
+
+When safe start is injected through `user.js`, Firefox copies that value into the profile preference store. Restoring `user.js` alone is not a reset. The test must explicitly set `myFirefoxShell.safeStart=false`, complete a cold start, restore the original `user.js`, and confirm that the final bootstrap succeeds and no stale `true` value remains in `prefs.js`.
+
+Fatal records use the `[MFS bootstrap]` prefix and include `event`, `phase`, stable `code`, context, safe error name/message, full stack array, Firefox version, and build ID. Remote URLs, file URLs, Windows paths, opaque URLs, and control characters are redacted or removed. They do not include browsing URLs, page titles, search text, profile paths, or private-window state.
+
+The validated cache procedure is evidence-first:
+
+1. Close every process using the test profile.
+2. Verify or restore the exact cfg, manifest, and entry from source, then cold start again.
+3. If disabling, remove only the project AutoConfig preference file, cfg file, and project-owned profile package, then cold start and confirm zero project records.
+4. Do not clear startup cache for ordinary source replacement or removal on the validated build; neither recovery test required it.
+5. Only if an actual stale artifact remains after file and profile verification, use Firefox's **Clear startup cache** action in `about:support`, restart, and record the before/after evidence.
+
+The detailed upstream research and exact canary revisions are in `docs/research/firefox-153-bootstrap.md`.
+
+## 8. Firefox stable-update procedure
 
 For every stable update:
 
@@ -192,7 +258,7 @@ For every stable update:
 
 Never claim compatibility from version-number inspection alone.
 
-## 8. Automation boundary
+## 9. Automation boundary
 
 Suitable for automation:
 

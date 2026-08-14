@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "expectedFiles": [
+    "chrome.manifest",
+    "content/Bootstrap.sys.mjs"
+  ]
+}
