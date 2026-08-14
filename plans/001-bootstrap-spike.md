@@ -50,16 +50,16 @@ spikes/bootstrap/
     my-firefox-shell.cfg
   profile/chrome/my-firefox-shell/
     chrome.manifest
-    Bootstrap.sys.mjs
+    content/Bootstrap.sys.mjs
 ```
 
 The first manifest should contain only the project-owned content-package declaration:
 
 ```text
-content my-firefox-shell ./
+content my-firefox-shell content/
 ```
 
-The `resource://my-firefox-shell/` namespace is reserved but the initial alias is omitted. Current Mozilla documentation warns that web content is not prevented from including files from `resource:` aliases; adding one requires the exact inert/public file inventory and content-access tests defined by ADR-015 and `docs/security-controls.md`.
+The `resource://my-firefox-shell/` namespace is reserved but the initial alias is omitted because Phase 1 has no resource consumer and every extra mapping expands the package surface. Firefox 153's current internal-URL documentation says both `chrome:` and `resource:` mappings are privileged-only by default; `contentaccessible=yes` explicitly opens either mapping to web content. Any later resource mapping still requires an exact file inventory, a real consumer, and ordinary-content tests under ADR-016 and `docs/security-controls.md`.
 
 Do not use `override` in this spike. Do not add `contentaccessible=yes` without a separately documented requirement and dedicated security review.
 
@@ -101,3 +101,15 @@ The issue or pull request must include:
 - Startup-cache behavior and required invalidation are documented from evidence.
 - Resource exposure is inspected and no unintended privileged asset is content-accessible.
 - Results update `docs/architecture.md`, `docs/firefox-internals-map.md`, `docs/security-and-privacy.md`, and `docs/testing-and-recovery.md`.
+
+## Observed Phase 1 result
+
+Issue #3 validated the spike on Firefox 153.0.4 release, build ID `20260810162159`, on Windows 11 25H2. The exact evidence and upstream revisions are recorded in `docs/research/firefox-153-bootstrap.md`.
+
+- `UChrm`, `autoRegister()`, immediate Chrome Registry resolution, and `ChromeUtils.importESModule()` completed in one early AutoConfig evaluation.
+- Firefox 153 no longer packages `resource://gre/modules/Services.sys.mjs`; privileged ES modules receive a loader-defined `Services` global, which the entry validates before use.
+- Three repeatable cold starts emitted exactly one process success record each. A second normal window and a private window did not reinitialize the process runtime.
+- Missing and malformed manifests, a wrong entry URI, and an entry syntax error all failed open with native Firefox windows present.
+- Restoring the entry after a syntax failure took effect on the next cold start without clearing startup cache. Removing the AutoConfig preference file, cfg file, and profile package restored a stock startup with no project record.
+- An ordinary loopback HTTP page could not fetch `chrome://my-firefox-shell/content/Bootstrap.sys.mjs`.
+- `myFirefoxShell.safeStart=true` skipped project initialization before manifest registration and left native Firefox available.

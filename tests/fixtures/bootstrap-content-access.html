@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="light" />
+    <title>Checking privileged package access</title>
+    <style>
+      body {
+        margin: 3rem;
+        color: #202124;
+        background: #ffffff;
+        font: 32px/1.4 system-ui, sans-serif;
+      }
+
+      body[data-result="blocked"] {
+        color: #075f2c;
+      }
+
+      body[data-result="unexpected"] {
+        color: #9b1c1c;
+      }
+    </style>
+  </head>
+  <body data-result="pending">
+    Checking whether ordinary web content can read the privileged package…
+    <script>
+      (async () => {
+        let result = "unexpected";
+
+        try {
+          const response = await fetch(
+            "chrome://my-firefox-shell/content/Bootstrap.sys.mjs"
+          );
+          result = `unexpected-${response.status}`;
+        } catch {
+          result = "blocked";
+        }
+
+        document.title = result;
+        document.body.dataset.result = result.startsWith("unexpected")
+          ? "unexpected"
+          : result;
+        document.body.textContent =
+          result === "blocked"
+            ? "PASS: ordinary web content cannot fetch the privileged package"
+            : `FAIL: privileged package was content-accessible (${result})`;
+
+        await fetch(`/report?result=${encodeURIComponent(result)}`);
+      })();
+    </script>
+  </body>
+</html>

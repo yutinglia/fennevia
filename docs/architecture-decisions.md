@@ -22,11 +22,11 @@ Alice0775, fx-autoconfig, and similar projects are compatibility research source
 
 ## ADR-003: Use Chrome Registry as the resource boundary
 
-**Status:** Accepted pending spike validation; initial exposure policy amended by ADR-015
+**Status:** Accepted and validated by Phase 1; mapping policy amended by ADR-016
 
-Register project-owned `chrome://my-firefox-shell/` and `resource://my-firefox-shell/` URIs so privileged modules, UI assets, and styles do not depend on absolute file paths.
+Reserve project-owned `chrome://my-firefox-shell/` and `resource://my-firefox-shell/` namespaces so privileged modules, UI assets, and styles do not depend on absolute file paths. Register only mappings with a concrete consumer and reviewed inventory.
 
-Phase 1 must validate registration, import timing, cache behavior, resource exposure, and removal on the current Firefox stable.
+Phase 1 validated Chrome package registration, immediate import, cache behavior, default content denial, and complete removal on Firefox 153.0.4. The initial manifest registers only the required Chrome content package.
 
 ## ADR-004: Do not override `browser.xhtml` during the initial roadmap
 
@@ -110,10 +110,28 @@ Permissions, authentication, certificates, file pickers, extension installation,
 
 ## ADR-015: Default Chrome and resource exposure to zero
 
-**Status:** Accepted for the initial manifest; runtime validation remains required in Phase 1
+**Status:** Superseded in part by ADR-016; the minimal initial-manifest decision remains accepted
 
 Reserve both project-owned namespaces, but initially register only `content my-firefox-shell ...` without `contentaccessible=yes`. Omit a `resource://my-firefox-shell/` alias until a dedicated review defines an exact inert/public file inventory and validates access from ordinary web content.
 
-**Reasoning:** Mozilla's current Chrome Registration documentation says `contentaccessible=yes` explicitly exposes a content package to untrusted references and separately warns that web content is not prevented from including files at `resource:` aliases. A dedicated project name prevents namespace collision; it does not create a privilege boundary.
+**Historical reasoning (superseded):** Mozilla's Chrome Registration documentation used during Phase 0.5 says `contentaccessible=yes` explicitly exposes a content package to untrusted references and separately warns that web content is not prevented from including files at `resource:` aliases. A dedicated project name prevents namespace collision; it does not create a privilege boundary.
 
 Privileged modules, source maps, debug artifacts, diagnostics, and private assets must not be placed in a resource alias. Any later alias or content-accessibility flag is a security-review trigger and must include the exact manifest lines, mapped file inventory, callers, content-context tests, and removal behavior.
+
+The statement above about default `resource:` access came from the older `build/docs/chrome-registration.rst` wording. Firefox 153's newer `toolkit/docs/internal-urls.md` and the Phase 1 runtime test establish the replacement policy in ADR-016; this historical reasoning is retained rather than silently rewritten.
+
+## ADR-016: Follow Firefox's current internal-URL access model and omit unused mappings
+
+**Status:** Accepted
+
+Firefox 153 treats both `chrome:` and `resource:` mappings as privileged-only by default. A manifest `contentaccessible=yes` flag deliberately hole-punches that boundary and exposes the mapped package to web content.
+
+The Phase 1 manifest therefore contains only:
+
+```text
+content my-firefox-shell content/
+```
+
+It omits `resource`, `skin`, `locale`, `style`, `override`, and `contentaccessible=yes`. The resource alias is omitted because there is no Phase 1 consumer and the smallest registered surface is easiest to audit, not because a default resource mapping is content-accessible.
+
+**Reasoning:** The supported Firefox 153 source revision `54be19de0e08edff0b797e55fd935dd3978b0a6d` documents the default restriction in `toolkit/docs/internal-urls.md`. An ordinary loopback HTTP page also failed to fetch the project Chrome entry in the real spike. Any later mapping requires a concrete consumer, exact file inventory, current-source review, ordinary-content access test, and removal test. `contentaccessible=yes` remains rejected without a dedicated security issue.

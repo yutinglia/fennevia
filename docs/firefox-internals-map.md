@@ -141,18 +141,24 @@ Research current window mediator APIs, browser-window startup topics, document r
 
 ### Chrome Registry and AutoConfig
 
-Research current manifest registration, `nsIComponentRegistrar.autoRegister`, module import timing, startup cache, and resource accessibility. Record the exact current Firefox source and loader revisions.
+Phase 1 verified the following dependencies on Firefox 153.0.4 release, build ID `20260810162159`, source stamp `54be19de0e08edff0b797e55fd935dd3978b0a6d`, on Windows 11 25H2. The full source and runtime record is in `docs/research/firefox-153-bootstrap.md`.
 
-Phase 0.5 records the following policy evidence from Mozilla's Chrome Registration documentation at Firefox source revision [`8b6198f56d80ba962e0570e5ae8a3c257e2e7bce`](https://searchfox.org/firefox-main/rev/8b6198f56d80ba962e0570e5ae8a3c257e2e7bce/build/docs/chrome-registration.rst). This is a source review, not a substitute for the runtime tests owned by #3.
+| Dependency | Current source-backed behavior | Project use and observed failure behavior |
+|---|---|---|
+| `general.config.obscure_value=0`, `general.config.filename`, `general.config.sandbox_enabled=false` | [`nsReadConfig.cpp`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/extensions/pref/autoconfig/src/nsReadConfig.cpp) reads the default preferences, skips the cfg first line, and selects privileged or restricted evaluation | One project cfg is selected; its first line remains a comment. Missing or invalid setup leaves stock Firefox startup available. |
+| Privileged AutoConfig globals: `Services`, `Components`, `Cc`, `Ci`, `ChromeUtils` | [`nsJSConfigTriggers.cpp`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/extensions/pref/autoconfig/src/nsJSConfigTriggers.cpp) creates the privileged AutoConfig environment; Bug 1766114 added `ChromeUtils` there | AutoConfig validates and uses only the globals required for directory lookup, registration, URI resolution, import, and privacy-safe console logging. |
+| `Services.dirsvc.get("UChrm", Ci.nsIFile)` | [`nsAppDirectoryServiceDefs.h`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/xpcom/io/nsAppDirectoryServiceDefs.h) defines `UChrm` as the user Chrome directory | Resolves `<PROFILE>/chrome`; a missing project manifest reports phase `manifest-locate` and fails open. |
+| `Ci.nsIComponentRegistrar`, `autoRegister(manifest)` | [`nsIComponentRegistrar.idl`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/xpcom/components/nsIComponentRegistrar.idl) and [`nsComponentManager.cpp`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/xpcom/components/nsComponentManager.cpp) register a manifest for the current run and do not cache this registration | Registers exactly one profile package. A malformed declaration leads to a deterministic `entry-resolve` failure; no generic directory scan is added. |
+| `content my-firefox-shell content/` and `nsIChromeRegistry.convertChromeURL()` | [`ManifestParser.cpp`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/xpcom/components/ManifestParser.cpp) parses the declaration; [`nsChromeRegistry.cpp`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/chrome/nsChromeRegistry.cpp) resolves the URI | Resolves `chrome://my-firefox-shell/content/Bootstrap.sys.mjs` before import. A missing mapping reports phase `entry-resolve`; a missing file reports `entry-import`. |
+| `ChromeUtils.importESModule()` | Current Firefox source has many privileged `chrome://` ESM callers; the real spike imported the newly registered entry immediately | Imports one fixed entry URI and validates its frozen result contract. Syntax and import failures retain phase, redacted full stack, version, and build ID. |
+| Loader-defined `Services` global | [`mozJSModuleLoader.cpp`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/js/xpconnect/loader/mozJSModuleLoader.cpp) creates and defines `Services` on loader globals; Firefox 153's `omni.ja` does not contain `Services.sys.mjs` | The entry validates `typeof Services` and `Services.appinfo` before use. The first spike revision imported the removed module and produced the first causal `entry-import` error. |
+| Default `chrome:` and `resource:` access; `contentaccessible=yes` | [`toolkit/docs/internal-urls.md`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/toolkit/docs/internal-urls.md) says both schemes are privileged-only by default and the flag opens the complete mapping to web content | The flag is omitted. An ordinary loopback HTTP page could not fetch the entry. `resource`, `style`, `skin`, `locale`, and `override` are all omitted because Phase 1 has no consumer. |
+| Startup-cache and registration lifetime | `nsIComponentRegistrar.idl` states runtime manifest registration is not cached; module state remains process-local | A corrected ESM loaded on the first cold start after a syntax failure, and complete project-file removal restored stock startup, both without clearing startup cache. Cache clearing remains an evidence-driven escalation only. |
+| `myFirefoxShell.safeStart` and `Services.appinfo.inSafeMode` | Project-owned early gates evaluated before manifest lookup | The preference test emitted one `bootstrap.skipped` record and retained the native Firefox window. No package registration or entry import occurred. |
 
-| Dependency | Source-backed behavior | Initial policy | Remaining evidence |
-|---|---|---|---|
-| `content my-firefox-shell content/` | Registers `chrome://my-firefox-shell/content/...` | Provisional initial declaration | Import the project entry and attempt ordinary-web-content access on the supported Firefox build |
-| `contentaccessible=yes` | Explicitly permits untrusted content to reference a content package | Omit and reject by default | A dedicated security issue is required before any use |
-| `resource my-firefox-shell ...` | Mozilla documentation warns that web content is not prevented from including files at `resource:` aliases | Reserve the namespace but omit the alias initially | If later needed, map an exact inert/public inventory and test content access; never include privileged modules, maps, debug data, or private assets |
-| `override` | Replaces a registered Firefox resource | Prohibited during the initial roadmap | Dedicated issue, ADR, source pin, tests, update procedure, and removal plan |
+The only accepted manifest line is `content my-firefox-shell content/`. `contentaccessible=yes` and `override` remain rejected. A future `resource` mapping requires a concrete consumer, exact inventory, current-source review, ordinary-content denial test, and removal test under ADR-016.
 
-## 5. Phase 0 development-profile dependencies
+## 6. Phase 0 development-profile dependencies
 
 These dependencies are development-only. They are owned by `scripts/lib/FirefoxDevProfile.psm1`, do not enter the installed runtime, and were verified on Firefox 153.0.4 release, build ID `20260810162159`, source stamp `54be19de0e08edff0b797e55fd935dd3978b0a6d`, on Windows 11 25H2.
 
@@ -175,7 +181,7 @@ These dependencies are development-only. They are owned by `scripts/lib/FirefoxD
 
 Revalidate the preference names and command-line flags when the supported Firefox stable changes. The authoritative setup and captured evidence are in `docs/development-setup.md`.
 
-## 6. Native-handle rules
+## 7. Native-handle rules
 
 - Native tab, browser, window, controller, and result objects remain inside bridge or runtime modules.
 - UI uses project-generated opaque IDs and immutable snapshots.
@@ -184,7 +190,7 @@ Revalidate the preference names and command-line flags when the supported Firefo
 - Translate native callbacks into ordinary application events at the boundary.
 - Validate a native handle before every action that can outlive a prior snapshot.
 
-## 7. Dependency inventory fields
+## 8. Dependency inventory fields
 
 Every implemented dependency should eventually record:
 
@@ -200,7 +206,7 @@ Every implemented dependency should eventually record:
 | Tests | Unit, static, or dev-profile smoke coverage |
 | Replacement or removal plan | How dependency could be reduced later |
 
-## 8. High-risk areas requiring separate decisions
+## 9. High-risk areas requiring separate decisions
 
 - complete `browser.xhtml` override;
 - tab custom-element or internal-script override;
