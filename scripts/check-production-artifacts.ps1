@@ -16,7 +16,7 @@ $modulePath = Join-Path $PSScriptRoot "lib\SecurityChecks.psm1"
 Import-Module $modulePath -Force
 
 try {
-    $result = Test-MfsProductionArtifacts -ArtifactRoot $ArtifactRoot -InventoryPath $InventoryPath
+    $result = Test-FenneviaProductionArtifacts -ArtifactRoot $ArtifactRoot -InventoryPath $InventoryPath
 }
 catch {
     Write-Output "FAIL [ARTIFACT_POLICY_INPUT] <ARTIFACT_ROOT>:0"

@@ -1,11 +1,11 @@
 Set-StrictMode -Version Latest
 
-$script:ProfileName = "my-firefox-shell-dev"
-$script:MarkerFileName = ".mfs-dev-profile.json"
-$script:MarkerOwner = "my-firefox-shell"
+$script:ProfileName = "fennevia-dev"
+$script:MarkerFileName = ".fennevia-dev-profile.json"
+$script:MarkerOwner = "fennevia"
 $script:MarkerSchemaVersion = 1
 
-function Get-MfsOptionalPropertyValue {
+function Get-FenneviaOptionalPropertyValue {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -23,7 +23,7 @@ function Get-MfsOptionalPropertyValue {
     return $property.Value
 }
 
-function ConvertTo-MfsCanonicalPath {
+function ConvertTo-FenneviaCanonicalPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -48,7 +48,7 @@ function ConvertTo-MfsCanonicalPath {
     return $fullPath.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
 }
 
-function Get-MfsManagedProfileRoot {
+function Get-FenneviaManagedProfileRoot {
     [CmdletBinding()]
     param()
 
@@ -56,17 +56,17 @@ function Get-MfsManagedProfileRoot {
         throw "LOCALAPPDATA is unavailable; the managed development-profile root cannot be resolved."
     }
 
-    return ConvertTo-MfsCanonicalPath -Path (Join-Path $env:LOCALAPPDATA "my-firefox-shell\profiles")
+    return ConvertTo-FenneviaCanonicalPath -Path (Join-Path $env:LOCALAPPDATA "fennevia\profiles")
 }
 
-function Get-MfsDefaultProfilePath {
+function Get-FenneviaDefaultProfilePath {
     [CmdletBinding()]
     param()
 
-    return Join-Path (Get-MfsManagedProfileRoot) $script:ProfileName
+    return Join-Path (Get-FenneviaManagedProfileRoot) $script:ProfileName
 }
 
-function Test-MfsPathWithin {
+function Test-FenneviaPathWithin {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -76,13 +76,13 @@ function Test-MfsPathWithin {
         [string] $ParentPath
     )
 
-    $canonicalChild = ConvertTo-MfsCanonicalPath -Path $ChildPath
-    $canonicalParent = ConvertTo-MfsCanonicalPath -Path $ParentPath
+    $canonicalChild = ConvertTo-FenneviaCanonicalPath -Path $ChildPath
+    $canonicalParent = ConvertTo-FenneviaCanonicalPath -Path $ParentPath
     $prefix = $canonicalParent + [IO.Path]::DirectorySeparatorChar
     return $canonicalChild.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)
 }
 
-function Get-MfsRegisteredFirefoxProfilePaths {
+function Get-FenneviaRegisteredFirefoxProfilePaths {
     [CmdletBinding()]
     param()
 
@@ -127,7 +127,7 @@ function Get-MfsRegisteredFirefoxProfilePaths {
         }
 
         if ([IO.Path]::IsPathRooted($candidate)) {
-            $paths += ConvertTo-MfsCanonicalPath -Path $candidate
+            $paths += ConvertTo-FenneviaCanonicalPath -Path $candidate
         }
     }
 
@@ -142,22 +142,22 @@ function Get-MfsRegisteredFirefoxProfilePaths {
             if (-not [IO.Path]::IsPathRooted($candidate)) {
                 $candidate = Join-Path $firefoxDataRoot $candidate
             }
-            $paths += ConvertTo-MfsCanonicalPath -Path $candidate
+            $paths += ConvertTo-FenneviaCanonicalPath -Path $candidate
         }
     }
 
     return @($paths | Sort-Object -Unique)
 }
 
-function Assert-MfsPathHasNoReparseAncestor {
+function Assert-FenneviaPathHasNoReparseAncestor {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string] $Path
     )
 
-    $canonicalPath = ConvertTo-MfsCanonicalPath -Path $Path
-    $localAppData = ConvertTo-MfsCanonicalPath -Path $env:LOCALAPPDATA
+    $canonicalPath = ConvertTo-FenneviaCanonicalPath -Path $Path
+    $localAppData = ConvertTo-FenneviaCanonicalPath -Path $env:LOCALAPPDATA
     $currentPath = $canonicalPath
 
     while ($true) {
@@ -177,17 +177,17 @@ function Assert-MfsPathHasNoReparseAncestor {
             [string]::IsNullOrWhiteSpace($parentPath) -or
             -not (
                 [string]::Equals($parentPath, $localAppData, [StringComparison]::OrdinalIgnoreCase) -or
-                (Test-MfsPathWithin -ChildPath $parentPath -ParentPath $localAppData)
+                (Test-FenneviaPathWithin -ChildPath $parentPath -ParentPath $localAppData)
             )
         ) {
             throw "The managed development-profile path could not be traced safely to LOCALAPPDATA."
         }
 
-        $currentPath = ConvertTo-MfsCanonicalPath -Path $parentPath
+        $currentPath = ConvertTo-FenneviaCanonicalPath -Path $parentPath
     }
 }
 
-function Assert-MfsProfileTreeHasNoReparsePoints {
+function Assert-FenneviaProfileTreeHasNoReparsePoints {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -220,31 +220,31 @@ function Assert-MfsProfileTreeHasNoReparsePoints {
     }
 }
 
-function Assert-MfsProfilePathSafe {
+function Assert-FenneviaProfilePathSafe {
     [CmdletBinding()]
     param(
         [string] $ProfilePath
     )
 
-    $managedRoot = Get-MfsManagedProfileRoot
+    $managedRoot = Get-FenneviaManagedProfileRoot
     $candidate = if ([string]::IsNullOrWhiteSpace($ProfilePath)) {
-        Get-MfsDefaultProfilePath
+        Get-FenneviaDefaultProfilePath
     }
     else {
-        ConvertTo-MfsCanonicalPath -Path $ProfilePath
+        ConvertTo-FenneviaCanonicalPath -Path $ProfilePath
     }
 
-    if (-not (Test-MfsPathWithin -ChildPath $candidate -ParentPath $managedRoot)) {
-        throw "The development profile must remain below the dedicated my-firefox-shell managed root."
+    if (-not (Test-FenneviaPathWithin -ChildPath $candidate -ParentPath $managedRoot)) {
+        throw "The development profile must remain below the dedicated fennevia managed root."
     }
 
-    Assert-MfsPathHasNoReparseAncestor -Path $candidate
+    Assert-FenneviaPathHasNoReparseAncestor -Path $candidate
 
     $forbiddenPaths = @(
         $managedRoot,
-        (ConvertTo-MfsCanonicalPath -Path $env:LOCALAPPDATA),
-        (ConvertTo-MfsCanonicalPath -Path $env:APPDATA),
-        (ConvertTo-MfsCanonicalPath -Path ([Environment]::GetFolderPath("UserProfile")))
+        (ConvertTo-FenneviaCanonicalPath -Path $env:LOCALAPPDATA),
+        (ConvertTo-FenneviaCanonicalPath -Path $env:APPDATA),
+        (ConvertTo-FenneviaCanonicalPath -Path ([Environment]::GetFolderPath("UserProfile")))
     )
 
     foreach ($forbiddenPath in $forbiddenPaths) {
@@ -253,7 +253,7 @@ function Assert-MfsProfilePathSafe {
         }
     }
 
-    foreach ($registeredPath in @(Get-MfsRegisteredFirefoxProfilePaths)) {
+    foreach ($registeredPath in @(Get-FenneviaRegisteredFirefoxProfilePaths)) {
         if ([string]::Equals($candidate, $registeredPath, [StringComparison]::OrdinalIgnoreCase)) {
             throw "The requested path is registered as an existing Firefox profile and cannot be managed here."
         }
@@ -266,7 +266,7 @@ function Assert-MfsProfilePathSafe {
     return $candidate
 }
 
-function Write-MfsUtf8NoBom {
+function Write-FenneviaUtf8NoBom {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -280,7 +280,7 @@ function Write-MfsUtf8NoBom {
     [IO.File]::WriteAllText($Path, $Content, $encoding)
 }
 
-function Get-MfsMarkerPath {
+function Get-FenneviaMarkerPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -290,14 +290,14 @@ function Get-MfsMarkerPath {
     return Join-Path $ProfilePath $script:MarkerFileName
 }
 
-function Read-MfsProfileMarker {
+function Read-FenneviaProfileMarker {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string] $ProfilePath
     )
 
-    $markerPath = Get-MfsMarkerPath -ProfilePath $ProfilePath
+    $markerPath = Get-FenneviaMarkerPath -ProfilePath $ProfilePath
     if (-not (Test-Path -LiteralPath $markerPath -PathType Leaf)) {
         return $null
     }
@@ -338,7 +338,7 @@ function Read-MfsProfileMarker {
     return $marker
 }
 
-function Get-MfsRequiredUserPreferences {
+function Get-FenneviaRequiredUserPreferences {
     [CmdletBinding()]
     param()
 
@@ -353,7 +353,7 @@ function Get-MfsRequiredUserPreferences {
     )
 }
 
-function Test-MfsProfileInUse {
+function Test-FenneviaProfileInUse {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -384,13 +384,13 @@ function Test-MfsProfileInUse {
     return $false
 }
 
-function Test-MfsFirefoxDevProfile {
+function Test-FenneviaFirefoxDevProfile {
     [CmdletBinding()]
     param(
         [string] $ProfilePath
     )
 
-    $canonicalProfile = Assert-MfsProfilePathSafe -ProfilePath $ProfilePath
+    $canonicalProfile = Assert-FenneviaProfilePathSafe -ProfilePath $ProfilePath
     $problems = @()
     $exists = Test-Path -LiteralPath $canonicalProfile -PathType Container
     $markerValid = $false
@@ -400,8 +400,8 @@ function Test-MfsFirefoxDevProfile {
         $problems += "The managed development profile has not been initialized."
     }
     else {
-        Assert-MfsProfileTreeHasNoReparsePoints -ProfilePath $canonicalProfile
-        $markerValid = $null -ne (Read-MfsProfileMarker -ProfilePath $canonicalProfile)
+        Assert-FenneviaProfileTreeHasNoReparsePoints -ProfilePath $canonicalProfile
+        $markerValid = $null -ne (Read-FenneviaProfileMarker -ProfilePath $canonicalProfile)
         if (-not $markerValid) {
             $problems += "The project ownership marker is missing or invalid."
         }
@@ -413,7 +413,7 @@ function Test-MfsFirefoxDevProfile {
         else {
             $userJs = Get-Content -Raw -LiteralPath $userJsPath
             $missingPreferences = @(
-                Get-MfsRequiredUserPreferences |
+                Get-FenneviaRequiredUserPreferences |
                     Where-Object { $_ -like "user_pref*" -and $userJs.IndexOf($_, [StringComparison]::Ordinal) -lt 0 }
             )
             $preferencesValid = $missingPreferences.Count -eq 0
@@ -433,21 +433,21 @@ function Test-MfsFirefoxDevProfile {
     }
 }
 
-function Initialize-MfsFirefoxDevProfile {
+function Initialize-FenneviaFirefoxDevProfile {
     [CmdletBinding()]
     param(
         [string] $ProfilePath
     )
 
-    $canonicalProfile = Assert-MfsProfilePathSafe -ProfilePath $ProfilePath
-    if (Test-MfsProfileInUse -ProfilePath $canonicalProfile) {
+    $canonicalProfile = Assert-FenneviaProfilePathSafe -ProfilePath $ProfilePath
+    if (Test-FenneviaProfileInUse -ProfilePath $canonicalProfile) {
         throw "The managed development profile is currently in use. Close its Firefox instance before initializing it."
     }
 
     if (Test-Path -LiteralPath $canonicalProfile -PathType Container) {
-        Assert-MfsProfileTreeHasNoReparsePoints -ProfilePath $canonicalProfile
+        Assert-FenneviaProfileTreeHasNoReparsePoints -ProfilePath $canonicalProfile
         $entries = @(Get-ChildItem -Force -LiteralPath $canonicalProfile)
-        if ($entries.Count -gt 0 -and $null -eq (Read-MfsProfileMarker -ProfilePath $canonicalProfile)) {
+        if ($entries.Count -gt 0 -and $null -eq (Read-FenneviaProfileMarker -ProfilePath $canonicalProfile)) {
             throw "Refusing to initialize a non-empty directory without a valid project ownership marker."
         }
     }
@@ -455,7 +455,7 @@ function Initialize-MfsFirefoxDevProfile {
         New-Item -ItemType Directory -Path $canonicalProfile -Force | Out-Null
     }
 
-    $markerPath = Get-MfsMarkerPath -ProfilePath $canonicalProfile
+    $markerPath = Get-FenneviaMarkerPath -ProfilePath $canonicalProfile
     if (-not (Test-Path -LiteralPath $markerPath -PathType Leaf)) {
         $marker = [ordered]@{
             schemaVersion = $script:MarkerSchemaVersion
@@ -463,24 +463,24 @@ function Initialize-MfsFirefoxDevProfile {
             profileName = $script:ProfileName
             createdUtc = (Get-Date).ToUniversalTime().ToString("o")
         }
-        Write-MfsUtf8NoBom -Path $markerPath -Content (($marker | ConvertTo-Json) + [Environment]::NewLine)
+        Write-FenneviaUtf8NoBom -Path $markerPath -Content (($marker | ConvertTo-Json) + [Environment]::NewLine)
     }
 
     $userJsPath = Join-Path $canonicalProfile "user.js"
-    $userJs = (Get-MfsRequiredUserPreferences) -join [Environment]::NewLine
-    Write-MfsUtf8NoBom -Path $userJsPath -Content ($userJs + [Environment]::NewLine)
+    $userJs = (Get-FenneviaRequiredUserPreferences) -join [Environment]::NewLine
+    Write-FenneviaUtf8NoBom -Path $userJsPath -Content ($userJs + [Environment]::NewLine)
 
-    return Test-MfsFirefoxDevProfile -ProfilePath $canonicalProfile
+    return Test-FenneviaFirefoxDevProfile -ProfilePath $canonicalProfile
 }
 
-function Get-MfsFirefoxExecutable {
+function Get-FenneviaFirefoxExecutable {
     [CmdletBinding()]
     param(
         [string] $FirefoxPath
     )
 
     if (-not [string]::IsNullOrWhiteSpace($FirefoxPath)) {
-        $canonicalPath = ConvertTo-MfsCanonicalPath -Path $FirefoxPath
+        $canonicalPath = ConvertTo-FenneviaCanonicalPath -Path $FirefoxPath
         if (-not (Test-Path -LiteralPath $canonicalPath -PathType Leaf)) {
             throw "The explicitly selected Firefox executable does not exist."
         }
@@ -507,7 +507,7 @@ function Get-MfsFirefoxExecutable {
             continue
         }
 
-        $currentVersion = Get-MfsOptionalPropertyValue -InputObject $registryValues -Name "CurrentVersion"
+        $currentVersion = Get-FenneviaOptionalPropertyValue -InputObject $registryValues -Name "CurrentVersion"
         if ([string]::IsNullOrWhiteSpace($currentVersion)) {
             continue
         }
@@ -518,7 +518,7 @@ function Get-MfsFirefoxExecutable {
             continue
         }
 
-        $pathToExe = Get-MfsOptionalPropertyValue -InputObject $mainValues -Name "PathToExe"
+        $pathToExe = Get-FenneviaOptionalPropertyValue -InputObject $mainValues -Name "PathToExe"
         if (-not [string]::IsNullOrWhiteSpace($pathToExe)) {
             $candidates += $pathToExe
         }
@@ -533,7 +533,7 @@ function Get-MfsFirefoxExecutable {
     $resolvedCandidates = @(
         $candidates |
             Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_ -PathType Leaf) } |
-            ForEach-Object { ConvertTo-MfsCanonicalPath -Path $_ } |
+            ForEach-Object { ConvertTo-FenneviaCanonicalPath -Path $_ } |
             Sort-Object -Unique
     )
 
@@ -547,14 +547,14 @@ function Get-MfsFirefoxExecutable {
     return $resolvedCandidates[0]
 }
 
-function Get-MfsFirefoxDetails {
+function Get-FenneviaFirefoxDetails {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string] $FirefoxPath
     )
 
-    $canonicalFirefox = Get-MfsFirefoxExecutable -FirefoxPath $FirefoxPath
+    $canonicalFirefox = Get-FenneviaFirefoxExecutable -FirefoxPath $FirefoxPath
     $programRoot = Split-Path -Parent $canonicalFirefox
     $applicationIni = Join-Path $programRoot "application.ini"
     if (-not (Test-Path -LiteralPath $applicationIni -PathType Leaf)) {
@@ -594,7 +594,7 @@ function Get-MfsFirefoxDetails {
     }
 }
 
-function Get-MfsAutoConfigAudit {
+function Get-FenneviaAutoConfigAudit {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -619,7 +619,7 @@ function Get-MfsAutoConfigAudit {
     }
 }
 
-function Get-MfsFirefoxPolicyAudit {
+function Get-FenneviaFirefoxPolicyAudit {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -641,14 +641,14 @@ function Get-MfsFirefoxPolicyAudit {
     }
 }
 
-function Get-MfsProfileContaminationAudit {
+function Get-FenneviaProfileContaminationAudit {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string] $ProfilePath
     )
 
-    $canonicalProfile = Assert-MfsProfilePathSafe -ProfilePath $ProfilePath
+    $canonicalProfile = Assert-FenneviaProfilePathSafe -ProfilePath $ProfilePath
     if (-not (Test-Path -LiteralPath $canonicalProfile -PathType Container)) {
         return [pscustomobject]@{
             HasUnexpectedProfileContent = $false
@@ -656,7 +656,7 @@ function Get-MfsProfileContaminationAudit {
             ChromeCustomizationEntryCount = 0
         }
     }
-    Assert-MfsProfileTreeHasNoReparsePoints -ProfilePath $canonicalProfile
+    Assert-FenneviaProfileTreeHasNoReparsePoints -ProfilePath $canonicalProfile
     $extensionsDirectory = Join-Path $canonicalProfile "extensions"
     $extensionFileCount = if (Test-Path -LiteralPath $extensionsDirectory -PathType Container) {
         @(Get-ChildItem -Force -LiteralPath $extensionsDirectory).Count
@@ -680,7 +680,7 @@ function Get-MfsProfileContaminationAudit {
     }
 }
 
-function Get-MfsProjectCommit {
+function Get-FenneviaProjectCommit {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -699,7 +699,7 @@ function Get-MfsProjectCommit {
     return "unknown"
 }
 
-function Get-MfsFirefoxEnvironmentRecord {
+function Get-FenneviaFirefoxEnvironmentRecord {
     [CmdletBinding()]
     param(
         [string] $FirefoxPath,
@@ -712,18 +712,18 @@ function Get-MfsFirefoxEnvironmentRecord {
         [switch] $RevealPaths
     )
 
-    $canonicalProfile = Assert-MfsProfilePathSafe -ProfilePath $ProfilePath
-    $firefox = Get-MfsFirefoxDetails -FirefoxPath (Get-MfsFirefoxExecutable -FirefoxPath $FirefoxPath)
-    $profileStatus = Test-MfsFirefoxDevProfile -ProfilePath $canonicalProfile
-    $autoConfig = Get-MfsAutoConfigAudit -ProgramRoot $firefox.ProgramRoot
-    $policyAudit = Get-MfsFirefoxPolicyAudit -ProgramRoot $firefox.ProgramRoot
-    $profileAudit = Get-MfsProfileContaminationAudit -ProfilePath $canonicalProfile
+    $canonicalProfile = Assert-FenneviaProfilePathSafe -ProfilePath $ProfilePath
+    $firefox = Get-FenneviaFirefoxDetails -FirefoxPath (Get-FenneviaFirefoxExecutable -FirefoxPath $FirefoxPath)
+    $profileStatus = Test-FenneviaFirefoxDevProfile -ProfilePath $canonicalProfile
+    $autoConfig = Get-FenneviaAutoConfigAudit -ProgramRoot $firefox.ProgramRoot
+    $policyAudit = Get-FenneviaFirefoxPolicyAudit -ProgramRoot $firefox.ProgramRoot
+    $profileAudit = Get-FenneviaProfileContaminationAudit -ProfilePath $canonicalProfile
     $windows = Get-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
     $displayVersion = if (-not [string]::IsNullOrWhiteSpace($windows.DisplayVersion)) { $windows.DisplayVersion } else { "unknown" }
     $build = "$($windows.CurrentBuildNumber).$($windows.UBR)"
 
     $displayExecutable = if ($RevealPaths) { $firefox.Executable } else { "<FIREFOX_PROGRAM>\firefox.exe" }
-    $displayProfile = if ($RevealPaths) { $canonicalProfile } else { "<MFS_DEV_PROFILE>" }
+    $displayProfile = if ($RevealPaths) { $canonicalProfile } else { "<FENNEVIA_DEV_PROFILE>" }
     $launchCommand = "& `"$displayExecutable`" --no-remote --new-instance --profile `"$displayProfile`""
     $autoConfigState = if ($autoConfig.HasDeclarations) {
         "detected in " + (($autoConfig.DeclarationFiles | Sort-Object) -join ", ")
@@ -746,7 +746,7 @@ function Get-MfsFirefoxEnvironmentRecord {
         "- Firefox executable: $displayExecutable",
         "- Profile: dedicated direct-path development profile ($displayProfile)",
         "- Profile helper state: $(if ($profileStatus.IsValid) { "valid" } else { "invalid or not initialized" })",
-        "- Project commit: $(Get-MfsProjectCommit -ProjectRoot $ProjectRoot)",
+        "- Project commit: $(Get-FenneviaProjectCommit -ProjectRoot $ProjectRoot)",
         "- AutoConfig declarations in Firefox program defaults: $autoConfigState",
         "- Firefox enterprise-policy sources: $policyState",
         "- Profile-installed add-ons or chrome customizations: $profileContentState",
@@ -765,7 +765,7 @@ function Get-MfsFirefoxEnvironmentRecord {
     return $lines -join [Environment]::NewLine
 }
 
-function Start-MfsFirefoxDevProfile {
+function Start-FenneviaFirefoxDevProfile {
     [CmdletBinding()]
     param(
         [string] $FirefoxPath,
@@ -788,15 +788,15 @@ function Start-MfsFirefoxDevProfile {
         throw "SecondWindow and PrivateWindow are separate smoke-test modes and cannot be combined."
     }
 
-    $profileStatus = Test-MfsFirefoxDevProfile -ProfilePath $ProfilePath
+    $profileStatus = Test-FenneviaFirefoxDevProfile -ProfilePath $ProfilePath
     if (-not $profileStatus.IsValid) {
         throw "The managed development profile is not valid. Run Initialize before Launch."
     }
-    if (Test-MfsProfileInUse -ProfilePath $profileStatus.ProfilePath) {
+    if (Test-FenneviaProfileInUse -ProfilePath $profileStatus.ProfilePath) {
         throw "The managed development profile is already running. Use that window or close it before launching again."
     }
 
-    $canonicalFirefox = Get-MfsFirefoxExecutable -FirefoxPath $FirefoxPath
+    $canonicalFirefox = Get-FenneviaFirefoxExecutable -FirefoxPath $FirefoxPath
     $quotedProfile = '"' + $profileStatus.ProfilePath.Replace('"', '\"') + '"'
     $arguments = @("--no-remote", "--new-instance", "--profile", $quotedProfile)
     if ($BrowserConsole) {
@@ -818,7 +818,7 @@ function Start-MfsFirefoxDevProfile {
     return Start-Process -FilePath $canonicalFirefox -ArgumentList $arguments -PassThru
 }
 
-function Remove-MfsFirefoxDevProfile {
+function Remove-FenneviaFirefoxDevProfile {
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
     param(
         [string] $ProfilePath,
@@ -826,25 +826,25 @@ function Remove-MfsFirefoxDevProfile {
         [switch] $Force
     )
 
-    $canonicalProfile = Assert-MfsProfilePathSafe -ProfilePath $ProfilePath
+    $canonicalProfile = Assert-FenneviaProfilePathSafe -ProfilePath $ProfilePath
     if (-not (Test-Path -LiteralPath $canonicalProfile)) {
         return $false
     }
     if (-not (Test-Path -LiteralPath $canonicalProfile -PathType Container)) {
         throw "The managed development-profile target is not a directory."
     }
-    Assert-MfsProfileTreeHasNoReparsePoints -ProfilePath $canonicalProfile
-    if ($null -eq (Read-MfsProfileMarker -ProfilePath $canonicalProfile)) {
+    Assert-FenneviaProfileTreeHasNoReparsePoints -ProfilePath $canonicalProfile
+    if ($null -eq (Read-FenneviaProfileMarker -ProfilePath $canonicalProfile)) {
         throw "Refusing to delete a directory without a valid project ownership marker."
     }
-    if (Test-MfsProfileInUse -ProfilePath $canonicalProfile) {
+    if (Test-FenneviaProfileInUse -ProfilePath $canonicalProfile) {
         throw "The managed development profile is currently in use. Close it before deletion."
     }
     if (-not $Force -and -not $WhatIfPreference) {
         throw "Profile deletion requires the explicit -Force switch. Run with -WhatIf first."
     }
 
-    if ($PSCmdlet.ShouldProcess("<MFS_DEV_PROFILE>", "Delete the marker-owned disposable Firefox development profile")) {
+    if ($PSCmdlet.ShouldProcess("<FENNEVIA_DEV_PROFILE>", "Delete the marker-owned disposable Firefox development profile")) {
         Remove-Item -LiteralPath $canonicalProfile -Recurse -Force
         return $true
     }
@@ -853,15 +853,15 @@ function Remove-MfsFirefoxDevProfile {
 }
 
 Export-ModuleMember -Function @(
-    "Get-MfsAutoConfigAudit",
-    "Get-MfsDefaultProfilePath",
-    "Get-MfsFirefoxDetails",
-    "Get-MfsFirefoxEnvironmentRecord",
-    "Get-MfsFirefoxExecutable",
-    "Get-MfsFirefoxPolicyAudit",
-    "Get-MfsProfileContaminationAudit",
-    "Initialize-MfsFirefoxDevProfile",
-    "Remove-MfsFirefoxDevProfile",
-    "Start-MfsFirefoxDevProfile",
-    "Test-MfsFirefoxDevProfile"
+    "Get-FenneviaAutoConfigAudit",
+    "Get-FenneviaDefaultProfilePath",
+    "Get-FenneviaFirefoxDetails",
+    "Get-FenneviaFirefoxEnvironmentRecord",
+    "Get-FenneviaFirefoxExecutable",
+    "Get-FenneviaFirefoxPolicyAudit",
+    "Get-FenneviaProfileContaminationAudit",
+    "Initialize-FenneviaFirefoxDevProfile",
+    "Remove-FenneviaFirefoxDevProfile",
+    "Start-FenneviaFirefoxDevProfile",
+    "Test-FenneviaFirefoxDevProfile"
 )

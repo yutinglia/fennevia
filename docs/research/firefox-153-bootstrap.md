@@ -1,6 +1,12 @@
 # Firefox 153 minimal bootstrap research record
 
-Recorded on 2026-08-14 for Issue [#3](https://github.com/yutinglia/my-firefox-shell/issues/3).
+Recorded on 2026-08-14 for Issue [#3](https://github.com/yutinglia/fennevia/issues/3).
+
+> Identity note (2026-08-15): this experiment predates the Fennevia identity
+> migration in ADR-017 and issue #22. The `my-firefox-shell`,
+> `myFirefoxShell`, and `MFS` literals below are retained as exact historical
+> artifact, preference, and log names. Current equivalents and regression
+> results are recorded in `docs/research/fennevia-identity-migration.md`.
 
 ## Environment
 

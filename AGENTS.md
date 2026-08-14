@@ -26,7 +26,7 @@ If an issue conflicts with an older document, follow the newer explicit decision
 ## 3. Architecture invariants
 
 1. AutoConfig must remain a minimal bootstrap that locates the manifest, registers the package, imports one privileged entry point, and reports fatal errors.
-2. Project-owned resources must use dedicated `chrome://my-firefox-shell/` and `resource://my-firefox-shell/` namespaces.
+2. Project-owned resources must use dedicated `chrome://fennevia/` and `resource://fennevia/` namespaces.
 3. Svelte components must not directly access `gBrowser`, `Services`, `PlacesUtils`, `SessionStore`, Downloads internals, or Firefox-owned DOM. Access must go through `src/firefox/` bridge modules.
 4. The frontend framework may manage only XHTML hosts created and owned by this project. Never mount it into a native container that already owns Firefox children.
 5. Do not delete or replace the core `browser.xhtml` DOM, tab content infrastructure, command sets, popup sets, permission UI, or browser content containers.

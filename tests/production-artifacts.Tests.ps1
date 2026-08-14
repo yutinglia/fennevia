@@ -77,7 +77,7 @@ function Write-Inventory {
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $modulePath = Join-Path $repositoryRoot "scripts\lib\SecurityChecks.psm1"
 $commandPath = Join-Path $repositoryRoot "scripts\check-production-artifacts.ps1"
-$testRoot = Join-Path ([IO.Path]::GetTempPath()) ("mfs-artifact-tests-" + [guid]::NewGuid().ToString("N"))
+$testRoot = Join-Path ([IO.Path]::GetTempPath()) ("fennevia-artifact-tests-" + [guid]::NewGuid().ToString("N"))
 $canonicalTempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd("\", "/")
 $canonicalTestRoot = [IO.Path]::GetFullPath($testRoot).TrimEnd("\", "/")
 
@@ -94,10 +94,10 @@ try {
     $safeInventory = Join-Path $testRoot "safe-inventory.json"
     Write-TestFile -Path (Join-Path $safeRoot "runtime\main.mjs") -Content 'import "./local.mjs"; export const state = "ready";'
     Write-TestFile -Path (Join-Path $safeRoot "runtime\local.mjs") -Content 'export const local = true;'
-    Write-TestFile -Path (Join-Path $safeRoot "shell\shell.css") -Content '.mfs-shell { display: block; }'
+    Write-TestFile -Path (Join-Path $safeRoot "shell\shell.css") -Content '.fennevia-shell { display: block; }'
     Write-Inventory -Path $safeInventory -ExpectedFiles @("runtime/main.mjs", "runtime/local.mjs", "shell/shell.css")
 
-    $safeResult = Test-MfsProductionArtifacts -ArtifactRoot $safeRoot -InventoryPath $safeInventory
+    $safeResult = Test-FenneviaProductionArtifacts -ArtifactRoot $safeRoot -InventoryPath $safeInventory
     Assert-True -Condition $safeResult.Passed -Message "A self-contained artifact set should pass."
     Assert-True -Condition ($safeResult.Findings.Count -eq 0) -Message "A passing artifact set should have no findings."
 
@@ -121,7 +121,7 @@ debugger;
     Write-TestFile -Path (Join-Path $unsafeRoot "secret value.js") -Content 'export const unexpected = true;'
     Write-Inventory -Path $unsafeInventory -ExpectedFiles @("main.mjs", "missing.css")
 
-    $unsafeResult = Test-MfsProductionArtifacts -ArtifactRoot $unsafeRoot -InventoryPath $unsafeInventory
+    $unsafeResult = Test-FenneviaProductionArtifacts -ArtifactRoot $unsafeRoot -InventoryPath $unsafeInventory
     $unsafeRules = @($unsafeResult.Findings.Rule | Sort-Object -Unique)
     foreach ($requiredRule in @(
         "ARTIFACT_BARE_IMPORT",
@@ -155,23 +155,23 @@ debugger;
     New-Item -ItemType Junction -Path (Join-Path $reparseRoot "linked") -Target $reparseTarget | Out-Null
     Write-TestFile -Path (Join-Path $reparseRoot "main.js") -Content 'export const safe = true;'
     Write-Inventory -Path $reparseInventory -ExpectedFiles @("main.js")
-    $reparseResult = Test-MfsProductionArtifacts -ArtifactRoot $reparseRoot -InventoryPath $reparseInventory
+    $reparseResult = Test-FenneviaProductionArtifacts -ArtifactRoot $reparseRoot -InventoryPath $reparseInventory
     Assert-True -Condition ($reparseResult.Findings.Rule -contains "ARTIFACT_REPARSE_POINT") -Message "A reparse point must be reported and not traversed."
 
     $traversalInventory = Join-Path $testRoot "traversal-inventory.json"
     Write-Inventory -Path $traversalInventory -ExpectedFiles @("../outside.js")
     Assert-Throws -Message "Artifact inventory traversal must be rejected." -Operation {
-        Test-MfsProductionArtifacts -ArtifactRoot $safeRoot -InventoryPath $traversalInventory | Out-Null
+        Test-FenneviaProductionArtifacts -ArtifactRoot $safeRoot -InventoryPath $traversalInventory | Out-Null
     }
 
     Assert-Throws -Message "A filesystem root must not be accepted as an artifact root." -Operation {
-        Test-MfsProductionArtifacts -ArtifactRoot ([IO.Path]::GetPathRoot($safeRoot)) -InventoryPath $safeInventory | Out-Null
+        Test-FenneviaProductionArtifacts -ArtifactRoot ([IO.Path]::GetPathRoot($safeRoot)) -InventoryPath $safeInventory | Out-Null
     }
 
     $rootJunction = Join-Path $testRoot "artifact-root-junction"
     New-Item -ItemType Junction -Path $rootJunction -Target $safeRoot | Out-Null
     Assert-Throws -Message "A reparse-point artifact root must be rejected." -Operation {
-        Test-MfsProductionArtifacts -ArtifactRoot $rootJunction -InventoryPath $safeInventory | Out-Null
+        Test-FenneviaProductionArtifacts -ArtifactRoot $rootJunction -InventoryPath $safeInventory | Out-Null
     }
 
     $enginePath = (Get-Process -Id $PID).Path

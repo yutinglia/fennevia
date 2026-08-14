@@ -32,7 +32,7 @@ This project owns the visible browser shell and a privileged integration runtime
 
 AutoConfig performs only these tasks:
 
-1. Stop before registration when Firefox safe mode or `myFirefoxShell.safeStart` is active.
+1. Stop before registration when Firefox safe mode or `fennevia.safeStart` is active.
 2. Resolve the active profile's project manifest through `UChrm`.
 3. Register the Chrome Registry manifest through `nsIComponentRegistrar.autoRegister()`.
 4. Resolve and import one privileged `Bootstrap.sys.mjs` entry.
@@ -44,14 +44,15 @@ The Phase 1 implementation lives under `spikes/bootstrap/`. AutoConfig and the e
 
 ### Chrome Registry package
 
-The package reserves stable project-owned logical URIs:
+ADR-017 defines Fennevia as the sole active project and package identity. The
+package reserves stable project-owned logical URIs:
 
 ```text
-chrome://my-firefox-shell/content/...
-resource://my-firefox-shell/...
+chrome://fennevia/content/...
+resource://fennevia/...
 ```
 
-The initial manifest registers only `content my-firefox-shell content/` without `contentaccessible=yes`. The `resource://my-firefox-shell/` alias is reserved but omitted because Phase 1 has no consumer and every mapping expands the audited surface. Use of manifest `style` is decided by the CSS spike. `override` is disabled by default.
+The initial manifest registers only `content fennevia content/` without `contentaccessible=yes`. The `resource://fennevia/` alias is reserved but omitted because Phase 1 has no consumer and every mapping expands the audited surface. Use of manifest `style` is decided by the CSS spike. `override` is disabled by default. The package rename was revalidated against Firefox 153.0.4 without a compatibility alias; see `docs/research/fennevia-identity-migration.md`.
 
 Firefox 153's `toolkit/docs/internal-urls.md` states that both `chrome:` and `resource:` mappings are restricted to privileged code by default. `contentaccessible=yes` hole-punches that restriction for the whole mapped package. Phase 1 confirmed from an ordinary loopback HTTP page that the project entry is not content-accessible. Any future mapping still requires an exact inventory and current runtime test; never use `contentaccessible=yes` or map secrets, private data, source maps, diagnostics, or privileged implementation without a dedicated security review.
 
@@ -137,15 +138,15 @@ Use this priority order:
 Recommended root state attributes include:
 
 ```text
-[data-mfs-created]
-[data-mfs-mounted]
-[data-mfs-healthy]
-[data-mfs-active]
-[data-mfs-safe-start]
-[data-mfs-failed]
+[data-fennevia-created]
+[data-fennevia-mounted]
+[data-fennevia-healthy]
+[data-fennevia-active]
+[data-fennevia-safe-start]
+[data-fennevia-failed]
 ```
 
-Only a healthy shell may become active. Native-UI hiding rules must depend on `data-mfs-active`. A bootstrap, bridge, CSS, or frontend failure must prevent or remove that attribute.
+Only a healthy shell may become active. Native-UI hiding rules must depend on `data-fennevia-active`. A bootstrap, bridge, CSS, or frontend failure must prevent or remove that attribute.
 
 Native UI is initially hidden rather than removed. This preserves implicit dependencies in Firefox commands, popups, customization, titlebar, and platform integration, and provides a recovery path.
 

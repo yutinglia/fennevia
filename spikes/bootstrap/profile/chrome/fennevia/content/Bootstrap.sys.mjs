@@ -1,13 +1,13 @@
 const MODULE_STATE_KEY = Symbol.for(
-  "my-firefox-shell.bootstrap-module.process-state"
+  "fennevia.bootstrap-module.process-state"
 );
 
 if (typeof Services === "undefined" || !Services.appinfo) {
-  throw new Error("MFS_BOOTSTRAP_SERVICES_UNAVAILABLE");
+  throw new Error("FENNEVIA_BOOTSTRAP_SERVICES_UNAVAILABLE");
 }
 
 if (globalThis[MODULE_STATE_KEY]) {
-  throw new Error("MFS_BOOTSTRAP_DUPLICATE_MODULE_INITIALIZATION");
+  throw new Error("FENNEVIA_BOOTSTRAP_DUPLICATE_MODULE_INITIALIZATION");
 }
 
 const result = Object.freeze({
