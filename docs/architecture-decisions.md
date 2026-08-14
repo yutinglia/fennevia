@@ -1,79 +1,109 @@
 # Architecture Decisions
 
-本文件記錄目前有效的高層決策。重大變更應新增條目，不要靜默改寫歷史理由；若取代舊決策，標記 Superseded。
+This file records the active high-level decisions. Add a new entry for a major change rather than silently rewriting historical reasoning. Mark an older decision as superseded when a later decision replaces it.
 
-## ADR-001：使用 Stock Firefox，而不是 Fork
-
-**Status:** Accepted
-
-使用官方 Firefox binary，透過 AutoConfig + Chrome Registry + privileged runtime 安裝 custom shell。
-
-理由：避免下載、編譯、merge 整個 Firefox source 與維護 release pipeline。代價是依賴 unsupported internal APIs，並受 AutoConfig/runtime hook 限制。
-
-## ADR-002：不建立通用 userChrome Loader
+## ADR-001: Use stock Firefox, not a source fork
 
 **Status:** Accepted
 
-Bootstrap 不掃描 `.uc.js`、不解析 userscript metadata、不提供 arbitrary script sandbox/compatibility。
+Use the official Firefox binary and install the custom shell through AutoConfig, Chrome Registry registration, and a privileged runtime.
 
-理由：本專案只有一個受控 application，通用 loader 的 discovery、legacy compatibility、cache 與 sandbox abstraction 都是無必要負擔。
+**Reasoning:** This avoids downloading, compiling, merging, branding, and releasing the full Firefox source tree. The tradeoff is dependence on unsupported internal APIs and the limits of runtime hooks.
 
-Alice0775、fx-autoconfig 等只作相容性研究來源。
+## ADR-002: Do not build a general-purpose userChrome loader
 
-## ADR-003：以 Chrome Registry 作資源邊界
+**Status:** Accepted
+
+The bootstrap does not scan `.uc.js`, parse userscript metadata, or provide arbitrary-script sandbox and compatibility behavior.
+
+**Reasoning:** This repository contains one controlled application. Generic discovery, legacy compatibility, cache abstraction, and arbitrary userscript execution are unnecessary attack surface and maintenance cost.
+
+Alice0775, fx-autoconfig, and similar projects are compatibility research sources only.
+
+## ADR-003: Use Chrome Registry as the resource boundary
 
 **Status:** Accepted pending spike validation
 
-註冊自有 `chrome://my-firefox-shell/` 與 `resource://my-firefox-shell/` URI，讓 privileged modules、UI assets 與 styles 不依賴 absolute file path。
+Register project-owned `chrome://my-firefox-shell/` and `resource://my-firefox-shell/` URIs so privileged modules, UI assets, and styles do not depend on absolute file paths.
 
-Phase 1 必須驗證 `autoRegister`、import timing、cache 與卸載行為。
+Phase 1 must validate registration, import timing, cache behavior, resource exposure, and removal on the current Firefox stable.
 
-## ADR-004：初期不 Override `browser.xhtml`
-
-**Status:** Accepted
-
-保留 Firefox 原本 main window markup與 includes，在載入後建立 isolated hosts，再收起可見 native shell。
-
-理由：整份 override 需要追蹤 upstream 每次 structural change，維護成本接近未編譯的 fork，且容易漏掉 security/dialog/startup infrastructure。
-
-## ADR-005：Framework 採 Isolated Islands
+## ADR-004: Do not override `browser.xhtml` during the initial roadmap
 
 **Status:** Accepted
 
-UI framework 只 mount 到本專案建立的 XHTML roots。Firefox-owned DOM 不由 framework diff/reconcile。
+Keep Firefox's main-window markup and includes. Add isolated project-owned hosts after load and later hide only replaced visible native UI.
 
-Svelte 5 是初始候選，仍需 production build/XHTML lifecycle spike。若 spike 失敗，可以更換 frontend implementation，而不改 bootstrap/bridge contract。
+**Reasoning:** A complete override would require tracking every upstream structural and security change, making maintenance resemble an uncompiled fork and risking omission of startup, dialog, popup, and security infrastructure.
 
-## ADR-006：Firefox Internals 只經 Bridge
-
-**Status:** Accepted
-
-所有 `gBrowser`、Services、Places、SessionStore、Downloads、commands 等依賴集中於 `src/firefox/` 與少量 runtime bootstrap。
-
-理由：Firefox update 時能在小範圍修復，並保持 UI 可測試與可替換。
-
-## ADR-007：Native UI 採 Health-gated Hide，不刪除
+## ADR-005: Use isolated frontend islands
 
 **Status:** Accepted
 
-Custom shell mount 與 capability checks 成功後才設定 active attribute。CSS 根據 active state 收起 native UI。失敗時 native UI 保持可用。
+The frontend framework mounts only into project-created XHTML roots. Firefox-owned DOM is never reconciled by the framework.
 
-理由：Firefox internal code 可能仍假設 native elements存在；這亦提供 recovery path。
+Svelte 5 is the initial candidate and must pass a production-build and XHTML lifecycle spike. A failed Svelte spike may replace the frontend implementation without changing bootstrap and bridge contracts.
 
-## ADR-008：Overrides 隔離且預設為零
-
-**Status:** Accepted
-
-`patches/` 初期為空。新增任何 manifest `override`、monkey patch 或 internal script replacement 都需要專用 issue、source pin、測試和 removal plan。
-
-## ADR-009：Latest Stable Only，Windows First
+## ADR-006: Access Firefox internals only through bridges
 
 **Status:** Accepted
 
-開發只保證當前 latest Firefox stable；第一個安裝與測試流程以 Windows 為主。不得為舊版加入 compatibility branch。跨平台 path/window behavior 應留有明確 abstraction，但在有測試環境前不宣稱支援。
+Dependencies on `gBrowser`, Services, Places, SessionStore, Downloads, commands, native DOM, and related internals are concentrated in `src/firefox/` and a minimal amount of runtime bootstrap code.
 
-## ADR-010：Build Artifact 不作 Source of Truth
+**Reasoning:** Firefox update fixes remain localized, while UI state and components remain testable and replaceable.
+
+## ADR-007: Hide native UI behind a health gate; do not delete it
 
 **Status:** Accepted
 
-所有 production JS/CSS 由 TypeScript/Svelte/source styles 生成。不得手動修 `dist/`。Build 必須 deterministic、無 runtime CDN、無 dev-server dependency。
+Set the active state only after frontend mount and required capability checks succeed. CSS hides native visible UI only while active. Failure leaves native UI usable.
+
+**Reasoning:** Firefox code may continue to rely on native elements, and the retained DOM provides a recovery path.
+
+## ADR-008: Isolate overrides and default to zero
+
+**Status:** Accepted
+
+`patches/` starts empty. Any manifest override, monkey patch, or internal script replacement requires a dedicated issue, source pin, tests, update process, and removal plan.
+
+## ADR-009: Latest stable only; Windows first
+
+**Status:** Accepted
+
+Development guarantees only the current Firefox stable. The first install and test workflow targets Windows. Do not add historical-version compatibility branches. Do not claim cross-platform support before testing it.
+
+## ADR-010: Generated artifacts are not the source of truth
+
+**Status:** Accepted
+
+Production JavaScript and CSS are generated from TypeScript, Svelte, and source styles. Never hand-edit `dist/`. Builds must be deterministic and free of runtime CDN or dev-server dependencies.
+
+## ADR-011: Failure must expose native Firefox UI
+
+**Status:** Accepted
+
+Unknown, timeout, partial, or failed states do not activate native-UI hiding. Emergency fallback and safe start are release gates rather than optional convenience features.
+
+**Reasoning:** The project modifies the primary browser control surface with system-principal code. A closed failure mode could make recovery impractical.
+
+## ADR-012: No runtime remote executable dependencies
+
+**Status:** Accepted
+
+The installed runtime does not fetch executable JavaScript, CSS, fonts, configuration, templates, analytics scripts, or updates from remote endpoints.
+
+**Reasoning:** Remote content would expand the privileged attack surface, reduce reproducibility, and complicate offline recovery.
+
+## ADR-013: Minimize and redact diagnostics
+
+**Status:** Accepted
+
+Normal diagnostics exclude complete URLs, page titles, search text, history, profile paths, cookies, tokens, and private-window state. More detailed debugging requires explicit local opt-in and must not become a network telemetry path.
+
+## ADR-014: Preserve Firefox security-sensitive UI until separately reviewed
+
+**Status:** Accepted
+
+Permissions, authentication, certificates, file pickers, extension installation, download safety, and other security-sensitive prompts remain native Firefox infrastructure during the initial roadmap.
+
+**Reasoning:** Replacing these surfaces safely is a separate security project and is not required to replace the everyday visible shell.

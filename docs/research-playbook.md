@@ -1,136 +1,169 @@
 # Firefox Research and Debugging Playbook
 
-本文件定義 Firefox update、bootstrap failure、internal API breakage、DOM/CSS 行為改變時的研究順序。目標是找出 upstream 原因，而不是堆疊偶然可用的 workaround。
+This document defines the required investigation order for Firefox updates, bootstrap failures, internal API changes, DOM changes, and CSS behavior changes. The goal is to identify the upstream cause and implement the smallest justified adaptation instead of accumulating accidental workarounds.
 
-## 1. 先建立可重現 evidence
+## 1. Establish reproducible evidence first
 
-每次研究先記錄：
+Begin every investigation with:
 
 ```text
 Date:
 Firefox version:
-Build ID:
+Firefox build ID:
 Channel:
-OS:
+Operating system:
 Profile: clean / existing
 Project commit:
+Startup mode: normal / safe start / failure injection
 Symptom:
-First root error + stack:
+First root error and stack:
 Minimal reproduction:
 ```
 
-使用獨立 profile；先停用其他 userChrome、extension、policy 與 experiment。清楚分辨：
+Use the dedicated development profile. Disable unrelated userChrome files, loaders, extensions, policies, and experiments where practical.
 
-- AutoConfig 沒執行
-- manifest 沒註冊
-- ESM import 失敗
-- window lifecycle 時機錯誤
-- bridge symbol 改變
-- framework/CSS 問題
-- startup cache/舊 artifact
+Classify the failure before changing code:
 
-## 2. 使用 Firefox 自己的工具
+- AutoConfig did not execute;
+- the manifest did not register;
+- the privileged ESM import failed;
+- startup or window-lifecycle timing changed;
+- a bridge symbol, event, or property changed;
+- an expected DOM insertion point changed;
+- framework or CSS behavior changed;
+- startup cache or a stale build artifact is executing;
+- installation or profile-path selection is wrong.
 
-優先查看：
+## 2. Use Firefox's own diagnostic tools
 
-- Browser Console：startup/import/runtime exception。
-- Browser Toolbox：browser chrome DOM、computed style、event listener、window global。
-- `about:support`：version、build ID、profile path。
-- `about:profiles`：確定正在測試的 profile。
-- 必要時開啟更小的 diagnostic logging；不要長期預設輸出 browsing data。
+Inspect:
 
-先找第一個 root error。後續 `null`、missing element 或 mount failure 常只是 cascading result。
+- Browser Console for startup, import, and runtime exceptions;
+- Browser Toolbox for browser-chrome DOM, namespaces, computed style, events, globals, and retained native UI;
+- `about:support` for version, build ID, executable, and profile information;
+- `about:profiles` to confirm the active test profile;
+- narrowly scoped diagnostic logging when needed.
 
-## 3. 先查維護中的 compatibility canary
+Find the first causal error. Later missing-element, null-reference, or mount errors are often consequences.
 
-這些專案不是 dependency，但通常會很早遇到 AutoConfig、sandbox、script loader、Chrome Registry 或 browser DOM 變動。
+Do not enable logging that records browsing data by default. Follow `docs/security-and-privacy.md`.
+
+## 3. Check maintained compatibility canaries
+
+These projects are not dependencies, but they often encounter AutoConfig, sandbox, script-loader, Chrome Registry, or browser-DOM changes early.
 
 ### Alice0775 userChrome.js
 
-- Repository：https://github.com/alice0775/userChrome.js
-- 查看最新 commit、最近 Firefox version directory、root loader、issue。
-- 搜尋 exception text、Bug number、改名 symbol、`@version` 註記。
-- Alice 常直接按 Firefox 版本保存修正；不要只看最舊或最熟悉的檔案。
+Repository: `https://github.com/alice0775/userChrome.js`
+
+Inspect:
+
+- the latest relevant commit;
+- the current Firefox-version directory or active loader file;
+- version notes and referenced Firefox bugs;
+- related issues and pull requests;
+- changes involving sandboxing, compilation, module loading, window filtering, or startup behavior.
+
+Do not assume the historically familiar directory is the current implementation.
 
 ### MrOtherGuy fx-autoconfig
 
-- Repository：https://github.com/MrOtherGuy/fx-autoconfig
-- 主要研究 program `config.js`、`chrome.manifest`、`boot.sys.mjs` 與最近 commit。
-- 特別適合查 manifest registration、module loading、window lifecycle 與 startup cache。
+Repository: `https://github.com/MrOtherGuy/fx-autoconfig`
+
+Inspect current:
+
+- program `config.js`;
+- `chrome.manifest`;
+- `boot.sys.mjs`;
+- module-loading and window-lifecycle utilities;
+- recent commits and issues involving startup cache, registration, or Firefox version changes.
 
 ### xiaoxiaoflood firefox-scripts
 
-- Repository：https://github.com/xiaoxiaoflood/firefox-scripts
-- 適合交叉確認 AutoConfig/userChromeJS bootstrap 與 privileged extension patterns。
-- Repository 更新時間與特定 component 維護狀態要分開判斷。
+Repository: `https://github.com/xiaoxiaoflood/firefox-scripts`
+
+Use it to cross-check AutoConfig, userChromeJS bootstrap, privileged extension patterns, and current Firefox compatibility. Judge maintenance per component and commit, not only by repository activity.
 
 ### aminomancer uc.css.js
 
-- Repository：https://github.com/aminomancer/uc.css.js
-- 主要研究 `chrome.manifest`、content/skin/resource registration、style sheet service、script/resource override。
-- 大量 override 是研究案例，不是本專案預設做法。
+Repository: `https://github.com/aminomancer/uc.css.js`
 
-研究 loader fix 時，回答三個問題：
+Inspect:
 
-1. Firefox upstream 改了甚麼？
-2. loader 的 fix 哪部分是 generic loader 歷史包袱？
-3. 本專案真正需要的最小修正是甚麼？
+- `chrome.manifest`;
+- content, skin, and resource registration;
+- stylesheet service use;
+- script and resource overrides;
+- current compatibility changes.
 
-## 4. Searchfox 是主要 source browser
+Its large override set is a research case, not this project's default architecture.
 
-- Searchfox：https://searchfox.org/
-- Browser main window：https://searchfox.org/mozilla-central/source/browser/base/content/browser.xhtml
-- Navigator toolbox：https://searchfox.org/mozilla-central/source/browser/base/content/navigator-toolbox.inc.xhtml
+For every loader fix, answer:
 
-建議搜尋順序：
+1. What changed in Firefox upstream?
+2. Which part of the fix exists only because the project is a generic or legacy-compatible loader?
+3. What is the minimum behavior required by this project?
+4. What evidence proves that minimum behavior is sufficient?
 
-1. exact exception text。
-2. 失效的 symbol/class/id/URI。
-3. symbol definition。
-4. 所有 callers/usages。
-5. 附近 tests。
-6. blame/annotate 與關聯 Bugzilla。
+Record the exact commit SHA or retrieval date for unstable references.
 
-不要只看 definition。Firefox internal API 的真正 contract 往往要從 callers、tests 和 lifecycle 判斷。
+## 4. Use Searchfox as the primary source browser
 
-常用搜尋概念：
+Searchfox: `https://searchfox.org/`
 
-```text
-"symbolName"
-"chrome://browser/content/..."
-"element-id"
-"TabOpen" / "TabSelect"
-path:browser/components/...
-```
+Common starting points:
 
-Path 可能跨版本搬動，所以先以 symbol 搜尋，再記錄當前 path。
+- `browser/base/content/browser.xhtml`
+- `browser/base/content/navigator-toolbox.inc.xhtml`
+- `browser/components/tabbrowser/`
+- `browser/components/urlbar/`
+- `browser/components/sidebar/`
+- `browser/components/sessionstore/`
 
-## 5. 官方 source、docs 與 bug history
+Recommended search order:
 
-- Official Firefox source：https://github.com/mozilla-firefox/firefox
-- Firefox Source Docs：https://firefox-source-docs.mozilla.org/
-- Chrome Registration：https://firefox-source-docs.mozilla.org/build/buildsystem/chrome-registration.html
-- Tabbed Browser / `gBrowser`：https://firefox-source-docs.mozilla.org/browser/components/tabbrowser/docs/index.html
-- AutoConfig：https://support.mozilla.org/en-US/kb/customizing-firefox-using-autoconfig
-- Bugzilla：https://bugzilla.mozilla.org/
+1. exact exception text;
+2. failing symbol, class, DOM ID, URI, or preference;
+3. definition;
+4. all current callers and usages;
+5. nearby tests;
+6. blame or annotate history;
+7. linked Bugzilla issue and upstream commit.
 
-需要跨版本理解時：
+Do not inspect only a definition. The practical contract of an internal API is often visible in callers, tests, and lifecycle ordering.
 
-- 找修改 symbol/path 的 commit。
-- 讀 commit message 與 linked Bugzilla。
-- 比較修改前後 callers/tests。
-- 確認 change 已進 stable，而不是只在 Nightly/main。
+Paths move across versions, so search by symbol first and record the current path after verification.
 
-## 6. GitHub code/history 查詢
+## 5. Use official source, documentation, and bug history
 
-GitHub 適合：
+Primary sources:
 
-- 搜 official mirror 的 commit/PR。
-- 比較 loader fix。
-- 找其他 browser frontend 如何使用同一 Firefox API。
-- 對 source path 做跨 repository search。
+- Official Firefox source: `https://github.com/mozilla-firefox/firefox`
+- Firefox Source Docs: `https://firefox-source-docs.mozilla.org/`
+- Chrome registration: `https://firefox-source-docs.mozilla.org/build/buildsystem/chrome-registration.html`
+- Tabbed browser documentation: `https://firefox-source-docs.mozilla.org/browser/components/tabbrowser/docs/index.html`
+- AutoConfig documentation: `https://support.mozilla.org/kb/customizing-firefox-using-autoconfig`
+- Bugzilla: `https://bugzilla.mozilla.org/`
 
-搜尋時盡量使用英文 exact term。例：
+When version history matters:
+
+- identify the commit that changed the symbol or path;
+- read its commit message and linked Bugzilla issue;
+- compare callers and tests before and after the change;
+- confirm whether the change reached stable, beta, or only central/nightly;
+- do not apply a nightly-only fix to stable without evidence.
+
+## 6. Use GitHub for code and history queries
+
+GitHub is useful for:
+
+- official mirror commits and pull requests;
+- loader fix comparisons;
+- cross-repository searches for a Firefox symbol;
+- Firefox derivative frontend patterns;
+- exact file history where Searchfox context is insufficient.
+
+Prefer exact English terms. Example queries:
 
 ```text
 repo:mozilla-firefox/firefox "nsIComponentRegistrar" "autoRegister"
@@ -139,33 +172,36 @@ repo:MrOtherGuy/fx-autoconfig "startup cache"
 repo:aminomancer/uc.css.js "override chrome://browser"
 ```
 
-不要以 GitHub search snippet 代替完整 source context。
+Do not treat a GitHub search snippet as sufficient source context. Open the file, commit, and surrounding code.
 
-## 7. Firefox derivative 只作 pattern 參考
+## 7. Treat Firefox derivatives as pattern references only
 
-Floorp/Noraneko/Zen 等可以提供現代 frontend、build、patch 分層的設計線索，但它們可能：
+Floorp, Noraneko, Zen, and other derivatives may demonstrate modern frontend, build, bridge, or patch-layer patterns. They may also rely on:
 
-- fork/build Firefox source
-- 有自有 patch pipeline
-- 使用 stock Firefox 不可用的 build-time hook
+- a Firefox source fork;
+- build-time patching;
+- custom compile flags;
+- packaging hooks unavailable to stock Firefox;
+- a proprietary or project-specific runtime.
 
-採用其 pattern 前，明確標記哪些能力依賴 fork，哪些可在本專案 runtime 使用。
+Before adopting a pattern, document which part works through stock-Firefox runtime hooks and which part requires a fork.
 
-## 8. 外部程式碼與 license
+## 8. External code and licensing
 
-- 先查 repository/file license。
-- 只抄 concept 不代表可複製具體 implementation。
-- 需要複製時保留 attribution、license header 與來源 commit。
-- 無明確 license 的程式碼預設不可直接納入。
-- 將第三方 code 和本專案原創 code 分開，避免日後無法重新授權。
+- Verify the repository and file license before copying implementation code.
+- Copying a concept is not the same as copying a concrete implementation.
+- Preserve required attribution, license headers, and source commit references.
+- Treat code with no clear license as unavailable for direct inclusion.
+- Keep third-party code separate enough that provenance and relicensing remain understandable.
 
-## 9. Research Record 模板
+## 9. Required research record
 
 ```markdown
 ## Environment
-- Firefox:
+- Firefox version:
 - Build ID:
-- OS:
+- Channel:
+- Operating system:
 - Profile:
 - Project commit:
 
@@ -173,27 +209,33 @@ Floorp/Noraneko/Zen 等可以提供現代 frontend、build、patch 分層的設�
 
 ## Minimal reproduction
 
-## Evidence
+## First causal evidence
 - Browser Console:
 - Browser Toolbox:
 
 ## Sources checked
-- Alice0775:
-- fx-autoconfig:
-- xiaoxiaoflood:
-- aminomancer:
-- Searchfox:
-- Mozilla commit/Bugzilla:
+- Alice0775 commit/issue:
+- fx-autoconfig commit/issue:
+- xiaoxiaoflood commit/issue:
+- aminomancer commit/issue:
+- Searchfox path/revision:
+- Official Firefox commit/Bugzilla:
 
 ## Upstream change
 
+## Loader-specific baggage identified
+
 ## Options considered
 
-## Decision
+## Decision and minimum adaptation
 
-## Validation
+## Security and privacy effects
 
-## Follow-up / compatibility risk
+## Validation performed
+
+## Remaining compatibility risk
+
+## Follow-up
 ```
 
-長期有效結論移到 `docs/`；一次性的版本事故可留在 issue，但必須有完整來源和驗證。
+Move durable conclusions into `docs/`. A one-version incident may remain in an issue, but its evidence and validation must be complete.

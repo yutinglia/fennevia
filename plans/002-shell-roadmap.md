@@ -1,64 +1,71 @@
-# Shell 實作路線
+# Shell Implementation Roadmap
 
-本文件描述 bootstrap 成功後，custom browser chrome 應以甚麼順序建立。所有 UI 都先在 Firefox native UI 保留的狀態下驗證。
+This document defines the implementation order after the bootstrap chain is proven. Every custom UI slice must first be tested while Firefox native UI remains visible.
 
-## Milestone A：Isolated Shell Host
+## Milestone A: Isolated shell hosts
 
-建立每個 browser window 專屬的 XHTML host：
+Create project-owned XHTML mount islands for each managed browser window, initially including:
 
-- top/chrome host
-- optional sidebar host
-- overlay host
+- a top or primary chrome host;
+- an optional sidebar host;
+- an overlay host.
 
-要求：
+Requirements:
 
-- 使用 XHTML namespace 明確建立。
-- host id/data attribute 由本專案 namespace 管理。
-- Svelte 只管理 host descendants。
-- host 可完整 remove，並執行 framework unmount。
-- 不移動或刪除 Firefox native DOM。
+- Create hosts explicitly in the XHTML namespace.
+- Use project-prefixed IDs, classes, attributes, and custom events.
+- Let the frontend framework manage only host descendants.
+- Support complete removal and framework unmount.
+- Do not move, remove, or reconcile Firefox-owned DOM.
+- Render only a diagnostic surface containing non-sensitive runtime, version, window-type, and health information.
 
-完成後只 render diagnostic panel，例如 version、window type、mount status。
+## Milestone B: Mount gate and recovery
 
-## Milestone B：Mount Gate 與 Recovery
+Maintain separate states for:
 
-建立兩個分離狀態：
+- `created`: hosts exist;
+- `mounted`: frontend mount completed;
+- `healthy`: required capabilities and self-checks passed;
+- `active`: native visible UI may be hidden;
+- `failed` and `disposed`.
 
-- `mounted`：framework 成功 mount。
-- `active`：健康檢查通過，允許收起 native UI。
+During this milestone, never enter `active` automatically. Validate the state machine and add:
 
-第一階段永遠不自動進入 `active`，只驗證 state machine。必須加入：
+- an emergency privileged keyboard toggle;
+- a safe-start preference or sentinel;
+- fatal-error reporting;
+- deterministic cleanup on unload;
+- failure-injection hooks available only in development mode.
 
-- emergency keyboard toggle
-- safe-start pref 或 sentinel
-- fatal error banner/log
-- cleanup on unload
+## Milestone C: Frontend build and styling
 
-## Milestone C：Frontend Build 與 Styling
+Validate a Svelte 5 production bundle for:
 
-驗證 Svelte 5 production bundle：
+- reactive state updates;
+- event handlers;
+- conditional rendering;
+- mount, unmount, and remount;
+- normal, second, and private-window behavior;
+- correct XHTML element namespace;
+- absence of dev-server, HMR, CDN, and runtime network dependencies.
 
-- state updates
-- event handlers
-- mount/unmount
-- second/private window
-- XHTML element namespace
-- no runtime fetch/import from dev server
+Evaluate styling in this order:
 
-CSS 選項依序評估：
+1. Plain CSS scoped from a unique shell root.
+2. Svelte component CSS and extraction behavior.
+3. Manifest or runtime stylesheet registration only where it provides a verified benefit.
+4. Tailwind utility generation only if it materially improves the project.
+5. Shadow DOM only when it solves a demonstrated isolation problem without harming Firefox theme variables, accessibility, popups, or focus behavior.
 
-1. 單一 scoped stylesheet，只從 shell root 起始。
-2. manifest `style` overlay 是否只用於載入 shell/native integration CSS。
-3. Tailwind utility generation；如採用，禁用 Preflight 並使用 prefix。
-4. Shadow DOM 只在確實解決 isolation 問題時考慮，不能妨礙 Firefox theme variables/accessibility。
+If Tailwind is adopted, disable Preflight, use a project-specific prefix, and guarantee that generated selectors cannot reset native Firefox chrome.
 
-## Milestone D：Firefox Bridge
+## Milestone D: Firefox bridge
 
-先建立最小 interface，不做大型 service layer：
+Start with small interfaces rather than a large service framework. A tabs contract may resemble:
 
 ```ts
 interface BrowserTabsBridge {
-  snapshot(): TabSnapshot[];
+  snapshot(): readonly TabSnapshot[];
   subscribe(listener: (event: TabEvent) => void): () => void;
   select(tabId: string): void;
   close(tabId: string): void;
@@ -66,88 +73,93 @@ interface BrowserTabsBridge {
 }
 ```
 
-同樣建立 navigation bridge。Native tab element/reference 不能成為 Svelte serializable state；bridge 自己維護 mapping。
+Create a similarly small navigation contract. Native tab, browser, and window references must never become serializable Svelte state. The bridge owns opaque-ID-to-native-handle mappings and their cleanup.
 
-## Milestone E：Custom Tab Strip MVP
+## Milestone E: Custom tab strip MVP
 
-功能順序：
+Implement in this order:
 
-1. 顯示 tabs、selected state、title、favicon fallback。
-2. select/new/close。
-3. pinned tabs。
-4. loading/attention/audio state。
-5. reorder/drag。
-6. context actions。
+1. tab order, selected state, title, and favicon fallback;
+2. select, new, and close actions;
+3. pinned tabs;
+4. loading, attention, and audio state as separately justified additions;
+5. reorder and drag behavior;
+6. context actions.
 
-前 1–3 完成前，不處理複雜 drag/drop 或 tab groups。
+Do not begin complex drag-and-drop, multi-select, groups, or workspace behavior before the first three items are stable.
 
-## Milestone F：Navigation 與 Address Input MVP
+## Milestone F: Navigation and address input MVP
 
-先完成：
+Implement:
 
-- back/forward enabled state
-- reload/stop
-- new tab
-- current URI/title/security placeholder
-- input submit：URL 與 search 的基本分流
+- back and forward enabled state;
+- back, forward, reload, stop, and new-tab actions;
+- selected-tab URI and title display as plain data;
+- an address input with independent editing state;
+- basic URL and search submission through Firefox's existing semantics.
 
-不要在 MVP 重寫完整 Firefox Urlbar providers、suggestions、search modes、extension integration。可先經由 Firefox 現有 command/navigation capability，後續另開 research issue。
+Do not reimplement Firefox Urlbar providers, rich suggestions, autofill, search modes, extension integration, identity UI, or permission UI in the MVP. Research the current Firefox submission path and keep any temporary native controller dependency behind the bridge.
 
-## Milestone G：Sidebar MVP
+## Milestone G: Sidebar MVP
 
-建立 shell-owned sidebar layout，初期可只放：
+Create a project-owned sidebar layout that can initially contain:
 
-- tabs/workspaces placeholder
-- bookmarks/history adapter 的 read-only prototype
-- settings/debug panel
+- tabs or workspaces placeholders clearly marked as incomplete;
+- optional read-only bookmarks or history prototypes;
+- settings and non-sensitive diagnostics;
+- an explicit native-fallback action.
 
-Firefox native sidebar 保留，直到 custom sidebar 已能穩定 mount、resize、hide/show 和 cleanup。
+Keep the Firefox native sidebar intact until the custom sidebar can mount, resize, hide, show, restore focus, and dispose reliably.
 
-## Milestone H：收起 Native Shell
+## Milestone H: Hide the native visible shell
 
-只有 tabs、navigation、address input 和 recovery 都通過後才進行。
+Begin only after tabs, navigation, address input, sidebar, safe start, emergency fallback, and failure injection are working.
 
-收起目標通常包括：
+Candidates to hide after current-source validation include:
 
-- `#navigator-toolbox`
-- native tabs toolbar
-- native navbar/urlbar
-- bookmarks toolbar
-- Firefox sidebar launcher/box
+- visible parts of `#navigator-toolbox`;
+- the native tab strip;
+- native navigation and Urlbar UI;
+- the bookmarks toolbar;
+- the native sidebar launcher, box, and splitter.
 
-保留目標包括：
+Preserve:
 
-- browser content/tabbox
-- commands/controllers
-- popup/permission/dialog infrastructure
-- notification UI，除非已有替代方案
-- DevTools
-- window controls，直到 custom titlebar 方案單獨驗證
+- browser content and tabbox infrastructure;
+- commands and controllers;
+- popup, permission, authentication, certificate, and dialog infrastructure;
+- notifications unless a reviewed replacement exists;
+- DevTools and Browser Toolbox;
+- native titlebar and window controls until a separate platform-specific issue validates replacements.
 
-使用 root attribute gate，不用永久全域 `display:none`。不要 `remove()`。
+Use a reversible root-state gate. Do not call `remove()` on native infrastructure and do not use a full `browser.xhtml` override.
 
-## Milestone I：Hardening
+## Milestone I: Hardening
 
-- normal/private/second window
-- fullscreen
-- customize mode
-- browser restart/session restore
-- failed build/missing CSS/missing entry
-- startup cache
-- update compatibility
-- memory/listener leak checks
-- install/update/uninstall scripts
+Validate:
 
-## 延後功能
+- cold start, restart, and session restore;
+- normal, second, and private windows;
+- fullscreen and customize mode;
+- Browser Toolbox and DevTools;
+- permission, download, notification, authentication, and extension-install prompts where reproducible;
+- broken manifest, entry, UI bundle, stylesheet, and bridge capabilities;
+- startup cache and stale artifacts;
+- repeated window and tab lifecycle cleanup;
+- install, update, disable, and uninstall workflows;
+- dependency, source-map, logging, and resource-exposure policies.
 
-以下必須另開 plan/issue：
+## Deferred work
 
-- 完整 Urlbar suggestion engine
-- Firefox View replacement
-- permissions/identity panel replacement
-- downloads manager replacement
-- extension toolbar/action replacement
-- custom titlebar/window controls
-- workspace/session model
-- `browser.xhtml` 或 internal component override
-- cross-platform installer/release packaging
+The following require separate plans and issues:
+
+- complete Urlbar suggestion and provider UI;
+- Firefox View replacement;
+- identity and permission panel replacement;
+- full Downloads manager replacement;
+- extension toolbar and action replacement;
+- custom titlebar and window controls;
+- workspace and session model;
+- complete bookmarks and history management;
+- any `browser.xhtml` or internal-component override;
+- cross-platform installer and release packaging.

@@ -1,44 +1,47 @@
-# Bootstrap 與 Chrome Package 可行性 Spike
+# Bootstrap and Chrome Package Feasibility Spike
 
-## 目的
+## Purpose
 
-用最少程式碼證明以下啟動鏈在當前 Firefox stable 可可靠運作：
+Use the smallest possible implementation to prove that the following startup chain works reliably on the current Firefox stable:
 
 ```text
-Firefox program AutoConfig
-  → locate active profile chrome directory
-  → register profile/chrome/my-firefox-shell/chrome.manifest
-  → import one privileged Bootstrap.sys.mjs
-  → observe browser windows
+Firefox program-directory AutoConfig
+  -> locate the active profile chrome directory
+  -> register profile/chrome/my-firefox-shell/chrome.manifest
+  -> import one privileged Bootstrap.sys.mjs
+  -> observe browser-window lifecycle
 ```
 
-這個 spike 不建立通用 loader、不掃描 scripts、不解析 metadata，也不 mount 正式 UI。
+This spike does not create a general-purpose loader, scan scripts, parse metadata, or mount the production UI.
 
-## 需要回答的問題
+## Questions the spike must answer
 
-1. AutoConfig 執行時可用的 global/privileged APIs 是甚麼？
-2. `UChrm` 是否能可靠解析目前 profile 的 chrome directory？
-3. `Components.manager.QueryInterface(Ci.nsIComponentRegistrar).autoRegister(manifestFile)` 在當前 stable 是否可用？
-4. manifest 註冊後，`ChromeUtils.importESModule()` 可否立即從自有 `chrome://` 或 `resource://` URI 載入 entry？
-5. 註冊時機是否早於第一個 browser window 的必要 lifecycle hook？
-6. 正常、第二個、private window 分別會在何時被觀察到？
-7. 修改 bundle/manifest 後是否受 startup cache 影響？需要甚麼 deterministic invalidation 流程？
-8. manifest 不存在、entry syntax error、import error 時，Firefox 是否仍以原生 UI 啟動？
-9. 如何提供不進入 custom shell 的 safe-start switch？
-10. 安裝與移除需改動哪些 Firefox program/profile files？
+1. Which globals and privileged APIs are available when AutoConfig runs?
+2. Does `UChrm` reliably resolve the active profile chrome directory?
+3. Is `Components.manager.QueryInterface(Ci.nsIComponentRegistrar).autoRegister(manifestFile)` available on the current stable build?
+4. Can `ChromeUtils.importESModule()` immediately load an entry through a newly registered `chrome://` or `resource://` URI?
+5. Does registration occur early enough for the required first-window lifecycle hook?
+6. How are an existing normal window, a second window, and a private window observed?
+7. How do manifest and bundle changes interact with startup cache, and what deterministic invalidation procedure is required?
+8. Do a missing manifest, malformed manifest, syntax error, or failed import leave Firefox starting with native UI?
+9. Which safe-start mechanism can disable shell initialization before activation?
+10. Which Firefox program-directory and profile files are required for install and removal?
+11. Which files or URI mappings become content-accessible, and how is unintended exposure prevented?
 
-## 參考實作，但不可直接照抄
+## Reference implementations, not dependencies
 
-`MrOtherGuy/fx-autoconfig` 的 `program/config.js` 展示了一個值得驗證的最小模式：從 `UChrm` 找 manifest、呼叫 component registrar 的 `autoRegister()`，再 import 一個 `boot.sys.mjs`。這只作為 research seed；本專案不需要它後續的 script discovery/runtime。
+`MrOtherGuy/fx-autoconfig` currently demonstrates a useful research pattern: resolve a manifest beneath `UChrm`, call the component registrar's `autoRegister()`, and import a privileged `boot.sys.mjs`. Treat this as a research seed only. This project does not need its script discovery and compatibility runtime.
 
-同時檢查：
+Also inspect:
 
-- `alice0775/userChrome.js` 最新對 AutoConfig、sandbox、compile/import 變更的適配。
-- `xiaoxiaoflood/firefox-scripts` 的 current bootstrap。
-- `aminomancer/uc.css.js` 如何註冊自有 content/skin/resource 與 overrides。
-- Searchfox 中 `nsIComponentRegistrar.autoRegister`、Chrome Registry 與 browser startup 的當前 callers。
+- the latest `alice0775/userChrome.js` changes related to AutoConfig, sandboxing, compile/import behavior, and Firefox startup changes;
+- the current bootstrap in `xiaoxiaoflood/firefox-scripts`;
+- `aminomancer/uc.css.js` for content, skin, resource, stylesheet, and override registration patterns;
+- Searchfox and official Firefox source for current callers of `nsIComponentRegistrar.autoRegister`, Chrome Registry code, startup lifecycle, and cache behavior.
 
-## 建議的臨時檔案
+Record the exact commit SHA or source revision used for every unstable reference.
+
+## Suggested temporary layout
 
 ```text
 spikes/bootstrap/
@@ -50,44 +53,50 @@ spikes/bootstrap/
     Bootstrap.sys.mjs
 ```
 
-最初 manifest 只應包含自有 namespace，例如：
+The first manifest should contain only project-owned namespace declarations, for example:
 
 ```text
 content my-firefox-shell ./
 resource my-firefox-shell ./
 ```
 
-不要在本 spike 使用 `override`。
+Do not use `override` in this spike. Do not add `contentaccessible=yes` without a separately documented requirement.
 
-## Bootstrap 行為要求
+## Bootstrap behavior requirements
 
-- 第一行遵守 AutoConfig 格式要求。
-- 所有 path resolution 有明確錯誤訊息。
-- manifest 不存在時只 log 並退出，不改變 browser UI。
-- entry import 失敗時保留完整 stack。
-- 同一 process 只初始化 global runtime 一次。
-- runtime 對每個 browser window 只初始化一次。
-- bootstrap 不建立 framework、CSS 或 UI。
-- 不下載任何資源。
+- Follow the current AutoConfig file-format requirement, including its first-line behavior.
+- Resolve every path explicitly and report useful errors.
+- If the manifest does not exist, log the failure and exit without changing browser UI.
+- If entry import fails, retain the complete stack and phase information.
+- Initialize the process-global runtime at most once.
+- Initialize each eligible browser window at most once.
+- Do not create framework UI, styles, or business logic.
+- Do not download or remotely import any resource.
+- Do not log browsing URLs, titles, or private-window content.
+- Keep all failure paths fail open.
 
-## Evidence 要求
+## Required evidence
 
-Issue/PR 必須附上：
+The issue or pull request must include:
 
-- Firefox version、build ID、channel、OS。
-- 實際 program/profile layout。
-- 冷啟動 Browser Console log。
-- normal、second、private window 的 lifecycle log。
-- manifest missing 與 entry syntax error 的失敗測試。
-- 完整 uninstall 後的驗證。
-- 使用過的 upstream source/loader commit link。
+- Firefox version, build ID, channel, operating system, and project commit;
+- the actual program/profile layout used;
+- cold-start Browser Console logs;
+- normal, second, and private-window lifecycle logs;
+- missing-manifest and broken-entry failure tests;
+- startup-cache observations and the validated cleanup command;
+- complete uninstall validation;
+- the upstream and loader source revisions consulted;
+- an explanation of which loader behavior was intentionally not adopted.
 
 ## Acceptance criteria
 
-- 在 clean dev profile 可重複完成至少三次冷啟動。
-- 自有 ESM entry 可從已註冊 URI 載入。
-- 第二個 window 不會建立第二份 process-global runtime。
-- private window 行為被明確定義並驗證。
-- 任一 bootstrap failure 都不會隱藏 native UI。
-- 移除 AutoConfig files 與 package 後，Firefox 正常啟動且沒有殘留錯誤。
-- 結果更新到 `docs/architecture.md` 與 `docs/testing-and-recovery.md`。
+- A clean development profile completes at least three repeatable cold starts.
+- A project-owned ESM entry loads through a registered URI.
+- A second browser window does not create a second process-global runtime.
+- Private-window behavior is explicitly defined and tested.
+- Every bootstrap failure leaves native Firefox UI fully usable.
+- Removal of the AutoConfig files and project package restores stock startup with no residual project error.
+- Startup-cache behavior and required invalidation are documented from evidence.
+- Resource exposure is inspected and no unintended privileged asset is content-accessible.
+- Results update `docs/architecture.md`, `docs/firefox-internals-map.md`, `docs/security-and-privacy.md`, and `docs/testing-and-recovery.md`.

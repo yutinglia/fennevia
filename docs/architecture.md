@@ -1,184 +1,201 @@
 # Architecture
 
-## 1. 系統邊界
+## 1. System boundary
 
-本專案不是 Gecko embedder，也不是 Firefox fork。Firefox process、browser windows、content processes、tabs、networking、security model 與 session persistence 仍由 stock Firefox 提供。
+This project is neither a Gecko embedder nor a Firefox source fork. Stock Firefox continues to own the process model, browser windows, content processes, tabs, networking, security model, web-content isolation, and session persistence.
 
-本專案擁有的是可見 browser shell 與一層 privileged integration runtime。
+This project owns the visible browser shell and a privileged integration runtime.
 
 ```text
-┌────────────────────────────────────────────┐
-│ Svelte shell                               │
-│ components / local state / accessibility   │
-└───────────────────┬────────────────────────┘
-                    │ plain typed contracts
-┌───────────────────▼────────────────────────┐
-│ Application state / controllers            │
-└───────────────────┬────────────────────────┘
-                    │ bridge API
-┌───────────────────▼────────────────────────┐
-│ Firefox bridge                             │
-│ gBrowser / commands / Places / Downloads   │
-└───────────────────┬────────────────────────┘
-                    │ privileged APIs
-┌───────────────────▼────────────────────────┐
-│ Stock Firefox browser chrome + Gecko        │
-└────────────────────────────────────────────┘
++--------------------------------------------+
+| Svelte shell                               |
+| components / local state / accessibility   |
++-------------------+------------------------+
+                    | plain typed contracts
++-------------------v------------------------+
+| Application state and controllers          |
++-------------------+------------------------+
+                    | bridge API
++-------------------v------------------------+
+| Firefox bridge                             |
+| gBrowser / commands / Places / Downloads   |
++-------------------+------------------------+
+                    | privileged APIs
++-------------------v------------------------+
+| Stock Firefox browser chrome and Gecko     |
++--------------------------------------------+
 ```
 
-## 2. 啟動層
+## 2. Startup layer
 
 ### AutoConfig
 
-只做：
+AutoConfig performs only these tasks:
 
-1. 找到 active profile 的 package manifest。
-2. 註冊 Chrome Registry manifest。
-3. 載入單一 privileged bootstrap entry。
-4. 在 fatal failure 時留下 log 並退出。
+1. Locate the active profile's project manifest.
+2. Register the Chrome Registry manifest.
+3. Import one privileged bootstrap entry point.
+4. Report fatal failure and exit without hiding native UI.
 
-不做 script discovery、hot reload、metadata、sandbox abstraction、UI 或 business logic。
+It does not implement script discovery, hot reload, metadata parsing, sandbox abstraction, frontend UI, or application logic.
 
 ### Chrome Registry package
 
-提供穩定的 logical URI：
+The package provides stable logical URIs:
 
 ```text
 chrome://my-firefox-shell/content/...
 resource://my-firefox-shell/...
 ```
 
-Manifest 初期只使用 `content` / `resource`，是否使用 `style` 由 CSS spike 決定。`override` 預設禁止。
+The initial manifest uses only source-validated `content` and `resource` declarations. Use of manifest `style` is decided by the CSS spike. `override` is disabled by default.
 
-注意：`resource://` 可能被 web content 引用；不可把 secret、private data 或不應暴露的檔案放進 content-accessible mapping。
+A `resource://` mapping may be reachable from contexts beyond the privileged runtime depending on registration details. Do not place secrets, private data, source maps, or unintended content-accessible assets in exposed mappings. Do not use `contentaccessible=yes` without a dedicated security review.
 
-## 3. Runtime 層
+## 3. Runtime layer
 
-Process-global runtime 負責：
+The process-global runtime owns:
 
-- bootstrap state
-- window discovery
-- global logging/version info
-- capability checks
-- safe-start state
+- bootstrap state;
+- window discovery;
+- global version and diagnostic metadata;
+- capability checks shared across windows;
+- safe-start state;
+- global shutdown.
 
-Per-window runtime 負責：
+A per-window runtime owns:
 
-- 建立 shell hosts
-- 建立該 window 的 Firefox bridge
-- mount/unmount frontend
-- native UI gate
-- listener/observer cleanup
+- project XHTML hosts;
+- that window's Firefox bridge instances;
+- frontend mount and unmount;
+- health state and native-UI gate;
+- event, observer, timer, stylesheet, and mapping cleanup.
 
-每個 window 必須有單一 disposer；shutdown 順序不能依賴 GC。
+Each window must have a single idempotent disposer. Shutdown behavior must not depend on garbage collection.
 
-## 4. Firefox Bridge
+## 4. Firefox bridge
 
-`src/firefox/` 是唯一允許直接依賴 Firefox internal APIs 的主要位置。
+`src/firefox/` is the primary location allowed to depend directly on Firefox internal APIs.
 
-Bridge 應：
+A bridge should:
 
-- 將 native object 轉換成小型 snapshot。
-- 將 native events 轉換成穩定的 application events。
-- 提供 explicit subscribe/unsubscribe。
-- 在 runtime 驗證 required symbol。
-- 以 capability 表達 optional feature，而不是讓 component 猜測。
-- 記錄每個 internal dependency 的 Searchfox source/reference。
+- convert native objects into small immutable snapshots;
+- convert native events into stable application events;
+- provide explicit subscription and unsubscription;
+- validate required symbols at runtime;
+- model optional features as capabilities;
+- keep native handles private;
+- document each internal dependency with a current source reference and observed Firefox build.
 
-Bridge 不應：
+A bridge should not:
 
-- 把 `gBrowser`、native tab DOM 或 `Services` 暴露給 Svelte。
-- 假裝 internal API 跨版本穩定。
-- 吞掉 upstream exception。
-- 在單一巨型 module 包含所有 Firefox 功能。
+- expose `gBrowser`, native tab DOM, browser elements, windows, or `Services` to Svelte;
+- pretend an internal API is stable across versions;
+- swallow upstream exceptions;
+- combine unrelated Firefox subsystems into one large module;
+- store privileged objects in serializable state or diagnostics.
 
-## 5. Frontend 層
+## 5. Application and frontend layers
 
-Svelte 只 mount 到本專案建立的 XHTML element。不得讓 Svelte 接管 `navigator-toolbox`、`tabbrowser-tabbox`、native sidebar 或其他 Firefox-owned children。
+The application layer coordinates ordinary typed state, controllers, and feature policy. It must be usable without importing Firefox implementation modules directly.
 
-Frontend 只處理：
+Svelte mounts only into project-created XHTML elements. It must not reconcile `navigator-toolbox`, `tabbrowser-tabbox`, the native sidebar, popup sets, or any other Firefox-owned children.
 
-- render
-- local interaction state
-- accessible UI semantics
-- 呼叫 application controller/bridge contract
+The frontend owns:
 
-Frontend 不負責：
+- rendering;
+- local interaction state;
+- focus and accessibility behavior;
+- calls to typed application and bridge contracts.
 
-- profile/file access
-- privileged module import
-- tab DOM lifecycle
-- SessionStore persistence
-- Firefox command lookup
+The frontend does not own:
 
-## 6. CSS 與 DOM isolation
+- profile or file access;
+- privileged module imports;
+- native tab DOM lifecycle;
+- SessionStore persistence;
+- command discovery;
+- security-sensitive native prompts.
 
-優先順序：
+## 6. DOM and CSS isolation
 
-1. 所有 selector 從唯一 shell root 開始。
-2. 自有 class/name 使用 project prefix。
-3. 不對 `button`、`input`、`*` 等套無 scope global rule。
-4. 如採用 Tailwind，禁用 Preflight 並加 prefix。
-5. 修改保留的 native UI 時，使用獨立 `native-integration.css`，每條規則必須有原因與 source reference。
-6. Agent/Author sheet 只在普通 stylesheet 無法合理處理時使用。
+Use this priority order:
 
-## 7. Native UI Gate
+1. Every selector begins at a unique project shell root.
+2. Project classes, attributes, custom events, and CSS variables use a consistent prefix.
+3. Do not apply unscoped rules to `button`, `input`, `*`, or other generic selectors.
+4. If Tailwind is adopted, disable Preflight and use a project-specific prefix.
+5. Changes to retained native UI belong in a separate `native-integration.css`; every rule requires a documented reason and current source reference.
+6. Use agent or author sheets only when an ordinary scoped stylesheet cannot solve a demonstrated problem.
+7. Prefer text rendering and safe property assignment over unsanitized HTML.
 
-建議 root state：
+## 7. Native UI gate
+
+Recommended root state attributes include:
 
 ```text
+[data-mfs-created]
 [data-mfs-mounted]
 [data-mfs-healthy]
 [data-mfs-active]
 [data-mfs-safe-start]
+[data-mfs-failed]
 ```
 
-只有 `healthy` 後才可設定 `active`。隱藏規則必須依賴 `active`；bootstrap/runtime exception 必須移除或不設定該 attribute。
+Only a healthy shell may become active. Native-UI hiding rules must depend on `data-mfs-active`. A bootstrap, bridge, CSS, or frontend failure must prevent or remove that attribute.
 
-Native UI 初期只隱藏，不刪除。這保留 Firefox 對 commands、popup、customization、window controls 等可能存在的隱含依賴。
+Native UI is initially hidden rather than removed. This preserves implicit dependencies in Firefox commands, popups, customization, titlebar, and platform integration, and provides a recovery path.
 
-## 8. Override Policy
+## 8. Override policy
 
-`chrome.manifest` 的 `override` 能在載入前替換 Firefox resource，威力接近 source patch。其風險包括：
+A Chrome Registry `override` replaces a Firefox resource before it loads and therefore has maintenance characteristics close to a source patch. Risks include:
 
-- upstream 檔案新增必要 include/side effect 時不會自動獲得。
-- 相對 URI resolution 改變。
-- 每次 Firefox update 都要做 source diff。
-- 容易把本專案維護模型推向未編譯的 fork。
+- missing newly added upstream includes or side effects;
+- changed relative-URI resolution;
+- mandatory source diffs on every Firefox update;
+- security fixes not reaching the replacement automatically;
+- maintenance drifting toward an uncompiled Firefox fork.
 
-因此：
+Therefore:
 
-- `patches/` 初期保持空白。
-- 每個 override 一個獨立 issue/ADR。
-- 必須 pin 被替換 upstream revision/path。
-- replacement 必須盡量保持 upstream structure，並有 update diff 流程。
-- 整份 `browser.xhtml` override 在初期禁止。
+- `patches/` is empty initially;
+- every override requires a dedicated issue and architecture decision;
+- the replaced upstream revision and path must be pinned;
+- the replacement needs a documented update-diff workflow;
+- regression tests and a removal plan are mandatory;
+- overriding the complete `browser.xhtml` is prohibited during the initial roadmap.
 
-## 9. Build 與 Artifact
+## 9. Build and artifacts
 
-Source of truth 是 `src/`。Production artifact 應：
+The source of truth is `src/`. Production artifacts must be:
 
-- deterministic
-- self-contained
-- 無 CDN、dev server、HMR dependency
-- 不要求 Node.js 存在於 Firefox runtime
-- 可由單一 package manager command 重建
-- 有 source map 策略，但不得讓 profile 安裝流程依賴網路
+- deterministic;
+- self-contained;
+- free of CDN, dev-server, HMR, remote-font, and runtime-network dependencies;
+- runnable without Node.js inside Firefox;
+- reproducible through documented package-manager commands;
+- checked for unexpected bare imports, chunks, dynamic fetches, and debug content.
 
-是否輸出 IIFE、ES module 或混合 entry，由 bootstrap spike 根據 Firefox chrome environment 驗證，不在未測試前固定。
+Whether the final entry is an IIFE, ES module, or mixed runtime is decided by the bootstrap and frontend spikes from real Firefox evidence, not fixed in advance.
 
-## 10. Security Model
+Source-map policy must distinguish local development artifacts from installed artifacts. Privileged source maps must not be unintentionally exposed through a content-accessible mapping.
 
-本專案程式碼具有高度權限：
+## 10. Security and privacy model
 
-- 外部 dependency 數量應小。
-- lockfile 必須提交。
-- 禁止 runtime remote code。
-- 不把 browsing data、history、file path 傳送到外部服務。
-- 對 package upgrade 做 changelog/source review。
-- debug logging 不應預設輸出敏感 URL/history；需要時明確開啟。
+The runtime has system-principal capability. Consequently:
 
-## 11. 初始模組建議
+- minimize external dependencies;
+- commit and review the lockfile;
+- prohibit runtime remote executable content;
+- do not transmit browsing data or telemetry;
+- redact complete URLs, titles, queries, history, profile paths, and private-window state from normal logs;
+- validate installation paths and owned files before mutation;
+- keep security-sensitive prompts owned by Firefox;
+- review resource exposure and dependency upgrades explicitly.
+
+The normative policy is in `docs/security-and-privacy.md`.
+
+## 11. Initial module boundaries
 
 ```text
 src/
@@ -188,9 +205,12 @@ src/
     Runtime.ts
     WindowManager.ts
     WindowShell.ts
+    HealthState.ts
     Logger.ts
   firefox/
+    context.ts
     capabilities.ts
+    disposables.ts
     tabs.ts
     navigation.ts
     commands.ts
@@ -207,4 +227,22 @@ src/
     native-integration.css
 ```
 
-這只是目標邊界；Phase 1/2 未完成前，不先建立空泛 framework。
+This is a target boundary, not permission to scaffold unused abstractions before the Phase 1 and Phase 2 evidence exists.
+
+## 12. Dependency direction
+
+Allowed high-level direction:
+
+```text
+shell -> app contracts -> firefox bridge interface -> Firefox implementation
+runtime -> bridge implementation and shell mount
+bootstrap -> runtime entry only
+```
+
+Disallowed examples:
+
+- Svelte importing a module that reads `gBrowser`;
+- a bridge importing a Svelte store;
+- an installer depending on runtime browsing state;
+- bootstrap scanning arbitrary feature modules;
+- project code requiring a native element because its visual replacement happens to resemble that element.

@@ -1,12 +1,12 @@
 # my-firefox-shell
 
-在 **stock Firefox** 上建立自訂 browser chrome / browser shell 的實驗性專案。
+An experimental custom browser chrome and browser shell for **stock Firefox**.
 
-本專案不打算成為另一個通用 `userChrome.js` loader，也不以長期堆疊 CSS/JS patch 為主要架構。目標是使用一個極小的 AutoConfig 啟動入口，註冊自有 Chrome Registry package，載入 privileged ES modules，然後由現代化 frontend stack 建立自己的瀏覽器介面。
+The project is not intended to become another general-purpose `userChrome.js` loader, and its primary architecture is not an indefinitely growing collection of DOM patches. The goal is to use a minimal AutoConfig entry point to register a project-owned Chrome Registry package, load privileged ES modules, and build a replacement visible browser shell with a modern frontend toolchain.
 
-> 狀態：規劃與可行性驗證階段。尚未提供可日用的實作。
+> Status: planning and feasibility-validation stage. No daily-driver implementation is available yet.
 
-## 核心方向
+## Architecture direction
 
 ```text
 Stock Firefox
@@ -14,42 +14,66 @@ Stock Firefox
       └─ register chrome.manifest
           ├─ chrome://my-firefox-shell/...
           └─ resource://my-firefox-shell/...
-              └─ privileged runtime / Firefox bridge
+              └─ privileged runtime and Firefox bridge
                   └─ Svelte shell
                       ├─ tabs
                       ├─ navigation
-                      ├─ address bar
+                      ├─ address input
                       └─ sidebar
 ```
 
-專案會保留 Firefox 的核心 browser infrastructure，例如 `gBrowser`、tab content、SessionStore、Places、Downloads、permissions、dialogs 與 DevTools；原生可見 UI 只會在自訂 shell 成功啟動後收起，而不是在 startup 時直接刪除。
+The project keeps Firefox's core browser infrastructure, including `gBrowser`, web-content containers, SessionStore, Places, Downloads, commands, permissions, dialogs, notifications, and DevTools. Native visible UI is hidden only after the custom shell mounts and passes health checks. It is not deleted during startup.
 
-## 初始技術選擇
+## Primary goals
 
-- Firefox：只跟隨實作時的最新版 stable；不承諾舊版相容
-- 第一優先平台：Windows；架構不得無故封死 Linux/macOS
-- Bootstrap：AutoConfig，只做註冊 manifest 與載入單一入口
-- Runtime：privileged `.sys.mjs`
-- UI：Svelte 5 + TypeScript，先以可行性 spike 驗證
-- Build：Vite，production bundle 必須 deterministic、無 CDN、無 runtime network dependency
-- Styling：自有 scoped CSS；Tailwind 屬待驗證選項，使用時必須停用 Preflight 並加 prefix
+- Run on the official Firefox binary without maintaining a Firefox source fork.
+- Replace the visible tabs, navigation, address input, and sidebar with project-owned UI.
+- Keep Firefox internals behind a small typed bridge boundary.
+- Use a reversible, fail-open native-UI gate.
+- Maintain an evidence-based workflow for Firefox updates and internal API breakage.
+- Keep the runtime deterministic, local, and free of remote executable dependencies.
 
-## 文件入口
+## Non-goals for the initial roadmap
 
-- [AGENTS.md](AGENTS.md)：所有 coding/research agent 必須遵守的規則
-- [總體計劃](plans/000-master-plan.md)
-- [Bootstrap 可行性驗證](plans/001-bootstrap-spike.md)
-- [Shell 實作路線](plans/002-shell-roadmap.md)
-- [架構](docs/architecture.md)
-- [研究與除錯手冊](docs/research-playbook.md)
-- [Firefox internals 邊界圖](docs/firefox-internals-map.md)
-- [測試與復原](docs/testing-and-recovery.md)
-- [架構決策](docs/architecture-decisions.md)
+- A generic `.uc.js` loader or userscript manager.
+- Compatibility with historical Firefox versions.
+- A complete rewrite of Firefox Urlbar providers, permission UI, Downloads, or SessionStore.
+- Overriding the complete `browser.xhtml`.
+- A branded Firefox fork, updater, or public end-user support product.
 
-## 實作方式
+## Initial technology choices
 
-實作工作以 GitHub Issues 為單位。Agent 應先閱讀 `AGENTS.md`、相關 plan/doc，以及完整 issue body；一個 PR 原則上只處理一個 issue。
+- Firefox: latest stable during implementation; older versions are not supported.
+- First development platform: Windows. Other platforms require separate evidence before support is claimed.
+- Bootstrap: AutoConfig used only to register the manifest and load one privileged entry point.
+- Runtime: privileged `.sys.mjs` modules.
+- UI candidate: Svelte 5 with TypeScript, subject to the XHTML/runtime feasibility spike.
+- Build: Vite with deterministic production output and no runtime CDN, HMR, or network dependency.
+- Styling: scoped project CSS. Tailwind remains optional and, if adopted, must disable Preflight and use a project prefix.
 
-## 重要警告
+## Documentation
 
-這個專案會執行具有 system principal 權限的程式碼，並使用 Firefox 未承諾穩定的 internal APIs。錯誤可能令 browser chrome 無法操作。所有開發與測試必須使用獨立 Firefox profile，並保留原生 UI fallback。
+- [Agent rules](AGENTS.md)
+- [Master plan](plans/000-master-plan.md)
+- [Bootstrap feasibility spike](plans/001-bootstrap-spike.md)
+- [Shell implementation roadmap](plans/002-shell-roadmap.md)
+- [Security foundation plan](plans/003-security-foundation.md)
+- [Architecture](docs/architecture.md)
+- [Architecture decisions](docs/architecture-decisions.md)
+- [Firefox internals boundary map](docs/firefox-internals-map.md)
+- [Research and debugging playbook](docs/research-playbook.md)
+- [Testing and recovery](docs/testing-and-recovery.md)
+- [Security and privacy](docs/security-and-privacy.md)
+- [Development workflow](docs/development-workflow.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+
+## Implementation workflow
+
+Implementation is tracked through GitHub Issues. An agent must read `AGENTS.md`, the relevant plans and documentation, the complete issue body, and all blockers before starting. A pull request should normally address one issue and include reproducible research and test evidence.
+
+Start with the tracking issue, then follow the dependency order. Do not begin by hiding Firefox native UI.
+
+## Safety warning
+
+This project executes system-principal code and relies on Firefox internal APIs that Mozilla does not promise to keep stable. A defect can make browser chrome unusable. Development and testing must use a separate Firefox profile, preserve native-UI fallback, and follow the recovery procedures before any daily-use profile is considered.

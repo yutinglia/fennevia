@@ -1,137 +1,180 @@
 # Testing and Recovery
 
-## 1. 永遠使用獨立 Dev Profile
+## 1. Always use a dedicated development profile
 
-不要直接以日用 profile 開發 browser shell。
+Do not develop the browser shell in a daily-use profile.
 
-Dev profile 應：
+The development profile should:
 
-- 無其他 userChrome/userContent/custom loader。
-- 最少 extension。
-- 可由 script 或文件重建。
-- 容許打開 Browser Console / Browser Toolbox。
-- 有清楚名稱，例如 `my-firefox-shell-dev`。
+- contain no unrelated userChrome, userContent, or custom loader;
+- contain the minimum necessary extensions;
+- be reproducible from a script or documented procedure;
+- permit Browser Console and Browser Toolbox use;
+- have an unambiguous name such as `my-firefox-shell-dev`;
+- be disposable without affecting another profile.
 
-每次測試先用 `about:support` 確認 profile path、Firefox version 與 build ID。
+Before each integration test, confirm the profile path, Firefox version, build ID, channel, executable, and project commit.
 
-## 2. 最低測試矩陣
+## 2. Minimum test matrix
 
-| Case | 預期 |
+| Case | Expected result |
 |---|---|
-| clean cold start | bootstrap/runtime 各初始化一次 |
-| browser restart | shell 重建，無殘留 cache 行為 |
-| second normal window | 每 window 一個 shell；process runtime 不重複 |
-| private window | 依 policy mount 或保持 native fallback |
-| close/reopen window | listener/observer/root 清理 |
-| missing manifest | Firefox 原生 UI 正常，清楚 log |
-| missing entry/bundle | Firefox 原生 UI 正常，清楚 stack |
-| Svelte mount throw | 不設定 active gate，native UI 可用 |
-| missing CSS | shell 可診斷，native UI 不被永久隱藏 |
-| emergency toggle | 可立即切回 native UI |
-| fullscreen | 退出方式與 controls 可用 |
-| customize mode | 不因 native toolbox 隱藏而鎖死 |
-| Browser Toolbox | 可 inspect shell 與 native chrome |
+| Clean cold start | Bootstrap and process runtime initialize exactly once |
+| Browser restart | Shell reconstructs without stale behavior |
+| Second normal window | One shell per window; no duplicate process runtime |
+| Private window | Full initialization according to policy or complete native fallback |
+| Close and reopen window | Hosts, listeners, observers, mappings, and roots are cleaned up |
+| Missing manifest | Native Firefox UI works; clear bootstrap error |
+| Malformed manifest | Native Firefox UI works; registration failure is clear |
+| Missing or broken entry | Native Firefox UI works; complete phase and stack are logged |
+| Broken frontend bundle | No active gate; native UI remains usable |
+| Frontend mount throws | Partial hosts are cleaned up; native UI remains usable |
+| Missing stylesheet | Shell does not activate and native UI is not permanently hidden |
+| Missing bridge capability | Typed failure and fail-open behavior |
+| Emergency fallback | Native UI becomes visible immediately without depending on Svelte |
+| Safe start | Shell activation is skipped before native UI can be hidden |
+| Fullscreen | Enter and exit remain operable |
+| Customize mode | Native toolbox cannot become inaccessible or corrupt the layout |
+| Browser Toolbox | Shell and retained native chrome remain inspectable |
+| Install, update, uninstall | Only project-owned files are changed and stock startup is restored |
 
-## 3. Recovery 設計
+Every recorded result must be `pass`, `fail`, `blocked`, or `not run`, with evidence. A check mark alone is not sufficient.
 
-### Mount gate
+## 3. Recovery design
 
-隱藏 native UI 的 stylesheet 必須依賴 `data-mfs-active`。只有以下步驟全部成功才設定：
+### Health and activation gate
 
-1. runtime 初始化。
-2. hosts 建立。
-3. bridge capability check。
-4. framework mount。
-5. shell health check。
-6. emergency handler 已註冊。
+Native-UI hiding must depend on `data-mfs-active`. Set it only after all required steps succeed:
 
-任一步失敗：
+1. process runtime initialized;
+2. window accepted by lifecycle policy;
+3. hosts created;
+4. bridge capabilities validated;
+5. frontend mounted;
+6. stylesheet and critical UI health checks passed;
+7. emergency handler registered;
+8. safe-start state checked.
 
-- 不設定或移除 active attribute。
-- 嘗試 unmount/remove 自有 hosts。
-- log 完整 error。
-- 不修改/刪除 native UI。
+If any step fails:
 
-### Emergency toggle
+- do not set, or immediately remove, the active attribute;
+- attempt to unmount and remove project-owned UI;
+- dispose partial listeners and mappings;
+- log the phase and complete stack with privacy-safe context;
+- do not remove or mutate core native UI.
 
-需提供不依賴 Svelte component 的 privileged keyboard handler，用來切換 active gate。Key binding 必須避開常用 Firefox shortcut，並在文件記錄。
+### Emergency fallback
+
+Provide a privileged keyboard handler that does not depend on a Svelte component, store, CSS animation, or bridge feature. It must immediately clear the active gate and reveal native UI.
+
+Choose a binding that does not conflict with common Firefox or OS shortcuts. Document and test it on every supported platform.
 
 ### Safe start
 
-至少選一種：
+Select at least one mechanism that can be evaluated before shell activation:
 
-- preference，例如 `myFirefoxShell.safeStart=true`
-- profile chrome directory sentinel file
-- bootstrap keyboard modifier，前提是可可靠取得
+- a preference such as `myFirefoxShell.safeStart=true`;
+- a sentinel file in the project profile package;
+- another source-validated early mechanism.
 
-Safe start 會註冊 logging/runtime，但不得 mount/activate custom shell，方便除錯與移除。
+Safe start may load minimal logging needed for diagnosis, but it must not mount or activate the custom shell.
 
-### Hard disable / uninstall
+### Hard disable and uninstall
 
-必須文件化：
+Document a recovery procedure that does not require deleting the entire profile:
 
-1. 關閉 Firefox。
-2. 移除/停用 program directory AutoConfig pref 與 cfg entry。
-3. 移除 profile package，或先改名 manifest。
-4. 如有 startup cache 問題，採用已驗證的清理步驟。
-5. 重新啟動並確認 Browser Console 無 project error。
+1. Close Firefox.
+2. Disable or remove the project AutoConfig entry in the exact program directory.
+3. Disable or rename the project manifest, or remove the project-owned profile package.
+4. Apply only the validated startup-cache cleanup step if required.
+5. Restart Firefox and confirm that native UI appears and Browser Console contains no project startup error.
+6. Run the ownership-manifest-based uninstaller when available.
 
-不要要求使用者刪除整個 profile 才能復原。
-
-## 4. Debugging Tools
+## 4. Diagnostic tools
 
 ### Browser Console
 
-用於 startup、module import、runtime exception。Fatal log 應有固定 prefix，例如 `[MFS bootstrap]`、`[MFS window]`。
+Use for AutoConfig, registration, module import, lifecycle, bridge, and frontend exceptions. Logs should have stable prefixes such as:
+
+```text
+[MFS bootstrap]
+[MFS runtime]
+[MFS window]
+[MFS bridge]
+[MFS shell]
+```
+
+Normal logs must follow the privacy policy and avoid complete browsing data.
 
 ### Browser Toolbox
 
-用於：
+Use it to:
 
-- 確認 host namespace/placement。
-- 檢查 active gate 與 computed style。
-- 確認 native UI 仍存在。
-- 檢查 duplicated hosts/listeners。
-- 手動移除 active attribute 作緊急恢復。
+- inspect host namespace and placement;
+- inspect health attributes and computed style;
+- verify that native UI still exists;
+- find duplicate hosts or retained listeners;
+- manually clear the active attribute as a recovery step;
+- inspect focus, fullscreen, customize-mode, and popup behavior.
 
-### Diagnostic API
+### Development diagnostic API
 
-Runtime 後期可提供只讀 debug object，例如：
+A later runtime may expose a read-only local debug object such as:
 
 ```text
 window.MyFirefoxShellDebug
 ```
 
-只能在開發模式啟用，不能暴露敏感 browser state，也不能成為正常 UI dependency。
+It must be development-only, must not expose sensitive browsing state, and must never become a production UI dependency.
 
-## 5. Firefox Update 流程
+## 5. Failure-injection policy
 
-每次 stable update：
+Development builds should provide controlled ways to simulate:
 
-1. 記錄 update 前已通過的 commit/version。
-2. 先以 clean clone/profile 測 cold start。
-3. 不自動 active native-hide gate，先跑 smoke mode。
-4. 執行最低測試矩陣。
-5. 有 failure 時依 `docs/research-playbook.md` 研究。
-6. 更新 internal dependency/source reference。
-7. 修正後再啟用 active mode。
-8. 留下一份 issue/compatibility record。
+- missing manifest;
+- failed module import;
+- host creation failure;
+- missing required capability;
+- frontend mount exception;
+- missing CSS;
+- health-check timeout;
+- disposer called twice;
+- stale tab or window handle.
 
-## 6. 自動化邊界
+Failure injection must be impossible or explicitly disabled in installed production artifacts unless a documented local diagnostic mode is enabled.
 
-可自動化：
+## 6. Firefox stable-update procedure
 
-- TypeScript/lint/unit tests。
-- deterministic build 與 artifact diff。
-- manifest/schema/static checks。
-- pure bridge mapping/state tests（用 mock）。
-- install layout validation。
+For every stable update:
 
-難以只靠 CI 自動化：
+1. Record the last passing Firefox build and project commit.
+2. Test the new build with a clean clone and development profile.
+3. Start in smoke or safe-start mode before enabling native-UI hiding.
+4. Run the minimum test matrix.
+5. On failure, follow `docs/research-playbook.md`.
+6. Update the internal dependency inventory and source references.
+7. Re-enable active mode only after recovery tests pass.
+8. Leave a compatibility record in an issue and move durable conclusions into documentation.
 
-- 真實 Firefox AutoConfig startup。
-- Browser chrome visual/layout。
-- private/second window lifecycle。
-- native dialogs/fullscreen/customize mode。
+Never claim compatibility from version-number inspection alone.
 
-這些至少要有可重複 manual smoke script；日後再評估 Marionette/remote debugging automation。
+## 7. Automation boundary
+
+Suitable for automation:
+
+- formatting, linting, typechecking, and unit tests;
+- deterministic builds and artifact sanity checks;
+- manifest, schema, and import-boundary checks;
+- pure bridge mapping and state-reducer tests;
+- install-layout and owned-file validation;
+- checks for HMR, CDN, remote fonts, unexpected fetches, bare imports, and unexpected chunks.
+
+Likely to require real Firefox smoke testing:
+
+- AutoConfig startup;
+- browser-chrome layout and namespaces;
+- private and second-window lifecycle;
+- native dialogs, fullscreen, customize mode, and Browser Toolbox;
+- failure recovery after an installed artifact breaks.
+
+Maintain repeatable manual procedures until reliable Firefox automation is proven. Fragile automation must not replace real evidence.

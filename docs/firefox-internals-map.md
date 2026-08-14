@@ -1,140 +1,183 @@
 # Firefox Internals Boundary Map
 
-這是初始邊界圖，不是穩定 API 清單。實作前必須用 Searchfox 驗證當前 Firefox source。
+This is an initial ownership and dependency map, not a stable API list. Every symbol, DOM ID, event, URI, preference, and source path must be revalidated against the current Firefox source before implementation.
 
-## 1. 本專案擁有的部分
+## 1. Project-owned areas
 
-| 區域 | Ownership |
+| Area | Ownership |
 |---|---|
-| shell XHTML hosts | 本專案建立、mount、remove |
-| tabs/navigation/address/sidebar 可見 UI | 本專案 |
-| shell state/controllers | 本專案 |
-| Firefox bridge adapters | 本專案，但依賴 internal API |
-| build/install scripts | 本專案 |
-| native UI active gate | 本專案 |
+| Shell XHTML hosts | Created, mounted, and removed by this project |
+| Visible tabs, navigation, address input, and sidebar | This project |
+| Shell state and controllers | This project |
+| Firefox bridge adapters | This project, with documented internal dependencies |
+| Build and installation scripts | This project |
+| Native-UI active gate | This project |
+| Diagnostic redaction and health state | This project |
 
-## 2. 必須保留的 Firefox infrastructure
+## 2. Firefox infrastructure that must remain
 
-| Infrastructure | 原因 |
+| Infrastructure | Reason |
 |---|---|
-| `browser.xhtml` main window | browser startup、includes、commands、popups、content layout |
-| `gBrowser` / tab infrastructure | tabs、selected browser、switching、open/close |
-| browser content/tabbox | 真正 web content viewport |
-| command/controller sets | back/forward/reload、tab commands、keyboard behavior |
-| popup/permission/dialog infrastructure | security-sensitive native UI |
-| SessionStore | session/window/tab restore |
-| Places | bookmarks/history backend |
-| Downloads backend | download state與生命周期 |
-| DevTools / Browser Toolbox | 開發、診斷與 fallback |
-| notification boxes | site/browser notifications，直到有明確替代 |
+| `browser.xhtml` main window | Startup, includes, commands, popups, and content layout |
+| `gBrowser` and tab infrastructure | Tab ownership, selected browser, switching, open, and close |
+| Browser content and tabbox | Actual web-content viewport |
+| Command and controller sets | Navigation, tab commands, shortcuts, and native semantics |
+| Popup, permission, authentication, certificate, and dialog infrastructure | Security-sensitive native UI |
+| SessionStore | Session, window, and tab restoration |
+| Places | Bookmarks and history backend |
+| Downloads backend | Download state and lifecycle |
+| DevTools and Browser Toolbox | Development, diagnosis, and recovery |
+| Notification boxes | Site and browser notifications until a reviewed replacement exists |
+| OS titlebar and window controls | Platform integration until separately validated |
 
-初期可隱藏部分 native element，但不要 `remove()` 或讓 framework 接管 descendants。
+Some native elements may eventually be hidden, but do not remove them or let the frontend framework manage their descendants.
 
-## 3. 最終可能收起的可見 UI
+## 3. Visible native UI that may eventually be hidden
 
-| Native UI | 初期策略 |
+| Native UI | Initial strategy |
 |---|---|
-| `#navigator-toolbox` | custom shell healthy 後以 root gate 隱藏 |
-| `#TabsToolbar` / native tab strip | custom tab MVP 完成後隱藏 |
-| native navbar / Urlbar | navigation/address MVP 完成後隱藏 |
-| bookmarks toolbar | custom menu/sidebar 有替代後隱藏 |
-| Firefox sidebar launcher/box | custom sidebar 完成後隱藏 |
-| app menu / toolbar buttons | 逐項提供替代，不一次刪除 |
-| titlebar/window controls | 最後單獨處理；平台差異大 |
+| `#navigator-toolbox` | Hide behind the active root gate after replacement coverage is verified |
+| `#TabsToolbar` and native tab strip | Hide after the custom tab MVP is complete |
+| Native navbar and Urlbar | Hide after navigation and address-input MVPs are complete |
+| Bookmarks toolbar | Hide only after required access has a replacement |
+| Native sidebar launcher, box, and splitter | Hide after the custom sidebar is stable |
+| App menu and toolbar buttons | Replace and validate incrementally |
+| Titlebar and window controls | Handle last in a separate platform-specific issue |
 
-## 4. 主要研究入口
+## 4. Primary research entry points
 
-### Main window
+### Main browser window
+
+Current source area to verify:
 
 - `browser/base/content/browser.xhtml`
-- 確認 CSP、stylesheet/script includes、popupsets、browser content 與 window attributes。
+
+Inspect CSP, script and stylesheet includes, popup sets, browser content, window attributes, and initialization dependencies.
 
 ### Navigator toolbox
 
+Current source area to verify:
+
 - `browser/base/content/navigator-toolbox.inc.xhtml`
-- 確認 tabs toolbar、navbar、Urlbar、window controls、customization targets。
+
+Inspect tabs toolbar, navbar, Urlbar, titlebar controls, customization targets, and platform conditions.
 
 ### Tabs
 
-- Firefox Source Docs 的 Tabbed Browser / `gBrowser`。
-- Searchfox 搜 `gBrowser`、`tabContainer`、`TabOpen`、`TabClose`、`TabSelect`。
-- 不依賴舊 `<xul:tabbrowser>` DOM 假設。
+Use the Firefox Source Docs for the tabbed browser and Searchfox for:
 
-初始 bridge 候選：
+- `gBrowser`;
+- `tabContainer`;
+- `TabOpen`;
+- `TabClose`;
+- `TabSelect`;
+- current tab-state attributes and update events;
+- relevant tests and callers.
 
-- `gBrowser.tabs`
-- `gBrowser.selectedTab`
-- `gBrowser.selectedBrowser`
-- `gBrowser.addTab()` / `removeTab()`
-- `gBrowser.tabContainer` events
+Do not rely on old assumptions about a `<xul:tabbrowser>` DOM element.
 
-所有候選在使用前做 runtime capability check。
+Initial bridge candidates, subject to runtime validation:
+
+- `gBrowser.tabs`;
+- `gBrowser.selectedTab`;
+- `gBrowser.selectedBrowser`;
+- `gBrowser.addTab()` and `gBrowser.removeTab()`;
+- `gBrowser.tabContainer` events.
 
 ### Navigation and commands
 
-優先研究 Firefox command/controller，而不是重寫 history navigation。搜尋：
+Prefer Firefox command and controller semantics instead of reimplementing history behavior. Research:
 
-- Browser back/forward/reload/stop commands
-- enabled state update
-- selectedBrowser navigation state
+- native back, forward, reload, stop, and new-tab commands;
+- enabled-state updates;
+- selected-browser progress and location state;
+- command ownership and user-gesture requirements.
 
-自訂 button 應呼叫 bridge；component 不直接找 command DOM。
+Custom controls call a bridge; components do not query native command DOM directly.
 
 ### Urlbar
 
-研究範圍：
+Research:
 
-- `browser/components/urlbar/`
-- native Urlbar custom element/controller/providers
-- current URI/search submission path
+- `browser/components/urlbar/`;
+- current Urlbar custom elements, controllers, providers, input, and submission path;
+- URL fixup and search submission;
+- navigation disposition and private-window behavior.
 
-MVP 只需基本 address/search submit。完整 suggestions、autofill、search modes、extension providers 另立 research plan。
+The MVP needs only basic display and submission. Suggestions, autofill, search modes, extension providers, rich results, identity UI, and permission UI require separate research.
 
 ### Places
 
-研究：
+Research:
 
-- `PlacesUtils`
-- browser Places UI helpers
-- bookmarks/history observers
+- `PlacesUtils`;
+- current browser Places UI helpers;
+- bookmark and history observers;
+- callers and tests.
 
-初期由 bridge 輸出 read-only snapshots，不讓 component 直接持有 Places result objects。
+Initially expose read-only ordinary snapshots. Do not place Places result objects in frontend state.
 
 ### SessionStore
 
-研究：
+Research:
 
-- `browser/components/sessionstore/`
-- window/tab restore timing
-- custom workspace state 是否需要獨立 persistence
+- `browser/components/sessionstore/`;
+- window and tab restore timing;
+- interactions with future workspace persistence.
 
-不要在早期取代 SessionStore。
+Do not replace SessionStore during the early roadmap.
 
 ### Downloads
 
-研究 browser/toolkit downloads modules、events 與 native panels。初期只讀 state；下載安全 prompt 仍交給 Firefox。
+Research current browser and toolkit Downloads modules, events, panels, and safety prompts. Initially expose read-only state and leave download prompts to Firefox.
 
 ### Sidebar
 
-研究 `browser/components/sidebar/` 與當前 sidebar DOM。Custom sidebar 是獨立 UI，不應直接重用/patch 大量 native sidebar children。
+Research `browser/components/sidebar/` and current sidebar DOM. The custom sidebar is independent project-owned UI and should not patch a large native sidebar subtree.
 
-## 5. Native handle 規則
+### Window lifecycle
 
-- Native tab/browser/window object 只留在 bridge/runtime。
-- UI 使用 project-generated stable id/snapshot。
-- mapping 隨 TabClose/window unload 清理。
-- 不把 privileged object 放入可序列化 store、DOM dataset 或 log。
-- native event callback 轉成 immutable application event。
+Research current window mediator APIs, browser-window startup topics, document readiness, private-window detection, unload, and shutdown. Verify against current loader fixes and current Firefox callers.
 
-## 6. 需要獨立決策的高風險區
+### Chrome Registry and AutoConfig
 
-- `browser.xhtml` override
-- tab custom element/internal JS override
-- Urlbar provider replacement
-- permission/identity popup replacement
-- titlebar/window controls
-- Agent sheet 全域 native styling
-- SessionStore schema/persistence hook
-- internal script monkey patch
+Research current manifest registration, `nsIComponentRegistrar.autoRegister`, module import timing, startup cache, and resource accessibility. Record the exact current Firefox source and loader revisions.
 
-任何上述工作先更新 `docs/architecture-decisions.md` 並建立專用 issue。
+## 5. Native-handle rules
+
+- Native tab, browser, window, controller, and result objects remain inside bridge or runtime modules.
+- UI uses project-generated opaque IDs and immutable snapshots.
+- Mappings are removed on `TabClose`, window unload, runtime stop, and capability failure.
+- Never put privileged objects in serializable stores, DOM datasets, logs, or error telemetry.
+- Translate native callbacks into ordinary application events at the boundary.
+- Validate a native handle before every action that can outlive a prior snapshot.
+
+## 6. Dependency inventory fields
+
+Every implemented dependency should eventually record:
+
+| Field | Meaning |
+|---|---|
+| Symbol, event, DOM ID, URI, or preference | Exact dependency |
+| Firefox version and build ID | Build where it was verified |
+| Current source path and revision | Searchfox or official source evidence |
+| Project owner module | Bridge or runtime module that uses it |
+| Required or optional | Health-gating behavior |
+| Failure behavior | Fallback or typed error |
+| Compatibility canary | Loader or derivative likely to encounter the same change |
+| Tests | Unit, static, or dev-profile smoke coverage |
+| Replacement or removal plan | How dependency could be reduced later |
+
+## 7. High-risk areas requiring separate decisions
+
+- complete `browser.xhtml` override;
+- tab custom-element or internal-script override;
+- Urlbar provider replacement;
+- permission, identity, authentication, or certificate UI replacement;
+- titlebar and window controls;
+- global agent-sheet styling of native chrome;
+- SessionStore schema or persistence hooks;
+- internal script monkey patches;
+- content-accessible privileged resource mappings.
+
+Any such work requires a dedicated issue and an update to `docs/architecture-decisions.md` before implementation.
