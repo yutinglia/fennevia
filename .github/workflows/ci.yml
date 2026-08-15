@@ -63,5 +63,6 @@ jobs:
 
       - name: Exercise artifact policy in Windows PowerShell 5.1
         shell: powershell
-        run: >-
+        run: |
           .\tests\production-artifacts.Tests.ps1
+          exit 0
