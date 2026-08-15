@@ -71,6 +71,9 @@ $requiredPaths = @(
     "program/fennevia.cfg",
     "profile/chrome/fennevia/chrome.manifest",
     "profile/chrome/fennevia/content/Bootstrap.sys.mjs",
+    "profile/chrome/fennevia/content/runtime/Logger.sys.mjs",
+    "profile/chrome/fennevia/content/runtime/Runtime.sys.mjs",
+    "profile/chrome/fennevia/content/runtime/WindowManager.sys.mjs",
     "package-manifest.json"
 )
 foreach ($relativePath in $requiredPaths) {

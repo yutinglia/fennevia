@@ -56,6 +56,15 @@ Detailed local debugging, when unavoidable, must require explicit opt-in, remain
 
 Normal logger APIs must accept allowlisted fields rather than arbitrary context objects or native Firefox values. Error messages are untrusted; use a stable project error code and preserve each stack frame only after URLs, local paths, user names, queries, and fragments are replaced. If redaction fails, emit a minimal code-only record. The normative field schema and privacy-safe bootstrap example are in `docs/security-controls.md`.
 
+Issue #5 implements this contract for window/runtime records. The logger builds
+each output object field by field; unknown caller fields are ignored. It records
+only a random process-local window UUID and `normal`, `private`, or
+`unsupported` kind. Remote URLs, file URLs, Windows/UNC/POSIX local paths,
+opaque URLs, other URI schemes, and query/fragment suffixes are replaced without
+dropping stack lines. Only `chrome://` and `resource://` source locations remain
+after their suffixes are removed. Automated hostile-value tests prove that
+arbitrary URL, title, and private-content fields are not serialized.
+
 ## 5. Dependency and supply-chain policy
 
 Before adding a runtime or build dependency, record:
@@ -162,6 +171,13 @@ Hiding or replacing a visible toolbar must not remove the underlying prompt, pop
 - Project-global state must not accidentally share private-window browsing data with normal windows.
 - Only schema-defined shell preferences whose values are independent of browsing activity may persist; private tabs, titles, URLs, favicons, queries, recent items, selection, and feature usage never persist.
 - A feature that cannot prove per-window memory, synchronous disposal, and normal/private separation must use complete native fallback in private windows.
+
+The Phase 2 base lifecycle fully supports private browser windows without
+creating UI or reading browsing state. Classification happens before the
+initializer, process-global snapshots retain counts only, and unload/runtime
+stop abort and dispose the private record. This does not pre-approve any future
+private-window bridge or feature: each consumer must still prove its own data
+isolation or keep the complete native fallback.
 
 ## 10. Source maps and debug artifacts
 

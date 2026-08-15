@@ -43,6 +43,9 @@ $prefPath = Join-Path $programRoot "defaults\pref\fennevia.js"
 $configPath = Join-Path $programRoot "fennevia.cfg"
 $manifestPath = Join-Path $packageRoot "chrome.manifest"
 $entryPath = Join-Path $packageRoot "content\Bootstrap.sys.mjs"
+$loggerPath = Join-Path $packageRoot "content\runtime\Logger.sys.mjs"
+$windowManagerPath = Join-Path $packageRoot "content\runtime\WindowManager.sys.mjs"
+$runtimePath = Join-Path $packageRoot "content\runtime\Runtime.sys.mjs"
 $inventoryPath = Join-Path $repositoryRoot "package-manifest.json"
 $contentProbePath = Join-Path $repositoryRoot "tests\bootstrap-content-access.mjs"
 $contentFixturePath = Join-Path $repositoryRoot "tests\fixtures\bootstrap-content-access.html"
@@ -53,6 +56,9 @@ $requiredFiles = @(
     $configPath,
     $manifestPath,
     $entryPath,
+    $loggerPath,
+    $windowManagerPath,
+    $runtimePath,
     $inventoryPath,
     $contentProbePath,
     $contentFixturePath
@@ -114,10 +120,20 @@ Assert-True -Condition ($manifestLines[0] -ceq "content fennevia content/") -Mes
 
 $entryContent = Get-Content -Raw -LiteralPath $entryPath
 Assert-Match -Content $entryContent -Pattern 'typeof\s+Services\s*===\s*"undefined"' -Message "The privileged ESM must validate Firefox's built-in Services global."
+Assert-Match -Content $entryContent -Pattern 'typeof\s+ChromeUtils\s*===\s*"undefined"' -Message "The privileged ESM must validate Firefox's module loader."
 Assert-True -Condition ($entryContent -notmatch 'Services\.sys\.mjs') -Message "Firefox 153 no longer packages Services.sys.mjs; the privileged ESM must use the validated global."
 Assert-Match -Content $entryContent -Pattern 'export\s+const\s+bootstrapResult\s*=\s*result;' -Message "The privileged ESM must expose its validated result."
-Assert-Match -Content $entryContent -Pattern 'initializationCount:\s*1' -Message "The privileged ESM must expose one process initialization."
+Assert-Match -Content $entryContent -Pattern 'initializationCount:\s*runtimeState\.result\.initializationCount' -Message "The privileged ESM must expose the process runtime initialization count."
+Assert-Match -Content $entryContent -Pattern 'managedWindowCount:\s*runtimeState\.result\.managedWindowCount' -Message "The privileged ESM must expose its initial managed-window count."
 Assert-Match -Content $entryContent -Pattern 'FENNEVIA_BOOTSTRAP_DUPLICATE_MODULE_INITIALIZATION' -Message "The privileged ESM must reject a second top-level initialization."
+foreach ($requiredModuleUri in @(
+    'resource://gre/modules/PrivateBrowsingUtils\.sys\.mjs',
+    'chrome://fennevia/content/runtime/Logger\.sys\.mjs',
+    'chrome://fennevia/content/runtime/WindowManager\.sys\.mjs',
+    'chrome://fennevia/content/runtime/Runtime\.sys\.mjs'
+)) {
+    Assert-Match -Content $entryContent -Pattern $requiredModuleUri -Message "The privileged entry must import each fixed lifecycle dependency."
+}
 
 $contentProbe = Get-Content -Raw -LiteralPath $contentProbePath
 $contentFixture = Get-Content -Raw -LiteralPath $contentFixturePath

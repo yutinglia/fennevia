@@ -48,6 +48,12 @@ capability check; `Services.sys.mjs` is not packaged in the supported build.
 Structured records include phase, stable code, Firefox version, build ID, and a
 path/URL-redacted stack.
 
+Phase 2 keeps that entry singular. `Bootstrap.sys.mjs` imports three fixed
+project modules (`Logger`, `WindowManager`, and `Runtime`) plus Firefox's fixed
+`PrivateBrowsingUtils` module, starts one process runtime, and returns the same
+frozen bootstrap contract. AutoConfig still knows nothing about windows,
+features, or module discovery.
+
 ### Chrome Registry package
 
 ADR-017 defines Fennevia as the sole active project and package identity. The
@@ -66,22 +72,43 @@ Firefox 153's `toolkit/docs/internal-urls.md` states that both `chrome:` and `re
 
 The process-global runtime owns:
 
-- bootstrap state;
-- window discovery;
+- a `Symbol.for()` singleton and one idempotent start/stop transition;
+- registration of the application-shutdown observer;
+- one browser `WindowManager`;
 - global version and diagnostic metadata;
-- capability checks shared across windows;
-- safe-start state;
-- global shutdown.
+- aggregate lifecycle counts that contain no native handles or browsing data.
+
+The `WindowManager` registers
+`browser-delayed-startup-finished` before enumerating existing
+`navigator:browser` windows, closing the observer/enumerator race. It accepts a
+window only when it is an open top-level chrome window whose document URI is
+exactly `chrome://browser/content/browser.xhtml`, whose root `windowtype` is
+exactly `navigator:browser`, and whose
+`gBrowserInit.delayedStartupFinished` flag is true. A `WeakSet` permits one
+initialization attempt per native window. Browser Toolbox, dialogs, chrome
+frames, tabs, and unrelated windows therefore cannot become shell windows.
 
 A per-window runtime owns:
 
-- project XHTML hosts;
-- that window's Firefox bridge instances;
-- frontend mount and unmount;
-- health state and native-UI gate;
-- event, observer, timer, stylesheet, and mapping cleanup.
+- one process-local random UUID and `normal` or `private` classification;
+- an `AbortSignal` that is triggered before disposal cleanup;
+- a reverse-order cleanup registry and one optional returned disposer;
+- eventually, that window's project XHTML hosts, Firefox bridge instances,
+  frontend root, health state, and native-UI gate.
 
-Each window must have a single idempotent disposer. Shutdown behavior must not depend on garbage collection.
+Issue #5 implements the lifecycle only; it creates no hosts and changes no
+native UI. Normal and private windows receive the same complete base lifecycle.
+Window unload removes the record, aborts pending initialization, and runs every
+registered cleanup exactly once. A late asynchronous result is immediately
+disposed and cannot transition the closed window back to managed state. Runtime
+stop removes the global observers, disposes every record, and is safe when
+called again. Shutdown behavior does not depend on garbage collection.
+
+Lifecycle records use a default-deny logger. They may identify the Firefox
+build, stable phase/code, process-local window UUID, and `normal`/`private`
+kind, but never a page URL, title, query, profile path, or native object. The
+source and runtime evidence is in
+`docs/research/firefox-153-window-lifecycle.md` and ADR-019.
 
 ## 4. Firefox bridge
 
@@ -254,6 +281,22 @@ src/
 ```
 
 This is a target boundary, not permission to scaffold unused abstractions before the Phase 1 and Phase 2 evidence exists.
+
+The current pre-build implementation corresponding to the proven Phase 2
+boundary is installed directly as reviewed source:
+
+```text
+profile/chrome/fennevia/content/
+  Bootstrap.sys.mjs
+  runtime/
+    Logger.sys.mjs
+    Runtime.sys.mjs
+    WindowManager.sys.mjs
+```
+
+These files are exact package artifacts with committed hashes; they are not
+hand-edited generated `dist/` output. Issue #8 owns any later source/build
+transition.
 
 ## 12. Dependency direction
 

@@ -39,8 +39,8 @@ Normal output redacts the executable and profile paths. `-RevealPaths` is local-
 |---|---|
 | Clean cold start | Bootstrap and process runtime initialize exactly once |
 | Browser restart | Shell reconstructs without stale behavior |
-| Second normal window | One shell per window; no duplicate process runtime |
-| Private window | Full initialization according to policy or complete native fallback |
+| Second normal window | One managed lifecycle per window with no duplicate process runtime; one shell per window after hosts exist |
+| Private window | Full feature lifecycle according to policy or complete native fallback; never partial initialization |
 | Close and reopen window | Hosts, listeners, observers, mappings, and roots are cleaned up |
 | Missing manifest | Native Firefox UI works; clear bootstrap error |
 | Malformed manifest | Native Firefox UI works; registration failure is clear |
@@ -311,7 +311,93 @@ The exact environment, operation counts, security review, and complete matrix
 are in `docs/research/fennevia-installer-validation.md`. The operator and
 interrupted-operation recovery contract is in `docs/installation.md`.
 
-## 9. Firefox stable-update procedure
+## 9. Phase 2 browser-window lifecycle evidence
+
+Issue #5 added the process singleton, strict browser-window manager,
+abort-first per-window cleanup, and privacy-safe runtime logger without adding
+hosts or changing native UI. The implementation record, pinned source/canary
+research, and exact limitations are in
+`docs/research/firefox-153-window-lifecycle.md`.
+
+Automated tests passed under Node.js 24.18.0, PowerShell 7.6.4, and Windows
+PowerShell 5.1:
+
+```powershell
+node --test .\tests\window-lifecycle.test.mjs
+pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\window-lifecycle.Tests.ps1
+pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\bootstrap-spike.Tests.ps1
+pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
+  -ArtifactRoot .\profile\chrome\fennevia `
+  -InventoryPath .\package-manifest.json
+```
+
+The Node suite has nine tests. It covers existing and later windows,
+normal/private classification, exact Browser Toolbox URI and dialog/non-main
+filtering, duplicate notifications, async-close cancellation and late disposal,
+cleanup exceptions, manager-start rollback, idempotent runtime shutdown,
+singleton failure state, and hostile logging values.
+
+The package was installed as `0.2.0-dev` into only the copied Firefox program
+and marker-owned profile. Preview and execution shared one plan digest and
+applied 14 exact creates. A same-package update preview later returned
+`already-current` with zero mutations and no startup-cache action.
+
+Six complete real-Firefox probes passed in separate Firefox 153.0.4 processes,
+including a final run against the packaged logger hash recorded in the manifest:
+
+```powershell
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>'
+```
+
+| Case | Observed result |
+|---|---|
+| Initial normal window | Runtime `started`, `initializationCount=1`, managed count one |
+| Additional tab | Managed count unchanged; no extra window initialization |
+| Second normal window | One normal initialization and one disposal on close |
+| Private window | One private initialization and one disposal on close |
+| Runtime stop twice | First stop disposed the remaining window; second returned the identical stopped state |
+| New normal window after stop | Managed count remained zero; no callback or initialization record |
+| Native UI | `browser.xhtml`, `html#main-window`, and `#navigator-toolbox` remained; no active Fennevia UI gate existed |
+| Diagnostics | One process bootstrap/runtime start, no Fennevia error-level record, and no first-party Fennevia script error |
+| Exit | Firefox graceful quit; zero remaining test Firefox processes |
+
+The real probe starts Firefox with `--remote-allow-system-access` solely so
+Marionette can inspect the parent-process chrome context. The script first
+validates explicit copied-program and marker-owned-profile paths and never
+prints them. This flag is not part of the installed package.
+
+Failure injection used:
+
+```powershell
+pwsh -NoProfile -File .\tests\firefox-fail-open.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+```
+
+The script moved only the hash-verified installed `WindowManager.sys.mjs` into
+a unique OS-temporary directory, restored it in `finally`, and verified the
+restored SHA-256. The missing module produced one caught `bootstrap.fatal` at
+`entry-import`; native browser UI remained usable and the runtime did not
+partially start. The immediately following cold start passed without clearing
+startup cache.
+
+Final uninstall preview and execution used the same plan digest, backed up the
+nine ownership-proven files, and applied 14 exact file/directory operations.
+The stock-start probe reported native UI, zero Fennevia records, and zero owned
+residue. A repeat uninstall was `not-installed` with zero mutations; no Firefox
+process remained and startup cache was never cleared.
+
+The Browser Toolbox's exact Firefox 153 URI and dialog/non-main identities were
+covered by the strict-filter unit suite. Its separately spawned GUI was not
+opened because the required interactive connection prompt was not bypassed.
+This runtime issue adds no host or UI that could cover DevTools; repeat the real
+interactive Browser Toolbox check when #6 first adds browser-chrome DOM.
+
+## 10. Firefox stable-update procedure
 
 For every stable update:
 
@@ -326,7 +412,7 @@ For every stable update:
 
 Never claim compatibility from version-number inspection alone.
 
-## 10. Automation boundary
+## 11. Automation boundary
 
 Suitable for automation:
 

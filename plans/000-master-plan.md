@@ -87,6 +87,13 @@ Deliverables:
 
 Gate: no duplicate initialization, half-mounted window, or retained listener remains after close or disposal.
 
+Progress (2026-08-15): issue #5 completed the process singleton, existing and
+later normal/private window discovery, strict non-browser exclusion,
+abort-first cleanup, idempotent stop, privacy-safe logging, and fail-open
+validation on Firefox 153.0.4. Phase 2 remains open: project-owned hosts, health
+state, and recovery UI are owned by the following issues and must consume this
+lifecycle rather than add a second window observer.
+
 ### Phase 3: Frontend build feasibility
 
 Deliverables:
