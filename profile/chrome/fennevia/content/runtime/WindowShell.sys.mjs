@@ -12,6 +12,7 @@ import {
   createFirefoxDownloadsBridge,
   createFirefoxNavigationBridge,
   createFirefoxTabsBridge,
+  createFirefoxUrlbarCoverageBridge,
 } from "../firefox/BridgeBoundary.sys.mjs";
 import { shellAppCss } from "../shell/ShellStyles.sys.mjs";
 
@@ -1084,6 +1085,7 @@ const mountProductionShell = ({
   let navigationBridge;
   let style;
   let tabsBridge;
+  let urlbarCoverageBridge;
   try {
     logger.info({
       event: "bridge.boundary-created",
@@ -1146,6 +1148,20 @@ const mountProductionShell = ({
       },
       window: browserWindow,
     });
+    urlbarCoverageBridge = createFirefoxUrlbarCoverageBridge({
+      boundary: bridge,
+      onError(error) {
+        requestFallback(
+          annotateShellLifecycleError(error, {
+            code:
+              error?.fenneviaCode ??
+              "FENNEVIA_FIREFOX_URLBAR_COVERAGE_RUNTIME_FAILED",
+            phase: error?.fenneviaPhase ?? "firefox-urlbar-coverage-event",
+          }),
+        );
+      },
+      window: browserWindow,
+    });
     style = createElement(frame.ownerDocument, "style", {
       id: SHELL_APP_STYLE_ID,
       textContent: shellAppCss,
@@ -1161,6 +1177,7 @@ const mountProductionShell = ({
       overlayTarget,
       targets,
       tabs: tabsBridge.tabs,
+      urlbarCoverage: urlbarCoverageBridge.urlbarCoverage,
       windowKind,
       onFatalError(error) {
         requestFallback(
@@ -1196,6 +1213,7 @@ const mountProductionShell = ({
       navigationBridge,
       readyLogged: false,
       tabsBridge,
+      urlbarCoverageBridge,
     });
   } catch (error) {
     productionShellByFrame.delete(frame);
@@ -1207,6 +1225,11 @@ const mountProductionShell = ({
     }
     try {
       downloadsBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
+    try {
+      urlbarCoverageBridge?.dispose();
     } catch (cleanupError) {
       reportError(cleanupError);
     }
@@ -1260,6 +1283,11 @@ const mountProductionShell = ({
     }
     try {
       downloadsBridge?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      urlbarCoverageBridge?.dispose();
     } catch (error) {
       firstError ??= error;
     }
@@ -1329,6 +1357,7 @@ const checkProductionShell = async ({ mountPoints, windowKind }) => {
   record.downloadsBridge.assertRequiredCapabilities();
   record.navigationBridge.assertRequiredCapabilities();
   record.tabsBridge.assertRequiredCapabilities();
+  record.urlbarCoverageBridge.assertRequiredCapabilities();
   return record.frontend.verifyShellAppHealth({
     frame,
     overlayTarget,
@@ -1354,6 +1383,8 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   const navigationCapabilities =
     record.navigationBridge.assertRequiredCapabilities();
   const tabsCapabilities = record.tabsBridge.assertRequiredCapabilities();
+  const urlbarCoverageCapabilities =
+    record.urlbarCoverageBridge.assertRequiredCapabilities();
   const frontendCapabilities = record.frontend.getShellAppCapabilities({
     frame,
     overlayTarget,
@@ -1377,6 +1408,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     ...downloadsCapabilities,
     ...navigationCapabilities,
     ...tabsCapabilities,
+    ...urlbarCoverageCapabilities,
     ...frontendCapabilities,
   ]);
 };

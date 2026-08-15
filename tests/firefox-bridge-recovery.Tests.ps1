@@ -76,7 +76,7 @@ Assert-True -Condition (Test-Path -LiteralPath $targetPath -PathType Leaf) -Mess
 Assert-True -Condition ((Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant() -ceq $expectedHash) -Message "The installed bridge artifact does not match the committed package hash."
 
 $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd("\", "/")
-$tempRoot = [IO.Path]::GetFullPath((Join-Path $tempBase ("fennevia-issue32-downloads-recovery-" + [guid]::NewGuid().ToString("N"))))
+$tempRoot = [IO.Path]::GetFullPath((Join-Path $tempBase ("fennevia-bridge-recovery-" + [guid]::NewGuid().ToString("N"))))
 Assert-True -Condition $tempRoot.StartsWith($tempBase + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -Message "The temporary recovery root escaped the operating-system temporary directory."
 New-Item -ItemType Directory -Path $tempRoot | Out-Null
 $bridgeBackupPath = Join-Path $tempRoot "BridgeBoundary.sys.mjs"
@@ -130,7 +130,13 @@ export function createFirefoxBridgeBoundary({
       return Object.freeze([]);
     },
     snapshot() {
-      return Object.freeze({ contextId, disposed, windowKind });
+      return Object.freeze({
+        buildId: String(buildId),
+        contextId,
+        disposed,
+        firefoxVersion: String(firefoxVersion),
+        windowKind,
+      });
     },
   });
 }
@@ -728,6 +734,88 @@ export function createFirefoxTabsBridge() {
 }
 '@
 
+$urlbarCoverageBridgeStub = @'
+export function createFirefoxUrlbarCoverageBridge() {
+  let disposed = false;
+  const state = Object.freeze({
+    items: Object.freeze([]),
+    permissions: Object.freeze({
+      available: false,
+      blocked: Object.freeze([]),
+      hasPermissions: false,
+      sharing: Object.freeze([]),
+    }),
+  });
+  const urlbarCoverage = Object.freeze({
+    openNativeUrlbar() { return true; },
+    snapshot() { return state; },
+    subscribe() {
+      let active = true;
+      return () => {
+        if (!active) { return false; }
+        active = false;
+        return true;
+      };
+    },
+  });
+  return Object.freeze({
+    assertRequiredCapabilities() { return Object.freeze([]); },
+    dispose() {
+      if (disposed) { return false; }
+      disposed = true;
+      return true;
+    },
+    snapshot() {
+      return Object.freeze({
+        disposed,
+        failed: false,
+        revision: 1,
+        subscriberCount: 0,
+      });
+    },
+    urlbarCoverage,
+  });
+}
+'@
+
+$missingUrlbarCoverageCapabilityBridge = $missingCapabilityBridge + [Environment]::NewLine + @'
+export function createFirefoxUrlbarCoverageBridge({ boundary }) {
+  const context = boundary.snapshot();
+  const error = new Error("FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING");
+  Object.defineProperties(error, {
+    fenneviaBuildId: { value: context.buildId, enumerable: false },
+    fenneviaCode: {
+      value: "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING",
+      enumerable: false,
+    },
+    fenneviaFirefoxVersion: {
+      value: context.firefoxVersion,
+      enumerable: false,
+    },
+    fenneviaPhase: {
+      value: "firefox-urlbar-coverage-capability",
+      enumerable: false,
+    },
+    fenneviaSymbol: {
+      value: "window.openLocation",
+      enumerable: false,
+    },
+    fenneviaWindowKind: { value: context.windowKind, enumerable: false },
+    name: {
+      value: "FenneviaFirefoxUrlbarCoverageBridgeTestError",
+      enumerable: false,
+    },
+  });
+  throw error;
+}
+'@
+
+$missingCapabilityBridge = $missingCapabilityBridge + [Environment]::NewLine + $urlbarCoverageBridgeStub
+$missingBookmarksCapabilityBridge = $missingBookmarksCapabilityBridge + [Environment]::NewLine + $urlbarCoverageBridgeStub
+$missingDownloadsCapabilityBridge = $missingDownloadsCapabilityBridge + [Environment]::NewLine + $urlbarCoverageBridgeStub
+$missingTabsCapabilityBridge = $missingTabsCapabilityBridge + [Environment]::NewLine + $urlbarCoverageBridgeStub
+$missingNavigationCapabilityBridge = $missingNavigationCapabilityBridge + [Environment]::NewLine + $urlbarCoverageBridgeStub
+
 try {
     Write-Utf8NoBom -Path $targetPath -Content $missingCapabilityBridge
     & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-bridge-fail-open
@@ -749,6 +837,10 @@ try {
     & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-navigation-bridge-fail-open
     Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "A missing required navigation capability did not fail open at the shell health boundary."
 
+    Write-Utf8NoBom -Path $targetPath -Content $missingUrlbarCoverageCapabilityBridge
+    & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-urlbar-coverage-bridge-fail-open
+    Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "A missing required Urlbar coverage capability did not fail open at the shell health boundary."
+
     Copy-Item -LiteralPath $bridgeBackupPath -Destination $targetPath -Force
     & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile
     Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "Ordinary bridge startup did not recover after exact artifact restoration."
@@ -769,4 +861,4 @@ if ($testFailure) {
 }
 
 Assert-True -Condition (@(Get-CimInstance Win32_Process -Filter "Name='firefox.exe'").Count -eq 0) -Message "The bridge recovery matrix left a Firefox process running."
-Write-Output "PASS: missing boundary, bookmarks, downloads, tabs, and navigation capabilities failed open, then exact restoration recovered ordinary startup."
+Write-Output "PASS: missing boundary, bookmarks, downloads, tabs, navigation, and Urlbar coverage capabilities failed open, then exact restoration recovered ordinary startup."

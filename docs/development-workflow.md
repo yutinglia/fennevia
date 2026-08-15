@@ -41,15 +41,16 @@ Current feature order:
 ├─ #32 bottom downloads (complete)
 └─ #11 left tabs (complete)
     └─ #13 compact address/status launcher and popup (complete; depends on #12)
-        └─ #37 fuller Urlbar permissions/page-action coverage
-            └─ #15 content-only activation
+        └─ #37 fuller Urlbar permissions/page-action coverage (complete)
+            └─ #15 content-only activation (next)
                 └─ #16 hardening
 ```
 
-#37 is the next coverage step after completed #32. Completed #13 composes with
-#11 and reuses #12's navigation controller; #37 owns fuller Urlbar
-permissions/page-action and retained-access coverage before #15. No feature
-issue may build a second edge controller or bypass #31.
+#37 completed the fuller fixed Urlbar permission/page-action inventory and
+native-access handoff after #32. #15 is now the next implementation gate. It
+must make #37's handoff reveal/focus the native Urlbar while active and preserve
+every retained panel/prompt. No feature issue may build a second edge
+controller or bypass #31.
 
 ## 3. Branch and commit conventions
 
@@ -59,6 +60,7 @@ Recommended branch names:
 codex/issue-12-top-navigation
 codex/issue-14-right-bookmarks
 codex/issue-32-downloads
+codex/issue-37-urlbar-coverage
 codex/sync-current-progress-docs
 ```
 
@@ -182,7 +184,9 @@ Every edge feature should also cover:
 
 #15 additionally owns the complete native-UI coverage, retained-access, prompt,
 dialog, extension, Library, Downloads, DevTools, customize-mode, DOM-fullscreen,
-and OS-window-control matrix.
+and OS-window-control matrix. Its active-state tests must also prove #37's
+native Urlbar handoff temporarily reveals/focuses the retained navbar and that
+return/failure restores the correct presentation.
 
 ## 8. Pull-request evidence
 

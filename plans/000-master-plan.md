@@ -34,7 +34,7 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-16, package `0.9.0-dev` is validated on Firefox 153.0.4 for
+As of 2026-08-16, package `0.10.0-dev` is validated on Firefox 153.0.4 for
 Windows in an isolated copied Firefox program and marker-owned development
 profile.
 
@@ -59,18 +59,19 @@ Completed:
   opaque opening actions, and keyboard-accessible hierarchy;
 - #32: per-window typed Downloads list views, bounded anonymous state,
   event-driven bottom-edge aggregate progress/status, and native
-  safety/management retention.
+  safety/management retention;
+- #37: full current Urlbar status/action inventory, fixed permission/action
+  coverage in the detailed popup, and complete Firefox native-Urlbar handoff.
 
 Remaining MVP feature work:
 
-- #37: fuller current Urlbar permission/page-action and retained-access
-  inventory;
 - #15: health-gated content-only activation and narrow native-UI hiding;
 - #16: full hardening and Firefox stable-update workflow;
 - #18: project license and third-party attribution decision.
 
 Firefox native visible UI remains present. All four edge surfaces and the
-centered address overlay now have their planned pre-activation MVP function.
+centered address overlay now have their planned pre-activation MVP function and
+reviewed native-access path.
 The project is not ready for daily use or a versioned public release.
 
 ## 3. Success criteria
@@ -237,7 +238,7 @@ tests pass in Firefox chrome.
 Evidence: #8, ADR-022, ADR-026, and
 `docs/research/firefox-153-svelte-build.md`.
 
-### Phase 4: Typed Firefox bridge and state model — tabs, navigation, and bookmarks complete
+### Phase 4: Typed Firefox bridge and state model — complete for pre-activation features
 
 Shared deliverables:
 
@@ -261,20 +262,19 @@ Gate for each bridge: native and shell actions remain synchronized without
 polling or leaked native objects.
 
 Completed: #9, #10, the navigation bridge in #12, the address/status extension
-in #13, the Places/bookmarks bridge in #14, and the Downloads bridge in #32.
-Issues #12–#14 and #32 keep native browser, command, Urlbar,
+in #13, the Places/bookmarks bridge in #14, the Downloads bridge in #32, and
+the Urlbar-coverage bridge in #37. Issues #12–#14, #32, and #37 keep native
+browser, command, Urlbar,
 identity/protections handler, Places record, URL, Downloads list/view/object,
-path, byte, event, observer, and progress values private while exposing
-immutable bounded ordinary state and explicit current-window actions. See
-ADR-027, ADR-028, ADR-029, ADR-030,
+path, byte, permission record, extension identity, page-action ID, event,
+observer, and progress values private while exposing immutable bounded ordinary
+state and explicit current-window actions. See ADR-027, ADR-028, ADR-029,
+ADR-030, ADR-031,
 `docs/research/firefox-153-navigation-controls.md`,
 `docs/research/firefox-153-address-popup.md`,
 `docs/research/firefox-153-bookmarks-surface.md`, and
-`docs/research/firefox-153-downloads-surface.md`.
-
-Next bridge review:
-
-- #37 fuller Urlbar permissions/page-action coverage.
+`docs/research/firefox-153-downloads-surface.md`, and
+`docs/research/firefox-153-urlbar-coverage.md`.
 
 ### Phase 5A: Four-edge shell foundation — complete
 
@@ -298,7 +298,7 @@ remains visible.
 Evidence: ADR-026 and
 `docs/research/firefox-153-four-edge-shell.md`.
 
-### Phase 5B: Usable edge features — partially complete
+### Phase 5B: Usable edge features — complete
 
 #### Left vertical tabs — complete (#11)
 
@@ -340,7 +340,7 @@ Evidence: ADR-027 and
 - popup-priority suppression of the four edge surfaces, focus restoration, and
   deterministic cleanup;
 - native Urlbar, identity/protections panels, permissions, and page actions
-  retained; fuller reviewed coverage is tracked in #37.
+  retained; #37 completes their reviewed coverage and handoff.
 
 Evidence: ADR-028 and
 `docs/research/firefox-153-address-popup.md`.
@@ -384,6 +384,23 @@ evidence passed.
 Evidence: ADR-030 and
 `docs/research/firefox-153-downloads-surface.md`.
 
+#### Detailed Urlbar coverage and native handoff — complete (#37)
+
+- exact Firefox 153 leading/trailing item and notification-anchor inventory;
+- compact left launcher still limited to real connection/HTTPS and ETP status;
+- centered popup adds fixed sharing/blocked-permission and applicable-action
+  labels;
+- one read-only per-window owner-state observer with deterministic cleanup;
+- no principal, certificate, permission record, extension identity, action ID,
+  provider result, or native node crosses the bridge;
+- full Firefox Urlbar, providers, prompts, panels, and commands retained through
+  `window.openLocation()`;
+- real HTTP, valid HTTPS, internal, network-error, permission, ETP, dynamic
+  action, normal/second/private, Browser Toolbox, and fail-open evidence.
+
+Evidence: ADR-031 and
+`docs/research/firefox-153-urlbar-coverage.md`.
+
 Gate: basic browsing and required access paths work entirely through custom
 surfaces while native UI remains visible for comparison and fallback.
 
@@ -402,6 +419,9 @@ Deliverables:
 
 - root-state-gated rules hide only the narrowest native surfaces with complete
   replacements;
+- #37's native handoff reveals/focuses the retained Urlbar while active and
+  every trust/identity/protections/permission/extension/action panel and prompt
+  remains reachable;
 - all Fennevia surfaces remain hidden at rest;
 - only narrow edge triggers remain interactive;
 - clearing `active` restores native UI immediately without Svelte or restart;
@@ -481,8 +501,7 @@ and hashes. Generated files are never hand-edited.
 - Complete shared foundations before feature-specific UI.
 - Do not jump directly to #15.
 - Every feature issue must pass while native Firefox UI remains visible.
-- #37 is the next coverage step after completed #32; it inventories fuller
-  Urlbar permissions/page actions and retained access before #15 may activate.
+- #37 completed the Urlbar coverage gate; #15 is the next implementation step.
 - Feature issues use the shared #31 edge contract and the #9 bridge boundary.
 - Research work must produce reproducible evidence or a clear negative result,
   not a list of links.

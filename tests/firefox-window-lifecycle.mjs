@@ -11,6 +11,7 @@ const CONNECT_TIMEOUT_MS = 30_000;
 const STATE_TIMEOUT_MS = 20_000;
 const PROCESS_EXIT_TIMEOUT_MS = 20_000;
 const BROWSER_TOOLBOX_TIMEOUT_MS = 45_000;
+const URLBAR_COVERAGE_MATRIX_TIMEOUT_MS = 120_000;
 
 function parseArguments(argv) {
   const result = {
@@ -20,6 +21,7 @@ function parseArguments(argv) {
     expectDisabled: false,
     expectDownloadsBridgeFailOpen: false,
     expectNavigationBridgeFailOpen: false,
+    expectUrlbarCoverageBridgeFailOpen: false,
     expectSafeStart: false,
     expectShellFailOpen: false,
     expectShellMissingFailOpen: false,
@@ -61,6 +63,10 @@ function parseArguments(argv) {
     }
     if (argument === "--expect-navigation-bridge-fail-open") {
       result.expectNavigationBridgeFailOpen = true;
+      continue;
+    }
+    if (argument === "--expect-urlbar-coverage-bridge-fail-open") {
+      result.expectUrlbarCoverageBridgeFailOpen = true;
       continue;
     }
     if (argument === "--expect-stock") {
@@ -105,6 +111,7 @@ function parseArguments(argv) {
       result.expectDisabled,
       result.expectDownloadsBridgeFailOpen,
       result.expectNavigationBridgeFailOpen,
+      result.expectUrlbarCoverageBridgeFailOpen,
       result.expectSafeStart,
       result.expectShellFailOpen,
       result.expectShellMissingFailOpen,
@@ -123,6 +130,7 @@ function parseArguments(argv) {
       result.expectDisabled ||
       result.expectDownloadsBridgeFailOpen ||
       result.expectNavigationBridgeFailOpen ||
+      result.expectUrlbarCoverageBridgeFailOpen ||
       result.expectSafeStart ||
       result.expectShellFailOpen ||
       result.expectShellMissingFailOpen ||
@@ -831,12 +839,21 @@ async function collectFrontendState(client) {
         popupStatusCount:
           popupRoot?.querySelectorAll("[data-fennevia-address-popup-status]")
             .length ?? 0,
+        nativeAccessCount:
+          popupRoot?.querySelectorAll("[data-fennevia-native-urlbar-access]")
+            .length ?? 0,
+        permissionDetailCount:
+          popupRoot?.querySelectorAll("[data-fennevia-permission-detail]")
+            .length ?? 0,
         protectionDetailCount:
           popupRoot?.querySelectorAll("[data-fennevia-protection-detail]")
             .length ?? 0,
         protectionIndicatorCount:
           root?.querySelectorAll("[data-fennevia-protection-status]").length ??
           0,
+        urlbarCoverageCount:
+          popupRoot?.querySelectorAll("[data-fennevia-urlbar-coverage]")
+            .length ?? 0,
       },
       bookmarks: {
         branchReadyCount:
@@ -1064,8 +1081,11 @@ function assertFrontendState(state, windowKind) {
     popupPhase: "hidden",
     popupRootCount: 1,
     popupStatusCount: 1,
+    nativeAccessCount: 1,
+    permissionDetailCount: 1,
     protectionDetailCount: 1,
     protectionIndicatorCount: 1,
+    urlbarCoverageCount: 1,
   });
   assert.ok(state.bookmarks.branchReadyCount >= 1);
   assert.equal(Number.isSafeInteger(state.bookmarks.itemCount), true);
@@ -1904,6 +1924,12 @@ async function exerciseAddressInput(client) {
         const status = popupRoot?.querySelector(
           "[data-fennevia-address-popup-status]"
         );
+        const nativeAccess = popupRoot?.querySelector(
+          "[data-fennevia-native-urlbar-access]"
+        );
+        const urlbarCoverage = popupRoot?.querySelector(
+          "[data-fennevia-urlbar-coverage]"
+        );
         const nativeUrlbar = window.gURLBar;
         if (
           !frame ||
@@ -1913,6 +1939,8 @@ async function exerciseAddressInput(client) {
           !region ||
           !input ||
           !status ||
+          !nativeAccess ||
+          !urlbarCoverage ||
           !nativeUrlbar
         ) {
           throw new Error("FENNEVIA_FIREFOX_TEST_ADDRESS_POPUP_MISSING");
@@ -2059,6 +2087,9 @@ async function exerciseAddressInput(client) {
         const detailProtection = popupRoot.querySelector(
           "[data-fennevia-protection-detail] .fennevia-address-popup__detail-mark"
         );
+        const detailPermission = popupRoot.querySelector(
+          "[data-fennevia-permission-detail] .fennevia-address-popup__detail-mark"
+        );
         const firefoxSiteStatusMatched =
           sideConnection?.textContent?.trim() === expectedConnectionBadge &&
           detailConnection?.textContent?.trim() === expectedConnectionBadge &&
@@ -2066,6 +2097,84 @@ async function exerciseAddressInput(client) {
           detailProtection?.textContent?.trim() === expectedProtectionBadge &&
           Boolean(sideConnection?.getAttribute("aria-label")) &&
           Boolean(sideProtection?.getAttribute("aria-label"));
+
+        const nativePermissionBox = document.getElementById(
+          "identity-permission-box"
+        );
+        const sharingActive = [
+          "webrtc-sharing-icon",
+          "geo-sharing-icon",
+          "xr-sharing-icon",
+          "serial-sharing-icon",
+        ].some(id => document.getElementById(id)?.hasAttribute("sharing"));
+        const permissionAvailable =
+          nativeUrlbar.getAttribute("pageproxystate") === "valid" ||
+          nativeUrlbar.hasAttribute("persistsearchterms") ||
+          sharingActive;
+        const expectedPermissionBadge = !permissionAvailable
+          ? "Permissions —"
+          : sharingActive
+            ? "In use"
+            : "Permissions";
+        const permissionStatusMatched =
+          detailPermission?.textContent?.trim() === expectedPermissionBadge &&
+          Boolean(nativePermissionBox);
+
+        const nativeItemLabels = [
+          ["contextual-feature-recommendation", "Firefox recommendation"],
+          ["userContext-icons", "Container tab"],
+          ["reader-mode-button", "Reader View"],
+          ["picture-in-picture-button", "Picture-in-Picture"],
+          ["taskbar-tabs-button", "Taskbar tab controls"],
+          ["translations-button", "Translate page"],
+          ["urlbar-zoom-button", "Reset page zoom"],
+          ["split-view-button", "Split view"],
+          ["star-button-box", "Bookmark page"],
+        ];
+        const renderedItemText = () =>
+          [...urlbarCoverage.querySelectorAll(
+            "[data-fennevia-urlbar-items] li"
+          )].map(item => item.textContent?.trim() ?? "");
+        const urlbarItemCoverageMatched = nativeItemLabels.every(
+          ([id, label]) => {
+            const element = document.getElementById(id);
+            const ownerVisible =
+              element &&
+              !element.hidden &&
+              element.getAttribute("hidden") !== "true" &&
+              element.getAttribute("collapsed") !== "true";
+            return renderedItemText().includes(label) === Boolean(ownerVisible);
+          }
+        );
+
+        await FullZoom.enlarge();
+        await waitFor(
+          () => renderedItemText().includes("Reset page zoom"),
+          "FENNEVIA_FIREFOX_TEST_URLBAR_ZOOM_APPEAR_TIMEOUT"
+        );
+        await FullZoom.reset();
+        await waitFor(
+          () => !renderedItemText().includes("Reset page zoom"),
+          "FENNEVIA_FIREFOX_TEST_URLBAR_ZOOM_CLEAR_TIMEOUT"
+        );
+        const urlbarItemsUpdated = true;
+
+        nativeAccess.click();
+        await waitFor(
+          () =>
+            !popupVisible() &&
+            popupPhase() === "hidden" &&
+            nativeUrlbar.focused,
+          "FENNEVIA_FIREFOX_TEST_NATIVE_URLBAR_ACCESS_TIMEOUT"
+        );
+        const nativeUrlbarAccessWorked = true;
+        nativeUrlbar.blur();
+        nativeUrlbar.view.close();
+        dispatchOpenLocation();
+        await waitFor(
+          () => popupPhase() === "editing" && document.activeElement === input,
+          "FENNEVIA_FIREFOX_TEST_URLBAR_COVERAGE_REFOCUS_TIMEOUT"
+        );
 
         for (const key of ["ArrowUp", "ArrowLeft", "ArrowRight", "ArrowDown"]) {
           window.dispatchEvent(
@@ -2340,11 +2449,15 @@ async function exerciseAddressInput(client) {
           launcherCancelRestored,
           longInputBounded,
           nativeFallbackWorked,
+          nativeUrlbarAccessWorked,
           nativeSubmissionSynchronized,
+          permissionStatusMatched,
           searchObserved,
           escapeDismissed:
             root.getAttribute("data-fennevia-visible") === "false",
           unsafeSchemeRejected,
+          urlbarItemCoverageMatched,
+          urlbarItemsUpdated,
         };
       })();
     `);
@@ -2368,10 +2481,14 @@ function assertAddressInput(result) {
     "launcherCancelRestored",
     "longInputBounded",
     "nativeFallbackWorked",
+    "nativeUrlbarAccessWorked",
     "nativeSubmissionSynchronized",
+    "permissionStatusMatched",
     "searchObserved",
     "escapeDismissed",
     "unsafeSchemeRejected",
+    "urlbarItemCoverageMatched",
+    "urlbarItemsUpdated",
   ]) {
     assert.equal(result[key], true, key);
   }
@@ -2381,6 +2498,315 @@ function assertAddressInput(result) {
   assert.ok(result.requests.host >= 1);
   assert.ok(result.requests.native >= 1);
   assert.ok(result.requests.search >= 1);
+}
+
+async function exerciseUrlbarCoverageMatrix(client) {
+  const server = createServer((request, response) => {
+    const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+    if (pathname === "/network-error") {
+      request.socket.destroy();
+      return;
+    }
+    response.writeHead(200, {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/html; charset=utf-8",
+    });
+    response.end(
+      "<!doctype html><title>Urlbar coverage matrix</title><main>local fixture</main>",
+    );
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    throw new Error("FENNEVIA_FIREFOX_TEST_URLBAR_MATRIX_SERVER_INVALID");
+  }
+  const baseUrl = `http://fennevia.test:${address.port}`;
+
+  try {
+    return await client.execute(`
+      return (async () => {
+        const baseUrl = ${JSON.stringify(baseUrl)};
+        const httpsUrl = "https://example.com/";
+        const root = document.getElementById("fennevia-shell-left-root");
+        const popupRoot = document.getElementById("fennevia-address-popup-root");
+        const nativeUrlbar = window.gURLBar;
+        const sideConnection = root?.querySelector(
+          "[data-fennevia-connection-status]"
+        );
+        const sideProtection = root?.querySelector(
+          "[data-fennevia-protection-status]"
+        );
+        const detailConnection = popupRoot?.querySelector(
+          "[data-fennevia-connection-detail] .fennevia-address-popup__detail-mark"
+        );
+        const detailProtection = popupRoot?.querySelector(
+          "[data-fennevia-protection-detail] .fennevia-address-popup__detail-mark"
+        );
+        if (
+          !root ||
+          !popupRoot ||
+          !nativeUrlbar ||
+          !sideConnection ||
+          !sideProtection ||
+          !detailConnection ||
+          !detailProtection
+        ) {
+          throw new Error("FENNEVIA_FIREFOX_TEST_URLBAR_MATRIX_UI_MISSING");
+        }
+
+        const waitFor = async (predicate, code, timeoutMs = 20000) => {
+          const deadline = Date.now() + timeoutMs;
+          while (Date.now() < deadline) {
+            if (predicate()) {
+              return;
+            }
+            await new Promise(resolve => window.setTimeout(resolve, 20));
+          }
+          throw new Error(code);
+        };
+        const currentSpec = () => gBrowser.selectedBrowser.currentURI.spec;
+        const load = async (url, timeoutMs = 20000) => {
+          gBrowser.selectedBrowser.fixupAndLoadURIString(url, {
+            triggeringPrincipal:
+              Services.scriptSecurityManager.getSystemPrincipal(),
+          });
+          await waitFor(
+            () =>
+              currentSpec() === url &&
+              !gBrowser.selectedTab.hasAttribute("busy"),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_MATRIX_LOAD_TIMEOUT",
+            timeoutMs
+          );
+        };
+        const popupPhase = () =>
+          popupRoot.getAttribute("data-fennevia-address-popup-phase");
+        const openPopup = async () => {
+          if (popupPhase() === "editing") {
+            return;
+          }
+          const command = document.getElementById("Browser:OpenLocation");
+          const event = new CustomEvent("command", {
+            bubbles: true,
+            cancelable: true,
+          });
+          Object.defineProperty(event, "sourceEvent", {
+            value: { target: { id: "focusURLBar" } },
+          });
+          command.dispatchEvent(event);
+          await waitFor(
+            () => popupPhase() === "editing",
+            "FENNEVIA_FIREFOX_TEST_URLBAR_MATRIX_POPUP_OPEN_TIMEOUT"
+          );
+        };
+        const closePopup = async () => {
+          if (popupPhase() === "hidden") {
+            return;
+          }
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              bubbles: true,
+              cancelable: true,
+              key: "Escape",
+            })
+          );
+          await waitFor(
+            () => popupPhase() === "hidden",
+            "FENNEVIA_FIREFOX_TEST_URLBAR_MATRIX_POPUP_CLOSE_TIMEOUT"
+          );
+        };
+        const connectionMatches = badge =>
+          sideConnection.textContent?.trim() === badge &&
+          detailConnection.textContent?.trim() === badge;
+        const protectionMatches = badge =>
+          sideProtection.textContent?.trim() === badge &&
+          detailProtection.textContent?.trim() === badge;
+        const renderedPermissions = () =>
+          [...popupRoot.querySelectorAll(
+            "[data-fennevia-permission-indicators] li"
+          )].map(item => item.textContent?.trim() ?? "");
+
+        const dnsPrefName = "network.dns.localDomains";
+        const hadDnsPref = Services.prefs.prefHasUserValue(dnsPrefName);
+        const originalDnsPref = Services.prefs.getStringPref(dnsPrefName, "");
+        Services.prefs.setStringPref(dnsPrefName, "fennevia.test");
+        let permissionSet = false;
+        let protectionExceptionSet = false;
+        try {
+          await load(baseUrl + "/http");
+          await openPopup();
+          await waitFor(
+            () =>
+              gIdentityHandler.getConnectionSecurityInformation() ===
+                "not-secure" && connectionMatches("HTTP"),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_HTTP_STATUS_TIMEOUT"
+          );
+          const httpStateMatched = true;
+
+          const browser = gBrowser.selectedBrowser;
+          SitePermissions.setForPrincipal(
+            browser.contentPrincipal,
+            "camera",
+            SitePermissions.BLOCK,
+            SitePermissions.SCOPE_TEMPORARY,
+            browser
+          );
+          permissionSet = true;
+          gPermissionPanel.refreshPermissionIcons();
+          await waitFor(
+            () =>
+              document
+                .getElementById("identity-permission-box")
+                ?.hasAttribute("hasPermissions") &&
+              document
+                .querySelector(
+                  '#blocked-permissions-container [data-permission-id="camera"]'
+                )
+                ?.hasAttribute("showing") &&
+              renderedPermissions().includes("Camera blocked"),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_PERMISSION_STATUS_TIMEOUT"
+          );
+          const permissionStateMatched = true;
+          SitePermissions.removeFromPrincipal(
+            browser.contentPrincipal,
+            "camera",
+            browser
+          );
+          permissionSet = false;
+          gPermissionPanel.refreshPermissionIcons();
+          await waitFor(
+            () => !renderedPermissions().includes("Camera blocked"),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_PERMISSION_CLEAR_TIMEOUT"
+          );
+          await closePopup();
+
+          await load(httpsUrl, 30000);
+          await openPopup();
+          await waitFor(
+            () =>
+              [
+                "secure",
+                "secure-cert-user-overridden",
+                "secure-etsi",
+                "secure-ev",
+              ].includes(
+                gIdentityHandler.getConnectionSecurityInformation()
+              ) && connectionMatches("HTTPS"),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_HTTPS_STATUS_TIMEOUT",
+            30000
+          );
+          const httpsStateMatched = true;
+          await closePopup();
+
+          ContentBlockingAllowList.add(gBrowser.selectedBrowser);
+          protectionExceptionSet = true;
+          BrowserCommands.reload();
+          await waitFor(
+            () =>
+              !gBrowser.selectedTab.hasAttribute("busy") &&
+              gProtectionsHandler.hasException === true,
+            "FENNEVIA_FIREFOX_TEST_URLBAR_PROTECTION_EXCEPTION_LOAD_TIMEOUT",
+            30000
+          );
+          await openPopup();
+          await waitFor(
+            () => protectionMatches("ETP off"),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_PROTECTION_EXCEPTION_TIMEOUT"
+          );
+          const protectionExceptionMatched = true;
+          await closePopup();
+          ContentBlockingAllowList.remove(gBrowser.selectedBrowser);
+          protectionExceptionSet = false;
+          BrowserCommands.reload();
+          await waitFor(
+            () =>
+              !gBrowser.selectedTab.hasAttribute("busy") &&
+              gProtectionsHandler.hasException === false,
+            "FENNEVIA_FIREFOX_TEST_URLBAR_PROTECTION_RESTORE_LOAD_TIMEOUT",
+            30000
+          );
+          await openPopup();
+          await waitFor(
+            () => protectionMatches("ETP"),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_PROTECTION_RESTORE_TIMEOUT"
+          );
+          const protectionStateMatched = true;
+          await closePopup();
+
+          await load("about:preferences");
+          await openPopup();
+          await waitFor(
+            () =>
+              gIdentityHandler.getConnectionSecurityInformation() ===
+                "chrome" && connectionMatches("Firefox"),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_INTERNAL_STATUS_TIMEOUT"
+          );
+          const internalStateMatched = true;
+          await closePopup();
+
+          await load(baseUrl + "/network-error");
+          await openPopup();
+          await waitFor(
+            () =>
+              gIdentityHandler.getConnectionSecurityInformation() ===
+                "net-error-page" && connectionMatches("Error"),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_ERROR_STATUS_TIMEOUT"
+          );
+          const errorStateMatched = true;
+          await closePopup();
+
+          return {
+            errorStateMatched,
+            httpStateMatched,
+            httpsStateMatched,
+            internalStateMatched,
+            permissionStateMatched,
+            protectionExceptionMatched,
+            protectionStateMatched,
+          };
+        } finally {
+          if (permissionSet) {
+            SitePermissions.removeFromPrincipal(
+              gBrowser.selectedBrowser.contentPrincipal,
+              "camera",
+              gBrowser.selectedBrowser
+            );
+            gPermissionPanel.refreshPermissionIcons();
+          }
+          if (protectionExceptionSet) {
+            ContentBlockingAllowList.remove(gBrowser.selectedBrowser);
+            BrowserCommands.reload();
+          }
+          if (hadDnsPref) {
+            Services.prefs.setStringPref(dnsPrefName, originalDnsPref);
+          } else {
+            Services.prefs.clearUserPref(dnsPrefName);
+          }
+          await closePopup();
+        }
+      })();
+    `, URLBAR_COVERAGE_MATRIX_TIMEOUT_MS);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
+function assertUrlbarCoverageMatrix(result) {
+  for (const key of [
+    "errorStateMatched",
+    "httpStateMatched",
+    "httpsStateMatched",
+    "internalStateMatched",
+    "permissionStateMatched",
+    "protectionExceptionMatched",
+    "protectionStateMatched",
+  ]) {
+    assert.equal(result[key], true, key);
+  }
 }
 
 async function exerciseTabStripMvp(client) {
@@ -3759,6 +4185,8 @@ async function exerciseFrontendUnmountRemount(client) {
       let addressPopupUnsubscriptionCount = 0;
       let tabSubscriptionCount = 0;
       let tabUnsubscriptionCount = 0;
+      let urlbarCoverageSubscriptionCount = 0;
+      let urlbarCoverageUnsubscriptionCount = 0;
       const fatalErrors = [];
       const unmountErrors = [];
       const testTab = Object.freeze({
@@ -3923,6 +4351,32 @@ async function exerciseFrontendUnmountRemount(client) {
           };
         },
       });
+      const urlbarCoverage = Object.freeze({
+        openNativeUrlbar() { return true; },
+        snapshot() {
+          return Object.freeze({
+            items: Object.freeze(["bookmark"]),
+            permissions: Object.freeze({
+              available: true,
+              blocked: Object.freeze([]),
+              hasPermissions: false,
+              sharing: Object.freeze([]),
+            }),
+          });
+        },
+        subscribe() {
+          urlbarCoverageSubscriptionCount += 1;
+          let active = true;
+          return () => {
+            if (!active) {
+              return false;
+            }
+            active = false;
+            urlbarCoverageUnsubscriptionCount += 1;
+            return true;
+          };
+        },
+      });
       const options = {
         bookmarks,
         downloads,
@@ -3937,6 +4391,7 @@ async function exerciseFrontendUnmountRemount(client) {
         overlayTarget,
         tabs,
         targets,
+        urlbarCoverage,
         windowKind: "normal",
       };
 
@@ -4033,6 +4488,8 @@ async function exerciseFrontendUnmountRemount(client) {
             "disposed",
           tabSubscriptionCount,
           tabUnsubscriptionCount,
+          urlbarCoverageSubscriptionCount,
+          urlbarCoverageUnsubscriptionCount,
           unmountErrorCount: unmountErrors.length,
         };
       } finally {
@@ -4776,11 +5233,9 @@ async function run() {
       strictFileInteractability: true,
     });
     assert.equal(typeof session?.sessionId, "string");
-    if (options.browserToolbox) {
-      await client.request("WebDriver:SetTimeouts", {
-        script: BROWSER_TOOLBOX_TIMEOUT_MS,
-      });
-    }
+    await client.request("WebDriver:SetTimeouts", {
+      script: URLBAR_COVERAGE_MATRIX_TIMEOUT_MS,
+    });
     await client.request("Marionette:SetContext", { value: "chrome" });
 
     const originalHandle = (await client.request("WebDriver:GetWindowHandle"))
@@ -4933,6 +5388,7 @@ async function run() {
       options.expectBookmarksBridgeFailOpen ||
       options.expectDownloadsBridgeFailOpen ||
       options.expectNavigationBridgeFailOpen ||
+      options.expectUrlbarCoverageBridgeFailOpen ||
       options.expectTabsBridgeFailOpen
     ) {
       await new Promise((resolve) => setTimeout(resolve, 750));
@@ -4969,6 +5425,7 @@ async function run() {
         options.expectBookmarksBridgeFailOpen ||
         options.expectDownloadsBridgeFailOpen ||
         options.expectNavigationBridgeFailOpen ||
+        options.expectUrlbarCoverageBridgeFailOpen ||
         options.expectTabsBridgeFailOpen
       ) {
         assert.equal(
@@ -4988,7 +5445,12 @@ async function run() {
         (record) => record.event === "shell.lifecycle-failed",
       );
       assert.equal(shellFailures.length, 1);
-      const expectedShellFailure = options.expectNavigationBridgeFailOpen
+      const expectedShellFailure = options.expectUrlbarCoverageBridgeFailOpen
+        ? {
+            code: "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING",
+            phase: "firefox-urlbar-coverage-capability",
+          }
+        : options.expectNavigationBridgeFailOpen
         ? {
             code: "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
             phase: "firefox-navigation-capability",
@@ -5027,8 +5489,10 @@ async function run() {
       assert.equal(shellFailures[0].windowKind, "normal");
       assert.equal(
         shellFailures[0].firefoxSymbol,
-        options.expectNavigationBridgeFailOpen
-          ? "window.gBrowser.removeTabsProgressListener"
+        options.expectUrlbarCoverageBridgeFailOpen
+          ? "window.openLocation"
+          : options.expectNavigationBridgeFailOpen
+            ? "window.gBrowser.removeTabsProgressListener"
           : options.expectBookmarksBridgeFailOpen
             ? "PlacesUtils.bookmarks.fetch"
             : options.expectDownloadsBridgeFailOpen
@@ -5056,7 +5520,7 @@ async function run() {
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
-        `PASS: a ${options.expectNavigationBridgeFailOpen ? "missing required navigation capability" : options.expectBookmarksBridgeFailOpen ? "missing required bookmarks capability" : options.expectDownloadsBridgeFailOpen ? "missing required downloads capability" : options.expectTabsBridgeFailOpen ? "missing required tabs capability" : options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
+        `PASS: a ${options.expectUrlbarCoverageBridgeFailOpen ? "missing required Urlbar coverage capability" : options.expectNavigationBridgeFailOpen ? "missing required navigation capability" : options.expectBookmarksBridgeFailOpen ? "missing required bookmarks capability" : options.expectDownloadsBridgeFailOpen ? "missing required downloads capability" : options.expectTabsBridgeFailOpen ? "missing required tabs capability" : options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
           "path, removed every project host, and retained native browser UI.",
       );
       return;
@@ -5157,6 +5621,8 @@ async function run() {
     assertNavigationControls(await exerciseNavigationControls(client));
     assertFrontendState(await collectFrontendState(client), "normal");
     assertAddressInput(await exerciseAddressInput(client));
+    assertFrontendState(await collectFrontendState(client), "normal");
+    assertUrlbarCoverageMatrix(await exerciseUrlbarCoverageMatrix(client));
     assertFrontendState(await collectFrontendState(client), "normal");
     assertTabStripMvp(await exerciseTabStripMvp(client));
     assertFrontendState(await collectFrontendState(client), "normal");
@@ -5310,6 +5776,8 @@ async function run() {
     assert.equal(remount.secondStatusesDisposed, true);
     assert.equal(remount.tabSubscriptionCount, 2);
     assert.equal(remount.tabUnsubscriptionCount, 2);
+    assert.equal(remount.urlbarCoverageSubscriptionCount, 2);
+    assert.equal(remount.urlbarCoverageUnsubscriptionCount, 2);
     assert.equal(remount.unmountErrorCount, 0);
     await client.request("WebDriver:SwitchToWindow", {
       handle: originalHandle,

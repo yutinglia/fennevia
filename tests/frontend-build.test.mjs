@@ -129,7 +129,7 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
   );
   assert.match(
     runtime,
-    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxBookmarksBridge,[\s\S]*createFirefoxDownloadsBridge,[\s\S]*createFirefoxNavigationBridge,[\s\S]*createFirefoxTabsBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
+    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxBookmarksBridge,[\s\S]*createFirefoxDownloadsBridge,[\s\S]*createFirefoxNavigationBridge,[\s\S]*createFirefoxTabsBridge,[\s\S]*createFirefoxUrlbarCoverageBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
   );
   assert.match(runtime, /Reflect\.deleteProperty\(/u);
   assert.doesNotMatch(runtime, /ShellApp\.sys\.mjs|import\s*\(/u);
@@ -159,9 +159,11 @@ test("the generated Firefox boundary is one deterministic private ESM artifact",
   assert.match(bridge, /createFirefoxDownloadsBridge/u);
   assert.match(bridge, /createFirefoxNavigationBridge/u);
   assert.match(bridge, /createFirefoxTabsBridge/u);
+  assert.match(bridge, /createFirefoxUrlbarCoverageBridge/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING/u);
+  assert.match(bridge, /FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING/u);
   assert.match(bridge, /export \{/u);
   assert.doesNotMatch(
     bridge,
