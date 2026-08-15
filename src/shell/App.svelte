@@ -3,6 +3,7 @@
 
   import { type AddressPopupController } from "../app/address-popup";
   import type { BrowserBookmarksStateAdapter } from "../app/bookmark-state";
+  import type { BrowserDownloadsStateAdapter } from "../app/download-state";
   import {
     edgeKeyboardBindings,
     edgeTriggerThicknessCssPixels,
@@ -35,10 +36,12 @@
     getTrackingProtectionPresentation,
   } from "./navigation-labels";
   import BookmarksPanel from "./BookmarksPanel.svelte";
+  import DownloadsPanel from "./DownloadsPanel.svelte";
 
   type Props = Readonly<{
     addressPopup?: AddressPopupController;
     bookmarks?: BrowserBookmarksStateAdapter;
+    downloads?: BrowserDownloadsStateAdapter;
     edge: EdgeName;
     frame: HTMLElement;
     navigation?: BrowserNavigationStateAdapter;
@@ -714,20 +717,11 @@
           onFatalError={props.onFatalError}
         />
       {/if}
-    {:else}
-      <div
-        aria-live="polite"
-        class="fennevia-surface-placeholder fennevia-surface-placeholder--bottom"
-        role="status"
-      >
-        <span class="fennevia-surface-placeholder__eyebrow"
-          >Activity surface</span
-        >
-        <strong>Downloads mount ready</strong>
-        <span
-          >Progress and status will appear without replacing safety prompts.</span
-        >
-      </div>
+    {:else if props.downloads}
+      <DownloadsPanel
+        downloads={props.downloads}
+        onFatalError={props.onFatalError}
+      />
     {/if}
 
     <footer class="fennevia-edge-panel__footer">

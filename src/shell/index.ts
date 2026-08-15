@@ -21,6 +21,11 @@ import {
   type BrowserBookmarksStateAdapter,
 } from "../app/bookmark-state";
 import {
+  createBrowserDownloadsStateAdapter,
+  type BrowserDownloadsBridge,
+  type BrowserDownloadsStateAdapter,
+} from "../app/download-state";
+import {
   createBrowserNavigationStateAdapter,
   type BrowserNavigationBridge,
   type BrowserNavigationStateAdapter,
@@ -55,6 +60,7 @@ export type EdgeMountTargets = Readonly<Record<EdgeName, Element>>;
 
 type MountOptions = Readonly<{
   bookmarks: BrowserBookmarksBridge;
+  downloads: BrowserDownloadsBridge;
   frame: HTMLElement;
   navigation: BrowserNavigationBridge;
   onFatalError: (error: unknown) => void;
@@ -82,6 +88,7 @@ type MountedShell = Readonly<{
   addressPopup: AddressPopupController;
   bookmarks: BrowserBookmarksStateAdapter;
   components: readonly MountedComponent[];
+  downloads: BrowserDownloadsStateAdapter;
   navigation: BrowserNavigationStateAdapter;
   shell: EdgeShellController;
   tabs: BrowserTabsStateAdapter;
@@ -171,6 +178,7 @@ function getFocusableOrigin(
 
 export function mountShellApp({
   bookmarks,
+  downloads,
   frame,
   navigation,
   onFatalError,
@@ -203,6 +211,7 @@ export function mountShellApp({
   let addressPopupFocusOrigin: FocusableElement | null = null;
   let addressPopupOriginEdge: EdgeName | null = null;
   let bookmarksState: BrowserBookmarksStateAdapter | undefined;
+  let downloadsState: BrowserDownloadsStateAdapter | undefined;
   let navigationState: BrowserNavigationStateAdapter | undefined;
   let tabsState: BrowserTabsStateAdapter | undefined;
   const components: MountedComponent[] = [];
@@ -587,6 +596,11 @@ export function mountShellApp({
       firstError ??= error;
     }
     try {
+      downloadsState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
       navigationState?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -620,6 +634,7 @@ export function mountShellApp({
     tabsState = createBrowserTabsStateAdapter(tabs);
     navigationState = createBrowserNavigationStateAdapter(navigation);
     bookmarksState = createBrowserBookmarksStateAdapter(bookmarks);
+    downloadsState = createBrowserDownloadsStateAdapter(downloads);
     addressPopup = createAddressPopupController({
       navigation: navigationState,
       tabs: tabsState,
@@ -679,6 +694,7 @@ export function mountShellApp({
               }
             : {}),
           ...(edge === "right" ? { bookmarks: bookmarksState } : {}),
+          ...(edge === "bottom" ? { downloads: downloadsState } : {}),
           windowKind,
         },
         target,
@@ -741,6 +757,7 @@ export function mountShellApp({
       addressPopup,
       bookmarks: bookmarksState,
       components: Object.freeze([...components]),
+      downloads: downloadsState,
       navigation: navigationState,
       shell,
       tabs: tabsState,
@@ -781,7 +798,7 @@ export async function verifyShellAppHealth({
   windowKind,
 }: HealthOptions): Promise<true> {
   const mounted = mountedFrames.get(frame);
-  await mounted?.bookmarks.ready();
+  await Promise.all([mounted?.bookmarks.ready(), mounted?.downloads.ready()]);
   const roots = edgeNames.map((edge) =>
     targets[edge].querySelector<HTMLElement>(
       `#fennevia-shell-${edge}-root${ROOT_SELECTOR}`,
@@ -790,6 +807,7 @@ export async function verifyShellAppHealth({
   const topRoot = roots[edgeNames.indexOf("top")];
   const leftRoot = roots[edgeNames.indexOf("left")];
   const rightRoot = roots[edgeNames.indexOf("right")];
+  const bottomRoot = roots[edgeNames.indexOf("bottom")];
   const addressPopupRoot = overlayTarget.querySelector<HTMLElement>(
     "#fennevia-address-popup-root[data-fennevia-address-popup-root]",
   );
@@ -821,6 +839,11 @@ export async function verifyShellAppHealth({
     '[role="list"][data-fennevia-bookmark-list]',
     "[data-fennevia-bookmark-status]",
   ];
+  const requiredBottomSelectors = [
+    "section[data-fennevia-downloads]",
+    "[data-fennevia-download-summary]",
+    "[data-fennevia-download-progress]",
+  ];
   const requiredAddressPopupSelectors = [
     "button[data-fennevia-address-popup-backdrop]",
     'div[role="dialog"][aria-modal="false"][data-fennevia-address-popup]',
@@ -840,6 +863,8 @@ export async function verifyShellAppHealth({
     mounted.addressPopup.status().disposed ||
     mounted.bookmarks.status().disposed ||
     mounted.bookmarks.status().phase !== "ready" ||
+    mounted.downloads.status().disposed ||
+    mounted.downloads.status().phase !== "ready" ||
     mounted.navigation.status().disposed ||
     mounted.tabs.status().disposed ||
     roots.some((root, index) => {
@@ -875,6 +900,10 @@ export async function verifyShellAppHealth({
     !rightRoot ||
     requiredRightSelectors.some(
       (selector) => !rightRoot.querySelector(selector),
+    ) ||
+    !bottomRoot ||
+    requiredBottomSelectors.some(
+      (selector) => !bottomRoot.querySelector(selector),
     ) ||
     !addressPopupRoot ||
     addressPopupRoot.parentElement !== overlayTarget ||
@@ -979,6 +1008,15 @@ export function getShellAppCapabilities({
         targets.right.querySelector("[data-fennevia-bookmark-list]"),
       ),
       name: "frontend.bookmarks-state",
+    }),
+    Object.freeze({
+      available: Boolean(
+        mounted &&
+        !mounted.downloads.status().disposed &&
+        targets.bottom.querySelector("[data-fennevia-downloads]") &&
+        targets.bottom.querySelector("[data-fennevia-download-progress]"),
+      ),
+      name: "frontend.downloads-state",
     }),
     Object.freeze({
       available: edgeNames.every((edge) =>

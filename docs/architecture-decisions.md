@@ -795,3 +795,76 @@ visual composition were not copied or adapted.
 Current source pins, canary review, alternatives, security analysis, first
 causal failure, and real normal/second/private-window evidence are recorded in
 `docs/research/firefox-153-bookmarks-surface.md`.
+
+## ADR-030: Use per-window Downloads list views and anonymous bounded status
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Create one Downloads controller inside each ADR-023 window boundary. A normal
+window subscribes to Firefox's `Downloads.PUBLIC` list and a private window to
+`Downloads.PRIVATE`. Windows of the same kind continue to observe Firefox's
+shared native list according to its current policy, but every Fennevia view,
+opaque-handle registry, subscriber set, application adapter, and disposer is
+owned independently by one window. Do not introduce a process-global mirror.
+
+Import only the fixed `resource://gre/modules/Downloads.sys.mjs` URI. Require
+`Downloads`, `getList()`, the selected list constant, and the returned
+`DownloadList.addView()`/`removeView()` pair before health. Register exactly one
+view. Consume its synchronous initial replay and added, changed, removed, and
+batch callbacks; pair it with exact idempotent removal. There is no polling
+fallback, download-triggered edge reveal, timer, or persisted history.
+
+Classify current native fields in Firefox's current `DownloadsCommon` order:
+running, succeeded, failed, paused when canceled with partial data, canceled,
+then queued. Ignore terminal records present during the initial list replay so
+old download history does not appear as new activity. Retain at most three
+terminal records first observed by this controller, until native removal or
+displacement by newer terminal records. Active, paused, and queued records
+remain while Firefox keeps them in the selected list.
+
+Translate only a context-bound opaque ID, fixed state enum, and optional
+integer percentage. Expose at most six anonymous item summaries and cap every
+state count at 999 with explicit overflow/truncation flags. Native download
+objects, source/referrer URLs, target paths, filenames, principals, headers,
+cookies, private markers, and per-item byte counts never cross `src/firefox/`,
+enter DOM attributes, persistence, or diagnostics.
+
+Aggregate all active known-size transfers by positive total bytes. If every
+active transfer reports progress but none has a positive total, average their
+reported percentages. If any active transfer lacks progress, expose an
+explicit indeterminate state and no percentage. Zero-total records carry no
+weight when positive byte totals exist. Clamp and floor the final result to an
+integer from zero through 100.
+
+Render the result in ADR-026's existing bottom host as a compact, read-only
+Svelte status panel. It uses the shared edge trigger, keyboard/focus reveal,
+collision policy, glass tokens, environment suspension, and disposer. The
+panel adds no host, trigger, z-index system, feature timer, content padding, or
+file action. Determinate progress uses native progressbar semantics;
+indeterminate output has no false `aria-valuenow` and no continuous animation.
+Updates received while hidden do not alter shared reveal state.
+
+Firefox's native Downloads button/panel, notifications, file picker,
+reputation, malware and executable warnings, permission/confirmation flows,
+history, and all pause/resume/cancel/retry/open/reveal/delete actions remain
+attached, visible, and authoritative. Missing module/list/view capability,
+malformed records, subscriber failure, or initial readiness failure follows
+ADR-021 fail-open and retains those native paths.
+
+**Reasoning:** Firefox already owns download isolation, lifecycle state,
+notifications, safety policy, and management. Its list-view contract provides
+the required event stream and paired cleanup without a polling loop. Anonymous
+bounded status is enough for the bottom-edge product goal and avoids creating a
+second sensitive download manager or exposing filenames and paths merely for
+decoration. Per-window view ownership aligns cleanup and failure with the
+existing boundary while preserving Firefox's normal/private list semantics.
+
+The capability reference
+`yutinglia/my-firefox-custom@7a02f60bb23abe9c191c7fd8cd2a7096bb63aee5`
+was inspected only for the broad goal of aggregate bottom-edge progress. Its
+GitHub license metadata reports `NOASSERTION`; no controller, polling loop,
+observer combination, DOM, selector, class, timer, value, CSS, gradient,
+animation, text, or visual composition was copied or adapted. Current source
+pins, canary review, privacy analysis, rejected alternatives, and real
+normal/second/private/Browser-Toolbox/fail-open evidence are recorded in
+`docs/research/firefox-153-downloads-surface.md`.

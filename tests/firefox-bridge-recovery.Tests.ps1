@@ -76,7 +76,7 @@ Assert-True -Condition (Test-Path -LiteralPath $targetPath -PathType Leaf) -Mess
 Assert-True -Condition ((Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant() -ceq $expectedHash) -Message "The installed bridge artifact does not match the committed package hash."
 
 $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd("\", "/")
-$tempRoot = [IO.Path]::GetFullPath((Join-Path $tempBase ("fennevia-issue14-bookmarks-recovery-" + [guid]::NewGuid().ToString("N"))))
+$tempRoot = [IO.Path]::GetFullPath((Join-Path $tempBase ("fennevia-issue32-downloads-recovery-" + [guid]::NewGuid().ToString("N"))))
 Assert-True -Condition $tempRoot.StartsWith($tempBase + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -Message "The temporary recovery root escaped the operating-system temporary directory."
 New-Item -ItemType Directory -Path $tempRoot | Out-Null
 $bridgeBackupPath = Join-Path $tempRoot "BridgeBoundary.sys.mjs"
@@ -219,6 +219,40 @@ export function createFirefoxBookmarksBridge() {
   });
 }
 
+export function createFirefoxDownloadsBridge() {
+  let disposed = false;
+  const state = Object.freeze({
+    activeCount: 0,
+    aggregatePercent: null,
+    canceledCount: 0,
+    countOverflow: false,
+    failedCount: 0,
+    items: Object.freeze([]),
+    pausedCount: 0,
+    phase: "ready",
+    progressMode: "none",
+    queuedCount: 0,
+    revision: 1,
+    succeededCount: 0,
+    truncated: false,
+  });
+  const downloads = Object.freeze({
+    async ready() { return true; },
+    snapshot() { return state; },
+    subscribe() { return () => true; },
+  });
+  return Object.freeze({
+    assertRequiredCapabilities() { return Object.freeze([]); },
+    dispose() {
+      if (disposed) { return false; }
+      disposed = true;
+      return true;
+    },
+    downloads,
+    async ready() { return true; },
+  });
+}
+
 export function createFirefoxTabsBridge() {
   let disposed = false;
   const tabs = Object.freeze({
@@ -311,6 +345,104 @@ export function createFirefoxBookmarksBridge({ boundary }) {
   throw error;
 }
 
+export function createFirefoxDownloadsBridge() {
+  throw new Error("FENNEVIA_TEST_DOWNLOADS_SHOULD_NOT_INITIALIZE");
+}
+
+export function createFirefoxNavigationBridge() {
+  throw new Error("FENNEVIA_TEST_NAVIGATION_SHOULD_NOT_INITIALIZE");
+}
+
+export function createFirefoxTabsBridge() {
+  throw new Error("FENNEVIA_TEST_TABS_SHOULD_NOT_INITIALIZE");
+}
+'@
+
+$missingDownloadsCapabilityBridge = @'
+export function createFirefoxBridgeBoundary({
+  buildId,
+  contextId,
+  firefoxVersion,
+  windowKind,
+}) {
+  let disposed = false;
+  return Object.freeze({
+    dispose() {
+      if (disposed) {
+        return false;
+      }
+      disposed = true;
+      return true;
+    },
+    snapshot() {
+      return Object.freeze({
+        buildId: String(buildId),
+        contextId,
+        disposed,
+        firefoxVersion: String(firefoxVersion),
+        windowKind,
+      });
+    },
+  });
+}
+
+export function createFirefoxBookmarksBridge() {
+  let disposed = false;
+  const roots = Object.freeze([
+    Object.freeze({ hasChildren: false, id: "root-toolbar", kind: "folder", title: "Toolbar" }),
+    Object.freeze({ hasChildren: false, id: "root-menu", kind: "folder", title: "Menu" }),
+    Object.freeze({ hasChildren: false, id: "root-unfiled", kind: "folder", title: "Other" }),
+    Object.freeze({ hasChildren: false, id: "root-mobile", kind: "folder", title: "Mobile" }),
+  ]);
+  const bookmarks = Object.freeze({
+    async children(parentId, { offset = 0 } = {}) {
+      return Object.freeze({ items: Object.freeze([]), offset, parentId, status: "ok", totalCount: 0, truncated: false });
+    },
+    async open() { return Object.freeze({ reason: "stale", status: "rejected" }); },
+    async roots() { return roots; },
+    subscribe() { return () => true; },
+  });
+  return Object.freeze({
+    assertRequiredCapabilities() { return Object.freeze([]); },
+    bookmarks,
+    dispose() {
+      if (disposed) { return false; }
+      disposed = true;
+      return true;
+    },
+  });
+}
+
+export function createFirefoxDownloadsBridge({ boundary }) {
+  const context = boundary.snapshot();
+  const error = new Error("FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING");
+  Object.defineProperties(error, {
+    fenneviaBuildId: { value: context.buildId, enumerable: false },
+    fenneviaCode: {
+      value: "FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING",
+      enumerable: false,
+    },
+    fenneviaFirefoxVersion: {
+      value: context.firefoxVersion,
+      enumerable: false,
+    },
+    fenneviaPhase: {
+      value: "firefox-downloads-capability",
+      enumerable: false,
+    },
+    fenneviaSymbol: {
+      value: "DownloadList.addView",
+      enumerable: false,
+    },
+    fenneviaWindowKind: { value: context.windowKind, enumerable: false },
+    name: {
+      value: "FenneviaFirefoxDownloadsBridgeTestError",
+      enumerable: false,
+    },
+  });
+  throw error;
+}
+
 export function createFirefoxNavigationBridge() {
   throw new Error("FENNEVIA_TEST_NAVIGATION_SHOULD_NOT_INITIALIZE");
 }
@@ -379,6 +511,39 @@ export function createFirefoxBookmarksBridge() {
   });
 }
 
+export function createFirefoxDownloadsBridge() {
+  let disposed = false;
+  const state = Object.freeze({
+    activeCount: 0,
+    aggregatePercent: null,
+    canceledCount: 0,
+    countOverflow: false,
+    failedCount: 0,
+    items: Object.freeze([]),
+    pausedCount: 0,
+    phase: "ready",
+    progressMode: "none",
+    queuedCount: 0,
+    revision: 1,
+    succeededCount: 0,
+    truncated: false,
+  });
+  const downloads = Object.freeze({
+    async ready() { return true; },
+    snapshot() { return state; },
+    subscribe() { return () => true; },
+  });
+  return Object.freeze({
+    assertRequiredCapabilities() { return Object.freeze([]); },
+    dispose() {
+      if (disposed) { return false; }
+      disposed = true;
+      return true;
+    },
+    downloads,
+    async ready() { return true; },
+  });
+}
 export function createFirefoxTabsBridge({ boundary }) {
   const context = boundary.snapshot();
   const error = new Error("FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING");
@@ -468,6 +633,40 @@ export function createFirefoxNavigationBridge({ boundary }) {
   throw error;
 }
 
+export function createFirefoxDownloadsBridge() {
+  let disposed = false;
+  const state = Object.freeze({
+    activeCount: 0,
+    aggregatePercent: null,
+    canceledCount: 0,
+    countOverflow: false,
+    failedCount: 0,
+    items: Object.freeze([]),
+    pausedCount: 0,
+    phase: "ready",
+    progressMode: "none",
+    queuedCount: 0,
+    revision: 1,
+    succeededCount: 0,
+    truncated: false,
+  });
+  const downloads = Object.freeze({
+    async ready() { return true; },
+    snapshot() { return state; },
+    subscribe() { return () => true; },
+  });
+  return Object.freeze({
+    assertRequiredCapabilities() { return Object.freeze([]); },
+    dispose() {
+      if (disposed) { return false; }
+      disposed = true;
+      return true;
+    },
+    downloads,
+    async ready() { return true; },
+  });
+}
+
 export function createFirefoxBookmarksBridge() {
   let disposed = false;
   const roots = Object.freeze([
@@ -538,6 +737,10 @@ try {
     & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-bookmarks-bridge-fail-open
     Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "A missing required bookmarks capability did not fail open at the shell health boundary."
 
+    Write-Utf8NoBom -Path $targetPath -Content $missingDownloadsCapabilityBridge
+    & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-downloads-bridge-fail-open
+    Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "A missing required downloads capability did not fail open at the shell health boundary."
+
     Write-Utf8NoBom -Path $targetPath -Content $missingTabsCapabilityBridge
     & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-tabs-bridge-fail-open
     Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "A missing required tabs capability did not fail open at the shell health boundary."
@@ -566,4 +769,4 @@ if ($testFailure) {
 }
 
 Assert-True -Condition (@(Get-CimInstance Win32_Process -Filter "Name='firefox.exe'").Count -eq 0) -Message "The bridge recovery matrix left a Firefox process running."
-Write-Output "PASS: missing boundary, bookmarks, tabs, and navigation capabilities failed open, then exact restoration recovered ordinary startup."
+Write-Output "PASS: missing boundary, bookmarks, downloads, tabs, and navigation capabilities failed open, then exact restoration recovered ordinary startup."

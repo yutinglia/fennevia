@@ -17,6 +17,8 @@ function parseArguments(argv) {
     expectFailOpen: false,
     expectBridgeFailOpen: false,
     expectBookmarksBridgeFailOpen: false,
+    expectDisabled: false,
+    expectDownloadsBridgeFailOpen: false,
     expectNavigationBridgeFailOpen: false,
     expectSafeStart: false,
     expectShellFailOpen: false,
@@ -47,6 +49,14 @@ function parseArguments(argv) {
     }
     if (argument === "--expect-bookmarks-bridge-fail-open") {
       result.expectBookmarksBridgeFailOpen = true;
+      continue;
+    }
+    if (argument === "--expect-disabled") {
+      result.expectDisabled = true;
+      continue;
+    }
+    if (argument === "--expect-downloads-bridge-fail-open") {
+      result.expectDownloadsBridgeFailOpen = true;
       continue;
     }
     if (argument === "--expect-navigation-bridge-fail-open") {
@@ -92,6 +102,8 @@ function parseArguments(argv) {
       result.expectFailOpen,
       result.expectBridgeFailOpen,
       result.expectBookmarksBridgeFailOpen,
+      result.expectDisabled,
+      result.expectDownloadsBridgeFailOpen,
       result.expectNavigationBridgeFailOpen,
       result.expectSafeStart,
       result.expectShellFailOpen,
@@ -108,6 +120,8 @@ function parseArguments(argv) {
     (result.expectFailOpen ||
       result.expectBridgeFailOpen ||
       result.expectBookmarksBridgeFailOpen ||
+      result.expectDisabled ||
+      result.expectDownloadsBridgeFailOpen ||
       result.expectNavigationBridgeFailOpen ||
       result.expectSafeStart ||
       result.expectShellFailOpen ||
@@ -138,6 +152,7 @@ async function validateTarget(
   profilePath,
   expectFailOpen,
   expectStock,
+  expectDisabled,
   expectSafeStart,
   expectShellFailOpen,
   expectShellMissingFailOpen,
@@ -221,6 +236,22 @@ async function validateTarget(
       if (await pathExists(removedPath)) {
         throw new Error("FENNEVIA_FIREFOX_TEST_STOCK_RESIDUE");
       }
+    }
+  }
+
+  if (expectDisabled) {
+    const activePreference = path.join(
+      path.dirname(firefoxPath),
+      "defaults",
+      "pref",
+      "fennevia.js",
+    );
+    const disabledPreference = `${activePreference}.disabled`;
+    if (
+      (await pathExists(activePreference)) ||
+      !(await pathExists(disabledPreference))
+    ) {
+      throw new Error("FENNEVIA_FIREFOX_TEST_DISABLE_STATE_INVALID");
     }
   }
 }
@@ -728,6 +759,7 @@ async function collectFrontendState(client) {
     const root = roots.left;
     const topRoot = roots.top;
     const rightRoot = roots.right;
+    const bottomRoot = roots.bottom;
     const overlayMount = document.getElementById(
       "fennevia-shell-address-overlay-mount"
     );
@@ -843,6 +875,32 @@ async function collectFrontendState(client) {
         statusCount:
           rightRoot?.querySelectorAll("[data-fennevia-bookmark-status]")
             .length ?? 0,
+      },
+      downloads: {
+        forbiddenAttributeCount:
+          bottomRoot?.querySelectorAll(
+            "[href], [src], [data-url], [data-path], [data-filename]"
+          ).length ?? 0,
+        itemCount:
+          bottomRoot?.querySelectorAll("[data-fennevia-download-state]")
+            .length ?? 0,
+        panelCount:
+          bottomRoot?.querySelectorAll("[data-fennevia-downloads]").length ??
+          0,
+        phase:
+          bottomRoot
+            ?.querySelector("[data-fennevia-downloads]")
+            ?.getAttribute("data-fennevia-downloads-phase") ?? null,
+        progressCount:
+          bottomRoot?.querySelectorAll("[data-fennevia-download-progress]")
+            .length ?? 0,
+        summaryCount:
+          bottomRoot?.querySelectorAll("[data-fennevia-download-summary]")
+            .length ?? 0,
+        summaryText:
+          bottomRoot
+            ?.querySelector("[data-fennevia-download-summary]")
+            ?.textContent?.trim() ?? null,
       },
       allElementsUseXhtml: elements.every(
         element => element.namespaceURI === XHTML_NS
@@ -1020,6 +1078,13 @@ function assertFrontendState(state, windowKind) {
   assert.equal(state.bookmarks.rootSelectedCount, 1);
   assert.equal(state.bookmarks.rootsRole, "tablist");
   assert.equal(state.bookmarks.statusCount, 1);
+  assert.equal(state.downloads.forbiddenAttributeCount, 0);
+  assert.ok(state.downloads.itemCount >= 0 && state.downloads.itemCount <= 6);
+  assert.equal(state.downloads.panelCount, 1);
+  assert.equal(state.downloads.phase, "ready");
+  assert.equal(state.downloads.progressCount, 1);
+  assert.equal(state.downloads.summaryCount, 1);
+  assert.equal(typeof state.downloads.summaryText, "string");
   assert.equal(state.allElementsUseXhtml, true);
   assert.equal(state.actionControlsNamed, true);
   assert.equal(state.customTabCount, state.nativeTabCount);
@@ -3227,6 +3292,373 @@ async function assertNativeStylesIsolated(client) {
   assert.equal(result.styleEnabled, true);
 }
 
+async function exerciseDownloadsMvp(client) {
+  return client.execute(`
+    return (async () => {
+      const { Downloads } = ChromeUtils.importESModule(
+        "resource://gre/modules/Downloads.sys.mjs"
+      );
+      const bottomRoot = document.getElementById(
+        "fennevia-shell-bottom-root"
+      );
+      const focusOrigin = document.getElementById("urlbar-input");
+      const windowKind = bottomRoot?.getAttribute("data-fennevia-window-kind");
+      if (!bottomRoot || !focusOrigin ||
+          (windowKind !== "normal" && windowKind !== "private")) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_DOWNLOAD_PANEL_MISSING");
+      }
+
+      const isPrivate = windowKind === "private";
+      const list = await Downloads.getList(
+        isPrivate ? Downloads.PRIVATE : Downloads.PUBLIC
+      );
+      const created = [];
+      const sourceSentinel =
+        "https://sensitive.example.invalid/fennevia-download-source?value=private";
+      const fileSentinel = "FENNEVIA_PRIVATE_DOWNLOAD_NAME.bin";
+      const tempDirectory = Services.dirsvc.get("TmpD", Ci.nsIFile).path;
+      const separator = tempDirectory.includes("\\\\") ? "\\\\" : "/";
+
+      const waitFor = async (predicate, code) => {
+        const deadline = Date.now() + 6000;
+        while (Date.now() < deadline) {
+          if (predicate()) {
+            return;
+          }
+          await new Promise(resolve => window.setTimeout(resolve, 20));
+        }
+        throw new Error(code);
+      };
+      const panel = () => bottomRoot.querySelector("[data-fennevia-downloads]");
+      const summary = () =>
+        bottomRoot
+          .querySelector("[data-fennevia-download-summary]")
+          ?.textContent?.trim() ?? "";
+      const progress = () =>
+        bottomRoot.querySelector("[data-fennevia-download-progress]");
+      const states = () => [
+        ...bottomRoot.querySelectorAll("[data-fennevia-download-state]"),
+      ].map(item => item.getAttribute("data-fennevia-download-state"));
+      const createDownload = async (sequence, state) => {
+        const target =
+          tempDirectory + separator + "fennevia-32-" + sequence + "-" + fileSentinel;
+        const candidate = await Downloads.createDownload({
+          source: { isPrivate, url: sourceSentinel + "&item=" + sequence },
+          target,
+        });
+        Object.assign(candidate, state);
+        created.push(candidate);
+        await list.add(candidate);
+        return candidate;
+      };
+      const change = (candidate, state) => {
+        Object.assign(candidate, state);
+        candidate.onchange?.();
+      };
+      const revealBottom = () =>
+        window.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            altKey: true,
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            key: "ArrowDown",
+            shiftKey: true,
+          })
+        );
+      const dismiss = () =>
+        window.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            key: "Escape",
+          })
+        );
+
+      let result;
+      try {
+        await waitFor(
+          () => panel()?.getAttribute("data-fennevia-downloads-phase") === "ready",
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_READY_TIMEOUT"
+        );
+        const first = await createDownload(1, {
+          canceled: false,
+          currentBytes: 25,
+          error: null,
+          hasPartialData: false,
+          hasProgress: true,
+          progress: 25,
+          stopped: false,
+          succeeded: false,
+          totalBytes: 100,
+        });
+        const second = await createDownload(2, {
+          canceled: false,
+          currentBytes: 100,
+          error: null,
+          hasPartialData: false,
+          hasProgress: true,
+          progress: 50,
+          stopped: false,
+          succeeded: false,
+          totalBytes: 200,
+        });
+        await waitFor(
+          () =>
+            summary() === "2 downloads active" &&
+            progress()?.getAttribute("data-fennevia-download-progress") ===
+              "determinate" &&
+            progress()?.querySelector('[role="progressbar"]')
+              ?.getAttribute("aria-valuenow") === "41",
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_KNOWN_TIMEOUT"
+        );
+        const knownWeighted = true;
+        const hiddenKnownActivity =
+          bottomRoot.getAttribute("data-fennevia-visible") === "false";
+
+        const unknown = await createDownload(3, {
+          canceled: false,
+          currentBytes: 7,
+          error: null,
+          hasPartialData: false,
+          hasProgress: false,
+          progress: 0,
+          stopped: false,
+          succeeded: false,
+          totalBytes: 0,
+        });
+        await waitFor(
+          () =>
+            progress()?.getAttribute("data-fennevia-download-progress") ===
+              "indeterminate" &&
+            !progress()?.querySelector('[role="progressbar"]')
+              ?.hasAttribute("aria-valuenow"),
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_UNKNOWN_TIMEOUT"
+        );
+        const mixedUnknownIndeterminate = true;
+        const hiddenUnknownActivity =
+          bottomRoot.getAttribute("data-fennevia-visible") === "false";
+
+        focusOrigin.focus();
+        revealBottom();
+        await waitFor(
+          () => bottomRoot.getAttribute("data-fennevia-visible") === "true",
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_REVEAL_TIMEOUT"
+        );
+        const keyboardRevealWorked = true;
+        const noFeatureActions =
+          panel()?.querySelectorAll("button, a[href]").length === 0;
+        dismiss();
+        await waitFor(
+          () => bottomRoot.getAttribute("data-fennevia-visible") === "false",
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_DISMISS_TIMEOUT"
+        );
+
+        change(first, {
+          canceled: true,
+          hasPartialData: true,
+          stopped: true,
+        });
+        await waitFor(
+          () => states().includes("paused"),
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_PAUSE_TIMEOUT"
+        );
+        const pausedExternally = true;
+        change(first, {
+          canceled: false,
+          hasPartialData: false,
+          stopped: false,
+        });
+        await waitFor(
+          () => !states().includes("paused") && states().includes("active"),
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_RESUME_TIMEOUT"
+        );
+        const resumedExternally = true;
+
+        change(first, {
+          currentBytes: 100,
+          progress: 100,
+          stopped: true,
+          succeeded: true,
+        });
+        change(second, {
+          error: new Downloads.Error({ message: "Fennevia test failure" }),
+          stopped: true,
+        });
+        change(unknown, {
+          canceled: true,
+          stopped: true,
+        });
+        await waitFor(
+          () =>
+            summary() === "1 recent failure" &&
+            ["succeeded", "failed", "canceled"].every(state =>
+              states().includes(state)
+            ),
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_TERMINAL_TIMEOUT"
+        );
+        const terminalStatesVisible = true;
+        const terminalActivityStayedHidden =
+          bottomRoot.getAttribute("data-fennevia-visible") === "false";
+
+        const zero = await createDownload(4, {
+          canceled: false,
+          currentBytes: 0,
+          error: null,
+          hasPartialData: false,
+          hasProgress: true,
+          progress: 0,
+          stopped: false,
+          succeeded: false,
+          totalBytes: 0,
+        });
+        await waitFor(
+          () =>
+            progress()?.getAttribute("data-fennevia-download-progress") ===
+              "determinate" &&
+            progress()?.querySelector('[role="progressbar"]')
+              ?.getAttribute("aria-valuenow") === "0",
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_ZERO_TIMEOUT"
+        );
+        const zeroSizeDeterminate = true;
+
+        const small = await createDownload(5, {
+          canceled: false,
+          currentBytes: 1,
+          error: null,
+          hasPartialData: false,
+          hasProgress: true,
+          progress: 100,
+          stopped: false,
+          succeeded: false,
+          totalBytes: 1,
+        });
+        const large = await createDownload(6, {
+          canceled: false,
+          currentBytes: 2684354560,
+          error: null,
+          hasPartialData: false,
+          hasProgress: true,
+          progress: 50,
+          stopped: false,
+          succeeded: false,
+          totalBytes: 5368709120,
+        });
+        await waitFor(
+          () =>
+            progress()?.querySelector('[role="progressbar"]')
+              ?.getAttribute("aria-valuenow") === "50",
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_SIZE_RANGE_TIMEOUT"
+        );
+        const smallAndLargeWeighted = true;
+
+        for (let index = 7; index < 15; index += 1) {
+          await createDownload(index, {
+            canceled: false,
+            currentBytes: index,
+            error: null,
+            hasPartialData: false,
+            hasProgress: true,
+            progress: index,
+            stopped: false,
+            succeeded: false,
+            totalBytes: 100,
+          });
+        }
+        await waitFor(
+          () => states().length === 6,
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_BURST_TIMEOUT"
+        );
+        const burstBounded =
+          states().length === 6 &&
+          bottomRoot.querySelectorAll(".fennevia-downloads__more").length === 1;
+        const noSensitiveDom =
+          !bottomRoot.textContent.includes(sourceSentinel) &&
+          !bottomRoot.textContent.includes(fileSentinel) &&
+          bottomRoot.querySelectorAll(
+            "[href], [src], [data-url], [data-path], [data-filename]"
+          ).length === 0;
+        const allUpdatesStayedHidden =
+          bottomRoot.getAttribute("data-fennevia-visible") === "false";
+        const nativeButton = document.getElementById("downloads-button");
+        const nativePanel = document.getElementById("downloadsPanel");
+        if (!nativeButton || !nativePanel) {
+          throw new Error("FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_MISSING");
+        }
+        nativeButton.click();
+        await waitFor(
+          () => nativePanel.state === "open",
+          "FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_OPEN_TIMEOUT"
+        );
+        const nativeDownloadsRetained =
+          bottomRoot.getAttribute("data-fennevia-visible") === "false";
+        nativePanel.hidePopup();
+        await waitFor(
+          () => nativePanel.state === "closed",
+          "FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_CLOSE_TIMEOUT"
+        );
+
+        result = {
+          allUpdatesStayedHidden,
+          burstBounded,
+          hiddenKnownActivity,
+          hiddenUnknownActivity,
+          keyboardRevealWorked,
+          knownWeighted,
+          mixedUnknownIndeterminate,
+          nativeDownloadsRetained,
+          noFeatureActions,
+          noSensitiveDom,
+          pausedExternally,
+          resumedExternally,
+          smallAndLargeWeighted,
+          terminalActivityStayedHidden,
+          terminalStatesVisible,
+          windowKind,
+          zeroSizeDeterminate,
+        };
+        void zero;
+        void small;
+        void large;
+      } finally {
+        for (const candidate of created.reverse()) {
+          await list.remove(candidate);
+        }
+        await waitFor(
+          () =>
+            summary() === "No active downloads" &&
+            states().length === 0,
+          "FENNEVIA_FIREFOX_TEST_DOWNLOAD_CLEANUP_TIMEOUT"
+        );
+      }
+      return { ...result, cleanupComplete: true };
+    })();
+  `);
+}
+
+function assertDownloadsMvp(result, windowKind) {
+  assert.deepEqual(result, {
+    allUpdatesStayedHidden: true,
+    burstBounded: true,
+    cleanupComplete: true,
+    hiddenKnownActivity: true,
+    hiddenUnknownActivity: true,
+    keyboardRevealWorked: true,
+    knownWeighted: true,
+    mixedUnknownIndeterminate: true,
+    nativeDownloadsRetained: true,
+    noFeatureActions: true,
+    noSensitiveDom: true,
+    pausedExternally: true,
+    resumedExternally: true,
+    smallAndLargeWeighted: true,
+    terminalActivityStayedHidden: true,
+    terminalStatesVisible: true,
+    windowKind,
+    zeroSizeDeterminate: true,
+  });
+}
+
 async function exerciseFrontendUnmountRemount(client) {
   return client.execute(`
     return (async () => {
@@ -3319,6 +3751,8 @@ async function exerciseFrontendUnmountRemount(client) {
       let secondDispose;
       let bookmarkSubscriptionCount = 0;
       let bookmarkUnsubscriptionCount = 0;
+      let downloadSubscriptionCount = 0;
+      let downloadUnsubscriptionCount = 0;
       let navigationSubscriptionCount = 0;
       let navigationUnsubscriptionCount = 0;
       let addressPopupSubscriptionCount = 0;
@@ -3411,6 +3845,38 @@ async function exerciseFrontendUnmountRemount(client) {
           };
         },
       });
+      const downloads = Object.freeze({
+        async ready() { return true; },
+        snapshot() {
+          return Object.freeze({
+            activeCount: 0,
+            aggregatePercent: null,
+            canceledCount: 0,
+            countOverflow: false,
+            failedCount: 0,
+            items: Object.freeze([]),
+            pausedCount: 0,
+            phase: "ready",
+            progressMode: "none",
+            queuedCount: 0,
+            revision: 1,
+            succeededCount: 0,
+            truncated: false,
+          });
+        },
+        subscribe() {
+          downloadSubscriptionCount += 1;
+          let active = true;
+          return () => {
+            if (!active) {
+              return false;
+            }
+            active = false;
+            downloadUnsubscriptionCount += 1;
+            return true;
+          };
+        },
+      });
       const navigation = Object.freeze({
         back() { return false; },
         focusContent() { return true; },
@@ -3459,6 +3925,7 @@ async function exerciseFrontendUnmountRemount(client) {
       });
       const options = {
         bookmarks,
+        downloads,
         frame,
         navigation,
         onFatalError(error) {
@@ -3529,6 +3996,8 @@ async function exerciseFrontendUnmountRemount(client) {
             0
           ) + overlayTarget.childNodes.length,
           fatalErrorCount: fatalErrors.length,
+          downloadSubscriptionCount,
+          downloadUnsubscriptionCount,
           firstDisposeResult,
           firstFaviconErrorCleared: firstFavicon.onerror === null,
           firstFaviconSourceCleared: !firstFavicon.hasAttribute("src"),
@@ -4270,6 +4739,7 @@ async function run() {
     options.profile,
     options.expectFailOpen,
     options.expectStock || options.inspectDom,
+    options.expectDisabled,
     options.expectSafeStart,
     options.expectShellFailOpen,
     options.expectShellMissingFailOpen,
@@ -4398,6 +4868,34 @@ async function run() {
       return;
     }
 
+    if (options.expectDisabled) {
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
+      const evidence = await collectEvidence(client);
+      assert.equal(evidence.records.length, 0);
+      assert.equal(evidence.firstPartyScriptErrorCount, 0);
+      assert.equal(
+        await client.execute(`
+          return document.querySelectorAll('[data-fennevia-shell-frame]').length;
+        `),
+        0,
+      );
+
+      await client.request("Marionette:AcceptConnections", { value: false });
+      quitRequested = true;
+      try {
+        await client.request("Marionette:Quit", {});
+      } catch {
+        // A clean application quit may close Marionette before its response arrives.
+      }
+      await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
+      console.log(
+        "PASS: hard-disabled startup retained native browser UI with zero " +
+          "Fennevia records or project hosts.",
+      );
+      return;
+    }
+
     if (options.expectFailOpen) {
       await new Promise((resolve) => setTimeout(resolve, 750));
       assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
@@ -4433,6 +4931,7 @@ async function run() {
       options.expectShellMissingFailOpen ||
       options.expectBridgeFailOpen ||
       options.expectBookmarksBridgeFailOpen ||
+      options.expectDownloadsBridgeFailOpen ||
       options.expectNavigationBridgeFailOpen ||
       options.expectTabsBridgeFailOpen
     ) {
@@ -4468,6 +4967,7 @@ async function run() {
       if (
         options.expectBridgeFailOpen ||
         options.expectBookmarksBridgeFailOpen ||
+        options.expectDownloadsBridgeFailOpen ||
         options.expectNavigationBridgeFailOpen ||
         options.expectTabsBridgeFailOpen
       ) {
@@ -4498,6 +4998,11 @@ async function run() {
               code: "FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING",
               phase: "firefox-bookmarks-capability",
             }
+          : options.expectDownloadsBridgeFailOpen
+            ? {
+                code: "FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING",
+                phase: "firefox-downloads-capability",
+              }
           : options.expectTabsBridgeFailOpen
             ? {
                 code: "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
@@ -4526,6 +5031,8 @@ async function run() {
           ? "window.gBrowser.removeTabsProgressListener"
           : options.expectBookmarksBridgeFailOpen
             ? "PlacesUtils.bookmarks.fetch"
+            : options.expectDownloadsBridgeFailOpen
+              ? "DownloadList.addView"
             : options.expectTabsBridgeFailOpen
               ? "window.gBrowser.openTabs"
               : options.expectBridgeFailOpen
@@ -4549,7 +5056,7 @@ async function run() {
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
-        `PASS: a ${options.expectNavigationBridgeFailOpen ? "missing required navigation capability" : options.expectBookmarksBridgeFailOpen ? "missing required bookmarks capability" : options.expectTabsBridgeFailOpen ? "missing required tabs capability" : options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
+        `PASS: a ${options.expectNavigationBridgeFailOpen ? "missing required navigation capability" : options.expectBookmarksBridgeFailOpen ? "missing required bookmarks capability" : options.expectDownloadsBridgeFailOpen ? "missing required downloads capability" : options.expectTabsBridgeFailOpen ? "missing required tabs capability" : options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
           "path, removed every project host, and retained native browser UI.",
       );
       return;
@@ -4655,6 +5162,8 @@ async function run() {
     assertFrontendState(await collectFrontendState(client), "normal");
     assertBookmarksMvp(await exerciseBookmarksMvp(client));
     assertFrontendState(await collectFrontendState(client), "normal");
+    assertDownloadsMvp(await exerciseDownloadsMvp(client), "normal");
+    assertFrontendState(await collectFrontendState(client), "normal");
     const featureEvidence = await collectEvidence(client);
     assert.equal(
       featureEvidence.records.filter((record) => record.level === "error")
@@ -4716,6 +5225,8 @@ async function run() {
     assertShellHostState(await collectShellHostState(client), "normal");
     assertFrontendState(await collectFrontendState(client), "normal");
     assertEdgeShellInteraction(await exerciseEdgeShell(client));
+    assertDownloadsMvp(await exerciseDownloadsMvp(client), "normal");
+    assertFrontendState(await collectFrontendState(client), "normal");
     await client.execute(`
       gBrowser.addTrustedTab(BROWSER_NEW_TAB_URL, { inBackground: true });
     `);
@@ -4758,6 +5269,8 @@ async function run() {
     assert.equal(remount.bookmarkUnsubscriptionCount, 2);
     assert.equal(remount.descendantsAfterFirstDispose, 0);
     assert.equal(remount.descendantsAfterSecondDispose, 0);
+    assert.equal(remount.downloadSubscriptionCount, 2);
+    assert.equal(remount.downloadUnsubscriptionCount, 2);
     assert.equal(remount.fatalErrorCount, 0);
     assert.equal(remount.firstDisposeResult, true);
     assert.equal(remount.firstFaviconErrorCleared, true);
@@ -4848,6 +5361,8 @@ async function run() {
     assertShellHostState(await collectShellHostState(client), "private");
     assertFrontendState(await collectFrontendState(client), "private");
     assertEdgeShellInteraction(await exerciseEdgeShell(client));
+    assertDownloadsMvp(await exerciseDownloadsMvp(client), "private");
+    assertFrontendState(await collectFrontendState(client), "private");
     await client.execute(`
       gBrowser.addTrustedTab(BROWSER_NEW_TAB_URL, { inBackground: true });
     `);

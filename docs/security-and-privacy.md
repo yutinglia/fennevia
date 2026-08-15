@@ -28,7 +28,7 @@ controls, private-window rules, and review triggers.
 
 ## 2. Current security baseline
 
-Current validated package: `0.8.0-dev` on Firefox 153.0.4 for Windows.
+Current validated package: `0.9.0-dev` on Firefox 153.0.4 for Windows.
 
 Implemented controls:
 
@@ -42,6 +42,10 @@ Implemented controls:
 - typed per-window Firefox boundary and context-scoped opaque IDs;
 - bounded tab titles and allowlisted property-only favicon values;
 - bounded navigation title/display-URI text and explicit native command actions;
+- bounded address draft plus fixed Firefox-derived connection/protection enums;
+- bounded lazy Places pages with opaque handles and native bookmark opening;
+- anonymous bounded Downloads status with per-window native list views and no
+  filename, path, source URL, byte value, or file action crossing the bridge;
 - hidden-at-rest four-edge state with pointer-transparent center;
 - explicit suspension for native modal state, DOM fullscreen, and customize
   mode;
@@ -50,7 +54,7 @@ Implemented controls:
 
 Not implemented yet:
 
-- address, Places/bookmarks, and Downloads feature bridges;
+- fuller Urlbar permission/page-action coverage tracked by #37;
 - final native-visible-shell hiding;
 - public release/security hardening;
 - project license decision.
@@ -124,10 +128,10 @@ Requirements:
 - disposal clears all holds, timers, observers, delegated listeners, roots, and
   focus-origin records.
 
-The bottom placeholder is not feature-complete. The top navigation, left
-address/status, centered popup, and right bookmarks surfaces are complete for
-#12–#14 but do not replace the pending Downloads and #37 permissions/page-
-action coverage required before #15.
+The top navigation, left address/status, centered popup, right bookmarks, and
+bottom download-status surfaces are complete for #12–#14 and #32. They do not
+replace #37's fuller permissions/page-action and retained-access coverage
+required before #15.
 
 ## 6. Data classification and logging
 
@@ -310,23 +314,39 @@ opening capability failure blocks health and leaves those native paths usable.
 Source evidence and real hostile-title/private/fail-open tests are in
 `docs/research/firefox-153-bookmarks-surface.md` and ADR-029.
 
-### 7.4 Downloads — pending #32
+### 7.4 Downloads — implemented #32
 
-Before implementation:
+Each managed window owns one typed controller and exact Firefox list view.
+Normal windows select `Downloads.PUBLIC`; private windows select
+`Downloads.PRIVATE`. Firefox retains any same-kind backend sharing, while every
+Fennevia view, opaque registry, subscriber, adapter, component state, and
+disposer remains per-window and transient.
 
-- keep download objects, lists/views, paths, sources, principals, and services
-  private;
-- expose only bounded immutable progress/status snapshots;
-- define known/unknown-size aggregate semantics;
-- sanitize or omit display names;
-- never expose full paths or source URLs;
-- do not log filenames or named byte counts;
-- use event/view subscriptions rather than idle polling;
-- do not automatically reveal the panel on activity;
-- do not add open, execute, reveal-in-folder, retry, pause, cancel, delete, or
-  other file actions in the MVP;
-- preserve native reputation, malware, permission, confirmation, notification,
-  file-picker, and management UI.
+Only fixed state, optional integer percentage, context-bound opaque ID, capped
+counts, and at most six anonymous items cross the privileged boundary. The
+bridge does not expose a display name at all. Native download objects,
+lists/views, paths, filenames, source/referrer URLs, principals, headers,
+cookies, private markers, error detail, and byte values remain privileged and
+do not enter application state, Svelte, DOM attributes, logs, or persistence.
+
+Known positive totals are weighted by bytes inside the bridge. Any active item
+without progress produces an explicit indeterminate state; if all known totals
+are zero, Firefox-reported percentages are averaged. Existing terminal history
+is ignored during initial replay, and at most three newly observed terminal
+records remain in hidden transient state. Counts cap at 999 with explicit
+overflow. One exact list view supplies added/changed/removed/batch callbacks;
+there is no polling or feature timer, and disposal pairs `removeView()` once.
+
+Download events never reveal the panel. The bottom surface consumes only the
+existing #31 pointer/focus/keyboard controller. It contains no open, execute,
+reveal-in-folder, retry, pause, resume, cancel, delete, or file action. Native
+Downloads button/panel, notifications, reputation, malware and executable
+warnings, permission/confirmation, file picker, history, and management remain
+attached, visible, tested, and authoritative. Missing capabilities or malformed
+records fail the owning window open with fixed value-free diagnostics.
+
+Source and real normal/second/private/native-panel/hard-disable/fail-open
+evidence is in `docs/research/firefox-153-downloads-surface.md` and ADR-030.
 
 ## 8. Dependency and supply-chain policy
 
@@ -415,9 +435,9 @@ debug API require an explicit reviewed decision.
 Failure injection is implemented through pure constructor collaborators and
 owned test wrappers, not a production preference, global, or UI control.
 
-Issue #12 adds no dependency or installed debug artifact. Its generated bridge,
-application, UI, and CSS changes remain subject to deterministic double-build,
-exact-inventory, and production-network/debug scans.
+Issues #12–#14 and #32 add no dependency or installed debug artifact. Their
+generated bridge, application, UI, and CSS changes remain subject to
+deterministic double-build, exact-inventory, and production-network/debug scans.
 
 ## 11. Installation and file-system safety
 
@@ -501,35 +521,32 @@ Implemented:
 
 - base lifecycle, health, frame, edge controller, tabs bridge, vertical tab UI,
   navigation/address bridge, compact launcher, centered popup, top controls,
-  and bookmarks bridge/right panel have isolated normal, second-normal, and
-  private instances;
+  bookmarks bridge/right panel, and Downloads bridge/bottom panel have isolated
+  normal, second-normal, and private instances;
 - opaque IDs include context/registry generation;
 - controllers, roots, holds, timers, listeners, mappings, and state are removed
   per window;
 - one window's emergency fallback does not mutate another.
 
-Pending:
-
-- #32 Downloads.
-
-Each pending feature must prove its own isolation before enabling in private
-windows.
-
-Issues #12–#14 give each window its own navigation and bookmarks controllers,
-selected snapshot, navigation and popup subscriber sets, popup controller/draft, two tab
-listeners, one tabs progress listener, one command observer, one Places
-observer, application adapters, five roots, and text output. Title, display
-URI, address text, draft, and bookmark titles may describe private browsing, so
-they are never process-global, persisted, logged, placed in datasets/errors, or
-copied to another window. Background and non-top-level progress is ignored.
+Issues #12–#14 and #32 give each window its own navigation, bookmarks, and
+Downloads controllers; selected snapshots; navigation, popup, bookmark, and
+download subscriber sets; popup controller/draft; two tab listeners; one tabs
+progress listener; one command observer; one Places observer; one Downloads
+list view; application adapters; five roots; and text output. Title, display
+URI, address text, draft, bookmark titles, and anonymous download progress may
+describe private browsing, so they are never process-global, persisted, logged,
+placed in datasets/errors, or copied to another window. Background and
+non-top-level navigation progress is ignored.
 Frontend unmount, emergency fallback, window close, runtime stop, capability
 failure, and startup rollback remove all listeners/observers/subscribers and
 release snapshots, drafts, loaded pages, and opaque mappings with that
-window.
+window; Downloads cleanup additionally removes the exact native view and its
+anonymous transient state.
 Normal, second, and private-window isolation passed in real Firefox. Full
 evidence is in `docs/research/firefox-153-navigation-controls.md`,
-`docs/research/firefox-153-address-popup.md`, and
-`docs/research/firefox-153-bookmarks-surface.md`.
+`docs/research/firefox-153-address-popup.md`,
+`docs/research/firefox-153-bookmarks-surface.md`, and
+`docs/research/firefox-153-downloads-surface.md`.
 
 ## 14. External code, design references, and provenance
 

@@ -128,7 +128,7 @@ DOM global, or runtime debug switch for choosing a failure mode.
 
 `initializeWindowShell` stops at `healthy`. Only the explicit lifecycle
 controller can request `active`, and no production caller does so. Package
-`0.4.0-dev` introduced this boundary, and the current `0.8.0-dev` package still
+`0.4.0-dev` introduced this boundary, and the current `0.9.0-dev` package still
 contains no selector that hides Firefox UI. `Ctrl+Alt+Shift+F12` is registered directly on each chrome window in
 the capture and Mozilla system event groups. It reports the fixed recovery
 phase, clears state, removes every host/listener/timer/cleanup, and does not
@@ -184,9 +184,9 @@ is not source of truth. `WindowShell.sys.mjs` creates exactly one boundary from
 the existing `WindowManager` context for each managed window and retains it in
 the same frame-keyed private record as the frontend API. It passes no bridge
 implementation object, native handle, or capability object to Svelte. Issues
-#10, #12, #13, and #14 pass only frozen ordinary-data tabs,
-navigation/address, and bookmarks contracts through separate application
-adapters.
+#10, #12, #13, #14, and #32 pass only frozen ordinary-data tabs,
+navigation/address, bookmarks, and anonymous download-status contracts through
+separate application adapters.
 
 The boundary validates `window.document.defaultView`, the browser document URI,
 the process-local window ID, and normal/private kind before claiming a context.
@@ -204,9 +204,9 @@ registry IDs produce distinct typed errors. Registry snapshots contain counts
 and fixed state only. Event subscriptions and cleanup callbacks return
 idempotent disposers, and boundary disposal continues through all owned
 subscriptions and registries before reporting a typed cleanup error. These are
-the only shared utilities consumed by the tabs, navigation, and bookmarks
-bridges; no service locator, dependency-injection framework, or generic Firefox
-SDK exists.
+the only shared utilities consumed by the tabs, navigation, bookmarks, and
+downloads bridges; no service locator, dependency-injection framework, or
+generic Firefox SDK exists.
 
 ESLint applies a static boundary to `src/shell/` and ordinary `src/app/` code:
 Firefox implementation imports, privileged globals, and direct Firefox-owned
@@ -284,6 +284,24 @@ background-tab preference, and private-window targeting. URLs never enter the
 public snapshot or DOM. See ADR-029 and
 `docs/research/firefox-153-bookmarks-surface.md`.
 
+Issue #32 adds `src/firefox/downloads.ts` to the same generated private ESM.
+One controller per window imports the fixed current Downloads module, selects
+PUBLIC or PRIVATE from the validated window kind, and owns exactly one paired
+`DownloadList` view. Initial replay retains current nonterminal work but ignores
+old terminal history. Added, changed, removed, and batch callbacks reconcile
+without polling; initial list readiness and view capabilities are required for
+health.
+
+The bridge mirrors current Firefox state precedence and computes active
+aggregate progress from privileged byte totals. Any unknown active size becomes
+explicit indeterminate output. Only state, optional integer percentage,
+context-bound opaque ID, six anonymous items, three newly observed terminal
+records, and counts capped at 999 reach the application adapter. Native
+download/list/view/source/target/error objects, filenames, paths, source URLs,
+private markers, and byte values remain privileged and absent from DOM/logs.
+The bridge offers no file action and never requests edge reveal. See ADR-030
+and `docs/research/firefox-153-downloads-surface.md`.
+
 ## 5. Application and frontend layers
 
 The application layer coordinates ordinary typed state, controllers, and feature policy. It must be usable without importing Firefox implementation modules directly.
@@ -324,6 +342,15 @@ cover traversal and opening. Separators are non-focusable, stable opaque IDs
 preserve focus across rename/reorder, and deletion moves focus to the nearest
 surviving item or selected root. No second trigger, timer, popup stack, URL,
 favicon request, bookmark-management action, or native Places DOM is added.
+
+Issue #32 replaces the bottom placeholder with `DownloadsPanel.svelte`. It uses
+the existing bottom host, reveal/focus controller, collision policy, glass
+tokens, environment suspension, and disposer. The compact panel renders a
+fixed anonymous summary, accessible determinate or indeterminate progress, and
+at most six state pills. Updates while hidden never change reveal state; there
+is no feature timer, action, filename, path, remote asset, native-panel
+mutation, or permanent content padding. Firefox's native Downloads panel,
+notifications, safety, reputation, and management remain authoritative.
 
 The frontend owns:
 
@@ -385,6 +412,13 @@ solid, reduced-motion, and forced-colors states through the shared shell
 contract. No selector targets Firefox's bookmarks toolbar, sidebar, Library,
 popup set, or Places views.
 
+The issue #32 bottom panel uses the same frame-rooted glass and accessibility
+tokens. Its progress value is a scoped custom property set only from a validated
+integer percentage; indeterminate output is a static hatch, not a continuous
+animation. Responsive and forced-colors rules remain inside the existing bottom
+surface. No selector targets Firefox's Downloads button, panel, notifications,
+or browser content.
+
 ## 7. Native UI gate
 
 The implemented root state attributes are:
@@ -406,7 +440,7 @@ AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute.
 
 When a later issue implements the actual native-UI gate, native UI may be hidden
-only while active and must never be removed. Package `0.8.0-dev` does not hide
+only while active and must never be removed. Package `0.9.0-dev` does not hide
 it. Retaining native DOM preserves implicit dependencies in Firefox commands,
 popups, customization, titlebar, and platform integration and provides the
 recovery path.
@@ -514,9 +548,11 @@ src/
     tabs.ts
     navigation.ts
     commands.ts
-    places.ts
+    bookmarks.ts
     downloads.ts
   app/
+    bookmark-state.ts
+    download-state.ts
     edge-surfaces.ts
     tab-state.ts
     tab-strip.ts
@@ -524,6 +560,8 @@ src/
     state/
   shell/
     App.svelte
+    BookmarksPanel.svelte
+    DownloadsPanel.svelte
     index.ts
     styles/
       edge-shell.css
