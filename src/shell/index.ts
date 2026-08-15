@@ -35,6 +35,11 @@ import {
   type BrowserTabsBridge,
   type BrowserTabsStateAdapter,
 } from "../app/tab-state";
+import {
+  createBrowserUrlbarCoverageStateAdapter,
+  type BrowserUrlbarCoverageBridge,
+  type BrowserUrlbarCoverageStateAdapter,
+} from "../app/urlbar-coverage-state";
 import App from "./App.svelte";
 import AddressPopup from "./AddressPopup.svelte";
 import "./styles/edge-shell.css";
@@ -68,6 +73,7 @@ type MountOptions = Readonly<{
   overlayTarget: Element;
   tabs: BrowserTabsBridge;
   targets: EdgeMountTargets;
+  urlbarCoverage: BrowserUrlbarCoverageBridge;
   windowKind: ShellWindowKind;
 }>;
 
@@ -92,6 +98,7 @@ type MountedShell = Readonly<{
   navigation: BrowserNavigationStateAdapter;
   shell: EdgeShellController;
   tabs: BrowserTabsStateAdapter;
+  urlbarCoverage: BrowserUrlbarCoverageStateAdapter;
 }>;
 
 type FocusableElement = Element &
@@ -186,6 +193,7 @@ export function mountShellApp({
   overlayTarget,
   tabs,
   targets,
+  urlbarCoverage,
   windowKind,
 }: MountOptions): () => boolean {
   if (
@@ -214,6 +222,7 @@ export function mountShellApp({
   let downloadsState: BrowserDownloadsStateAdapter | undefined;
   let navigationState: BrowserNavigationStateAdapter | undefined;
   let tabsState: BrowserTabsStateAdapter | undefined;
+  let urlbarCoverageState: BrowserUrlbarCoverageStateAdapter | undefined;
   const components: MountedComponent[] = [];
   const controllerSubscriptions: Array<() => boolean> = [];
   const focusOrigins = new Map<EdgeName, FocusableElement>();
@@ -385,6 +394,28 @@ export function mountShellApp({
     restoreAddressPopupFocus(closingSnapshot);
     addressPopupFocusOrigin = null;
     addressPopupOriginEdge = null;
+  };
+
+  const openNativeUrlbar = (): boolean => {
+    if (
+      disposed ||
+      !addressPopup ||
+      !urlbarCoverageState ||
+      frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) !== "normal"
+    ) {
+      return false;
+    }
+    const snapshot = addressPopup.snapshot();
+    if (!addressPopupIsVisible(snapshot)) {
+      return false;
+    }
+    addressPopup.requestClose("environment");
+    const closingSnapshot = addressPopup.snapshot();
+    if (closingSnapshot.phase !== "closing") {
+      return false;
+    }
+    completeAddressPopupClose(closingSnapshot);
+    return urlbarCoverageState.openNativeUrlbar();
   };
 
   const scheduleAddressPopupClose = (snapshot: AddressPopupSnapshot): void => {
@@ -601,6 +632,11 @@ export function mountShellApp({
       firstError ??= error;
     }
     try {
+      urlbarCoverageState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
       navigationState?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -635,6 +671,8 @@ export function mountShellApp({
     navigationState = createBrowserNavigationStateAdapter(navigation);
     bookmarksState = createBrowserBookmarksStateAdapter(bookmarks);
     downloadsState = createBrowserDownloadsStateAdapter(downloads);
+    urlbarCoverageState =
+      createBrowserUrlbarCoverageStateAdapter(urlbarCoverage);
     addressPopup = createAddressPopupController({
       navigation: navigationState,
       tabs: tabsState,
@@ -706,7 +744,9 @@ export function mountShellApp({
 
     const addressPopupComponent = mount(AddressPopup, {
       props: {
+        coverage: urlbarCoverageState,
         navigation: navigationState,
+        onOpenNativeUrlbar: openNativeUrlbar,
         onDisposed() {
           overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "disposed");
         },
@@ -761,6 +801,7 @@ export function mountShellApp({
       navigation: navigationState,
       shell,
       tabs: tabsState,
+      urlbarCoverage: urlbarCoverageState,
     });
     mountedFrames.set(frame, record);
 
@@ -853,6 +894,9 @@ export async function verifyShellAppHealth({
     "[data-fennevia-address-popup-details]",
     "[data-fennevia-connection-detail]",
     "[data-fennevia-protection-detail]",
+    "[data-fennevia-permission-detail]",
+    "[data-fennevia-urlbar-coverage]",
+    "button[data-fennevia-native-urlbar-access]",
     "button[data-fennevia-address-popup-close]",
   ];
 
@@ -867,6 +911,7 @@ export async function verifyShellAppHealth({
     mounted.downloads.status().phase !== "ready" ||
     mounted.navigation.status().disposed ||
     mounted.tabs.status().disposed ||
+    mounted.urlbarCoverage.status().disposed ||
     roots.some((root, index) => {
       const edge = edgeNames[index];
       return (
@@ -984,6 +1029,16 @@ export function getShellAppCapabilities({
     Object.freeze({
       available: Boolean(
         mounted &&
+        !mounted.urlbarCoverage.status().disposed &&
+        overlayTarget.querySelector("[data-fennevia-permission-detail]") &&
+        overlayTarget.querySelector("[data-fennevia-urlbar-coverage]") &&
+        overlayTarget.querySelector("[data-fennevia-native-urlbar-access]"),
+      ),
+      name: "frontend.urlbar-coverage-state",
+    }),
+    Object.freeze({
+      available: Boolean(
+        mounted &&
         !mounted.addressPopup.status().disposed &&
         !mounted.navigation.status().disposed &&
         targets.left.querySelector("[data-fennevia-address-launcher]") &&
@@ -996,7 +1051,8 @@ export function getShellAppCapabilities({
         targets.left.querySelector("[data-fennevia-connection-status]") &&
         targets.left.querySelector("[data-fennevia-protection-status]") &&
         overlayTarget.querySelector("[data-fennevia-connection-detail]") &&
-        overlayTarget.querySelector("[data-fennevia-protection-detail]"),
+        overlayTarget.querySelector("[data-fennevia-protection-detail]") &&
+        overlayTarget.querySelector("[data-fennevia-permission-detail]"),
       ),
       name: "frontend.firefox-site-status",
     }),

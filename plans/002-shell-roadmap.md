@@ -14,14 +14,15 @@ collision system, glass token set, or window-global coordination layer.
 
 Validated baseline as of 2026-08-16:
 
-- package `0.9.0-dev`;
+- package `0.10.0-dev`;
 - Firefox 153.0.4 release on Windows;
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #17, #22,
-  #31, and #32 complete;
+  #31, #32, and #37 complete;
 - functional vertical tabs and a compact address/status launcher in the left
   surface;
-- one centered address/search popup with detailed connection and protection
-  state in a fifth owned root;
+- one centered address/search popup with detailed connection, protection,
+  permission, applicable-action, and native-handoff coverage in a fifth owned
+  root;
 - functional primary navigation and bounded page status in the top surface;
 - bounded lazy Firefox Places bookmarks in the right surface;
 - event-driven anonymous aggregate Downloads status in the bottom surface;
@@ -30,10 +31,8 @@ Validated baseline as of 2026-08-16:
 
 Next feature work:
 
-1. #37 inventories fuller native Urlbar permissions/page-action coverage before
-   any related native surface can be hidden;
-2. #15 activates content-only mode only after all feature blockers pass;
-3. #16 hardens the complete MVP.
+1. #15 activates content-only mode now that all feature blockers pass;
+2. #16 hardens the complete MVP.
 
 Historical research records remain accurate for the milestone they tested.
 Current production architecture is defined by this roadmap, the master plan,
@@ -376,8 +375,8 @@ Gate:
 - failure restores native fallback.
 
 Validated on Firefox 153.0.4 in normal, second-normal, private, fail-open,
-frontend-recovery, and Browser Toolbox runs. Full native permissions/page-action
-coverage is intentionally deferred to #37.
+frontend-recovery, and Browser Toolbox runs. Issue #37 separately completes
+native permission/page-action coverage and retained access.
 
 Evidence: ADR-028 and
 `docs/research/firefox-153-address-popup.md`.
@@ -486,7 +485,39 @@ data, missing capability, frontend, bootstrap, and safe-start matrices passed.
 Evidence: ADR-030 and
 `docs/research/firefox-153-downloads-surface.md`.
 
-## Milestone K: Content-only active mode — pending (#15)
+## Milestone K: Urlbar trust, permission, and action coverage — complete (#37)
+
+### Inventory and bridge
+
+- exact Firefox 153 leading/trailing status, permission, prompt-anchor,
+  conditional/static/dynamic page-action, and provider-control inventory;
+- one read-only per-window owner-state observer with four fixed targets;
+- fixed sharing, blocked-permission, and applicable-item enums plus booleans;
+- generic extension/unknown-action presence without extension identity or
+  action IDs;
+- no URL, origin, principal, certificate, permission record/scope, native
+  label, provider result, browser/window object, or native node crossing;
+- deterministic observer/subscriber/application cleanup and fail-open.
+
+### Detailed popup and retained access
+
+- short launcher remains bounded location plus real Firefox connection/HTTPS
+  and ETP status;
+- centered popup adds permission and applicable-action detail;
+- native identity/trust/protections/permission/extension/page-action panels,
+  prompts, providers, suggestions, and one-offs remain Firefox-owned;
+- one explicit action closes the project popup and invokes current
+  `window.openLocation()`.
+
+Gate passed on Firefox 153.0.4 with HTTP, valid HTTPS, internal, network-error,
+blocked-camera, ETP exception/restore, dynamic zoom, normal, second-normal,
+private, Browser Toolbox, missing-capability, exact restoration, and cleanup
+evidence.
+
+Evidence: ADR-031 and
+`docs/research/firefox-153-urlbar-coverage.md`.
+
+## Milestone L: Content-only active mode — pending (#15)
 
 Begin only after #7, #31, #11, #12, #13, #14, #32, and #37 are complete with
 real native-visible validation.
@@ -511,6 +542,10 @@ Active-mode contract:
 - clearing `active` restores native UI immediately without Svelte or restart;
 - missing bundle, CSS, host, controller, command, or bridge capability clears
   active state;
+- #37 native handoff reveals/focuses the retained Urlbar while active and
+  returns to the intended content-only presentation afterward;
+- trust/identity/certificate, protections, permission, extension, bookmark,
+  translation, zoom, overflow, and prompt-anchor paths stay reachable;
 - native prompts, notifications, dialogs, find bar, menus, extension actions,
   Library, Downloads access, DevTools, and OS controls remain reachable;
 - customize mode normally suspends active mode;
@@ -518,7 +553,7 @@ Active-mode contract:
 
 Gate: every controlled failure leaves or restores a usable native browser shell.
 
-## Milestone L: Hardening and Firefox updates — pending (#16)
+## Milestone M: Hardening and Firefox updates — pending (#16)
 
 Validate and document:
 
@@ -530,7 +565,7 @@ Validate and document:
   transparency fallback;
 - prompts, dialogs, notifications, extension access, Library, Downloads,
   DevTools, Browser Toolbox, and OS controls;
-- tab, navigation, address, bookmark, and download event stress;
+- tab, navigation, address/Urlbar coverage, bookmark, and download event stress;
 - missing/malformed package, host, CSS, controller, component, and bridge
   failures;
 - repeated lifecycle and leak checks;

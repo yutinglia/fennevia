@@ -868,3 +868,57 @@ animation, text, or visual composition was copied or adapted. Current source
 pins, canary review, privacy analysis, rejected alternatives, and real
 normal/second/private/Browser-Toolbox/fail-open evidence are recorded in
 `docs/research/firefox-153-downloads-surface.md`.
+
+## ADR-031: Represent fixed Urlbar coverage and retain Firefox's complete native path
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Keep ADR-028's left address launcher compact: it continues to show only bounded
+committed location plus Firefox-derived connection/HTTPS and Enhanced Tracking
+Protection badges. Put richer site information in the existing centered popup,
+not in another edge host, toolbar, overlay, or editable field.
+
+Create one `urlbar-coverage` controller inside each ADR-023 window boundary.
+Read only owner-set attributes and child presence from the current document
+root, `gURLBar`, `identity-permission-box`, `blocked-permissions-container`, and
+`page-action-buttons`. Require those owner roots, `MutationObserver`, and
+`window.openLocation` before health. One observer watches four roots and is
+paired with exact deterministic disconnection; there is no timer, polling
+fallback, process-global state, or native-DOM mutation.
+
+Expose only fixed sharing, blocked-permission, and Urlbar-item enums plus
+booleans. Dynamic extension actions collapse to one generic presence enum;
+unknown native page actions collapse to one generic presence enum. URLs,
+origins, principals, certificates, permission records/scopes, extension IDs or
+names, action IDs, localized Firefox labels, provider results, browser/window
+objects, and native nodes never cross the bridge.
+
+Render connection, protection, and permission cards plus applicable fixed
+Firefox-control labels in the centered popup. These labels report current
+Firefox-owned availability; they are not replacement commands. Identity,
+certificate, trust, protections, permission, translation, bookmark, extension,
+and page-action panels and all security-sensitive mutations remain native.
+
+Provide one explicit native handoff. It first closes the project popup without
+restoring focus over Firefox, then invokes the owning window's current
+`openLocation()`. Firefox owns Urlbar selection, view opening, suggestions,
+providers, search one-offs, extension actions, panel routing, prompts, and
+commands. Missing capability, observer or subscriber failure, malformed state,
+component failure, or handoff failure follows ADR-021 and leaves native chrome
+usable.
+
+**Reasoning:** Firefox's Urlbar combines status, prompts, providers, dynamic
+extension actions, and security-sensitive panels whose contracts and content
+cannot safely be recreated from visual markup. A bounded read-only summary
+meets the compact/detailed product split while native handoff preserves complete
+behavior and future unknown items. Fixed enums prevent sensitive values and
+native handles from entering Svelte, and one event-driven observer aligns
+lifecycle and failure with the existing per-window bridge.
+
+Issue #15 may hide the navbar only if the handoff temporarily reveals and
+focuses the native Urlbar and every retained panel/prompt remains reachable. A
+failure must synchronously retain or restore it. The complete source inventory,
+privacy classification, compatibility-canary review, normal/second/private
+evidence, HTTP/HTTPS/internal/error/permission/protection matrix, and fail-open
+proof are recorded in
+`docs/research/firefox-153-urlbar-coverage.md`.

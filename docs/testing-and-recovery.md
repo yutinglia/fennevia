@@ -9,20 +9,21 @@ later ADR supersedes their production architecture.
 
 As of 2026-08-16:
 
-- package: `0.9.0-dev`;
+- package: `0.10.0-dev`;
 - Firefox: 153.0.4 release;
 - build ID: `20260810162159`;
 - first platform: Windows 11;
 - environment: copied stock Firefox program plus marker-owned direct-path
   development profile;
-- completed runtime/UI milestones: #3–#14, #31, and #32;
+- completed runtime/UI milestones: #3–#14, #31, #32, and #37;
 - current shell: one zero-layout frame with independent top, left, right, and
   bottom surfaces plus one centered address-overlay root;
 - current functional features: vertical tabs and compact address/status
   launcher in the left surface, centered address/search popup, primary
   navigation controls with bounded page status in the top surface, bounded lazy
   bookmarks in the right surface, and anonymous aggregate download status in
-  the bottom surface;
+  the bottom surface; the centered popup also includes fixed Urlbar permission/
+  action coverage and complete native handoff;
 - current placeholders: none inside the five pre-activation product surfaces;
 - native Firefox visible UI: retained and unchanged;
 - production active state: not entered.
@@ -298,7 +299,47 @@ sent to an external service.
 
 Evidence: `docs/research/firefox-153-address-popup.md`.
 
-### 6.4 Right bookmarks — validated for #14
+### 6.4 Urlbar trust, permission, and action coverage — validated for #37
+
+Validate:
+
+- the short left launcher continues to show only committed location plus real
+  Firefox connection/HTTPS and ETP status;
+- the centered popup shows matching detailed connection/protection rows, a
+  site-permission card, and current applicable Firefox-control labels;
+- ordinary HTTP, valid HTTPS, secure internal, and real network-error
+  classifications are derived from `gIdentityHandler`, never from URL text;
+- ETP unavailable, clear/detected/blocking, exception, and restored states
+  match current `gProtectionsHandler`/allow-list state;
+- fixed active-sharing and blocked-permission indicators update from Firefox
+  owner attributes; unknown permissions remain native-only;
+- static, conditional, overflow, extension, unknown native, search-mode,
+  persisted-search, and remote-control presence remains fixed and bounded;
+- switch-to-tab, extension result labels, providers, suggestions, autofill,
+  search one-offs, prompt anchors, and all native panels remain available
+  through Firefox rather than a custom replica;
+- dynamic native zoom visibility appears and clears without polling;
+- **Open full Firefox address bar** closes the custom popup and focuses the
+  current native `gURLBar`;
+- no URL, origin, certificate, permission record/scope, extension identity,
+  action ID, localized native label, or provider result enters Svelte, normal
+  diagnostics, datasets, CSS variables, or persistence;
+- one per-window observer is disconnected exactly once across normal, second,
+  private, unmount/remount, fallback, window close, and runtime disposal;
+- missing owner root, observer, or native-handoff capability fails open and
+  leaves native UI usable.
+
+The real targeted matrix uses an ephemeral loopback server. It temporarily maps
+`fennevia.test` through Firefox's local-domain test preference so ordinary HTTP
+is not misclassified as potentially trustworthy loopback, then restores the
+original preference in `finally`. A temporary browser-scoped blocked-camera
+permission and one ETP exception are both removed in `finally`. The valid-HTTPS
+row loads fixed `https://example.com/` only and sends no user or browsing data.
+
+Evidence: ADR-031 and
+`docs/research/firefox-153-urlbar-coverage.md`.
+
+### 6.5 Right bookmarks — validated for #14
 
 Validate:
 
@@ -335,7 +376,7 @@ hash, and then reruns ordinary startup. Frontend missing/throwing bundle
 recovery passed after the bookmark component was added. Evidence: ADR-029 and
 `docs/research/firefox-153-bookmarks-surface.md`.
 
-### 6.5 Bottom downloads — validated for #32
+### 6.6 Bottom downloads — validated for #32
 
 Validated:
 
@@ -385,6 +426,10 @@ Validate:
 - top/left/right/bottom reveal independently;
 - clearing `data-fennevia-active` restores native UI immediately without
   restart or Svelte;
+- #37 native handoff temporarily reveals and focuses the native Urlbar while
+  active, and returning from it restores the intended content-only state;
+- trust/identity/certificate, protections, permission, extension, bookmark,
+  translation, zoom, overflow, and prompt-anchor paths remain reachable;
 - safe start prevents activation;
 - emergency fallback works with no surface open and with each surface
   open/focused;
@@ -415,7 +460,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.9.0-dev` stops at `healthy`. The health phase requires:
+Current package `0.10.0-dev` stops at `healthy`. The health phase requires:
 
 - exact frame identity and placement;
 - ordered top/left/right/bottom hosts plus the final address-overlay host;
@@ -425,6 +470,8 @@ Current package `0.9.0-dev` stops at `healthy`. The health phase requires:
 - edge reveal controller;
 - initialized four-root bookmarks state and a successful first bounded page;
 - a ready PUBLIC/PRIVATE Downloads list view and valid bottom-panel state;
+- a valid Urlbar-coverage snapshot, one owner-state observer, and native
+  `openLocation()` handoff capability;
 - environment/suspension handling;
 - privileged emergency handler;
 - every declared required capability;
@@ -570,11 +617,12 @@ Maintain controlled tests for:
 - edge-controller construction/hold/timer/corner/disposal failure;
 - health false and timeout;
 - missing base bridge capability;
-- missing tabs/navigation/address/Places/Downloads capability;
+- missing tabs/navigation/address/Urlbar-coverage/Places/Downloads capability;
 - malformed/stale/foreign snapshots and IDs;
 - feature component failure;
 - disposal during a pending hide, focus/popup hold, navigation event, address
-  submission, Places query/observer callback, or Downloads callback;
+  submission, Urlbar owner mutation/native handoff, Places query/observer
+  callback, or Downloads callback;
 - emergency fallback while Svelte is absent or visually broken.
 
 Each case must produce a fixed privacy-safe first causal record, clean partial
@@ -635,8 +683,9 @@ pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
 
 The bridge recovery command includes a dedicated
 `FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING` and
-`FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING` run. The ordinary lifecycle
-command contains both native bookmark and Downloads fixture matrices; no
+`FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING` run plus
+`FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING`. The ordinary lifecycle
+command contains bookmark, Downloads, and Urlbar state fixture matrices; no
 separate profile mutation command is required. The same harness accepts
 `--expect-disabled` after an exact package `Disable` action and verifies native
 UI, zero project hosts, and zero Fennevia records before re-enable.
@@ -666,6 +715,7 @@ of the installed package.
 | Four-edge frame            | `docs/research/firefox-153-four-edge-shell.md`       |
 | Top navigation             | `docs/research/firefox-153-navigation-controls.md`   |
 | Address launcher and popup | `docs/research/firefox-153-address-popup.md`         |
+| Urlbar coverage            | `docs/research/firefox-153-urlbar-coverage.md`       |
 | Right-edge bookmarks       | `docs/research/firefox-153-bookmarks-surface.md`     |
 | Bottom-edge downloads      | `docs/research/firefox-153-downloads-surface.md`     |
 

@@ -128,7 +128,7 @@ DOM global, or runtime debug switch for choosing a failure mode.
 
 `initializeWindowShell` stops at `healthy`. Only the explicit lifecycle
 controller can request `active`, and no production caller does so. Package
-`0.4.0-dev` introduced this boundary, and the current `0.9.0-dev` package still
+`0.4.0-dev` introduced this boundary, and the current `0.10.0-dev` package still
 contains no selector that hides Firefox UI. `Ctrl+Alt+Shift+F12` is registered directly on each chrome window in
 the capture and Mozilla system event groups. It reports the fixed recovery
 phase, clears state, removes every host/listener/timer/cleanup, and does not
@@ -302,6 +302,22 @@ private markers, and byte values remain privileged and absent from DOM/logs.
 The bridge offers no file action and never requests edge reveal. See ADR-030
 and `docs/research/firefox-153-downloads-surface.md`.
 
+Issue #37 adds `src/firefox/urlbar-coverage.ts` to the same generated private
+ESM. One controller per window requires the current Urlbar owner roots,
+`MutationObserver`, and `window.openLocation()`, then observes only the document
+root, `gURLBar`, the permission subtree, and page-action subtree. It exposes
+fixed sharing, blocked-permission, and applicable-item enums plus booleans; it
+never exposes URLs, origins, principals, certificates, permission records,
+extension identities, action IDs, localized Firefox labels, native nodes, or
+controllers.
+
+The bridge is read-only. It does not clone or invoke Firefox-owned Urlbar
+children. The detailed popup's explicit native-access action first closes the
+project popup and then calls Firefox's `openLocation()`, preserving providers,
+suggestions, one-offs, extension actions, prompts, and native panels. One
+observer is disconnected exactly once with the window. See ADR-031 and
+`docs/research/firefox-153-urlbar-coverage.md`.
+
 ## 5. Application and frontend layers
 
 The application layer coordinates ordinary typed state, controllers, and feature policy. It must be usable without importing Firefox implementation modules directly.
@@ -329,8 +345,13 @@ launcher displays bounded committed location plus compact labels derived from
 real Firefox connection/protection enums. The popup owns the sole custom input,
 an independent per-window draft, fuller labels, focus restoration, and
 popup-priority edge suppression. It never moves native Urlbar/identity/
-protections DOM or renders inferred security state. Full permissions and page-
-action coverage remains #37.
+protections DOM or renders inferred security state.
+
+Issue #37 extends that same popup with a full-width site-permission card, fixed
+applicable Firefox-control labels, and one native Urlbar handoff button. The
+short launcher remains unchanged. All native security/permission/action panels
+and commands stay Firefox-owned, and no second popup, input, edge controller,
+timer, or provider stack is added.
 
 Issue #14 replaces the right placeholder with `BookmarksPanel.svelte`. It uses
 the existing right host, trigger, controller, focus restoration, collision
@@ -419,6 +440,12 @@ animation. Responsive and forced-colors rules remain inside the existing bottom
 surface. No selector targets Firefox's Downloads button, panel, notifications,
 or browser content.
 
+The issue #37 popup additions remain frame-rooted and reuse the existing
+responsive overlay. Permission/action chips render only fixed project labels;
+no selector targets Firefox's Urlbar, identity, permission, page-action, panel,
+or notification-anchor DOM. The native-access button uses the shared control
+and focus-visible policy.
+
 ## 7. Native UI gate
 
 The implemented root state attributes are:
@@ -440,7 +467,7 @@ AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute.
 
 When a later issue implements the actual native-UI gate, native UI may be hidden
-only while active and must never be removed. Package `0.9.0-dev` does not hide
+only while active and must never be removed. Package `0.10.0-dev` does not hide
 it. Retaining native DOM preserves implicit dependencies in Firefox commands,
 popups, customization, titlebar, and platform integration and provides the
 recovery path.

@@ -340,9 +340,33 @@ records the selected UI and command boundary.
 
 The left launcher and centered popup derive compact and detailed labels from the
 same frozen enum mapping in ordinary `src/shell/navigation-labels.ts`. The
-address-overlay host is a project-owned DOM dependency, not a Firefox API. Full
-permissions/page-action coverage is separately tracked in #37; Firefox's native
-identity/protections panels remain visible and authoritative.
+address-overlay host is a project-owned DOM dependency, not a Firefox API.
+Issue #37 completes the reviewed permission/page-action inventory below;
+Firefox's native identity/protections/permission/action panels remain visible
+and authoritative.
+
+### Urlbar permission and page-action coverage
+
+Issue #37 verified the following dependencies on the same Firefox 153.0.4
+release/build and Windows platform. The exact leading/trailing inventory,
+source blobs, private/security classification, canary review, and real state
+matrix are in `docs/research/firefox-153-urlbar-coverage.md`; ADR-031 records
+the selected fixed-summary/native-handoff boundary.
+
+| Dependency | Firefox 153 source-backed behavior | Project owner and failure behavior |
+| --- | --- | --- |
+| `navigator-toolbox.inc.xhtml` Urlbar slots and fixed IDs | [`navigator-toolbox.inc.xhtml`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/base/content/navigator-toolbox.inc.xhtml), blob `7b2ac0dc179b5630a06b11d4472eedb7e8e6d099`, owns remote-control, trust, ETP, identity/permission, notification-anchor, search-mode/revert, page-action, and search-one-off children. | `src/firefox/urlbar-coverage.ts` requires only `identity-permission-box`, `blocked-permissions-container`, and `page-action-buttons`. It never moves, clicks, clones, styles, or exposes a Firefox-owned child. Missing fixed roots fail before health and retain native UI. |
+| `gPermissionPanel.refreshPermissionIcons()` and sharing attributes | [`browser-sitePermissionPanel.js`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/base/content/browser-sitePermissionPanel.js), blob `f66ebbf42bc687db8e770fdfc7dce44746d9b31e`, reads current `SitePermissions`, sets `hasPermissions`, fixed blocked `showing`, and fixed sharing attributes, and retains the native panel. | The bridge maps only four sharing and fifteen blocked fixed enums plus generic `hasPermissions`. Unknown IDs are omitted. Principals, records, scopes, origins, native labels, prompts, and panel actions remain private. Invalid proxy state becomes unavailable unless persisted search or active sharing makes the indicator meaningful. |
+| `BrowserPageActions`, static page-action IDs, and dynamic Urlbar action children | [`browser-pageActions.js`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/base/content/browser-pageActions.js), blob `00da33bc11189db17b6a2e656acb3a778531197c`, owns Urlbar placement, visibility, extension children, overflow, panels, and commands. | Fixed owner-visible actions become fixed availability enums. Extension children become one generic enum; unknown `actionid` children become one generic enum. No ID, extension identity, localized label, icon, action object, or command crosses. |
+| `gURLBar[searchmode]`, `gURLBar[persistsearchterms]`, and document-root `remotecontrol` | Current `UrlbarInput.mjs` and browser owner code set these fixed attributes and own their controls. | The bridge exposes only `search-mode`, `persisted-search`, and `remote-control` enums. Search terms, provider/result data, automation identity, and native command behavior remain Firefox-owned. |
+| Per-window `MutationObserver` over four owner roots | The browser-window global supplies mutation delivery for current browser chrome attributes and children. | One controller observes the document root, `gURLBar`, permission subtree, and page-action subtree with fixed attribute filters. It has no timer or polling fallback, reconciles immutable snapshots, and disconnects exactly once before releasing its window. |
+| `window.openLocation()` | Current [`browser.js`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/base/content/browser.js) calls `UrlbarUtils.getURLBarForFocus(window)`, selects it, and opens the native view according to current focus/customize/fullscreen handling. | The detailed popup closes with no competing focus restoration, then invokes the owning window method. Suggestions, providers, search one-offs, extension actions, native panels, and prompts remain complete. Missing/thrown handoff is typed and follows ADR-021. Issue #15 must make this path reveal the native navbar while active before hiding it. |
+
+The public contract is fixed enums and booleans only. It contains no URL,
+origin, principal, certificate, permission object/scope, extension identity,
+action ID, localized Firefox label, provider result, browser/window object, or
+native node. Revalidate every row and the complete inventory on the next
+supported Firefox stable.
 
 ### Chrome Registry and AutoConfig
 

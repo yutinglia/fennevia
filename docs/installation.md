@@ -268,7 +268,7 @@ pwsh -NoProfile -File .\tests\installer.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
 ```
 
-The current package is `0.9.0-dev` and contains eleven exact profile artifacts:
+The current package is `0.10.0-dev` and contains eleven exact profile artifacts:
 the manifest, bootstrap, one generated private bridge ESM, five runtime
 modules, and three generated shell files.
 `.gitattributes` fixes AutoConfig/default/manifest files to CRLF and privileged

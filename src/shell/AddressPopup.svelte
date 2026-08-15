@@ -13,17 +13,34 @@
     type BrowserNavigationStateAdapter,
   } from "../app/navigation-state";
   import {
+    createBrowserUrlbarCoverageState,
+    type BrowserUrlbarCoverageState,
+    type BrowserUrlbarCoverageStateAdapter,
+  } from "../app/urlbar-coverage-state";
+  import {
     getConnectionSecurityPresentation,
     getTrackingProtectionPresentation,
   } from "./navigation-labels";
+  import {
+    getBlockedPermissionIndicatorLabel,
+    getSharingIndicatorLabel,
+    getSitePermissionPresentation,
+    getUrlbarItemLabel,
+    getUrlbarItemTone,
+  } from "./urlbar-coverage-labels";
 
   type Props = Readonly<{
+    coverage: BrowserUrlbarCoverageStateAdapter;
     navigation: BrowserNavigationStateAdapter;
+    onOpenNativeUrlbar: () => boolean;
     onDisposed: () => void;
     onFatalError: (error: unknown) => void;
     popup: AddressPopupController;
     windowKind: "normal" | "private";
   }>;
+
+  const nativeAccessDescription =
+    "Applicable actions stay Firefox-owned. Open the full address bar for native panels, extension actions, and complete controls.";
 
   const props: Props = $props();
   let popupState: AddressPopupSnapshot = $state({
@@ -46,6 +63,17 @@
       trackingProtection: "unavailable",
     }),
   );
+  let currentCoverage: BrowserUrlbarCoverageState = $state(
+    createBrowserUrlbarCoverageState({
+      items: [],
+      permissions: {
+        available: false,
+        blocked: [],
+        hasPermissions: false,
+        sharing: [],
+      },
+    }),
+  );
   let connection = $derived(
     getConnectionSecurityPresentation(
       currentNavigation.snapshot.connectionSecurity,
@@ -56,6 +84,9 @@
       currentNavigation.snapshot.trackingProtection,
     ),
   );
+  let permissions = $derived(
+    getSitePermissionPresentation(currentCoverage.snapshot.permissions),
+  );
   let visible = $derived(
     popupState.phase !== "hidden" && popupState.phase !== "disposed",
   );
@@ -64,6 +95,13 @@
     popupState = props.popup.snapshot();
     return props.popup.subscribe((snapshot) => {
       popupState = snapshot;
+    });
+  });
+
+  $effect(() => {
+    currentCoverage = props.coverage.snapshot();
+    return props.coverage.subscribe((state) => {
+      currentCoverage = state;
     });
   });
 
@@ -103,6 +141,29 @@
   };
 
   const handleCloseKeydown = (event: KeyboardEvent) => {
+    if (
+      event.key === "Tab" &&
+      !event.shiftKey &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      requestClose("focus-left");
+    }
+  };
+
+  const handleNativeAccess = () => {
+    try {
+      if (!props.onOpenNativeUrlbar()) {
+        throw new Error("FENNEVIA_NATIVE_URLBAR_ACCESS_REJECTED");
+      }
+    } catch (error) {
+      props.onFatalError(error);
+    }
+  };
+
+  const handleNativeAccessKeydown = (event: KeyboardEvent) => {
     if (
       event.key === "Tab" &&
       !event.shiftKey &&
@@ -259,6 +320,78 @@
           <span>{protection.label}</span>
         </span>
       </div>
+      <div
+        class="fennevia-address-popup__detail fennevia-address-popup__detail--permissions"
+        data-fennevia-permission-detail=""
+        data-fennevia-status-tone={permissions.tone}
+      >
+        <span aria-hidden="true" class="fennevia-address-popup__detail-mark"
+          >{permissions.badge}</span
+        >
+        <span>
+          <strong>Site permissions</strong>
+          <span>{permissions.label}</span>
+        </span>
+        {#if currentCoverage.snapshot.permissions.sharing.length > 0 ||
+        currentCoverage.snapshot.permissions.blocked.length > 0}
+          <ul
+            aria-label="Firefox permission indicators"
+            class="fennevia-address-popup__permission-indicators"
+            data-fennevia-permission-indicators=""
+          >
+            {#each currentCoverage.snapshot.permissions.sharing as kind (kind)}
+              <li data-fennevia-status-tone="warning">
+                {getSharingIndicatorLabel(kind)}
+              </li>
+            {/each}
+            {#each currentCoverage.snapshot.permissions.blocked as kind (kind)}
+              <li>{getBlockedPermissionIndicatorLabel(kind)}</li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
     </div>
+
+    <section
+      aria-labelledby="fennevia-address-popup-firefox-controls-title"
+      class="fennevia-address-popup__firefox-controls"
+      data-fennevia-urlbar-coverage=""
+    >
+      <div class="fennevia-address-popup__firefox-controls-copy">
+        <strong id="fennevia-address-popup-firefox-controls-title"
+          >Firefox address-bar controls</strong
+        >
+        <span>{nativeAccessDescription}</span>
+      </div>
+
+      {#if currentCoverage.snapshot.items.length > 0}
+        <ul
+          aria-label="Applicable Firefox address-bar items"
+          class="fennevia-address-popup__urlbar-items"
+          data-fennevia-urlbar-items=""
+        >
+          {#each currentCoverage.snapshot.items as kind (kind)}
+            <li data-fennevia-status-tone={getUrlbarItemTone(kind)}>
+              {getUrlbarItemLabel(kind)}
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <span class="fennevia-address-popup__urlbar-empty"
+          >No additional page actions are available for this page.</span
+        >
+      {/if}
+
+      <button
+        class="fennevia-control fennevia-address-popup__native-access"
+        data-fennevia-native-urlbar-access=""
+        onclick={handleNativeAccess}
+        onkeydown={handleNativeAccessKeydown}
+        type="button"
+      >
+        <span aria-hidden="true">↗</span>
+        <span>Open full Firefox address bar</span>
+      </button>
+    </section>
   </div>
 </div>

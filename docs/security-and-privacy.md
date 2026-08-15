@@ -13,7 +13,7 @@ These rules apply to:
 - generated Svelte/JavaScript/CSS artifacts;
 - build tooling and dependencies;
 - four-edge hosts, triggers, controllers, focus, and timers;
-- tab, navigation, address, Places, and Downloads data flows;
+- tab, navigation, address/Urlbar coverage, Places, and Downloads data flows;
 - resource mappings;
 - diagnostics and shared evidence;
 - install, update, disable, and uninstall;
@@ -28,7 +28,7 @@ controls, private-window rules, and review triggers.
 
 ## 2. Current security baseline
 
-Current validated package: `0.9.0-dev` on Firefox 153.0.4 for Windows.
+Current validated package: `0.10.0-dev` on Firefox 153.0.4 for Windows.
 
 Implemented controls:
 
@@ -43,6 +43,8 @@ Implemented controls:
 - bounded tab titles and allowlisted property-only favicon values;
 - bounded navigation title/display-URI text and explicit native command actions;
 - bounded address draft plus fixed Firefox-derived connection/protection enums;
+- fixed Urlbar permission/action availability with read-only owner-state
+  observation and complete native handoff;
 - bounded lazy Places pages with opaque handles and native bookmark opening;
 - anonymous bounded Downloads status with per-window native list views and no
   filename, path, source URL, byte value, or file action crossing the bridge;
@@ -54,7 +56,6 @@ Implemented controls:
 
 Not implemented yet:
 
-- fuller Urlbar permission/page-action coverage tracked by #37;
 - final native-visible-shell hiding;
 - public release/security hardening;
 - project license decision.
@@ -128,10 +129,10 @@ Requirements:
 - disposal clears all holds, timers, observers, delegated listeners, roots, and
   focus-origin records.
 
-The top navigation, left address/status, centered popup, right bookmarks, and
-bottom download-status surfaces are complete for #12–#14 and #32. They do not
-replace #37's fuller permissions/page-action and retained-access coverage
-required before #15.
+The top navigation, left address/status, centered detailed popup, right
+bookmarks, and bottom download-status surfaces are complete for #12–#14, #32,
+and #37. They preserve native access; only #15 may activate hiding after its
+complete retained-access and recovery matrix passes.
 
 ## 6. Data classification and logging
 
@@ -258,14 +259,53 @@ Rules:
 - no certificate material, permission record, exception principal, or native
   handler state crosses into Svelte;
 - the popup summarizes connection/protection state but does not replace
-  Firefox's authoritative identity or protections panels. Permissions/page-
-  action expansion is separately reviewed in #37.
+  Firefox's authoritative identity or protections panels. Issue #37's fuller
+  permission/action summary follows the separate fixed-state policy below.
 
 The fifth address-overlay root remains inside the project frame. Popup activity
 suppresses the four edge surfaces, and disposal clears its draft, focus history,
 subscribers, listeners, and root before host removal.
 
-### 7.3 Bookmarks — implemented #14
+### 7.3 Urlbar permission and page-action coverage — implemented #37
+
+Each managed window owns one `urlbar-coverage` controller, one application
+adapter, and one native observer. The observer reads only current owner-set
+attributes and children below the document root, `gURLBar`,
+`identity-permission-box`, `blocked-permissions-container`, and
+`page-action-buttons`. It never modifies Firefox-owned DOM and has no timer,
+polling fallback, or process-global mirror.
+
+Only these ordinary values cross the bridge:
+
+- permission availability and generic `hasPermissions` booleans;
+- four fixed active-sharing enums;
+- fifteen fixed blocked-permission enums;
+- fixed current Urlbar-item availability enums; and
+- one generic extension-action and one generic unknown-native-action presence
+  enum.
+
+URLs, origins, principals, certificates, permission records/scopes, policy or
+private markers, extension IDs/names/icons/objects, page-action IDs/commands,
+localized Firefox labels, provider results, search terms, browsers, windows,
+and native nodes remain privileged. Unknown permission IDs are omitted and
+unknown actions become generic presence only. None of these values enters
+normal logs, persistence, CSS variables, or root datasets.
+
+The detailed popup renders fixed project labels. It does not synthesize native
+clicks or expose permission/security mutation. Its one native-access action
+closes the project popup and calls the current window's `openLocation()` so
+Firefox retains suggestions, providers, one-offs, extension actions, prompts,
+and identity/trust/protections/permission/action panels. Missing capability,
+observer/subscriber/component failure, malformed state, or handoff failure
+uses the existing typed value-free fail-open path.
+
+The observer is disconnected and subscribers/window references are released
+exactly once on rollback, unmount, fallback, window close, or runtime stop.
+Source inventory and real HTTP/HTTPS/internal/error/permission/protection/
+normal/second/private/fail-open evidence are in ADR-031 and
+`docs/research/firefox-153-urlbar-coverage.md`.
+
+### 7.4 Bookmarks — implemented #14
 
 The Places controller is per window and holds native modules, records, GUIDs,
 URL objects, observers, node-like opening values, and the owner window only in
@@ -314,7 +354,7 @@ opening capability failure blocks health and leaves those native paths usable.
 Source evidence and real hostile-title/private/fail-open tests are in
 `docs/research/firefox-153-bookmarks-surface.md` and ADR-029.
 
-### 7.4 Downloads — implemented #32
+### 7.5 Downloads — implemented #32
 
 Each managed window owns one typed controller and exact Firefox list view.
 Normal windows select `Downloads.PUBLIC`; private windows select
@@ -498,9 +538,15 @@ Issue #12's top surface invokes retained Firefox commands. The native navbar,
 Urlbar, identity/permission UI, prompts, and security indicators remain visible
 and authoritative; Fennevia's bounded location text is not a security indicator.
 
-Issue #15 must build a current native-UI coverage inventory and hide only the
-narrowest surfaces with complete replacement and retained access. Missing
-coverage blocks activation.
+Issue #37 adds only fixed read-only status/action availability and an explicit
+handoff to `window.openLocation()`. It does not replace native panels, prompts,
+providers, extension actions, or commands.
+
+Issue #15 must hide only the narrowest surfaces with complete replacement and
+retained access. Its active-state path must make the native navbar/Urlbar
+visible and focused when #37 hands off, keep every native panel/prompt
+reachable, and restore native UI synchronously on failure. Missing evidence
+blocks activation.
 
 ## 13. Private windows
 
@@ -521,17 +567,19 @@ Implemented:
 
 - base lifecycle, health, frame, edge controller, tabs bridge, vertical tab UI,
   navigation/address bridge, compact launcher, centered popup, top controls,
-  bookmarks bridge/right panel, and Downloads bridge/bottom panel have isolated
-  normal, second-normal, and private instances;
+  Urlbar-coverage bridge/details/native handoff, bookmarks bridge/right panel,
+  and Downloads bridge/bottom panel have isolated normal, second-normal, and
+  private instances;
 - opaque IDs include context/registry generation;
 - controllers, roots, holds, timers, listeners, mappings, and state are removed
   per window;
 - one window's emergency fallback does not mutate another.
 
-Issues #12–#14 and #32 give each window its own navigation, bookmarks, and
-Downloads controllers; selected snapshots; navigation, popup, bookmark, and
-download subscriber sets; popup controller/draft; two tab listeners; one tabs
-progress listener; one command observer; one Places observer; one Downloads
+Issues #12–#14, #32, and #37 give each window its own navigation, Urlbar
+coverage, bookmarks, and Downloads controllers; selected snapshots;
+navigation, popup, Urlbar, bookmark, and download subscriber sets; popup
+controller/draft; two tab listeners; one tabs progress listener; one command
+observer; one Urlbar owner-state observer; one Places observer; one Downloads
 list view; application adapters; five roots; and text output. Title, display
 URI, address text, draft, bookmark titles, and anonymous download progress may
 describe private browsing, so they are never process-global, persisted, logged,
@@ -545,6 +593,7 @@ anonymous transient state.
 Normal, second, and private-window isolation passed in real Firefox. Full
 evidence is in `docs/research/firefox-153-navigation-controls.md`,
 `docs/research/firefox-153-address-popup.md`,
+`docs/research/firefox-153-urlbar-coverage.md`,
 `docs/research/firefox-153-bookmarks-surface.md`, and
 `docs/research/firefox-153-downloads-surface.md`.
 

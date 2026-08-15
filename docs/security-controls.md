@@ -19,16 +19,16 @@ formal audit or penetration test.
 
 Current validated baseline:
 
-- package `0.9.0-dev`;
+- package `0.10.0-dev`;
 - Firefox 153.0.4 release, Windows;
 - copied Firefox program plus marker-owned development profile;
 - native Firefox visible UI retained;
 - functional left-edge vertical tabs and compact address/status launcher,
   centered address/search popup, top-edge navigation controls, right-edge
-  bookmarks, and bottom-edge anonymous download status;
+  bookmarks, bottom-edge anonymous download status, and detailed Urlbar
+  permission/action coverage with native handoff;
 - four-edge frame/reveal/design foundation complete;
-- fuller Urlbar permissions/page-action coverage and active native hiding
-  pending.
+- active native hiding pending.
 
 ## 2. Threat model and ownership
 
@@ -41,19 +41,20 @@ Current validated baseline:
 | Browser windows and lifecycle | Duplicate/late callbacks or retained native windows can cross contexts and leak state | One process runtime, strict browser filtering, abort-first per-window cleanup, idempotent stop; #12 removes tab/progress/command/application listeners and observers per window | Repeat lifecycle/leak matrix for later features | #5, #12, #16 |
 | Four-edge frame and triggers | Broad overlays can block web content, prompts, or OS controls; stuck holds can trap focus | Zero-layout project frame, narrow triggers, pointer-transparent resting center, deterministic corners, modal/DOM-fullscreen/customize suspension, tracked holds/timers, reverse cleanup; the nonmodal #13 popup suppresses edges only while active | Revalidate after geometry/controller changes and before #15 | #31, #13, #15, #16 |
 | Svelte/native DOM boundary | Framework may reconcile Firefox-owned children or leak styles | Four edge roots plus one address-overlay root, all project-owned XHTML; frame-scoped CSS, Browser Toolbox ownership walk, native computed-style comparison | Revalidate after root/style changes | #8, #13, #31 |
-| Firefox native handles | Native tab/browser/controller/service may enter reactive state or survive disposal | Enforced `src/firefox/` boundary, context-scoped opaque registries, typed stale/foreign failures, idempotent disposal, lint rules; #12/#13 keep selected browser, Urlbar, commands, identity/protections handlers, allow-list, and progress private; #14 keeps Places records, GUIDs, URLs, observers, and node-like values private; #32 keeps Downloads objects, lists/views, paths, sources, bytes, and errors private | Revalidate each exact boundary on Firefox updates | #9, #10, #12, #13, #14, #32 |
+| Firefox native handles | Native tab/browser/controller/service may enter reactive state or survive disposal | Enforced `src/firefox/` boundary, context-scoped opaque registries, typed stale/foreign failures, idempotent disposal, lint rules; #12/#13 keep selected browser, Urlbar, commands, identity/protections handlers, allow-list, and progress private; #37 keeps permission/action nodes, records, extension identity, and native labels private; #14 keeps Places records, GUIDs, URLs, observers, and node-like values private; #32 keeps Downloads objects, lists/views, paths, sources, bytes, and errors private | Revalidate each exact boundary on Firefox updates | #9, #10, #12–#14, #32, #37 |
 | Tab title/favicon data | Page-controlled strings/images can inject HTML/CSS, spoof UI, or leak | Bounded text-only titles, `dir=auto`, reviewed favicon allowlist, property-only `img.src`, static fallback, no referrer, no datasets/logging | Continue hostile-data tests after tab UI changes | #10, #11 |
-| Navigation status and address input | Page-controlled location or input can spoof UI, bypass Firefox fixup/principal/security behavior, or leak to logs | #12/#13 expose bounded text-only title/location/draft, fixed Firefox-derived connection/protection enums, and explicit current-window actions; submission delegates to `gURLBar.handleCommand()`, executable schemes are rejected, drafts are per-window/ephemeral, uncontrolled load helpers and inferred security state remain prohibited | Revalidate Urlbar/identity/protections internals on Firefox updates; #37 owns fuller permissions/page-action coverage | #12, #13, #37 |
+| Navigation status and address input | Page-controlled location or input can spoof UI, bypass Firefox fixup/principal/security behavior, or leak to logs | #12/#13 expose bounded text-only title/location/draft, fixed Firefox-derived connection/protection enums, and explicit current-window actions; submission delegates to `gURLBar.handleCommand()`, executable schemes are rejected, drafts are per-window/ephemeral, uncontrolled load helpers and inferred security state remain prohibited | Revalidate Urlbar/identity/protections internals on Firefox updates | #12, #13 |
+| Urlbar permission/action coverage | Cloning panels or exposing principals, permission records, extension identity, provider results, or action IDs can leak or bypass Firefox policy | #37 reads only fixed owner attributes/children, exposes fixed enums/booleans, collapses dynamic actions generically, modifies no native DOM, and delegates complete access to `window.openLocation()`; one observer is removed exactly once | #15 must prove native handoff reveals the hidden navbar and every retained panel/prompt remains reachable | #37, #15; ADR-031 |
 | Bookmark data and opening | Large/user-controlled tree can become unbounded UI state; unsafe opening can bypass principal/scheme behavior | #14 uses 32-item replaceable pages, depth/expansion caps, per-window opaque IDs and observers, text-only 160-code-point titles, no URL in Svelte/DOM/logs, blocked executable/data/place schemes, and native `PlacesUIUtils` opening/private policy | Revalidate exact Places and opening internals on Firefox updates | #14, #16; ADR-029 |
 | Download data and file actions | Paths/source URLs/private state can leak; unsafe actions can execute files | #32 exposes six anonymous items, capped counts, fixed state/percentage only; uses PUBLIC/PRIVATE per-window views, no filenames/paths/sources/bytes/actions/forced reveal, exact view removal, and native safety retention | Revalidate current list/view/field/native-panel semantics on Firefox updates | #32; ADR-030 |
-| Normal diagnostics | URLs, titles, queries, bookmarks, downloads, paths, secrets, or private data can leak | Default-deny schemas, stable codes, redacted stacks, no network sink, hostile-value tests; #12–#14/#32 errors contain fixed phase/code/symbol/build/window-kind only and never address/status/bookmark/download source data | Extend the same fixed schema to later features | #3, #5, #9–#14, #32 |
-| Private-window state | State can leak to normal windows, process globals, preferences, or diagnostics | Per-window lifecycle/frame/tabs/navigation/popup/bookmark/download instances, opaque generations, bounded unpersisted state, complete fallback on uncertainty; #12–#14/#32 passed normal/second/private isolation and disposal | Repeat for each later bridge and Firefox update | #5, #9–#14, #31, #32 |
-| Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native UI retained; #13 badges/details summarize only fixed current Firefox state and do not replace identity/protections panels; four edges and popup suspend for modal state; emergency fallback; #15 coverage inventory required | Complete #37 plus full prompt/retained-access/stacking matrix before activation | #7, #13, #31, #37, #15 |
+| Normal diagnostics | URLs, titles, queries, bookmarks, downloads, paths, secrets, or private data can leak | Default-deny schemas, stable codes, redacted stacks, no network sink, hostile-value tests; #12–#14/#32/#37 errors contain fixed phase/code/symbol/build/window-kind only and never address/status/permission/action/bookmark/download source data | Extend the same fixed schema to later features | #3, #5, #9–#14, #32, #37 |
+| Private-window state | State can leak to normal windows, process globals, preferences, or diagnostics | Per-window lifecycle/frame/tabs/navigation/popup/Urlbar/bookmark/download instances, opaque generations, bounded unpersisted state, complete fallback on uncertainty; #12–#14/#32/#37 passed normal/second/private isolation and disposal | Repeat for each later bridge and Firefox update | #5, #9–#14, #31, #32, #37 |
+| Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native UI retained; #13/#37 summarize only fixed current Firefox state/availability and preserve complete native handoff; four edges and popup suspend for modal state; emergency fallback | Full #15 prompt/retained-access/stacking/reveal matrix before activation | #7, #13, #31, #37, #15 |
 | Installer/updater/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data | Explicit canonical targets, marker checks, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion | Revalidate for every platform/scope change | #4, #16 |
 | Startup cache/stale installed code | Removed or fixed privileged code may continue to run | Exact inventory and evidence-first cache policy; validated changes took effect without routine clearing | Cache action only after observed stale symptom | #3, #4, #16 |
 | External implementation/design | Unlicensed or copied code/design can create legal and maintenance risk | License/provenance requirement; `my-firefox-custom` no-copy boundary; exact reference commit required | Owner license/attribution decision | #18 |
 | Runtime network/update/telemetry | Remote party can change privileged behavior or receive browsing data | Prohibited; scanner detects common endpoints/APIs | New issue + ADR + security review for any exception | ADR-012 |
-| Native UI hiding | Broad selectors can remove uncovered actions or leave no recovery | Production does not enter active; #15 narrow coverage inventory and reversible gate required | Complete #37 and the full failure/recovery matrix | #15 |
+| Native UI hiding | Broad selectors can remove uncovered actions or leave no recovery | Production does not enter active; #37 coverage/handoff is complete; #15 narrow inventory, native reveal, and reversible gate are required | Complete the full #15 failure/recovery matrix | #15 |
 
 Every unresolved high-risk row has an owner. An unimplemented control is a
 blocker, not an implicit risk acceptance.
@@ -62,7 +63,7 @@ blocker, not an implicit risk acceptance.
 
 ### 3.1 Current inventory
 
-`package-manifest.json` is the only source of truth. Package `0.9.0-dev`
+`package-manifest.json` is the only source of truth. Package `0.10.0-dev`
 contains the following profile paths:
 
 ```text
@@ -302,7 +303,7 @@ Required controls:
 - public snapshots remain immutable;
 - no tab data in logs/datasets/persistence.
 
-### 7.3 Navigation — implemented; address — #13 gate
+### 7.3 Navigation and address — implemented and validated
 
 Implemented navigation controls:
 
@@ -316,7 +317,7 @@ Implemented navigation controls:
 - private-window isolation and complete cleanup;
 - required-capability fail-open recovery.
 
-Before enabling address input:
+Implemented address controls:
 
 - current source for fixup, search, principal, disposition, and `Ctrl+L`;
 - bounded draft values independent from committed navigation status;
@@ -330,7 +331,31 @@ Before enabling address input:
 - private-window isolation;
 - complete cleanup.
 
-### 7.4 Bookmarks — #14 validated gate
+### 7.4 Urlbar permission/action coverage — #37 validated control
+
+Implemented and validated:
+
+- current Firefox 153 inventory for leading status, permission/sharing,
+  notification-anchor, conditional/static/dynamic page-action, search-mode,
+  persisted-search, provider-label, and search-one-off families;
+- only fixed booleans and allowlisted enums cross the bridge;
+- unknown permission IDs are omitted and dynamic actions are generic;
+- no URL, origin, principal, certificate, permission record/scope, extension
+  identity, action ID, localized native label, or provider result crosses;
+- one observer with four fixed owner roots and no polling/timer;
+- no native DOM mutation, click synthesis, panel reconstruction, or security
+  mutation;
+- complete native handoff through current `window.openLocation()`;
+- normal/second/private isolation and exact observer/subscriber cleanup;
+- real HTTP, valid HTTPS, internal, network-error, blocked-camera, ETP
+  exception/restore, dynamic zoom, Browser Toolbox, and fail-open evidence.
+
+The short launcher remains connection/ETP only; the detailed popup owns the
+permission/action summary. Missing capability removes project hosts and retains
+native UI. Evidence: ADR-031 and
+`docs/research/firefox-153-urlbar-coverage.md`.
+
+### 7.5 Bookmarks — #14 validated gate
 
 Implemented and validated on Firefox 153.0.4:
 
@@ -356,7 +381,7 @@ missing-bookmarks capability fail-open, frontend recovery, and Browser Toolbox
 ownership matrix passed. Evidence: ADR-029 and
 `docs/research/firefox-153-bookmarks-surface.md`.
 
-### 7.5 Downloads — #32 validated control
+### 7.6 Downloads — #32 validated control
 
 Implemented and validated:
 
@@ -469,6 +494,9 @@ Rules:
 
 - hide the narrowest possible surface;
 - never hide a broad parent with uncovered descendants;
+- #37 native handoff must reveal and focus the native Urlbar while active;
+- identity/trust/protections/permission/extension/page-action panels and
+  notification anchors must remain reachable and unobstructed;
 - every selector is gated by per-window `data-fennevia-active`;
 - missing/invalid activation CSS prevents activation;
 - clearing active restores native UI without restart/Svelte;

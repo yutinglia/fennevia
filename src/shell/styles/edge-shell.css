@@ -870,7 +870,7 @@
   z-index: 1;
   display: grid;
   inline-size: min(680px, 100%);
-  max-block-size: min(520px, calc(100vh - 58px));
+  max-block-size: min(680px, calc(100vh - 58px));
   gap: var(--fennevia-space-3);
   padding: var(--fennevia-space-4);
   overflow: auto;
@@ -1052,6 +1052,86 @@
 #fennevia-shell-frame-host .fennevia-address-popup__detail span span {
   color: var(--fennevia-glass-muted);
   font-size: 11px;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__detail--permissions {
+  grid-column: 1 / -1;
+  align-items: start;
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-address-popup__permission-indicators,
+    .fennevia-address-popup__urlbar-items
+  ) {
+  display: flex;
+  flex-wrap: wrap;
+  min-inline-size: 0;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__permission-indicators {
+  grid-column: 1 / -1;
+  padding-block-start: 2px;
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-address-popup__permission-indicators,
+    .fennevia-address-popup__urlbar-items
+  )
+  li {
+  max-inline-size: 100%;
+  padding: 3px 7px;
+  overflow: hidden;
+  color: var(--fennevia-glass-muted);
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__firefox-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  min-inline-size: 0;
+  gap: var(--fennevia-space-2) var(--fennevia-space-3);
+  padding-block-start: var(--fennevia-space-3);
+  border-block-start: 1px solid var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__firefox-controls-copy {
+  display: grid;
+  min-inline-size: 0;
+  gap: 2px;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__firefox-controls-copy span,
+#fennevia-shell-frame-host .fennevia-address-popup__urlbar-empty {
+  color: var(--fennevia-glass-muted);
+  font-size: 11px;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__urlbar-items,
+#fennevia-shell-frame-host .fennevia-address-popup__urlbar-empty {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__native-access {
+  grid-column: 2;
+  grid-row: 1;
+  min-inline-size: auto;
+  gap: 6px;
+  padding-inline: 10px;
+  white-space: nowrap;
 }
 
 #fennevia-shell-frame-host .fennevia-tabs-summary {
@@ -1320,6 +1400,22 @@
     grid-template-columns: 1fr;
   }
 
+  #fennevia-shell-frame-host .fennevia-address-popup__firefox-controls {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  #fennevia-shell-frame-host .fennevia-address-popup__native-access,
+  #fennevia-shell-frame-host .fennevia-address-popup__urlbar-items,
+  #fennevia-shell-frame-host .fennevia-address-popup__urlbar-empty {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  #fennevia-shell-frame-host .fennevia-address-popup__native-access {
+    justify-self: start;
+  }
+
   #fennevia-shell-frame-host .fennevia-navigation {
     grid-template-columns: auto minmax(80px, 1fr);
     justify-content: stretch;
@@ -1423,7 +1519,14 @@
 
   #fennevia-shell-frame-host .fennevia-address-launcher__button,
   #fennevia-shell-frame-host .fennevia-address-popup__field-shell,
-  #fennevia-shell-frame-host .fennevia-address-popup__field-shell:focus-within {
+  #fennevia-shell-frame-host .fennevia-address-popup__field-shell:focus-within,
+  #fennevia-shell-frame-host .fennevia-address-popup__native-access,
+  #fennevia-shell-frame-host
+    :is(
+      .fennevia-address-popup__permission-indicators,
+      .fennevia-address-popup__urlbar-items
+    )
+    li {
     color: CanvasText;
     background: Field;
     border-color: FieldText;
