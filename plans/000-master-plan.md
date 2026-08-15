@@ -142,9 +142,19 @@ and owns idempotent subscriptions/disposal. Typed diagnostics retain only fixed
 current-build context, and ESLint rejects shell/app imports or direct Firefox
 globals/properties. Pure tests plus repeated Firefox 153.0.4 normal, second,
 private, Browser Toolbox, missing-capability, exact-restoration, and cleanup
-evidence passed. Tabs/state synchronization remains owned by #10 and navigation
-by #12. See ADR-023 and
+evidence passed. That foundation deliberately left tabs/state synchronization
+to #10 and navigation to #12. See ADR-023 and
 `docs/research/firefox-153-bridge-boundary.md`.
+
+Issue #10 now supplies the typed tabs/state slice. One controller per boundary
+reconciles ordered immutable snapshots from `gBrowser.openTabs` after the
+minimal native event set, retains native tabs only behind stable context-scoped
+IDs, and exposes select/open-new-tab/close/pin/unpin actions with typed stale and
+foreign-ID failures. A separate ordinary-data adapter drives only a Svelte tab
+count diagnostic; #11 still owns the visual tab strip. Bounded text and
+allowlisted favicon fallback, missing-capability fail-open injection, and real
+normal/second/private-window synchronization passed. Navigation remains #12.
+See ADR-024 and `docs/research/firefox-153-tabs-bridge.md`.
 
 ### Phase 5: Usable UI slices
 

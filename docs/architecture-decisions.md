@@ -428,3 +428,43 @@ and brings the bridge under the deterministic package gate without adding a
 runtime dependency or new Chrome Registry exposure. Source, canary, failure,
 cleanup, and real normal/second/private-window evidence is recorded in
 `docs/research/firefox-153-bridge-boundary.md`.
+
+## ADR-024: Reconcile immutable tab snapshots from `gBrowser.openTabs` events
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Build one typed tabs controller inside each issue #9 boundary. Keep native tabs
+only in that boundary's opaque registry and expose a frozen public contract with
+ordered snapshots, subscriptions, and select/open-new-tab/close/pin/unpin
+actions. A separate `src/app/tab-state.ts` adapter copies only primitive fields
+into Svelte-independent reactive state; the #10 frontend renders only a count
+diagnostic, leaving the visual tab strip to #11.
+
+Use `gBrowser.openTabs`, not `gBrowser.tabs`, as the authoritative collection.
+On `TabOpen`, `TabClose`, `TabSelect`, `TabMove`, `TabPinned`, `TabUnpinned`, or
+a relevant `TabAttrModified`, synchronously rebuild the small complete snapshot
+and publish only when it changed. IDs derive from native identity and registry
+generation, never title, URL, or index. Closing IDs are released as soon as the
+tab leaves `openTabs`; window disposal clears everything even when Firefox's
+last-tab fast path emits no `TabClose`.
+
+Bound titles to 256 characters and preserve them only as text. Expose an
+optional favicon only for bounded Firefox-internal URLs or base64 raster data;
+remote, SVG-data, malformed, and unknown image values use the no-favicon
+fallback. `open()` accepts no URL and calls `addTrustedTab` only with the
+window's `BROWSER_NEW_TAB_URL`. Native `removeTab` retains Firefox's unload and
+last-tab decisions.
+
+**Reasoning:** Firefox's `openTabs` already expresses the active logical order
+and excludes closing/Firefox View tabs. Full reconciliation after a bounded
+event set is easier to verify than composing fragile move/pin/selected-close
+event details, while remaining event-driven and eliminating a privileged DOM
+poll. A narrow data/action contract prevents Svelte from retaining
+system-principal objects and leaves Firefox in control of navigation, unload
+prompts, and last-window behavior.
+
+Missing required tab collection/action/new-tab symbols fail before `healthy`.
+No polling loop, arbitrary URL action, global debug surface, remote load,
+native DOM ownership, compatibility branch, or tab-group abstraction is added.
+Source, canary, security, failure, cleanup, and real three-window evidence is in
+`docs/research/firefox-153-tabs-bridge.md`.

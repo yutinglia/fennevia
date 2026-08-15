@@ -694,7 +694,61 @@ bridge subscription was registered in #9 and no Browser Console error appeared.
 This remains a test-instrumentation watch item rather than a platform-support or
 cleanup claim beyond the passing repeated evidence.
 
-## 12. Firefox stable-update procedure
+## 12. Phase 4 typed-tabs evidence
+
+Issue #10 adds the first bridge consumer and ordinary reactive state adapter.
+Architecture, Firefox 153 event ordering, canary review, favicon policy, and
+remaining risk are recorded in
+`docs/research/firefox-153-tabs-bridge.md`; ADR-024 records the accepted
+reconciliation model.
+
+The static/pure matrix is part of `npm test` and covers:
+
+- ordered initial mapping and stable identity across reorder;
+- native and bridge-driven open, close, select, pin, and unpin;
+- label, safe favicon/fallback, busy, selection, pin, and order updates;
+- selected close, Firefox-style last-tab replacement, and rapid open/close;
+- malformed, stale, and foreign-window IDs;
+- frozen application copies with no unknown/native fields;
+- listener isolation, idempotent unsubscribe, double disposal, and no callback
+  after disposal;
+- required tabs-capability failure with fixed current-build diagnostics.
+
+The deterministic Firefox build still produces one private
+`content/firefox/BridgeBoundary.sys.mjs` artifact. Run the real matrix after
+installing the exact current package into the marker-owned test pair:
+
+```powershell
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>'
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --browser-toolbox
+pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+```
+
+Firefox 153.0.4 passed native tab open/close synchronization in the existing,
+second-normal, and private windows while each other window retained its own
+count. Window close, emergency fallback, runtime stop, and direct frontend
+unmount/remount removed subscriptions and state. No unexpected first-party
+Browser Console error was observed.
+
+The `--browser-toolbox` run repeated the matrix and selected the primary XHTML
+host in Inspector while confirming that native browser/tab infrastructure
+remained outside project ownership.
+
+The owned recovery wrapper first injects the older base-boundary capability
+failure, then a tabs-specific `gBrowser.openTabs` capability failure. Both stop
+before `healthy`, remove every project host/frontend/bridge resource, and leave
+native Firefox usable. The wrapper restores the exact original bridge hash,
+reruns the complete matrix, confirms no Firefox process remains, and does not
+clear startup cache.
+
+## 13. Firefox stable-update procedure
 
 For every stable update:
 
@@ -709,7 +763,7 @@ For every stable update:
 
 Never claim compatibility from version-number inspection alone.
 
-## 13. Automation boundary
+## 14. Automation boundary
 
 Suitable for automation:
 

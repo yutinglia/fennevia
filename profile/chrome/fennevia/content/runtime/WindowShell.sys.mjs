@@ -6,7 +6,10 @@ import {
   registerEmergencyFallback,
   runShellHealthCheck,
 } from "./HealthState.sys.mjs";
-import { createFirefoxBridgeBoundary } from "../firefox/BridgeBoundary.sys.mjs";
+import {
+  createFirefoxBridgeBoundary,
+  createFirefoxTabsBridge,
+} from "../firefox/BridgeBoundary.sys.mjs";
 import { shellAppCss } from "../shell/ShellStyles.sys.mjs";
 
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
@@ -895,6 +898,7 @@ const mountProductionShell = ({
 
   let disposeApp;
   let style;
+  let tabsBridge;
   try {
     logger.info({
       event: "bridge.boundary-created",
@@ -903,6 +907,11 @@ const mountProductionShell = ({
       windowKind,
       opaqueId: contextId,
       projectUri: BRIDGE_PROJECT_URI,
+    });
+    tabsBridge = createFirefoxTabsBridge({
+      boundary: bridge,
+      onError: reportError,
+      window: browserWindow,
     });
     style = createElement(target.ownerDocument, "style", {
       id: SHELL_APP_STYLE_ID,
@@ -913,6 +922,7 @@ const mountProductionShell = ({
     const frontend = loadProductionFrontend(target);
     const candidateDisposeApp = frontend.mountShellApp({
       target,
+      tabs: tabsBridge.tabs,
       windowKind,
       onUnmountError(error) {
         reportError(
@@ -935,10 +945,16 @@ const mountProductionShell = ({
       frontend,
       logger,
       readyLogged: false,
+      tabsBridge,
     });
   } catch (error) {
     productionShellByTarget.delete(target);
     style?.remove();
+    try {
+      tabsBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
     try {
       if (bridge.dispose()) {
         logger.info({
@@ -969,6 +985,11 @@ const mountProductionShell = ({
     productionShellByTarget.delete(target);
     try {
       style?.remove();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      tabsBridge?.dispose();
     } catch (error) {
       firstError ??= error;
     }
@@ -1025,6 +1046,7 @@ const checkProductionShell = ({ mountPoints, windowKind }) => {
       "shell-frontend-health"
     );
   }
+  record.tabsBridge.assertRequiredCapabilities();
   return record.frontend.verifyShellAppHealth({ target, windowKind });
 };
 
@@ -1038,6 +1060,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     );
   }
   const bridgeCapabilities = record.bridge.assertRequiredCapabilities();
+  const tabsCapabilities = record.tabsBridge.assertRequiredCapabilities();
   const frontendCapabilities = record.frontend.getShellAppCapabilities({
     target,
     windowKind,
@@ -1055,6 +1078,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   }
   return Object.freeze([
     ...bridgeCapabilities,
+    ...tabsCapabilities,
     ...frontendCapabilities,
   ]);
 };

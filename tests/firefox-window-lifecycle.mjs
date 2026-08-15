@@ -18,6 +18,7 @@ function parseArguments(argv) {
     expectSafeStart: false,
     expectShellFailOpen: false,
     expectShellMissingFailOpen: false,
+    expectTabsBridgeFailOpen: false,
     expectStock: false,
     inspectDom: false,
     browserToolbox: false,
@@ -57,6 +58,10 @@ function parseArguments(argv) {
       result.expectShellMissingFailOpen = true;
       continue;
     }
+    if (argument === "--expect-tabs-bridge-fail-open") {
+      result.expectTabsBridgeFailOpen = true;
+      continue;
+    }
     if (argument === "--inspect-dom") {
       result.inspectDom = true;
       continue;
@@ -78,6 +83,7 @@ function parseArguments(argv) {
       result.expectSafeStart,
       result.expectShellFailOpen,
       result.expectShellMissingFailOpen,
+      result.expectTabsBridgeFailOpen,
       result.expectStock,
       result.inspectDom,
     ].filter(Boolean).length > 1
@@ -91,6 +97,7 @@ function parseArguments(argv) {
       result.expectSafeStart ||
       result.expectShellFailOpen ||
       result.expectShellMissingFailOpen ||
+      result.expectTabsBridgeFailOpen ||
       result.expectStock ||
       result.inspectDom)
   ) {
@@ -118,7 +125,7 @@ async function validateTarget(
   expectStock,
   expectSafeStart,
   expectShellFailOpen,
-  expectShellMissingFailOpen
+  expectShellMissingFailOpen,
 ) {
   if (!path.isAbsolute(firefoxPath) || !path.isAbsolute(profilePath)) {
     throw new Error("FENNEVIA_FIREFOX_TEST_TARGET_NOT_ABSOLUTE");
@@ -128,7 +135,10 @@ async function validateTarget(
   }
 
   await access(firefoxPath);
-  const applicationPath = path.join(path.dirname(firefoxPath), "application.ini");
+  const applicationPath = path.join(
+    path.dirname(firefoxPath),
+    "application.ini",
+  );
   const applicationIni = await readFile(applicationPath, "utf8");
   if (!/^Name=Firefox$/mu.test(applicationIni)) {
     throw new Error("FENNEVIA_FIREFOX_TEST_APPLICATION_INVALID");
@@ -136,7 +146,7 @@ async function validateTarget(
 
   const programMarkerPath = path.join(
     path.dirname(firefoxPath),
-    ".fennevia-program-spike.json"
+    ".fennevia-program-spike.json",
   );
   const programMarker = JSON.parse(await readFile(programMarkerPath, "utf8"));
   if (
@@ -168,14 +178,14 @@ async function validateTarget(
   ];
   if (!expectSafeStart) {
     requiredArtifacts.push(
-      "chrome/fennevia/content/runtime/HealthState.sys.mjs"
+      "chrome/fennevia/content/runtime/HealthState.sys.mjs",
     );
   }
   if (!expectFailOpen && !expectStock) {
     requiredArtifacts.push(
       "chrome/fennevia/content/runtime/WindowManager.sys.mjs",
       "chrome/fennevia/content/shell/ShellStyles.sys.mjs",
-      "chrome/fennevia/content/shell/THIRD_PARTY_NOTICES.txt"
+      "chrome/fennevia/content/shell/THIRD_PARTY_NOTICES.txt",
     );
     if (!expectShellMissingFailOpen) {
       requiredArtifacts.push("chrome/fennevia/content/shell/ShellApp.js");
@@ -207,7 +217,7 @@ async function assertPortAvailable(port) {
     server.listen(port, "127.0.0.1", resolve);
   });
   await new Promise((resolve, reject) => {
-    server.close(error => (error ? reject(error) : resolve()));
+    server.close((error) => (error ? reject(error) : resolve()));
   });
 }
 
@@ -220,9 +230,9 @@ class MarionetteClient {
     this.nextCommandId = 0;
     this.closed = false;
 
-    socket.on("data", chunk => this.onData(chunk));
+    socket.on("data", (chunk) => this.onData(chunk));
     socket.on("close", () => this.onClose());
-    socket.on("error", error => this.onClose(error));
+    socket.on("error", (error) => this.onClose(error));
   }
 
   static async connect(port) {
@@ -254,7 +264,7 @@ class MarionetteClient {
       const lengthText = this.buffer.subarray(0, colonIndex).toString("ascii");
       if (!/^\d+$/u.test(lengthText)) {
         this.onClose(
-          new Error("FENNEVIA_FIREFOX_TEST_MARIONETTE_FRAME_INVALID")
+          new Error("FENNEVIA_FIREFOX_TEST_MARIONETTE_FRAME_INVALID"),
         );
         return;
       }
@@ -272,7 +282,7 @@ class MarionetteClient {
         frame = JSON.parse(body);
       } catch {
         this.onClose(
-          new Error("FENNEVIA_FIREFOX_TEST_MARIONETTE_JSON_INVALID")
+          new Error("FENNEVIA_FIREFOX_TEST_MARIONETTE_JSON_INVALID"),
         );
         return;
       }
@@ -307,7 +317,7 @@ class MarionetteClient {
     }
     if (this.closed) {
       return Promise.reject(
-        new Error("FENNEVIA_FIREFOX_TEST_MARIONETTE_CLOSED")
+        new Error("FENNEVIA_FIREFOX_TEST_MARIONETTE_CLOSED"),
       );
     }
     return new Promise((resolve, reject) => {
@@ -349,11 +359,9 @@ class MarionetteClient {
             .replace(/[^A-Za-z0-9_-]/gu, "_")
             .toUpperCase()
             .slice(0, 80);
-          const commandCode = name
-            .replace(/[^A-Za-z0-9]/gu, "_")
-            .toUpperCase();
+          const commandCode = name.replace(/[^A-Za-z0-9]/gu, "_").toUpperCase();
           throw new Error(
-            `FENNEVIA_FIREFOX_TEST_REMOTE_${remoteCode}_${commandCode}`
+            `FENNEVIA_FIREFOX_TEST_REMOTE_${remoteCode}_${commandCode}`,
           );
         }
         return response[3];
@@ -374,14 +382,18 @@ class MarionetteClient {
   }
 
   execute(script, timeoutMs = STATE_TIMEOUT_MS) {
-    return this.request("WebDriver:ExecuteScript", {
-      args: [],
-      filename: "fennevia-window-lifecycle.mjs",
-      line: 1,
-      newSandbox: true,
-      sandbox: "system",
-      script: script.trim(),
-    }, timeoutMs).then(result => result?.value);
+    return this.request(
+      "WebDriver:ExecuteScript",
+      {
+        args: [],
+        filename: "fennevia-window-lifecycle.mjs",
+        line: 1,
+        newSandbox: true,
+        sandbox: "system",
+        script: script.trim(),
+      },
+      timeoutMs,
+    ).then((result) => result?.value);
   }
 
   close() {
@@ -401,7 +413,7 @@ async function connectWithRetry(port, child) {
     try {
       return await MarionetteClient.connect(port);
     } catch {
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
   }
   throw new Error("FENNEVIA_FIREFOX_TEST_CONNECT_TIMEOUT");
@@ -424,7 +436,7 @@ async function waitForState(client, predicate, code) {
     if (predicate(state)) {
       return state;
     }
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error(code);
 }
@@ -690,6 +702,9 @@ async function collectFrontendState(client) {
         root
           ?.querySelector("[data-fennevia-input-output]")
           ?.textContent?.trim() ?? null,
+      nativeTabCount: Array.isArray(gBrowser?.openTabs)
+        ? gBrowser.openTabs.length
+        : null,
       mountParentIsPrimary:
         mount?.parentElement?.id === "fennevia-shell-primary-host",
       mountStatus: mount?.getAttribute("data-fennevia-framework-status") ?? null,
@@ -704,6 +719,9 @@ async function collectFrontendState(client) {
       styleParentIsPrimary:
         style?.parentElement?.id === "fennevia-shell-primary-host",
       styleRuleCount: cssRuleCount,
+      tabCount:
+        root?.querySelector("[data-fennevia-tab-count]")?.textContent?.trim() ??
+        null,
       template: {
         contentNamespace: templateContent?.namespaceURI ?? null,
         contentText: templateContent?.textContent?.trim() ?? null,
@@ -743,6 +761,7 @@ function assertFrontendState(state, windowKind, expected = {}) {
   assert.equal(state.rootNamespace, state.xhtmlNamespace);
   assert.equal(state.styleParentIsPrimary, true);
   assert.ok(state.styleRuleCount > 0);
+  assert.equal(state.tabCount, String(state.nativeTabCount));
   assert.deepEqual(state.template, {
     contentNamespace: state.xhtmlNamespace,
     contentText: "Fennevia XHTML template probe",
@@ -751,6 +770,21 @@ function assertFrontendState(state, windowKind, expected = {}) {
   });
   assert.equal(state.toggleExpanded, "true");
   assert.equal(state.windowKind, windowKind);
+}
+
+async function waitForFrontendTabCount(client, expectedCount) {
+  const deadline = Date.now() + STATE_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const state = await collectFrontendState(client);
+    if (
+      state.tabCount === String(expectedCount) &&
+      state.nativeTabCount === expectedCount
+    ) {
+      return state;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error("FENNEVIA_FIREFOX_TEST_TAB_STATE_TIMEOUT");
 }
 
 async function exerciseFrontendSmoke(client, { increments, input }) {
@@ -819,7 +853,7 @@ function assertFrontendInteraction(result, { increments, input }) {
     assert.deepEqual(result, expected);
   } catch (error) {
     console.error(
-      `frontendInteractionDiagnostics=${JSON.stringify({ expected, result })}`
+      `frontendInteractionDiagnostics=${JSON.stringify({ expected, result })}`,
     );
     throw error;
   }
@@ -951,13 +985,36 @@ async function exerciseFrontendUnmountRemount(client) {
 
       let firstDispose;
       let secondDispose;
+      let tabSubscriptionCount = 0;
+      let tabUnsubscriptionCount = 0;
       const unmountErrors = [];
+      const tabs = Object.freeze({
+        close() {},
+        open() { return "tab-registry-1-handle-1"; },
+        pin() {},
+        select() {},
+        snapshot() { return Object.freeze([]); },
+        subscribe() {
+          tabSubscriptionCount += 1;
+          let active = true;
+          return () => {
+            if (!active) {
+              return false;
+            }
+            active = false;
+            tabUnsubscriptionCount += 1;
+            return true;
+          };
+        },
+        unpin() {},
+      });
       try {
         firstDispose = api.mountShellApp({
           onUnmountError(error) {
             unmountErrors.push(String(error?.name ?? "unknown"));
           },
           target,
+          tabs,
           windowKind: "normal",
         });
         api.verifyShellAppHealth({ target, windowKind: "normal" });
@@ -987,6 +1044,7 @@ async function exerciseFrontendUnmountRemount(client) {
             unmountErrors.push(String(error?.name ?? "unknown"));
           },
           target,
+          tabs,
           windowKind: "normal",
         });
         api.verifyShellAppHealth({ target, windowKind: "normal" });
@@ -1020,6 +1078,8 @@ async function exerciseFrontendUnmountRemount(client) {
           secondStatusAfterDispose: target.getAttribute(
             "data-fennevia-framework-status"
           ),
+          tabSubscriptionCount,
+          tabUnsubscriptionCount,
           unmountErrorCount: unmountErrors.length,
         };
       } finally {
@@ -1070,14 +1130,14 @@ function assertShellHostState(state, windowKind) {
   assert.match(state.diagnosticText, /Fennevia host layer ready/u);
   assert.match(
     state.diagnosticText,
-    windowKind === "private" ? /Private window/u : /Normal window/u
+    windowKind === "private" ? /Private window/u : /Normal window/u,
   );
   assert.match(state.diagnosticText, /Native UI retained/u);
   assert.match(state.diagnosticText, /Recovery Ctrl\+Alt\+Shift\+F12/u);
   assert.match(state.diagnosticText, /State healthy/u);
   assert.doesNotMatch(
     state.diagnosticText,
-    /(?:https?:|file:|about:|chrome:|resource:|[A-Za-z]:[\\/]|\\\\)/iu
+    /(?:https?:|file:|about:|chrome:|resource:|[A-Za-z]:[\\/]|\\\\)/iu,
   );
 }
 
@@ -1239,7 +1299,7 @@ async function acceptBrowserToolboxConnectionPrompt(client) {
       const alertResult = await client.request(
         "WebDriver:GetAlertText",
         {},
-        5_000
+        5_000,
       );
       const alertText = alertResult?.value ?? alertResult;
       if (typeof alertText === "string") {
@@ -1249,13 +1309,14 @@ async function acceptBrowserToolboxConnectionPrompt(client) {
     } catch {
       // The prompt is created asynchronously after the toolbox process starts.
     }
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error("FENNEVIA_FIREFOX_TEST_BROWSER_TOOLBOX_PROMPT_TIMEOUT");
 }
 
 async function cleanupBrowserToolboxProbe(client) {
-  return client.execute(`
+  return client.execute(
+    `
     return (async () => {
       const propertyName = "__fenneviaBrowserToolboxProbe";
       const probe = window[propertyName];
@@ -1331,7 +1392,9 @@ async function cleanupBrowserToolboxProbe(client) {
         testPropertyRemoved: !Object.hasOwn(window, propertyName),
       };
     })();
-  `, BROWSER_TOOLBOX_TIMEOUT_MS);
+  `,
+    BROWSER_TOOLBOX_TIMEOUT_MS,
+  );
 }
 
 async function runBrowserToolboxOwnershipProbe(client) {
@@ -1343,7 +1406,8 @@ async function runBrowserToolboxOwnershipProbe(client) {
   let launchAttempted = false;
   try {
     launchAttempted = true;
-    const launchState = await client.execute(`
+    const launchState = await client.execute(
+      `
       const propertyName = "__fenneviaBrowserToolboxProbe";
       if (Object.hasOwn(window, propertyName)) {
         throw new Error("FENNEVIA_BROWSER_TOOLBOX_PROBE_ALREADY_ACTIVE");
@@ -1473,7 +1537,9 @@ async function runBrowserToolboxOwnershipProbe(client) {
           reject(new Error("FENNEVIA_BROWSER_TOOLBOX_LAUNCH_UNAVAILABLE"));
         }
       });
-    `, BROWSER_TOOLBOX_TIMEOUT_MS);
+    `,
+      BROWSER_TOOLBOX_TIMEOUT_MS,
+    );
     assert.deepEqual(launchState, {
       promptConnectionEnabled: true,
       sessionActive: true,
@@ -1542,7 +1608,8 @@ async function runBrowserToolboxOwnershipProbe(client) {
       });
     })()`;
 
-    const inspectorResult = await client.execute(`
+    const inspectorResult = await client.execute(
+      `
       return (async () => {
         const { require } = ChromeUtils.importESModule(
           "resource://devtools/shared/loader/Loader.sys.mjs"
@@ -1622,7 +1689,9 @@ async function runBrowserToolboxOwnershipProbe(client) {
           }
         }
       })();
-    `, BROWSER_TOOLBOX_TIMEOUT_MS);
+    `,
+      BROWSER_TOOLBOX_TIMEOUT_MS,
+    );
 
     assert.equal(inspectorResult.error, undefined);
     assert.equal(inspectorResult.hostCount, 3);
@@ -1631,10 +1700,7 @@ async function runBrowserToolboxOwnershipProbe(client) {
     assert.equal(inspectorResult.overlayParentIsBody, true);
     assert.equal(inspectorResult.primaryParentIsBody, true);
     assert.ok(inspectorResult.projectElementCount >= 10);
-    assert.equal(
-      inspectorResult.selectedHostId,
-      "fennevia-shell-primary-host"
-    );
+    assert.equal(inspectorResult.selectedHostId, "fennevia-shell-primary-host");
     assert.equal(inspectorResult.sidebarParentIsBrowser, true);
     assert.equal(inspectorResult.toolId, "inspector");
     return inspectorResult;
@@ -1660,9 +1726,9 @@ const EXPECTED_NATIVE_STATE = Object.freeze({
 
 function countEvent(evidence, event, windowKind) {
   return evidence.records.filter(
-    record =>
+    (record) =>
       record.event === event &&
-      (windowKind === undefined || record.windowKind === windowKind)
+      (windowKind === undefined || record.windowKind === windowKind),
   ).length;
 }
 
@@ -1671,12 +1737,12 @@ async function waitForProcessExit(child, timeoutMs) {
     return child.exitCode;
   }
   return Promise.race([
-    new Promise(resolve => child.once("exit", resolve)),
+    new Promise((resolve) => child.once("exit", resolve)),
     new Promise((resolve, reject) =>
       setTimeout(
         () => reject(new Error("FENNEVIA_FIREFOX_TEST_PROCESS_EXIT_TIMEOUT")),
-        timeoutMs
-      )
+        timeoutMs,
+      ),
     ),
   ]);
 }
@@ -1690,7 +1756,7 @@ async function run() {
     options.expectStock || options.inspectDom,
     options.expectSafeStart,
     options.expectShellFailOpen,
-    options.expectShellMissingFailOpen
+    options.expectShellMissingFailOpen,
   );
   await assertPortAvailable(DEFAULT_PORT);
 
@@ -1710,7 +1776,7 @@ async function run() {
       env: process.env,
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: false,
-    }
+    },
   );
   for (const stream of [child.stdout, child.stderr]) {
     stream.resume();
@@ -1731,17 +1797,16 @@ async function run() {
     }
     await client.request("Marionette:SetContext", { value: "chrome" });
 
-    const originalHandle = (
-      await client.request("WebDriver:GetWindowHandle")
-    ).value;
+    const originalHandle = (await client.request("WebDriver:GetWindowHandle"))
+      .value;
     assert.equal(typeof originalHandle, "string");
 
     if (options.inspectDom) {
-      await new Promise(resolve => setTimeout(resolve, 750));
+      await new Promise((resolve) => setTimeout(resolve, 750));
       const snapshot = await collectBrowserDomSnapshot(client);
       assert.equal(
         snapshot.documentUri,
-        "chrome://browser/content/browser.xhtml"
+        "chrome://browser/content/browser.xhtml",
       );
       assert.equal(snapshot.root.localName, "html");
       assert.equal(snapshot.root.id, "main-window");
@@ -1750,7 +1815,7 @@ async function run() {
       assert.equal(snapshot.body.namespaceURI, snapshot.xhtmlNamespace);
 
       const bySelector = Object.fromEntries(
-        snapshot.elements.map(element => [element.selector, element])
+        snapshot.elements.map((element) => [element.selector, element]),
       );
       for (const selector of [
         "#navigator-toolbox",
@@ -1774,9 +1839,11 @@ async function run() {
         assert.equal(bySelector[selector].parentId, "browser");
       }
       assert.ok(
-        snapshot.bodyOrder.navigatorToolbox < snapshot.bodyOrder.browser
+        snapshot.bodyOrder.navigatorToolbox < snapshot.bodyOrder.browser,
       );
-      assert.ok(snapshot.bodyOrder.browser < snapshot.bodyOrder.fullscreenToggler);
+      assert.ok(
+        snapshot.bodyOrder.browser < snapshot.bodyOrder.fullscreenToggler,
+      );
       assert.equal(snapshot.projectHostCount, 0);
 
       await client.request("Marionette:AcceptConnections", { value: false });
@@ -1788,13 +1855,13 @@ async function run() {
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
-        `PASS: stock browser DOM snapshot ${JSON.stringify(snapshot)}`
+        `PASS: stock browser DOM snapshot ${JSON.stringify(snapshot)}`,
       );
       return;
     }
 
     if (options.expectStock) {
-      await new Promise(resolve => setTimeout(resolve, 750));
+      await new Promise((resolve) => setTimeout(resolve, 750));
       assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
       const evidence = await collectEvidence(client);
       assert.equal(evidence.records.length, 0);
@@ -1810,17 +1877,17 @@ async function run() {
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
         "PASS: uninstalled stock startup retained native browser UI with zero " +
-          "Fennevia records or owned-file residue."
+          "Fennevia records or owned-file residue.",
       );
       return;
     }
 
     if (options.expectFailOpen) {
-      await new Promise(resolve => setTimeout(resolve, 750));
+      await new Promise((resolve) => setTimeout(resolve, 750));
       assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
       const evidence = await collectEvidence(client);
       const fatalRecords = evidence.records.filter(
-        record => record.event === "bootstrap.fatal"
+        (record) => record.event === "bootstrap.fatal",
       );
       assert.equal(fatalRecords.length, 1);
       assert.equal(fatalRecords[0].phase, "entry-import");
@@ -1840,7 +1907,7 @@ async function run() {
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
         "PASS: missing privileged dependency failed open with one caught bootstrap " +
-          "fatal record while native browser UI remained available."
+          "fatal record while native browser UI remained available.",
       );
       return;
     }
@@ -1848,9 +1915,10 @@ async function run() {
     if (
       options.expectShellFailOpen ||
       options.expectShellMissingFailOpen ||
-      options.expectBridgeFailOpen
+      options.expectBridgeFailOpen ||
+      options.expectTabsBridgeFailOpen
     ) {
-      await new Promise(resolve => setTimeout(resolve, 750));
+      await new Promise((resolve) => setTimeout(resolve, 750));
       assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
       await assertNoShellHosts(client);
       const runtimeState = await client.execute(`
@@ -1879,44 +1947,59 @@ async function run() {
       assert.equal(countEvent(evidence, "window.disposed", "normal"), 1);
       assert.equal(countEvent(evidence, "shell.hosts-ready", "normal"), 1);
       assert.equal(countEvent(evidence, "shell.hosts-disposed", "normal"), 1);
-      if (options.expectBridgeFailOpen) {
-        assert.equal(countEvent(evidence, "bridge.boundary-created", "normal"), 1);
-        assert.equal(countEvent(evidence, "bridge.boundary-ready", "normal"), 0);
-        assert.equal(countEvent(evidence, "bridge.boundary-disposed", "normal"), 1);
+      if (options.expectBridgeFailOpen || options.expectTabsBridgeFailOpen) {
+        assert.equal(
+          countEvent(evidence, "bridge.boundary-created", "normal"),
+          1,
+        );
+        assert.equal(
+          countEvent(evidence, "bridge.boundary-ready", "normal"),
+          0,
+        );
+        assert.equal(
+          countEvent(evidence, "bridge.boundary-disposed", "normal"),
+          1,
+        );
       }
       const shellFailures = evidence.records.filter(
-        record => record.event === "shell.lifecycle-failed"
+        (record) => record.event === "shell.lifecycle-failed",
       );
       assert.equal(shellFailures.length, 1);
-      const expectedShellFailure = options.expectBridgeFailOpen
+      const expectedShellFailure = options.expectTabsBridgeFailOpen
         ? {
-            code: "FENNEVIA_FIREFOX_CAPABILITY_MISSING",
-            phase: "firefox-bridge-capability",
+            code: "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
+            phase: "firefox-tabs-capability",
           }
-        : options.expectShellMissingFailOpen
+        : options.expectBridgeFailOpen
           ? {
-              code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
-              phase: "shell-frontend-load",
+              code: "FENNEVIA_FIREFOX_CAPABILITY_MISSING",
+              phase: "firefox-bridge-capability",
             }
-          : {
-              code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
-              phase: "shell-frontend-mount",
-            };
-      assert.equal(
-        shellFailures[0].code,
-        expectedShellFailure.code
-      );
+          : options.expectShellMissingFailOpen
+            ? {
+                code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
+                phase: "shell-frontend-load",
+              }
+            : {
+                code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
+                phase: "shell-frontend-mount",
+              };
+      assert.equal(shellFailures[0].code, expectedShellFailure.code);
       assert.equal(shellFailures[0].phase, expectedShellFailure.phase);
       assert.equal(shellFailures[0].windowKind, "normal");
       assert.equal(
         shellFailures[0].firefoxSymbol,
-        options.expectBridgeFailOpen ? "window.gBrowser" : undefined
+        options.expectTabsBridgeFailOpen
+          ? "window.gBrowser.openTabs"
+          : options.expectBridgeFailOpen
+            ? "window.gBrowser"
+            : undefined,
       );
       assert.ok(Array.isArray(shellFailures[0].stack));
       assert.ok(
-        shellFailures[0].stack.some(line =>
-          line.includes("chrome://fennevia/")
-        )
+        shellFailures[0].stack.some((line) =>
+          line.includes("chrome://fennevia/"),
+        ),
       );
       assert.equal(evidence.firstPartyScriptErrorCount, 0);
 
@@ -1929,19 +2012,19 @@ async function run() {
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
-        `PASS: a ${options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
-          "path, removed every project host, and retained native browser UI."
+        `PASS: a ${options.expectTabsBridgeFailOpen ? "missing required tabs capability" : options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
+          "path, removed every project host, and retained native browser UI.",
       );
       return;
     }
 
     if (options.expectSafeStart) {
-      await new Promise(resolve => setTimeout(resolve, 750));
+      await new Promise((resolve) => setTimeout(resolve, 750));
       assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
       await assertNoShellHosts(client);
       const evidence = await collectEvidence(client);
       const skippedRecords = evidence.records.filter(
-        record => record.event === "bootstrap.skipped"
+        (record) => record.event === "bootstrap.skipped",
       );
       assert.equal(skippedRecords.length, 1);
       assert.equal(skippedRecords[0].phase, "preflight");
@@ -1963,7 +2046,7 @@ async function run() {
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
-        "PASS: safe start exited before package loading and retained native browser UI."
+        "PASS: safe start exited before package loading and retained native browser UI.",
       );
       return;
     }
@@ -1972,17 +2055,17 @@ async function run() {
     try {
       initialState = await waitForState(
         client,
-        state =>
+        (state) =>
           state?.state === "started" &&
           state.initializationCount === 1 &&
           state.managedWindowCount === 1,
-        "FENNEVIA_FIREFOX_TEST_INITIAL_STATE_TIMEOUT"
+        "FENNEVIA_FIREFOX_TEST_INITIAL_STATE_TIMEOUT",
       );
     } catch (error) {
       const diagnosticEvidence = await collectEvidence(client);
       console.error(
         `startupDiagnostics=${JSON.stringify(
-          diagnosticEvidence.records.map(record => ({
+          diagnosticEvidence.records.map((record) => ({
             code: record.code,
             errorName: record.errorName,
             event: record.event,
@@ -1990,8 +2073,8 @@ async function run() {
             shellState: record.shellState,
             stack: record.stack,
             windowKind: record.windowKind,
-          }))
-        )}`
+          })),
+        )}`,
       );
       throw error;
     }
@@ -2013,7 +2096,7 @@ async function run() {
     };
     assertFrontendInteraction(
       await exerciseFrontendSmoke(client, firstWindowInteraction),
-      firstWindowInteraction
+      firstWindowInteraction,
     );
 
     const tabResult = await client.request("WebDriver:NewWindow", {
@@ -2022,21 +2105,27 @@ async function run() {
     });
     const tabWindow = tabResult.value ?? tabResult;
     assert.equal(tabWindow.type, "tab");
-    await new Promise(resolve => setTimeout(resolve, 250));
+    await waitForFrontendTabCount(client, 2);
+    await new Promise((resolve) => setTimeout(resolve, 250));
     assert.equal(
-      (await waitForState(
-        client,
-        state => state?.managedWindowCount === 1,
-        "FENNEVIA_FIREFOX_TEST_TAB_EXCLUSION_TIMEOUT"
-      )).managedWindowCount,
-      1
+      (
+        await waitForState(
+          client,
+          (state) => state?.managedWindowCount === 1,
+          "FENNEVIA_FIREFOX_TEST_TAB_EXCLUSION_TIMEOUT",
+        )
+      ).managedWindowCount,
+      1,
     );
     await client.request("WebDriver:SwitchToWindow", {
       handle: tabWindow.handle,
     });
     await client.request("WebDriver:CloseWindow");
-    await client.request("WebDriver:SwitchToWindow", { handle: originalHandle });
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: originalHandle,
+    });
     await client.request("Marionette:SetContext", { value: "chrome" });
+    await waitForFrontendTabCount(client, 1);
 
     const secondWindowResult = await client.request("WebDriver:NewWindow", {
       focus: true,
@@ -2047,8 +2136,8 @@ async function run() {
     assert.equal(secondWindow.type, "window");
     await waitForState(
       client,
-      state => state?.managedWindowCount === 2,
-      "FENNEVIA_FIREFOX_TEST_SECOND_WINDOW_TIMEOUT"
+      (state) => state?.managedWindowCount === 2,
+      "FENNEVIA_FIREFOX_TEST_SECOND_WINDOW_TIMEOUT",
     );
     let evidence = await collectEvidence(client);
     assert.equal(countEvent(evidence, "runtime.started"), 1);
@@ -2060,13 +2149,33 @@ async function run() {
     await client.request("Marionette:SetContext", { value: "chrome" });
     assertShellHostState(await collectShellHostState(client), "normal");
     assertFrontendState(await collectFrontendState(client), "normal");
+    await client.execute(`
+      gBrowser.addTrustedTab(BROWSER_NEW_TAB_URL, { inBackground: true });
+    `);
+    await waitForFrontendTabCount(client, 2);
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: originalHandle,
+    });
+    await client.request("Marionette:SetContext", { value: "chrome" });
+    await waitForFrontendTabCount(client, 1);
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: secondWindow.handle,
+    });
+    await client.request("Marionette:SetContext", { value: "chrome" });
+    await client.execute(`
+      gBrowser.removeTab(gBrowser.openTabs.at(-1), {
+        animate: false,
+        isUserTriggered: true,
+      });
+    `);
+    await waitForFrontendTabCount(client, 1);
     const secondWindowInteraction = {
       increments: 1,
       input: "second-window",
     };
     assertFrontendInteraction(
       await exerciseFrontendSmoke(client, secondWindowInteraction),
-      secondWindowInteraction
+      secondWindowInteraction,
     );
     await client.request("WebDriver:SwitchToWindow", {
       handle: originalHandle,
@@ -2107,20 +2216,24 @@ async function run() {
     assert.equal(
       remount.listenerOutstandingCount,
       0,
-      `frontendListenerDiagnostics=${listenerDiagnostics}`
+      `frontendListenerDiagnostics=${listenerDiagnostics}`,
     );
     assert.equal(
       remount.listenerRemoveCount,
       remount.listenerAddCount,
-      `frontendListenerDiagnostics=${listenerDiagnostics}`
+      `frontendListenerDiagnostics=${listenerDiagnostics}`,
     );
     assert.equal(remount.registrationCallbackPresent, false);
     assert.equal(remount.secondDisposeResult, true);
     assert.equal(remount.secondInitialCounter, "0");
     assert.equal(remount.secondRootIsNew, true);
     assert.equal(remount.secondStatusAfterDispose, "disposed");
+    assert.equal(remount.tabSubscriptionCount, 2);
+    assert.equal(remount.tabUnsubscriptionCount, 2);
     assert.equal(remount.unmountErrorCount, 0);
-    await client.request("WebDriver:SwitchToWindow", { handle: originalHandle });
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: originalHandle,
+    });
     await client.request("Marionette:SetContext", { value: "chrome" });
     assertShellHostState(await collectShellHostState(client), "normal");
     assertFrontendState(await collectFrontendState(client), "normal", {
@@ -2134,12 +2247,14 @@ async function run() {
     });
     await client.request("Marionette:SetContext", { value: "chrome" });
     await client.request("WebDriver:CloseWindow");
-    await client.request("WebDriver:SwitchToWindow", { handle: originalHandle });
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: originalHandle,
+    });
     await client.request("Marionette:SetContext", { value: "chrome" });
     await waitForState(
       client,
-      state => state?.managedWindowCount === 1,
-      "FENNEVIA_FIREFOX_TEST_SECOND_WINDOW_CLOSE_TIMEOUT"
+      (state) => state?.managedWindowCount === 1,
+      "FENNEVIA_FIREFOX_TEST_SECOND_WINDOW_CLOSE_TIMEOUT",
     );
 
     const privateWindowResult = await client.request("WebDriver:NewWindow", {
@@ -2151,8 +2266,8 @@ async function run() {
     assert.equal(privateWindow.type, "window");
     await waitForState(
       client,
-      state => state?.managedWindowCount === 2,
-      "FENNEVIA_FIREFOX_TEST_PRIVATE_WINDOW_TIMEOUT"
+      (state) => state?.managedWindowCount === 2,
+      "FENNEVIA_FIREFOX_TEST_PRIVATE_WINDOW_TIMEOUT",
     );
     evidence = await collectEvidence(client);
     assert.equal(countEvent(evidence, "window.initialized", "private"), 1);
@@ -2163,21 +2278,34 @@ async function run() {
     await client.request("Marionette:SetContext", { value: "chrome" });
     assertShellHostState(await collectShellHostState(client), "private");
     assertFrontendState(await collectFrontendState(client), "private");
+    await client.execute(`
+      gBrowser.addTrustedTab(BROWSER_NEW_TAB_URL, { inBackground: true });
+    `);
+    await waitForFrontendTabCount(client, 2);
+    await client.execute(`
+      gBrowser.removeTab(gBrowser.openTabs.at(-1), {
+        animate: false,
+        isUserTriggered: true,
+      });
+    `);
+    await waitForFrontendTabCount(client, 1);
     const privateWindowInteraction = {
       increments: 3,
       input: "private-window",
     };
     assertFrontendInteraction(
       await exerciseFrontendSmoke(client, privateWindowInteraction),
-      privateWindowInteraction
+      privateWindowInteraction,
     );
     await client.request("WebDriver:CloseWindow");
-    await client.request("WebDriver:SwitchToWindow", { handle: originalHandle });
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: originalHandle,
+    });
     await client.request("Marionette:SetContext", { value: "chrome" });
     await waitForState(
       client,
-      state => state?.managedWindowCount === 1,
-      "FENNEVIA_FIREFOX_TEST_PRIVATE_WINDOW_CLOSE_TIMEOUT"
+      (state) => state?.managedWindowCount === 1,
+      "FENNEVIA_FIREFOX_TEST_PRIVATE_WINDOW_CLOSE_TIMEOUT",
     );
     assertFrontendState(await collectFrontendState(client), "normal", {
       count: "2",
@@ -2219,7 +2347,7 @@ async function run() {
       type: "window",
     });
     const postStopBrowserWindow = postStopWindow.value ?? postStopWindow;
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
     assert.equal(
       (
         await client.execute(`
@@ -2229,7 +2357,7 @@ async function run() {
           return startProcessRuntime({ createWindowManager() {} }).runtime.snapshot();
         `)
       ).managedWindowCount,
-      0
+      0,
     );
     await client.request("WebDriver:SwitchToWindow", {
       handle: postStopBrowserWindow.handle,
@@ -2237,7 +2365,9 @@ async function run() {
     await client.request("Marionette:SetContext", { value: "chrome" });
     await assertNoShellHosts(client);
     await client.request("WebDriver:CloseWindow");
-    await client.request("WebDriver:SwitchToWindow", { handle: originalHandle });
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: originalHandle,
+    });
     await client.request("Marionette:SetContext", { value: "chrome" });
 
     evidence = await collectEvidence(client);
@@ -2255,18 +2385,21 @@ async function run() {
     assert.equal(countEvent(evidence, "bridge.boundary-ready", "normal"), 2);
     assert.equal(countEvent(evidence, "bridge.boundary-ready", "private"), 1);
     assert.equal(countEvent(evidence, "bridge.boundary-disposed", "normal"), 2);
-    assert.equal(countEvent(evidence, "bridge.boundary-disposed", "private"), 1);
+    assert.equal(
+      countEvent(evidence, "bridge.boundary-disposed", "private"),
+      1,
+    );
     const expectedShellFailures = evidence.records.filter(
-      record => record.event === "shell.hosts-failed"
+      (record) => record.event === "shell.hosts-failed",
     );
     assert.equal(expectedShellFailures.length, 1);
     assert.equal(
       expectedShellFailures[0].code,
-      "FENNEVIA_SHELL_TABBOX_INVALID"
+      "FENNEVIA_SHELL_TABBOX_INVALID",
     );
     assert.equal(
       expectedShellFailures[0].domPath,
-      "html#main-window>body>#browser>#tabbrowser-tabbox"
+      "html#main-window>body>#browser>#tabbrowser-tabbox",
     );
     assert.equal(expectedShellFailures[0].firefoxVersion, "153.0.4");
     assert.equal(expectedShellFailures[0].buildId, "20260810162159");
@@ -2275,43 +2408,43 @@ async function run() {
     assert.equal(countEvent(evidence, "window.disposed", "normal"), 2);
     assert.equal(countEvent(evidence, "window.disposed", "private"), 1);
     const expectedLifecycleFailures = evidence.records.filter(
-      record => record.event === "shell.lifecycle-failed"
+      (record) => record.event === "shell.lifecycle-failed",
     );
     assert.equal(expectedLifecycleFailures.length, 1);
     assert.equal(
       expectedLifecycleFailures[0].code,
-      "FENNEVIA_EMERGENCY_FALLBACK_INVOKED"
+      "FENNEVIA_EMERGENCY_FALLBACK_INVOKED",
     );
     assert.equal(
       expectedLifecycleFailures[0].phase,
-      "shell-emergency-fallback"
+      "shell-emergency-fallback",
     );
     assert.equal(expectedLifecycleFailures[0].firefoxVersion, "153.0.4");
     assert.equal(expectedLifecycleFailures[0].buildId, "20260810162159");
     assert.ok(Array.isArray(expectedLifecycleFailures[0].stack));
     assert.ok(
-      expectedLifecycleFailures[0].stack.some(line =>
-        line.includes("WindowShell.sys.mjs")
-      )
+      expectedLifecycleFailures[0].stack.some((line) =>
+        line.includes("WindowShell.sys.mjs"),
+      ),
     );
     const unexpectedErrorRecords = evidence.records.filter(
-      record =>
+      (record) =>
         record.level === "error" &&
         record.event !== "shell.hosts-failed" &&
-        record.event !== "shell.lifecycle-failed"
+        record.event !== "shell.lifecycle-failed",
     );
     if (unexpectedErrorRecords.length !== 0) {
       console.error(
         `safeErrorRecords=${JSON.stringify(
-          unexpectedErrorRecords.map(record => ({
+          unexpectedErrorRecords.map((record) => ({
             code: record.code,
             errorName: record.errorName,
             event: record.event,
             phase: record.phase,
             stack: record.stack,
             windowKind: record.windowKind,
-          }))
-        )}`
+          })),
+        )}`,
       );
     }
     assert.equal(unexpectedErrorRecords.length, 0);
@@ -2333,7 +2466,7 @@ async function run() {
       "PASS: Firefox lifecycle managed existing, second, and private windows;" +
         browserToolboxEvidence +
         " excluded a tab; disposed on close/stop; retained native UI; and emitted " +
-        "no unexpected first-party script errors."
+        "no unexpected first-party script errors.",
     );
   } finally {
     if (child.exitCode === null) {
@@ -2368,13 +2501,11 @@ try {
   const code = /^FENNEVIA_[A-Z0-9_-]+$/u.test(String(error?.message))
     ? error.message
     : "FENNEVIA_FIREFOX_TEST_UNEXPECTED";
-  const errorName = /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/u.test(
-    String(error?.name)
-  )
+  const errorName = /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/u.test(String(error?.name))
     ? error.name
     : "UnsafeErrorName";
   const ownFrame = String(error?.stack).match(
-    /firefox-window-lifecycle\.mjs:(\d+):(\d+)/u
+    /firefox-window-lifecycle\.mjs:(\d+):(\d+)/u,
   );
   const sourceLocation = ownFrame
     ? `firefox-window-lifecycle.mjs:${ownFrame[1]}:${ownFrame[2]}`

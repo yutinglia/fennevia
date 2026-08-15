@@ -117,12 +117,24 @@ those future contracts. `src/firefox/bridge-boundary.ts` supplies exclusive
 per-window contexts, required/optional capability snapshots, privacy-safe typed
 errors, idempotent event disposal, and context-scoped opaque native-handle
 registries. `WindowShell.sys.mjs` health-gates and privately owns the generated
-bridge ESM; Svelte receives none of it. ESLint enforces the shell/app side of
-the boundary. Firefox 153.0.4 normal, second, private, Browser Toolbox, injected
+bridge ESM; Svelte receives none of it in #9. Issue #10 later passes only a
+frozen ordinary-data tabs contract. ESLint enforces the shell/app side of the
+boundary. Firefox 153.0.4 normal, second, private, Browser Toolbox, injected
 required-capability failure, restoration, and cleanup matrices passed. No tab
 or navigation action, service container, compatibility fallback, or native-hide
 rule was added. See ADR-023 and
 `docs/research/firefox-153-bridge-boundary.md`.
+
+Issue #10 implements the first consumer without growing a service framework.
+The per-window tabs controller uses `gBrowser.openTabs`, seven native event
+types, one context registry, immutable snapshots, and explicit
+select/open-new-tab/close/pin/unpin actions. Closed and cross-window IDs fail
+before native access. `src/app/tab-state.ts` provides a framework-independent
+reactive adapter, while Svelte renders only a synchronized count until #11.
+Title/favicon privacy filtering, selected/last-tab ordering, rapid lifecycle,
+normal/second/private isolation, disposal, and injected tabs-capability
+fail-open behavior passed. See ADR-024 and
+`docs/research/firefox-153-tabs-bridge.md`.
 
 ## Milestone E: Custom tab strip MVP
 

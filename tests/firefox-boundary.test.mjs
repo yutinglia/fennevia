@@ -386,6 +386,24 @@ test("one active context cannot be attached to another or duplicate window", () 
   replacement.dispose();
 });
 
+test("a boundary validates its exact native window without exposing it", () => {
+  const nativeWindow = createNativeWindow();
+  const otherWindow = createNativeWindow();
+  const boundary = createBoundary(nativeWindow);
+  try {
+    assert.equal(boundary.assertOwnsWindow(nativeWindow), true);
+    assert.throws(
+      () => boundary.assertOwnsWindow(otherWindow),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_CONTEXT_WINDOW_MISMATCH",
+    );
+    assert.equal("window" in boundary.snapshot(), false);
+  } finally {
+    boundary.dispose();
+  }
+});
+
 test("ESLint rejects Firefox imports and globals in shell and app modules", async () => {
   const eslint = new ESLint({ cwd: projectRoot });
   const [shellResult] = await eslint.lintText(

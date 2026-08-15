@@ -1,5 +1,10 @@
 import { flushSync, mount, unmount } from "svelte";
 
+import {
+  createBrowserTabsStateAdapter,
+  type BrowserTabsBridge,
+  type BrowserTabsStateAdapter,
+} from "../app/tab-state";
 import App from "./App.svelte";
 
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
@@ -11,6 +16,7 @@ export type ShellWindowKind = "normal" | "private";
 type MountOptions = Readonly<{
   onUnmountError: (error: unknown) => void;
   target: Element;
+  tabs: BrowserTabsBridge;
   windowKind: ShellWindowKind;
 }>;
 
@@ -19,7 +25,10 @@ type HealthOptions = Readonly<{
   windowKind: ShellWindowKind;
 }>;
 
-const mountedTargets = new WeakSet<Element>();
+const mountedTargets = new WeakMap<
+  Element,
+  Readonly<{ tabs: BrowserTabsStateAdapter }>
+>();
 
 function createFrontendError(code: string): Error {
   const error = new Error(code);
@@ -49,6 +58,7 @@ function isWindowKind(value: string): value is ShellWindowKind {
 export function mountShellApp({
   onUnmountError,
   target,
+  tabs,
   windowKind,
 }: MountOptions): () => boolean {
   if (typeof onUnmountError !== "function" || !isWindowKind(windowKind)) {
@@ -57,19 +67,22 @@ export function mountShellApp({
   validateTarget(target);
 
   let disposed = false;
+  let tabsState: BrowserTabsStateAdapter | undefined;
   target.setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounting");
   try {
+    tabsState = createBrowserTabsStateAdapter(tabs);
     const component = mount(App, {
       props: {
         onDisposed() {
           target.setAttribute(MOUNT_STATUS_ATTRIBUTE, "disposed");
         },
+        tabs: tabsState,
         windowKind,
       },
       target,
     });
     flushSync();
-    mountedTargets.add(target);
+    mountedTargets.set(target, Object.freeze({ tabs: tabsState }));
     target.setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounted");
 
     return () => {
@@ -78,25 +91,46 @@ export function mountShellApp({
       }
       disposed = true;
 
+      let firstError: unknown;
       let unmountResult: Promise<void> | undefined;
       try {
         unmountResult = unmount(component, { outro: false });
         flushSync();
-      } finally {
-        mountedTargets.delete(target);
-        target.setAttribute(MOUNT_STATUS_ATTRIBUTE, "disposed");
+      } catch (error) {
+        firstError = error;
       }
+      mountedTargets.delete(target);
+      try {
+        tabsState?.dispose();
+      } catch (error) {
+        firstError ??= error;
+      }
+      target.setAttribute(MOUNT_STATUS_ATTRIBUTE, "disposed");
 
       void unmountResult?.catch(onUnmountError);
       if (target.childNodes.length !== 0) {
-        throw createFrontendError("FENNEVIA_FRONTEND_UNMOUNT_INCOMPLETE");
+        firstError ??= createFrontendError(
+          "FENNEVIA_FRONTEND_UNMOUNT_INCOMPLETE",
+        );
+      }
+      if (firstError !== undefined) {
+        throw firstError;
       }
       return true;
     };
   } catch (error) {
     mountedTargets.delete(target);
+    let cleanupError: unknown;
+    try {
+      tabsState?.dispose();
+    } catch (candidate) {
+      cleanupError = candidate;
+    }
     target.replaceChildren();
     target.setAttribute(MOUNT_STATUS_ATTRIBUTE, "failed");
+    if (cleanupError !== undefined) {
+      onUnmountError(cleanupError);
+    }
     throw error;
   }
 }
@@ -112,11 +146,13 @@ export function verifyShellAppHealth({
   const documentView = target.ownerDocument.defaultView;
   const templateConstructor = documentView?.HTMLTemplateElement;
   const templateContent = template?.content?.firstElementChild;
+  const mounted = mountedTargets.get(target);
   const requiredSelectors = [
     'button[data-fennevia-action="increment"]',
     'button[data-fennevia-action="toggle-details"]',
     "input[data-fennevia-input]",
     "output[data-fennevia-counter]",
+    "output[data-fennevia-tab-count]",
     "[data-fennevia-conditional]",
   ];
 
@@ -131,6 +167,8 @@ export function verifyShellAppHealth({
     !(template instanceof templateConstructor) ||
     template.namespaceURI !== XHTML_NAMESPACE ||
     templateContent?.namespaceURI !== XHTML_NAMESPACE ||
+    !mounted ||
+    mounted.tabs.status().disposed ||
     requiredSelectors.some((selector) => !root.querySelector(selector)) ||
     Array.from(root.querySelectorAll("*")).some(
       (element) => element.namespaceURI !== XHTML_NAMESPACE,
@@ -148,6 +186,7 @@ export function getShellAppCapabilities({
   Readonly<{ available: boolean; name: string }>
 > {
   const view = target.ownerDocument.defaultView;
+  const mounted = mountedTargets.get(target);
   return Object.freeze([
     Object.freeze({
       available:
@@ -165,6 +204,10 @@ export function getShellAppCapabilities({
     Object.freeze({
       available: isWindowKind(windowKind),
       name: "frontend.per-window-state",
+    }),
+    Object.freeze({
+      available: Boolean(mounted && !mounted.tabs.status().disposed),
+      name: "frontend.tabs-state",
     }),
   ]);
 }

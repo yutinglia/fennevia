@@ -8,17 +8,31 @@
     type SmokeAction,
     type SmokeState,
   } from "../app/smoke-state";
+  import {
+    createBrowserTabsState,
+    type BrowserTabsState,
+    type BrowserTabsStateAdapter,
+  } from "../app/tab-state";
 
   type Props = Readonly<{
     onDisposed: (state: SmokeState) => void;
+    tabs: BrowserTabsStateAdapter;
     windowKind: "normal" | "private";
   }>;
 
-  const { onDisposed, windowKind }: Props = $props();
-  let state = $state(createInitialSmokeState());
+  const props: Props = $props();
+  let smokeState: SmokeState = $state(createInitialSmokeState());
+  let currentTabs: BrowserTabsState = $state(createBrowserTabsState([]));
+
+  $effect(() => {
+    currentTabs = props.tabs.snapshot();
+    return props.tabs.subscribe((nextState) => {
+      currentTabs = nextState;
+    });
+  });
 
   const dispatch = (action: SmokeAction) => {
-    state = reduceSmokeState(state, action);
+    smokeState = reduceSmokeState(smokeState, action);
   };
 
   const handleInput = (event: Event) => {
@@ -28,18 +42,24 @@
     }
   };
 
-  onDestroy(() => onDisposed(state));
+  onDestroy(() => {
+    props.onDisposed(smokeState);
+  });
 </script>
 
 <div
   id="fennevia-shell-app-root"
   class="fennevia-shell-smoke"
   data-fennevia-smoke-root=""
-  data-fennevia-window-kind={windowKind}
+  data-fennevia-window-kind={props.windowKind}
 >
   <div class="fennevia-shell-smoke__heading">
     <strong>Svelte 5 smoke island</strong>
-    <span>{windowKind === "private" ? "Private window" : "Normal window"}</span>
+    <span>{props.windowKind === "private" ? "Private window" : "Normal window"}</span>
+    <span>
+      <output data-fennevia-tab-count="">{currentTabs.tabs.length}</output>
+      tabs synchronized
+    </span>
   </div>
 
   <div class="fennevia-shell-smoke__controls">
@@ -58,30 +78,30 @@
         maxlength={maximumSmokeInputLength}
         oninput={handleInput}
         type="text"
-        value={state.input}
+        value={smokeState.input}
       />
     </label>
 
     <button
       type="button"
-      aria-expanded={state.detailsVisible}
+      aria-expanded={smokeState.detailsVisible}
       data-fennevia-action="toggle-details"
       onclick={() => dispatch({ type: "toggle-details" })}
     >
-      {state.detailsVisible ? "Hide state" : "Show state"}
+      {smokeState.detailsVisible ? "Hide state" : "Show state"}
     </button>
   </div>
 
-  {#if state.detailsVisible}
+  {#if smokeState.detailsVisible}
     <p class="fennevia-shell-smoke__state" data-fennevia-conditional="">
       Counter
-      <output data-fennevia-counter="">{state.count}</output>
+      <output data-fennevia-counter="">{smokeState.count}</output>
       <span aria-hidden="true">·</span>
       Input
-      <output data-fennevia-input-output="">{state.input || "Empty"}</output>
+      <output data-fennevia-input-output="">{smokeState.input || "Empty"}</output>
       <span aria-hidden="true">·</span>
       Events
-      <output data-fennevia-event-count="">{state.eventCount}</output>
+      <output data-fennevia-event-count="">{smokeState.eventCount}</output>
     </p>
   {/if}
 

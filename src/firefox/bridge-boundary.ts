@@ -509,6 +509,18 @@ export function createFirefoxBridgeBoundary({
     );
 
   return Object.freeze({
+    assertOwnsWindow(candidate: unknown): true {
+      if (candidate !== assertActive()) {
+        throw createBridgeError(
+          "FENNEVIA_FIREFOX_CONTEXT_WINDOW_MISMATCH",
+          "firefox-context-access",
+          "window",
+          errorContext,
+        );
+      }
+      return true;
+    },
+
     assertRequiredCapabilities(): ReadonlyArray<FirefoxCapabilitySnapshot> {
       const evaluations = evaluateCapabilities(assertActive());
       const missing = evaluations.find(
@@ -624,3 +636,7 @@ export function createFirefoxBridgeBoundary({
     },
   });
 }
+
+export type FirefoxBridgeBoundary = ReturnType<
+  typeof createFirefoxBridgeBoundary
+>;

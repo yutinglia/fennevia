@@ -134,12 +134,108 @@ export function createFirefoxBridgeBoundary({
     },
   });
 }
+
+export function createFirefoxTabsBridge() {
+  let disposed = false;
+  const tabs = Object.freeze({
+    close() {},
+    open() { return "tab-registry-1-handle-1"; },
+    pin() {},
+    select() {},
+    snapshot() { return Object.freeze([]); },
+    subscribe() {
+      let active = true;
+      return () => {
+        if (!active) {
+          return false;
+        }
+        active = false;
+        return true;
+      };
+    },
+    unpin() {},
+  });
+  return Object.freeze({
+    assertRequiredCapabilities() { return Object.freeze([]); },
+    dispose() {
+      if (disposed) {
+        return false;
+      }
+      disposed = true;
+      return true;
+    },
+    tabs,
+  });
+}
+'@
+
+$missingTabsCapabilityBridge = @'
+export function createFirefoxBridgeBoundary({
+  buildId,
+  contextId,
+  firefoxVersion,
+  windowKind,
+}) {
+  let disposed = false;
+  return Object.freeze({
+    dispose() {
+      if (disposed) {
+        return false;
+      }
+      disposed = true;
+      return true;
+    },
+    snapshot() {
+      return Object.freeze({
+        buildId: String(buildId),
+        contextId,
+        disposed,
+        firefoxVersion: String(firefoxVersion),
+        windowKind,
+      });
+    },
+  });
+}
+
+export function createFirefoxTabsBridge({ boundary }) {
+  const context = boundary.snapshot();
+  const error = new Error("FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING");
+  Object.defineProperties(error, {
+    fenneviaBuildId: { value: context.buildId, enumerable: false },
+    fenneviaCode: {
+      value: "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
+      enumerable: false,
+    },
+    fenneviaFirefoxVersion: {
+      value: context.firefoxVersion,
+      enumerable: false,
+    },
+    fenneviaPhase: {
+      value: "firefox-tabs-capability",
+      enumerable: false,
+    },
+    fenneviaSymbol: {
+      value: "window.gBrowser.openTabs",
+      enumerable: false,
+    },
+    fenneviaWindowKind: { value: context.windowKind, enumerable: false },
+    name: {
+      value: "FenneviaFirefoxTabsBridgeTestError",
+      enumerable: false,
+    },
+  });
+  throw error;
+}
 '@
 
 try {
     Write-Utf8NoBom -Path $targetPath -Content $missingCapabilityBridge
     & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-bridge-fail-open
     Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "A missing required bridge capability did not fail open at the shell health boundary."
+
+    Write-Utf8NoBom -Path $targetPath -Content $missingTabsCapabilityBridge
+    & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-tabs-bridge-fail-open
+    Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "A missing required tabs capability did not fail open at the shell health boundary."
 
     Copy-Item -LiteralPath $bridgeBackupPath -Destination $targetPath -Force
     & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile
@@ -161,4 +257,4 @@ if ($testFailure) {
 }
 
 Assert-True -Condition (@(Get-CimInstance Win32_Process -Filter "Name='firefox.exe'").Count -eq 0) -Message "The bridge recovery matrix left a Firefox process running."
-Write-Output "PASS: a missing required bridge capability failed open, then exact restoration recovered ordinary startup."
+Write-Output "PASS: missing boundary and tabs capabilities failed open, then exact restoration recovered ordinary startup."
