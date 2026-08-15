@@ -3,10 +3,12 @@ import test from "node:test";
 
 import {
   createShellHosts,
+  createWindowShellLifecycle,
   initializeWindowShell,
   shellHostIds,
   xhtmlNamespace,
 } from "../profile/chrome/fennevia/content/runtime/WindowShell.sys.mjs";
+import { shellHealthAttributes } from "../profile/chrome/fennevia/content/runtime/HealthState.sys.mjs";
 
 const XUL_NAMESPACE =
   "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
@@ -21,6 +23,9 @@ class FakeElement {
     this._children = [];
     this._attributes = new Map();
     this._textContent = "";
+    if (localName === "style") {
+      this.sheet = { cssRules: [{}] };
+    }
   }
 
   get children() {
@@ -108,6 +113,10 @@ class FakeElement {
 
   hasAttribute(name) {
     return this._attributes.has(name);
+  }
+
+  removeAttribute(name) {
+    this._attributes.delete(name);
   }
 }
 
@@ -221,6 +230,7 @@ function createBrowserWindow() {
     "fullscr-toggler"
   );
 
+  const eventListeners = [];
   return {
     document,
     elements: {
@@ -234,6 +244,30 @@ function createBrowserWindow() {
       sidebarSplitter,
       tabbox,
       toolbox,
+    },
+    setTimeout,
+    clearTimeout,
+    addEventListener(type, callback, options) {
+      eventListeners.push({ type, callback, options });
+    },
+    removeEventListener(type, callback) {
+      const index = eventListeners.findIndex(
+        listener => listener.type === type && listener.callback === callback
+      );
+      if (index !== -1) {
+        eventListeners.splice(index, 1);
+      }
+    },
+    dispatchEvent(event) {
+      for (const listener of eventListeners
+        .filter(candidate => candidate.type === event.type)
+        .slice()) {
+        listener.callback(event);
+      }
+      return true;
+    },
+    listenerSnapshot() {
+      return eventListeners.slice();
     },
   };
 }
@@ -279,6 +313,49 @@ const appInfo = Object.freeze({
   appBuildID: "20260810162159",
   version: "153.0.4",
 });
+
+const allHealthAttributes = Object.values(shellHealthAttributes);
+
+const assertNoShellOwnership = window => {
+  assert.ok(
+    Object.values(shellHostIds).every(
+      id => !window.document.getElementById(id)
+    )
+  );
+  assert.ok(
+    allHealthAttributes.every(
+      attribute => !window.document.documentElement.hasAttribute(attribute)
+    )
+  );
+  assert.equal(
+    window.listenerSnapshot().filter(listener => listener.type === "keydown")
+      .length,
+    0
+  );
+};
+
+const dispatchEmergencyFallback = window => {
+  let prevented = false;
+  let stopped = false;
+  window.dispatchEvent({
+    type: "keydown",
+    code: "F12",
+    key: "F12",
+    keyCode: 0x7b,
+    altKey: true,
+    ctrlKey: true,
+    shiftKey: true,
+    metaKey: false,
+    preventDefault() {
+      prevented = true;
+    },
+    stopImmediatePropagation() {
+      stopped = true;
+    },
+  });
+  assert.equal(prevented, true);
+  assert.equal(stopped, true);
+};
 
 test("attaches three XHTML islands without moving native nodes and disposes cleanly", () => {
   const window = createBrowserWindow();
@@ -399,34 +476,50 @@ test("normal and private windows receive independent non-sensitive diagnostics",
   privateShell.dispose();
 });
 
-test("window-shell initialization logs readiness and one idempotent disposal", () => {
+test("window-shell initialization logs readiness and one idempotent disposal", async () => {
   const window = createBrowserWindow();
   const { context } = createContext(window);
   const { entries, logger } = createRecordingLogger();
-  const dispose = initializeWindowShell({ context, logger, appInfo });
+  const dispose = await initializeWindowShell({ context, logger, appInfo });
 
   assert.equal(
     entries.filter(entry => entry.event === "shell.hosts-ready").length,
     1
   );
   assert.equal(typeof dispose, "function");
+  assert.equal(
+    window.document.documentElement.getAttribute(
+      shellHealthAttributes.rootState
+    ),
+    "healthy"
+  );
+  assert.equal(
+    window.document.documentElement.hasAttribute(shellHealthAttributes.active),
+    false
+  );
+  assert.deepEqual(
+    entries
+      .filter(entry => entry.event === "shell.state-changed")
+      .map(entry => entry.shellState),
+    ["created", "mounted", "healthy"]
+  );
   dispose();
   dispose();
   assert.equal(
     entries.filter(entry => entry.event === "shell.hosts-disposed").length,
     1
   );
-  assert.ok(Object.values(shellHostIds).every(id => !window.document.getElementById(id)));
+  assertNoShellOwnership(window);
 });
 
-test("a missing insertion point leaves no partial hosts and reports its fixed DOM path", () => {
+test("a missing insertion point leaves no partial hosts and reports its fixed DOM path", async () => {
   const window = createBrowserWindow();
   window.elements.tabbox.remove();
   const { context } = createContext(window);
   const { entries, logger } = createRecordingLogger();
 
-  assert.throws(
-    () => initializeWindowShell({ context, logger, appInfo }),
+  await assert.rejects(
+    initializeWindowShell({ context, logger, appInfo }),
     /FENNEVIA_SHELL_TABBOX_INVALID/u
   );
   assert.ok(Object.values(shellHostIds).every(id => !window.document.getElementById(id)));
@@ -436,9 +529,13 @@ test("a missing insertion point leaves no partial hosts and reports its fixed DO
     failure.domPath,
     "html#main-window>body>#browser>#tabbrowser-tabbox"
   );
+  assert.equal(
+    entries.filter(entry => entry.event === "shell.cleanup-failed").length,
+    0
+  );
 });
 
-test("an attachment failure rolls back the first host and identifies the failed path", () => {
+test("an attachment failure rolls back the first host and identifies the failed path", async () => {
   const window = createBrowserWindow();
   const originalInsertBefore = window.elements.browser.insertBefore.bind(
     window.elements.browser
@@ -452,8 +549,8 @@ test("an attachment failure rolls back the first host and identifies the failed 
   const { context } = createContext(window);
   const { entries, logger } = createRecordingLogger();
 
-  assert.throws(
-    () => initializeWindowShell({ context, logger, appInfo }),
+  await assert.rejects(
+    initializeWindowShell({ context, logger, appInfo }),
     /FENNEVIA_SHELL_HOST_ATTACH_FAILED/u
   );
   assert.ok(Object.values(shellHostIds).every(id => !window.document.getElementById(id)));
@@ -462,6 +559,10 @@ test("an attachment failure rolls back the first host and identifies the failed 
   assert.equal(
     failure.domPath,
     "html#main-window>body>#browser>#fennevia-shell-sidebar-host"
+  );
+  assert.equal(
+    entries.filter(entry => entry.event === "shell.cleanup-failed").length,
+    0
   );
 });
 
@@ -489,19 +590,284 @@ test("a pre-existing project host blocks the complete set without adopting it", 
   assert.equal(window.document.getElementById(shellHostIds.overlay), null);
 });
 
-test("an already-aborted window context creates no host", () => {
+test("an already-aborted window context creates no host", async () => {
   const window = createBrowserWindow();
   const { abortController, context } = createContext(window, "private");
   const { entries, logger } = createRecordingLogger();
   abortController.abort();
 
-  assert.throws(
-    () => initializeWindowShell({ context, logger, appInfo }),
+  await assert.rejects(
+    initializeWindowShell({ context, logger, appInfo }),
     /FENNEVIA_SHELL_CONTEXT_DISPOSED/u
   );
   assert.ok(Object.values(shellHostIds).every(id => !window.document.getElementById(id)));
   assert.equal(
-    entries.find(entry => entry.event === "shell.hosts-failed").windowKind,
+    entries.find(entry => entry.event === "shell.lifecycle-failed")
+      .windowKind,
     "private"
+  );
+});
+
+test("the explicit active gate is reachable only after health and remains opt-in", async () => {
+  const window = createBrowserWindow();
+  const { context } = createContext(window);
+  const { entries, logger } = createRecordingLogger();
+  const lifecycle = createWindowShellLifecycle({
+    context,
+    logger,
+    appInfo,
+  });
+
+  assert.throws(
+    () => lifecycle.activate(),
+    /FENNEVIA_SHELL_ACTIVATION_UNAVAILABLE/u
+  );
+  await lifecycle.start();
+  assert.equal(lifecycle.snapshot().state, "healthy");
+  assert.equal(
+    window.document.documentElement.hasAttribute(shellHealthAttributes.active),
+    false
+  );
+  assert.equal(lifecycle.activate(), true);
+  assert.equal(lifecycle.activate(), false);
+  assert.equal(lifecycle.snapshot().state, "active");
+  assert.equal(
+    window.document.documentElement.hasAttribute(shellHealthAttributes.active),
+    true
+  );
+  assert.equal(
+    entries.filter(
+      entry =>
+        entry.event === "shell.state-changed" &&
+        entry.shellState === "active"
+    ).length,
+    1
+  );
+  lifecycle.dispose();
+  assertNoShellOwnership(window);
+});
+
+test("mount, health, stylesheet, capability, and timeout failures all fail open", async t => {
+  const cases = [
+    {
+      name: "mount throws after registering partial UI cleanup",
+      expectedCode: "FENNEVIA_SHELL_INITIALIZATION_FAILED",
+      expectedPhase: "shell-mount",
+      configure(window) {
+        let partialCleanups = 0;
+        return {
+          options: {
+            mountShell({ addCleanup, mountPoints }) {
+              const partial = window.document.createElementNS(
+                xhtmlNamespace,
+                "div"
+              );
+              partial.id = "fennevia-test-partial-ui";
+              mountPoints.primary.append(partial);
+              addCleanup(() => {
+                partialCleanups += 1;
+                partial.remove();
+              });
+              throw new Error("injected mount failure");
+            },
+          },
+          verify() {
+            assert.equal(partialCleanups, 1);
+            assert.equal(
+              window.document.getElementById("fennevia-test-partial-ui"),
+              null
+            );
+          },
+        };
+      },
+    },
+    {
+      name: "health callback reports false",
+      expectedCode: "FENNEVIA_SHELL_HEALTH_CHECK_FAILED",
+      expectedPhase: "shell-health-check",
+      configure() {
+        return { options: { checkHealth: () => false } };
+      },
+    },
+    {
+      name: "health callback exceeds the finite deadline",
+      expectedCode: "FENNEVIA_SHELL_HEALTH_TIMEOUT",
+      expectedPhase: "shell-health-timeout",
+      configure() {
+        return {
+          options: {
+            checkHealth: () => new Promise(() => {}),
+            healthTimeoutMs: 5,
+          },
+        };
+      },
+    },
+    {
+      name: "project stylesheet is missing",
+      expectedCode: "FENNEVIA_SHELL_STYLESHEET_MISSING",
+      expectedPhase: "shell-health-check",
+      configure() {
+        return {
+          options: {
+            mountShell({ mountPoints }) {
+              mountPoints.primary.children
+                .find(element => element.id === "fennevia-shell-style")
+                .remove();
+            },
+          },
+        };
+      },
+    },
+    {
+      name: "a required privileged capability is absent",
+      expectedCode: "FENNEVIA_SHELL_CAPABILITY_MISSING",
+      expectedPhase: "shell-health-check",
+      configure() {
+        return {
+          options: {
+            getRequiredCapabilities: () => [
+              { name: "bridge.required", available: false },
+            ],
+          },
+        };
+      },
+    },
+  ];
+
+  for (const failureCase of cases) {
+    await t.test(failureCase.name, async () => {
+      const window = createBrowserWindow();
+      const { context } = createContext(window);
+      const { entries, logger } = createRecordingLogger();
+      const configuration = failureCase.configure(window);
+      const lifecycle = createWindowShellLifecycle({
+        context,
+        logger,
+        appInfo,
+        ...configuration.options,
+      });
+
+      await assert.rejects(lifecycle.start(), error => {
+        assert.equal(error.fenneviaCode, failureCase.expectedCode);
+        assert.equal(error.fenneviaPhase, failureCase.expectedPhase);
+        return true;
+      });
+      configuration.verify?.();
+      assertNoShellOwnership(window);
+      assert.strictEqual(
+        window.elements.toolbox.parentElement,
+        window.document.body
+      );
+      assert.equal(window.elements.toolbox.hidden, false);
+      assert.equal(lifecycle.snapshot().state, "disposed");
+      assert.equal(
+        entries.filter(entry => entry.event === "shell.lifecycle-failed")
+          .length,
+        1
+      );
+      assert.equal(
+        entries.find(entry => entry.event === "shell.lifecycle-failed").code,
+        failureCase.expectedCode
+      );
+      assert.equal(
+        entries.filter(entry => entry.event === "shell.hosts-disposed").length,
+        1
+      );
+    });
+  }
+});
+
+test("emergency fallback disposes mounted, healthy, and active states independently", async t => {
+  for (const targetState of ["mounted", "healthy", "active"]) {
+    await t.test(targetState, async () => {
+      const window = createBrowserWindow();
+      const { context } = createContext(window);
+      const { entries, logger } = createRecordingLogger();
+      const lifecycle = createWindowShellLifecycle({
+        context,
+        logger,
+        appInfo,
+        ...(targetState === "mounted"
+          ? { checkHealth: () => new Promise(() => {}) }
+          : {}),
+      });
+      const start = lifecycle.start();
+      if (targetState !== "mounted") {
+        await start;
+      }
+      if (targetState === "active") {
+        lifecycle.activate();
+      }
+      assert.equal(
+        window.document.documentElement.getAttribute(
+          shellHealthAttributes.rootState
+        ),
+        targetState
+      );
+      const listener = window
+        .listenerSnapshot()
+        .find(candidate => candidate.type === "keydown");
+      assert.deepEqual(listener.options, {
+        capture: true,
+        mozSystemGroup: true,
+      });
+
+      dispatchEmergencyFallback(window);
+      await start;
+      assertNoShellOwnership(window);
+      assert.equal(lifecycle.snapshot().state, "disposed");
+      assert.equal(
+        entries.filter(
+          entry =>
+            entry.event === "shell.lifecycle-failed" &&
+            entry.code === "FENNEVIA_EMERGENCY_FALLBACK_INVOKED"
+        ).length,
+        1
+      );
+      assert.equal(
+        entries.filter(entry => entry.event === "shell.hosts-disposed").length,
+        1
+      );
+    });
+  }
+});
+
+test("disposal while health is pending aborts once and ignores late completion", async () => {
+  const window = createBrowserWindow();
+  const { context } = createContext(window);
+  const { entries, logger } = createRecordingLogger();
+  let resolveHealth;
+  const lifecycle = createWindowShellLifecycle({
+    context,
+    logger,
+    appInfo,
+    healthTimeoutMs: 100,
+    checkHealth: () =>
+      new Promise(resolve => {
+        resolveHealth = resolve;
+      }),
+  });
+  const start = lifecycle.start();
+  await Promise.resolve();
+  assert.equal(lifecycle.snapshot().state, "mounted");
+  assert.equal(lifecycle.dispose("test-pending-dispose"), true);
+  assert.equal(lifecycle.dispose("test-pending-dispose"), false);
+  await start;
+  resolveHealth(true);
+  await Promise.resolve();
+
+  assertNoShellOwnership(window);
+  assert.equal(lifecycle.snapshot().state, "disposed");
+  assert.equal(
+    entries.filter(entry => entry.event === "shell.lifecycle-failed").length,
+    0
+  );
+  assert.equal(
+    entries.filter(entry => entry.event === "shell.hosts-disposed").length,
+    1
+  );
+  assert.equal(
+    entries.filter(entry => entry.event === "shell.lifecycle-disposed").length,
+    1
   );
 });

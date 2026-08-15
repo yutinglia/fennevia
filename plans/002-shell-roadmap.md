@@ -50,6 +50,17 @@ During this milestone, never enter `active` automatically. Validate the state ma
 - deterministic cleanup on unload;
 - failure-injection hooks available only in development mode.
 
+Progress (2026-08-15): issue #7 completed this milestone on Firefox 153.0.4 for
+Windows. `HealthState.sys.mjs` enforces the six states and cumulative project
+root markers, while `WindowShell.sys.mjs` owns a finite two-second check,
+reverse cleanup, fixed capability failures, and an explicit healthy-only
+activation method. Production stops at `healthy`; no native selector is hidden.
+The independent `Ctrl+Alt+Shift+F12` system-group listener and AutoConfig
+`fennevia.safeStart` preference passed complete/broken-package recovery checks.
+Failure selection exists only as unit-test collaborators, not an installed
+preference or global. See ADR-021 and
+`docs/research/firefox-153-shell-health-recovery.md`.
+
 ## Milestone C: Frontend build and styling
 
 Validate a Svelte 5 production bundle for:

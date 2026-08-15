@@ -36,6 +36,7 @@ This document defines project policy; it does not claim that a formal security a
 - Firefox version, build ID, and channel;
 - operating system and window type;
 - lifecycle phase;
+- shell lifecycle state;
 - capability name and boolean result;
 - project module and source path;
 - error class, stack, and a privacy-safe symbolic context;
@@ -71,6 +72,14 @@ path values are dropped. The visible diagnostic is built exclusively from
 normalized Firefox version/build, normal/private kind, fixed host count, and
 fixed ready/native-retained labels. It never receives a browsing URL, title,
 query, profile path, native object, or arbitrary error message.
+
+Issue #7 adds only the fixed `created`, `mounted`, `healthy`, `active`, `failed`,
+and `disposed` shell-state enum plus an existing capability-name/boolean pair.
+Health and emergency records reuse the fixed phase/code, process-local window
+UUID, normal/private kind, Firefox version/build, and redacted stack. They do
+not serialize keyboard event objects, native windows, user input, browsing
+state, or arbitrary collaborator results. The diagnostic adds only fixed state
+and recovery-binding labels.
 
 ## 5. Dependency and supply-chain policy
 
@@ -175,6 +184,10 @@ hidden, inert, `aria-hidden`, and pointer-transparent. Real Firefox checks kept
 the native window-modal dialog in the top layer, left browser content
 hit-testable, retained the navigator toolbox and native close command, and
 confirmed the Browser Toolbox connection prompt remained enabled and usable.
+Issue #7 still has no native-hide rule and never activates in production. Its
+emergency handler clears the active marker before disposing project hosts, so
+the retained toolbox, browser, modal, titlebar, and security prompts remain the
+independent recovery surface.
 
 ## 9. Private windows
 
@@ -193,6 +206,12 @@ counts only, and unload/runtime stop abort and dispose the private hosts and
 record. This does not pre-approve any future private-window bridge or feature:
 each consumer must still prove its own data isolation or keep the complete
 native fallback.
+
+Issue #7 creates one health controller, timer, and emergency listener per
+normal or private window. They contain only lifecycle state and fixed capability
+results, persist nothing, and are synchronously removed on that window's
+fallback or disposal. Triggering fallback in one normal window does not mutate
+another normal or private window.
 
 ## 10. Source maps and debug artifacts
 

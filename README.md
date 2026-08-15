@@ -13,9 +13,10 @@ The project is not intended to become another general-purpose `userChrome.js` lo
 > ownership-guarded development package workflow is available for isolated
 > Firefox copies. The minimal bootstrap and deterministic normal/private
 > browser-window lifecycle plus three isolated XHTML diagnostic hosts are
-> validated on Firefox 153.0.4; native UI remains fully visible and no
-> replacement shell, daily-driver support, or end-user release is available
-> yet.
+> validated on Firefox 153.0.4. An explicit health deadline, safe start, and
+> privileged emergency fallback are implemented while native UI remains fully
+> visible. No replacement shell, daily-driver support, or end-user release is
+> available yet.
 
 ## Architecture direction
 
@@ -82,6 +83,7 @@ The project keeps Firefox's core browser infrastructure, including `gBrowser`, w
 - [Installation and package lifecycle](docs/installation.md)
 - [Firefox 153 window-lifecycle research](docs/research/firefox-153-window-lifecycle.md)
 - [Firefox 153 isolated shell-host research](docs/research/firefox-153-shell-hosts.md)
+- [Firefox 153 shell health and recovery research](docs/research/firefox-153-shell-health-recovery.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 

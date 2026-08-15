@@ -14,6 +14,7 @@ const BROWSER_TOOLBOX_TIMEOUT_MS = 45_000;
 function parseArguments(argv) {
   const result = {
     expectFailOpen: false,
+    expectSafeStart: false,
     expectStock: false,
     inspectDom: false,
     browserToolbox: false,
@@ -37,6 +38,10 @@ function parseArguments(argv) {
       result.expectStock = true;
       continue;
     }
+    if (argument === "--expect-safe-start") {
+      result.expectSafeStart = true;
+      continue;
+    }
     if (argument === "--inspect-dom") {
       result.inspectDom = true;
       continue;
@@ -52,15 +57,21 @@ function parseArguments(argv) {
     throw new Error("FENNEVIA_FIREFOX_TEST_ARGUMENT_REQUIRED");
   }
   if (
-    [result.expectFailOpen, result.expectStock, result.inspectDom].filter(
-      Boolean
-    ).length > 1
+    [
+      result.expectFailOpen,
+      result.expectSafeStart,
+      result.expectStock,
+      result.inspectDom,
+    ].filter(Boolean).length > 1
   ) {
     throw new Error("FENNEVIA_FIREFOX_TEST_MODE_CONFLICT");
   }
   if (
     result.browserToolbox &&
-    (result.expectFailOpen || result.expectStock || result.inspectDom)
+    (result.expectFailOpen ||
+      result.expectSafeStart ||
+      result.expectStock ||
+      result.inspectDom)
   ) {
     throw new Error("FENNEVIA_FIREFOX_TEST_MODE_CONFLICT");
   }
@@ -83,7 +94,8 @@ async function validateTarget(
   firefoxPath,
   profilePath,
   expectFailOpen,
-  expectStock
+  expectStock,
+  expectSafeStart
 ) {
   if (!path.isAbsolute(firefoxPath) || !path.isAbsolute(profilePath)) {
     throw new Error("FENNEVIA_FIREFOX_TEST_TARGET_NOT_ABSOLUTE");
@@ -130,6 +142,11 @@ async function validateTarget(
     "chrome/fennevia/content/runtime/Runtime.sys.mjs",
     "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
   ];
+  if (!expectSafeStart) {
+    requiredArtifacts.push(
+      "chrome/fennevia/content/runtime/HealthState.sys.mjs"
+    );
+  }
   if (!expectFailOpen && !expectStock) {
     requiredArtifacts.push(
       "chrome/fennevia/content/runtime/WindowManager.sys.mjs"
@@ -510,6 +527,7 @@ async function collectShellHostState(client) {
     const [primary, sidebar, overlay] = hostIds.map(id =>
       document.getElementById(id)
     );
+    const hostSelector = hostIds.map(id => "#" + id).join(",");
     const toolbox = document.getElementById("navigator-toolbox");
     const browser = document.getElementById("browser");
     const tabbox = document.getElementById("tabbrowser-tabbox");
@@ -543,7 +561,18 @@ async function collectShellHostState(client) {
           ?.textContent?.replace(/\\s+/gu, " ")
           .trim() ?? "",
       hostCount: hostIds.filter(id => document.getElementById(id)).length,
-      hostIdCount: document.querySelectorAll('[id^="fennevia-shell-"]').length,
+      hostIdCount: hostIds.reduce(
+        (count, id) =>
+          count + document.querySelectorAll('[id="' + id + '"]').length,
+        0
+      ),
+      health: {
+        created: document.documentElement.hasAttribute("data-fennevia-created"),
+        failed: document.documentElement.hasAttribute("data-fennevia-failed"),
+        healthy: document.documentElement.hasAttribute("data-fennevia-healthy"),
+        mounted: document.documentElement.hasAttribute("data-fennevia-mounted"),
+        state: document.documentElement.getAttribute("data-fennevia-state"),
+      },
       nativeModalAvailable: Boolean(
         modalDialog && typeof modalDialog.showModal === "function"
       ),
@@ -563,7 +592,7 @@ async function collectShellHostState(client) {
         pointerEvents: overlay ? getComputedStyle(overlay).pointerEvents : null,
       },
       ownershipComplete: allProjectElements.every(element => {
-        const host = element.closest?.('[id^="fennevia-shell-"]');
+        const host = element.closest?.(hostSelector);
         return host && hostIds.includes(host.id);
       }),
       placement: {
@@ -604,6 +633,13 @@ function assertShellHostState(state, windowKind) {
   assert.equal(state.completeSet, true);
   assert.equal(state.hostCount, 3);
   assert.equal(state.hostIdCount, 3);
+  assert.deepEqual(state.health, {
+    created: true,
+    failed: false,
+    healthy: true,
+    mounted: true,
+    state: "healthy",
+  });
   assert.equal(state.namespaceComplete, true);
   assert.equal(state.ownershipComplete, true);
   assert.equal(state.primary.parentIsBody, true);
@@ -627,6 +663,8 @@ function assertShellHostState(state, windowKind) {
     windowKind === "private" ? /Private window/u : /Normal window/u
   );
   assert.match(state.diagnosticText, /Native UI retained/u);
+  assert.match(state.diagnosticText, /Recovery Ctrl\+Alt\+Shift\+F12/u);
+  assert.match(state.diagnosticText, /State healthy/u);
   assert.doesNotMatch(
     state.diagnosticText,
     /(?:https?:|file:|about:|chrome:|resource:|[A-Za-z]:[\\/]|\\\\)/iu
@@ -641,6 +679,13 @@ async function assertNoShellHosts(client) {
   assert.equal(state.nativeWindowControlsPresent, true);
   assert.equal(state.hostCount, 0);
   assert.equal(state.hostIdCount, 0);
+  assert.deepEqual(state.health, {
+    created: false,
+    failed: false,
+    healthy: false,
+    mounted: false,
+    state: null,
+  });
 }
 
 async function assertNativeModalUnobstructed(client) {
@@ -679,53 +724,101 @@ async function assertNativeModalUnobstructed(client) {
 
 async function exerciseMissingInsertionPointFailOpen(client) {
   return client.execute(`
-    const { createRuntimeLogger } = ChromeUtils.importESModule(
-      "chrome://fennevia/content/runtime/Logger.sys.mjs"
-    );
-    const { initializeWindowShell, shellHostIds } = ChromeUtils.importESModule(
-      "chrome://fennevia/content/runtime/WindowShell.sys.mjs"
-    );
-    const tabbox = document.getElementById("tabbrowser-tabbox");
-    if (!tabbox) {
-      throw new Error("FENNEVIA_FIREFOX_TEST_TABBOX_PRECONDITION_FAILED");
-    }
-    const logger = createRuntimeLogger({
-      consoleService: Services.console,
-      appInfo: Services.appinfo,
-      projectCommit: "unknown",
-    });
-    const abortController = new AbortController();
-    let code = "FENNEVIA_FIREFOX_TEST_NO_FAILURE";
-    let domPath = "missing";
-    tabbox.id = "fennevia-test-missing-tabbox";
-    try {
-      initializeWindowShell({
-        context: {
-          isDisposed: () => false,
-          opaqueId: "window-shell-fail-open-probe",
-          signal: abortController.signal,
-          window,
-          windowKind: "normal",
-        },
-        logger,
+    return (async () => {
+      const { createRuntimeLogger } = ChromeUtils.importESModule(
+        "chrome://fennevia/content/runtime/Logger.sys.mjs"
+      );
+      const { initializeWindowShell, shellHostIds } = ChromeUtils.importESModule(
+        "chrome://fennevia/content/runtime/WindowShell.sys.mjs"
+      );
+      const tabbox = document.getElementById("tabbrowser-tabbox");
+      if (!tabbox) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_TABBOX_PRECONDITION_FAILED");
+      }
+      const logger = createRuntimeLogger({
+        consoleService: Services.console,
         appInfo: Services.appinfo,
+        projectCommit: "unknown",
       });
-    } catch (error) {
-      code = String(error?.fenneviaCode ?? error?.message ?? "unknown");
-      domPath = String(error?.fenneviaDomPath ?? "missing");
-    } finally {
-      tabbox.id = "tabbrowser-tabbox";
-    }
-    return {
-      browserVisible: document.getElementById("browser")?.getBoundingClientRect().height > 0,
-      code,
-      domPath,
-      hostCount: Object.values(shellHostIds).filter(id =>
-        document.getElementById(id)
-      ).length,
-      nativeTabboxRestored: document.getElementById("tabbrowser-tabbox") === tabbox,
-      nativeToolboxPresent: Boolean(document.getElementById("navigator-toolbox")),
-    };
+      const abortController = new AbortController();
+      let code = "FENNEVIA_FIREFOX_TEST_NO_FAILURE";
+      let domPath = "missing";
+      tabbox.id = "fennevia-test-missing-tabbox";
+      try {
+        await initializeWindowShell({
+          context: {
+            isDisposed: () => false,
+            opaqueId: "window-shell-fail-open-probe",
+            signal: abortController.signal,
+            window,
+            windowKind: "normal",
+          },
+          logger,
+          appInfo: Services.appinfo,
+        });
+      } catch (error) {
+        code = String(error?.fenneviaCode ?? error?.message ?? "unknown");
+        domPath = String(error?.fenneviaDomPath ?? "missing");
+      } finally {
+        tabbox.id = "tabbrowser-tabbox";
+      }
+      return {
+        browserVisible: document.getElementById("browser")?.getBoundingClientRect().height > 0,
+        code,
+        domPath,
+        hostCount: Object.values(shellHostIds).filter(id =>
+          document.getElementById(id)
+        ).length,
+        nativeTabboxRestored: document.getElementById("tabbrowser-tabbox") === tabbox,
+        nativeToolboxPresent: Boolean(document.getElementById("navigator-toolbox")),
+      };
+    })();
+  `);
+}
+
+async function exerciseEmergencyFallback(client) {
+  return client.execute(`
+    return new Promise((resolve, reject) => {
+      try {
+        const utils = window.windowUtils;
+        const modifiers =
+          utils.NATIVE_MODIFIER_SHIFT_LEFT |
+          utils.NATIVE_MODIFIER_CONTROL_LEFT |
+          utils.NATIVE_MODIFIER_ALT_LEFT;
+        utils.sendNativeKeyEvent(
+          0x00000409,
+          0x0058007b,
+          modifiers,
+          "",
+          "",
+          {
+            onCompleteDispatch() {
+              window.setTimeout(() => {
+                resolve({
+                  active: document.documentElement.hasAttribute(
+                    "data-fennevia-active"
+                  ),
+                  hostCount: document.querySelectorAll(
+                    '[id^="fennevia-shell-"]'
+                  ).length,
+                  nativeBrowserPresent: Boolean(
+                    document.getElementById("browser")
+                  ),
+                  nativeToolboxPresent: Boolean(
+                    document.getElementById("navigator-toolbox")
+                  ),
+                  rootState: document.documentElement.getAttribute(
+                    "data-fennevia-state"
+                  ),
+                });
+              }, 0);
+            },
+          }
+        );
+      } catch (error) {
+        reject(error);
+      }
+    });
   `);
 }
 
@@ -1184,7 +1277,8 @@ async function run() {
     options.firefox,
     options.profile,
     options.expectFailOpen,
-    options.expectStock || options.inspectDom
+    options.expectStock || options.inspectDom,
+    options.expectSafeStart
   );
   await assertPortAvailable(DEFAULT_PORT);
 
@@ -1339,6 +1433,39 @@ async function run() {
       return;
     }
 
+    if (options.expectSafeStart) {
+      await new Promise(resolve => setTimeout(resolve, 750));
+      assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
+      await assertNoShellHosts(client);
+      const evidence = await collectEvidence(client);
+      const skippedRecords = evidence.records.filter(
+        record => record.event === "bootstrap.skipped"
+      );
+      assert.equal(skippedRecords.length, 1);
+      assert.equal(skippedRecords[0].phase, "preflight");
+      assert.equal(skippedRecords[0].result, "safe-start");
+      assert.equal(skippedRecords[0].code, "FENNEVIA_BOOTSTRAP_SAFE_START");
+      assert.equal(countEvent(evidence, "bootstrap.success"), 0);
+      assert.equal(countEvent(evidence, "bootstrap.fatal"), 0);
+      assert.equal(countEvent(evidence, "runtime.started"), 0);
+      assert.equal(countEvent(evidence, "window.initialized"), 0);
+      assert.equal(countEvent(evidence, "shell.hosts-ready"), 0);
+      assert.equal(evidence.firstPartyScriptErrorCount, 0);
+
+      await client.request("Marionette:AcceptConnections", { value: false });
+      quitRequested = true;
+      try {
+        await client.request("Marionette:Quit", {});
+      } catch {
+        // A clean application quit may close Marionette before its response arrives.
+      }
+      await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
+      console.log(
+        "PASS: safe start exited before package loading and retained native browser UI."
+      );
+      return;
+    }
+
     const initialState = await waitForState(
       client,
       state =>
@@ -1400,6 +1527,21 @@ async function run() {
     });
     await client.request("Marionette:SetContext", { value: "chrome" });
     assertShellHostState(await collectShellHostState(client), "normal");
+    assert.deepEqual(await exerciseEmergencyFallback(client), {
+      active: false,
+      hostCount: 0,
+      nativeBrowserPresent: true,
+      nativeToolboxPresent: true,
+      rootState: null,
+    });
+    await assertNoShellHosts(client);
+    await client.request("WebDriver:SwitchToWindow", { handle: originalHandle });
+    await client.request("Marionette:SetContext", { value: "chrome" });
+    assertShellHostState(await collectShellHostState(client), "normal");
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: secondWindow.handle,
+    });
+    await client.request("Marionette:SetContext", { value: "chrome" });
     await client.request("WebDriver:CloseWindow");
     await client.request("WebDriver:SwitchToWindow", { handle: originalHandle });
     await client.request("Marionette:SetContext", { value: "chrome" });
@@ -1516,15 +1658,51 @@ async function run() {
     );
     assert.equal(expectedShellFailures[0].firefoxVersion, "153.0.4");
     assert.equal(expectedShellFailures[0].buildId, "20260810162159");
+    assert.ok(Array.isArray(expectedShellFailures[0].stack));
+    assert.ok(expectedShellFailures[0].stack.length > 0);
     assert.equal(countEvent(evidence, "window.disposed", "normal"), 2);
     assert.equal(countEvent(evidence, "window.disposed", "private"), 1);
-    assert.equal(
-      evidence.records.filter(
-        record =>
-          record.level === "error" && record.event !== "shell.hosts-failed"
-      ).length,
-      0
+    const expectedLifecycleFailures = evidence.records.filter(
+      record => record.event === "shell.lifecycle-failed"
     );
+    assert.equal(expectedLifecycleFailures.length, 1);
+    assert.equal(
+      expectedLifecycleFailures[0].code,
+      "FENNEVIA_EMERGENCY_FALLBACK_INVOKED"
+    );
+    assert.equal(
+      expectedLifecycleFailures[0].phase,
+      "shell-emergency-fallback"
+    );
+    assert.equal(expectedLifecycleFailures[0].firefoxVersion, "153.0.4");
+    assert.equal(expectedLifecycleFailures[0].buildId, "20260810162159");
+    assert.ok(Array.isArray(expectedLifecycleFailures[0].stack));
+    assert.ok(
+      expectedLifecycleFailures[0].stack.some(line =>
+        line.includes("WindowShell.sys.mjs")
+      )
+    );
+    const unexpectedErrorRecords = evidence.records.filter(
+      record =>
+        record.level === "error" &&
+        record.event !== "shell.hosts-failed" &&
+        record.event !== "shell.lifecycle-failed"
+    );
+    if (unexpectedErrorRecords.length !== 0) {
+      console.error(
+        `safeErrorRecords=${JSON.stringify(
+          unexpectedErrorRecords.map(record => ({
+            code: record.code,
+            errorName: record.errorName,
+            event: record.event,
+            phase: record.phase,
+            stack: record.stack,
+            windowKind: record.windowKind,
+          }))
+        )}`
+      );
+    }
+    assert.equal(unexpectedErrorRecords.length, 0);
     assert.equal(evidence.firstPartyScriptErrorCount, 0);
 
     await client.request("Marionette:AcceptConnections", { value: false });

@@ -22,6 +22,7 @@ profile/chrome/fennevia/
   content/
     Bootstrap.sys.mjs
     runtime/
+      HealthState.sys.mjs
       Logger.sys.mjs
       Runtime.sys.mjs
       WindowManager.sys.mjs
@@ -51,6 +52,7 @@ The installed layout is:
     content/
       Bootstrap.sys.mjs
       runtime/
+        HealthState.sys.mjs
         Logger.sys.mjs
         Runtime.sys.mjs
         WindowManager.sys.mjs
@@ -266,7 +268,7 @@ pwsh -NoProfile -File .\tests\installer.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
 ```
 
-The current package is `0.3.0-dev` and contains six exact profile artifacts.
+The current package is `0.4.0-dev` and contains seven exact profile artifacts.
 `.gitattributes` fixes AutoConfig/default/manifest files to CRLF and privileged
 `.mjs` modules to LF so the committed SHA-256 values remain stable on Windows
 and non-Windows checkouts. Do not recompute hashes from an unintended line-end
@@ -277,6 +279,7 @@ Before a real install or update, also run the runtime/package gates:
 pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
 pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
 pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
+pwsh -NoProfile -File .\tests\shell-health.Tests.ps1
 pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -ArtifactRoot .\profile\chrome\fennevia `
   -InventoryPath .\package-manifest.json

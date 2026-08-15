@@ -43,6 +43,7 @@ $prefPath = Join-Path $programRoot "defaults\pref\fennevia.js"
 $configPath = Join-Path $programRoot "fennevia.cfg"
 $manifestPath = Join-Path $packageRoot "chrome.manifest"
 $entryPath = Join-Path $packageRoot "content\Bootstrap.sys.mjs"
+$healthStatePath = Join-Path $packageRoot "content\runtime\HealthState.sys.mjs"
 $loggerPath = Join-Path $packageRoot "content\runtime\Logger.sys.mjs"
 $windowManagerPath = Join-Path $packageRoot "content\runtime\WindowManager.sys.mjs"
 $windowShellPath = Join-Path $packageRoot "content\runtime\WindowShell.sys.mjs"
@@ -58,6 +59,7 @@ $requiredFiles = @(
     $configPath,
     $manifestPath,
     $entryPath,
+    $healthStatePath,
     $loggerPath,
     $windowManagerPath,
     $windowShellPath,
@@ -80,7 +82,7 @@ foreach ($requiredAttribute in @(
 )) {
     Assert-True -Condition ($attributesContent.Contains($requiredAttribute)) -Message "Installed artifact EOL rules must keep package hashes stable across checkouts."
 }
-foreach ($modulePath in @($entryPath, $loggerPath, $runtimePath, $windowManagerPath, $windowShellPath)) {
+foreach ($modulePath in @($entryPath, $healthStatePath, $loggerPath, $runtimePath, $windowManagerPath, $windowShellPath)) {
     Assert-True -Condition (-not [IO.File]::ReadAllText($modulePath).Contains("`r`n")) -Message "Privileged modules must be materialized with LF bytes for stable package hashes."
 }
 

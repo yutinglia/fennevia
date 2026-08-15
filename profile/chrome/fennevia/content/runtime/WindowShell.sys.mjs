@@ -1,3 +1,12 @@
+import {
+  annotateShellLifecycleError,
+  createShellHealthState,
+  createShellLifecycleError,
+  emergencyFallbackBinding,
+  registerEmergencyFallback,
+  runShellHealthCheck,
+} from "./HealthState.sys.mjs";
+
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const XUL_NAMESPACE =
   "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
@@ -9,6 +18,18 @@ const HOST_IDS = Object.freeze({
   overlay: "fennevia-shell-overlay-host",
   primary: "fennevia-shell-primary-host",
   sidebar: "fennevia-shell-sidebar-host",
+});
+
+const SHELL_STYLE_ID = "fennevia-shell-style";
+const DEFAULT_HEALTH_TIMEOUT_MS = 2_000;
+const CAPABILITY_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{0,95}$/u;
+
+const STATE_LOG_CODES = Object.freeze({
+  active: "FENNEVIA_SHELL_STATE_ACTIVE",
+  created: "FENNEVIA_SHELL_STATE_CREATED",
+  failed: "FENNEVIA_SHELL_STATE_FAILED",
+  healthy: "FENNEVIA_SHELL_STATE_HEALTHY",
+  mounted: "FENNEVIA_SHELL_STATE_MOUNTED",
 });
 
 const APP_METADATA_PATTERN = /^[A-Za-z0-9._+-]{1,64}$/u;
@@ -56,6 +77,11 @@ const SHELL_STYLE = `
   flex: 0 0 auto;
   border-radius: 999px;
   background: var(--fennevia-shell-accent);
+}
+
+#fennevia-shell-primary-host[data-fennevia-diagnostic-state="failed"]
+  .fennevia-shell-status-dot {
+  background: GrayText;
 }
 
 #fennevia-shell-primary-host .fennevia-shell-detail-list {
@@ -252,7 +278,7 @@ const validateInsertionPoints = window => {
     );
   }
 
-  for (const id of Object.values(HOST_IDS)) {
+  for (const id of [...Object.values(HOST_IDS), SHELL_STYLE_ID]) {
     if (document.getElementById(id)) {
       throw createShellError(
         "FENNEVIA_SHELL_HOST_ALREADY_EXISTS",
@@ -298,10 +324,12 @@ const createDetachedHosts = ({
     className: "fennevia-shell-host fennevia-shell-primary",
     attributes: {
       "aria-label": "Fennevia shell diagnostics",
+      "data-fennevia-diagnostic-state": "created",
       "data-fennevia-host": "primary",
     },
   });
   const style = createElement(document, "style", {
+    id: SHELL_STYLE_ID,
     textContent: SHELL_STYLE,
   });
   const diagnostic = createElement(document, "div", {
@@ -334,6 +362,7 @@ const createDetachedHosts = ({
     `Build ${normalizeAppMetadata(buildId)}`,
     "3 XHTML hosts",
     "Native UI retained",
+    `Recovery ${emergencyFallbackBinding}`,
   ]) {
     const item = createElement(document, "li", {
       className: "fennevia-shell-detail",
@@ -341,6 +370,11 @@ const createDetachedHosts = ({
     });
     detailList.append(item);
   }
+  const stateDetail = createElement(document, "li", {
+    className: "fennevia-shell-detail fennevia-shell-state-detail",
+    textContent: "State created",
+  });
+  detailList.append(stateDetail);
   diagnostic.append(identity, detailList);
   primary.append(style, diagnostic);
 
@@ -365,8 +399,21 @@ const createDetachedHosts = ({
     },
   });
 
-  return Object.freeze({ overlay, primary, sidebar });
+  return Object.freeze({
+    diagnostic,
+    identityText,
+    overlay,
+    primary,
+    sidebar,
+    stateDetail,
+    style,
+  });
 };
+
+const descendantsOf = element => [
+  element,
+  ...Array.from(element.children ?? []).flatMap(descendantsOf),
+];
 
 export function createShellHosts({
   window,
@@ -387,6 +434,11 @@ export function createShellHosts({
     windowKind,
     firefoxVersion,
     buildId,
+  });
+  const mountPoints = Object.freeze({
+    overlay: hosts.overlay,
+    primary: hosts.primary,
+    sidebar: hosts.sidebar,
   });
   let state = "created";
 
@@ -464,6 +516,109 @@ export function createShellHosts({
 
     detach,
 
+    getMountPoints() {
+      return mountPoints;
+    },
+
+    setDiagnosticState(nextState) {
+      const labels = {
+        active: "State active",
+        created: "State created",
+        failed: "State failed open",
+        healthy: "State healthy",
+        mounted: "State mounted",
+      };
+      if (!Object.hasOwn(labels, nextState)) {
+        throw createShellError(
+          "FENNEVIA_SHELL_DIAGNOSTIC_STATE_INVALID",
+          "#fennevia-shell-primary-host"
+        );
+      }
+      hosts.primary.setAttribute(
+        "data-fennevia-diagnostic-state",
+        nextState
+      );
+      hosts.stateDetail.textContent = labels[nextState];
+      return true;
+    },
+
+    verifyHealth() {
+      if (state !== "attached") {
+        throw createShellError(
+          "FENNEVIA_SHELL_HOSTS_NOT_ATTACHED",
+          "html#main-window>body"
+        );
+      }
+      const { document } = insertionPoints;
+      if (
+        document.getElementById(HOST_IDS.primary) !== hosts.primary ||
+        hosts.primary.parentElement !== insertionPoints.body ||
+        document.getElementById(HOST_IDS.sidebar) !== hosts.sidebar ||
+        hosts.sidebar.parentElement !== insertionPoints.browser ||
+        document.getElementById(HOST_IDS.overlay) !== hosts.overlay ||
+        hosts.overlay.parentElement !== insertionPoints.body
+      ) {
+        throw createShellError(
+          "FENNEVIA_SHELL_HOST_OWNERSHIP_INVALID",
+          "html#main-window>body"
+        );
+      }
+      const bodyChildren = Array.from(insertionPoints.body.children);
+      const browserChildren = Array.from(insertionPoints.browser.children);
+      if (
+        bodyChildren.indexOf(hosts.primary) + 1 !==
+          bodyChildren.indexOf(insertionPoints.browser) ||
+        browserChildren.indexOf(hosts.sidebar) + 1 !==
+          browserChildren.indexOf(insertionPoints.tabbox) ||
+        bodyChildren.indexOf(hosts.overlay) + 1 !==
+          bodyChildren.indexOf(insertionPoints.accessibilityAnnouncement) ||
+        !hosts.sidebar.hasAttribute("hidden") ||
+        !hosts.overlay.hasAttribute("hidden") ||
+        !hosts.overlay.hasAttribute("inert")
+      ) {
+        throw createShellError(
+          "FENNEVIA_SHELL_HOST_PLACEMENT_INVALID",
+          "html#main-window>body"
+        );
+      }
+      if (
+        document.getElementById(SHELL_STYLE_ID) !== hosts.style ||
+        hosts.style.parentElement !== hosts.primary
+      ) {
+        throw createShellError(
+          "FENNEVIA_SHELL_STYLESHEET_MISSING",
+          "#fennevia-shell-primary-host>#fennevia-shell-style"
+        );
+      }
+
+      let cssRuleCount = 0;
+      try {
+        cssRuleCount = hosts.style.sheet?.cssRules?.length ?? 0;
+      } catch {
+        cssRuleCount = 0;
+      }
+      if (cssRuleCount < 1) {
+        throw createShellError(
+          "FENNEVIA_SHELL_STYLESHEET_UNAVAILABLE",
+          "#fennevia-shell-primary-host>#fennevia-shell-style"
+        );
+      }
+
+      for (const host of Object.values(mountPoints)) {
+        if (
+          descendantsOf(host).some(
+            element => element.namespaceURI !== XHTML_NAMESPACE
+          )
+        ) {
+          throw createShellError(
+            "FENNEVIA_SHELL_HOST_NAMESPACE_INVALID",
+            `#${host.id}`
+          );
+        }
+      }
+      return true;
+    },
+
     dispose() {
       if (state === "disposed") {
         return false;
@@ -489,98 +644,527 @@ export function createShellHosts({
   return Object.freeze(controller);
 }
 
-export function initializeWindowShell({ context, logger, appInfo }) {
+const createCleanupStack = onCleanupError => {
+  const callbacks = [];
+  let disposed = false;
+
+  return Object.freeze({
+    add(callback) {
+      if (typeof callback !== "function") {
+        throw createShellLifecycleError(
+          "FENNEVIA_SHELL_CLEANUP_INVALID",
+          "shell-cleanup-register"
+        );
+      }
+      if (disposed) {
+        try {
+          callback();
+        } catch (error) {
+          onCleanupError(error);
+        }
+        return () => {};
+      }
+
+      let active = true;
+      callbacks.push(callback);
+      return () => {
+        if (!active || disposed) {
+          return false;
+        }
+        active = false;
+        const index = callbacks.indexOf(callback);
+        if (index !== -1) {
+          callbacks.splice(index, 1);
+        }
+        return true;
+      };
+    },
+
+    dispose() {
+      if (disposed) {
+        return false;
+      }
+      disposed = true;
+      while (callbacks.length) {
+        try {
+          callbacks.pop()();
+        } catch (error) {
+          onCleanupError(error);
+        }
+      }
+      return true;
+    },
+
+    get size() {
+      return callbacks.length;
+    },
+  });
+};
+
+const validateRequiredCapabilities = capabilities => {
+  if (!Array.isArray(capabilities)) {
+    throw createShellLifecycleError(
+      "FENNEVIA_SHELL_CAPABILITIES_INVALID",
+      "shell-health-check"
+    );
+  }
+  for (const capability of capabilities) {
+    if (
+      !capability ||
+      !CAPABILITY_PATTERN.test(String(capability.name ?? "")) ||
+      typeof capability.available !== "boolean"
+    ) {
+      throw createShellLifecycleError(
+        "FENNEVIA_SHELL_CAPABILITY_RESULT_INVALID",
+        "shell-health-check"
+      );
+    }
+    if (!capability.available) {
+      throw createShellLifecycleError(
+        "FENNEVIA_SHELL_CAPABILITY_MISSING",
+        "shell-health-check",
+        { capability: capability.name }
+      );
+    }
+  }
+  return true;
+};
+
+const defaultMountShell = () => undefined;
+const defaultCheckHealth = () => true;
+
+export function createWindowShellLifecycle({
+  context,
+  logger,
+  appInfo,
+  mountShell = defaultMountShell,
+  checkHealth = defaultCheckHealth,
+  getRequiredCapabilities = () => [],
+  healthTimeoutMs = DEFAULT_HEALTH_TIMEOUT_MS,
+}) {
   if (
     !context ||
     typeof context.isDisposed !== "function" ||
     !context.signal ||
+    typeof context.signal.addEventListener !== "function" ||
+    typeof context.signal.removeEventListener !== "function" ||
     (context.windowKind !== "normal" && context.windowKind !== "private")
   ) {
-    throw new Error("FENNEVIA_SHELL_CONTEXT_INVALID");
+    throw createShellLifecycleError(
+      "FENNEVIA_SHELL_CONTEXT_INVALID",
+      "shell-lifecycle-create"
+    );
   }
   if (
     typeof logger?.info !== "function" ||
     typeof logger?.error !== "function"
   ) {
-    throw new Error("FENNEVIA_SHELL_LOGGER_UNAVAILABLE");
+    throw createShellLifecycleError(
+      "FENNEVIA_SHELL_LOGGER_UNAVAILABLE",
+      "shell-lifecycle-create"
+    );
   }
   if (!appInfo) {
-    throw new Error("FENNEVIA_SHELL_APP_INFO_UNAVAILABLE");
+    throw createShellLifecycleError(
+      "FENNEVIA_SHELL_APP_INFO_UNAVAILABLE",
+      "shell-lifecycle-create"
+    );
+  }
+  if (
+    typeof mountShell !== "function" ||
+    typeof checkHealth !== "function" ||
+    typeof getRequiredCapabilities !== "function"
+  ) {
+    throw createShellLifecycleError(
+      "FENNEVIA_SHELL_COLLABORATOR_INVALID",
+      "shell-lifecycle-create"
+    );
   }
 
   let shell;
-  try {
-    if (context.signal.aborted || context.isDisposed()) {
-      throw createShellError(
-        "FENNEVIA_SHELL_CONTEXT_DISPOSED",
-        "html#main-window"
-      );
-    }
-    shell = createShellHosts({
-      window: context.window,
-      windowKind: context.windowKind,
-      firefoxVersion: appInfo.version,
-      buildId: appInfo.appBuildID,
-    });
-    shell.attach();
-    if (context.signal.aborted || context.isDisposed()) {
-      throw createShellError(
-        "FENNEVIA_SHELL_CONTEXT_DISPOSED",
-        "html#main-window"
-      );
-    }
+  let healthState;
+  let emergencyFallback;
+  let startPromise;
+  let started = false;
+  let disposed = false;
+  let failureLogged = false;
+  let cancelledDuringStart = false;
+  let contextAbortRegistered = false;
+  const healthAbortController = new AbortController();
 
+  const logCleanupError = error => {
+    logger.error({
+      event: "shell.cleanup-failed",
+      phase: error?.fenneviaPhase ?? "shell-cleanup",
+      code: error?.fenneviaCode ?? "FENNEVIA_SHELL_CLEANUP_FAILED",
+      windowKind: context.windowKind,
+      opaqueId: context.opaqueId,
+      projectUri: PROJECT_URI,
+      domPath: error?.fenneviaDomPath,
+      error,
+    });
+  };
+  const cleanup = createCleanupStack(logCleanupError);
+
+  const logState = state => {
     logger.info({
-      event: "shell.hosts-ready",
-      phase: "shell-host-attach",
-      code: "FENNEVIA_SHELL_HOSTS_READY",
+      event: "shell.state-changed",
+      phase: `shell-state-${state}`,
+      code: STATE_LOG_CODES[state],
+      shellState: state,
       windowKind: context.windowKind,
       opaqueId: context.opaqueId,
       projectUri: PROJECT_URI,
     });
+  };
 
-    return () => {
-      const disposed = shell.dispose();
-      if (disposed) {
-        logger.info({
-          event: "shell.hosts-disposed",
-          phase: "shell-host-dispose",
-          code: "FENNEVIA_SHELL_HOSTS_DISPOSED",
-          windowKind: context.windowKind,
-          opaqueId: context.opaqueId,
-          projectUri: PROJECT_URI,
-        });
+  const reportFailure = error => {
+    if (failureLogged) {
+      return error;
+    }
+    failureLogged = true;
+
+    if (healthState && healthState.snapshot().state !== "disposed") {
+      try {
+        if (healthState.fail()) {
+          shell?.setDiagnosticState("failed");
+          logState("failed");
+        }
+      } catch (stateError) {
+        logCleanupError(stateError);
       }
-    };
-  } catch (error) {
-    try {
-      shell?.dispose();
-    } catch (cleanupError) {
-      logger.error({
-        event: "shell.hosts-rollback-failed",
-        phase: "shell-host-rollback",
-        code: "FENNEVIA_SHELL_HOSTS_ROLLBACK_FAILED",
+    }
+
+    const phase = error?.fenneviaPhase ?? "shell-lifecycle";
+    logger.error({
+      event:
+        phase === "shell-host-attach"
+          ? "shell.hosts-failed"
+          : "shell.lifecycle-failed",
+      phase,
+      code:
+        error?.fenneviaCode ?? "FENNEVIA_SHELL_INITIALIZATION_FAILED",
+      windowKind: context.windowKind,
+      opaqueId: context.opaqueId,
+      projectUri: PROJECT_URI,
+      domPath: error?.fenneviaDomPath,
+      capability: error?.fenneviaCapability,
+      available:
+        typeof error?.fenneviaCapability === "string" ? false : undefined,
+      error,
+    });
+    return error;
+  };
+
+  const onContextAbort = () => {
+    lifecycle.dispose("shell-context-abort");
+  };
+
+  const lifecycle = {
+    start() {
+      if (!startPromise) {
+        startPromise = (async () => {
+          let phase = "shell-host-attach";
+          try {
+            if (disposed || context.signal.aborted || context.isDisposed()) {
+              throw createShellLifecycleError(
+                "FENNEVIA_SHELL_CONTEXT_DISPOSED",
+                "shell-lifecycle-start"
+              );
+            }
+
+            context.signal.addEventListener("abort", onContextAbort, {
+              once: true,
+            });
+            contextAbortRegistered = true;
+
+            shell = createShellHosts({
+              window: context.window,
+              windowKind: context.windowKind,
+              firefoxVersion: appInfo.version,
+              buildId: appInfo.appBuildID,
+            });
+            shell.attach();
+            cleanup.add(() => {
+              if (shell.dispose()) {
+                logger.info({
+                  event: "shell.hosts-disposed",
+                  phase: "shell-host-dispose",
+                  code: "FENNEVIA_SHELL_HOSTS_DISPOSED",
+                  windowKind: context.windowKind,
+                  opaqueId: context.opaqueId,
+                  projectUri: PROJECT_URI,
+                });
+              }
+            });
+
+            logger.info({
+              event: "shell.hosts-ready",
+              phase,
+              code: "FENNEVIA_SHELL_HOSTS_READY",
+              windowKind: context.windowKind,
+              opaqueId: context.opaqueId,
+              projectUri: PROJECT_URI,
+            });
+
+            healthState = createShellHealthState({
+              rootElement: context.window.document.documentElement,
+            });
+            cleanup.add(() => healthState.dispose());
+            shell.setDiagnosticState("created");
+            logState("created");
+
+            phase = "shell-emergency-register";
+            emergencyFallback = registerEmergencyFallback({
+              eventTarget: context.window,
+              onFallback() {
+                if (disposed) {
+                  return false;
+                }
+                const error = createShellLifecycleError(
+                  "FENNEVIA_EMERGENCY_FALLBACK_INVOKED",
+                  "shell-emergency-fallback"
+                );
+                reportFailure(error);
+                lifecycle.dispose("shell-emergency-fallback");
+                return true;
+              },
+              onError(error) {
+                reportFailure(error);
+                lifecycle.dispose("shell-emergency-error");
+              },
+            });
+            cleanup.add(() => emergencyFallback.dispose());
+
+            phase = "shell-mount";
+            const mountResult = mountShell({
+              addCleanup: callback => cleanup.add(callback),
+              mountPoints: shell.getMountPoints(),
+              signal: healthAbortController.signal,
+              windowKind: context.windowKind,
+            });
+            if (mountResult && typeof mountResult.then === "function") {
+              throw createShellLifecycleError(
+                "FENNEVIA_SHELL_MOUNT_ASYNC_UNSUPPORTED",
+                phase
+              );
+            }
+            if (typeof mountResult === "function") {
+              cleanup.add(mountResult);
+            } else if (mountResult !== undefined && mountResult !== null) {
+              throw createShellLifecycleError(
+                "FENNEVIA_SHELL_MOUNT_RESULT_INVALID",
+                phase
+              );
+            }
+            healthState.transition("mounted");
+            shell.setDiagnosticState("mounted");
+            logState("mounted");
+
+            phase = "shell-health-check";
+            const windowSetTimeout =
+              typeof context.window.setTimeout === "function"
+                ? context.window.setTimeout.bind(context.window)
+                : globalThis.setTimeout;
+            const windowClearTimeout =
+              typeof context.window.clearTimeout === "function"
+                ? context.window.clearTimeout.bind(context.window)
+                : globalThis.clearTimeout;
+            await runShellHealthCheck({
+              signal: healthAbortController.signal,
+              timeoutMs: healthTimeoutMs,
+              setTimeoutFunction: windowSetTimeout,
+              clearTimeoutFunction: windowClearTimeout,
+              check: async ({ signal }) => {
+                shell.verifyHealth();
+                if (!emergencyFallback.snapshot().registered) {
+                  throw createShellLifecycleError(
+                    "FENNEVIA_EMERGENCY_FALLBACK_UNAVAILABLE",
+                    "shell-health-check",
+                    { capability: "recovery.emergency-key" }
+                  );
+                }
+                validateRequiredCapabilities(
+                  getRequiredCapabilities({
+                    mountPoints: shell.getMountPoints(),
+                    signal,
+                    windowKind: context.windowKind,
+                  })
+                );
+                return checkHealth({
+                  mountPoints: shell.getMountPoints(),
+                  signal,
+                  windowKind: context.windowKind,
+                });
+              },
+            });
+            if (
+              disposed ||
+              healthAbortController.signal.aborted ||
+              context.signal.aborted ||
+              context.isDisposed()
+            ) {
+              throw createShellLifecycleError(
+                "FENNEVIA_SHELL_CONTEXT_DISPOSED",
+                "shell-health-check"
+              );
+            }
+
+            healthState.transition("healthy");
+            shell.setDiagnosticState("healthy");
+            logState("healthy");
+            started = true;
+            logger.info({
+              event: "shell.lifecycle-ready",
+              phase: "shell-healthy",
+              code: "FENNEVIA_SHELL_HEALTHY",
+              shellState: "healthy",
+              windowKind: context.windowKind,
+              opaqueId: context.opaqueId,
+              projectUri: PROJECT_URI,
+            });
+            return lifecycle.snapshot();
+          } catch (error) {
+            const annotated = error?.fenneviaPhase
+              ? error
+              : annotateShellLifecycleError(error, {
+                  code:
+                    error?.fenneviaCode ??
+                    (phase === "shell-host-attach"
+                      ? "FENNEVIA_SHELL_HOSTS_INITIALIZATION_FAILED"
+                      : "FENNEVIA_SHELL_INITIALIZATION_FAILED"),
+                  phase,
+                  capability: error?.fenneviaCapability,
+                });
+            if (disposed && (failureLogged || cancelledDuringStart)) {
+              return lifecycle.snapshot();
+            }
+            if (!(disposed && context.signal.aborted)) {
+              reportFailure(annotated);
+            }
+            lifecycle.dispose("shell-start-failed");
+            throw annotated;
+          }
+        })();
+      }
+      return startPromise;
+    },
+
+    activate() {
+      if (!started || disposed || !healthState) {
+        throw createShellLifecycleError(
+          "FENNEVIA_SHELL_ACTIVATION_UNAVAILABLE",
+          "shell-activate"
+        );
+      }
+      try {
+        const changed = healthState.activate();
+        shell.setDiagnosticState("active");
+        if (changed) {
+          logState("active");
+        }
+        return changed;
+      } catch (error) {
+        const annotated = annotateShellLifecycleError(error, {
+          code:
+            error?.fenneviaCode ?? "FENNEVIA_SHELL_ACTIVATION_FAILED",
+          phase: error?.fenneviaPhase ?? "shell-activate",
+        });
+        reportFailure(annotated);
+        lifecycle.dispose("shell-activation-failed");
+        throw annotated;
+      }
+    },
+
+    dispose(phase = "shell-dispose") {
+      if (disposed) {
+        return false;
+      }
+      if (startPromise && !started && !failureLogged) {
+        cancelledDuringStart = true;
+      }
+      disposed = true;
+
+      if (healthState) {
+        try {
+          healthState.clearActive();
+        } catch (error) {
+          logCleanupError(
+            annotateShellLifecycleError(error, {
+              code: "FENNEVIA_SHELL_ACTIVE_CLEAR_FAILED",
+              phase,
+            })
+          );
+        }
+      }
+      try {
+        healthAbortController.abort();
+      } catch (error) {
+        logCleanupError(error);
+      }
+      if (contextAbortRegistered) {
+        try {
+          context.signal.removeEventListener("abort", onContextAbort);
+        } catch (error) {
+          logCleanupError(error);
+        }
+        contextAbortRegistered = false;
+      }
+
+      cleanup.dispose();
+      logger.info({
+        event: "shell.lifecycle-disposed",
+        phase,
+        code: "FENNEVIA_SHELL_LIFECYCLE_DISPOSED",
+        shellState: "disposed",
         windowKind: context.windowKind,
         opaqueId: context.opaqueId,
         projectUri: PROJECT_URI,
-        domPath: error?.fenneviaDomPath ?? "html#main-window",
-        error: cleanupError,
       });
-    }
-    logger.error({
-      event: "shell.hosts-failed",
-      phase: "shell-host-attach",
-      code:
-        error?.fenneviaCode ?? "FENNEVIA_SHELL_HOSTS_INITIALIZATION_FAILED",
-      windowKind: context.windowKind,
-      opaqueId: context.opaqueId,
-      projectUri: PROJECT_URI,
-      domPath: error?.fenneviaDomPath ?? "html#main-window",
-      error,
-    });
-    throw error;
-  }
+      return true;
+    },
+
+    snapshot() {
+      return Object.freeze({
+        cleanupCount: cleanup.size,
+        emergency: emergencyFallback?.snapshot() ?? null,
+        hostCount: shell?.snapshot().hostCount ?? 0,
+        started,
+        state:
+          healthState?.snapshot().state ??
+          (disposed ? "disposed" : "uninitialized"),
+        windowKind: context.windowKind,
+      });
+    },
+  };
+
+  return Object.freeze(lifecycle);
 }
+
+export async function initializeWindowShell({ context, logger, appInfo }) {
+  const lifecycle = createWindowShellLifecycle({
+    context,
+    logger,
+    appInfo,
+  });
+  await lifecycle.start();
+  return () => lifecycle.dispose();
+}
+
+export const shellHealthTimeoutMs = DEFAULT_HEALTH_TIMEOUT_MS;
+
+/*
+ * `active` is intentionally never entered by initializeWindowShell. The
+ * explicit controller method exists so issue #15 can consume the validated
+ * healthy-only gate after replacement UI and its own full recovery matrix.
+ */
+
+/*
+ * The production initializer above supplies fixed mount and health
+ * collaborators. Tests exercise this same lifecycle constructor with ordinary
+ * collaborator failures; no preference, DOM global, or installed debug hook
+ * can select a failure mode at runtime.
+ */
 
 export const shellHostIds = HOST_IDS;
 export const xhtmlNamespace = XHTML_NAMESPACE;

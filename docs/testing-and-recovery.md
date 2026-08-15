@@ -75,6 +75,17 @@ Native-UI hiding must depend on `data-fennevia-active`. Set it only after all re
 7. emergency handler registered;
 8. safe-start state checked.
 
+Issue #7 implements the per-window sequence as `created -> mounted -> healthy ->
+active`, plus `failed` and `disposed`. The root carries
+`data-fennevia-state` and cumulative state-specific markers. An illegal
+transition enters `failed`; disposal removes every marker. The production
+initializer deliberately stops at `healthy`, and package `0.4.0-dev` contains
+no native-hide selector or automatic activation call.
+
+The health phase has a 2,000 ms deadline. It requires exact host identity,
+placement, XHTML ownership, parsed project CSS, hidden/inert auxiliary hosts,
+the emergency listener, declared capabilities, and a literal `true` result.
+
 If any step fails:
 
 - do not set, or immediately remove, the active attribute;
@@ -89,6 +100,14 @@ Provide a privileged keyboard handler that does not depend on a Svelte component
 
 Choose a binding that does not conflict with common Firefox or OS shortcuts. Document and test it on every supported platform.
 
+The Windows binding is `Ctrl+Alt+Shift+F12`. It is registered on the browser
+chrome window for `keydown` with `{ capture: true, mozSystemGroup: true }`,
+requires exactly Ctrl/Alt/Shift without Meta, and is removed with the identical
+listener/options pair. Stock Firefox reserves unmodified F12 for DevTools; a
+user-customized shortcut can still collide, so other platforms and customized
+bindings require new evidence. Triggering fallback reports a fixed phase/code,
+clears active state, and disposes only that window's project lifecycle.
+
 ### Safe start
 
 Select at least one mechanism that can be evaluated before shell activation:
@@ -98,6 +117,22 @@ Select at least one mechanism that can be evaluated before shell activation:
 - another source-validated early mechanism.
 
 Safe start may load minimal logging needed for diagnosis, but it must not mount or activate the custom shell.
+
+Fennevia uses the existing preference mechanism. AutoConfig checks Firefox safe
+mode and `fennevia.safeStart` before `UChrm`, registration, URI resolution, or
+module import. The owned-profile recovery matrix is:
+
+```powershell
+pwsh -NoProfile -File .\tests\firefox-shell-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+```
+
+The script refuses a pre-existing `user.js` policy for this preference. It tests
+safe start once with all files and once with a hash-verified runtime module
+moved to a unique OS-temporary directory, restores that module byte-identically,
+runs ordinary startup with `false`, restores the original `user.js`, and ensures
+the persisted preference ends false.
 
 ### Hard disable and uninstall
 
@@ -169,6 +204,12 @@ Development builds should provide controlled ways to simulate:
 - stale tab or window handle.
 
 Failure injection must be impossible or explicitly disabled in installed production artifacts unless a documented local diagnostic mode is enabled.
+
+Issue #7 does not add a production diagnostic mode. Mount, health, capability,
+and timeout failures are passed as ordinary collaborators only to the exported
+unit-test constructor. `initializeWindowShell`, the sole production consumer,
+uses fixed defaults. Static checks reject a failure/debug preference or global
+selector in the installed health runtime.
 
 ## 6. Phase 0 profile reset and cache evidence
 
@@ -455,6 +496,61 @@ It serializes `prompt-connection=false` only into the temporary child test
 profile, restores the parent pref to true before creating the parent DevTools
 server, and explicitly accepts that parent connection prompt. The original
 child profile bytes and parent prefs are restored after the child process exits.
+
+### Issue #7 shell-health and recovery evidence
+
+Issue #7 wraps the issue #6 hosts in the explicit health lifecycle without
+adding Svelte, a bridge, dependency, manifest mapping, native-hide CSS, or a
+production failure hook. Source, canary, keyboard, privacy, and real recovery
+evidence is in `docs/research/firefox-153-shell-health-recovery.md`.
+
+The local matrix is run with:
+
+```powershell
+node --test .\tests\health-state.test.mjs .\tests\safe-start.test.mjs `
+  .\tests\shell-hosts.test.mjs .\tests\window-lifecycle.test.mjs
+pwsh -NoProfile -File .\tests\shell-health.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\shell-health.Tests.ps1
+pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
+pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
+pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
+pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
+pwsh -NoProfile -File .\tests\installer.Tests.ps1
+pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
+  -ArtifactRoot .\profile\chrome\fennevia `
+  -InventoryPath .\package-manifest.json
+```
+
+The unit matrix covers cumulative and duplicate states, illegal transitions,
+stale attributes, literal health results, timeout/abort, partial mount cleanup,
+health false, missing CSS, missing capability, pending disposal with late
+completion, active-only-after-healthy, and emergency fallback from mounted,
+healthy, and active. The safe-start VM executes the actual cfg with complete
+and broken entry behavior. Package `0.4.0-dev` has seven exact profile
+artifacts.
+
+Observed on Node.js 24.18.0, PowerShell 7.6.4, and Windows PowerShell
+5.1.26100.9168: the combined shell-health command reported 32 passing tests;
+the shell-host command reported 26; the lifecycle command reported nine. Both
+PowerShell runtimes passed the bootstrap, development-profile, artifact,
+identity, shell-host, shell-health, lifecycle, and installer suites. The exact
+seven-artifact production scan passed with no finding.
+
+Real Windows validation uses the ordinary harness plus the owned mutation
+wrapper shown above. The harness verifies healthy-but-inactive markers on the
+initial, second, and private windows; sends a native US-layout Windows F12 event
+with left Shift/Control/Alt through `nsIDOMWindowUtils`; requires only that
+window's hosts/state to disappear while native browser/toolbox remain; and then
+proves the original window is still healthy. Safe-start runs require exactly one
+`bootstrap.skipped`, no registration/runtime/window/shell record, no host/state,
+and no first-party script error for both the complete and broken package.
+
+Both ordinary real-Firefox runs passed, including the Browser Toolbox variant.
+The Inspector selected the primary host and reconfirmed that native nodes remain
+outside project ownership. The recovery wrapper passed two safe-start processes
+and one ordinary recovery process, restored the missing module to its committed
+SHA-256, restored the original `user.js`, disabled the persisted safe-start
+value, and left zero Firefox process. No startup-cache action was used.
 
 ## 10. Firefox stable-update procedure
 
