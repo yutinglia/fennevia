@@ -15,10 +15,11 @@ As of 2026-08-16:
 - first platform: Windows 11;
 - environment: copied stock Firefox program plus marker-owned direct-path
   development profile;
-- completed runtime/UI milestones: #3–#12 and #31;
+- completed runtime/UI milestones: #3–#13 and #31;
 - current shell: one zero-layout frame with independent top, left, right, and
-  bottom surfaces;
-- current functional features: vertical tabs in the left surface and primary
+  bottom surfaces plus one centered address-overlay root;
+- current functional features: vertical tabs and compact address/status
+  launcher in the left surface, centered address/search popup, and primary
   navigation controls with bounded page status in the top surface;
 - current placeholders: right and bottom;
 - native Firefox visible UI: retained and unchanged;
@@ -118,26 +119,26 @@ artifacts.
 
 ## 4. Minimum runtime matrix
 
-| Case | Expected result |
-| --- | --- |
-| Three clean cold starts | One bootstrap and one process runtime per process |
-| Ordinary restart | Fresh per-window frame, bridge, roots, and state; no stale callbacks |
-| Second normal window | Independent complete frame and feature state; no duplicate process runtime |
-| Private window | Full explicitly tested feature support or complete native fallback; never partial initialization |
-| Close/reopen window | Hosts, roots, bridge contexts, listeners, observers, holds, timers, mappings, and pending work are removed |
-| Runtime stop twice | First stop disposes; second is idempotent |
-| Missing manifest | Clear bootstrap failure; native UI usable |
-| Malformed manifest | Clear registration/entry failure; native UI usable |
-| Missing/broken entry | Privacy-safe first causal stack; no partial runtime |
-| Broken frontend bundle | No `healthy`/`active`; partial frame cleaned; native UI usable |
-| Missing/invalid CSS | No activation; native UI usable |
-| Missing bridge capability | Typed fixed-symbol failure and complete cleanup |
-| Emergency fallback | Matching window's project lifecycle is disposed without Svelte |
-| Safe start | Manifest lookup/import/mount skipped early |
-| Browser Toolbox | Project ownership and native retention are inspectable |
-| Install/update/disable/uninstall | Only owned files change; stock startup restored |
-| Unsafe package target | Preflight rejects before mutation |
-| Cleanup/reinstall | No owned residue, stale process, or unexplained cache action |
+| Case                             | Expected result                                                                                            |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Three clean cold starts          | One bootstrap and one process runtime per process                                                          |
+| Ordinary restart                 | Fresh per-window frame, bridge, roots, and state; no stale callbacks                                       |
+| Second normal window             | Independent complete frame and feature state; no duplicate process runtime                                 |
+| Private window                   | Full explicitly tested feature support or complete native fallback; never partial initialization           |
+| Close/reopen window              | Hosts, roots, bridge contexts, listeners, observers, holds, timers, mappings, and pending work are removed |
+| Runtime stop twice               | First stop disposes; second is idempotent                                                                  |
+| Missing manifest                 | Clear bootstrap failure; native UI usable                                                                  |
+| Malformed manifest               | Clear registration/entry failure; native UI usable                                                         |
+| Missing/broken entry             | Privacy-safe first causal stack; no partial runtime                                                        |
+| Broken frontend bundle           | No `healthy`/`active`; partial frame cleaned; native UI usable                                             |
+| Missing/invalid CSS              | No activation; native UI usable                                                                            |
+| Missing bridge capability        | Typed fixed-symbol failure and complete cleanup                                                            |
+| Emergency fallback               | Matching window's project lifecycle is disposed without Svelte                                             |
+| Safe start                       | Manifest lookup/import/mount skipped early                                                                 |
+| Browser Toolbox                  | Project ownership and native retention are inspectable                                                     |
+| Install/update/disable/uninstall | Only owned files change; stock startup restored                                                            |
+| Unsafe package target            | Preflight rejects before mutation                                                                          |
+| Cleanup/reinstall                | No owned residue, stale process, or unexplained cache action                                               |
 
 Every expected result requires evidence. A check mark without environment,
 command, and observation is insufficient.
@@ -150,7 +151,9 @@ Every shell or feature change that can affect #31 must verify:
 
 - exactly one `#fennevia-shell-frame-host` per managed browser window;
 - exact top, left, right, and bottom host order;
-- one XHTML mount target and one Svelte root per edge;
+- one final address-overlay host after the four edge hosts;
+- one XHTML mount target and one Svelte root per edge plus one for the address
+  overlay;
 - all-or-nothing attach and rollback;
 - project-owned style attached and parsed;
 - project ownership stops at frame descendants;
@@ -255,22 +258,43 @@ Validate:
 
 Evidence: `docs/research/firefox-153-navigation-controls.md`.
 
-### 6.3 Left address input — required for #13
+### 6.3 Compact address launcher and popup — implemented (#13)
 
 Validate:
 
-- ordinary URLs, host-like input, Unicode domains, and ordinary searches;
-- empty, whitespace, malformed, unsupported, dangerous, and very long input;
-- current Firefox fixup/search/principal/load semantics;
+- short non-editable launcher with bounded committed location;
+- compact Firefox connection/HTTPS and tracking-protection badges in the
+  launcher, with fuller matching text in the popup;
+- secure, insecure, internal, error, protection blocking/detected/exception,
+  non-handleable, transient, and unknown status mapping without URL inference;
+- ordinary URLs, host-like input, and ordinary searches;
+- empty, whitespace, executable-scheme, and over-4,096-character input;
+- current Firefox fixup/search/principal/load semantics through
+  `gURLBar.handleCommand()`;
 - independent unsubmitted draft;
-- redirects, Back/Forward, reload, stop, tab switch, new tab, and session restore;
-- repeated `Ctrl+L`, Enter, and two-stage Escape behavior;
+- background same-tab navigation draft retention and selected-tab-change
+  discard;
+- redirects, Back/Forward, reload, stop, tab switch, and new tab;
+- launcher activation, repeated `Ctrl+L`, Enter, Escape, backdrop cancel, and
+  focus-boundary close;
 - healthy-only custom `Ctrl+L` ownership;
 - native `Ctrl+L` fallback while inactive, failed, safe-started, unsupported, or
   disposed;
-- focus movement between address and tabs;
+- focus restoration to a valid prior project/native control or selected
+  content;
+- all four edge surfaces suppressed while popup state has priority;
 - no input/complete URL in normal diagnostics or project persistence;
-- bridge/component/surface failure.
+- no native Urlbar, identity/protections panel, permission, or page-action DOM
+  moved or managed;
+- bridge/component/overlay failure, exact cleanup, and native-visible recovery;
+- normal, second-normal, private, frontend recovery, and Browser Toolbox runs.
+
+The real harness creates a temporary loopback-only Firefox search engine for
+the ordinary-search case, restores the prior default, and removes the engine in
+`finally`. Its delayed page is also loopback-only. No submitted test query is
+sent to an external service.
+
+Evidence: `docs/research/firefox-153-address-popup.md`.
 
 ### 6.4 Right bookmarks — required for #14
 
@@ -363,9 +387,9 @@ any live state -> disposed
 Current package `0.7.0-dev` stops at `healthy`. The health phase requires:
 
 - exact frame identity and placement;
-- ordered top/left/right/bottom hosts;
-- four XHTML mount targets;
-- four frontend roots;
+- ordered top/left/right/bottom hosts plus the final address-overlay host;
+- five XHTML mount targets;
+- five frontend roots;
 - attached parsed project CSS;
 - edge reveal controller;
 - environment/suspension handling;
@@ -473,7 +497,7 @@ download filenames/URLs/paths, profile paths, or private browsing data.
 
 Use it to verify:
 
-- exact frame and edge-host placement;
+- exact frame, edge-host, and address-overlay placement;
 - XHTML namespace;
 - project/native ownership boundary;
 - root state attributes;
@@ -507,7 +531,7 @@ Maintain controlled tests for:
 - window initialization race/close;
 - changed host insertion point;
 - partial frame/edge host attach;
-- missing top, left, right, or bottom target;
+- missing top, left, right, bottom, or address-overlay target;
 - frontend registration/mount/unmount failure;
 - missing/invalid frame CSS;
 - edge-controller construction/hold/timer/corner/disposal failure;
@@ -585,21 +609,22 @@ of the installed package.
 
 ## 13. Evidence index
 
-| Milestone | Evidence |
-| --- | --- |
-| Development profile | `docs/development-setup.md` |
-| Bootstrap | `docs/research/firefox-153-bootstrap.md` |
-| Identity migration | `docs/research/fennevia-identity-migration.md` |
-| Installer lifecycle | `docs/research/fennevia-installer-validation.md` |
-| Window lifecycle | `docs/research/firefox-153-window-lifecycle.md` |
-| Initial XHTML hosts | `docs/research/firefox-153-shell-hosts.md` |
-| Health and recovery | `docs/research/firefox-153-shell-health-recovery.md` |
-| Svelte build | `docs/research/firefox-153-svelte-build.md` |
-| Firefox boundary | `docs/research/firefox-153-bridge-boundary.md` |
-| Tabs bridge | `docs/research/firefox-153-tabs-bridge.md` |
-| Tab UI | `docs/research/firefox-153-tab-strip.md` |
-| Four-edge frame | `docs/research/firefox-153-four-edge-shell.md` |
-| Top navigation | `docs/research/firefox-153-navigation-controls.md` |
+| Milestone                  | Evidence                                             |
+| -------------------------- | ---------------------------------------------------- |
+| Development profile        | `docs/development-setup.md`                          |
+| Bootstrap                  | `docs/research/firefox-153-bootstrap.md`             |
+| Identity migration         | `docs/research/fennevia-identity-migration.md`       |
+| Installer lifecycle        | `docs/research/fennevia-installer-validation.md`     |
+| Window lifecycle           | `docs/research/firefox-153-window-lifecycle.md`      |
+| Initial XHTML hosts        | `docs/research/firefox-153-shell-hosts.md`           |
+| Health and recovery        | `docs/research/firefox-153-shell-health-recovery.md` |
+| Svelte build               | `docs/research/firefox-153-svelte-build.md`          |
+| Firefox boundary           | `docs/research/firefox-153-bridge-boundary.md`       |
+| Tabs bridge                | `docs/research/firefox-153-tabs-bridge.md`           |
+| Tab UI                     | `docs/research/firefox-153-tab-strip.md`             |
+| Four-edge frame            | `docs/research/firefox-153-four-edge-shell.md`       |
+| Top navigation             | `docs/research/firefox-153-navigation-controls.md`   |
+| Address launcher and popup | `docs/research/firefox-153-address-popup.md`         |
 
 Those records describe the exact milestone tested. Current production state is
 summarized in README, the master plan, the shell roadmap, architecture, issue

@@ -1,12 +1,77 @@
 export const maximumNavigationTitleLength = 256;
 export const maximumNavigationDisplayUriLength = 2_048;
+export const maximumNavigationAddressLength = 4_096;
+
+export type AddressPopupOpenRequest = Readonly<{
+  selectAll: boolean;
+  source: "ctrl-l";
+  type: "address-popup-open";
+}>;
+
+export type AddressSubmissionRejection = "empty" | "too-long" | "unsafe-scheme";
+
+export type AddressSubmissionResult =
+  | Readonly<{ status: "accepted" }>
+  | Readonly<{
+      reason: AddressSubmissionRejection;
+      status: "rejected";
+    }>;
+
+export type ConnectionSecurityState =
+  | "associated"
+  | "certificate-error"
+  | "extension"
+  | "https-only-error"
+  | "internal"
+  | "local"
+  | "network-error"
+  | "not-secure"
+  | "secure"
+  | "secure-certificate-override"
+  | "secure-qualified-certificate"
+  | "secure-verified-organization"
+  | "unavailable";
+
+export type TrackingProtectionState =
+  | "blocking"
+  | "detected"
+  | "exception"
+  | "no-trackers-detected"
+  | "unavailable";
+
+const connectionSecurityStates = new Set<ConnectionSecurityState>([
+  "associated",
+  "certificate-error",
+  "extension",
+  "https-only-error",
+  "internal",
+  "local",
+  "network-error",
+  "not-secure",
+  "secure",
+  "secure-certificate-override",
+  "secure-qualified-certificate",
+  "secure-verified-organization",
+  "unavailable",
+]);
+
+const trackingProtectionStates = new Set<TrackingProtectionState>([
+  "blocking",
+  "detected",
+  "exception",
+  "no-trackers-detected",
+  "unavailable",
+]);
 
 export type NavigationSnapshot = Readonly<{
+  addressValue: string;
   canGoBack: boolean;
   canGoForward: boolean;
+  connectionSecurity: ConnectionSecurityState;
   displayUri: string;
   loading: boolean;
   title: string;
+  trackingProtection: TrackingProtectionState;
 }>;
 
 export type NavigationStateEvent = Readonly<{
@@ -17,13 +82,18 @@ export type NavigationStateEvent = Readonly<{
 
 export type BrowserNavigationBridge = Readonly<{
   back: () => boolean;
+  focusContent: () => boolean;
   forward: () => boolean;
   newTab: () => boolean;
   reload: () => boolean;
   reloadOrStop: () => "reload" | "stop";
   snapshot: () => NavigationSnapshot;
   stop: () => boolean;
+  submitAddress: (value: string) => AddressSubmissionResult;
   subscribe: (listener: (event: NavigationStateEvent) => void) => () => boolean;
+  subscribeAddressPopupOpen: (
+    listener: (request: AddressPopupOpenRequest) => boolean,
+  ) => () => boolean;
 }>;
 
 export type BrowserNavigationState = Readonly<{
@@ -34,19 +104,25 @@ export type BrowserNavigationState = Readonly<{
 export type BrowserNavigationStateAdapter = Readonly<{
   back: () => boolean;
   dispose: () => boolean;
+  focusContent: () => boolean;
   forward: () => boolean;
   newTab: () => boolean;
   reload: () => boolean;
   reloadOrStop: () => "reload" | "stop";
   snapshot: () => BrowserNavigationState;
   status: () => Readonly<{
+    addressPopupSubscriberCount: number;
     disposed: boolean;
     revision: number;
     subscriberCount: number;
   }>;
   stop: () => boolean;
+  submitAddress: (value: string) => AddressSubmissionResult;
   subscribe: (
     listener: (state: BrowserNavigationState) => void,
+  ) => () => boolean;
+  subscribeAddressPopupOpen: (
+    listener: (request: AddressPopupOpenRequest) => boolean,
   ) => () => boolean;
 }>;
 
@@ -75,20 +151,28 @@ export function copyNavigationSnapshot(
     typeof candidate !== "object" ||
     typeof candidate.canGoBack !== "boolean" ||
     typeof candidate.canGoForward !== "boolean" ||
-    typeof candidate.loading !== "boolean"
+    typeof candidate.loading !== "boolean" ||
+    !connectionSecurityStates.has(candidate.connectionSecurity) ||
+    !trackingProtectionStates.has(candidate.trackingProtection)
   ) {
     throw createStateError("FENNEVIA_NAVIGATION_STATE_SNAPSHOT_INVALID");
   }
 
   return Object.freeze({
+    addressValue: copyBoundedString(
+      candidate.addressValue,
+      maximumNavigationAddressLength,
+    ),
     canGoBack: candidate.canGoBack,
     canGoForward: candidate.canGoForward,
+    connectionSecurity: candidate.connectionSecurity,
     displayUri: copyBoundedString(
       candidate.displayUri,
       maximumNavigationDisplayUriLength,
     ),
     loading: candidate.loading,
     title: copyBoundedString(candidate.title, maximumNavigationTitleLength),
+    trackingProtection: candidate.trackingProtection,
   });
 }
 
@@ -129,13 +213,16 @@ export function createBrowserNavigationStateAdapter(
     !bridge ||
     typeof bridge !== "object" ||
     typeof bridge.back !== "function" ||
+    typeof bridge.focusContent !== "function" ||
     typeof bridge.forward !== "function" ||
     typeof bridge.newTab !== "function" ||
     typeof bridge.reload !== "function" ||
     typeof bridge.reloadOrStop !== "function" ||
     typeof bridge.snapshot !== "function" ||
     typeof bridge.stop !== "function" ||
-    typeof bridge.subscribe !== "function"
+    typeof bridge.submitAddress !== "function" ||
+    typeof bridge.subscribe !== "function" ||
+    typeof bridge.subscribeAddressPopupOpen !== "function"
   ) {
     throw createStateError("FENNEVIA_NAVIGATION_STATE_BRIDGE_INVALID");
   }
@@ -144,6 +231,7 @@ export function createBrowserNavigationStateAdapter(
   let disposed = false;
   let state = createBrowserNavigationState(bridge.snapshot());
   const listeners = new Set<(state: BrowserNavigationState) => void>();
+  const addressPopupUnsubscribers = new Set<() => boolean>();
   const unsubscribeBridge = bridge.subscribe((event) => {
     if (disposed) {
       return;
@@ -179,10 +267,15 @@ export function createBrowserNavigationStateAdapter(
       disposed = true;
       activeBridge = null;
       listeners.clear();
+      for (const unsubscribe of Array.from(addressPopupUnsubscribers)) {
+        unsubscribe();
+      }
+      addressPopupUnsubscribers.clear();
       unsubscribeBridge();
       return true;
     },
 
+    focusContent: () => requireBridge().focusContent(),
     forward: () => requireBridge().forward(),
     newTab: () => requireBridge().newTab(),
     reload: () => requireBridge().reload(),
@@ -195,12 +288,14 @@ export function createBrowserNavigationStateAdapter(
     status() {
       return Object.freeze({
         disposed,
+        addressPopupSubscriberCount: addressPopupUnsubscribers.size,
         revision: state.revision,
         subscriberCount: listeners.size,
       });
     },
 
     stop: () => requireBridge().stop(),
+    submitAddress: (value: string) => requireBridge().submitAddress(value),
 
     subscribe(
       listener: (state: BrowserNavigationState) => void,
@@ -219,6 +314,53 @@ export function createBrowserNavigationStateAdapter(
         listeners.delete(listener);
         return true;
       });
+    },
+
+    subscribeAddressPopupOpen(
+      listener: (request: AddressPopupOpenRequest) => boolean,
+    ): () => boolean {
+      if (typeof listener !== "function") {
+        throw createStateError(
+          "FENNEVIA_NAVIGATION_ADDRESS_POPUP_LISTENER_INVALID",
+        );
+      }
+      const unsubscribeBridgePopup = requireBridge().subscribeAddressPopupOpen(
+        (request) => {
+          if (
+            request?.type !== "address-popup-open" ||
+            request.source !== "ctrl-l" ||
+            request.selectAll !== true
+          ) {
+            throw createStateError(
+              "FENNEVIA_NAVIGATION_ADDRESS_POPUP_REQUEST_INVALID",
+            );
+          }
+          return listener(
+            Object.freeze({
+              selectAll: request.selectAll,
+              source: request.source,
+              type: "address-popup-open" as const,
+            }),
+          );
+        },
+      );
+      if (typeof unsubscribeBridgePopup !== "function") {
+        throw createStateError(
+          "FENNEVIA_NAVIGATION_ADDRESS_POPUP_SUBSCRIPTION_INVALID",
+        );
+      }
+      let subscribed = true;
+      const unsubscribe = Object.freeze(() => {
+        if (!subscribed) {
+          return false;
+        }
+        subscribed = false;
+        addressPopupUnsubscribers.delete(unsubscribe);
+        unsubscribeBridgePopup();
+        return true;
+      });
+      addressPopupUnsubscribers.add(unsubscribe);
+      return unsubscribe;
     },
   });
 }

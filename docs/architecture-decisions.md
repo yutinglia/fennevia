@@ -641,3 +641,72 @@ error pages, title, loading, command state, and selected-browser handoff without
 a continuous DOM poll. Source, canary, failure, cleanup, privacy, and real
 normal/second/private-window evidence is recorded in
 `docs/research/firefox-153-navigation-controls.md`.
+
+## ADR-028: Use a compact address/status launcher and one centered owned popup
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Keep the left edge compact: above the vertical tab list, render one
+non-editable launcher containing bounded committed location text plus concise
+connection/HTTPS and Enhanced Tracking Protection labels derived from current
+Firefox state. Put the sole custom editable address field and fuller versions
+of those two status rows in one centered, nonmodal Fennevia popup.
+
+Extend ADR-026's shared frame with one final project-owned XHTML
+address-overlay host, target, and Svelte root. The four edge hosts remain in
+their established order and retain one controller. The fifth root owns only
+the popup; it is hidden and pointer-inert at rest. While popup state has
+priority, the shared edge controller suppresses all four surfaces. Mount,
+health, unmount/remount, fail-open rollback, and disposal treat all five roots
+as one complete per-window shell. No node is mounted into a Firefox popup set
+or native container.
+
+Extend ADR-027's one navigation controller instead of creating another native
+navigation owner. The public immutable snapshot adds bounded committed address
+text and fixed connection/protection enums. The controller reads a committed
+native Urlbar value only when `pageproxystate` is valid, otherwise the selected
+URI; initial blank/home/private locations remain visually empty. It reconciles
+selected top-level location, network, security, content-blocking, tab, and
+command events without polling or mirroring an uncommitted native draft.
+
+The popup owns one independent per-window draft, limited to 4,096 characters.
+Empty, over-limit, `data:`, `javascript:`, and `vbscript:` input is rejected
+before native access. For accepted text, write the current native
+`gURLBar.value` and invoke `gURLBar.handleCommand()`. Firefox therefore keeps
+URL fixup, ordinary search, principal, load/disposition, observer, and
+telemetry behavior. Do not introduce a general `loadURI` helper or pass a URL
+to a project action outside this validated path.
+
+Healthy-shell `Ctrl+L` asks the popup subscriber to open, focus, and select.
+Cancel the retained `Browser:OpenLocation` event only when that request is
+accepted. In inactive, failed, safe-started, unsupported, or disposed state—or
+if focus/open fails—the native event continues to Firefox. Selected-tab change
+closes/discards the draft; background same-tab navigation cannot overwrite an
+active draft; accepted navigation confirmation closes the popup. Escape,
+backdrop, and focus-boundary close restore a still-valid prior focus target or
+the current selected content browser.
+
+Map only current fixed values from
+`gIdentityHandler.getConnectionSecurityInformation()` and current coherent
+`gProtectionsHandler`/`ContentBlockingAllowList` state into ordinary enums.
+Unknown, transient, or non-handleable state is explicitly `unavailable`.
+Compact and detailed labels consume the same mapping. Do not infer HTTPS or
+protection from URL text, expose certificate/permission data, or draw a fake
+security claim.
+
+Firefox's native Urlbar, identity and protections panels, permissions, page
+actions, prompts, and navbar remain attached, visible, and authoritative.
+Issue #37 owns a separate reviewed inventory for fuller permissions/page-action
+coverage before issue #15 may hide related native UI.
+
+**Reasoning:** The compact launcher preserves space for vertical tabs while a
+centered popup provides a focused editing surface and room for honest status
+details. Delegating submission and command fallback to the retained Urlbar
+keeps unstable policy in Firefox. Fixed source-derived enums give the user the
+requested side-level HTTPS/protection awareness without claiming to replace
+security-sensitive native panels. One additional owned root is smaller and
+safer than moving native DOM, mounting inside Firefox popup infrastructure, or
+building a parallel Urlbar provider stack. Source pins, product-reference
+provenance, first causal failures, rejected alternatives, privacy review, and
+normal/second/private/Browser-Toolbox evidence are recorded in
+`docs/research/firefox-153-address-popup.md`.

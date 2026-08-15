@@ -411,7 +411,7 @@ const dispatchEmergencyFallback = (window) => {
   assert.equal(stopped, true);
 };
 
-test("attaches four XHTML edge boundaries without moving native nodes and disposes cleanly", () => {
+test("attaches four XHTML edge boundaries and one overlay without moving native nodes", () => {
   const window = createBrowserWindow();
   const originalBodyChildren = window.document.body.children;
   const originalBrowserChildren = window.elements.browser.children;
@@ -431,6 +431,7 @@ test("attaches four XHTML edge boundaries without moving native nodes and dispos
     },
     environment: null,
     hostCount: 0,
+    overlay: { kind: "address", state: "created" },
     state: "created",
     windowKind: "normal",
   });
@@ -452,6 +453,14 @@ test("attaches four XHTML edge boundaries without moving native nodes and dispos
       host,
     );
   }
+  const overlayHost = window.document.getElementById(shellHostIds.overlay);
+  assert.equal(overlayHost.parentElement, frame);
+  assert.equal(overlayHost.getAttribute("data-fennevia-overlay-host"), "address");
+  assert.equal(
+    controller.getMountPoints().overlay.target.parentElement,
+    overlayHost,
+  );
+  assert.equal(frame.children.at(-1), overlayHost);
 
   const bodyChildren = window.document.body.children;
   const browserChildren = window.elements.browser.children;
@@ -475,7 +484,8 @@ test("attaches four XHTML edge boundaries without moving native nodes and dispos
       bottom: { edge: "bottom", state: "attached" },
     },
     environment: "normal",
-    hostCount: 4,
+    hostCount: 5,
+    overlay: { kind: "address", state: "attached" },
     state: "attached",
     windowKind: "normal",
   });

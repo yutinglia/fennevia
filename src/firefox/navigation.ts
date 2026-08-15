@@ -1,9 +1,14 @@
 import type {
+  AddressPopupOpenRequest,
+  AddressSubmissionResult,
   BrowserNavigationBridge,
+  ConnectionSecurityState,
   NavigationSnapshot,
   NavigationStateEvent,
+  TrackingProtectionState,
 } from "../app/navigation-state.ts";
 import {
+  maximumNavigationAddressLength,
   maximumNavigationDisplayUriLength,
   maximumNavigationTitleLength,
 } from "../app/navigation-state.ts";
@@ -32,6 +37,52 @@ const NAVIGATION_TAB_EVENT_TYPES = Object.freeze([
   "TabAttrModified",
 ]);
 const NAVIGATION_TAB_ATTRIBUTES = new Set(["busy", "label", "selected"]);
+const OPEN_LOCATION_COMMAND_ID = "Browser:OpenLocation";
+const OPEN_LOCATION_KEY_ID = "focusURLBar";
+const SHELL_HEALTH_ATTRIBUTE = "data-fennevia-healthy";
+const ADDRESS_POPUP_OPEN_REQUEST: AddressPopupOpenRequest = Object.freeze({
+  selectAll: true,
+  source: "ctrl-l",
+  type: "address-popup-open",
+});
+const ACCEPTED_ADDRESS_SUBMISSION: AddressSubmissionResult = Object.freeze({
+  status: "accepted",
+});
+const EMPTY_ADDRESS_SUBMISSION: AddressSubmissionResult = Object.freeze({
+  reason: "empty",
+  status: "rejected",
+});
+const LONG_ADDRESS_SUBMISSION: AddressSubmissionResult = Object.freeze({
+  reason: "too-long",
+  status: "rejected",
+});
+const UNSAFE_ADDRESS_SUBMISSION: AddressSubmissionResult = Object.freeze({
+  reason: "unsafe-scheme",
+  status: "rejected",
+});
+const EXECUTABLE_SCHEME_PATTERN = /^\s*(?:data|javascript|vbscript)\s*:/iu;
+const HIDDEN_COMMITTED_LOCATIONS = new Set([
+  "about:blank",
+  "about:home",
+  "about:newtab",
+  "about:privatebrowsing",
+]);
+const CONNECTION_SECURITY_MAP: Readonly<
+  Record<string, ConnectionSecurityState>
+> = Object.freeze({
+  associated: "associated",
+  "cert-error-page": "certificate-error",
+  chrome: "internal",
+  extension: "extension",
+  file: "local",
+  "https-only-error-page": "https-only-error",
+  "net-error-page": "network-error",
+  "not-secure": "not-secure",
+  secure: "secure",
+  "secure-cert-user-overridden": "secure-certificate-override",
+  "secure-etsi": "secure-qualified-certificate",
+  "secure-ev": "secure-verified-organization",
+});
 
 const getCommandSymbol = (id: string): string =>
   `document.commands[${id.replaceAll(":", "-")}]`;
@@ -39,6 +90,23 @@ const getCommandSymbol = (id: string): string =>
 type NativeRecord = Record<string, unknown>;
 type NativeCommand = NativeRecord & {
   hasAttribute: (name: string) => boolean;
+};
+type NativeUrlbar = NativeRecord & {
+  getAttribute: (name: string) => unknown;
+  handleCommand: () => unknown;
+  value: string;
+};
+type NativeIdentityHandler = NativeRecord & {
+  getConnectionSecurityInformation: () => unknown;
+};
+type NativeProtectionsHandler = NativeRecord & {
+  anyBlocking?: boolean;
+  anyDetected?: boolean;
+  hasException?: boolean;
+  onContentBlockingEvent: (...args: unknown[]) => unknown;
+};
+type NativeContentBlockingAllowList = NativeRecord & {
+  canHandle: (browser: unknown) => unknown;
 };
 type NativeTab = NativeRecord & {
   getAttribute: (name: string) => unknown;
@@ -69,7 +137,13 @@ const isNativeRecord = (value: unknown): value is NativeRecord =>
 const isFunction = (value: unknown): value is (...args: unknown[]) => unknown =>
   typeof value === "function";
 
-const isEventTarget = (value: unknown): boolean =>
+const isEventTarget = (
+  value: unknown,
+): value is NativeRecord &
+  Readonly<{
+    addEventListener: (...args: unknown[]) => unknown;
+    removeEventListener: (...args: unknown[]) => unknown;
+  }> =>
   isNativeRecord(value) &&
   isFunction(value.addEventListener) &&
   isFunction(value.removeEventListener);
@@ -97,6 +171,19 @@ const readBrowserCommandsMember = (
   return isNativeRecord(commands) ? commands[member] : undefined;
 };
 
+const readUrlbarMember = (window: NativeRecord, member: string): unknown => {
+  const urlbar = window.gURLBar;
+  return isNativeRecord(urlbar) ? urlbar[member] : undefined;
+};
+
+const readWindowMember = (window: NativeRecord, member: string): unknown =>
+  window[member];
+
+const readDocumentElement = (window: NativeRecord): unknown => {
+  const document = window.document;
+  return isNativeRecord(document) ? document.documentElement : undefined;
+};
+
 const readDocumentCommand = (window: NativeRecord, id: string): unknown => {
   const document = window.document;
   if (!isNativeRecord(document) || !isFunction(document.getElementById)) {
@@ -107,6 +194,25 @@ const readDocumentCommand = (window: NativeRecord, id: string): unknown => {
 
 const isCommand = (value: unknown): value is NativeCommand =>
   isNativeRecord(value) && isFunction(value.hasAttribute);
+
+const isUrlbar = (value: unknown): value is NativeUrlbar =>
+  isEventTarget(value) &&
+  typeof value.value === "string" &&
+  isFunction(value.getAttribute) &&
+  isFunction(value.handleCommand);
+
+const isIdentityHandler = (value: unknown): value is NativeIdentityHandler =>
+  isNativeRecord(value) && isFunction(value.getConnectionSecurityInformation);
+
+const isProtectionsHandler = (
+  value: unknown,
+): value is NativeProtectionsHandler =>
+  isNativeRecord(value) && isFunction(value.onContentBlockingEvent);
+
+const isContentBlockingAllowList = (
+  value: unknown,
+): value is NativeContentBlockingAllowList =>
+  isNativeRecord(value) && isFunction(value.canHandle);
 
 const isSelectedBrowserNavigationShape = (
   value: unknown,
@@ -139,6 +245,13 @@ const navigationCapabilitySpecifications: readonly NavigationCapabilitySpecifica
       symbol: "window.gBrowser.selectedBrowser.currentURI.displaySpec",
     }),
     Object.freeze({
+      isAvailable: isFunction,
+      name: "firefox.navigation-selected-browser-focus",
+      read: (window: NativeRecord) =>
+        readSelectedBrowserMember(window, "focus"),
+      symbol: "window.gBrowser.selectedBrowser.focus",
+    }),
+    Object.freeze({
       isAvailable: (value: unknown) =>
         isNativeRecord(value) && isFunction(value.getAttribute),
       name: "firefox.navigation-selected-tab",
@@ -168,6 +281,59 @@ const navigationCapabilitySpecifications: readonly NavigationCapabilitySpecifica
       name: "firefox.navigation-mutation-observer",
       read: (window: NativeRecord) => window.MutationObserver,
       symbol: "window.MutationObserver",
+    }),
+    Object.freeze({
+      isAvailable: (value: unknown) => typeof value === "string",
+      name: "firefox.navigation-urlbar-value",
+      read: (window: NativeRecord) => readUrlbarMember(window, "value"),
+      symbol: "window.gURLBar.value",
+    }),
+    Object.freeze({
+      isAvailable: isFunction,
+      name: "firefox.navigation-urlbar-submission",
+      read: (window: NativeRecord) => readUrlbarMember(window, "handleCommand"),
+      symbol: "window.gURLBar.handleCommand",
+    }),
+    Object.freeze({
+      isAvailable: isFunction,
+      name: "firefox.navigation-urlbar-proxy-state",
+      read: (window: NativeRecord) => readUrlbarMember(window, "getAttribute"),
+      symbol: "window.gURLBar.getAttribute",
+    }),
+    Object.freeze({
+      isAvailable: isIdentityHandler,
+      name: "firefox.navigation-connection-security",
+      read: (window: NativeRecord) =>
+        readWindowMember(window, "gIdentityHandler"),
+      symbol: "window.gIdentityHandler.getConnectionSecurityInformation",
+    }),
+    Object.freeze({
+      isAvailable: isProtectionsHandler,
+      name: "firefox.navigation-tracking-protection",
+      read: (window: NativeRecord) =>
+        readWindowMember(window, "gProtectionsHandler"),
+      symbol: "window.gProtectionsHandler.onContentBlockingEvent",
+    }),
+    Object.freeze({
+      isAvailable: isContentBlockingAllowList,
+      name: "firefox.navigation-tracking-protection-availability",
+      read: (window: NativeRecord) =>
+        readWindowMember(window, "ContentBlockingAllowList"),
+      symbol: "window.ContentBlockingAllowList.canHandle",
+    }),
+    Object.freeze({
+      isAvailable: (value: unknown) => isCommand(value) && isEventTarget(value),
+      name: "firefox.navigation-open-location-command",
+      read: (window: NativeRecord) =>
+        readDocumentCommand(window, OPEN_LOCATION_COMMAND_ID),
+      symbol: getCommandSymbol(OPEN_LOCATION_COMMAND_ID),
+    }),
+    Object.freeze({
+      isAvailable: (value: unknown) =>
+        isNativeRecord(value) && isFunction(value.hasAttribute),
+      name: "firefox.navigation-shell-health-gate",
+      read: readDocumentElement,
+      symbol: "document.documentElement.hasAttribute",
     }),
     ...Object.values(COMMANDS).flatMap(({ id, method }) => [
       Object.freeze({
@@ -240,11 +406,14 @@ const snapshotsEqual = (
   left: NavigationSnapshot,
   right: NavigationSnapshot,
 ): boolean =>
+  left.addressValue === right.addressValue &&
   left.canGoBack === right.canGoBack &&
   left.canGoForward === right.canGoForward &&
+  left.connectionSecurity === right.connectionSecurity &&
   left.displayUri === right.displayUri &&
   left.loading === right.loading &&
-  left.title === right.title;
+  left.title === right.title &&
+  left.trackingProtection === right.trackingProtection;
 
 const isRelevantTabAttributeEvent = (event: unknown): boolean => {
   if (!isNativeRecord(event) || !isNativeRecord(event.detail)) {
@@ -265,6 +434,7 @@ export type FirefoxNavigationBridgeController = Readonly<{
   dispose: () => boolean;
   navigation: BrowserNavigationBridge;
   snapshot: () => Readonly<{
+    addressPopupSubscriberCount: number;
     disposed: boolean;
     failed: boolean;
     revision: number;
@@ -296,16 +466,22 @@ export function createFirefoxNavigationBridge({
   let failedError: FirefoxBridgeError | null = null;
   let revision = 0;
   let currentSnapshot: NavigationSnapshot = Object.freeze({
+    addressValue: "",
     canGoBack: false,
     canGoForward: false,
+    connectionSecurity: "unavailable",
     displayUri: "",
     loading: false,
     title: "",
+    trackingProtection: "unavailable",
   });
   let commandObserver: NativeMutationObserver | null = null;
   let progressListenerRegistered = false;
   const listenerDisposers: IdempotentDisposer[] = [];
   const subscribers = new Set<(event: NavigationStateEvent) => void>();
+  const addressPopupSubscribers = new Set<
+    (request: AddressPopupOpenRequest) => boolean
+  >();
 
   const requireWindow = (): NativeRecord => {
     if (disposed || !nativeWindow) {
@@ -375,6 +551,59 @@ export function createFirefoxNavigationBridge({
     return command;
   };
 
+  const requireUrlbar = (): NativeUrlbar => {
+    const urlbar = requireWindow().gURLBar;
+    if (!isUrlbar(urlbar)) {
+      throw createNavigationError(
+        boundary,
+        "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
+        "firefox-navigation-capability",
+        "window.gURLBar.handleCommand",
+      );
+    }
+    return urlbar;
+  };
+
+  const requireIdentityHandler = (): NativeIdentityHandler => {
+    const handler = requireWindow().gIdentityHandler;
+    if (!isIdentityHandler(handler)) {
+      throw createNavigationError(
+        boundary,
+        "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
+        "firefox-navigation-snapshot",
+        "window.gIdentityHandler.getConnectionSecurityInformation",
+      );
+    }
+    return handler;
+  };
+
+  const requireProtectionsHandler = (): NativeProtectionsHandler => {
+    const handler = requireWindow().gProtectionsHandler;
+    if (!isProtectionsHandler(handler)) {
+      throw createNavigationError(
+        boundary,
+        "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
+        "firefox-navigation-snapshot",
+        "window.gProtectionsHandler.onContentBlockingEvent",
+      );
+    }
+    return handler;
+  };
+
+  const requireContentBlockingAllowList =
+    (): NativeContentBlockingAllowList => {
+      const allowList = requireWindow().ContentBlockingAllowList;
+      if (!isContentBlockingAllowList(allowList)) {
+        throw createNavigationError(
+          boundary,
+          "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
+          "firefox-navigation-snapshot",
+          "window.ContentBlockingAllowList.canHandle",
+        );
+      }
+      return allowList;
+    };
+
   const assertRequiredCapabilities = () => {
     const evaluations = evaluateNavigationCapabilities(requireWindow());
     const missing = evaluations.find(
@@ -412,17 +641,71 @@ export function createFirefoxNavigationBridge({
     return String(candidate ?? "").slice(0, maximumNavigationDisplayUriLength);
   };
 
+  const readAddressValue = (displayUri: string): string => {
+    if (HIDDEN_COMMITTED_LOCATIONS.has(displayUri)) {
+      return "";
+    }
+    const urlbar = requireUrlbar();
+    const proxyState = Reflect.apply(urlbar.getAttribute, urlbar, [
+      "pageproxystate",
+    ]);
+    const candidate = proxyState === "valid" ? urlbar.value : displayUri;
+    return candidate.slice(0, maximumNavigationAddressLength);
+  };
+
+  const readConnectionSecurity = (): ConnectionSecurityState => {
+    const handler = requireIdentityHandler();
+    const nativeState = Reflect.apply(
+      handler.getConnectionSecurityInformation,
+      handler,
+      [],
+    );
+    return typeof nativeState === "string"
+      ? (CONNECTION_SECURITY_MAP[nativeState] ?? "unavailable")
+      : "unavailable";
+  };
+
+  const readTrackingProtection = (
+    selectedBrowser: NativeRecord,
+  ): TrackingProtectionState => {
+    const allowList = requireContentBlockingAllowList();
+    if (
+      Reflect.apply(allowList.canHandle, allowList, [selectedBrowser]) !== true
+    ) {
+      return "unavailable";
+    }
+    const handler = requireProtectionsHandler();
+    if (
+      typeof handler.hasException !== "boolean" ||
+      typeof handler.anyBlocking !== "boolean" ||
+      typeof handler.anyDetected !== "boolean"
+    ) {
+      return "unavailable";
+    }
+    if (handler.hasException) {
+      return "exception";
+    }
+    if (handler.anyBlocking) {
+      return "blocking";
+    }
+    return handler.anyDetected ? "detected" : "no-trackers-detected";
+  };
+
   const readSnapshot = (): NavigationSnapshot => {
     const selectedBrowser = requireSelectedBrowser();
     const selectedTab = requireSelectedTab();
+    const displayUri = readCurrentUri(selectedBrowser);
     return Object.freeze({
+      addressValue: readAddressValue(displayUri),
       canGoBack: readCommandEnabled(COMMANDS.back.id),
       canGoForward: readCommandEnabled(COMMANDS.forward.id),
-      displayUri: readCurrentUri(selectedBrowser),
+      connectionSecurity: readConnectionSecurity(),
+      displayUri,
       loading: readCommandEnabled(COMMANDS.stop.id),
       title: String(
         Reflect.apply(selectedTab.getAttribute, selectedTab, ["label"]) ?? "",
       ).slice(0, maximumNavigationTitleLength),
+      trackingProtection: readTrackingProtection(selectedBrowser),
     });
   };
 
@@ -523,6 +806,22 @@ export function createFirefoxNavigationBridge({
         "window.gBrowser.onStateChange",
       );
     },
+
+    onSecurityChange(browser: unknown, webProgress: unknown): void {
+      handleProgressUpdate(
+        browser,
+        webProgress,
+        "window.gBrowser.onSecurityChange",
+      );
+    },
+
+    onContentBlockingEvent(browser: unknown, webProgress: unknown): void {
+      handleProgressUpdate(
+        browser,
+        webProgress,
+        "window.gBrowser.onContentBlockingEvent",
+      );
+    },
   });
 
   const invokeCommand = (
@@ -565,8 +864,115 @@ export function createFirefoxNavigationBridge({
     }
   };
 
+  const submitAddress = (value: string): AddressSubmissionResult => {
+    if (typeof value !== "string") {
+      return EMPTY_ADDRESS_SUBMISSION;
+    }
+    if (value.length > maximumNavigationAddressLength) {
+      return LONG_ADDRESS_SUBMISSION;
+    }
+    if (value.trim().length === 0) {
+      return EMPTY_ADDRESS_SUBMISSION;
+    }
+    if (EXECUTABLE_SCHEME_PATTERN.test(value)) {
+      return UNSAFE_ADDRESS_SUBMISSION;
+    }
+    requireSelectedBrowser();
+    const urlbar = requireUrlbar();
+    try {
+      urlbar.value = value;
+      Reflect.apply(urlbar.handleCommand, urlbar, []);
+      return ACCEPTED_ADDRESS_SUBMISSION;
+    } catch (error) {
+      throw createNavigationError(
+        boundary,
+        "FENNEVIA_FIREFOX_ADDRESS_SUBMISSION_FAILED",
+        "firefox-address-submit",
+        "window.gURLBar.handleCommand",
+        error,
+      );
+    }
+  };
+
+  const isShellHealthy = (): boolean => {
+    const root = readDocumentElement(requireWindow());
+    return (
+      isNativeRecord(root) &&
+      isFunction(root.hasAttribute) &&
+      Boolean(Reflect.apply(root.hasAttribute, root, [SHELL_HEALTH_ATTRIBUTE]))
+    );
+  };
+
+  const isCtrlLCommand = (event: unknown): boolean => {
+    if (!isNativeRecord(event) || !isNativeRecord(event.sourceEvent)) {
+      return false;
+    }
+    const sourceTarget = event.sourceEvent.target;
+    return (
+      isNativeRecord(sourceTarget) && sourceTarget.id === OPEN_LOCATION_KEY_ID
+    );
+  };
+
+  const handleOpenLocationCommand = (event: unknown): void => {
+    if (disposed || failedError) {
+      return;
+    }
+    try {
+      if (
+        !isShellHealthy() ||
+        !isCtrlLCommand(event) ||
+        addressPopupSubscribers.size === 0
+      ) {
+        return;
+      }
+      reconcile(true);
+      let handled = false;
+      for (const listener of Array.from(addressPopupSubscribers)) {
+        handled = listener(ADDRESS_POPUP_OPEN_REQUEST) === true || handled;
+      }
+      if (!handled || !isNativeRecord(event)) {
+        return;
+      }
+      if (isFunction(event.preventDefault)) {
+        Reflect.apply(event.preventDefault, event, []);
+      }
+      if (isFunction(event.stopPropagation)) {
+        Reflect.apply(event.stopPropagation, event, []);
+      }
+    } catch (error) {
+      reportNativeEventFailure(
+        error,
+        getCommandSymbol(OPEN_LOCATION_COMMAND_ID),
+      );
+    }
+  };
+
   const publicBridge: BrowserNavigationBridge = Object.freeze({
     back: () => invokeCommand("back"),
+    focusContent(): boolean {
+      const selectedBrowser = requireSelectedBrowser();
+      const focus = selectedBrowser.focus;
+      if (!isFunction(focus)) {
+        throw createNavigationError(
+          boundary,
+          "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
+          "firefox-navigation-focus",
+          "window.gBrowser.selectedBrowser.focus",
+        );
+      }
+      try {
+        Reflect.apply(focus, selectedBrowser, []);
+        return true;
+      } catch (error) {
+        throw createNavigationError(
+          boundary,
+          "FENNEVIA_FIREFOX_NAVIGATION_FOCUS_FAILED",
+          "firefox-navigation-focus",
+          "window.gBrowser.selectedBrowser.focus",
+          error,
+        );
+      }
+    },
     forward: () => invokeCommand("forward"),
     newTab: () => invokeCommand("newTab", false),
     reload: () => invokeCommand("reload"),
@@ -583,6 +989,7 @@ export function createFirefoxNavigationBridge({
     },
 
     stop: () => invokeCommand("stop"),
+    submitAddress,
 
     subscribe(listener: (event: NavigationStateEvent) => void): () => boolean {
       requireWindow();
@@ -597,6 +1004,24 @@ export function createFirefoxNavigationBridge({
       subscribers.add(listener);
       return createIdempotentDisposer(() => {
         subscribers.delete(listener);
+      });
+    },
+
+    subscribeAddressPopupOpen(
+      listener: (request: AddressPopupOpenRequest) => boolean,
+    ): () => boolean {
+      requireWindow();
+      if (typeof listener !== "function") {
+        throw createNavigationError(
+          boundary,
+          "FENNEVIA_FIREFOX_ADDRESS_POPUP_LISTENER_INVALID",
+          "firefox-address-popup-subscribe",
+          "navigation.subscribeAddressPopupOpen",
+        );
+      }
+      addressPopupSubscribers.add(listener);
+      return createIdempotentDisposer(() => {
+        addressPopupSubscribers.delete(listener);
       });
     },
   });
@@ -635,6 +1060,14 @@ export function createFirefoxNavigationBridge({
         }),
       );
     }
+
+    listenerDisposers.push(
+      boundary.subscribe(
+        requireCommand(OPEN_LOCATION_COMMAND_ID),
+        "command",
+        handleOpenLocationCommand,
+      ),
+    );
 
     const browser = requireGBrowser();
     Reflect.apply(
@@ -743,6 +1176,7 @@ export function createFirefoxNavigationBridge({
       }
       listenerDisposers.length = 0;
       subscribers.clear();
+      addressPopupSubscribers.clear();
       nativeWindow = null;
       if (firstError !== undefined) {
         throw createNavigationError(
@@ -760,6 +1194,7 @@ export function createFirefoxNavigationBridge({
 
     snapshot() {
       return Object.freeze({
+        addressPopupSubscriberCount: addressPopupSubscribers.size,
         disposed,
         failed: failedError !== null,
         revision,

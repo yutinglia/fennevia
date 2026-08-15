@@ -139,21 +139,36 @@ export function createFirefoxNavigationBridge() {
   let disposed = false;
   const navigation = Object.freeze({
     back() { return false; },
+    focusContent() { return true; },
     forward() { return false; },
     newTab() { return true; },
     reload() { return true; },
     reloadOrStop() { return "reload"; },
     snapshot() {
       return Object.freeze({
+        addressValue: "",
         canGoBack: false,
         canGoForward: false,
+        connectionSecurity: "unavailable",
         displayUri: "about:blank",
         loading: false,
         title: "",
+        trackingProtection: "unavailable",
       });
     },
     stop() { return false; },
+    submitAddress() { return Object.freeze({ status: "accepted" }); },
     subscribe() {
+      let active = true;
+      return () => {
+        if (!active) {
+          return false;
+        }
+        active = false;
+        return true;
+      };
+    },
+    subscribeAddressPopupOpen() {
       let active = true;
       return () => {
         if (!active) {
