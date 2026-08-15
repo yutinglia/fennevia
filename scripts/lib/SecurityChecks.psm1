@@ -281,6 +281,20 @@ function Add-FenneviaPatternFindings {
         [Collections.Generic.List[object]] $Findings
     )
 
+    $endpointContent = $Content
+    foreach ($namespaceUri in @(
+        "http://www.w3.org/1999/xhtml",
+        "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+    )) {
+        foreach ($quote in @('"', "'")) {
+            $quotedNamespace = $quote + $namespaceUri + $quote
+            $endpointContent = $endpointContent.Replace(
+                $quotedNamespace,
+                ((" " * $quotedNamespace.Length) -join "")
+            )
+        }
+    }
+
     $patterns = @(
         [pscustomobject]@{
             Rule = "ARTIFACT_REMOTE_ENDPOINT"
@@ -313,7 +327,13 @@ function Add-FenneviaPatternFindings {
     )
 
     foreach ($definition in $patterns) {
-        foreach ($match in [regex]::Matches($Content, $definition.Pattern)) {
+        $patternContent = if ($definition.Rule -ceq "ARTIFACT_REMOTE_ENDPOINT") {
+            $endpointContent
+        }
+        else {
+            $Content
+        }
+        foreach ($match in [regex]::Matches($patternContent, $definition.Pattern)) {
             $line = Get-FenneviaLineNumberAtIndex -Content $Content -Index $match.Index
             $Findings.Add((New-FenneviaArtifactFinding -Rule $definition.Rule -Path $RelativePath -Line $line))
         }

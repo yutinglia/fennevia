@@ -252,3 +252,44 @@ runtime network behavior, or third-party dependency. The pinned research,
 canary differences, automated tests, real normal/private-window matrix, and
 fail-open injection are recorded in
 `docs/research/firefox-153-window-lifecycle.md`.
+
+## ADR-020: Attach three validated XHTML islands without taking native DOM ownership
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+For each managed normal or private browser window, create exactly three
+project-owned XHTML hosts only after validating the exact `browser.xhtml`
+document, namespaces, parents, and source-backed child order:
+
+- a visible primary `section` as a direct `body` child immediately before
+  `#browser`;
+- a hidden sidebar `aside` immediately before `#tabbrowser-tabbox` under
+  `#browser`;
+- a hidden, inert, pointer-transparent overlay `div` immediately before
+  `#a11y-announcement` under `body`.
+
+Fennevia owns only each host and its descendants. It does not move, replace,
+remove, reconcile, or hide the navigator toolbox, browser content, native
+sidebar, tabbox, modal dialog, accessibility/fullscreen anchors, titlebar, or
+window controls. The initial primary surface contains only normalized,
+non-browsing diagnostic text. There is no Shadow DOM, framework mount, active
+gate, or new Chrome Registry mapping in this decision.
+
+Every host controller has explicit create, attach, detach, reattach, and
+dispose transitions. Duplicate project IDs are treated as a collision rather
+than adopted. Any missing or changed insertion point rolls back exact project
+node references and emits an allowlisted DOM path plus Firefox version/build
+before the existing outer bootstrap boundary fails open to native UI.
+
+**Reasoning:** Firefox 153's stock document is XHTML with mixed XHTML/XUL
+children. The native toolbox and browser are body siblings, while native
+sidebar and tab content infrastructure remain children of `#browser`.
+Dedicated XHTML islands preserve a strict future frontend ownership boundary;
+placing the visible host between the toolbox and browser participates in the
+existing body flex column without covering native titlebar controls or web
+content. A hidden overlay cannot intercept prompts, and retaining Firefox's
+native modal top layer preserves security UI.
+
+The stock-DOM snapshot, current-source links, rejected placements, Browser
+Toolbox Inspector evidence, privacy review, failure injection, and cleanup
+matrix are recorded in `docs/research/firefox-153-shell-hosts.md`.

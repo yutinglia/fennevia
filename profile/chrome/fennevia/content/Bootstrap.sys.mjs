@@ -26,6 +26,9 @@ const { createWindowManager } = ChromeUtils.importESModule(
 const { startProcessRuntime } = ChromeUtils.importESModule(
   "chrome://fennevia/content/runtime/Runtime.sys.mjs"
 );
+const { initializeWindowShell } = ChromeUtils.importESModule(
+  "chrome://fennevia/content/runtime/WindowShell.sys.mjs"
+);
 
 const logger = createRuntimeLogger({
   consoleService: Services.console,
@@ -36,6 +39,13 @@ const runtimeState = startProcessRuntime({
   privateBrowsingUtils: PrivateBrowsingUtils,
   logger,
   createWindowManager,
+  initializeWindow(context) {
+    return initializeWindowShell({
+      context,
+      logger,
+      appInfo: Services.appinfo,
+    });
+  },
 });
 
 const result = Object.freeze({

@@ -24,6 +24,14 @@ Requirements:
 - Do not move, remove, or reconcile Firefox-owned DOM.
 - Render only a diagnostic surface containing non-sensitive runtime, version, window-type, and health information.
 
+Progress (2026-08-15): issue #6 completed this milestone on Firefox 153.0.4 for
+Windows. The runtime creates one visible primary XHTML host, one hidden sidebar
+host, and one hidden inert overlay host in each managed normal/private window.
+Real second-window, cleanup, changed-insertion-point, native modal/content/OS
+control, and Browser Toolbox Inspector checks passed. The diagnostic reports
+ready state rather than the future Milestone B health machine; native UI remains
+fully visible. See `docs/research/firefox-153-shell-hosts.md` and ADR-020.
+
 ## Milestone B: Mount gate and recovery
 
 Maintain separate states for:

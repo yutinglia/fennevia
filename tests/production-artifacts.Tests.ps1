@@ -93,13 +93,24 @@ try {
     $safeRoot = Join-Path $testRoot "safe"
     $safeInventory = Join-Path $testRoot "safe-inventory.json"
     Write-TestFile -Path (Join-Path $safeRoot "runtime\main.mjs") -Content 'import "./local.mjs"; export const state = "ready";'
-    Write-TestFile -Path (Join-Path $safeRoot "runtime\local.mjs") -Content 'export const local = true;'
+    Write-TestFile -Path (Join-Path $safeRoot "runtime\local.mjs") -Content @'
+export const local = true;
+export const xhtmlNamespace = "http://www.w3.org/1999/xhtml";
+export const xulNamespace = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
+'@
     Write-TestFile -Path (Join-Path $safeRoot "shell\shell.css") -Content '.fennevia-shell { display: block; }'
     Write-Inventory -Path $safeInventory -ExpectedFiles @("runtime/main.mjs", "runtime/local.mjs", "shell/shell.css")
 
     $safeResult = Test-FenneviaProductionArtifacts -ArtifactRoot $safeRoot -InventoryPath $safeInventory
     Assert-True -Condition $safeResult.Passed -Message "A self-contained artifact set should pass."
     Assert-True -Condition ($safeResult.Findings.Count -eq 0) -Message "A passing artifact set should have no findings."
+
+    $namespaceSuffixRoot = Join-Path $testRoot "namespace-suffix"
+    $namespaceSuffixInventory = Join-Path $testRoot "namespace-suffix-inventory.json"
+    Write-TestFile -Path (Join-Path $namespaceSuffixRoot "main.mjs") -Content 'export const endpoint = "http://www.w3.org/1999/xhtml?remote=true";'
+    Write-Inventory -Path $namespaceSuffixInventory -ExpectedFiles @("main.mjs")
+    $namespaceSuffixResult = Test-FenneviaProductionArtifacts -ArtifactRoot $namespaceSuffixRoot -InventoryPath $namespaceSuffixInventory
+    Assert-True -Condition ($namespaceSuffixResult.Findings.Rule -contains "ARTIFACT_REMOTE_ENDPOINT") -Message "A namespace-looking URL with any suffix must remain blocked."
 
     $unsafeRoot = Join-Path $testRoot "unsafe"
     $unsafeInventory = Join-Path $testRoot "unsafe-inventory.json"

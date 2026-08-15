@@ -45,11 +45,13 @@ $manifestPath = Join-Path $packageRoot "chrome.manifest"
 $entryPath = Join-Path $packageRoot "content\Bootstrap.sys.mjs"
 $loggerPath = Join-Path $packageRoot "content\runtime\Logger.sys.mjs"
 $windowManagerPath = Join-Path $packageRoot "content\runtime\WindowManager.sys.mjs"
+$windowShellPath = Join-Path $packageRoot "content\runtime\WindowShell.sys.mjs"
 $runtimePath = Join-Path $packageRoot "content\runtime\Runtime.sys.mjs"
 $inventoryPath = Join-Path $repositoryRoot "package-manifest.json"
 $contentProbePath = Join-Path $repositoryRoot "tests\bootstrap-content-access.mjs"
 $contentFixturePath = Join-Path $repositoryRoot "tests\fixtures\bootstrap-content-access.html"
 $scannerModule = Join-Path $repositoryRoot "scripts\lib\SecurityChecks.psm1"
+$attributesPath = Join-Path $repositoryRoot ".gitattributes"
 
 $requiredFiles = @(
     $prefPath,
@@ -58,13 +60,28 @@ $requiredFiles = @(
     $entryPath,
     $loggerPath,
     $windowManagerPath,
+    $windowShellPath,
     $runtimePath,
     $inventoryPath,
     $contentProbePath,
-    $contentFixturePath
+    $contentFixturePath,
+    $attributesPath
 )
 foreach ($requiredFile in $requiredFiles) {
     Assert-True -Condition (Test-Path -LiteralPath $requiredFile -PathType Leaf) -Message "Required bootstrap file is missing."
+}
+
+$attributesContent = Get-Content -Raw -LiteralPath $attributesPath
+foreach ($requiredAttribute in @(
+    'program/defaults/pref/*.js text eol=crlf',
+    'program/*.cfg text eol=crlf',
+    'profile/chrome/fennevia/chrome.manifest text eol=crlf',
+    'profile/chrome/fennevia/**/*.mjs text eol=lf'
+)) {
+    Assert-True -Condition ($attributesContent.Contains($requiredAttribute)) -Message "Installed artifact EOL rules must keep package hashes stable across checkouts."
+}
+foreach ($modulePath in @($entryPath, $loggerPath, $runtimePath, $windowManagerPath, $windowShellPath)) {
+    Assert-True -Condition (-not [IO.File]::ReadAllText($modulePath).Contains("`r`n")) -Message "Privileged modules must be materialized with LF bytes for stable package hashes."
 }
 
 $prefContent = Get-Content -Raw -LiteralPath $prefPath
@@ -130,6 +147,7 @@ foreach ($requiredModuleUri in @(
     'resource://gre/modules/PrivateBrowsingUtils\.sys\.mjs',
     'chrome://fennevia/content/runtime/Logger\.sys\.mjs',
     'chrome://fennevia/content/runtime/WindowManager\.sys\.mjs',
+    'chrome://fennevia/content/runtime/WindowShell\.sys\.mjs',
     'chrome://fennevia/content/runtime/Runtime\.sys\.mjs'
 )) {
     Assert-Match -Content $entryContent -Pattern $requiredModuleUri -Message "The privileged entry must import each fixed lifecycle dependency."

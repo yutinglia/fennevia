@@ -7,6 +7,7 @@ const PROJECT_URI_PATTERN =
   /^chrome:\/\/fennevia\/[A-Za-z0-9._~!$&'()*+,;=:@\/-]{1,240}$/u;
 const PROJECT_COMMIT_PATTERN = /^(?:[0-9a-f]{7,40}|unknown)$/u;
 const APP_METADATA_PATTERN = /^[A-Za-z0-9._+-]{1,64}$/u;
+const DOM_PATH_PATTERN = /^[A-Za-z0-9#._>:-]{1,192}$/u;
 
 const normalizeStableToken = (value, fallback) => {
   const candidate = typeof value === "string" ? value : "";
@@ -126,6 +127,13 @@ export function createRuntimeLogger({
       PROJECT_URI_PATTERN.test(fields.projectUri)
     ) {
       record.projectUri = fields.projectUri;
+    }
+
+    if (
+      typeof fields?.domPath === "string" &&
+      DOM_PATH_PATTERN.test(fields.domPath)
+    ) {
+      record.domPath = fields.domPath;
     }
 
     if (

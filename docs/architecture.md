@@ -48,11 +48,11 @@ capability check; `Services.sys.mjs` is not packaged in the supported build.
 Structured records include phase, stable code, Firefox version, build ID, and a
 path/URL-redacted stack.
 
-Phase 2 keeps that entry singular. `Bootstrap.sys.mjs` imports three fixed
-project modules (`Logger`, `WindowManager`, and `Runtime`) plus Firefox's fixed
-`PrivateBrowsingUtils` module, starts one process runtime, and returns the same
-frozen bootstrap contract. AutoConfig still knows nothing about windows,
-features, or module discovery.
+Phase 2 keeps that entry singular. `Bootstrap.sys.mjs` imports four fixed
+project modules (`Logger`, `WindowManager`, `WindowShell`, and `Runtime`) plus
+Firefox's fixed `PrivateBrowsingUtils` module, starts one process runtime, and
+returns the same frozen bootstrap contract. AutoConfig still knows nothing
+about windows, features, or module discovery.
 
 ### Chrome Registry package
 
@@ -96,19 +96,30 @@ A per-window runtime owns:
 - eventually, that window's project XHTML hosts, Firefox bridge instances,
   frontend root, health state, and native-UI gate.
 
-Issue #5 implements the lifecycle only; it creates no hosts and changes no
-native UI. Normal and private windows receive the same complete base lifecycle.
+Issue #5 established the lifecycle. Issue #6 now supplies its one initializer:
+`WindowShell.sys.mjs` validates the exact current document hierarchy before it
+creates a visible primary XHTML host, hidden sidebar XHTML host, and hidden,
+inert overlay XHTML host. Normal and private windows receive the same complete
+host set. The primary host is a direct `body` child immediately before
+`#browser`; the sidebar host is immediately before `#tabbrowser-tabbox`; the
+overlay host is immediately before `#a11y-announcement`. Project code owns only
+these nodes and their descendants. It never moves a native node, sets an active
+gate, or hides native UI.
+
 Window unload removes the record, aborts pending initialization, and runs every
 registered cleanup exactly once. A late asynchronous result is immediately
-disposed and cannot transition the closed window back to managed state. Runtime
-stop removes the global observers, disposes every record, and is safe when
-called again. Shutdown behavior does not depend on garbage collection.
+disposed and cannot transition the closed window back to managed state. Host
+attachment failure removes every partial project node before propagating to the
+bootstrap fail-open boundary. Runtime stop removes the global observers,
+disposes every host/record, and is safe when called again. Shutdown behavior
+does not depend on garbage collection.
 
 Lifecycle records use a default-deny logger. They may identify the Firefox
 build, stable phase/code, process-local window UUID, and `normal`/`private`
 kind, but never a page URL, title, query, profile path, or native object. The
 source and runtime evidence is in
-`docs/research/firefox-153-window-lifecycle.md` and ADR-019.
+`docs/research/firefox-153-window-lifecycle.md`,
+`docs/research/firefox-153-shell-hosts.md`, ADR-019, and ADR-020.
 
 ## 4. Firefox bridge
 
@@ -292,6 +303,7 @@ profile/chrome/fennevia/content/
     Logger.sys.mjs
     Runtime.sys.mjs
     WindowManager.sys.mjs
+    WindowShell.sys.mjs
 ```
 
 These files are exact package artifacts with committed hashes; they are not

@@ -65,6 +65,13 @@ dropping stack lines. Only `chrome://` and `resource://` source locations remain
 after their suffixes are removed. Automated hostile-value tests prove that
 arbitrary URL, title, and private-content fields are not serialized.
 
+Issue #6 extends the allowlist with one fixed DOM-path field for insertion-point
+failures. It accepts only a short ASCII selector/path grammar; URL-like or local
+path values are dropped. The visible diagnostic is built exclusively from
+normalized Firefox version/build, normal/private kind, fixed host count, and
+fixed ready/native-retained labels. It never receives a browsing URL, title,
+query, profile path, native object, or arbitrary error message.
+
 ## 5. Dependency and supply-chain policy
 
 Before adding a runtime or build dependency, record:
@@ -163,6 +170,12 @@ During the initial roadmap, Firefox remains responsible for:
 
 Hiding or replacing a visible toolbar must not remove the underlying prompt, popup, notification, or command infrastructure.
 
+The issue #6 hosts do not hide any toolbar. The future overlay host remains
+hidden, inert, `aria-hidden`, and pointer-transparent. Real Firefox checks kept
+the native window-modal dialog in the top layer, left browser content
+hit-testable, retained the navigator toolbox and native close command, and
+confirmed the Browser Toolbox connection prompt remained enabled and usable.
+
 ## 9. Private windows
 
 - Private-window behavior must be explicit: fully supported or complete native fallback.
@@ -172,12 +185,14 @@ Hiding or replacing a visible toolbar must not remove the underlying prompt, pop
 - Only schema-defined shell preferences whose values are independent of browsing activity may persist; private tabs, titles, URLs, favicons, queries, recent items, selection, and feature usage never persist.
 - A feature that cannot prove per-window memory, synchronous disposal, and normal/private separation must use complete native fallback in private windows.
 
-The Phase 2 base lifecycle fully supports private browser windows without
-creating UI or reading browsing state. Classification happens before the
-initializer, process-global snapshots retain counts only, and unload/runtime
-stop abort and dispose the private record. This does not pre-approve any future
-private-window bridge or feature: each consumer must still prove its own data
-isolation or keep the complete native fallback.
+The Phase 2 base lifecycle fully supports private browser windows. Issue #6
+adds the same complete three-host set and fixed non-browsing diagnostic used by
+normal windows; it reads no tab, content, URL, title, query, or profile state.
+Classification happens before the initializer, process-global snapshots retain
+counts only, and unload/runtime stop abort and dispose the private hosts and
+record. This does not pre-approve any future private-window bridge or feature:
+each consumer must still prove its own data isolation or keep the complete
+native fallback.
 
 ## 10. Source maps and debug artifacts
 
@@ -186,6 +201,12 @@ isolation or keep the complete native fallback.
 - Source maps must not be published through a content-accessible resource mapping by accident.
 - Development-only failure-injection and debug APIs must be excluded or disabled in installed production artifacts.
 - Production builds require an exact file inventory and must pass `scripts/check-production-artifacts.ps1`; scanner findings have no silent bypass.
+
+The production scanner continues to reject runtime endpoints. Its only literal
+exception is an exact single- or double-quoted XHTML or XUL namespace URI;
+adding any suffix, path, query, or different URL remains a finding. Installed
+startup files have explicit repository EOL attributes so their manifest hashes
+describe stable bytes across Windows checkouts.
 
 ## 11. Security review triggers
 

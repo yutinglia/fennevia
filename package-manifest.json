@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
   "packageId": "fennevia",
-  "packageVersion": "0.2.0-dev",
+  "packageVersion": "0.3.0-dev",
   "expectedFiles": [
     "chrome.manifest",
     "content/Bootstrap.sys.mjs",
     "content/runtime/Logger.sys.mjs",
     "content/runtime/Runtime.sys.mjs",
-    "content/runtime/WindowManager.sys.mjs"
+    "content/runtime/WindowManager.sys.mjs",
+    "content/runtime/WindowShell.sys.mjs"
   ],
   "files": [
     {
@@ -28,12 +29,12 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/Bootstrap.sys.mjs",
-      "sha256": "b787313e8262902c746a3cc0210cfb2034ec941a81291aa9777dfb7431eb87d8"
+      "sha256": "6d58d7d26fd060b2fe464be203dd1c3afd2d222a9e5172fd90dda8db6bfc4320"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/Logger.sys.mjs",
-      "sha256": "4bb606ab1657ee8b7666534001ff9165522799745a7dcaef454a39696d9a1f33"
+      "sha256": "4c1d9afe4c942cfedf19e6a462211e90fab744f5fe165c6deeb87668ccea0ae6"
     },
     {
       "scope": "profile",
@@ -44,6 +45,11 @@
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/WindowManager.sys.mjs",
       "sha256": "2f510629430ce7c1f893343adb0aa9d7070b305c5749bfc9c75e5b2993c3d8b7"
+    },
+    {
+      "scope": "profile",
+      "path": "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
+      "sha256": "46b7756cdbc8cfd3ef5d9ff19dc5a54233daf4c85ee647c55943d610ed2d2ab3"
     }
   ]
 }

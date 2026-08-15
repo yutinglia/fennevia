@@ -54,7 +54,7 @@ The current bootstrap inventory is the exact `expectedFiles` list in
 #8 frontend build. That issue must add its exact generated file set; globs are
 prohibited because they cannot detect an unexpected chunk.
 
-After issue #5, the current privileged profile inventory is exactly:
+After issue #6, the current privileged profile inventory is exactly:
 
 ```text
 chrome.manifest
@@ -62,11 +62,12 @@ content/Bootstrap.sys.mjs
 content/runtime/Logger.sys.mjs
 content/runtime/Runtime.sys.mjs
 content/runtime/WindowManager.sys.mjs
+content/runtime/WindowShell.sys.mjs
 ```
 
-The package version is `0.2.0-dev`. Every entry has a committed SHA-256 in
+The package version is `0.3.0-dev`. Every entry has a committed SHA-256 in
 `package-manifest.json`; no new Chrome Registry declaration accompanies the
-three runtime modules.
+four runtime modules.
 
 Run the gate with:
 
@@ -91,6 +92,15 @@ The automated baseline detects:
 - `eval`, `new Function`, executable binaries, and unscannably large text;
 - junctions and symbolic links inside the artifact tree.
 
+The two standards-defined namespace identifiers used by DOM APIs are the only
+endpoint-literal exception: the scanner permits exact quoted
+`http://www.w3.org/1999/xhtml` and
+`http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul` values. It
+replaces only the exact quoted token before endpoint matching, so any suffix,
+path, query, alternate scheme, concatenation, or other URL remains blocked.
+The scanner fixture proves both the accepted constants and a rejected
+namespace-looking URL with a query.
+
 The scanner has no bypass flag. A legitimate finding requires a dedicated review and a visible policy/code change, not an ignored CI warning. Passing this static gate does not prove runtime safety; #8 must also run the built artifacts in the development profile, and #16 must make the gate part of CI.
 
 ## 4. Privacy-safe logging contract
@@ -111,6 +121,7 @@ Logging calls accept a defined event record, not arbitrary objects, native Firef
 | `windowKind` | `normal`, `private`, or `unsupported`; never window browsing state |
 | `capability` and `available` | Symbolic capability name and boolean |
 | `projectUri` | Only a fixed `chrome://fennevia/` URI known by source code |
+| `domPath` | Short source-defined ASCII selector/path only; URL-like and local path values are dropped |
 | `errorName` | Error class without an untrusted message |
 | `stack` | Every frame retained after sensitive substrings are replaced |
 | `opaqueId` | Process-local random ID with no durable or external mapping |
@@ -296,3 +307,21 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\window-lifecycle
 The real copied-Firefox and missing-module probes, including their explicit
 system-access test boundary, are recorded in
 `docs/research/firefox-153-window-lifecycle.md`.
+
+Issue #6 adds the isolated-host, scanner-exception, and real Browser Toolbox
+ownership checks:
+
+```powershell
+node --test .\tests\shell-hosts.test.mjs .\tests\window-lifecycle.test.mjs
+pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
+pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --browser-toolbox
+```
+
+The browser probe keeps the main connection prompt enabled, accepts it, uses
+the Inspector walker, then restores temporary parent prefs and the child
+Browser Toolbox profile byte-identically. Exact evidence and limitations are
+in `docs/research/firefox-153-shell-hosts.md`.
