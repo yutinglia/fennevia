@@ -83,6 +83,19 @@ Evaluate styling in this order:
 
 If Tailwind is adopted, disable Preflight, use a project-specific prefix, and guarantee that generated selectors cannot reset native Firefox chrome.
 
+Progress (2026-08-15): issue #8 completed this milestone on Firefox 153.0.4 for
+Windows. The production Svelte 5 bundle runs as one classic IIFE in each
+validated browser-window global, uses the maintained tree-fragment compiler
+strategy for Firefox's XML/XHTML document, and exposes a frozen lifecycle API
+only through a one-shot callback deleted after load. Extracted Svelte component
+CSS remains rooted at `#fennevia-shell-app-root`; Tailwind, Shadow DOM, runtime
+stylesheet registration, and a component library were unnecessary. State,
+events, conditionals, template content, normal/second/private isolation,
+official unmount/remount, missing/throwing fail-open behavior, Browser Toolbox
+ownership, deterministic build output, and the exact artifact gate passed. See
+ADR-022, `docs/research/firefox-153-svelte-build.md`, and
+`docs/dependency-reviews/frontend-toolchain-2026-08-15.md`.
+
 ## Milestone D: Firefox bridge
 
 Start with small interfaces rather than a large service framework. A tabs contract may resemble:

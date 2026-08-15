@@ -27,6 +27,7 @@ yarn-error.log*
 dev-profile/
 firefox-profile/
 .fennevia-local/
+.local-artifacts/
 local-artifacts/
 
 # Editor and OS files

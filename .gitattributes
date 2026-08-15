@@ -3,4 +3,6 @@
 program/defaults/pref/*.js text eol=crlf
 program/*.cfg text eol=crlf
 profile/chrome/fennevia/chrome.manifest text eol=crlf
+profile/chrome/fennevia/**/*.js text eol=lf
 profile/chrome/fennevia/**/*.mjs text eol=lf
+profile/chrome/fennevia/**/*.txt text eol=lf

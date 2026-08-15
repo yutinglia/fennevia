@@ -1,0 +1,37 @@
+{
+  "name": "fennevia",
+  "version": "0.5.0-dev",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.18.0",
+    "npm": "11.16.0"
+  },
+  "packageManager": "npm@11.16.0",
+  "scripts": {
+    "artifacts": "pwsh -NoProfile -File ./scripts/check-production-artifacts.ps1 -ArtifactRoot ./profile/chrome/fennevia -InventoryPath ./package-manifest.json",
+    "build": "node ./scripts/build-frontend.mjs && node ./scripts/sync-package-manifest.mjs",
+    "build:frontend": "node ./scripts/build-frontend.mjs",
+    "dependencies:audit": "node ./scripts/audit-frontend-dependencies.mjs",
+    "format": "prettier --write ./src ./tests/frontend-build.test.mjs ./tests/frontend-smoke.test.mjs ./scripts/audit-frontend-dependencies.mjs ./scripts/build-frontend.mjs ./scripts/sync-package-manifest.mjs ./vite.config.ts ./svelte.config.js ./eslint.config.js ./tsconfig.json ./tsconfig.node.json ./package.json ./.github/workflows/ci.yml",
+    "format:check": "prettier --check ./src ./tests/frontend-build.test.mjs ./tests/frontend-smoke.test.mjs ./scripts/audit-frontend-dependencies.mjs ./scripts/build-frontend.mjs ./scripts/sync-package-manifest.mjs ./vite.config.ts ./svelte.config.js ./eslint.config.js ./tsconfig.json ./tsconfig.node.json ./package.json ./.github/workflows/ci.yml",
+    "lint": "eslint ./src ./tests/frontend-build.test.mjs ./tests/frontend-smoke.test.mjs ./scripts/audit-frontend-dependencies.mjs ./scripts/build-frontend.mjs ./scripts/sync-package-manifest.mjs ./vite.config.ts ./svelte.config.js ./eslint.config.js",
+    "test": "node --test ./tests/frontend-build.test.mjs ./tests/frontend-smoke.test.mjs ./tests/health-state.test.mjs ./tests/safe-start.test.mjs ./tests/shell-hosts.test.mjs ./tests/window-lifecycle.test.mjs",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json && tsc --project ./tsconfig.node.json --noEmit",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run dependencies:audit && npm run build && npm run artifacts"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@sveltejs/vite-plugin-svelte": "7.3.0",
+    "@types/node": "24.13.3",
+    "eslint": "10.8.1",
+    "eslint-plugin-svelte": "3.23.0",
+    "prettier": "3.9.6",
+    "prettier-plugin-svelte": "4.1.1",
+    "svelte": "5.56.9",
+    "svelte-check": "4.7.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
+    "vite": "8.2.1"
+  }
+}

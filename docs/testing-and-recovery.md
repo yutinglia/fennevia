@@ -80,7 +80,8 @@ active`, plus `failed` and `disposed`. The root carries
 `data-fennevia-state` and cumulative state-specific markers. An illegal
 transition enters `failed`; disposal removes every marker. The production
 initializer deliberately stops at `healthy`, and package `0.4.0-dev` contains
-no native-hide selector or automatic activation call.
+no native-hide selector or automatic activation call. The current
+`0.5.0-dev` frontend package preserves the same inactive gate.
 
 The health phase has a 2,000 ms deadline. It requires exact host identity,
 placement, XHTML ownership, parsed project CSS, hidden/inert auxiliary hosts,
@@ -552,7 +553,84 @@ and one ordinary recovery process, restored the missing module to its committed
 SHA-256, restored the original `user.js`, disabled the persisted safe-start
 value, and left zero Firefox process. No startup-cache action was used.
 
-## 10. Firefox stable-update procedure
+## 10. Phase 3 frontend-build evidence
+
+Issue #8 replaces the diagnostic mount collaborator with a generated Svelte 5
+smoke island while retaining the issue #7 lifecycle and inactive native UI.
+Architecture, source, dependency, and first-error analysis is in
+`docs/research/firefox-153-svelte-build.md`; the accepted resolved graph is in
+`docs/dependency-reviews/frontend-toolchain-2026-08-15.md`.
+
+The final static matrix is run with:
+
+```powershell
+npm ci --ignore-scripts --no-fund
+npm run verify
+pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
+pwsh -NoProfile -File .\tests\firefox-dev-profile.Tests.ps1
+pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
+pwsh -NoProfile -File .\tests\project-identity.Tests.ps1
+pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
+pwsh -NoProfile -File .\tests\shell-health.Tests.ps1
+pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
+pwsh -NoProfile -File .\tests\installer.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\production-artifacts.Tests.ps1
+```
+
+The clean npm graph contains 173 lock paths and installs 148 on Windows with
+scripts disabled. The build runs twice and reproduces these exact generated
+artifacts before synchronizing package `0.5.0-dev`:
+
+| Artifact | Bytes | SHA-256 |
+|---|---:|---|
+| `content/shell/ShellApp.js` | 35,837 | `92338b310d522ede99955d214aae3faa5c71194cb798c10dcd2a97c8304e3da3` |
+| `content/shell/ShellStyles.sys.mjs` | 3,542 | `2a80d21a31bb541aca31ee4713a75087537ad42b7b0de3a375806823da3c842a` |
+| `content/shell/THIRD_PARTY_NOTICES.txt` | 1,200 | `0cd8b75a5e96e98009ec60de17b5536ef15d00f1b4f469a0c7189a30681ac7ea` |
+
+The Node matrix reports 46 passing tests. Both PowerShell runtimes pass the
+applicable repository suites, and the exact ten-profile-artifact scan reports
+no finding. The generated IIFE has no bare/dynamic import, runtime endpoint,
+HMR/dev-server marker, source map, extra chunk, debug statement, or executable
+payload. The initial Windows GitHub Actions workflow repeats the clean install,
+format, lint, Svelte/TypeScript, unit, dependency, deterministic build,
+clean-tree, scanner, and Windows PowerShell 5.1 artifact gates.
+`act -l` lists that job, but the available Docker daemon is Linux and cannot
+faithfully execute the `windows-latest`/Windows PowerShell 5.1 runner. No local
+`act` success is claimed; direct local commands and GitHub-hosted Actions remain
+the respective precheck and merge evidence.
+
+Real Firefox commands are:
+
+```powershell
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>'
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --browser-toolbox
+pwsh -NoProfile -File .\tests\firefox-frontend-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+```
+
+Initial, second, and private windows mounted independent healthy-but-inactive
+Svelte roots. Counter, input, events, conditional rendering, XHTML descendants,
+an XHTML `HTMLTemplateElement.content` child, and the extracted CSS sheet passed.
+Emergency fallback on the second window removed its hosts only. Direct official
+unmount left zero descendants, balanced delegated listener removal, disconnected
+the old root, made its detached control inert, and remounted with fresh state.
+Browser Toolbox selected the project host and confirmed the ownership boundary;
+toggling the component stylesheet left sampled native toolbox, sidebar, popup,
+Urlbar, menu-button, and modal styles unchanged.
+
+The owned mutation wrapper separately removed `ShellApp.js` and installed a
+bundle that throws. Both cases failed open in each window, retained native UI,
+and emitted fixed frontend phases/codes without browsing values. It then
+restored exact bytes, ran the ordinary matrix, and left zero Firefox process.
+No startup-cache action or native-hide rule was used.
+
+## 11. Firefox stable-update procedure
 
 For every stable update:
 
@@ -567,7 +645,7 @@ For every stable update:
 
 Never claim compatibility from version-number inspection alone.
 
-## 11. Automation boundary
+## 12. Automation boundary
 
 Suitable for automation:
 
@@ -585,7 +663,11 @@ pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\production-artifacts.Tests.ps1
 ```
 
-When #8 creates real build output, commit its exact inventory and run `scripts/check-production-artifacts.ps1` against that output. Passing fixture tests alone is not evidence that a production bundle is clean.
+Issue #8 commits the real generated inventory and runs
+`scripts/check-production-artifacts.ps1` against the complete installed profile
+tree in both local verification and CI. Fixture tests remain necessary policy
+coverage but do not substitute for that production scan or real Firefox smoke
+tests.
 
 Likely to require real Firefox smoke testing:
 

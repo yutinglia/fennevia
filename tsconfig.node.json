@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "allowImportingTsExtensions": true,
+    "checkJs": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2022",
+    "types": ["node"],
+    "verbatimModuleSyntax": true
+  },
+  "include": [
+    "eslint.config.js",
+    "scripts/audit-frontend-dependencies.mjs",
+    "scripts/build-frontend.mjs",
+    "scripts/sync-package-manifest.mjs",
+    "svelte.config.js",
+    "tests/frontend-build.test.mjs",
+    "tests/frontend-smoke.test.mjs",
+    "vite.config.ts"
+  ]
+}

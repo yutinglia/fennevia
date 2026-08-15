@@ -53,11 +53,16 @@ Issue #17 establishes the reusable Phase 0.5 controls in:
 - `docs/security-controls.md`: threat model, logging contract and example, Chrome/resource review, installer preflight and rejected-target record, private-window rules, review triggers, and ownership;
 - `docs/dependency-review-template.md`: required addition and upgrade record;
 - `docs/dependency-reviews/frontend-toolchain-2026-08-14.md`: preliminary no-install Svelte/Vite/TypeScript example;
+- `docs/dependency-reviews/frontend-toolchain-2026-08-15.md`: accepted issue #8 resolved graph, build-host payload, and production artifact review;
 - `scripts/check-production-artifacts.ps1`: exact-inventory and leakage gate;
 - `tests/production-artifacts.Tests.ps1`: PowerShell 7 and Windows PowerShell 5.1 regression coverage;
 - repository issue and pull-request templates: required security, privacy, resource, dependency, installer, private-window, artifact, and recovery evidence.
 
-Later issues own integration evidence. In particular, #3 owns the real manifest/content-access test, #4 owns installer mutation and rollback, #5 and #9 own runtime/private-window isolation, #8 owns the resolved dependency graph and real production bundle, and #16 owns CI enforcement and upgrade review.
+Later issues own integration evidence. Issues #3 and #4 completed the real
+manifest/content-access and installer mutation/rollback evidence; #5 owns the
+base runtime/private-window boundary; #8 completed the resolved dependency graph,
+real production bundle, and initial CI gate; #9 owns bridge-level isolation;
+#16 owns upgrade and release-CI hardening.
 
 The security-foundation gate is complete only when #17 is merged. This plan does not claim that the later implementation controls or a formal security audit are complete.
 

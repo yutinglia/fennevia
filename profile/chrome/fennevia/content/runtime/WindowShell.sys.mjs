@@ -6,6 +6,7 @@ import {
   registerEmergencyFallback,
   runShellHealthCheck,
 } from "./HealthState.sys.mjs";
+import { shellAppCss } from "../shell/ShellStyles.sys.mjs";
 
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const XUL_NAMESPACE =
@@ -21,6 +22,12 @@ const HOST_IDS = Object.freeze({
 });
 
 const SHELL_STYLE_ID = "fennevia-shell-style";
+const SHELL_APP_MOUNT_ID = "fennevia-shell-app-mount";
+const SHELL_APP_STYLE_ID = "fennevia-shell-app-style";
+const SHELL_APP_SCRIPT_URI =
+  "chrome://fennevia/content/shell/ShellApp.js";
+const SHELL_APP_REGISTRATION_KEY =
+  "__fenneviaRegisterShellFrontend";
 const DEFAULT_HEALTH_TIMEOUT_MS = 2_000;
 const CAPABILITY_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{0,95}$/u;
 
@@ -278,7 +285,12 @@ const validateInsertionPoints = window => {
     );
   }
 
-  for (const id of [...Object.values(HOST_IDS), SHELL_STYLE_ID]) {
+  for (const id of [
+    ...Object.values(HOST_IDS),
+    SHELL_STYLE_ID,
+    SHELL_APP_MOUNT_ID,
+    SHELL_APP_STYLE_ID,
+  ]) {
     if (document.getElementById(id)) {
       throw createShellError(
         "FENNEVIA_SHELL_HOST_ALREADY_EXISTS",
@@ -376,7 +388,15 @@ const createDetachedHosts = ({
   });
   detailList.append(stateDetail);
   diagnostic.append(identity, detailList);
-  primary.append(style, diagnostic);
+  const appMount = createElement(document, "div", {
+    id: SHELL_APP_MOUNT_ID,
+    className: "fennevia-shell-app-mount",
+    attributes: {
+      "aria-label": "Fennevia Svelte smoke island",
+      "data-fennevia-framework-status": "unmounted",
+    },
+  });
+  primary.append(style, diagnostic, appMount);
 
   const sidebar = createElement(document, "aside", {
     id: HOST_IDS.sidebar,
@@ -400,6 +420,7 @@ const createDetachedHosts = ({
   });
 
   return Object.freeze({
+    appMount,
     diagnostic,
     identityText,
     overlay,
@@ -591,6 +612,17 @@ export function createShellHosts({
         );
       }
 
+      if (
+        document.getElementById(SHELL_APP_MOUNT_ID) !== hosts.appMount ||
+        hosts.appMount.parentElement !== hosts.primary ||
+        hosts.appMount.namespaceURI !== XHTML_NAMESPACE
+      ) {
+        throw createShellError(
+          "FENNEVIA_SHELL_APP_MOUNT_INVALID",
+          "#fennevia-shell-primary-host>#fennevia-shell-app-mount"
+        );
+      }
+
       let cssRuleCount = 0;
       try {
         cssRuleCount = hosts.style.sheet?.cssRules?.length ?? 0;
@@ -732,6 +764,218 @@ const validateRequiredCapabilities = capabilities => {
 
 const defaultMountShell = () => undefined;
 const defaultCheckHealth = () => true;
+
+const productionFrontendByTarget = new WeakMap();
+
+const loadProductionFrontend = target => {
+  const browserWindow = target.ownerDocument?.defaultView;
+  if (
+    !browserWindow ||
+    typeof Services?.scriptloader?.loadSubScript !== "function"
+  ) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FRONTEND_LOADER_UNAVAILABLE",
+      "shell-frontend-load"
+    );
+  }
+  if (SHELL_APP_REGISTRATION_KEY in browserWindow) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FRONTEND_REGISTRATION_COLLISION",
+      "shell-frontend-load"
+    );
+  }
+
+  let frontend;
+  let registrationCount = 0;
+  Object.defineProperty(browserWindow, SHELL_APP_REGISTRATION_KEY, {
+    configurable: true,
+    value(candidate) {
+      registrationCount += 1;
+      frontend = candidate;
+    },
+  });
+
+  let removed = false;
+  let loadError;
+  try {
+    Services.scriptloader.loadSubScript(
+      SHELL_APP_SCRIPT_URI,
+      browserWindow,
+      "UTF-8"
+    );
+  } catch (error) {
+    loadError = error;
+  } finally {
+    removed = Reflect.deleteProperty(
+      browserWindow,
+      SHELL_APP_REGISTRATION_KEY
+    );
+  }
+  if (loadError) {
+    throw annotateShellLifecycleError(loadError, {
+      code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
+      phase: "shell-frontend-load",
+    });
+  }
+
+  const expectedKeys = [
+    "getShellAppCapabilities",
+    "mountShellApp",
+    "verifyShellAppHealth",
+  ];
+  if (
+    !removed ||
+    registrationCount !== 1 ||
+    !frontend ||
+    !Object.isFrozen(frontend) ||
+    JSON.stringify(Object.keys(frontend).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    expectedKeys.some(key => typeof frontend[key] !== "function")
+  ) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FRONTEND_REGISTRATION_INVALID",
+      "shell-frontend-load"
+    );
+  }
+  return frontend;
+};
+
+const getProductionAppMount = mountPoints => {
+  const target = mountPoints.primary.ownerDocument.getElementById(
+    SHELL_APP_MOUNT_ID
+  );
+  if (
+    target?.parentElement !== mountPoints.primary ||
+    target.namespaceURI !== XHTML_NAMESPACE
+  ) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FRONTEND_TARGET_UNAVAILABLE",
+      "shell-frontend-mount"
+    );
+  }
+  return target;
+};
+
+const mountProductionShell = ({
+  mountPoints,
+  windowKind,
+  reportError,
+}) => {
+  if (typeof shellAppCss !== "string" || shellAppCss.trim().length === 0) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FRONTEND_STYLES_EMPTY",
+      "shell-frontend-mount"
+    );
+  }
+
+  const target = getProductionAppMount(mountPoints);
+  const style = createElement(target.ownerDocument, "style", {
+    id: SHELL_APP_STYLE_ID,
+    textContent: shellAppCss,
+  });
+  mountPoints.primary.insertBefore(style, target);
+
+  let disposeApp;
+  try {
+    const frontend = loadProductionFrontend(target);
+    const candidateDisposeApp = frontend.mountShellApp({
+      target,
+      windowKind,
+      onUnmountError(error) {
+        reportError(
+          annotateShellLifecycleError(error, {
+            code: "FENNEVIA_FRONTEND_UNMOUNT_REJECTED",
+            phase: "shell-frontend-unmount",
+          })
+        );
+      },
+    });
+    if (typeof candidateDisposeApp !== "function") {
+      throw createShellLifecycleError(
+        "FENNEVIA_FRONTEND_DISPOSER_INVALID",
+        "shell-frontend-mount"
+      );
+    }
+    disposeApp = candidateDisposeApp;
+    productionFrontendByTarget.set(target, frontend);
+  } catch (error) {
+    productionFrontendByTarget.delete(target);
+    style.remove();
+    throw annotateShellLifecycleError(error, {
+      code: error?.fenneviaCode ?? "FENNEVIA_FRONTEND_MOUNT_FAILED",
+      phase: error?.fenneviaPhase ?? "shell-frontend-mount",
+    });
+  }
+
+  return () => {
+    let firstError;
+    try {
+      disposeApp();
+    } catch (error) {
+      firstError = error;
+    }
+    productionFrontendByTarget.delete(target);
+    try {
+      style.remove();
+    } catch (error) {
+      firstError ??= error;
+    }
+    if (firstError) {
+      throw annotateShellLifecycleError(firstError, {
+        code:
+          firstError?.fenneviaCode ??
+          "FENNEVIA_FRONTEND_UNMOUNT_FAILED",
+        phase: firstError?.fenneviaPhase ?? "shell-frontend-unmount",
+      });
+    }
+  };
+};
+
+const checkProductionShell = ({ mountPoints, windowKind }) => {
+  const target = getProductionAppMount(mountPoints);
+  const frontend = productionFrontendByTarget.get(target);
+  if (!frontend) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FRONTEND_INSTANCE_UNAVAILABLE",
+      "shell-frontend-health"
+    );
+  }
+  const style = target.ownerDocument.getElementById(SHELL_APP_STYLE_ID);
+  if (style?.parentElement !== mountPoints.primary) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FRONTEND_STYLESHEET_MISSING",
+      "shell-frontend-health"
+    );
+  }
+  let cssRuleCount = 0;
+  try {
+    cssRuleCount = style.sheet?.cssRules?.length ?? 0;
+  } catch {
+    cssRuleCount = 0;
+  }
+  if (cssRuleCount < 1) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FRONTEND_STYLESHEET_UNAVAILABLE",
+      "shell-frontend-health"
+    );
+  }
+  return frontend.verifyShellAppHealth({ target, windowKind });
+};
+
+const getProductionCapabilities = ({ mountPoints, windowKind }) => {
+  const target = getProductionAppMount(mountPoints);
+  const frontend = productionFrontendByTarget.get(target);
+  if (!frontend) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FRONTEND_INSTANCE_UNAVAILABLE",
+      "shell-frontend-health"
+    );
+  }
+  return frontend.getShellAppCapabilities({
+    target,
+    windowKind,
+  });
+};
 
 export function createWindowShellLifecycle({
   context,
@@ -940,6 +1184,7 @@ export function createWindowShellLifecycle({
             const mountResult = mountShell({
               addCleanup: callback => cleanup.add(callback),
               mountPoints: shell.getMountPoints(),
+              reportError: error => logCleanupError(error),
               signal: healthAbortController.signal,
               windowKind: context.windowKind,
             });
@@ -1146,6 +1391,9 @@ export async function initializeWindowShell({ context, logger, appInfo }) {
     context,
     logger,
     appInfo,
+    mountShell: mountProductionShell,
+    checkHealth: checkProductionShell,
+    getRequiredCapabilities: getProductionCapabilities,
   });
   await lifecycle.start();
   return () => lifecycle.dispose();

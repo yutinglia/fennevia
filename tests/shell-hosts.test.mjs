@@ -480,7 +480,9 @@ test("window-shell initialization logs readiness and one idempotent disposal", a
   const window = createBrowserWindow();
   const { context } = createContext(window);
   const { entries, logger } = createRecordingLogger();
-  const dispose = await initializeWindowShell({ context, logger, appInfo });
+  const lifecycle = createWindowShellLifecycle({ context, logger, appInfo });
+  await lifecycle.start();
+  const dispose = () => lifecycle.dispose();
 
   assert.equal(
     entries.filter(entry => entry.event === "shell.hosts-ready").length,
