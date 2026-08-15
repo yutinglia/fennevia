@@ -1,0 +1,264 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  createEdgeShellController,
+  createEdgeSurfaceController,
+  edgeKeyboardBindings,
+  edgeNames,
+  getKeyboardRevealEdge,
+  resolveEdgeAtPoint,
+} from "../src/app/edge-surfaces.ts";
+
+function createScheduler() {
+  let nextId = 1;
+  let now = 0;
+  const tasks = new Map();
+
+  const runDue = () => {
+    while (true) {
+      const due = [...tasks.entries()]
+        .filter(([, task]) => task.at <= now)
+        .sort((left, right) => left[1].at - right[1].at)[0];
+      if (!due) {
+        return;
+      }
+      tasks.delete(due[0]);
+      due[1].callback();
+    }
+  };
+
+  return {
+    advance(milliseconds) {
+      now += milliseconds;
+      runDue();
+    },
+    scheduler: {
+      clearTimeout(handle) {
+        tasks.delete(handle);
+      },
+      setTimeout(callback, delayMs) {
+        const id = nextId++;
+        tasks.set(id, { at: now + delayMs, callback });
+        return id;
+      },
+    },
+    size() {
+      return tasks.size;
+    },
+  };
+}
+
+test("pointer reveal uses one anti-flicker hide timer and cancels it on re-entry", () => {
+  const clock = createScheduler();
+  const surface = createEdgeSurfaceController("top", {
+    hideDelayMs: 50,
+    scheduler: clock.scheduler,
+  });
+
+  assert.deepEqual(surface.snapshot(), {
+    edge: "top",
+    enabled: true,
+    holds: {
+      focus: false,
+      keyboard: false,
+      pointer: false,
+      popup: false,
+      programmatic: false,
+    },
+    phase: "hidden",
+    revision: 0,
+    visible: false,
+  });
+
+  assert.equal(surface.setPointerHeld(true), true);
+  assert.equal(surface.snapshot().phase, "pointer-revealed");
+  assert.equal(surface.setPointerHeld(false), true);
+  assert.equal(surface.snapshot().phase, "pending-hide");
+  assert.equal(clock.size(), 1);
+
+  clock.advance(30);
+  assert.equal(surface.setPointerHeld(true), true);
+  assert.equal(clock.size(), 0);
+  assert.equal(surface.snapshot().visible, true);
+  surface.setPointerHeld(false);
+  clock.advance(50);
+  assert.equal(surface.snapshot().phase, "hidden");
+  assert.equal(surface.snapshot().visible, false);
+});
+
+test("focus, keyboard, and popup holds are explicit and popup vetoes dismissal", () => {
+  const clock = createScheduler();
+  const surface = createEdgeSurfaceController("left", {
+    hideDelayMs: 25,
+    scheduler: clock.scheduler,
+  });
+
+  surface.revealFromKeyboard();
+  assert.equal(surface.snapshot().phase, "keyboard-held");
+  surface.setFocusHeld(true);
+  assert.equal(surface.snapshot().phase, "focus-held");
+  surface.setPopupHeld(true);
+  assert.equal(surface.snapshot().phase, "popup-held");
+
+  assert.equal(surface.dismiss(), true);
+  assert.equal(surface.snapshot().phase, "popup-held");
+  assert.equal(surface.snapshot().holds.popup, true);
+  surface.setPopupHeld(false);
+  assert.equal(surface.snapshot().phase, "pending-hide");
+  clock.advance(25);
+  assert.equal(surface.snapshot().phase, "hidden");
+});
+
+test("programmatic reveal is bounded, replaced, and fully cleaned on disposal", () => {
+  const clock = createScheduler();
+  const surface = createEdgeSurfaceController("bottom", {
+    hideDelayMs: 20,
+    scheduler: clock.scheduler,
+  });
+
+  surface.revealProgrammatically(100);
+  assert.equal(surface.snapshot().phase, "programmatic-revealed");
+  assert.equal(clock.size(), 1);
+  clock.advance(60);
+  surface.revealProgrammatically(80);
+  assert.equal(clock.size(), 1);
+  clock.advance(79);
+  assert.equal(surface.snapshot().visible, true);
+  clock.advance(1);
+  assert.equal(surface.snapshot().phase, "pending-hide");
+  clock.advance(20);
+  assert.equal(surface.snapshot().phase, "hidden");
+
+  assert.throws(
+    () => surface.revealProgrammatically(0),
+    /FENNEVIA_EDGE_PROGRAMMATIC_DURATION_INVALID/u,
+  );
+  surface.revealProgrammatically(100);
+  assert.equal(surface.dispose(), true);
+  assert.equal(surface.dispose(), false);
+  assert.equal(clock.size(), 0);
+  assert.equal(surface.snapshot().phase, "disposed");
+  assert.throws(
+    () => surface.setPointerHeld(true),
+    /FENNEVIA_EDGE_CONTROLLER_DISPOSED/u,
+  );
+});
+
+test("disabled surfaces clear every hold and re-enable hidden", () => {
+  const surface = createEdgeSurfaceController("right");
+  surface.setPointerHeld(true);
+  surface.setFocusHeld(true);
+  surface.setPopupHeld(true);
+  assert.equal(surface.setEnabled(false), true);
+  assert.equal(surface.snapshot().phase, "disabled");
+  assert.equal(surface.snapshot().visible, false);
+  assert.ok(Object.values(surface.snapshot().holds).every((held) => !held));
+  assert.equal(surface.revealFromKeyboard(), false);
+  assert.equal(surface.setEnabled(true), true);
+  assert.equal(surface.snapshot().phase, "hidden");
+});
+
+test("the shared shell keeps pointer reveal exclusive while preserving legitimate holds", () => {
+  const clock = createScheduler();
+  const shell = createEdgeShellController({
+    hideDelayMs: 10,
+    scheduler: clock.scheduler,
+  });
+
+  shell.revealFromPointer("top");
+  shell.revealFromPointer("left");
+  assert.equal(shell.snapshot().surfaces.top.holds.pointer, false);
+  assert.equal(shell.snapshot().surfaces.left.holds.pointer, true);
+
+  shell.setFocusHeld("top", true);
+  shell.setPopupHeld("right", true);
+  shell.revealFromKeyboard("bottom");
+  assert.deepEqual(
+    edgeNames.filter((edge) => shell.snapshot().surfaces[edge].visible),
+    ["top", "left", "right", "bottom"],
+  );
+
+  assert.equal(shell.dismissActive(), "bottom");
+  assert.equal(shell.snapshot().surfaces.bottom.visible, false);
+  assert.equal(shell.dismiss("right"), false);
+  assert.equal(shell.snapshot().surfaces.right.phase, "popup-held");
+  assert.equal(shell.setEnabled(false), true);
+  assert.ok(
+    edgeNames.every(
+      (edge) => shell.snapshot().surfaces[edge].phase === "disabled",
+    ),
+  );
+  assert.equal(clock.size(), 0);
+});
+
+test("natural hide clears the active edge so an unrelated Escape remains available", () => {
+  const clock = createScheduler();
+  const shell = createEdgeShellController({
+    hideDelayMs: 10,
+    scheduler: clock.scheduler,
+  });
+
+  const { setPointerHeld } = shell;
+  assert.equal(setPointerHeld("top", true), true);
+  assert.equal(setPointerHeld("top", false), true);
+  assert.equal(shell.snapshot().activeEdge, "top");
+  clock.advance(10);
+  assert.equal(shell.snapshot().activeEdge, null);
+  assert.equal(shell.dismissActive(), null);
+});
+
+test("corner arbitration is deterministic and side edges own exact corners", () => {
+  const frame = { height: 600, thickness: 6, width: 1000 };
+  assert.equal(resolveEdgeAtPoint({ ...frame, x: 0, y: 0 }), "left");
+  assert.equal(resolveEdgeAtPoint({ ...frame, x: 1000, y: 0 }), "right");
+  assert.equal(resolveEdgeAtPoint({ ...frame, x: 0, y: 600 }), "left");
+  assert.equal(resolveEdgeAtPoint({ ...frame, x: 1000, y: 600 }), "right");
+  assert.equal(resolveEdgeAtPoint({ ...frame, x: 500, y: 2 }), "top");
+  assert.equal(resolveEdgeAtPoint({ ...frame, x: 500, y: 598 }), "bottom");
+  assert.equal(resolveEdgeAtPoint({ ...frame, x: 500, y: 300 }), null);
+  assert.equal(
+    resolveEdgeAtPoint({ ...frame, thickness: -1, x: 0, y: 0 }),
+    null,
+  );
+});
+
+test("keyboard reveal uses four exact modifier chords and rejects near matches", () => {
+  const base = { altKey: true, ctrlKey: true, metaKey: false, shiftKey: true };
+  assert.equal(getKeyboardRevealEdge({ ...base, code: "ArrowUp" }), "top");
+  assert.equal(getKeyboardRevealEdge({ ...base, key: "ArrowLeft" }), "left");
+  assert.equal(getKeyboardRevealEdge({ ...base, code: "ArrowRight" }), "right");
+  assert.equal(getKeyboardRevealEdge({ ...base, code: "ArrowDown" }), "bottom");
+  assert.equal(
+    getKeyboardRevealEdge({ ...base, code: "ArrowUp", shiftKey: false }),
+    null,
+  );
+  assert.equal(
+    getKeyboardRevealEdge({ ...base, code: "ArrowUp", metaKey: true }),
+    null,
+  );
+  assert.deepEqual(edgeKeyboardBindings, {
+    top: "Ctrl+Alt+Shift+ArrowUp",
+    left: "Ctrl+Alt+Shift+ArrowLeft",
+    right: "Ctrl+Alt+Shift+ArrowRight",
+    bottom: "Ctrl+Alt+Shift+ArrowDown",
+  });
+});
+
+test("subscriber failures reach the fatal boundary without interrupting peers", () => {
+  const errors = [];
+  const snapshots = [];
+  const surface = createEdgeSurfaceController("top", {
+    onError(error) {
+      errors.push(error);
+    },
+  });
+  surface.subscribe(() => {
+    throw new Error("listener failed");
+  });
+  surface.subscribe((snapshot) => snapshots.push(snapshot.phase));
+
+  surface.setPointerHeld(true);
+  assert.equal(errors.length, 1);
+  assert.deepEqual(snapshots, ["pointer-revealed"]);
+});

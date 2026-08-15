@@ -123,7 +123,7 @@ transaction, or rollback checks.
 Available actions are:
 
 | Action | Contract |
-|---|---|
+| --- | --- |
 | `Install` | Create the exact package and identical ownership pair; repeat is a no-op when source and installed state match |
 | `Update` | Replace or remove only previously owned files, add exact new manifest entries, preserve enabled/disabled state, and update both ownership records |
 | `Disable` | Move only `defaults/pref/fennevia.js` to `fennevia.js.disabled`; it does not need a working manifest or runtime entry |
@@ -268,7 +268,7 @@ pwsh -NoProfile -File .\tests\installer.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
 ```
 
-The current package is `0.5.0-dev` and contains eleven exact profile artifacts:
+The current package is `0.6.0-dev` and contains eleven exact profile artifacts:
 the manifest, bootstrap, one generated private bridge ESM, five runtime
 modules, and three generated shell files.
 `.gitattributes` fixes AutoConfig/default/manifest files to CRLF and privileged

@@ -32,6 +32,13 @@ control, and Browser Toolbox Inspector checks passed. The diagnostic reports
 ready state rather than the future Milestone B health machine; native UI remains
 fully visible. See `docs/research/firefox-153-shell-hosts.md` and ADR-020.
 
+Issue #31 supersedes only that initial production host geometry through
+ADR-026. The current runtime keeps the same validated lifecycle and ownership
+rules but uses one zero-layout frame under `#browser` with ordered, independent
+top, left, right, and bottom XHTML hosts. The issue #6 record remains the
+historical spike that proved namespace, insertion, rollback, and native-node
+ownership constraints.
+
 ## Milestone B: Mount gate and recovery
 
 Maintain separate states for:
@@ -95,6 +102,11 @@ official unmount/remount, missing/throwing fail-open behavior, Browser Toolbox
 ownership, deterministic build output, and the exact artifact gate passed. See
 ADR-022, `docs/research/firefox-153-svelte-build.md`, and
 `docs/dependency-reviews/frontend-toolchain-2026-08-15.md`.
+
+Issue #31 evolves only the original one-root mounting shape: the same fixed
+tree-fragment IIFE and extracted local stylesheet now create four official
+Svelte roots inside one frame. Build determinism, one-shot registration,
+XHTML ownership, and official unmount requirements remain unchanged.
 
 ## Milestone D: Firefox bridge
 
@@ -161,6 +173,30 @@ isolation, and bridge-capability fail-open matrices passed while the native tab
 strip stayed visible. Drag reorder, groups/workspaces, multi-select, audio,
 attention, previews, and full context menus remain deferred. See ADR-025 and
 `docs/research/firefox-153-tab-strip.md`.
+
+Issue #31 supersedes only the horizontal presentation. The same ordinary-data
+contract, semantic sibling actions, and roving-focus model now render vertically
+inside the left-edge surface with bounded vertical overflow. Up/Down replace
+Left/Right for the vertical orientation; Home/End and action behavior remain.
+
+### Milestone E.1: Four-edge shell frame
+
+Issue #31 adds the common visual and interaction boundary used by the remaining
+Phase 5 features:
+
+- one zero-layout frame with independent top, left, right, and bottom hosts;
+- explicit pointer, focus, keyboard, popup, and bounded programmatic reveal
+  holds with one tracked hide timer per edge;
+- deterministic corner ownership, overlap clearances, and suspension for
+  customize mode, DOM fullscreen, and native modal state;
+- exact edge keyboard commands, focus transfer/restoration, and Escape policy;
+- project-scoped glass tokens with near-solid, reduced-transparency,
+  reduced-motion, and forced-colors fallbacks.
+
+The top, right, and bottom surfaces remain honest placeholders until their
+feature issues land. The frame does not hide, replace, or resize Firefox-owned
+UI or content. See ADR-026 and
+`docs/research/firefox-153-four-edge-shell.md`.
 
 ## Milestone F: Navigation and address input MVP
 

@@ -88,6 +88,24 @@ test("keyboard navigation wraps, respects direction, and produces explicit actio
     tabId: "last",
     type: "select",
   });
+  assert.deepEqual(
+    getTabStripKeyAction(tabs, "first", "ArrowUp", "ltr", "vertical"),
+    {
+      tabId: "last",
+      type: "select",
+    },
+  );
+  assert.deepEqual(
+    getTabStripKeyAction(tabs, "middle", "ArrowDown", "ltr", "vertical"),
+    {
+      tabId: "last",
+      type: "select",
+    },
+  );
+  assert.equal(
+    getTabStripKeyAction(tabs, "middle", "ArrowLeft", "ltr", "vertical"),
+    null,
+  );
   assert.deepEqual(getTabStripKeyAction(tabs, "middle", "Home"), {
     tabId: "first",
     type: "select",
@@ -109,12 +127,16 @@ test("keyboard navigation wraps, respects direction, and produces explicit actio
 });
 
 test("the component uses semantic sibling controls and property-safe rendering only", async () => {
-  const source = await readFile(
-    path.join(projectRoot, "src", "shell", "App.svelte"),
-    "utf8",
-  );
+  const [source, styles] = await Promise.all([
+    readFile(path.join(projectRoot, "src", "shell", "App.svelte"), "utf8"),
+    readFile(
+      path.join(projectRoot, "src", "shell", "styles", "edge-shell.css"),
+      "utf8",
+    ),
+  ]);
 
   assert.match(source, /role="tablist"/u);
+  assert.match(source, /aria-orientation="vertical"/u);
   assert.match(source, /role="tab"/u);
   assert.match(source, /aria-selected=\{tab\.selected\}/u);
   assert.match(source, /tabindex=\{rovingTabId === tab\.id \? 0 : -1\}/u);
@@ -125,11 +147,57 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /onfocusin=\{handleRootFocusIn\}/u);
   assert.match(source, /timer\.view\.clearTimeout\(timer\.id\)/u);
   assert.match(source, /delayedFocusTimer !== timer/u);
+  assert.match(source, /if \(delayedFocusTimer\) \{\s*return;/u);
+  assert.match(
+    source,
+    /focusTab\(resolveRovingTabId\(currentTabs\.tabs, tabId\)\)\.then\(\s*releaseSurfaceFocus/u,
+  );
+  assert.match(source, /focusReleaseTimer !== timer/u);
+  assert.match(source, /releaseSurfaceFocus\(\);\s*\}, 0\)/u);
   assert.match(source, /onDestroy\(\(\) => \{\s*cancelDelayedFocus\(\)/u);
-  assert.match(source, /@media \(forced-colors: active\)/u);
-  assert.match(source, /unicode-bidi: plaintext/u);
-  assert.match(source, /overflow-x: auto/u);
-  assert.match(source, /:focus-visible/u);
+  assert.match(source, /cancelDelayedFocus\(\);\s*cancelFocusRelease\(\)/u);
+  assert.match(source, /"ltr",\s*"vertical"/u);
+  assert.match(styles, /@media \(forced-colors: active\)/u);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/u);
+  assert.match(styles, /@media \(prefers-reduced-transparency: reduce\)/u);
+  assert.match(styles, /unicode-bidi: plaintext/u);
+  assert.match(styles, /overflow-y: auto/u);
+  assert.match(styles, /:focus-visible/u);
+  assert.match(styles, /@supports \(backdrop-filter: blur\(1px\)\)/u);
+  for (const token of [
+    "glass-surface",
+    "glass-tint",
+    "glass-text",
+    "glass-muted",
+    "glass-border",
+    "glass-separator",
+    "glass-blur",
+    "glass-saturation",
+    "glass-radius",
+    "glass-shadow",
+    "edge-inset",
+    "edge-trigger-thickness",
+    "edge-side-width",
+    "edge-top-height",
+    "edge-bottom-height",
+    "space-1",
+    "control-height",
+    "motion-duration",
+    "motion-easing",
+    "focus-color",
+    "selected-surface",
+  ]) {
+    assert.match(styles, new RegExp(`--fennevia-${token}:`, "u"));
+  }
+  for (const edge of ["top", "left", "right", "bottom"]) {
+    assert.match(styles, new RegExp(`data-fennevia-edge=["']${edge}["']`, "u"));
+  }
+  assert.match(styles, /@media \(max-width: 700px\), \(max-height: 520px\)/u);
+  assert.doesNotMatch(styles, /\banimation\s*:|transition\s*:\s*all\b/iu);
+  assert.doesNotMatch(
+    styles,
+    /#(?:navigator-toolbox|browser|tabbrowser-tabbox|main-window)\b/u,
+  );
   assert.doesNotMatch(
     source,
     /\{@html|style=.*faviconUrl|url\s*\([^)]*favicon/iu,

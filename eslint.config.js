@@ -18,6 +18,8 @@ const browserGlobals = {
   HTMLTemplateElement: "readonly",
   KeyboardEvent: "readonly",
   Node: "readonly",
+  MutationObserver: "readonly",
+  PointerEvent: "readonly",
   Window: "readonly",
 };
 
@@ -61,6 +63,7 @@ export default defineConfig(
       "eslint.config.js",
       "scripts/*.mjs",
       "svelte.config.js",
+      "tests/edge-surfaces.test.mjs",
       "tests/firefox-boundary.test.mjs",
       "tests/firefox-tabs.test.mjs",
       "tests/frontend-smoke.test.mjs",

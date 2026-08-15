@@ -16,24 +16,29 @@ const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const XUL_NAMESPACE =
   "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 const BROWSER_DOCUMENT_URI = "chrome://browser/content/browser.xhtml";
-const PROJECT_URI =
-  "chrome://fennevia/content/runtime/WindowShell.sys.mjs";
+const PROJECT_URI = "chrome://fennevia/content/runtime/WindowShell.sys.mjs";
 const BRIDGE_PROJECT_URI =
   "chrome://fennevia/content/firefox/BridgeBoundary.sys.mjs";
 
+const EDGE_NAMES = Object.freeze(["top", "left", "right", "bottom"]);
 const HOST_IDS = Object.freeze({
-  overlay: "fennevia-shell-overlay-host",
-  primary: "fennevia-shell-primary-host",
-  sidebar: "fennevia-shell-sidebar-host",
+  frame: "fennevia-shell-frame-host",
+  top: "fennevia-shell-top-host",
+  left: "fennevia-shell-left-host",
+  right: "fennevia-shell-right-host",
+  bottom: "fennevia-shell-bottom-host",
+});
+const MOUNT_IDS = Object.freeze({
+  top: "fennevia-shell-top-mount",
+  left: "fennevia-shell-left-mount",
+  right: "fennevia-shell-right-mount",
+  bottom: "fennevia-shell-bottom-mount",
 });
 
 const SHELL_STYLE_ID = "fennevia-shell-style";
-const SHELL_APP_MOUNT_ID = "fennevia-shell-app-mount";
 const SHELL_APP_STYLE_ID = "fennevia-shell-app-style";
-const SHELL_APP_SCRIPT_URI =
-  "chrome://fennevia/content/shell/ShellApp.js";
-const SHELL_APP_REGISTRATION_KEY =
-  "__fenneviaRegisterShellFrontend";
+const SHELL_APP_SCRIPT_URI = "chrome://fennevia/content/shell/ShellApp.js";
+const SHELL_APP_REGISTRATION_KEY = "__fenneviaRegisterShellFrontend";
 const DEFAULT_HEALTH_TIMEOUT_MS = 2_000;
 const CAPABILITY_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{0,95}$/u;
 
@@ -45,109 +50,30 @@ const STATE_LOG_CODES = Object.freeze({
   mounted: "FENNEVIA_SHELL_STATE_MOUNTED",
 });
 
-const APP_METADATA_PATTERN = /^[A-Za-z0-9._+-]{1,64}$/u;
-
 const SHELL_STYLE = `
-#fennevia-shell-primary-host {
-  --fennevia-shell-surface: var(--toolbar-bgcolor, Canvas);
-  --fennevia-shell-text: var(--toolbar-color, CanvasText);
-  --fennevia-shell-border: var(--chrome-content-separator-color, GrayText);
-  --fennevia-shell-accent: AccentColor;
+#fennevia-shell-frame-host {
   box-sizing: border-box;
-  display: block;
-  flex: 0 0 auto;
-  inline-size: 100%;
-  min-inline-size: 0;
-  color: var(--fennevia-shell-text);
-  background: var(--fennevia-shell-surface);
-  border-block-end: 1px solid var(--fennevia-shell-border);
-  font: menu;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-#fennevia-shell-primary-host .fennevia-shell-diagnostic {
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  min-block-size: 32px;
-  padding: 5px 12px;
-}
-
-#fennevia-shell-primary-host .fennevia-shell-identity {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-weight: 600;
-}
-
-#fennevia-shell-primary-host .fennevia-shell-status-dot {
-  display: inline-block;
-  inline-size: 7px;
-  block-size: 7px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--fennevia-shell-accent);
-}
-
-#fennevia-shell-primary-host[data-fennevia-diagnostic-state="failed"]
-  .fennevia-shell-status-dot {
-  background: GrayText;
-}
-
-#fennevia-shell-primary-host .fennevia-shell-detail-list {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 5px;
-  min-inline-size: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-#fennevia-shell-primary-host .fennevia-shell-detail {
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  min-block-size: 20px;
-  padding-inline: 7px;
-  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
-  border-radius: 999px;
-  color: color-mix(in srgb, currentColor 78%, transparent);
-  white-space: nowrap;
-}
-
-#fennevia-shell-sidebar-host[hidden],
-#fennevia-shell-overlay-host[hidden] {
-  display: none !important;
-}
-
-#fennevia-shell-overlay-host {
-  position: fixed;
+  position: absolute;
   inset: 0;
+  z-index: 5;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: visible;
   pointer-events: none;
 }
 
-@media (forced-colors: active) {
-  #fennevia-shell-primary-host {
-    --fennevia-shell-border: CanvasText;
-    --fennevia-shell-accent: Highlight;
-  }
+#fennevia-shell-frame-host:not([data-fennevia-environment="normal"]) {
+  visibility: hidden;
+}
 
-  #fennevia-shell-primary-host .fennevia-shell-detail {
-    border-color: CanvasText;
-    color: CanvasText;
-  }
+#fennevia-shell-frame-host > [data-fennevia-edge-host],
+#fennevia-shell-frame-host [data-fennevia-edge-mount] {
+  box-sizing: border-box;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 `;
-
-const normalizeAppMetadata = value => {
-  const candidate = String(value ?? "");
-  return APP_METADATA_PATTERN.test(candidate) ? candidate : "unknown";
-};
 
 const createShellError = (code, domPath) => {
   const error = new Error(code);
@@ -186,12 +112,12 @@ const requireElement = ({
   return element;
 };
 
-const validateInsertionPoints = window => {
+const validateInsertionPoints = (window) => {
   const document = window?.document;
   if (!document || document.documentURI !== BROWSER_DOCUMENT_URI) {
     throw createShellError(
       "FENNEVIA_SHELL_DOCUMENT_INVALID",
-      "html#main-window"
+      "html#main-window",
     );
   }
 
@@ -201,10 +127,7 @@ const validateInsertionPoints = window => {
     root.localName !== "html" ||
     root.namespaceURI !== XHTML_NAMESPACE
   ) {
-    throw createShellError(
-      "FENNEVIA_SHELL_ROOT_INVALID",
-      "html#main-window"
-    );
+    throw createShellError("FENNEVIA_SHELL_ROOT_INVALID", "html#main-window");
   }
 
   const body = document.body;
@@ -216,7 +139,7 @@ const validateInsertionPoints = window => {
   ) {
     throw createShellError(
       "FENNEVIA_SHELL_BODY_INVALID",
-      "html#main-window>body"
+      "html#main-window>body",
     );
   }
 
@@ -287,21 +210,18 @@ const validateInsertionPoints = window => {
   ) {
     throw createShellError(
       "FENNEVIA_SHELL_BODY_ORDER_INVALID",
-      "html#main-window>body"
+      "html#main-window>body",
     );
   }
 
   for (const id of [
     ...Object.values(HOST_IDS),
+    ...Object.values(MOUNT_IDS),
     SHELL_STYLE_ID,
-    SHELL_APP_MOUNT_ID,
     SHELL_APP_STYLE_ID,
   ]) {
     if (document.getElementById(id)) {
-      throw createShellError(
-        "FENNEVIA_SHELL_HOST_ALREADY_EXISTS",
-        `#${id}`
-      );
+      throw createShellError("FENNEVIA_SHELL_HOST_ALREADY_EXISTS", `#${id}`);
     }
   }
 
@@ -310,6 +230,7 @@ const validateInsertionPoints = window => {
     body,
     browser,
     document,
+    root,
     tabbox,
   });
 };
@@ -331,113 +252,237 @@ const createElement = (document, localName, options = {}) => {
   return element;
 };
 
-const createDetachedHosts = ({
-  document,
-  windowKind,
-  firefoxVersion,
-  buildId,
+const EDGE_LABELS = Object.freeze({
+  top: "Fennevia top controls surface",
+  left: "Fennevia tabs and address surface",
+  right: "Fennevia bookmarks surface",
+  bottom: "Fennevia downloads surface",
+});
+
+const FRAME_ENVIRONMENT_ATTRIBUTE = "data-fennevia-environment";
+const FRAME_FULLSCREEN_ATTRIBUTE = "data-fennevia-browser-fullscreen";
+const FRAME_LIFECYCLE_ATTRIBUTE = "data-fennevia-lifecycle-state";
+
+const findTabDialog = (browser) => {
+  if (typeof browser.querySelector === "function") {
+    return browser.querySelector("browser[tabDialogShowing]");
+  }
+  return descendantsOf(browser).find(
+    (element) =>
+      element.localName === "browser" &&
+      element.hasAttribute?.("tabDialogShowing"),
+  );
+};
+
+const readFrameEnvironment = ({ root, browser }) => {
+  if (root.hasAttribute("customizing")) {
+    return "customize-mode";
+  }
+  if (root.hasAttribute("inDOMFullscreen")) {
+    return "dom-fullscreen";
+  }
+  if (root.hasAttribute("window-modal-open") || findTabDialog(browser)) {
+    return "native-dialog";
+  }
+  return "normal";
+};
+
+const createFrameEnvironmentObserver = ({
+  window,
+  root,
+  browser,
+  frame,
+  onError,
 }) => {
-  const primary = createElement(document, "section", {
-    id: HOST_IDS.primary,
-    className: "fennevia-shell-host fennevia-shell-primary",
+  const MutationObserverConstructor = window?.MutationObserver;
+  if (typeof MutationObserverConstructor !== "function") {
+    throw createShellError(
+      "FENNEVIA_SHELL_MUTATION_OBSERVER_UNAVAILABLE",
+      "html#main-window",
+    );
+  }
+
+  let disposed = false;
+  const update = () => {
+    frame.setAttribute(
+      FRAME_ENVIRONMENT_ATTRIBUTE,
+      readFrameEnvironment({ root, browser }),
+    );
+    if (root.hasAttribute("inFullscreen")) {
+      frame.setAttribute(FRAME_FULLSCREEN_ATTRIBUTE, "");
+    } else {
+      frame.removeAttribute(FRAME_FULLSCREEN_ATTRIBUTE);
+    }
+  };
+  const observer = new MutationObserverConstructor(() => {
+    if (disposed) {
+      return;
+    }
+    try {
+      update();
+    } catch (error) {
+      try {
+        frame.setAttribute(FRAME_ENVIRONMENT_ATTRIBUTE, "controller-failure");
+      } finally {
+        onError(error);
+      }
+    }
+  });
+
+  update();
+  observer.observe(root, {
+    attributes: true,
+    attributeFilter: [
+      "customizing",
+      "inDOMFullscreen",
+      "inFullscreen",
+      "window-modal-open",
+    ],
+  });
+  observer.observe(browser, {
+    attributes: true,
+    attributeFilter: ["tabDialogShowing"],
+    subtree: true,
+  });
+
+  return Object.freeze({
+    dispose() {
+      if (disposed) {
+        return false;
+      }
+      disposed = true;
+      observer.disconnect();
+      return true;
+    },
+    snapshot() {
+      return Object.freeze({
+        environment: frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE),
+        registered: !disposed,
+      });
+    },
+  });
+};
+
+const createEdgeHostController = ({ document, edge, frame }) => {
+  const host = createElement(document, "section", {
+    id: HOST_IDS[edge],
+    className: `fennevia-shell-edge-host fennevia-shell-edge-host--${edge}`,
     attributes: {
-      "aria-label": "Fennevia shell diagnostics",
-      "data-fennevia-diagnostic-state": "created",
-      "data-fennevia-host": "primary",
+      "aria-label": EDGE_LABELS[edge],
+      "data-fennevia-edge-host": edge,
+      "data-fennevia-lifecycle-state": "created",
+    },
+  });
+  const target = createElement(document, "div", {
+    id: MOUNT_IDS[edge],
+    className: `fennevia-shell-edge-mount fennevia-shell-edge-mount--${edge}`,
+    attributes: {
+      "data-fennevia-edge-mount": edge,
+      "data-fennevia-framework-status": "unmounted",
+    },
+  });
+  host.append(target);
+  let state = "created";
+
+  return Object.freeze({
+    attach() {
+      if (state === "attached") {
+        return false;
+      }
+      if (state === "disposed") {
+        throw createShellError(
+          "FENNEVIA_SHELL_EDGE_ATTACH_STATE_INVALID",
+          `#${HOST_IDS[edge]}`,
+        );
+      }
+      frame.append(host);
+      state = "attached";
+      return true;
+    },
+    detach() {
+      if (state === "disposed" || state === "detached") {
+        return false;
+      }
+      host.remove();
+      state = "detached";
+      return true;
+    },
+    dispose() {
+      if (state === "disposed") {
+        return false;
+      }
+      host.remove();
+      state = "disposed";
+      return true;
+    },
+    getMountPoint() {
+      return Object.freeze({ edge, host, target });
+    },
+    setLifecycleState(nextState) {
+      host.setAttribute(FRAME_LIFECYCLE_ATTRIBUTE, nextState);
+    },
+    snapshot() {
+      return Object.freeze({ edge, state });
+    },
+    verify(expectedIndex) {
+      const edgeHosts = Array.from(frame.children).filter((element) =>
+        element.hasAttribute("data-fennevia-edge-host"),
+      );
+      if (
+        state !== "attached" ||
+        document.getElementById(HOST_IDS[edge]) !== host ||
+        document.getElementById(MOUNT_IDS[edge]) !== target ||
+        host.parentElement !== frame ||
+        target.parentElement !== host ||
+        edgeHosts.indexOf(host) !== expectedIndex
+      ) {
+        throw createShellError(
+          "FENNEVIA_SHELL_EDGE_OWNERSHIP_INVALID",
+          `#${HOST_IDS.frame}>#${HOST_IDS[edge]}`,
+        );
+      }
+      return true;
+    },
+  });
+};
+
+const createDetachedHosts = ({ document }) => {
+  const frame = createElement(document, "div", {
+    id: HOST_IDS.frame,
+    className: "fennevia-shell-frame-host",
+    attributes: {
+      "aria-label": "Fennevia floating edge shell",
+      "data-fennevia-host": "frame",
+      "data-fennevia-lifecycle-state": "created",
+      "data-fennevia-environment": "normal",
     },
   });
   const style = createElement(document, "style", {
     id: SHELL_STYLE_ID,
     textContent: SHELL_STYLE,
   });
-  const diagnostic = createElement(document, "div", {
-    className: "fennevia-shell-diagnostic",
-    attributes: {
-      "aria-atomic": "true",
-      "aria-live": "polite",
-      role: "status",
-    },
-  });
-  const identity = createElement(document, "span", {
-    className: "fennevia-shell-identity",
-  });
-  const statusDot = createElement(document, "span", {
-    className: "fennevia-shell-status-dot",
-    attributes: { "aria-hidden": "true" },
-  });
-  const identityText = createElement(document, "span", {
-    textContent: "Fennevia host layer ready",
-  });
-  identity.append(statusDot, identityText);
-
-  const detailList = createElement(document, "ul", {
-    className: "fennevia-shell-detail-list",
-    attributes: { "aria-label": "Runtime details" },
-  });
-  for (const detail of [
-    windowKind === "private" ? "Private window" : "Normal window",
-    `Firefox ${normalizeAppMetadata(firefoxVersion)}`,
-    `Build ${normalizeAppMetadata(buildId)}`,
-    "3 XHTML hosts",
-    "Native UI retained",
-    `Recovery ${emergencyFallbackBinding}`,
-  ]) {
-    const item = createElement(document, "li", {
-      className: "fennevia-shell-detail",
-      textContent: detail,
-    });
-    detailList.append(item);
-  }
-  const stateDetail = createElement(document, "li", {
-    className: "fennevia-shell-detail fennevia-shell-state-detail",
-    textContent: "State created",
-  });
-  detailList.append(stateDetail);
-  diagnostic.append(identity, detailList);
-  const appMount = createElement(document, "div", {
-    id: SHELL_APP_MOUNT_ID,
-    className: "fennevia-shell-app-mount",
-    attributes: {
-      "aria-label": "Fennevia Svelte smoke island",
-      "data-fennevia-framework-status": "unmounted",
-    },
-  });
-  primary.append(style, diagnostic, appMount);
-
-  const sidebar = createElement(document, "aside", {
-    id: HOST_IDS.sidebar,
-    className: "fennevia-shell-host fennevia-shell-sidebar",
-    attributes: {
-      "aria-hidden": "true",
-      "data-fennevia-host": "sidebar",
-      hidden: "",
-    },
+  frame.append(style);
+  const edges = Object.freeze(
+    Object.fromEntries(
+      EDGE_NAMES.map((edge) => [
+        edge,
+        createEdgeHostController({ document, edge, frame }),
+      ]),
+    ),
+  );
+  const mountPoints = Object.freeze({
+    frame,
+    surfaces: Object.freeze(
+      Object.fromEntries(
+        EDGE_NAMES.map((edge) => [edge, edges[edge].getMountPoint()]),
+      ),
+    ),
   });
 
-  const overlay = createElement(document, "div", {
-    id: HOST_IDS.overlay,
-    className: "fennevia-shell-host fennevia-shell-overlay",
-    attributes: {
-      "aria-hidden": "true",
-      "data-fennevia-host": "overlay",
-      hidden: "",
-      inert: "",
-    },
-  });
-
-  return Object.freeze({
-    appMount,
-    diagnostic,
-    identityText,
-    overlay,
-    primary,
-    sidebar,
-    stateDetail,
-    style,
-  });
+  return Object.freeze({ edges, frame, mountPoints, style });
 };
 
-const descendantsOf = element => [
+const descendantsOf = (element) => [
   element,
   ...Array.from(element.children ?? []).flatMap(descendantsOf),
 ];
@@ -445,28 +490,24 @@ const descendantsOf = element => [
 export function createShellHosts({
   window,
   windowKind,
-  firefoxVersion,
-  buildId,
+  onEnvironmentError = () => {},
 }) {
   if (windowKind !== "normal" && windowKind !== "private") {
     throw createShellError(
       "FENNEVIA_SHELL_WINDOW_KIND_INVALID",
-      "html#main-window"
+      "html#main-window",
     );
   }
 
   let insertionPoints = validateInsertionPoints(window);
-  const hosts = createDetachedHosts({
-    document: insertionPoints.document,
-    windowKind,
-    firefoxVersion,
-    buildId,
-  });
-  const mountPoints = Object.freeze({
-    overlay: hosts.overlay,
-    primary: hosts.primary,
-    sidebar: hosts.sidebar,
-  });
+  if (typeof onEnvironmentError !== "function") {
+    throw createShellError(
+      "FENNEVIA_SHELL_ENVIRONMENT_CALLBACK_INVALID",
+      "html#main-window",
+    );
+  }
+  const hosts = createDetachedHosts({ document: insertionPoints.document });
+  let environmentObserver;
   let state = "created";
 
   const detach = () => {
@@ -475,12 +516,23 @@ export function createShellHosts({
     }
 
     let firstError;
-    for (const host of [hosts.overlay, hosts.sidebar, hosts.primary]) {
+    try {
+      environmentObserver?.dispose();
+    } catch (error) {
+      firstError = error;
+    }
+    environmentObserver = undefined;
+    for (const edge of [...EDGE_NAMES].reverse()) {
       try {
-        host.remove();
+        hosts.edges[edge].detach();
       } catch (error) {
         firstError ??= error;
       }
+    }
+    try {
+      hosts.frame.remove();
+    } catch (error) {
+      firstError ??= error;
     }
     state = "detached";
     if (firstError) {
@@ -497,30 +549,30 @@ export function createShellHosts({
       if (state === "disposed" || state === "failed") {
         throw createShellError(
           "FENNEVIA_SHELL_ATTACH_STATE_INVALID",
-          "html#main-window>body"
+          "html#main-window>body",
         );
       }
 
       insertionPoints = validateInsertionPoints(window);
       let currentDomPath =
-        "html#main-window>body>#fennevia-shell-primary-host";
+        "html#main-window>body>#browser>#fennevia-shell-frame-host";
       try {
-        insertionPoints.body.insertBefore(
-          hosts.primary,
-          insertionPoints.browser
-        );
-        currentDomPath =
-          "html#main-window>body>#browser>#fennevia-shell-sidebar-host";
         insertionPoints.browser.insertBefore(
-          hosts.sidebar,
-          insertionPoints.tabbox
+          hosts.frame,
+          insertionPoints.tabbox,
         );
-        currentDomPath =
-          "html#main-window>body>#fennevia-shell-overlay-host";
-        insertionPoints.body.insertBefore(
-          hosts.overlay,
-          insertionPoints.accessibilityAnnouncement
-        );
+        for (const edge of EDGE_NAMES) {
+          currentDomPath = `#${HOST_IDS.frame}>#${HOST_IDS[edge]}`;
+          hosts.edges[edge].attach();
+        }
+        currentDomPath = `#${HOST_IDS.frame}`;
+        environmentObserver = createFrameEnvironmentObserver({
+          window,
+          root: insertionPoints.root,
+          browser: insertionPoints.browser,
+          frame: hosts.frame,
+          onError: onEnvironmentError,
+        });
         state = "attached";
         return true;
       } catch (error) {
@@ -536,7 +588,7 @@ export function createShellHosts({
         }
         throw createShellError(
           "FENNEVIA_SHELL_HOST_ATTACH_FAILED",
-          currentDomPath
+          currentDomPath,
         );
       }
     },
@@ -544,28 +596,20 @@ export function createShellHosts({
     detach,
 
     getMountPoints() {
-      return mountPoints;
+      return hosts.mountPoints;
     },
 
     setDiagnosticState(nextState) {
-      const labels = {
-        active: "State active",
-        created: "State created",
-        failed: "State failed open",
-        healthy: "State healthy",
-        mounted: "State mounted",
-      };
-      if (!Object.hasOwn(labels, nextState)) {
+      if (!Object.hasOwn(STATE_LOG_CODES, nextState)) {
         throw createShellError(
           "FENNEVIA_SHELL_DIAGNOSTIC_STATE_INVALID",
-          "#fennevia-shell-primary-host"
+          `#${HOST_IDS.frame}`,
         );
       }
-      hosts.primary.setAttribute(
-        "data-fennevia-diagnostic-state",
-        nextState
-      );
-      hosts.stateDetail.textContent = labels[nextState];
+      hosts.frame.setAttribute(FRAME_LIFECYCLE_ATTRIBUTE, nextState);
+      for (const edge of EDGE_NAMES) {
+        hosts.edges[edge].setLifecycleState(nextState);
+      }
       return true;
     },
 
@@ -573,59 +617,43 @@ export function createShellHosts({
       if (state !== "attached") {
         throw createShellError(
           "FENNEVIA_SHELL_HOSTS_NOT_ATTACHED",
-          "html#main-window>body"
+          "html#main-window>body",
         );
       }
       const { document } = insertionPoints;
       if (
-        document.getElementById(HOST_IDS.primary) !== hosts.primary ||
-        hosts.primary.parentElement !== insertionPoints.body ||
-        document.getElementById(HOST_IDS.sidebar) !== hosts.sidebar ||
-        hosts.sidebar.parentElement !== insertionPoints.browser ||
-        document.getElementById(HOST_IDS.overlay) !== hosts.overlay ||
-        hosts.overlay.parentElement !== insertionPoints.body
+        document.getElementById(HOST_IDS.frame) !== hosts.frame ||
+        hosts.frame.parentElement !== insertionPoints.browser
       ) {
         throw createShellError(
           "FENNEVIA_SHELL_HOST_OWNERSHIP_INVALID",
-          "html#main-window>body"
+          "html#main-window>body",
         );
       }
-      const bodyChildren = Array.from(insertionPoints.body.children);
       const browserChildren = Array.from(insertionPoints.browser.children);
       if (
-        bodyChildren.indexOf(hosts.primary) + 1 !==
-          bodyChildren.indexOf(insertionPoints.browser) ||
-        browserChildren.indexOf(hosts.sidebar) + 1 !==
+        browserChildren.indexOf(hosts.frame) + 1 !==
           browserChildren.indexOf(insertionPoints.tabbox) ||
-        bodyChildren.indexOf(hosts.overlay) + 1 !==
-          bodyChildren.indexOf(insertionPoints.accessibilityAnnouncement) ||
-        !hosts.sidebar.hasAttribute("hidden") ||
-        !hosts.overlay.hasAttribute("hidden") ||
-        !hosts.overlay.hasAttribute("inert")
+        !environmentObserver?.snapshot().registered ||
+        ![
+          "normal",
+          "customize-mode",
+          "dom-fullscreen",
+          "native-dialog",
+        ].includes(hosts.frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE))
       ) {
         throw createShellError(
           "FENNEVIA_SHELL_HOST_PLACEMENT_INVALID",
-          "html#main-window>body"
+          "html#main-window>body",
         );
       }
       if (
         document.getElementById(SHELL_STYLE_ID) !== hosts.style ||
-        hosts.style.parentElement !== hosts.primary
+        hosts.style.parentElement !== hosts.frame
       ) {
         throw createShellError(
           "FENNEVIA_SHELL_STYLESHEET_MISSING",
-          "#fennevia-shell-primary-host>#fennevia-shell-style"
-        );
-      }
-
-      if (
-        document.getElementById(SHELL_APP_MOUNT_ID) !== hosts.appMount ||
-        hosts.appMount.parentElement !== hosts.primary ||
-        hosts.appMount.namespaceURI !== XHTML_NAMESPACE
-      ) {
-        throw createShellError(
-          "FENNEVIA_SHELL_APP_MOUNT_INVALID",
-          "#fennevia-shell-primary-host>#fennevia-shell-app-mount"
+          `#${HOST_IDS.frame}>#${SHELL_STYLE_ID}`,
         );
       }
 
@@ -638,21 +666,22 @@ export function createShellHosts({
       if (cssRuleCount < 1) {
         throw createShellError(
           "FENNEVIA_SHELL_STYLESHEET_UNAVAILABLE",
-          "#fennevia-shell-primary-host>#fennevia-shell-style"
+          `#${HOST_IDS.frame}>#${SHELL_STYLE_ID}`,
         );
       }
 
-      for (const host of Object.values(mountPoints)) {
-        if (
-          descendantsOf(host).some(
-            element => element.namespaceURI !== XHTML_NAMESPACE
-          )
-        ) {
-          throw createShellError(
-            "FENNEVIA_SHELL_HOST_NAMESPACE_INVALID",
-            `#${host.id}`
-          );
-        }
+      for (const [index, edge] of EDGE_NAMES.entries()) {
+        hosts.edges[edge].verify(index);
+      }
+      if (
+        descendantsOf(hosts.frame).some(
+          (element) => element.namespaceURI !== XHTML_NAMESPACE,
+        )
+      ) {
+        throw createShellError(
+          "FENNEVIA_SHELL_HOST_NAMESPACE_INVALID",
+          `#${HOST_IDS.frame}`,
+        );
       }
       return true;
     },
@@ -664,6 +693,13 @@ export function createShellHosts({
       try {
         detach();
       } finally {
+        for (const edge of [...EDGE_NAMES].reverse()) {
+          try {
+            hosts.edges[edge].dispose();
+          } catch {
+            // `detach` already surfaces the first exact cleanup failure.
+          }
+        }
         insertionPoints = null;
         state = "disposed";
       }
@@ -672,7 +708,13 @@ export function createShellHosts({
 
     snapshot() {
       return Object.freeze({
-        hostCount: state === "attached" ? 3 : 0,
+        edges: Object.freeze(
+          Object.fromEntries(
+            EDGE_NAMES.map((edge) => [edge, hosts.edges[edge].snapshot()]),
+          ),
+        ),
+        environment: environmentObserver?.snapshot().environment ?? null,
+        hostCount: state === "attached" ? EDGE_NAMES.length : 0,
         state,
         windowKind,
       });
@@ -682,7 +724,7 @@ export function createShellHosts({
   return Object.freeze(controller);
 }
 
-const createCleanupStack = onCleanupError => {
+const createCleanupStack = (onCleanupError) => {
   const callbacks = [];
   let disposed = false;
 
@@ -691,7 +733,7 @@ const createCleanupStack = onCleanupError => {
       if (typeof callback !== "function") {
         throw createShellLifecycleError(
           "FENNEVIA_SHELL_CLEANUP_INVALID",
-          "shell-cleanup-register"
+          "shell-cleanup-register",
         );
       }
       if (disposed) {
@@ -739,11 +781,11 @@ const createCleanupStack = onCleanupError => {
   });
 };
 
-const validateRequiredCapabilities = capabilities => {
+const validateRequiredCapabilities = (capabilities) => {
   if (!Array.isArray(capabilities)) {
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_CAPABILITIES_INVALID",
-      "shell-health-check"
+      "shell-health-check",
     );
   }
   for (const capability of capabilities) {
@@ -756,14 +798,14 @@ const validateRequiredCapabilities = capabilities => {
     ) {
       throw createShellLifecycleError(
         "FENNEVIA_SHELL_CAPABILITY_RESULT_INVALID",
-        "shell-health-check"
+        "shell-health-check",
       );
     }
     if (requirement === "required" && !capability.available) {
       throw createShellLifecycleError(
         "FENNEVIA_SHELL_CAPABILITY_MISSING",
         "shell-health-check",
-        { capability: capability.name }
+        { capability: capability.name },
       );
     }
   }
@@ -773,9 +815,9 @@ const validateRequiredCapabilities = capabilities => {
 const defaultMountShell = () => undefined;
 const defaultCheckHealth = () => true;
 
-const productionShellByTarget = new WeakMap();
+const productionShellByFrame = new WeakMap();
 
-const loadProductionFrontend = target => {
+const loadProductionFrontend = (target) => {
   const browserWindow = target.ownerDocument?.defaultView;
   if (
     !browserWindow ||
@@ -783,13 +825,13 @@ const loadProductionFrontend = target => {
   ) {
     throw createShellLifecycleError(
       "FENNEVIA_FRONTEND_LOADER_UNAVAILABLE",
-      "shell-frontend-load"
+      "shell-frontend-load",
     );
   }
   if (SHELL_APP_REGISTRATION_KEY in browserWindow) {
     throw createShellLifecycleError(
       "FENNEVIA_FRONTEND_REGISTRATION_COLLISION",
-      "shell-frontend-load"
+      "shell-frontend-load",
     );
   }
 
@@ -809,15 +851,12 @@ const loadProductionFrontend = target => {
     Services.scriptloader.loadSubScript(
       SHELL_APP_SCRIPT_URI,
       browserWindow,
-      "UTF-8"
+      "UTF-8",
     );
   } catch (error) {
     loadError = error;
   } finally {
-    removed = Reflect.deleteProperty(
-      browserWindow,
-      SHELL_APP_REGISTRATION_KEY
-    );
+    removed = Reflect.deleteProperty(browserWindow, SHELL_APP_REGISTRATION_KEY);
   }
   if (loadError) {
     throw annotateShellLifecycleError(loadError, {
@@ -838,30 +877,51 @@ const loadProductionFrontend = target => {
     !Object.isFrozen(frontend) ||
     JSON.stringify(Object.keys(frontend).sort()) !==
       JSON.stringify(expectedKeys) ||
-    expectedKeys.some(key => typeof frontend[key] !== "function")
+    expectedKeys.some((key) => typeof frontend[key] !== "function")
   ) {
     throw createShellLifecycleError(
       "FENNEVIA_FRONTEND_REGISTRATION_INVALID",
-      "shell-frontend-load"
+      "shell-frontend-load",
     );
   }
   return frontend;
 };
 
-const getProductionAppMount = mountPoints => {
-  const target = mountPoints.primary.ownerDocument.getElementById(
-    SHELL_APP_MOUNT_ID
-  );
+const getProductionAppMounts = (mountPoints) => {
+  const frame = mountPoints?.frame;
   if (
-    target?.parentElement !== mountPoints.primary ||
-    target.namespaceURI !== XHTML_NAMESPACE
+    frame?.id !== HOST_IDS.frame ||
+    frame.namespaceURI !== XHTML_NAMESPACE ||
+    frame.ownerDocument.getElementById(HOST_IDS.frame) !== frame
   ) {
     throw createShellLifecycleError(
-      "FENNEVIA_FRONTEND_TARGET_UNAVAILABLE",
-      "shell-frontend-mount"
+      "FENNEVIA_FRONTEND_FRAME_UNAVAILABLE",
+      "shell-frontend-mount",
     );
   }
-  return target;
+  const targets = Object.freeze(
+    Object.fromEntries(
+      EDGE_NAMES.map((edge) => {
+        const mountPoint = mountPoints.surfaces?.[edge];
+        const target = mountPoint?.target;
+        if (
+          mountPoint?.edge !== edge ||
+          mountPoint.host?.id !== HOST_IDS[edge] ||
+          mountPoint.host?.parentElement !== frame ||
+          target?.id !== MOUNT_IDS[edge] ||
+          target.parentElement !== mountPoint.host ||
+          target.namespaceURI !== XHTML_NAMESPACE
+        ) {
+          throw createShellLifecycleError(
+            "FENNEVIA_FRONTEND_TARGET_UNAVAILABLE",
+            "shell-frontend-mount",
+          );
+        }
+        return [edge, target];
+      }),
+    ),
+  );
+  return Object.freeze({ frame, targets });
 };
 
 const mountProductionShell = ({
@@ -873,19 +933,20 @@ const mountProductionShell = ({
   mountPoints,
   windowKind,
   reportError,
+  requestFallback,
 }) => {
   if (typeof shellAppCss !== "string" || shellAppCss.trim().length === 0) {
     throw createShellLifecycleError(
       "FENNEVIA_FRONTEND_STYLES_EMPTY",
-      "shell-frontend-mount"
+      "shell-frontend-mount",
     );
   }
 
-  const target = getProductionAppMount(mountPoints);
-  if (target.ownerDocument.defaultView !== browserWindow) {
+  const { frame, targets } = getProductionAppMounts(mountPoints);
+  if (frame.ownerDocument.defaultView !== browserWindow) {
     throw createShellLifecycleError(
       "FENNEVIA_FIREFOX_CONTEXT_WINDOW_MISMATCH",
-      "firefox-context-create"
+      "firefox-context-create",
     );
   }
   const bridge = createFirefoxBridgeBoundary({
@@ -913,34 +974,44 @@ const mountProductionShell = ({
       onError: reportError,
       window: browserWindow,
     });
-    style = createElement(target.ownerDocument, "style", {
+    style = createElement(frame.ownerDocument, "style", {
       id: SHELL_APP_STYLE_ID,
       textContent: shellAppCss,
     });
-    mountPoints.primary.insertBefore(style, target);
+    frame.insertBefore(style, mountPoints.surfaces.top.host);
 
-    const frontend = loadProductionFrontend(target);
+    const frontend = loadProductionFrontend(targets.top);
     const candidateDisposeApp = frontend.mountShellApp({
-      target,
+      frame,
+      targets,
       tabs: tabsBridge.tabs,
       windowKind,
+      onFatalError(error) {
+        requestFallback(
+          annotateShellLifecycleError(error, {
+            code:
+              error?.fenneviaCode ?? "FENNEVIA_EDGE_CONTROLLER_RUNTIME_FAILED",
+            phase: error?.fenneviaPhase ?? "edge-surface-controller",
+          }),
+        );
+      },
       onUnmountError(error) {
         reportError(
           annotateShellLifecycleError(error, {
             code: "FENNEVIA_FRONTEND_UNMOUNT_REJECTED",
             phase: "shell-frontend-unmount",
-          })
+          }),
         );
       },
     });
     if (typeof candidateDisposeApp !== "function") {
       throw createShellLifecycleError(
         "FENNEVIA_FRONTEND_DISPOSER_INVALID",
-        "shell-frontend-mount"
+        "shell-frontend-mount",
       );
     }
     disposeApp = candidateDisposeApp;
-    productionShellByTarget.set(target, {
+    productionShellByFrame.set(frame, {
       bridge,
       frontend,
       logger,
@@ -948,7 +1019,7 @@ const mountProductionShell = ({
       tabsBridge,
     });
   } catch (error) {
-    productionShellByTarget.delete(target);
+    productionShellByFrame.delete(frame);
     style?.remove();
     try {
       tabsBridge?.dispose();
@@ -982,7 +1053,7 @@ const mountProductionShell = ({
     } catch (error) {
       firstError = error;
     }
-    productionShellByTarget.delete(target);
+    productionShellByFrame.delete(frame);
     try {
       style?.remove();
     } catch (error) {
@@ -1009,9 +1080,7 @@ const mountProductionShell = ({
     }
     if (firstError) {
       throw annotateShellLifecycleError(firstError, {
-        code:
-          firstError?.fenneviaCode ??
-          "FENNEVIA_FRONTEND_UNMOUNT_FAILED",
+        code: firstError?.fenneviaCode ?? "FENNEVIA_FRONTEND_UNMOUNT_FAILED",
         phase: firstError?.fenneviaPhase ?? "shell-frontend-unmount",
       });
     }
@@ -1019,19 +1088,19 @@ const mountProductionShell = ({
 };
 
 const checkProductionShell = ({ mountPoints, windowKind }) => {
-  const target = getProductionAppMount(mountPoints);
-  const record = productionShellByTarget.get(target);
+  const { frame, targets } = getProductionAppMounts(mountPoints);
+  const record = productionShellByFrame.get(frame);
   if (!record) {
     throw createShellLifecycleError(
       "FENNEVIA_FRONTEND_INSTANCE_UNAVAILABLE",
-      "shell-frontend-health"
+      "shell-frontend-health",
     );
   }
-  const style = target.ownerDocument.getElementById(SHELL_APP_STYLE_ID);
-  if (style?.parentElement !== mountPoints.primary) {
+  const style = frame.ownerDocument.getElementById(SHELL_APP_STYLE_ID);
+  if (style?.parentElement !== frame) {
     throw createShellLifecycleError(
       "FENNEVIA_FRONTEND_STYLESHEET_MISSING",
-      "shell-frontend-health"
+      "shell-frontend-health",
     );
   }
   let cssRuleCount = 0;
@@ -1043,26 +1112,31 @@ const checkProductionShell = ({ mountPoints, windowKind }) => {
   if (cssRuleCount < 1) {
     throw createShellLifecycleError(
       "FENNEVIA_FRONTEND_STYLESHEET_UNAVAILABLE",
-      "shell-frontend-health"
+      "shell-frontend-health",
     );
   }
   record.tabsBridge.assertRequiredCapabilities();
-  return record.frontend.verifyShellAppHealth({ target, windowKind });
+  return record.frontend.verifyShellAppHealth({
+    frame,
+    targets,
+    windowKind,
+  });
 };
 
 const getProductionCapabilities = ({ mountPoints, windowKind }) => {
-  const target = getProductionAppMount(mountPoints);
-  const record = productionShellByTarget.get(target);
+  const { frame, targets } = getProductionAppMounts(mountPoints);
+  const record = productionShellByFrame.get(frame);
   if (!record) {
     throw createShellLifecycleError(
       "FENNEVIA_FRONTEND_INSTANCE_UNAVAILABLE",
-      "shell-frontend-health"
+      "shell-frontend-health",
     );
   }
   const bridgeCapabilities = record.bridge.assertRequiredCapabilities();
   const tabsCapabilities = record.tabsBridge.assertRequiredCapabilities();
   const frontendCapabilities = record.frontend.getShellAppCapabilities({
-    target,
+    frame,
+    targets,
     windowKind,
   });
   if (!record.readyLogged) {
@@ -1102,7 +1176,7 @@ export function createWindowShellLifecycle({
   ) {
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_CONTEXT_INVALID",
-      "shell-lifecycle-create"
+      "shell-lifecycle-create",
     );
   }
   if (
@@ -1111,13 +1185,13 @@ export function createWindowShellLifecycle({
   ) {
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_LOGGER_UNAVAILABLE",
-      "shell-lifecycle-create"
+      "shell-lifecycle-create",
     );
   }
   if (!appInfo) {
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_APP_INFO_UNAVAILABLE",
-      "shell-lifecycle-create"
+      "shell-lifecycle-create",
     );
   }
   if (
@@ -1127,7 +1201,7 @@ export function createWindowShellLifecycle({
   ) {
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_COLLABORATOR_INVALID",
-      "shell-lifecycle-create"
+      "shell-lifecycle-create",
     );
   }
 
@@ -1142,7 +1216,7 @@ export function createWindowShellLifecycle({
   let contextAbortRegistered = false;
   const healthAbortController = new AbortController();
 
-  const logCleanupError = error => {
+  const logCleanupError = (error) => {
     logger.error({
       event: "shell.cleanup-failed",
       phase: error?.fenneviaPhase ?? "shell-cleanup",
@@ -1156,7 +1230,7 @@ export function createWindowShellLifecycle({
   };
   const cleanup = createCleanupStack(logCleanupError);
 
-  const logState = state => {
+  const logState = (state) => {
     logger.info({
       event: "shell.state-changed",
       phase: `shell-state-${state}`,
@@ -1168,7 +1242,7 @@ export function createWindowShellLifecycle({
     });
   };
 
-  const reportFailure = error => {
+  const reportFailure = (error) => {
     if (failureLogged) {
       return error;
     }
@@ -1192,8 +1266,7 @@ export function createWindowShellLifecycle({
           ? "shell.hosts-failed"
           : "shell.lifecycle-failed",
       phase,
-      code:
-        error?.fenneviaCode ?? "FENNEVIA_SHELL_INITIALIZATION_FAILED",
+      code: error?.fenneviaCode ?? "FENNEVIA_SHELL_INITIALIZATION_FAILED",
       windowKind: context.windowKind,
       opaqueId: context.opaqueId,
       projectUri: PROJECT_URI,
@@ -1220,7 +1293,7 @@ export function createWindowShellLifecycle({
             if (disposed || context.signal.aborted || context.isDisposed()) {
               throw createShellLifecycleError(
                 "FENNEVIA_SHELL_CONTEXT_DISPOSED",
-                "shell-lifecycle-start"
+                "shell-lifecycle-start",
               );
             }
 
@@ -1232,8 +1305,14 @@ export function createWindowShellLifecycle({
             shell = createShellHosts({
               window: context.window,
               windowKind: context.windowKind,
-              firefoxVersion: appInfo.version,
-              buildId: appInfo.appBuildID,
+              onEnvironmentError(error) {
+                const annotated = annotateShellLifecycleError(error, {
+                  code: "FENNEVIA_SHELL_ENVIRONMENT_OBSERVER_FAILED",
+                  phase: "shell-environment-observer",
+                });
+                reportFailure(annotated);
+                lifecycle.dispose("shell-environment-observer-failed");
+              },
             });
             shell.attach();
             cleanup.add(() => {
@@ -1274,7 +1353,7 @@ export function createWindowShellLifecycle({
                 }
                 const error = createShellLifecycleError(
                   "FENNEVIA_EMERGENCY_FALLBACK_INVOKED",
-                  "shell-emergency-fallback"
+                  "shell-emergency-fallback",
                 );
                 reportFailure(error);
                 lifecycle.dispose("shell-emergency-fallback");
@@ -1289,21 +1368,29 @@ export function createWindowShellLifecycle({
 
             phase = "shell-mount";
             const mountResult = mountShell({
-              addCleanup: callback => cleanup.add(callback),
+              addCleanup: (callback) => cleanup.add(callback),
               browserWindow: context.window,
               buildId: appInfo.appBuildID,
               contextId: context.opaqueId,
               firefoxVersion: appInfo.version,
               logger,
               mountPoints: shell.getMountPoints(),
-              reportError: error => logCleanupError(error),
+              reportError: (error) => logCleanupError(error),
+              requestFallback(error) {
+                if (disposed) {
+                  return false;
+                }
+                reportFailure(error);
+                lifecycle.dispose("shell-runtime-fallback");
+                return true;
+              },
               signal: healthAbortController.signal,
               windowKind: context.windowKind,
             });
             if (mountResult && typeof mountResult.then === "function") {
               throw createShellLifecycleError(
                 "FENNEVIA_SHELL_MOUNT_ASYNC_UNSUPPORTED",
-                phase
+                phase,
               );
             }
             if (typeof mountResult === "function") {
@@ -1311,7 +1398,7 @@ export function createWindowShellLifecycle({
             } else if (mountResult !== undefined && mountResult !== null) {
               throw createShellLifecycleError(
                 "FENNEVIA_SHELL_MOUNT_RESULT_INVALID",
-                phase
+                phase,
               );
             }
             healthState.transition("mounted");
@@ -1338,7 +1425,7 @@ export function createWindowShellLifecycle({
                   throw createShellLifecycleError(
                     "FENNEVIA_EMERGENCY_FALLBACK_UNAVAILABLE",
                     "shell-health-check",
-                    { capability: "recovery.emergency-key" }
+                    { capability: "recovery.emergency-key" },
                   );
                 }
                 validateRequiredCapabilities(
@@ -1346,7 +1433,7 @@ export function createWindowShellLifecycle({
                     mountPoints: shell.getMountPoints(),
                     signal,
                     windowKind: context.windowKind,
-                  })
+                  }),
                 );
                 return checkHealth({
                   mountPoints: shell.getMountPoints(),
@@ -1363,7 +1450,7 @@ export function createWindowShellLifecycle({
             ) {
               throw createShellLifecycleError(
                 "FENNEVIA_SHELL_CONTEXT_DISPOSED",
-                "shell-health-check"
+                "shell-health-check",
               );
             }
 
@@ -1411,7 +1498,7 @@ export function createWindowShellLifecycle({
       if (!started || disposed || !healthState) {
         throw createShellLifecycleError(
           "FENNEVIA_SHELL_ACTIVATION_UNAVAILABLE",
-          "shell-activate"
+          "shell-activate",
         );
       }
       try {
@@ -1423,8 +1510,7 @@ export function createWindowShellLifecycle({
         return changed;
       } catch (error) {
         const annotated = annotateShellLifecycleError(error, {
-          code:
-            error?.fenneviaCode ?? "FENNEVIA_SHELL_ACTIVATION_FAILED",
+          code: error?.fenneviaCode ?? "FENNEVIA_SHELL_ACTIVATION_FAILED",
           phase: error?.fenneviaPhase ?? "shell-activate",
         });
         reportFailure(annotated);
@@ -1450,7 +1536,7 @@ export function createWindowShellLifecycle({
             annotateShellLifecycleError(error, {
               code: "FENNEVIA_SHELL_ACTIVE_CLEAR_FAILED",
               phase,
-            })
+            }),
           );
         }
       }

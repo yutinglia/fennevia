@@ -120,13 +120,18 @@ function renderStyleModule(css) {
 /** @param {Buffer} bundle */
 function replaceSvelteDiagnosticUris(bundle) {
   const source = bundle.toString("utf8");
-  if (source.split(rawSvelteWhitespaceTemplate).length - 1 !== 1) {
+  const whitespaceTemplateCount =
+    source.split(rawSvelteWhitespaceTemplate).length - 1;
+  if (whitespaceTemplateCount > 1) {
     throw new Error("FENNEVIA_BUILD_SVELTE_WHITESPACE_SET_INVALID");
   }
-  const normalizedSource = source.replace(
-    rawSvelteWhitespaceTemplate,
-    escapedSvelteWhitespaceTemplate,
-  );
+  const normalizedSource =
+    whitespaceTemplateCount === 1
+      ? source.replace(
+          rawSvelteWhitespaceTemplate,
+          escapedSvelteWhitespaceTemplate,
+        )
+      : source;
   const pattern = /https:\/\/svelte\.dev\/e\/([a-z0-9_]+)/gu;
   const slugs = [...normalizedSource.matchAll(pattern)]
     .map((match) => match[1])

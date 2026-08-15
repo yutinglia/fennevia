@@ -55,7 +55,7 @@ class FakeElement {
   get textContent() {
     return (
       this._textContent +
-      this._children.map(child => child.textContent).join("")
+      this._children.map((child) => child.textContent).join("")
     );
   }
 
@@ -82,8 +82,14 @@ class FakeElement {
     if (reference !== null && !this._children.includes(reference)) {
       throw new Error("reference is not a child");
     }
+    if (this.ownerDocument.failInsertId === child.id) {
+      throw new Error("injected insertion failure");
+    }
     child.remove();
-    const index = reference === null ? this._children.length : this._children.indexOf(reference);
+    const index =
+      reference === null
+        ? this._children.length
+        : this._children.indexOf(reference);
     this._children.splice(index, 0, child);
     child.parentElement = this;
     return child;
@@ -105,6 +111,7 @@ class FakeElement {
 
   setAttribute(name, value) {
     this._attributes.set(name, String(value));
+    this.ownerDocument.notifyAttribute(this, name);
   }
 
   getAttribute(name) {
@@ -116,12 +123,36 @@ class FakeElement {
   }
 
   removeAttribute(name) {
-    this._attributes.delete(name);
+    if (this._attributes.delete(name)) {
+      this.ownerDocument.notifyAttribute(this, name);
+    }
+  }
+}
+
+class FakeMutationObserver {
+  constructor(callback) {
+    this.callback = callback;
+    this.registrations = [];
+  }
+
+  observe(target, options) {
+    const registration = { observer: this, options, target };
+    this.registrations.push(registration);
+    target.ownerDocument.observers.add(registration);
+  }
+
+  disconnect() {
+    for (const registration of this.registrations) {
+      registration.target.ownerDocument.observers.delete(registration);
+    }
+    this.registrations.length = 0;
   }
 }
 
 class FakeDocument {
   constructor() {
+    this.failInsertId = null;
+    this.observers = new Set();
     this.documentURI = BROWSER_URI;
     this.documentElement = this.createElementNS(xhtmlNamespace, "html");
     this.documentElement.id = "main-window";
@@ -134,7 +165,7 @@ class FakeDocument {
   }
 
   getElementById(id) {
-    const visit = element => {
+    const visit = (element) => {
       if (element.id === id) {
         return element;
       }
@@ -147,6 +178,23 @@ class FakeDocument {
       return null;
     };
     return visit(this.documentElement);
+  }
+
+  notifyAttribute(target, attributeName) {
+    for (const registration of [...this.observers]) {
+      const inScope =
+        registration.target === target ||
+        (registration.options.subtree &&
+          descendants(registration.target).includes(target));
+      const accepted =
+        !registration.options.attributeFilter ||
+        registration.options.attributeFilter.includes(attributeName);
+      if (inScope && accepted) {
+        registration.observer.callback([
+          { attributeName, target, type: "attributes" },
+        ]);
+      }
+    }
   }
 }
 
@@ -164,75 +212,76 @@ function createBrowserWindow() {
     document.body,
     xhtmlNamespace,
     "dialog",
-    "window-modal-dialog"
+    "window-modal-dialog",
   );
   const toolbox = appendElement(
     document,
     document.body,
     XUL_NAMESPACE,
     "toolbox",
-    "navigator-toolbox"
+    "navigator-toolbox",
   );
   const browser = appendElement(
     document,
     document.body,
     XUL_NAMESPACE,
     "hbox",
-    "browser"
+    "browser",
   );
   const sidebarContainer = appendElement(
     document,
     browser,
     XUL_NAMESPACE,
     "box",
-    "sidebar-container"
+    "sidebar-container",
   );
   const sidebarLauncherSplitter = appendElement(
     document,
     browser,
     XUL_NAMESPACE,
     "splitter",
-    "sidebar-launcher-splitter"
+    "sidebar-launcher-splitter",
   );
   const sidebarBox = appendElement(
     document,
     browser,
     XUL_NAMESPACE,
     "vbox",
-    "sidebar-box"
+    "sidebar-box",
   );
   const sidebarSplitter = appendElement(
     document,
     browser,
     XUL_NAMESPACE,
     "splitter",
-    "sidebar-splitter"
+    "sidebar-splitter",
   );
   const tabbox = appendElement(
     document,
     browser,
     XUL_NAMESPACE,
     "tabbox",
-    "tabbrowser-tabbox"
+    "tabbrowser-tabbox",
   );
   const announcement = appendElement(
     document,
     document.body,
     xhtmlNamespace,
     "div",
-    "a11y-announcement"
+    "a11y-announcement",
   );
   const fullscreenToggler = appendElement(
     document,
     document.body,
     xhtmlNamespace,
     "div",
-    "fullscr-toggler"
+    "fullscr-toggler",
   );
 
   const eventListeners = [];
   const window = {
     document,
+    MutationObserver: FakeMutationObserver,
     elements: {
       announcement,
       browser,
@@ -252,7 +301,7 @@ function createBrowserWindow() {
     },
     removeEventListener(type, callback) {
       const index = eventListeners.findIndex(
-        listener => listener.type === type && listener.callback === callback
+        (listener) => listener.type === type && listener.callback === callback,
       );
       if (index !== -1) {
         eventListeners.splice(index, 1);
@@ -260,7 +309,7 @@ function createBrowserWindow() {
     },
     dispatchEvent(event) {
       for (const listener of eventListeners
-        .filter(candidate => candidate.type === event.type)
+        .filter((candidate) => candidate.type === event.type)
         .slice()) {
         listener.callback(event);
       }
@@ -281,10 +330,7 @@ function createBrowserWindow() {
 }
 
 function descendants(element) {
-  return [
-    element,
-    ...element.children.flatMap(child => descendants(child)),
-  ];
+  return [element, ...element.children.flatMap((child) => descendants(child))];
 }
 
 function createRecordingLogger() {
@@ -324,25 +370,25 @@ const appInfo = Object.freeze({
 
 const allHealthAttributes = Object.values(shellHealthAttributes);
 
-const assertNoShellOwnership = window => {
+const assertNoShellOwnership = (window) => {
   assert.ok(
     Object.values(shellHostIds).every(
-      id => !window.document.getElementById(id)
-    )
+      (id) => !window.document.getElementById(id),
+    ),
   );
   assert.ok(
     allHealthAttributes.every(
-      attribute => !window.document.documentElement.hasAttribute(attribute)
-    )
+      (attribute) => !window.document.documentElement.hasAttribute(attribute),
+    ),
   );
   assert.equal(
-    window.listenerSnapshot().filter(listener => listener.type === "keydown")
+    window.listenerSnapshot().filter((listener) => listener.type === "keydown")
       .length,
-    0
+    0,
   );
 };
 
-const dispatchEmergencyFallback = window => {
+const dispatchEmergencyFallback = (window) => {
   let prevented = false;
   let stopped = false;
   window.dispatchEvent({
@@ -365,7 +411,7 @@ const dispatchEmergencyFallback = window => {
   assert.equal(stopped, true);
 };
 
-test("attaches three XHTML islands without moving native nodes and disposes cleanly", () => {
+test("attaches four XHTML edge boundaries without moving native nodes and disposes cleanly", () => {
   const window = createBrowserWindow();
   const originalBodyChildren = window.document.body.children;
   const originalBrowserChildren = window.elements.browser.children;
@@ -377,6 +423,13 @@ test("attaches three XHTML islands without moving native nodes and disposes clea
   });
 
   assert.deepEqual(controller.snapshot(), {
+    edges: {
+      top: { edge: "top", state: "created" },
+      left: { edge: "left", state: "created" },
+      right: { edge: "right", state: "created" },
+      bottom: { edge: "bottom", state: "created" },
+    },
+    environment: null,
     hostCount: 0,
     state: "created",
     windowKind: "normal",
@@ -384,48 +437,45 @@ test("attaches three XHTML islands without moving native nodes and disposes clea
   assert.equal(controller.attach(), true);
   assert.equal(controller.attach(), false);
 
-  const primary = window.document.getElementById(shellHostIds.primary);
-  const sidebar = window.document.getElementById(shellHostIds.sidebar);
-  const overlay = window.document.getElementById(shellHostIds.overlay);
-  assert.equal(primary.parentElement, window.document.body);
-  assert.equal(sidebar.parentElement, window.elements.browser);
-  assert.equal(overlay.parentElement, window.document.body);
-  assert.ok(descendants(primary).every(node => node.namespaceURI === xhtmlNamespace));
-  assert.ok(descendants(sidebar).every(node => node.namespaceURI === xhtmlNamespace));
-  assert.ok(descendants(overlay).every(node => node.namespaceURI === xhtmlNamespace));
-  assert.equal(sidebar.hidden, true);
-  assert.equal(overlay.hidden, true);
-  assert.equal(overlay.hasAttribute("inert"), true);
-  assert.match(primary.textContent, /Fennevia host layer ready/u);
-  assert.match(primary.textContent, /Normal window/u);
-  assert.match(primary.textContent, /Firefox 153\.0\.4/u);
-  assert.match(primary.textContent, /Native UI retained/u);
+  const frame = window.document.getElementById(shellHostIds.frame);
+  assert.equal(frame.parentElement, window.elements.browser);
+  assert.equal(frame.getAttribute("data-fennevia-environment"), "normal");
+  assert.ok(
+    descendants(frame).every((node) => node.namespaceURI === xhtmlNamespace),
+  );
+  for (const edge of ["top", "left", "right", "bottom"]) {
+    const host = window.document.getElementById(shellHostIds[edge]);
+    assert.equal(host.parentElement, frame);
+    assert.equal(host.getAttribute("data-fennevia-edge-host"), edge);
+    assert.equal(
+      controller.getMountPoints().surfaces[edge].target.parentElement,
+      host,
+    );
+  }
 
   const bodyChildren = window.document.body.children;
-  assert.equal(
-    bodyChildren.indexOf(primary) + 1,
-    bodyChildren.indexOf(window.elements.browser)
-  );
-  assert.equal(
-    bodyChildren.indexOf(overlay) + 1,
-    bodyChildren.indexOf(window.elements.announcement)
-  );
   const browserChildren = window.elements.browser.children;
   assert.equal(
-    browserChildren.indexOf(sidebar) + 1,
-    browserChildren.indexOf(window.elements.tabbox)
+    browserChildren.indexOf(frame) + 1,
+    browserChildren.indexOf(window.elements.tabbox),
   );
+  assert.deepEqual(bodyChildren, originalBodyChildren);
   assert.deepEqual(
-    bodyChildren.filter(node => !Object.values(shellHostIds).includes(node.id)),
-    originalBodyChildren
-  );
-  assert.deepEqual(
-    browserChildren.filter(node => !Object.values(shellHostIds).includes(node.id)),
-    originalBrowserChildren
+    browserChildren.filter(
+      (node) => !Object.values(shellHostIds).includes(node.id),
+    ),
+    originalBrowserChildren,
   );
 
   assert.deepEqual(controller.snapshot(), {
-    hostCount: 3,
+    edges: {
+      top: { edge: "top", state: "attached" },
+      left: { edge: "left", state: "attached" },
+      right: { edge: "right", state: "attached" },
+      bottom: { edge: "bottom", state: "attached" },
+    },
+    environment: "normal",
+    hostCount: 4,
     state: "attached",
     windowKind: "normal",
   });
@@ -436,12 +486,14 @@ test("attaches three XHTML islands without moving native nodes and disposes clea
   assert.equal(controller.attach(), true);
   assert.equal(controller.dispose(), true);
   assert.equal(controller.dispose(), false);
-  assert.equal(window.document.getElementById(shellHostIds.primary), null);
-  assert.equal(window.document.getElementById(shellHostIds.sidebar), null);
-  assert.equal(window.document.getElementById(shellHostIds.overlay), null);
+  assert.ok(
+    Object.values(shellHostIds).every(
+      (id) => window.document.getElementById(id) === null,
+    ),
+  );
 });
 
-test("normal and private windows receive independent non-sensitive diagnostics", () => {
+test("normal and private windows receive independent edge hosts and environment state", () => {
   const normalWindow = createBrowserWindow();
   const privateWindow = createBrowserWindow();
   const normal = createShellHosts({
@@ -459,29 +511,75 @@ test("normal and private windows receive independent non-sensitive diagnostics",
   normal.attach();
   privateShell.attach();
 
-  const normalText = normalWindow.document.getElementById(
-    shellHostIds.primary
-  ).textContent;
-  const privateText = privateWindow.document.getElementById(
-    shellHostIds.primary
-  ).textContent;
-  assert.match(normalText, /Normal window/u);
-  assert.match(normalText, /Firefox unknown/u);
-  assert.match(normalText, /Build unknown/u);
-  assert.match(privateText, /Private window/u);
-  assert.equal(normalText.includes("private.invalid"), false);
-  assert.equal(normalText.includes("Users"), false);
+  const normalFrame = normalWindow.document.getElementById(shellHostIds.frame);
+  const privateFrame = privateWindow.document.getElementById(
+    shellHostIds.frame,
+  );
+  assert.equal(normalFrame.getAttribute("data-fennevia-environment"), "normal");
+  assert.equal(
+    privateFrame.getAttribute("data-fennevia-environment"),
+    "normal",
+  );
+  assert.equal(normalFrame.textContent.includes("private.invalid"), false);
+  assert.equal(normalFrame.textContent.includes("Users"), false);
   assert.notStrictEqual(
-    normalWindow.document.getElementById(shellHostIds.primary),
-    privateWindow.document.getElementById(shellHostIds.primary)
+    normalWindow.document.getElementById(shellHostIds.left),
+    privateWindow.document.getElementById(shellHostIds.left),
   );
 
   normal.dispose();
   assert.notEqual(
-    privateWindow.document.getElementById(shellHostIds.primary),
-    null
+    privateWindow.document.getElementById(shellHostIds.frame),
+    null,
   );
   privateShell.dispose();
+});
+
+test("customize, DOM fullscreen, browser fullscreen, and native dialogs update the frame without polling", () => {
+  const window = createBrowserWindow();
+  const controller = createShellHosts({
+    window,
+    windowKind: "normal",
+  });
+  controller.attach();
+  const frame = window.document.getElementById(shellHostIds.frame);
+
+  window.document.documentElement.setAttribute("customizing", "");
+  assert.equal(
+    frame.getAttribute("data-fennevia-environment"),
+    "customize-mode",
+  );
+  window.document.documentElement.removeAttribute("customizing");
+
+  window.document.documentElement.setAttribute("inDOMFullscreen", "");
+  assert.equal(
+    frame.getAttribute("data-fennevia-environment"),
+    "dom-fullscreen",
+  );
+  window.document.documentElement.removeAttribute("inDOMFullscreen");
+
+  window.document.documentElement.setAttribute("inFullscreen", "");
+  assert.equal(frame.hasAttribute("data-fennevia-browser-fullscreen"), true);
+  assert.equal(frame.getAttribute("data-fennevia-environment"), "normal");
+  window.document.documentElement.removeAttribute("inFullscreen");
+
+  const nativeBrowser = appendElement(
+    window.document,
+    window.elements.tabbox,
+    XUL_NAMESPACE,
+    "browser",
+    "test-selected-browser",
+  );
+  nativeBrowser.setAttribute("tabDialogShowing", "");
+  assert.equal(
+    frame.getAttribute("data-fennevia-environment"),
+    "native-dialog",
+  );
+  nativeBrowser.removeAttribute("tabDialogShowing");
+  assert.equal(frame.getAttribute("data-fennevia-environment"), "normal");
+
+  controller.dispose();
+  assert.equal(window.document.observers.size, 0);
 });
 
 test("window-shell initialization logs readiness and one idempotent disposal", async () => {
@@ -493,31 +591,31 @@ test("window-shell initialization logs readiness and one idempotent disposal", a
   const dispose = () => lifecycle.dispose();
 
   assert.equal(
-    entries.filter(entry => entry.event === "shell.hosts-ready").length,
-    1
+    entries.filter((entry) => entry.event === "shell.hosts-ready").length,
+    1,
   );
   assert.equal(typeof dispose, "function");
   assert.equal(
     window.document.documentElement.getAttribute(
-      shellHealthAttributes.rootState
+      shellHealthAttributes.rootState,
     ),
-    "healthy"
+    "healthy",
   );
   assert.equal(
     window.document.documentElement.hasAttribute(shellHealthAttributes.active),
-    false
+    false,
   );
   assert.deepEqual(
     entries
-      .filter(entry => entry.event === "shell.state-changed")
-      .map(entry => entry.shellState),
-    ["created", "mounted", "healthy"]
+      .filter((entry) => entry.event === "shell.state-changed")
+      .map((entry) => entry.shellState),
+    ["created", "mounted", "healthy"],
   );
   dispose();
   dispose();
   assert.equal(
-    entries.filter(entry => entry.event === "shell.hosts-disposed").length,
-    1
+    entries.filter((entry) => entry.event === "shell.hosts-disposed").length,
+    1,
   );
   assertNoShellOwnership(window);
 });
@@ -530,56 +628,56 @@ test("a missing insertion point leaves no partial hosts and reports its fixed DO
 
   await assert.rejects(
     initializeWindowShell({ context, logger, appInfo }),
-    /FENNEVIA_SHELL_TABBOX_INVALID/u
+    /FENNEVIA_SHELL_TABBOX_INVALID/u,
   );
-  assert.ok(Object.values(shellHostIds).every(id => !window.document.getElementById(id)));
-  const failure = entries.find(entry => entry.event === "shell.hosts-failed");
+  assert.ok(
+    Object.values(shellHostIds).every(
+      (id) => !window.document.getElementById(id),
+    ),
+  );
+  const failure = entries.find((entry) => entry.event === "shell.hosts-failed");
   assert.equal(failure.code, "FENNEVIA_SHELL_TABBOX_INVALID");
   assert.equal(
     failure.domPath,
-    "html#main-window>body>#browser>#tabbrowser-tabbox"
+    "html#main-window>body>#browser>#tabbrowser-tabbox",
   );
   assert.equal(
-    entries.filter(entry => entry.event === "shell.cleanup-failed").length,
-    0
+    entries.filter((entry) => entry.event === "shell.cleanup-failed").length,
+    0,
   );
 });
 
-test("an attachment failure rolls back the first host and identifies the failed path", async () => {
+test("an edge attachment failure rolls back the complete frame and identifies the failed path", async () => {
   const window = createBrowserWindow();
-  const originalInsertBefore = window.elements.browser.insertBefore.bind(
-    window.elements.browser
-  );
-  window.elements.browser.insertBefore = (child, reference) => {
-    if (child.id === shellHostIds.sidebar) {
-      throw new Error("injected insertion failure");
-    }
-    return originalInsertBefore(child, reference);
-  };
+  window.document.failInsertId = shellHostIds.left;
   const { context } = createContext(window);
   const { entries, logger } = createRecordingLogger();
 
   await assert.rejects(
     initializeWindowShell({ context, logger, appInfo }),
-    /FENNEVIA_SHELL_HOST_ATTACH_FAILED/u
+    /FENNEVIA_SHELL_HOST_ATTACH_FAILED/u,
   );
-  assert.ok(Object.values(shellHostIds).every(id => !window.document.getElementById(id)));
-  const failure = entries.find(entry => entry.event === "shell.hosts-failed");
+  assert.ok(
+    Object.values(shellHostIds).every(
+      (id) => !window.document.getElementById(id),
+    ),
+  );
+  const failure = entries.find((entry) => entry.event === "shell.hosts-failed");
   assert.equal(failure.code, "FENNEVIA_SHELL_HOST_ATTACH_FAILED");
   assert.equal(
     failure.domPath,
-    "html#main-window>body>#browser>#fennevia-shell-sidebar-host"
+    "#fennevia-shell-frame-host>#fennevia-shell-left-host",
   );
   assert.equal(
-    entries.filter(entry => entry.event === "shell.cleanup-failed").length,
-    0
+    entries.filter((entry) => entry.event === "shell.cleanup-failed").length,
+    0,
   );
 });
 
 test("a pre-existing project host blocks the complete set without adopting it", () => {
   const window = createBrowserWindow();
   const collision = window.document.createElementNS(xhtmlNamespace, "div");
-  collision.id = shellHostIds.primary;
+  collision.id = shellHostIds.top;
   window.document.body.insertBefore(collision, window.elements.browser);
 
   assert.throws(
@@ -590,14 +688,14 @@ test("a pre-existing project host blocks the complete set without adopting it", 
         firefoxVersion: appInfo.version,
         buildId: appInfo.appBuildID,
       }),
-    /FENNEVIA_SHELL_HOST_ALREADY_EXISTS/u
+    /FENNEVIA_SHELL_HOST_ALREADY_EXISTS/u,
   );
   assert.strictEqual(
-    window.document.getElementById(shellHostIds.primary),
-    collision
+    window.document.getElementById(shellHostIds.top),
+    collision,
   );
-  assert.equal(window.document.getElementById(shellHostIds.sidebar), null);
-  assert.equal(window.document.getElementById(shellHostIds.overlay), null);
+  assert.equal(window.document.getElementById(shellHostIds.frame), null);
+  assert.equal(window.document.getElementById(shellHostIds.left), null);
 });
 
 test("an already-aborted window context creates no host", async () => {
@@ -608,13 +706,17 @@ test("an already-aborted window context creates no host", async () => {
 
   await assert.rejects(
     initializeWindowShell({ context, logger, appInfo }),
-    /FENNEVIA_SHELL_CONTEXT_DISPOSED/u
+    /FENNEVIA_SHELL_CONTEXT_DISPOSED/u,
   );
-  assert.ok(Object.values(shellHostIds).every(id => !window.document.getElementById(id)));
+  assert.ok(
+    Object.values(shellHostIds).every(
+      (id) => !window.document.getElementById(id),
+    ),
+  );
   assert.equal(
-    entries.find(entry => entry.event === "shell.lifecycle-failed")
+    entries.find((entry) => entry.event === "shell.lifecycle-failed")
       .windowKind,
-    "private"
+    "private",
   );
 });
 
@@ -630,34 +732,33 @@ test("the explicit active gate is reachable only after health and remains opt-in
 
   assert.throws(
     () => lifecycle.activate(),
-    /FENNEVIA_SHELL_ACTIVATION_UNAVAILABLE/u
+    /FENNEVIA_SHELL_ACTIVATION_UNAVAILABLE/u,
   );
   await lifecycle.start();
   assert.equal(lifecycle.snapshot().state, "healthy");
   assert.equal(
     window.document.documentElement.hasAttribute(shellHealthAttributes.active),
-    false
+    false,
   );
   assert.equal(lifecycle.activate(), true);
   assert.equal(lifecycle.activate(), false);
   assert.equal(lifecycle.snapshot().state, "active");
   assert.equal(
     window.document.documentElement.hasAttribute(shellHealthAttributes.active),
-    true
+    true,
   );
   assert.equal(
     entries.filter(
-      entry =>
-        entry.event === "shell.state-changed" &&
-        entry.shellState === "active"
+      (entry) =>
+        entry.event === "shell.state-changed" && entry.shellState === "active",
     ).length,
-    1
+    1,
   );
   lifecycle.dispose();
   assertNoShellOwnership(window);
 });
 
-test("mount, health, stylesheet, capability, and timeout failures all fail open", async t => {
+test("mount, health, stylesheet, capability, and timeout failures all fail open", async (t) => {
   const cases = [
     {
       name: "mount throws after registering partial UI cleanup",
@@ -670,10 +771,10 @@ test("mount, health, stylesheet, capability, and timeout failures all fail open"
             mountShell({ addCleanup, mountPoints }) {
               const partial = window.document.createElementNS(
                 xhtmlNamespace,
-                "div"
+                "div",
               );
               partial.id = "fennevia-test-partial-ui";
-              mountPoints.primary.append(partial);
+              mountPoints.surfaces.top.target.append(partial);
               addCleanup(() => {
                 partialCleanups += 1;
                 partial.remove();
@@ -685,7 +786,7 @@ test("mount, health, stylesheet, capability, and timeout failures all fail open"
             assert.equal(partialCleanups, 1);
             assert.equal(
               window.document.getElementById("fennevia-test-partial-ui"),
-              null
+              null,
             );
           },
         };
@@ -720,8 +821,8 @@ test("mount, health, stylesheet, capability, and timeout failures all fail open"
         return {
           options: {
             mountShell({ mountPoints }) {
-              mountPoints.primary.children
-                .find(element => element.id === "fennevia-shell-style")
+              mountPoints.frame.children
+                .find((element) => element.id === "fennevia-shell-style")
                 .remove();
             },
           },
@@ -757,7 +858,7 @@ test("mount, health, stylesheet, capability, and timeout failures all fail open"
         ...configuration.options,
       });
 
-      await assert.rejects(lifecycle.start(), error => {
+      await assert.rejects(lifecycle.start(), (error) => {
         assert.equal(error.fenneviaCode, failureCase.expectedCode);
         assert.equal(error.fenneviaPhase, failureCase.expectedPhase);
         return true;
@@ -766,28 +867,29 @@ test("mount, health, stylesheet, capability, and timeout failures all fail open"
       assertNoShellOwnership(window);
       assert.strictEqual(
         window.elements.toolbox.parentElement,
-        window.document.body
+        window.document.body,
       );
       assert.equal(window.elements.toolbox.hidden, false);
       assert.equal(lifecycle.snapshot().state, "disposed");
       assert.equal(
-        entries.filter(entry => entry.event === "shell.lifecycle-failed")
+        entries.filter((entry) => entry.event === "shell.lifecycle-failed")
           .length,
-        1
+        1,
       );
       assert.equal(
-        entries.find(entry => entry.event === "shell.lifecycle-failed").code,
-        failureCase.expectedCode
+        entries.find((entry) => entry.event === "shell.lifecycle-failed").code,
+        failureCase.expectedCode,
       );
       assert.equal(
-        entries.filter(entry => entry.event === "shell.hosts-disposed").length,
-        1
+        entries.filter((entry) => entry.event === "shell.hosts-disposed")
+          .length,
+        1,
       );
     });
   }
 });
 
-test("emergency fallback disposes mounted, healthy, and active states independently", async t => {
+test("emergency fallback disposes mounted, healthy, and active states independently", async (t) => {
   for (const targetState of ["mounted", "healthy", "active"]) {
     await t.test(targetState, async () => {
       const window = createBrowserWindow();
@@ -810,13 +912,13 @@ test("emergency fallback disposes mounted, healthy, and active states independen
       }
       assert.equal(
         window.document.documentElement.getAttribute(
-          shellHealthAttributes.rootState
+          shellHealthAttributes.rootState,
         ),
-        targetState
+        targetState,
       );
       const listener = window
         .listenerSnapshot()
-        .find(candidate => candidate.type === "keydown");
+        .find((candidate) => candidate.type === "keydown");
       assert.deepEqual(listener.options, {
         capture: true,
         mozSystemGroup: true,
@@ -828,15 +930,16 @@ test("emergency fallback disposes mounted, healthy, and active states independen
       assert.equal(lifecycle.snapshot().state, "disposed");
       assert.equal(
         entries.filter(
-          entry =>
+          (entry) =>
             entry.event === "shell.lifecycle-failed" &&
-            entry.code === "FENNEVIA_EMERGENCY_FALLBACK_INVOKED"
+            entry.code === "FENNEVIA_EMERGENCY_FALLBACK_INVOKED",
         ).length,
-        1
+        1,
       );
       assert.equal(
-        entries.filter(entry => entry.event === "shell.hosts-disposed").length,
-        1
+        entries.filter((entry) => entry.event === "shell.hosts-disposed")
+          .length,
+        1,
       );
     });
   }
@@ -853,7 +956,7 @@ test("disposal while health is pending aborts once and ignores late completion",
     appInfo,
     healthTimeoutMs: 100,
     checkHealth: () =>
-      new Promise(resolve => {
+      new Promise((resolve) => {
         resolveHealth = resolve;
       }),
   });
@@ -869,15 +972,16 @@ test("disposal while health is pending aborts once and ignores late completion",
   assertNoShellOwnership(window);
   assert.equal(lifecycle.snapshot().state, "disposed");
   assert.equal(
-    entries.filter(entry => entry.event === "shell.lifecycle-failed").length,
-    0
+    entries.filter((entry) => entry.event === "shell.lifecycle-failed").length,
+    0,
   );
   assert.equal(
-    entries.filter(entry => entry.event === "shell.hosts-disposed").length,
-    1
+    entries.filter((entry) => entry.event === "shell.hosts-disposed").length,
+    1,
   );
   assert.equal(
-    entries.filter(entry => entry.event === "shell.lifecycle-disposed").length,
-    1
+    entries.filter((entry) => entry.event === "shell.lifecycle-disposed")
+      .length,
+    1,
   );
 });

@@ -36,7 +36,7 @@ Normal output redacts the executable and profile paths. `-RevealPaths` is local-
 ## 2. Minimum test matrix
 
 | Case | Expected result |
-|---|---|
+| --- | --- |
 | Clean cold start | Bootstrap and process runtime initialize exactly once |
 | Browser restart | Shell reconstructs without stale behavior |
 | Second normal window | One managed lifecycle per window with no duplicate process runtime; one shell per window after hosts exist |
@@ -81,7 +81,7 @@ active`, plus `failed` and `disposed`. The root carries
 transition enters `failed`; disposal removes every marker. The production
 initializer deliberately stops at `healthy`, and package `0.4.0-dev` contains
 no native-hide selector or automatic activation call. The current
-`0.5.0-dev` frontend package preserves the same inactive gate.
+`0.6.0-dev` frontend package preserves the same inactive gate.
 
 The health phase has a 2,000 ms deadline. It requires exact host identity,
 placement, XHTML ownership, parsed project CSS, hidden/inert auxiliary hosts,
@@ -275,7 +275,7 @@ node .\tests\bootstrap-content-access.mjs `
 Observed real-Firefox matrix:
 
 | Case | Browser Console or page result | Native/recovery result |
-|---|---|---|
+| --- | --- | --- |
 | Three cold starts | Exactly one `bootstrap.success` per process; `initializationCount=1` | Native `about:support` window present each time |
 | Second normal window | One process success record | Two native Firefox windows; no second process initialization |
 | Private window | One process success record | Native Firefox private-browsing window present |
@@ -330,7 +330,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.
 Observed real-Firefox results:
 
 | Case | Result |
-|---|---|
+| --- | --- |
 | Install preview | 10 exact operations; program/profile tree fingerprint unchanged |
 | Install and repeat | Preview/result plan digests matched; 10 applied mutations, exact hashes, byte-identical ownership pair, no transaction residue; repeat was a zero-operation no-op |
 | Three cold starts | Exactly one success per process and zero Fennevia fatal records |
@@ -396,7 +396,7 @@ node .\tests\firefox-window-lifecycle.mjs `
 ```
 
 | Case | Observed result |
-|---|---|
+| --- | --- |
 | Initial normal window | Runtime `started`, `initializationCount=1`, managed count one |
 | Additional tab | Managed count unchanged; no extra window initialization |
 | Second normal window | One normal initialization and one disposal on close |
@@ -480,7 +480,7 @@ node .\tests\firefox-window-lifecycle.mjs `
 ```
 
 | Case | Observed result |
-|---|---|
+| --- | --- |
 | Initial, second, private windows | Each received one independent complete three-host set; every project element was XHTML |
 | Visible diagnostic | At least 30 CSS pixels high between toolbox and browser; fixed non-sensitive text only |
 | Native UI | Toolbox, browser, tabbox, sidebar siblings, modal top layer, content hit target, and Windows close command remained available |
@@ -582,7 +582,7 @@ scripts disabled. The build runs twice and reproduces these exact generated
 artifacts before synchronizing package `0.5.0-dev`:
 
 | Artifact | Bytes | SHA-256 |
-|---|---:|---|
+| --- | ---: | --- |
 | `content/shell/ShellApp.js` | 35,837 | `92338b310d522ede99955d214aae3faa5c71194cb798c10dcd2a97c8304e3da3` |
 | `content/shell/ShellStyles.sys.mjs` | 3,542 | `2a80d21a31bb541aca31ee4713a75087537ad42b7b0de3a375806823da3c842a` |
 | `content/shell/THIRD_PARTY_NOTICES.txt` | 1,200 | `0cd8b75a5e96e98009ec60de17b5536ef15d00f1b4f469a0c7189a30681ac7ea` |
@@ -654,7 +654,7 @@ The build reproduces one additional private artifact twice before package
 manifest synchronization:
 
 | Artifact | Bytes | SHA-256 |
-|---|---:|---|
+| --- | ---: | --- |
 | `content/firefox/BridgeBoundary.sys.mjs` | 8,177 | `7eb9413ae09800e183f28a91ba1bb5bbdb483bb8f92f3e62fee301385db0e5b2` |
 
 Real Firefox commands are:
@@ -754,6 +754,8 @@ Issue #11 renders the issue #10 ordinary adapter as the first usable custom tab
 strip while retaining the native strip. Architecture, accessibility sources,
 security review, first causal errors, and rejected alternatives are in
 `docs/research/firefox-153-tab-strip.md`; ADR-025 records the accepted model.
+This section preserves the original horizontal acceptance evidence; ADR-026
+later reorients the same contract into the left edge, as recorded in section 14.
 
 The static/pure matrix is part of `npm test` and covers:
 
@@ -811,7 +813,73 @@ fail-open injections, restored the exact bridge artifact, reran the complete
 normal/second/private matrix, and left no Firefox process. No normal lifecycle
 or failure diagnostic contained a page title, URL, or favicon value.
 
-## 14. Firefox stable-update procedure
+## 14. Phase 5 four-edge shell-frame evidence
+
+Issue #31 replaces the initial three-island production geometry with one
+zero-layout frame and independent top, left, right, and bottom XHTML surfaces.
+ADR-026 and `docs/research/firefox-153-four-edge-shell.md` record the source,
+design-reference boundary, policy, first causal failures, and security review.
+Native Firefox UI remains visible.
+
+The pure/static matrix in `npm test` covers:
+
+- explicit pointer, focus, keyboard, popup, and bounded programmatic holds;
+- one anti-flicker hide timer per edge, rapid re-entry, natural active-edge
+  expiry, suspension, disposal, exception reporting, and popup priority;
+- deterministic corner ownership, exact four-modifier arrow chords, and
+  legitimate simultaneous non-pointer holds;
+- four XHTML hosts/targets/roots, all-or-nothing attach and cleanup, environment
+  mutation, frame-rooted selectors/tokens, solid and glass rendering paths,
+  reduced motion/transparency, forced colors, and responsive bounds;
+- vertical tab semantics and keyboard movement, accessible edge regions,
+  property-only favicon/text handling, and no Firefox globals in Svelte.
+
+The final Windows/Firefox commands are:
+
+```powershell
+npm run verify
+pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>'
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --browser-toolbox
+pwsh -NoProfile -File .\tests\firefox-frontend-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+pwsh -NoProfile -File .\tests\firefox-shell-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+```
+
+Firefox 153.0.4 passed the existing, second-normal, and private-window matrix
+for all pointer and keyboard edges, exact corners, delayed leave/re-entry,
+window leave, focus retention/restoration, Escape, simultaneous held surfaces,
+fourteen-tab vertical overflow, and root-attribute policy transitions for
+customize mode, DOM fullscreen, and browser fullscreen. The synthetic attribute
+transitions prove the runtime policy; they are not a claim of separate OS-level
+visual coverage.
+
+Direct two-pass official unmount/remount left no owned descendants, listeners,
+subscriptions, or timers. Runtime stop and a missing insertion point removed
+the complete frame while native content, tabbox, toolbox, modal layer, and
+window controls remained owned by Firefox. Browser Toolbox selected the shared
+frame, confirmed all four XHTML ownership boundaries, excluded browser-owned
+native-anonymous scrollbar content, and observed no unexpected first-party
+script exception.
+
+Missing and throwing frontend artifacts, safe start with a broken runtime
+artifact, and required bridge-capability failures each failed open, restored
+the exact modified artifact, reran the normal matrix, and left no Firefox
+process. No diagnostic contained the exercised page title, favicon, URL,
+profile path, or private-window browsing state.
+
+## 15. Firefox stable-update procedure
 
 For every stable update:
 
@@ -826,7 +894,7 @@ For every stable update:
 
 Never claim compatibility from version-number inspection alone.
 
-## 15. Automation boundary
+## 16. Automation boundary
 
 Suitable for automation:
 

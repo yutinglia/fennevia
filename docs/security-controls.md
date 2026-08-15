@@ -16,7 +16,7 @@ Status terms:
 ## 2. Threat model
 
 | Asset or trust boundary | Threat | Consequence | Existing control or decision | Missing control or evidence | Owner |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | AutoConfig entry and process bootstrap | Malformed, replaced, duplicated, or compromised system-principal code | Arbitrary privileged execution, repeated initialization, or unusable startup | Minimal bootstrap, no generic loader, no dynamic code, fail open | Implement the smallest startup chain, one-time guard, privacy-safe fatal error, and failure injection | [#3](https://github.com/yutinglia/fennevia/issues/3) |
 | Chrome Registry manifest | A malformed or over-broad declaration exposes files or replaces Firefox resources | Web-content access, privilege-boundary confusion, or missed upstream security fixes | Dedicated namespace; no `override`; no `contentaccessible=yes`; review in section 6 | Validate the final manifest and content-process access on the supported Firefox build | [#3](https://github.com/yutinglia/fennevia/issues/3) |
 | `resource://` mapping | A later `contentaccessible=yes` flag or over-broad inventory exposes files that were intended to remain privileged | Disclosure of source maps, implementation code, diagnostics, or private assets | Initial manifest omits `resource`; default access is privileged-only, and any hole punch is rejected | Concrete consumer, exact inventory, current-source review, ordinary-content test, and removal test before adding a mapping | [ADR-016](architecture-decisions.md#adr-016-follow-firefoxs-current-internal-url-access-model-and-omit-unused-mappings); runtime validation: [#3](https://github.com/yutinglia/fennevia/issues/3) |
@@ -28,8 +28,8 @@ Status terms:
 | Private-window per-window state | Private tab data is copied to process-global state, normal windows, persisted preferences, or diagnostics | Private-browsing disclosure after or during the session | Section 8 requires per-window memory, no browsing-derived persistence, and native fallback on uncertainty; #10 validates isolated tab state plus disposal in real normal, second-normal, and private windows | Validate each later browsing-data bridge and UI feature separately before enabling it in private windows | [#5](https://github.com/yutinglia/fennevia/issues/5), [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#12](https://github.com/yutinglia/fennevia/issues/12), [#13](https://github.com/yutinglia/fennevia/issues/13), [#14](https://github.com/yutinglia/fennevia/issues/14) |
 | Installer, updater, and uninstaller | Relative, broad, reparse-point, wrong-install, or daily-profile targets cause path escape, overwrite, or recursive deletion | Firefox damage or loss of unrelated profile files | Canonical preflight, redacted dry run, dual ownership manifest, same-volume staging, recovery journal, rollback, and exact deletion rules in section 7 | Repeat the real-Firefox lifecycle on each supported installer/platform change | [#4](https://github.com/yutinglia/fennevia/issues/4) |
 | Startup cache and installed stale state | Removed or replaced privileged code continues to execute from stale state | Old vulnerable behavior survives update, disable, or uninstall | Evidence-first cleanup; complete installed-file inventory; installer reports `startupCacheAction=none`; no arbitrary cache deletion | Revalidate only when a Firefox update or observed stale-code symptom supplies evidence | [#3](https://github.com/yutinglia/fennevia/issues/3), [#4](https://github.com/yutinglia/fennevia/issues/4) |
-| Native permission, authentication, certificate, extension-install, file-picker, and download-safety UI | The custom shell hides, replaces, overlays, or makes a prompt unreachable | Spoofing, unsafe consent, or inability to respond to Firefox security state | Firefox ownership is accepted in ADR-014; native UI remains on fail-open path | Verify hosts do not obstruct prompts, then test before hiding native visible UI | [#6](https://github.com/yutinglia/fennevia/issues/6), [#7](https://github.com/yutinglia/fennevia/issues/7), [#15](https://github.com/yutinglia/fennevia/issues/15) |
-| Window/runtime listeners, mappings, styles, and roots | Incomplete cleanup retains privileged state or duplicates handlers across windows | Cross-window data leaks, stale actions, or repeated privileged effects | #5 implements one process runtime and abort-first per-window cleanup; #9 owns boundary subscriptions; #10 verifies seven tab listeners, native mappings, subscribers, and frontend state are removed on disposal | Require every later host, bridge, timer, mapping, style, and root to register with the same cleanup boundary | [#5](https://github.com/yutinglia/fennevia/issues/5), [#6](https://github.com/yutinglia/fennevia/issues/6), [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10) |
+| Native permission, authentication, certificate, extension-install, file-picker, and download-safety UI | The custom shell hides, replaces, overlays, or makes a prompt unreachable | Spoofing, unsafe consent, or inability to respond to Firefox security state | Firefox ownership is accepted in ADR-014; #31 suspends all four overlays for native modal state and leaves native UI on the fail-open path | Repeat feature-specific prompt tests before hiding any overlapping native visible UI | [#6](https://github.com/yutinglia/fennevia/issues/6), [#7](https://github.com/yutinglia/fennevia/issues/7), [#31](https://github.com/yutinglia/fennevia/issues/31), [#15](https://github.com/yutinglia/fennevia/issues/15) |
+| Window/runtime listeners, mappings, styles, roots, reveal holds, and timers | Incomplete cleanup retains privileged state or duplicates handlers across windows | Cross-window data leaks, stale actions, or repeated privileged effects | #5 implements one process runtime and abort-first per-window cleanup; #9 owns boundary subscriptions; #10 verifies native mappings/subscribers; #31 verifies four roots/controllers, delegated listeners, observers, focus guards, and hide timers are removed on disposal | Require every later host, bridge, timer, mapping, style, and root to register with the same cleanup boundary | [#5](https://github.com/yutinglia/fennevia/issues/5), [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#31](https://github.com/yutinglia/fennevia/issues/31) |
 | Third-party source and copied snippets | Incompatible, absent, or unclear licensing and provenance | Legal inability to distribute, stale vulnerable code, or lost attribution | Record source URL, commit, license, modifications, and attribution; unlicensed code is unavailable | Select project license and attribution policy before copying implementation code | [#18](https://github.com/yutinglia/fennevia/issues/18) |
 | Runtime network, analytics, configuration, fonts, templates, and update checks | A remote party changes privileged behavior or receives browser data | Remote code execution, tracking, or unreproducible recovery | ADR-012 prohibits all such runtime dependencies; artifact scanner detects common leakage | Any proposed exception requires a dedicated issue and new architecture decision before implementation | [ADR-012](architecture-decisions.md#adr-012-no-runtime-remote-executable-dependencies); otherwise prohibited |
 
@@ -70,7 +70,7 @@ content/shell/ShellStyles.sys.mjs
 content/shell/THIRD_PARTY_NOTICES.txt
 ```
 
-The package version is `0.5.0-dev`. Every entry has a committed SHA-256 in
+The package version is `0.6.0-dev`. Every entry has a committed SHA-256 in
 `package-manifest.json`; no new Chrome Registry declaration accompanies the
 three generated shell files or the generated private bridge ESM. The bridge is
 built separately from TypeScript, reproduced byte-for-byte twice, and enters
@@ -115,7 +115,7 @@ The scanner has no bypass flag. A legitimate finding requires a dedicated review
 Logging calls accept a defined event record, not arbitrary objects, native Firefox values, exceptions, tabs, windows, requests, or application state. The normal record may contain only:
 
 | Field | Rule |
-|---|---|
+| --- | --- |
 | `prefix` | One of `[Fennevia bootstrap]`, `[Fennevia runtime]`, `[Fennevia window]`, `[Fennevia bridge]`, or `[Fennevia shell]` |
 | `level` | Stable severity, not user data |
 | `event` | Stable project event name |
@@ -188,7 +188,7 @@ content fennevia content/
 Review result:
 
 | Declaration or omission | Decision | Reason | Evidence or future gate |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `content fennevia content/` | Accept for Phase 1 | Dedicated project package; omits `contentaccessible=yes` | Firefox 153 resolved and imported the entry; an ordinary loopback HTTP page reported access blocked, and issue #22 repeated the denial after the identity migration |
 | `contentaccessible=yes` | Reject | It explicitly permits untrusted content to reference the package | None; adding it requires a dedicated security issue |
 | `resource fennevia ...` | Omit initially | No Phase 1 consumer; omitting the mapping minimizes registered and packaged surface | If later needed, name the consumer, map an exact inventory, retain default privileged-only access, and test both content denial and removal |
@@ -264,7 +264,7 @@ The exact package and manual interrupted-operation recovery procedure are in
 The issue and pull request must link a dedicated security review before any of these changes:
 
 | Trigger | Minimum additional evidence |
-|---|---|
+| --- | --- |
 | Runtime network access, remote configuration, analytics, updates, fonts, CSS, templates, or executable code | New ADR, endpoint/data-flow inventory, threat model, offline/failure behavior, and explicit owner approval |
 | `eval`, `Function`, string-generated modules, dynamic module location, or other dynamic code | Necessity, alternatives, input provenance, CSP/principal analysis, and abuse tests |
 | New privileged runtime dependency or lifecycle/native-binary build dependency | Completed dependency record, exact lockfile diff, script/network sandbox evidence, artifact diff, and removal plan |
