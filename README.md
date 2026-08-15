@@ -48,6 +48,22 @@ revealed. Native OS window controls and Firefox security-sensitive prompts,
 dialogs, notifications, extension-install UI, download-safety UI, DevTools, and
 browser-content infrastructure remain Firefox-owned.
 
+## UI and UX philosophy
+
+Fennevia is intentionally opinionated. Its UI and UX are based on the author's
+personal preferences and workflow, and the project is designed primarily to
+satisfy those needs rather than to provide a broadly configurable browser
+interface.
+
+The current roadmap does not provide user-facing configuration for core layout,
+interaction, or visual-design choices. These choices are treated as part of
+Fennevia's product design rather than as settings that every user can customize.
+
+This does not mean the design is permanently frozen. The UI and UX may change as
+the author's preferences, workflow, experiments, or implementation constraints
+evolve, and configurability may be reconsidered in the future if it becomes
+useful.
+
 ## Current progress
 
 | Area | Status | Result |
