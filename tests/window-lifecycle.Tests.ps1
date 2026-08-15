@@ -73,7 +73,8 @@ foreach ($requiredToken in @(
     '<UNC_PATH>',
     '<OPAQUE_URL>',
     '<OTHER_URI>',
-    '<REDACTED_SUFFIX>'
+    '<REDACTED_SUFFIX>',
+    'DOM_PATH_PATTERN'
 )) {
     Assert-True -Condition ($loggerContent -match $requiredToken) -Message "The runtime logger is missing a required privacy control."
 }

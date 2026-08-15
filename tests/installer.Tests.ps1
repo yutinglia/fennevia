@@ -220,7 +220,8 @@ function Copy-TestPackage {
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/Bootstrap.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/Logger.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/Runtime.sys.mjs" },
-        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/WindowManager.sys.mjs" }
+        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/WindowManager.sys.mjs" },
+        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/WindowShell.sys.mjs" }
     )
     if ($IncludeLegacy) {
         $fileDefinitions += [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/Legacy.sys.mjs" }
@@ -381,6 +382,7 @@ try {
         "chrome\fennevia\content\runtime\Logger.sys.mjs",
         "chrome\fennevia\content\runtime\Runtime.sys.mjs",
         "chrome\fennevia\content\runtime\WindowManager.sys.mjs",
+        "chrome\fennevia\content\runtime\WindowShell.sys.mjs",
         ".fennevia\ownership.json"
     )) {
         Assert-True -Condition (Test-Path -LiteralPath (Join-Path $installTarget.ProfileRoot $relativePath) -PathType Leaf) -Message "Install must create every profile-owned file."

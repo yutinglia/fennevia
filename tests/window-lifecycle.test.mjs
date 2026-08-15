@@ -598,6 +598,7 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
     windowKind: "private",
     opaqueId: "window-00000000-0000-4000-8000-000000000001",
     projectUri: "chrome://fennevia/content/runtime/Runtime.sys.mjs",
+    domPath: "html#main-window>body>#browser",
     url: "https://private.invalid/should-not-serialize",
     title: "secret title",
     privateContent: "secret-private-content",
@@ -615,6 +616,7 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
   assert.equal(record.url, undefined);
   assert.equal(record.title, undefined);
   assert.equal(record.privateContent, undefined);
+  assert.equal(record.domPath, "html#main-window>body>#browser");
   assert.equal(record.stack.length, 11);
   assert.ok(record.stack.includes("Error: <REDACTED_MESSAGE>"));
   assert.ok(record.stack.some(line => line.includes("<REMOTE_URL>")));
@@ -659,4 +661,16 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
     /^beginInitialization@chrome:\/\//u
   );
   assert.equal(firefoxRecord.stack[1].includes("private.invalid"), false);
+
+  logger.info({
+    event: "shell.hosts-ready",
+    phase: "shell-host-attach",
+    code: "FENNEVIA_SHELL_HOSTS_READY",
+    domPath: "https://private.invalid/unsafe-dom-path",
+  });
+  const unsafePathRecord = JSON.parse(
+    lines[2].replace(/^\[Fennevia runtime\] /u, "")
+  );
+  assert.equal(unsafePathRecord.domPath, undefined);
+  assert.equal(lines[2].includes("private.invalid"), false);
 });

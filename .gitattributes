@@ -1,0 +1,6 @@
+# Installed artifact bytes must remain stable across operating systems because
+# package-manifest.json records their SHA-256 digests.
+program/defaults/pref/*.js text eol=crlf
+program/*.cfg text eol=crlf
+profile/chrome/fennevia/chrome.manifest text eol=crlf
+profile/chrome/fennevia/**/*.mjs text eol=lf

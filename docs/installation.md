@@ -25,6 +25,7 @@ profile/chrome/fennevia/
       Logger.sys.mjs
       Runtime.sys.mjs
       WindowManager.sys.mjs
+      WindowShell.sys.mjs
 ```
 
 The installer verifies the manifest schema, package identity, version, exact
@@ -53,6 +54,7 @@ The installed layout is:
         Logger.sys.mjs
         Runtime.sys.mjs
         WindowManager.sys.mjs
+        WindowShell.sys.mjs
   .fennevia/ownership.json
 ```
 
@@ -264,12 +266,17 @@ pwsh -NoProfile -File .\tests\installer.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
 ```
 
-The current package is `0.2.0-dev` and contains five exact profile artifacts.
+The current package is `0.3.0-dev` and contains six exact profile artifacts.
+`.gitattributes` fixes AutoConfig/default/manifest files to CRLF and privileged
+`.mjs` modules to LF so the committed SHA-256 values remain stable on Windows
+and non-Windows checkouts. Do not recompute hashes from an unintended line-end
+conversion; normalize the source according to that contract first.
 Before a real install or update, also run the runtime/package gates:
 
 ```powershell
 pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
 pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
+pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
 pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -ArtifactRoot .\profile\chrome\fennevia `
   -InventoryPath .\package-manifest.json

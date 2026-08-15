@@ -391,11 +391,70 @@ The stock-start probe reported native UI, zero Fennevia records, and zero owned
 residue. A repeat uninstall was `not-installed` with zero mutations; no Firefox
 process remained and startup cache was never cleared.
 
-The Browser Toolbox's exact Firefox 153 URI and dialog/non-main identities were
-covered by the strict-filter unit suite. Its separately spawned GUI was not
-opened because the required interactive connection prompt was not bypassed.
-This runtime issue adds no host or UI that could cover DevTools; repeat the real
-interactive Browser Toolbox check when #6 first adds browser-chrome DOM.
+For issue #5, the Browser Toolbox's exact Firefox 153 URI and dialog/non-main
+identities were covered by the strict-filter unit suite, but its separately
+spawned GUI was intentionally deferred until the first browser-chrome DOM in
+issue #6. The following record completes that deferred check.
+
+### Issue #6 isolated XHTML host evidence
+
+Issue #6 adds a visible diagnostic primary host plus hidden sidebar and overlay
+hosts without hiding native UI or adding Svelte. The complete source, canary,
+stock-DOM, placement, Browser Toolbox, privacy, and failure evidence is in
+`docs/research/firefox-153-shell-hosts.md`.
+
+The local suites passed:
+
+```powershell
+node --test .\tests\shell-hosts.test.mjs .\tests\window-lifecycle.test.mjs
+pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
+pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
+pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
+pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
+pwsh -NoProfile -File .\tests\installer.Tests.ps1
+pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
+  -ArtifactRoot .\profile\chrome\fennevia `
+  -InventoryPath .\package-manifest.json
+```
+
+The seven shell tests plus nine lifecycle tests cover exact XHTML descendants,
+all host transitions, duplicate/collision behavior, partial rollback,
+normal/private separation, hostile diagnostic metadata, lifecycle races, and
+privacy-safe logging. Package `0.3.0-dev` has six exact profile artifacts; the
+clean real install applied 15 planned operations with matching plan digest and
+no startup-cache action.
+
+The copied Firefox matrix passed in separate cold processes:
+
+```powershell
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>'
+
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --browser-toolbox
+```
+
+| Case | Observed result |
+|---|---|
+| Initial, second, private windows | Each received one independent complete three-host set; every project element was XHTML |
+| Visible diagnostic | At least 30 CSS pixels high between toolbox and browser; fixed non-sensitive text only |
+| Native UI | Toolbox, browser, tabbox, sidebar siblings, modal top layer, content hit target, and Windows close command remained available |
+| Overlay/sidebar | Hidden; overlay also inert and pointer-transparent |
+| Window close/runtime stop | Exact hosts removed; repeated stop unchanged; post-stop window received no host |
+| Changed insertion point | Real tabbox ID was temporarily changed and restored; no partial host remained; one expected error contained fixed DOM path, Firefox version, and build ID |
+| Browser Toolbox | Prompt remained enabled and was accepted; Inspector selected the primary host and walker proved native nodes were outside every project host |
+| Toolbox cleanup | Child profile hash restored byte-identically; temporary prefs, marker, backup, port, and processes removed |
+| Browser Console | No unexpected first-party exception or error record; only the deliberate fail-open record appeared |
+| Uninstall/stock/reinstall | Uninstall backed up ten owned files and applied 15 operations; stock startup had zero project record/residue; clean reinstall applied 15 operations |
+
+The Browser Toolbox test follows Mozilla's CC0 test-server interaction pattern.
+It serializes `prompt-connection=false` only into the temporary child test
+profile, restores the parent pref to true before creating the parent DevTools
+server, and explicitly accepts that parent connection prompt. The original
+child profile bytes and parent prefs are restored after the child process exits.
 
 ## 10. Firefox stable-update procedure
 
