@@ -1,127 +1,416 @@
 # Testing and Recovery
 
-## 1. Always use a dedicated development profile
+This document defines the **current** test and recovery contract for Fennevia.
+Exact historical command output, first causal failures, and milestone-specific
+Firefox evidence remain in `docs/research/`. Do not rewrite those records when a
+later ADR supersedes their production architecture.
 
-Do not develop the browser shell in a daily-use profile.
+## 1. Current validated baseline
 
-The normative Windows procedure and tested commands are in `docs/development-setup.md`. The project helper creates a marker-owned direct-path profile and launches it with explicit `--profile`, `--no-remote`, and `--new-instance` arguments:
+As of 2026-08-15:
+
+- package: `0.6.0-dev`;
+- Firefox: 153.0.4 release;
+- build ID: `20260810162159`;
+- first platform: Windows 11;
+- environment: copied stock Firefox program plus marker-owned direct-path
+  development profile;
+- completed runtime/UI milestones: #3–#11 and #31;
+- current shell: one zero-layout frame with independent top, left, right, and
+  bottom surfaces;
+- current functional feature: vertical tabs in the left surface;
+- current placeholders: top, right, and bottom;
+- native Firefox visible UI: retained and unchanged;
+- production active state: not entered.
+
+The #6 primary/sidebar/overlay host record and #11 horizontal-tab record remain
+historical evidence. ADR-026 and #31 define the current four-edge geometry and
+vertical presentation.
+
+## 2. Always use the dedicated development environment
+
+Do not develop or validate privileged browser chrome in a daily-use profile.
+
+Follow `docs/development-setup.md`:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Initialize
-pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Verify -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' -RequireCleanEnvironment
-pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Launch -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' -Page about:support
+
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Verify `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -RequireCleanEnvironment
+
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Launch `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -Page about:support
 ```
 
-The profile is intentionally not added to Firefox's `profiles.ini`. This prevents the helper from changing the default-profile selection and makes complete deletion independent of daily-use profile registration.
+The profile must:
 
-The development profile should:
-
-- contain no unrelated userChrome, userContent, or custom loader;
-- contain the minimum necessary extensions;
-- be reproducible from a script or documented procedure;
+- remain outside Firefox `profiles.ini`;
+- contain the project ownership marker;
+- contain no unrelated userChrome/userContent/loader;
+- be disposable without touching another profile;
 - permit Browser Console and Browser Toolbox use;
-- have an unambiguous name such as `fennevia-dev`;
-- be disposable without affecting another profile.
+- be launched through explicit `--profile`, `--no-remote`, and
+  `--new-instance`;
+- use an explicitly selected copied Firefox program for package tests.
 
-Before each integration test, confirm the profile path, Firefox version, build ID, channel, executable, and project commit.
+Before each real integration run, record:
 
-Generate the privacy-safe portion of that record with:
+- Firefox version, build ID, channel, and executable identity;
+- OS version;
+- profile type and clean/installed state;
+- project commit;
+- package version;
+- test command;
+- `pass`, `fail`, `blocked`, or `not run`.
+
+Generate a redacted environment record with:
 
 ```powershell
-pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Environment -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe'
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Environment `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe'
 ```
 
-Normal output redacts the executable and profile paths. `-RevealPaths` is local-only and must not be pasted into issues or pull requests.
+`-RevealPaths` is local-only and its output must not be pasted into issues or
+pull requests.
 
-## 2. Minimum test matrix
+## 3. Repository and production-artifact gates
+
+Use the exact Node.js and npm versions in `.nvmrc` and `package.json`.
+
+```powershell
+npm ci --ignore-scripts --no-fund
+npm run dependencies:audit
+npm run verify
+```
+
+`npm run verify` covers:
+
+- Prettier check for configured source/build files;
+- ESLint and the Firefox-boundary rules;
+- Svelte/TypeScript checking;
+- pure and component tests;
+- resolved dependency audit;
+- deterministic frontend and bridge builds;
+- package-manifest synchronization;
+- exact production artifact scanning.
+
+Run the artifact gate directly when diagnosing package output:
+
+```powershell
+pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
+  -ArtifactRoot .\profile\chrome\fennevia `
+  -InventoryPath .\package-manifest.json
+```
+
+The current profile inventory contains exactly the eleven paths in
+`package-manifest.json`. The gate rejects unplanned files/chunks, endpoints,
+runtime networking APIs, HMR/dev-server markers, bare or dynamic imports, source
+maps, development source, executable binaries, symlinks/junctions, and unsafe
+paths.
+
+A build must not leave a dirty generated-artifact or manifest diff unless that
+change is intentional and reviewed. Never hand-edit generated bridge or shell
+artifacts.
+
+## 4. Minimum runtime matrix
 
 | Case | Expected result |
 | --- | --- |
-| Clean cold start | Bootstrap and process runtime initialize exactly once |
-| Browser restart | Shell reconstructs without stale behavior |
-| Second normal window | One managed lifecycle per window with no duplicate process runtime; one shell per window after hosts exist |
-| Private window | Full feature lifecycle according to policy or complete native fallback; never partial initialization |
-| Close and reopen window | Hosts, listeners, observers, mappings, and roots are cleaned up |
-| Missing manifest | Native Firefox UI works; clear bootstrap error |
-| Malformed manifest | Native Firefox UI works; registration failure is clear |
-| Missing or broken entry | Native Firefox UI works; complete phase and stack are logged |
-| Broken frontend bundle | No active gate; native UI remains usable |
-| Frontend mount throws | Partial hosts are cleaned up; native UI remains usable |
-| Missing stylesheet | Shell does not activate and native UI is not permanently hidden |
-| Missing bridge capability | Typed failure and fail-open behavior |
-| Emergency fallback | Native UI becomes visible immediately without depending on Svelte |
-| Safe start | Shell activation is skipped before native UI can be hidden |
-| Fullscreen | Enter and exit remain operable |
-| Customize mode | Native toolbox cannot become inaccessible or corrupt the layout |
-| Browser Toolbox | Shell and retained native chrome remain inspectable |
-| Install, update, uninstall | Only project-owned files are changed and stock startup is restored |
-| Production artifact inventory | Exact files only; no remote endpoint, runtime network API, HMR, bare/dynamic import, source map, dev marker, unexpected chunk, or executable binary |
-| Unsafe installer target | Preflight rejects before writes, backups, cache actions, or process changes |
+| Three clean cold starts | One bootstrap and one process runtime per process |
+| Ordinary restart | Fresh per-window frame, bridge, roots, and state; no stale callbacks |
+| Second normal window | Independent complete frame and feature state; no duplicate process runtime |
+| Private window | Full explicitly tested feature support or complete native fallback; never partial initialization |
+| Close/reopen window | Hosts, roots, bridge contexts, listeners, observers, holds, timers, mappings, and pending work are removed |
+| Runtime stop twice | First stop disposes; second is idempotent |
+| Missing manifest | Clear bootstrap failure; native UI usable |
+| Malformed manifest | Clear registration/entry failure; native UI usable |
+| Missing/broken entry | Privacy-safe first causal stack; no partial runtime |
+| Broken frontend bundle | No `healthy`/`active`; partial frame cleaned; native UI usable |
+| Missing/invalid CSS | No activation; native UI usable |
+| Missing bridge capability | Typed fixed-symbol failure and complete cleanup |
+| Emergency fallback | Matching window's project lifecycle is disposed without Svelte |
+| Safe start | Manifest lookup/import/mount skipped early |
+| Browser Toolbox | Project ownership and native retention are inspectable |
+| Install/update/disable/uninstall | Only owned files change; stock startup restored |
+| Unsafe package target | Preflight rejects before mutation |
+| Cleanup/reinstall | No owned residue, stale process, or unexplained cache action |
 
-Every recorded result must be `pass`, `fail`, `blocked`, or `not run`, with evidence. A check mark alone is not sufficient.
+Every expected result requires evidence. A check mark without environment,
+command, and observation is insufficient.
 
-## 3. Recovery design
+## 5. Current shell-frame and edge-controller matrix
 
-### Health and activation gate
+Every shell or feature change that can affect #31 must verify:
 
-Native-UI hiding must depend on `data-fennevia-active`. Set it only after all required steps succeed:
+### Ownership and mount
 
-1. process runtime initialized;
-2. window accepted by lifecycle policy;
-3. hosts created;
-4. bridge capabilities validated;
-5. frontend mounted;
-6. stylesheet and critical UI health checks passed;
-7. emergency handler registered;
-8. safe-start state checked.
+- exactly one `#fennevia-shell-frame-host` per managed browser window;
+- exact top, left, right, and bottom host order;
+- one XHTML mount target and one Svelte root per edge;
+- all-or-nothing attach and rollback;
+- project-owned style attached and parsed;
+- project ownership stops at frame descendants;
+- no Firefox-native node is moved, reparented, removed, or managed by Svelte;
+- frame and hidden surfaces reserve no permanent browser-content geometry.
 
-Issue #7 implements the per-window sequence as `created -> mounted -> healthy ->
-active`, plus `failed` and `disposed`. The root carries
-`data-fennevia-state` and cumulative state-specific markers. An illegal
-transition enters `failed`; disposal removes every marker. The production
-initializer deliberately stops at `healthy`, and package `0.4.0-dev` contains
-no native-hide selector or automatic activation call. The current
-`0.6.0-dev` frontend package preserves the same inactive gate.
+### Reveal state
 
-The health phase has a 2,000 ms deadline. It requires exact host identity,
-placement, XHTML ownership, parsed project CSS, hidden/inert auxiliary hosts,
-the emergency listener, declared capabilities, and a literal `true` result.
+For each edge:
+
+- hidden default;
+- pointer reveal from the matching narrow trigger;
+- keyboard reveal command;
+- focus hold;
+- popup hold where supported;
+- bounded programmatic hold where used;
+- delayed hide after the last hold clears;
+- rapid exit/re-entry;
+- pointer leaving the Firefox window;
+- `Escape` priority and dismissal;
+- focus transfer into the surface;
+- focus restoration to the prior valid target;
+- disposal during a pending hide or hold.
+
+### Corners and collisions
+
+- top-left, top-right, bottom-left, and bottom-right ownership;
+- deterministic pointer arbitration;
+- rapid movement between adjacent edges;
+- no accidental double reveal from a corner;
+- legitimate simultaneous non-pointer holds;
+- no overlap that makes a required control unreachable;
+- narrow/short window fallback.
+
+### Environment and accessibility
+
+- normal, second-normal, and private windows;
+- maximized, restored, resized, snapped, narrow, short, ultrawide, and high-DPI
+  layouts where practical;
+- browser fullscreen;
+- DOM fullscreen suspension;
+- customize-mode suspension;
+- native modal/window-modal suspension;
+- light and dark Firefox themes;
+- very light, dark, saturated, patterned, and moving content behind surfaces;
+- backdrop-filter unavailable or transparency reduced;
+- `prefers-reduced-motion`;
+- forced colors/high contrast;
+- visible focus and meaningful accessible names/roles/states.
+
+The frame may be pointer-active only at the documented edge triggers and visible
+owned surfaces. The center content hit target must remain Firefox-owned.
+
+## 6. Feature-specific matrices
+
+### 6.1 Tabs and left surface — implemented
+
+Validate:
+
+- one tab, many tabs, and bounded vertical overflow;
+- exact native order;
+- selected, title, safe favicon/fallback, pinned, and loading state;
+- native and custom select/new/close/pin/unpin used alternately;
+- selected/background/last-tab close behavior;
+- rapid event/action bursts;
+- long, empty, emoji, markup-like, Unicode, and bidirectional titles;
+- rejected/failed favicon;
+- Up/Down, Home/End, Enter/Space, Delete, sibling pin/close controls;
+- deterministic close-focus recovery;
+- selected item remains reachable;
+- direct frontend unmount/remount;
+- stale/foreign ID rejection;
+- bridge-capability failure;
+- no title, URL, or favicon value in normal diagnostics;
+- native tab strip remains visible and unchanged until #15.
+
+Evidence:
+
+- `docs/research/firefox-153-tabs-bridge.md`;
+- `docs/research/firefox-153-tab-strip.md`;
+- `docs/research/firefox-153-four-edge-shell.md`.
+
+### 6.2 Top navigation — required for #12
+
+Validate:
+
+- Back/Forward state against native controls;
+- Reload/Stop transitions;
+- New Tab;
+- selected-browser handoff;
+- redirects, same-document navigation, error pages, and tab close;
+- rapid command/tab-switch sequences;
+- no action against the previous selected browser;
+- current Firefox command/controller semantics;
+- top-edge pointer/keyboard/focus/popup behavior;
+- no editable address field in the top surface;
+- native navbar/Urlbar/toolbox retained;
+- navigation capability and surface failure.
+
+### 6.3 Left address input — required for #13
+
+Validate:
+
+- ordinary URLs, host-like input, Unicode domains, and ordinary searches;
+- empty, whitespace, malformed, unsupported, dangerous, and very long input;
+- current Firefox fixup/search/principal/load semantics;
+- independent unsubmitted draft;
+- redirects, Back/Forward, reload, stop, tab switch, new tab, and session restore;
+- repeated `Ctrl+L`, Enter, and two-stage Escape behavior;
+- healthy-only custom `Ctrl+L` ownership;
+- native `Ctrl+L` fallback while inactive, failed, safe-started, unsupported, or
+  disposed;
+- focus movement between address and tabs;
+- no input/complete URL in normal diagnostics or project persistence;
+- bridge/component/surface failure.
+
+### 6.4 Right bookmarks — required for #14
+
+Validate:
+
+- empty roots and large bounded trees;
+- root selection and nested folder expansion;
+- lazy/bounded child loading;
+- long/empty/Unicode/bidirectional titles;
+- separator, malformed, stale, deleted, and missing-parent state;
+- native create, rename, move, reorder, and remove while hidden/open;
+- current-tab and supported new-tab opening;
+- unsupported/special scheme policy;
+- observer event bursts without continuous polling;
+- keyboard traversal and focus stability during live changes;
+- no bookmark title, URL, folder contents, or user-data identifier in normal
+  logs/persistence;
+- native Library, `Ctrl+D`, dialogs, and management paths retained;
+- Places capability/query/observer/surface failure.
+
+### 6.5 Bottom downloads — required for #32
+
+Validate:
+
+- one and multiple known-size downloads;
+- mixed known/unknown sizes;
+- zero-byte, very small, and very large items;
+- active, paused/resumed through native UI, failed, canceled, and succeeded;
+- starts/completions while hidden;
+- rapid view/event bursts;
+- determinate/indeterminate aggregate semantics;
+- hidden updates without unsolicited reveal;
+- accessible progress state;
+- no filename, source URL, full path, private marker, or named byte count in
+  normal diagnostics;
+- native Downloads panel, notification, reputation, and safety UI retained;
+- Downloads module/view/subscription/surface failure.
+
+## 7. Native-UI activation matrix — required only for #15
+
+No earlier issue may claim this gate.
+
+Before activation, create a reviewed inventory for every hidden native selector
+or capability with:
+
+- current Firefox owner and source path;
+- custom replacement;
+- retained native access path;
+- failure behavior;
+- test evidence.
+
+Validate:
+
+- active rest shows only web content inside the browser client area;
+- all four Fennevia surfaces remain hidden at rest;
+- no custom or hidden native surface reserves permanent layout;
+- top/left/right/bottom reveal independently;
+- clearing `data-fennevia-active` restores native UI immediately without
+  restart or Svelte;
+- safe start prevents activation;
+- emergency fallback works with no surface open and with each surface
+  open/focused;
+- missing entry, bundle, CSS, activation CSS, host, controller, command path,
+  Places/Downloads callback, or bridge capability clears/prevents active state;
+- native app menu and retained overflow paths;
+- extension actions and installation prompts;
+- bookmarks Library and management;
+- Downloads management, notification, and safety;
+- permission, authentication, certificate, file picker, notification, find bar,
+  and dialog UI;
+- browser fullscreen, DOM fullscreen, customize mode, DevTools, Browser Toolbox,
+  and OS window controls;
+- hard disable and uninstall from a broken active package.
+
+Do not hide a broad parent when an uncovered descendant or action would become
+unreachable.
+
+## 8. Recovery design
+
+### 8.1 Health and activation
+
+The current per-window sequence is:
+
+```text
+created -> mounted -> healthy -> active
+                 \-> failed
+any live state -> disposed
+```
+
+Current package `0.6.0-dev` stops at `healthy`. The health phase requires:
+
+- exact frame identity and placement;
+- ordered top/left/right/bottom hosts;
+- four XHTML mount targets;
+- four frontend roots;
+- attached parsed project CSS;
+- edge reveal controller;
+- environment/suspension handling;
+- privileged emergency handler;
+- every declared required capability;
+- a literal successful health result before the finite deadline.
 
 If any step fails:
 
-- do not set, or immediately remove, the active attribute;
-- attempt to unmount and remove project-owned UI;
-- dispose partial listeners and mappings;
-- log the phase and complete stack with privacy-safe context;
-- do not remove or mutate core native UI.
+1. remove or never set `data-fennevia-active`;
+2. abort pending initialization;
+3. unmount every created frontend root;
+4. dispose bridge contexts and feature subscriptions;
+5. clear edge holds and timers;
+6. remove style and frame descendants;
+7. report the privacy-safe first causal phase/stack;
+8. leave core native Firefox UI unchanged.
 
-### Emergency fallback
+### 8.2 Emergency fallback
 
-Provide a privileged keyboard handler that does not depend on a Svelte component, store, CSS animation, or bridge feature. It must immediately clear the active gate and reveal native UI.
+The Windows binding is:
 
-Choose a binding that does not conflict with common Firefox or OS shortcuts. Document and test it on every supported platform.
+```text
+Ctrl+Alt+Shift+F12
+```
 
-The Windows binding is `Ctrl+Alt+Shift+F12`. It is registered on the browser
-chrome window for `keydown` with `{ capture: true, mozSystemGroup: true }`,
-requires exactly Ctrl/Alt/Shift without Meta, and is removed with the identical
-listener/options pair. Stock Firefox reserves unmodified F12 for DevTools; a
-user-customized shortcut can still collide, so other platforms and customized
-bindings require new evidence. Triggering fallback reports a fixed phase/code,
-clears active state, and disposes only that window's project lifecycle.
+It is registered directly on the browser chrome window in the capture and
+Mozilla system event groups. It must not depend on:
 
-### Safe start
+- Svelte;
+- a component;
+- application state;
+- a feature bridge;
+- project CSS;
+- a visible custom control.
 
-Select at least one mechanism that can be evaluated before shell activation:
+Triggering it clears active state first and disposes only that window's project
+lifecycle.
 
-- a preference such as `fennevia.safeStart=true`;
-- a sentinel file in the project profile package;
-- another source-validated early mechanism.
+### 8.3 Safe start
 
-Safe start may load minimal logging needed for diagnosis, but it must not mount or activate the custom shell.
+AutoConfig checks Firefox safe mode and:
 
-Fennevia uses the existing preference mechanism. AutoConfig checks Firefox safe
-mode and `fennevia.safeStart` before `UChrm`, registration, URI resolution, or
-module import. The owned-profile recovery matrix is:
+```text
+fennevia.safeStart = true
+```
+
+before `UChrm`, manifest registration, project URI resolution, or module import.
+A broken runtime module therefore cannot prevent safe start.
+
+Run the recovery wrapper:
 
 ```powershell
 pwsh -NoProfile -File .\tests\firefox-shell-recovery.Tests.ps1 `
@@ -129,35 +418,39 @@ pwsh -NoProfile -File .\tests\firefox-shell-recovery.Tests.ps1 `
   -ProfilePath '<FENNEVIA_DEV_PROFILE>'
 ```
 
-The script refuses a pre-existing `user.js` policy for this preference. It tests
-safe start once with all files and once with a hash-verified runtime module
-moved to a unique OS-temporary directory, restores that module byte-identically,
-runs ordinary startup with `false`, restores the original `user.js`, and ensures
-the persisted preference ends false.
+When the preference is injected through `user.js`, Firefox persists it into the
+profile preference store. Restore the original `user.js`, explicitly return the
+preference to `false`, cold start, and verify no stale safe-start state remains.
 
-### Hard disable and uninstall
+### 8.4 Hard disable and uninstall
 
-The package helper provides a recovery procedure that does not require deleting
-the entire profile:
+1. Close all Firefox and Browser Toolbox processes using the selected targets.
+2. Preview `Disable` against explicit program/profile paths.
+3. Run `Disable`; the AutoConfig preference is moved even when the runtime entry
+   is broken.
+4. Cold start and confirm native UI with no Fennevia startup record.
+5. Preview and run ownership-manifest-based `Uninstall`.
+6. Cold start stock Firefox and confirm no Fennevia record, manifest error, or
+   owned residue.
+7. Use startup-cache cleanup only when an observed stale-code symptom remains.
 
-1. Close Firefox.
-2. Preview and run `scripts/fennevia-package.ps1 Disable` against the explicit
-   program and profile targets. This moves the owned AutoConfig preference even
-   when the manifest or runtime entry is missing.
-3. Restart Firefox and confirm that native UI appears and Browser Console
-   contains no Fennevia startup record.
-4. Preview and run the ownership-manifest-based `Uninstall` action.
-5. Cold-start stock Firefox and confirm no Fennevia record or manifest error.
-6. Apply startup-cache cleanup only if an observed stale-code symptom remains.
+See `docs/installation.md` for exact commands and interrupted-operation recovery.
 
-Exact commands, ownership rules, and interrupted-operation recovery are in
-`docs/installation.md`.
-
-## 4. Diagnostic tools
+## 9. Diagnostic tools
 
 ### Browser Console
 
-Use for AutoConfig, registration, module import, lifecycle, bridge, and frontend exceptions. Logs should have stable prefixes such as:
+Use it for:
+
+- AutoConfig and manifest registration;
+- privileged import failures;
+- process/window lifecycle;
+- bridge capability and action failures;
+- frontend registration/mount/unmount;
+- edge-controller and feature failures;
+- recovery and cleanup.
+
+Normal records use stable prefixes:
 
 ```text
 [Fennevia bootstrap]
@@ -167,54 +460,67 @@ Use for AutoConfig, registration, module import, lifecycle, bridge, and frontend
 [Fennevia shell]
 ```
 
-Normal logs must follow the privacy policy and avoid complete browsing data.
+Do not log page titles, complete URLs, search/address text, bookmark contents,
+download filenames/URLs/paths, profile paths, or private browsing data.
 
 ### Browser Toolbox
 
-Use it to:
+Use it to verify:
 
-- inspect host namespace and placement;
-- inspect health attributes and computed style;
-- verify that native UI still exists;
-- find duplicate hosts or retained listeners;
-- manually clear the active attribute as a recovery step;
-- inspect focus, fullscreen, customize-mode, and popup behavior.
+- exact frame and edge-host placement;
+- XHTML namespace;
+- project/native ownership boundary;
+- root state attributes;
+- hidden-at-rest geometry;
+- trigger hit regions;
+- focus and accessible roles/states;
+- corner/collision behavior;
+- computed glass and fallback styles;
+- retained native UI;
+- prompt/dialog/notification stacking;
+- complete cleanup.
 
-### Development diagnostic API
+### Development-only failure injection
 
-A later runtime may expose a read-only local debug object such as:
+Installed production artifacts expose no preference or global that selects a
+failure mode. Unit constructors and owned mutation wrappers may inject controlled
+failure. Every wrapper must restore exact committed bytes in `finally` and
+verify the restored hash.
 
-```text
-window.FenneviaDebug
-```
+Do not create a production `window.FenneviaDebug` dependency. A future read-only
+development diagnostic API requires a separate review and must remain
+privacy-safe and absent from production artifacts.
 
-It must be development-only, must not expose sensitive browsing state, and must never become a production UI dependency.
+## 10. Failure-injection catalogue
 
-## 5. Failure-injection policy
+Maintain controlled tests for:
 
-Development builds should provide controlled ways to simulate:
+- missing/malformed manifest;
+- missing/throwing privileged entry;
+- duplicate bootstrap;
+- window initialization race/close;
+- changed host insertion point;
+- partial frame/edge host attach;
+- missing top, left, right, or bottom target;
+- frontend registration/mount/unmount failure;
+- missing/invalid frame CSS;
+- edge-controller construction/hold/timer/corner/disposal failure;
+- health false and timeout;
+- missing base bridge capability;
+- missing tabs/navigation/address/Places/Downloads capability;
+- malformed/stale/foreign snapshots and IDs;
+- feature component failure;
+- disposal during a pending hide, focus/popup hold, navigation event, address
+  submission, Places query/observer callback, or Downloads callback;
+- emergency fallback while Svelte is absent or visually broken.
 
-- missing manifest;
-- failed module import;
-- host creation failure;
-- missing required capability;
-- frontend mount exception;
-- missing CSS;
-- health-check timeout;
-- disposer called twice;
-- stale tab or window handle.
+Each case must produce a fixed privacy-safe first causal record, clean partial
+work, and retain or restore native UI.
 
-Failure injection must be impossible or explicitly disabled in installed production artifacts unless a documented local diagnostic mode is enabled.
+## 11. Profile reset and startup cache
 
-Issue #7 does not add a production diagnostic mode. Mount, health, capability,
-and timeout failures are passed as ordinary collaborators only to the exported
-unit-test constructor. `initializeWindowShell`, the sole production consumer,
-uses fixed defaults. Static checks reject a failure/debug preference or global
-selector in the installed health runtime.
-
-## 6. Phase 0 profile reset and cache evidence
-
-Preview and perform a complete disposable-profile reset only after all managed Firefox and Browser Toolbox processes are closed:
+Reset only the marker-owned disposable profile after every related Firefox and
+Browser Toolbox process is closed:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Remove -WhatIf
@@ -222,251 +528,27 @@ pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Remove -Force
 pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Initialize
 ```
 
-Deletion is restricted to the dedicated managed root and requires the valid project marker. A missing marker, registered Firefox profile, broad path, or active process is a hard refusal.
+The helper rejects broad paths, registered profiles, reparse points, missing
+ownership markers, and active processes.
 
-Do not clear Firefox's startup cache routinely. First record a causal startup or stale-artifact symptom. If evidence still indicates startup-cache state after source artifacts and the active profile are verified, use Firefox's **Clear startup cache** action in `about:support`, restart, and record the before-and-after result. Phase 0 observed no project AutoConfig declaration and did not require cache clearing. The Phase 1 evidence below confirms that entry replacement and complete project-file removal also took effect without it on Firefox 153.0.4.
+Do not clear Firefox startup cache routinely. First:
 
-## 7. Phase 1 bootstrap evidence
+1. verify source/generated/package hashes;
+2. verify the selected installed targets;
+3. close all target processes;
+4. reproduce one cold start;
+5. restore or remove exact project files;
+6. cold start again.
 
-The minimal startup chain was first validated under the provisional identity on
-2026-08-14 with Firefox 153.0.4 release, build ID `20260810162159`, source stamp
-`54be19de0e08edff0b797e55fd935dd3978b0a6d`, on Windows 11 25H2. The exact
-historical literals remain in `docs/research/firefox-153-bootstrap.md`. The
-current Fennevia paths shown below were revalidated on the same Firefox build on
-2026-08-15; the identity-specific matrix is in
-`docs/research/fennevia-identity-migration.md`.
+Only if stale behavior persists with verified files should the operator use
+Firefox's **Clear startup cache** action in `about:support`, then record exact
+before/after evidence.
 
-Both runs used a project-owned copy of the stock Firefox program under a
-marker-owned local test root and a separate marker-owned direct-path profile.
-No system Firefox files, registered profiles, or daily-use profiles were
-modified.
+Firefox 153.0.4 milestone tests did not require routine startup-cache clearing.
 
-The installed test layout was:
+## 12. Real Firefox harnesses
 
-```text
-<FIREFOX_PROGRAM_COPY>/
-  defaults/pref/fennevia.js
-  fennevia.cfg
-
-<FENNEVIA_DEV_PROFILE>/chrome/fennevia/
-  chrome.manifest
-  content/Bootstrap.sys.mjs
-```
-
-Static and syntax checks:
-
-```powershell
-pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\bootstrap-spike.Tests.ps1
-Get-Content -Raw .\program\fennevia.cfg | node --check -
-node --check .\profile\chrome\fennevia\content\Bootstrap.sys.mjs
-node --check .\tests\bootstrap-content-access.mjs
-```
-
-The ordinary-content probe uses only Node's standard library, binds an ephemeral `127.0.0.1` port, requires explicit absolute Firefox/profile/screenshot paths, and refuses to overwrite a screenshot:
-
-```powershell
-node .\tests\bootstrap-content-access.mjs `
-  --firefox '<FIREFOX_PROGRAM_COPY>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>' `
-  --screenshot '<NEW_LOCAL_SCREENSHOT_PATH>'
-```
-
-Observed real-Firefox matrix:
-
-| Case | Browser Console or page result | Native/recovery result |
-| --- | --- | --- |
-| Three cold starts | Exactly one `bootstrap.success` per process; `initializationCount=1` | Native `about:support` window present each time |
-| Second normal window | One process success record | Two native Firefox windows; no second process initialization |
-| Private window | One process success record | Native Firefox private-browsing window present |
-| Missing manifest | `bootstrap.fatal`, phase `manifest-locate`, complete redacted stack | Native Firefox window present |
-| Malformed manifest | `bootstrap.fatal`, phase `entry-resolve`, `NS_ERROR_FILE_NOT_FOUND` | Native Firefox window present |
-| Incorrect entry URI | `bootstrap.fatal`, phase `entry-import`, fixed project URI identified | Native Firefox window present |
-| Entry syntax error | `bootstrap.fatal`, phase `entry-import`, `SyntaxError` | Native Firefox window present |
-| Duplicate cfg evaluation | One success plus one `bootstrap.duplicate`; no fatal record | Second evaluation skipped with prior result `ready` |
-| `fennevia.safeStart=true` | One `bootstrap.skipped`; no registration or import | Native Firefox window present |
-| Ordinary HTTP content fetch | Probe reported `blocked`; screenshot displayed the PASS state | No `contentaccessible=yes`; no resource alias |
-| Corrected entry after syntax failure | Success on the immediately following cold start | No startup-cache clearing performed |
-| AutoConfig pref, cfg, and package removed | Zero project records in a new Browser Console | Stock native startup; no residual project error |
-
-When safe start is injected through `user.js`, Firefox copies that value into the profile preference store. Restoring `user.js` alone is not a reset. The test must explicitly set `fennevia.safeStart=false`, complete a cold start, restore the original `user.js`, and confirm that the final bootstrap succeeds and no stale `true` value remains in `prefs.js`.
-
-Fatal records use the `[Fennevia bootstrap]` prefix and include `event`, `phase`, stable `code`, context, safe error name/message, full stack array, Firefox version, and build ID. Remote URLs, file URLs, Windows paths, opaque URLs, and control characters are redacted or removed. They do not include browsing URLs, page titles, search text, profile paths, or private-window state.
-
-The validated cache procedure is evidence-first:
-
-1. Close every process using the test profile.
-2. Verify or restore the exact cfg, manifest, and entry from source, then cold start again.
-3. If disabling, remove only the project AutoConfig preference file, cfg file, and project-owned profile package, then cold start and confirm zero project records.
-4. Do not clear startup cache for ordinary source replacement or removal on the validated build; neither recovery test required it.
-5. Only if an actual stale artifact remains after file and profile verification, use Firefox's **Clear startup cache** action in `about:support`, restart, and record the before/after evidence.
-
-The detailed upstream research and exact canary revisions are in
-`docs/research/firefox-153-bootstrap.md`. The 2026-08-15 regression additionally
-confirmed three cold starts, safe start and reset, missing-manifest fail-open and
-immediate recovery, ordinary-content denial, second and private windows,
-graceful cleanup, and complete Fennevia-file removal without clearing startup
-cache.
-
-## 8. Phase 1 package-lifecycle evidence
-
-Issue #4 stabilized the package at `program/`, `profile/chrome/fennevia/`, and
-`package-manifest.json`, then validated `scripts/fennevia-package.ps1` on the
-same copied Firefox 153.0.4 program and marker-owned development profile used by
-the identity regression. No system Firefox or registered/daily-use profile was
-modified.
-
-Automated installer tests passed in PowerShell 7 and Windows PowerShell 5.1.
-They cover unsafe targets, reparse points, path traversal, unknown collisions,
-redacted dry run, ownership and hash conflicts, changing/stale package updates,
-missing files, unrelated profile content, staging permission denial,
-interrupted-transaction rejection, and injected partial-failure rollback:
-
-```powershell
-pwsh -NoProfile -File .\tests\installer.Tests.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
-```
-
-Observed real-Firefox results:
-
-| Case | Result |
-| --- | --- |
-| Install preview | 10 exact operations; program/profile tree fingerprint unchanged |
-| Install and repeat | Preview/result plan digests matched; 10 applied mutations, exact hashes, byte-identical ownership pair, no transaction residue; repeat was a zero-operation no-op |
-| Three cold starts | Exactly one success per process and zero Fennevia fatal records |
-| Second and private windows | Two native normal windows or one native private window remained usable; no duplicate initialization |
-| Same-package update | `already-current`, zero operations |
-| Disable and enable | Disabled cold start had zero Fennevia records; enable restored one success on the next cold start |
-| Missing runtime entry | Hard disable still completed; disabled cold start had native UI and zero Fennevia/manifest/uncaught records |
-| Uninstall preview | 9 exact operations because the entry was already missing; tree fingerprint unchanged |
-| Uninstall and repeat | All remaining owned files/metadata removed, development marker and parents retained, no transaction residue; repeat was a zero-operation no-op |
-| Final stock cold start | Native UI present; zero Fennevia records, manifest errors, uncaught, or unhandled signals |
-| Final state | Clean-environment verification passed; no Firefox process remained |
-
-All GUI processes exited through Firefox's graceful quit API. Startup cache was
-not cleared at any point; each state transition appeared on the immediately
-following cold start. One Firefox-owned missing Crash Reports directory message
-was observed as an unrelated baseline and was not suppressed by mutating that
-non-project directory.
-
-The exact environment, operation counts, security review, and complete matrix
-are in `docs/research/fennevia-installer-validation.md`. The operator and
-interrupted-operation recovery contract is in `docs/installation.md`.
-
-## 9. Phase 2 browser-window lifecycle evidence
-
-Issue #5 added the process singleton, strict browser-window manager,
-abort-first per-window cleanup, and privacy-safe runtime logger without adding
-hosts or changing native UI. The implementation record, pinned source/canary
-research, and exact limitations are in
-`docs/research/firefox-153-window-lifecycle.md`.
-
-Automated tests passed under Node.js 24.18.0, PowerShell 7.6.4, and Windows
-PowerShell 5.1:
-
-```powershell
-node --test .\tests\window-lifecycle.test.mjs
-pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\window-lifecycle.Tests.ps1
-pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\bootstrap-spike.Tests.ps1
-pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
-  -ArtifactRoot .\profile\chrome\fennevia `
-  -InventoryPath .\package-manifest.json
-```
-
-The Node suite has nine tests. It covers existing and later windows,
-normal/private classification, exact Browser Toolbox URI and dialog/non-main
-filtering, duplicate notifications, async-close cancellation and late disposal,
-cleanup exceptions, manager-start rollback, idempotent runtime shutdown,
-singleton failure state, and hostile logging values.
-
-The package was installed as `0.2.0-dev` into only the copied Firefox program
-and marker-owned profile. Preview and execution shared one plan digest and
-applied 14 exact creates. A same-package update preview later returned
-`already-current` with zero mutations and no startup-cache action.
-
-Six complete real-Firefox probes passed in separate Firefox 153.0.4 processes,
-including a final run against the packaged logger hash recorded in the manifest:
-
-```powershell
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>'
-```
-
-| Case | Observed result |
-| --- | --- |
-| Initial normal window | Runtime `started`, `initializationCount=1`, managed count one |
-| Additional tab | Managed count unchanged; no extra window initialization |
-| Second normal window | One normal initialization and one disposal on close |
-| Private window | One private initialization and one disposal on close |
-| Runtime stop twice | First stop disposed the remaining window; second returned the identical stopped state |
-| New normal window after stop | Managed count remained zero; no callback or initialization record |
-| Native UI | `browser.xhtml`, `html#main-window`, and `#navigator-toolbox` remained; no active Fennevia UI gate existed |
-| Diagnostics | One process bootstrap/runtime start, no Fennevia error-level record, and no first-party Fennevia script error |
-| Exit | Firefox graceful quit; zero remaining test Firefox processes |
-
-The real probe starts Firefox with `--remote-allow-system-access` solely so
-Marionette can inspect the parent-process chrome context. The script first
-validates explicit copied-program and marker-owned-profile paths and never
-prints them. This flag is not part of the installed package.
-
-Failure injection used:
-
-```powershell
-pwsh -NoProfile -File .\tests\firefox-fail-open.Tests.ps1 `
-  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
-  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
-```
-
-The script moved only the hash-verified installed `WindowManager.sys.mjs` into
-a unique OS-temporary directory, restored it in `finally`, and verified the
-restored SHA-256. The missing module produced one caught `bootstrap.fatal` at
-`entry-import`; native browser UI remained usable and the runtime did not
-partially start. The immediately following cold start passed without clearing
-startup cache.
-
-Final uninstall preview and execution used the same plan digest, backed up the
-nine ownership-proven files, and applied 14 exact file/directory operations.
-The stock-start probe reported native UI, zero Fennevia records, and zero owned
-residue. A repeat uninstall was `not-installed` with zero mutations; no Firefox
-process remained and startup cache was never cleared.
-
-For issue #5, the Browser Toolbox's exact Firefox 153 URI and dialog/non-main
-identities were covered by the strict-filter unit suite, but its separately
-spawned GUI was intentionally deferred until the first browser-chrome DOM in
-issue #6. The following record completes that deferred check.
-
-### Issue #6 isolated XHTML host evidence
-
-Issue #6 adds a visible diagnostic primary host plus hidden sidebar and overlay
-hosts without hiding native UI or adding Svelte. The complete source, canary,
-stock-DOM, placement, Browser Toolbox, privacy, and failure evidence is in
-`docs/research/firefox-153-shell-hosts.md`.
-
-The local suites passed:
-
-```powershell
-node --test .\tests\shell-hosts.test.mjs .\tests\window-lifecycle.test.mjs
-pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
-pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
-pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
-pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
-pwsh -NoProfile -File .\tests\installer.Tests.ps1
-pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
-  -ArtifactRoot .\profile\chrome\fennevia `
-  -InventoryPath .\package-manifest.json
-```
-
-The seven shell tests plus nine lifecycle tests cover exact XHTML descendants,
-all host transitions, duplicate/collision behavior, partial rollback,
-normal/private separation, hostile diagnostic metadata, lifecycle races, and
-privacy-safe logging. Package `0.3.0-dev` has six exact profile artifacts; the
-clean real install applied 15 planned operations with matching plan digest and
-no startup-cache action.
-
-The copied Firefox matrix passed in separate cold processes:
+The current integration harnesses include:
 
 ```powershell
 node .\tests\firefox-window-lifecycle.mjs `
@@ -477,453 +559,69 @@ node .\tests\firefox-window-lifecycle.mjs `
   --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
   --profile '<FENNEVIA_DEV_PROFILE>' `
   --browser-toolbox
-```
 
-| Case | Observed result |
-| --- | --- |
-| Initial, second, private windows | Each received one independent complete three-host set; every project element was XHTML |
-| Visible diagnostic | At least 30 CSS pixels high between toolbox and browser; fixed non-sensitive text only |
-| Native UI | Toolbox, browser, tabbox, sidebar siblings, modal top layer, content hit target, and Windows close command remained available |
-| Overlay/sidebar | Hidden; overlay also inert and pointer-transparent |
-| Window close/runtime stop | Exact hosts removed; repeated stop unchanged; post-stop window received no host |
-| Changed insertion point | Real tabbox ID was temporarily changed and restored; no partial host remained; one expected error contained fixed DOM path, Firefox version, and build ID |
-| Browser Toolbox | Prompt remained enabled and was accepted; Inspector selected the primary host and walker proved native nodes were outside every project host |
-| Toolbox cleanup | Child profile hash restored byte-identically; temporary prefs, marker, backup, port, and processes removed |
-| Browser Console | No unexpected first-party exception or error record; only the deliberate fail-open record appeared |
-| Uninstall/stock/reinstall | Uninstall backed up ten owned files and applied 15 operations; stock startup had zero project record/residue; clean reinstall applied 15 operations |
-
-The Browser Toolbox test follows Mozilla's CC0 test-server interaction pattern.
-It serializes `prompt-connection=false` only into the temporary child test
-profile, restores the parent pref to true before creating the parent DevTools
-server, and explicitly accepts that parent connection prompt. The original
-child profile bytes and parent prefs are restored after the child process exits.
-
-### Issue #7 shell-health and recovery evidence
-
-Issue #7 wraps the issue #6 hosts in the explicit health lifecycle without
-adding Svelte, a bridge, dependency, manifest mapping, native-hide CSS, or a
-production failure hook. Source, canary, keyboard, privacy, and real recovery
-evidence is in `docs/research/firefox-153-shell-health-recovery.md`.
-
-The local matrix is run with:
-
-```powershell
-node --test .\tests\health-state.test.mjs .\tests\safe-start.test.mjs `
-  .\tests\shell-hosts.test.mjs .\tests\window-lifecycle.test.mjs
-pwsh -NoProfile -File .\tests\shell-health.Tests.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\shell-health.Tests.ps1
-pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
-pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
-pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
-pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
-pwsh -NoProfile -File .\tests\installer.Tests.ps1
-pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
-  -ArtifactRoot .\profile\chrome\fennevia `
-  -InventoryPath .\package-manifest.json
-```
-
-The unit matrix covers cumulative and duplicate states, illegal transitions,
-stale attributes, literal health results, timeout/abort, partial mount cleanup,
-health false, missing CSS, missing capability, pending disposal with late
-completion, active-only-after-healthy, and emergency fallback from mounted,
-healthy, and active. The safe-start VM executes the actual cfg with complete
-and broken entry behavior. Package `0.4.0-dev` has seven exact profile
-artifacts.
-
-Observed on Node.js 24.18.0, PowerShell 7.6.4, and Windows PowerShell
-5.1.26100.9168: the combined shell-health command reported 32 passing tests;
-the shell-host command reported 26; the lifecycle command reported nine. Both
-PowerShell runtimes passed the bootstrap, development-profile, artifact,
-identity, shell-host, shell-health, lifecycle, and installer suites. The exact
-seven-artifact production scan passed with no finding.
-
-Real Windows validation uses the ordinary harness plus the owned mutation
-wrapper shown above. The harness verifies healthy-but-inactive markers on the
-initial, second, and private windows; sends a native US-layout Windows F12 event
-with left Shift/Control/Alt through `nsIDOMWindowUtils`; requires only that
-window's hosts/state to disappear while native browser/toolbox remain; and then
-proves the original window is still healthy. Safe-start runs require exactly one
-`bootstrap.skipped`, no registration/runtime/window/shell record, no host/state,
-and no first-party script error for both the complete and broken package.
-
-Both ordinary real-Firefox runs passed, including the Browser Toolbox variant.
-The Inspector selected the primary host and reconfirmed that native nodes remain
-outside project ownership. The recovery wrapper passed two safe-start processes
-and one ordinary recovery process, restored the missing module to its committed
-SHA-256, restored the original `user.js`, disabled the persisted safe-start
-value, and left zero Firefox process. No startup-cache action was used.
-
-## 10. Phase 3 frontend-build evidence
-
-Issue #8 replaces the diagnostic mount collaborator with a generated Svelte 5
-smoke island while retaining the issue #7 lifecycle and inactive native UI.
-Architecture, source, dependency, and first-error analysis is in
-`docs/research/firefox-153-svelte-build.md`; the accepted resolved graph is in
-`docs/dependency-reviews/frontend-toolchain-2026-08-15.md`.
-
-The final static matrix is run with:
-
-```powershell
-npm ci --ignore-scripts --no-fund
-npm run verify
-pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
-pwsh -NoProfile -File .\tests\firefox-dev-profile.Tests.ps1
-pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
-pwsh -NoProfile -File .\tests\project-identity.Tests.ps1
-pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
-pwsh -NoProfile -File .\tests\shell-health.Tests.ps1
-pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
-pwsh -NoProfile -File .\tests\installer.Tests.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\production-artifacts.Tests.ps1
-```
-
-The clean npm graph contains 173 lock paths and installs 148 on Windows with
-scripts disabled. The build runs twice and reproduces these exact generated
-artifacts before synchronizing package `0.5.0-dev`:
-
-| Artifact | Bytes | SHA-256 |
-| --- | ---: | --- |
-| `content/shell/ShellApp.js` | 35,837 | `92338b310d522ede99955d214aae3faa5c71194cb798c10dcd2a97c8304e3da3` |
-| `content/shell/ShellStyles.sys.mjs` | 3,542 | `2a80d21a31bb541aca31ee4713a75087537ad42b7b0de3a375806823da3c842a` |
-| `content/shell/THIRD_PARTY_NOTICES.txt` | 1,200 | `0cd8b75a5e96e98009ec60de17b5536ef15d00f1b4f469a0c7189a30681ac7ea` |
-
-The Node matrix reports 46 passing tests. Both PowerShell runtimes pass the
-applicable repository suites, and the exact ten-profile-artifact scan reports
-no finding. The generated IIFE has no bare/dynamic import, runtime endpoint,
-HMR/dev-server marker, source map, extra chunk, debug statement, or executable
-payload. The initial Windows GitHub Actions workflow repeats the clean install,
-format, lint, Svelte/TypeScript, unit, dependency, deterministic build,
-clean-tree, scanner, and Windows PowerShell 5.1 artifact gates.
-`act -l` lists that job, but the available Docker daemon is Linux and cannot
-faithfully execute the `windows-latest`/Windows PowerShell 5.1 runner. No local
-`act` success is claimed; direct local commands and GitHub-hosted Actions remain
-the respective precheck and merge evidence.
-
-Real Firefox commands are:
-
-```powershell
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>'
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>' `
-  --browser-toolbox
 pwsh -NoProfile -File .\tests\firefox-frontend-recovery.Tests.ps1 `
   -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
   -ProfilePath '<FENNEVIA_DEV_PROFILE>'
-```
 
-Initial, second, and private windows mounted independent healthy-but-inactive
-Svelte roots. Counter, input, events, conditional rendering, XHTML descendants,
-an XHTML `HTMLTemplateElement.content` child, and the extracted CSS sheet passed.
-Emergency fallback on the second window removed its hosts only. Direct official
-unmount left zero descendants, balanced delegated listener removal, disconnected
-the old root, made its detached control inert, and remounted with fresh state.
-Browser Toolbox selected the project host and confirmed the ownership boundary;
-toggling the component stylesheet left sampled native toolbox, sidebar, popup,
-Urlbar, menu-button, and modal styles unchanged.
-
-The owned mutation wrapper separately removed `ShellApp.js` and installed a
-bundle that throws. Both cases failed open in each window, retained native UI,
-and emitted fixed frontend phases/codes without browsing values. It then
-restored exact bytes, ran the ordinary matrix, and left zero Firefox process.
-No startup-cache action or native-hide rule was used.
-
-## 11. Phase 4 bridge-boundary evidence
-
-Issue #9 adds the first generated Firefox boundary without adding tab or
-navigation UI. Architecture and current-source evidence is in
-`docs/research/firefox-153-bridge-boundary.md`; ADR-023 records the accepted
-scope.
-
-The static/pure matrix is part of `npm test` and covers:
-
-- required and optional capability classification;
-- fixed typed errors with current Firefox build context and no browsing data;
-- exclusive normal/private/second-window context ownership;
-- idempotent direct and boundary-owned subscription cleanup;
-- stable context-scoped opaque IDs plus malformed, stale, and foreign-ID
-  failures;
-- snapshots that serialize no native object;
-- a live ESLint fixture proving that shell/app Firefox imports, globals, and
-  owned-property dereferences are rejected;
-- the existing #7 required-capability fail-open lifecycle.
-
-The build reproduces one additional private artifact twice before package
-manifest synchronization:
-
-| Artifact | Bytes | SHA-256 |
-| --- | ---: | --- |
-| `content/firefox/BridgeBoundary.sys.mjs` | 8,177 | `7eb9413ae09800e183f28a91ba1bb5bbdb483bb8f92f3e62fee301385db0e5b2` |
-
-Real Firefox commands are:
-
-```powershell
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>'
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>' `
-  --browser-toolbox
 pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
   -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
   -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+
 ```
 
-Firefox 153.0.4 normal, second normal, and private windows each emitted one
-created/ready/disposed bridge sequence while retaining independent frontend
-state and native UI. Closing a window, emergency fallback, and runtime stop
-removed the matching bridge exactly once. Browser Toolbox repeated the matrix
-and found no ownership regression or unexpected first-party exception.
+Use only harnesses that exist on the current branch. When a future issue adds a
+feature-specific harness, document its exact target validation, mutation scope,
+restoration path, and sensitive-output policy.
 
-The owned recovery wrapper replaced only the hash-verified bridge artifact with
-a deterministic fixture whose required `window.gBrowser` capability fails.
-The failure retained Firefox version/build/window kind and the fixed symbol,
-stopped before `healthy`, removed the Svelte root/style/hosts and bridge, and
-left the native browser/toolbox usable. The wrapper restored the exact original
-hash, reran the complete normal/second/private matrix successfully, and left no
-Firefox process or temporary file.
+The Marionette `--remote-allow-system-access` flag is test-only and is not part
+of the installed package.
 
-One first ordinary run tripped the pre-existing broad Svelte delegated-listener
-instrumentation after all bridge startup checks had passed. The harness cleaned
-up its process; the assertion was augmented with count-only diagnostics, and
-the immediate retry, recovery rerun, and Browser Toolbox rerun all passed. No
-bridge subscription was registered in #9 and no Browser Console error appeared.
-This remains a test-instrumentation watch item rather than a platform-support or
-cleanup claim beyond the passing repeated evidence.
+## 13. Evidence index
 
-## 12. Phase 4 typed-tabs evidence
+| Milestone | Evidence |
+| --- | --- |
+| Development profile | `docs/development-setup.md` |
+| Bootstrap | `docs/research/firefox-153-bootstrap.md` |
+| Identity migration | `docs/research/fennevia-identity-migration.md` |
+| Installer lifecycle | `docs/research/fennevia-installer-validation.md` |
+| Window lifecycle | `docs/research/firefox-153-window-lifecycle.md` |
+| Initial XHTML hosts | `docs/research/firefox-153-shell-hosts.md` |
+| Health and recovery | `docs/research/firefox-153-shell-health-recovery.md` |
+| Svelte build | `docs/research/firefox-153-svelte-build.md` |
+| Firefox boundary | `docs/research/firefox-153-bridge-boundary.md` |
+| Tabs bridge | `docs/research/firefox-153-tabs-bridge.md` |
+| Tab UI | `docs/research/firefox-153-tab-strip.md` |
+| Four-edge frame | `docs/research/firefox-153-four-edge-shell.md` |
 
-Issue #10 adds the first bridge consumer and ordinary reactive state adapter.
-Architecture, Firefox 153 event ordering, canary review, favicon policy, and
-remaining risk are recorded in
-`docs/research/firefox-153-tabs-bridge.md`; ADR-024 records the accepted
-reconciliation model.
+Those records describe the exact milestone tested. Current production state is
+summarized in README, the master plan, the shell roadmap, architecture, issue
+#1, and the package manifest.
 
-The static/pure matrix is part of `npm test` and covers:
+## 14. Result-reporting rules
 
-- ordered initial mapping and stable identity across reorder;
-- native and bridge-driven open, close, select, pin, and unpin;
-- label, safe favicon/fallback, busy, selection, pin, and order updates;
-- selected close, Firefox-style last-tab replacement, and rapid open/close;
-- malformed, stale, and foreign-window IDs;
-- frozen application copies with no unknown/native fields;
-- listener isolation, idempotent unsubscribe, double disposal, and no callback
-  after disposal;
-- required tabs-capability failure with fixed current-build diagnostics.
+For every matrix row, record one of:
 
-The deterministic Firefox build still produces one private
-`content/firefox/BridgeBoundary.sys.mjs` artifact. Run the real matrix after
-installing the exact current package into the marker-owned test pair:
+- `pass`;
+- `fail`;
+- `blocked`;
+- `not run`.
 
-```powershell
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>'
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>' `
-  --browser-toolbox
-pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
-  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
-  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
-```
+Include:
 
-Firefox 153.0.4 passed native tab open/close synchronization in the existing,
-second-normal, and private windows while each other window retained its own
-count. Window close, emergency fallback, runtime stop, and direct frontend
-unmount/remount removed subscriptions and state. No unexpected first-party
-Browser Console error was observed.
+- environment and project commit;
+- exact command/action;
+- expected result;
+- observed result;
+- privacy-safe log or screenshot reference;
+- cleanup/restoration result;
+- known limitation.
 
-The `--browser-toolbox` run repeated the matrix and selected the primary XHTML
-host in Inspector while confirming that native browser/tab infrastructure
-remained outside project ownership.
+Do not:
 
-The owned recovery wrapper first injects the older base-boundary capability
-failure, then a tabs-specific `gBrowser.openTabs` capability failure. Both stop
-before `healthy`, remove every project host/frontend/bridge resource, and leave
-native Firefox usable. The wrapper restores the exact original bridge hash,
-reruns the complete matrix, confirms no Firefox process remains, and does not
-clear startup cache.
-
-## 13. Phase 5 tab-strip evidence
-
-Issue #11 renders the issue #10 ordinary adapter as the first usable custom tab
-strip while retaining the native strip. Architecture, accessibility sources,
-security review, first causal errors, and rejected alternatives are in
-`docs/research/firefox-153-tab-strip.md`; ADR-025 records the accepted model.
-This section preserves the original horizontal acceptance evidence; ADR-026
-later reorients the same contract into the left edge, as recorded in section 14.
-
-The static/pure matrix is part of `npm test` and covers:
-
-- safe display and accessible labels for empty, long, pinned, loading, favicon,
-  and bidirectional title state without including favicon data in names;
-- roving-focus recovery from live, stale, selected, first, and empty states;
-- LTR/RTL Arrow wrapping, Home/End, Enter/Space, Delete, and close-neighbor
-  selection;
-- semantic sibling tab/pin/close controls, no nested interactive content,
-  property-only favicon binding, no HTML/CSS injection, and no Firefox globals;
-- a native fixture that mutates `addTrustedTab` and `removeTab` options, proving
-  the private temporary records are writable while public state stays frozen.
-
-The real Firefox commands remain:
-
-```powershell
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>'
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>' `
-  --browser-toolbox
-pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
-  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
-  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
-```
-
-Firefox 153.0.4 verified nine-tab horizontal overflow, exact native order and
-selected/pinned/loading state, long markup-like bidirectional title text, a
-failed raster-data favicon fallback, background pin/unpin and close without
-selection, rapid open/close, RTL-aware roving keyboard behavior, and focus
-restoration after selected or button-driven close. The matrix then repeated
-native/external synchronization in the existing, second normal, and private
-windows. Each other window retained isolated state.
-
-The first real new-tab click exposed Firefox's writable-options contract:
-`addTrustedTab` assigns `triggeringPrincipal`. Replacing the frozen native-call
-record with a fresh private mutable record fixed the causal TypeError, and the
-new mutation fixture covers it. Repeated close smoke also exposed a focus race
-with Firefox's native close animation. Immediate focus plus one tracked 200 ms
-retry passed repeated ordinary and recovery runs; each subsequent action and
-unmount cancels the retry.
-
-Direct official unmount/remount left zero descendants, bridge subscriptions,
-and outstanding event listeners. Root-level `focusin` delegation replaced the
-initial per-tab direct listeners. Browser Toolbox selected the primary host,
-kept native browser/tab nodes outside project ownership, and classified the XUL
-scrollbar generated for the XHTML overflow scroller as Firefox-owned native
-anonymous content before validating all authored descendants as XHTML. The
-native tab strip stayed visible and computed native styles remained unchanged.
-
-The owned bridge recovery wrapper passed both base-boundary and tabs-capability
-fail-open injections, restored the exact bridge artifact, reran the complete
-normal/second/private matrix, and left no Firefox process. No normal lifecycle
-or failure diagnostic contained a page title, URL, or favicon value.
-
-## 14. Phase 5 four-edge shell-frame evidence
-
-Issue #31 replaces the initial three-island production geometry with one
-zero-layout frame and independent top, left, right, and bottom XHTML surfaces.
-ADR-026 and `docs/research/firefox-153-four-edge-shell.md` record the source,
-design-reference boundary, policy, first causal failures, and security review.
-Native Firefox UI remains visible.
-
-The pure/static matrix in `npm test` covers:
-
-- explicit pointer, focus, keyboard, popup, and bounded programmatic holds;
-- one anti-flicker hide timer per edge, rapid re-entry, natural active-edge
-  expiry, suspension, disposal, exception reporting, and popup priority;
-- deterministic corner ownership, exact four-modifier arrow chords, and
-  legitimate simultaneous non-pointer holds;
-- four XHTML hosts/targets/roots, all-or-nothing attach and cleanup, environment
-  mutation, frame-rooted selectors/tokens, solid and glass rendering paths,
-  reduced motion/transparency, forced colors, and responsive bounds;
-- vertical tab semantics and keyboard movement, accessible edge regions,
-  property-only favicon/text handling, and no Firefox globals in Svelte.
-
-The final Windows/Firefox commands are:
-
-```powershell
-npm run verify
-pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>'
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>' `
-  --browser-toolbox
-pwsh -NoProfile -File .\tests\firefox-frontend-recovery.Tests.ps1 `
-  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
-  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
-pwsh -NoProfile -File .\tests\firefox-shell-recovery.Tests.ps1 `
-  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
-  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
-pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
-  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
-  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
-```
-
-Firefox 153.0.4 passed the existing, second-normal, and private-window matrix
-for all pointer and keyboard edges, exact corners, delayed leave/re-entry,
-window leave, focus retention/restoration, Escape, simultaneous held surfaces,
-fourteen-tab vertical overflow, and root-attribute policy transitions for
-customize mode, DOM fullscreen, and browser fullscreen. The synthetic attribute
-transitions prove the runtime policy; they are not a claim of separate OS-level
-visual coverage.
-
-Direct two-pass official unmount/remount left no owned descendants, listeners,
-subscriptions, or timers. Runtime stop and a missing insertion point removed
-the complete frame while native content, tabbox, toolbox, modal layer, and
-window controls remained owned by Firefox. Browser Toolbox selected the shared
-frame, confirmed all four XHTML ownership boundaries, excluded browser-owned
-native-anonymous scrollbar content, and observed no unexpected first-party
-script exception.
-
-Missing and throwing frontend artifacts, safe start with a broken runtime
-artifact, and required bridge-capability failures each failed open, restored
-the exact modified artifact, reran the normal matrix, and left no Firefox
-process. No diagnostic contained the exercised page title, favicon, URL,
-profile path, or private-window browsing state.
-
-## 15. Firefox stable-update procedure
-
-For every stable update:
-
-1. Record the last passing Firefox build and project commit.
-2. Test the new build with a clean clone and development profile.
-3. Start in smoke or safe-start mode before enabling native-UI hiding.
-4. Run the minimum test matrix.
-5. On failure, follow `docs/research-playbook.md`.
-6. Update the internal dependency inventory and source references.
-7. Re-enable active mode only after recovery tests pass.
-8. Leave a compatibility record in an issue and move durable conclusions into documentation.
-
-Never claim compatibility from version-number inspection alone.
-
-## 16. Automation boundary
-
-Suitable for automation:
-
-- formatting, linting, typechecking, and unit tests;
-- deterministic builds and artifact sanity checks;
-- manifest, schema, and import-boundary checks;
-- pure bridge mapping and state-reducer tests;
-- install-layout and owned-file validation;
-- checks for HMR, CDN, remote fonts, unexpected fetches, bare imports, and unexpected chunks.
-
-The Phase 0.5 artifact baseline is exercised in both PowerShell runtimes with:
-
-```powershell
-pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\production-artifacts.Tests.ps1
-```
-
-Issue #8 commits the real generated inventory and runs
-`scripts/check-production-artifacts.ps1` against the complete installed profile
-tree in both local verification and CI. Fixture tests remain necessary policy
-coverage but do not substitute for that production scan or real Firefox smoke
-tests.
-
-Likely to require real Firefox smoke testing:
-
-- AutoConfig startup;
-- browser-chrome layout and namespaces;
-- private and second-window lifecycle;
-- native dialogs, fullscreen, customize mode, and Browser Toolbox;
-- failure recovery after an installed artifact breaks.
-
-Maintain repeatable manual procedures until reliable Firefox automation is proven. Fragile automation must not replace real evidence.
+- convert “not run” into a check mark;
+- infer real Firefox success from pure tests;
+- claim a platform or Firefox version not tested;
+- claim native-UI activation before #15;
+- claim a feature placeholder is a completed feature;
+- paste sensitive values into shared evidence.

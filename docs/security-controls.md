@@ -1,60 +1,67 @@
 # Operational Security Controls
 
-This document turns the policy in `docs/security-and-privacy.md` into review records, required evidence, and testable gates. It is a Phase 0.5 baseline, not a formal security audit or penetration test.
+This document turns `docs/security-and-privacy.md` into current review records,
+required evidence, and testable gates. It is a project security baseline, not a
+formal audit or penetration test.
 
-## 1. Control ownership and status
+## 1. Control status vocabulary
 
-The controls defined here are mandatory defaults. A later implementation issue owns the code and real-Firefox evidence for its boundary; that issue may strengthen a control but must not silently weaken it.
+- **implemented:** code and repository tests exist.
+- **validated:** implementation has recorded real Firefox evidence on the stated
+  build/platform.
+- **active policy:** required for every current issue and review.
+- **implementation gate:** the named issue must supply code and evidence before
+  a later phase may depend on it.
+- **deferred:** intentionally outside the current MVP; no implementation may
+  claim coverage.
+- **prohibited:** requires a new issue and architecture/security decision before
+  implementation.
 
-Status terms:
+Current validated baseline:
 
-- **active policy**: required now for issues and reviews;
-- **automated baseline**: a repository check exists, but a later issue must wire it to real artifacts or CI;
-- **implementation gate**: the named issue must provide runtime or installer evidence;
-- **accepted architecture decision**: the behavior is intentionally retained and has no missing implementation in this issue.
+- package `0.6.0-dev`;
+- Firefox 153.0.4 release, Windows;
+- copied Firefox program plus marker-owned development profile;
+- native Firefox visible UI retained;
+- functional left-edge vertical tabs;
+- four-edge frame/reveal/design foundation complete;
+- top navigation, address input, bookmarks, Downloads, and active native hiding
+  pending.
 
-## 2. Threat model
+## 2. Threat model and ownership
 
-| Asset or trust boundary | Threat | Consequence | Existing control or decision | Missing control or evidence | Owner |
-| --- | --- | --- | --- | --- | --- |
-| AutoConfig entry and process bootstrap | Malformed, replaced, duplicated, or compromised system-principal code | Arbitrary privileged execution, repeated initialization, or unusable startup | Minimal bootstrap, no generic loader, no dynamic code, fail open | Implement the smallest startup chain, one-time guard, privacy-safe fatal error, and failure injection | [#3](https://github.com/yutinglia/fennevia/issues/3) |
-| Chrome Registry manifest | A malformed or over-broad declaration exposes files or replaces Firefox resources | Web-content access, privilege-boundary confusion, or missed upstream security fixes | Dedicated namespace; no `override`; no `contentaccessible=yes`; review in section 6 | Validate the final manifest and content-process access on the supported Firefox build | [#3](https://github.com/yutinglia/fennevia/issues/3) |
-| `resource://` mapping | A later `contentaccessible=yes` flag or over-broad inventory exposes files that were intended to remain privileged | Disclosure of source maps, implementation code, diagnostics, or private assets | Initial manifest omits `resource`; default access is privileged-only, and any hole punch is rejected | Concrete consumer, exact inventory, current-source review, ordinary-content test, and removal test before adding a mapping | [ADR-016](architecture-decisions.md#adr-016-follow-firefoxs-current-internal-url-access-model-and-omit-unused-mappings); runtime validation: [#3](https://github.com/yutinglia/fennevia/issues/3) |
-| npm registry, dependencies, and build tools | A compromised maintainer, package, lifecycle script, native binary, or transitive dependency executes during install/build | Developer-host compromise or malicious system-principal artifact | #8 pins and reviews the complete lock graph, disables lifecycle scripts, inventories native/platform payloads, and keeps all tooling out of the Firefox package | Repeat signature, audit, graph, native-file, lifecycle, artifact, and Firefox checks on every upgrade | [#8](https://github.com/yutinglia/fennevia/issues/8); upgrades: [#16](https://github.com/yutinglia/fennevia/issues/16) |
-| Generated JavaScript, CSS, XHTML, maps, and chunks | HMR, remote endpoints, bare imports, dynamic chunks, source maps, debug code, or executable binaries leak into installation | Runtime network execution, non-determinism, source disclosure, or unreviewed code | #8 builds twice, compares exact bytes, installs three named shell artifacts, scans the complete package, and runs the gate in CI; #9 applies the same double-build and exact-output policy to one private bridge ESM | Preserve the fixed inventory and repeat real-Firefox failure injection after build changes | [#8](https://github.com/yutinglia/fennevia/issues/8), [#9](https://github.com/yutinglia/fennevia/issues/9), [#16](https://github.com/yutinglia/fennevia/issues/16) |
-| Firefox windows, tabs, browser elements, events, and controllers | A native system-principal handle enters reactive/serializable UI state, is reused across windows, or survives cleanup | Cross-window/private-state disclosure, stale privileged action, or arbitrary native access from UI code | #9 adds an exclusive per-window boundary, static shell/app import/global restrictions, context-scoped opaque IDs, typed stale/foreign-ID failures, and idempotent owned disposal; #10 keeps native tabs behind that registry and exposes only frozen primitive snapshots/actions | Repeat hostile-data/action, stale/foreign-ID, and cleanup tests for each later feature bridge | [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#12](https://github.com/yutinglia/fennevia/issues/12) |
-| Page titles, URLs, favicon values, and address input | Page-controlled strings are interpreted as HTML, CSS, code, privileged URIs, or native API arguments without validation | Chrome injection, spoofing, unintended navigation, or privileged API misuse | #10 bounds titles as text, allowlists bounded local/raster favicon values with fallback, and keeps arbitrary URLs out of the new-tab action; the project permits no arbitrary HTML | #11 must use an image property for accepted favicons; later navigation/address features require separate validation and hostile-string tests | [#10](https://github.com/yutinglia/fennevia/issues/10), [#11](https://github.com/yutinglia/fennevia/issues/11), [#12](https://github.com/yutinglia/fennevia/issues/12), [#13](https://github.com/yutinglia/fennevia/issues/13), [#14](https://github.com/yutinglia/fennevia/issues/14) |
-| Normal diagnostics and shared evidence | URLs, titles, queries, history, local paths, secrets, or private-window state enter logs or screenshots | Browsing-data or identity disclosure | Bootstrap and #5 runtime loggers use allowlisted schemas, line-preserving redaction, hostile-value tests, and no network sink; #10 tab errors/logs retain only fixed code, phase, symbol, build, and window-kind fields | Extend the same adapter contract to each later bridge/frontend logger | [#3](https://github.com/yutinglia/fennevia/issues/3), [#5](https://github.com/yutinglia/fennevia/issues/5), [#10](https://github.com/yutinglia/fennevia/issues/10) |
-| Private-window per-window state | Private tab data is copied to process-global state, normal windows, persisted preferences, or diagnostics | Private-browsing disclosure after or during the session | Section 8 requires per-window memory, no browsing-derived persistence, and native fallback on uncertainty; #10 validates isolated tab state plus disposal in real normal, second-normal, and private windows | Validate each later browsing-data bridge and UI feature separately before enabling it in private windows | [#5](https://github.com/yutinglia/fennevia/issues/5), [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#12](https://github.com/yutinglia/fennevia/issues/12), [#13](https://github.com/yutinglia/fennevia/issues/13), [#14](https://github.com/yutinglia/fennevia/issues/14) |
-| Installer, updater, and uninstaller | Relative, broad, reparse-point, wrong-install, or daily-profile targets cause path escape, overwrite, or recursive deletion | Firefox damage or loss of unrelated profile files | Canonical preflight, redacted dry run, dual ownership manifest, same-volume staging, recovery journal, rollback, and exact deletion rules in section 7 | Repeat the real-Firefox lifecycle on each supported installer/platform change | [#4](https://github.com/yutinglia/fennevia/issues/4) |
-| Startup cache and installed stale state | Removed or replaced privileged code continues to execute from stale state | Old vulnerable behavior survives update, disable, or uninstall | Evidence-first cleanup; complete installed-file inventory; installer reports `startupCacheAction=none`; no arbitrary cache deletion | Revalidate only when a Firefox update or observed stale-code symptom supplies evidence | [#3](https://github.com/yutinglia/fennevia/issues/3), [#4](https://github.com/yutinglia/fennevia/issues/4) |
-| Native permission, authentication, certificate, extension-install, file-picker, and download-safety UI | The custom shell hides, replaces, overlays, or makes a prompt unreachable | Spoofing, unsafe consent, or inability to respond to Firefox security state | Firefox ownership is accepted in ADR-014; #31 suspends all four overlays for native modal state and leaves native UI on the fail-open path | Repeat feature-specific prompt tests before hiding any overlapping native visible UI | [#6](https://github.com/yutinglia/fennevia/issues/6), [#7](https://github.com/yutinglia/fennevia/issues/7), [#31](https://github.com/yutinglia/fennevia/issues/31), [#15](https://github.com/yutinglia/fennevia/issues/15) |
-| Window/runtime listeners, mappings, styles, roots, reveal holds, and timers | Incomplete cleanup retains privileged state or duplicates handlers across windows | Cross-window data leaks, stale actions, or repeated privileged effects | #5 implements one process runtime and abort-first per-window cleanup; #9 owns boundary subscriptions; #10 verifies native mappings/subscribers; #31 verifies four roots/controllers, delegated listeners, observers, focus guards, and hide timers are removed on disposal | Require every later host, bridge, timer, mapping, style, and root to register with the same cleanup boundary | [#5](https://github.com/yutinglia/fennevia/issues/5), [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#31](https://github.com/yutinglia/fennevia/issues/31) |
-| Third-party source and copied snippets | Incompatible, absent, or unclear licensing and provenance | Legal inability to distribute, stale vulnerable code, or lost attribution | Record source URL, commit, license, modifications, and attribution; unlicensed code is unavailable | Select project license and attribution policy before copying implementation code | [#18](https://github.com/yutinglia/fennevia/issues/18) |
-| Runtime network, analytics, configuration, fonts, templates, and update checks | A remote party changes privileged behavior or receives browser data | Remote code execution, tracking, or unreproducible recovery | ADR-012 prohibits all such runtime dependencies; artifact scanner detects common leakage | Any proposed exception requires a dedicated issue and new architecture decision before implementation | [ADR-012](architecture-decisions.md#adr-012-no-runtime-remote-executable-dependencies); otherwise prohibited |
+| Asset or trust boundary | Threat and consequence | Current control | Missing evidence or next gate | Owner |
+| --- | --- | --- | --- | --- |
+| AutoConfig and process bootstrap | Malformed/replaced/duplicated privileged code can execute arbitrarily or break startup | Minimal fixed entry, process guards, safe start before registration/import, privacy-safe fatal boundary, no discovery/dynamic loader | Repeat after Firefox/bootstrap changes | #3, #16 |
+| Chrome Registry manifest | Broad mapping or override can expose files or miss upstream security fixes | Dedicated `content fennevia` package, no `contentaccessible=yes`, no active `resource` alias, no override, ordinary-content denial test | Dedicated review before any new mapping/directive | #3; ADR-016 |
+| Generated privileged artifacts | HMR, endpoints, source maps, dynamic imports, extra chunks, or binaries can create remote execution/non-determinism | Exact eleven-file inventory, deterministic double builds, hash synchronization, scanner, Windows CI | Repeat after every build/tooling change | #8, #9, #16 |
+| npm/build supply chain | Compromised package, lifecycle script, or native binary can compromise developer host/artifacts | Exact dev dependencies, lockfile v3, install scripts disabled, resolved graph/native binary/license review, audit | Repeat complete dependency record on upgrades | #8, #16 |
+| Browser windows and lifecycle | Duplicate/late callbacks or retained native windows can cross contexts and leak state | One process runtime, strict browser filtering, abort-first per-window cleanup, idempotent stop | Repeat lifecycle/leak matrix for later features | #5, #16 |
+| Four-edge frame and triggers | Broad overlays can block web content, prompts, or OS controls; stuck holds can trap focus | Zero-layout project frame, narrow triggers, pointer-transparent center, deterministic corners, modal/DOM-fullscreen/customize suspension, tracked holds/timers, reverse cleanup | Revalidate after geometry/controller changes and before #15 | #31, #15, #16 |
+| Svelte/native DOM boundary | Framework may reconcile Firefox-owned children or leak styles | Four project-owned XHTML roots, frame-scoped CSS, Browser Toolbox ownership walk, native computed-style comparison | Revalidate after root/style changes | #8, #31 |
+| Firefox native handles | Native tab/browser/controller/service may enter reactive state or survive disposal | Enforced `src/firefox/` boundary, context-scoped opaque registries, typed stale/foreign failures, idempotent disposal, lint rules | Apply the same contract to navigation, Places, Downloads | #9, #10, #12, #14, #32 |
+| Tab title/favicon data | Page-controlled strings/images can inject HTML/CSS, spoof UI, or leak | Bounded text-only titles, `dir=auto`, reviewed favicon allowlist, property-only `img.src`, static fallback, no referrer, no datasets/logging | Continue hostile-data tests after tab UI changes | #10, #11 |
+| Address and navigation input | Input can bypass Firefox fixup/principal/security behavior or leak to logs | Uncontrolled load helpers prohibited; bridge boundary and log policy ready | Current-source command/fixup/search/principal research; hostile input and native fallback | #12, #13 |
+| Bookmark data and opening | Large/user-controlled tree can become unbounded UI state; unsafe opening can bypass principal/scheme behavior | Bounded/lazy data, opaque-ID opening, text-only rendering, no bookmarklets/remote metadata required by policy | Implement Places bridge, live observers, private policy, cleanup | #14 |
+| Download data and file actions | Paths/source URLs/private state can leak; unsafe actions can execute files | Bounded status-only contract, no file actions, no forced reveal, native safety retained by policy | Implement current Downloads view/bridge and privacy matrix | #32 |
+| Normal diagnostics | URLs, titles, queries, bookmarks, downloads, paths, secrets, or private data can leak | Default-deny schemas, stable codes, redacted stacks, no network sink, hostile-value tests | Extend fixed adapters to each future bridge/feature | #3, #5, #9–#14, #32 |
+| Private-window state | State can leak to normal windows, process globals, preferences, or diagnostics | Per-window lifecycle/frame/tabs instances, opaque generations, no browsing persistence, complete fallback on uncertainty | Validate each pending bridge/feature independently | #5, #9–#14, #31, #32 |
+| Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native UI retained; four edges suspend for modal state; emergency fallback; #15 coverage inventory required | Full prompt/retained-access/stacking matrix before activation | #7, #31, #15 |
+| Installer/updater/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data | Explicit canonical targets, marker checks, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion | Revalidate for every platform/scope change | #4, #16 |
+| Startup cache/stale installed code | Removed or fixed privileged code may continue to run | Exact inventory and evidence-first cache policy; validated changes took effect without routine clearing | Cache action only after observed stale symptom | #3, #4, #16 |
+| External implementation/design | Unlicensed or copied code/design can create legal and maintenance risk | License/provenance requirement; `my-firefox-custom` no-copy boundary; exact reference commit required | Owner license/attribution decision | #18 |
+| Runtime network/update/telemetry | Remote party can change privileged behavior or receive browsing data | Prohibited; scanner detects common endpoints/APIs | New issue + ADR + security review for any exception | ADR-012 |
+| Native UI hiding | Broad selectors can remove uncovered actions or leave no recovery | Production does not enter active; #15 narrow coverage inventory and reversible gate required | Complete #12/#13/#14/#32 and full failure/recovery matrix | #15 |
 
-Every high-risk implementation gap is assigned above. The absence of an implementation today is not acceptance of the risk; it is a blocker owned by the linked issue.
+Every unresolved high-risk row has an owner. An unimplemented control is a
+blocker, not an implicit risk acceptance.
 
 ## 3. Production artifact gate
 
-Every production build must have a committed, reviewed inventory. Example:
+### 3.1 Current inventory
 
-```json
-{
-  "schemaVersion": 1,
-  "expectedFiles": [
-    "runtime/Bootstrap.sys.mjs",
-    "shell/shell.js",
-    "shell/shell.css"
-  ]
-}
-```
-
-The current production inventory is the exact `expectedFiles` list in
-`package-manifest.json`. The abbreviated paths above remain illustrative only;
-globs are prohibited because they cannot detect an unexpected chunk.
-
-After issue #8, the current privileged profile inventory is exactly:
+`package-manifest.json` is the only source of truth. Package `0.6.0-dev`
+contains the following profile paths:
 
 ```text
 chrome.manifest
@@ -70,13 +77,10 @@ content/shell/ShellStyles.sys.mjs
 content/shell/THIRD_PARTY_NOTICES.txt
 ```
 
-The package version is `0.6.0-dev`. Every entry has a committed SHA-256 in
-`package-manifest.json`; no new Chrome Registry declaration accompanies the
-three generated shell files or the generated private bridge ESM. The bridge is
-built separately from TypeScript, reproduced byte-for-byte twice, and enters
-the same exact inventory and scanner.
+Every path has a committed SHA-256. Globs are prohibited because they cannot
+detect an unexpected chunk.
 
-Run the gate with:
+Run:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
@@ -84,268 +88,529 @@ pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -InventoryPath .\package-manifest.json
 ```
 
-Exit codes are `0` for pass, `1` for findings, and `2` for invalid input or policy. Output contains only a stable rule ID, artifact-relative path, and line number. It does not echo matched URLs, source text, or the absolute artifact root.
+Exit codes:
 
-The automated baseline detects:
+- `0`: pass;
+- `1`: security finding;
+- `2`: invalid input or policy.
 
-- files missing from or added beyond the exact inventory, including unplanned chunks;
-- non-normalized or non-ASCII artifact paths, which are reported as `<UNSAFE_ARTIFACT_PATH>` rather than echoed;
-- `http`, `https`, `ws`, `wss`, protocol-relative, localhost, and loopback endpoint literals;
-- `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `sendBeacon`, and `importScripts` usage;
-- Vite and common bundler HMR markers;
-- bare imports and dynamic `import()` calls;
-- source-map files and source/source-map references;
-- development source, test, coverage, TypeScript, and Svelte files;
-- `eval`, `new Function`, executable binaries, and unscannably large text;
-- junctions and symbolic links inside the artifact tree.
+Output contains only stable rule ID, artifact-relative path, and line number.
+It does not echo matched sensitive text or the absolute artifact root.
 
-The standards-defined namespace identifiers used by DOM APIs are the only
-endpoint-literal exception: the scanner permits exact single-, double-, or
-backtick-quoted XHTML, XUL, SVG, MathML, and XLink namespace values. It replaces
-only the complete quoted token before endpoint matching, so any suffix, path,
-query, alternate scheme, concatenation, or other URL remains blocked. Scanner
-fixtures prove every accepted constant and rejected namespace-looking URLs.
+### 3.2 Required detections
 
-The scanner has no bypass flag. A legitimate finding requires a dedicated review and a visible policy/code change, not an ignored CI warning. Passing this static gate does not prove runtime safety. Issue #8 therefore also runs the built artifacts and broken-bundle cases in the development profile and adds an initial Windows CI gate; issue #16 still owns later release/update hardening.
+The scanner must reject:
 
-## 4. Privacy-safe logging contract
+- missing or extra inventory files;
+- unsafe/non-normalized/non-ASCII artifact paths;
+- symlinks and junctions;
+- `http`, `https`, `ws`, `wss`, protocol-relative, localhost, and loopback
+  endpoint literals except exact reviewed standards namespace constants;
+- `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `sendBeacon`, and
+  `importScripts`;
+- HMR/dev-server/bundler runtime markers;
+- bare imports and dynamic `import()`;
+- source-map files/references;
+- development source, tests, coverage, TypeScript, or Svelte files;
+- `eval`, `new Function`, and executable binaries;
+- unscannably large/unreadable text;
+- unplanned runtime chunks;
+- production failure/debug selectors.
 
-### 4.1 Default-deny fields
+The scanner has no bypass flag. A legitimate exception requires an explicit
+policy and code review, not an ignored warning.
 
-Logging calls accept a defined event record, not arbitrary objects, native Firefox values, exceptions, tabs, windows, requests, or application state. The normal record may contain only:
+### 3.3 Build reproducibility
+
+`npm run build` must:
+
+1. build the frontend twice in isolated directories;
+2. compare exact output bytes;
+3. build the Firefox bridge twice;
+4. compare exact output bytes;
+5. replace only owned generated directories;
+6. synchronize package hashes;
+7. leave no unexplained dirty generated/manifest state.
+
+No generated artifact is hand-edited.
+
+## 4. Dependency gate
+
+Every addition or upgrade requires
+`docs/dependency-review-template.md`.
+
+Record:
+
+- exact version and purpose;
+- license and provenance;
+- maintainers and release activity;
+- transitive graph;
+- lifecycle scripts;
+- install/build/runtime network behavior;
+- native/platform binaries;
+- optional dependencies;
+- code generation;
+- command-line entry points;
+- bundle inclusion;
+- vulnerability audit;
+- removal cost.
+
+Installation remains:
+
+```powershell
+npm ci --ignore-scripts --no-fund
+npm run dependencies:audit
+```
+
+A registry metadata check alone is insufficient. Inspect the resolved lock
+graph and installed files.
+
+Current toolchain decision:
+
+- exact dev dependencies;
+- project `ignore-scripts=true`;
+- optional macOS `fsevents` not installed on Windows;
+- build-host `.node` binaries remain outside the Firefox package;
+- no component library/Tailwind/remote font/runtime SDK.
+
+## 5. Privacy-safe logging contract
+
+### 5.1 Default-deny fields
+
+Normal records may include only:
 
 | Field | Rule |
 | --- | --- |
-| `prefix` | One of `[Fennevia bootstrap]`, `[Fennevia runtime]`, `[Fennevia window]`, `[Fennevia bridge]`, or `[Fennevia shell]` |
-| `level` | Stable severity, not user data |
-| `event` | Stable project event name |
-| `phase` | Stable lifecycle phase |
-| `code` | Stable project error or result code |
-| `projectCommit` | Commit hash or `unknown` |
-| `firefoxVersion`, `buildId`, `channel` | Application metadata |
-| `windowKind` | `normal`, `private`, or `unsupported`; never window browsing state |
-| `capability` and `available` | Symbolic capability name and boolean |
-| `projectUri` | Only a fixed `chrome://fennevia/` URI known by source code |
-| `domPath` | Short source-defined ASCII selector/path only; URL-like and local path values are dropped |
-| `errorName` | Error class without an untrusted message |
-| `stack` | Every frame retained after sensitive substrings are replaced |
-| `opaqueId` | Process-local random ID with no durable or external mapping |
+| `prefix` | One of the fixed Fennevia component prefixes |
+| `level` | Stable severity |
+| `event`, `phase`, `code` | Fixed project values |
+| `projectCommit`, `projectVersion` | Build metadata |
+| `firefoxVersion`, `buildId`, `channel` | Firefox metadata |
+| `windowKind` | `normal`, `private`, or `unsupported` classification only |
+| `capability`, `available`, `firefoxSymbol` | Fixed allowlisted symbol/name and boolean |
+| `projectUri` | Fixed source-defined `chrome://fennevia/` URI only |
+| `domPath` | Fixed short allowlisted selector/path only |
+| `edge`, `edgeState`, `holdReason` | Fixed enums only |
+| `errorName` | Class name without untrusted message |
+| `stack` | Redacted line-preserving frames |
+| `opaqueId` | Process-local random ID with no durable mapping |
+| counts/booleans | Aggregate non-browsing state only |
 
-No spread operator or generic serializer may turn an input context object into log fields. Values derived from a page, tab, query, title, URL, favicon, history, download, file picker, profile, principal, certificate, header, token, cookie, or private-window content are prohibited even if they appear harmless.
+No spread/generic serializer may copy an arbitrary context, exception, native
+object, application snapshot, or event into a record.
 
-`Logger.sys.mjs` is the implemented runtime adapter for this schema. Successful
-lifecycle records do not accept an exception or native context object. Error
-records inspect only `name` and `stack`; the upstream message is replaced by
-`<REDACTED_MESSAGE>`. `windowKind=private` is classification metadata, not a
-private browsing value, and its UUID is random, process-local, and never stored.
+### 5.2 Prohibited values
 
-### 4.2 Error and stack handling
+Never log or include in ordinary shared evidence:
 
-The logger must:
+- complete URL/origin/query/fragment/address input;
+- page/tab title or favicon value;
+- history;
+- bookmark/folder title, URL, tree contents, or user-data Places identifier;
+- download filename, source/referrer URL, target path, private marker, or named
+  byte count;
+- form values;
+- cookie, token, header, principal, certificate, session state;
+- user name, program/profile/local/UNC path, or file URL;
+- native window/tab/browser/controller/service/query/view/event object;
+- private-window browsing state;
+- unrelated extension data.
 
-1. select a stable project `code` and constant safe summary;
-2. retain the error class;
-3. preserve every stack frame and line while replacing `file:`, local profile/program paths, user names, page and non-source URI schemes, query text, and fragments with symbolic placeholders;
-4. allow fixed project `chrome://fennevia/` paths and source-validated Firefox `chrome://` or `resource://` module paths;
-5. fall back to a minimal code-only record if redaction itself fails;
-6. keep detailed opt-in diagnostics local, off by default, non-persistent unless explicitly exported, and disconnected from any network sink.
+### 5.3 Stack/error handling
 
-An upstream error message is not safe merely because it is an `Error.message`; Firefox exceptions can embed a URI or path. Normal logs use a stable project summary instead.
+1. Select a stable project code and constant safe summary.
+2. Preserve error class.
+3. Ignore upstream error message in normal output.
+4. Retain stack lines after replacing sensitive URI/path/query/user portions.
+5. Permit only reviewed fixed project/Firefox source locations.
+6. Fall back to code-only output when redaction fails.
+7. Keep opt-in detailed diagnostics local, temporary, and disconnected from any
+   network sink.
 
-### 4.3 Example bootstrap error
+Example:
 
 ```text
-[Fennevia bootstrap] {"level":"error","event":"bootstrap.failure","phase":"entry-import","code":"FENNEVIA_BOOTSTRAP_IMPORT_FAILED","projectCommit":"<COMMIT>","firefoxVersion":"153.0.4","buildId":"20260810162159","projectUri":"chrome://fennevia/content/runtime/Bootstrap.sys.mjs","errorName":"SyntaxError","stack":"SyntaxError: <REDACTED_MESSAGE>\n  at chrome://fennevia/content/runtime/Bootstrap.sys.mjs:12:4\n  at <REDACTED_LOCAL_FRAME>:1:1"}
+[Fennevia bridge] {"level":"error","event":"bridge.failure","phase":"tabs-capability","code":"FENNEVIA_TABS_CAPABILITY_MISSING","firefoxVersion":"153.0.4","buildId":"20260810162159","windowKind":"normal","firefoxSymbol":"window.gBrowser.openTabs","errorName":"TypeError","stack":["TypeError: <REDACTED_MESSAGE>","at chrome://fennevia/content/firefox/BridgeBoundary.sys.mjs:1:1"]}
 ```
 
-This record identifies the phase, build, project entry, error class, and all stack frames without a page URL, title, query, user name, profile path, or private-window browsing value.
+## 6. Chrome/resource exposure review
 
-## 5. Untrusted UI value handling
-
-Page and user-controlled values cross into the shell only through typed bridge snapshots and actions. Implementations must:
-
-- assign titles, labels, URL display text, and address input with text/value properties; never use `innerHTML`, markup concatenation, or an HTML action merely to render text;
-- keep the raw navigation request only in the focused address-input/controller flow and navigation bridge long enough for Firefox's URL/search semantics to classify it; do not copy it into process-global state, persistence, DOM datasets, or diagnostics;
-- reject page-controlled `chrome:`, `resource:`, `file:`, `javascript:`, `data:`, and other privileged or executable schemes wherever the value is not an explicit navigation request handled by Firefox;
-- never interpolate a title, URL, favicon value, or input into CSS, a selector, a manifest line, a module URI, a file path, a preference name, or executable code;
-- use a Firefox-owned or source-validated favicon/icon pipeline. Do not make a new system-principal network request by assigning an arbitrary page-provided favicon URL to project chrome;
-- constrain attributes to an explicit property and value type, remove them on absence, and avoid spreading page-derived objects onto DOM elements or components;
-- cap display length without mutating the bridge's action semantics, preserve accessibility names, and test control characters, bidirectional text, invalid Unicode, quotes, markup-looking text, long input, and rapidly changing values;
-- keep native Firefox permission and identity indicators authoritative; page-derived text must not imitate or cover them.
-
-Hostile-string and navigation tests are owned by #9 through #13. If a consumer needs HTML, CSS, SVG script, or a new URI scheme, it triggers the dedicated review in section 9.
-
-## 6. Chrome and resource declaration review
-
-ADR-017 defines Fennevia as the sole active namespace. The initial Phase 1
-proposal, now expressed with that canonical identity, is intentionally smaller
-than the target namespace set:
+Current manifest state:
 
 ```text
 content fennevia content/
 ```
 
-Review result:
+Controls:
 
-| Declaration or omission | Decision | Reason | Evidence or future gate |
-| --- | --- | --- | --- |
-| `content fennevia content/` | Accept for Phase 1 | Dedicated project package; omits `contentaccessible=yes` | Firefox 153 resolved and imported the entry; an ordinary loopback HTTP page reported access blocked, and issue #22 repeated the denial after the identity migration |
-| `contentaccessible=yes` | Reject | It explicitly permits untrusted content to reference the package | None; adding it requires a dedicated security issue |
-| `resource fennevia ...` | Omit initially | No Phase 1 consumer; omitting the mapping minimizes registered and packaged surface | If later needed, name the consumer, map an exact inventory, retain default privileged-only access, and test both content denial and removal |
-| `style`, `skin`, or `locale` | Omit initially | No Phase 1 consumer and each broadens exposed package behavior | Dedicated consumer and manifest review |
-| `override` | Reject | Prohibited during the initial roadmap without a dedicated issue, ADR, source pin, tests, update plan, and removal plan | Not applicable to #3 |
+- no `contentaccessible=yes`;
+- no active `resource://fennevia/` directive;
+- no `override`;
+- no source maps/debug/private/user data;
+- ordinary content cannot fetch privileged project entry in validated evidence.
 
-The current source basis is Firefox 153's [`toolkit/docs/internal-urls.md`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/toolkit/docs/internal-urls.md), source revision `54be19de0e08edff0b797e55fd935dd3978b0a6d`. It documents that `chrome:` and `resource:` are privileged-only by default and that `contentaccessible=yes` opens the complete mapped package to web content. The older pinned `build/docs/chrome-registration.rst` wording used by ADR-015 implied a broader default for `resource:`; ADR-016 supersedes that interpretation while retaining the conservative inventory and test requirements.
+Before any new directive, record:
 
-Every manifest review must include the exact lines, mapped physical file inventory, callers, process/context tests, source-map/debug-file check, and removal behavior. A URI being project-owned does not make it privileged-only.
-
-The Fennevia migration introduced no compatibility alias or additional mapped
-surface. Its exact inventory, fail-open checks, content-denial probe, and removal
-evidence are recorded in `docs/research/fennevia-identity-migration.md`.
-
-## 7. Installer preflight, mutation, and rollback
-
-The issue #4 package helper implements this order before its first managed-file
-write:
-
-1. Require explicit Firefox program and profile targets; never discover a daily-use profile as a mutation default.
-2. Expand environment variables, require absolute paths, canonicalize with operating-system APIs, and verify every existing ancestor is not a reparse point.
-3. Reject drive roots, user/home directories, AppData roots, Firefox profile collections, relative paths, missing/ambiguous targets, files where directories are required, and any target outside the selected roots.
-4. Prove the program target with `firefox.exe` and `application.ini`; prove the profile target with an explicit user selection and project/development marker policy.
-5. Load and validate a versioned owned-file manifest containing only normalized relative paths, file hashes, and ownership metadata. Reject traversal, absolute paths, alternate data streams, duplicates, reparse points, and collisions with non-project files.
-6. Refuse update or uninstall if an existing project-owned file has an unexplained hash/ownership mismatch. Do not adopt or overwrite it silently.
-7. Produce a redacted dry-run plan of exact relative creates, replaces, backups, and removals plus a deterministic plan SHA-256. Dry run performs no write, rename, cache action, or process termination; execution replans and rejects a digest mismatch before transaction creation.
-8. Stage new files below marker-owned same-volume transaction directories, verify hashes, back up only project-owned files, and write a relative-path/hash journal before using same-volume atomic replacement where available.
-9. On failure, stop further mutation and restore replaced, removed, moved, and newly created project-owned paths from snapshots. Preserve the journal and exact transaction directories if rollback is incomplete; any residue blocks later actions.
-10. Uninstall only manifest-listed files whose ownership is still proven; remove project directories only when empty. Never recursively delete a program, profile, `chrome`, or parent directory.
-11. Treat startup-cache cleanup and Firefox restart as explicit evidence-based operations after file rollback is possible, not as path cleanup.
-
-### Rejected unsafe-target evidence
-
-```text
-event: installer.preflight
-decision: reject
-code: FENNEVIA_INSTALL_UNSAFE_ROOT
-requestedTarget: <DRIVE_ROOT>
-canonicalTarget: <DRIVE_ROOT>
-plannedMutationCount: 0
-reason: target is a filesystem root
-```
-
-The rejection occurs before directory creation, backup, cache action, or file mutation. Additional mandatory rejection fixtures for #4 are `<USER_HOME>`, `<APPDATA_ROOT>`, the Firefox profiles collection, a relative target, a junction escaping the selected root, a program directory without the selected Firefox identity, an unmarked daily-use profile, and an owned-manifest path containing `..`.
-
-The automated suite also covers unknown same-name content, a simulated staging
-permission denial, interrupted-transaction residue, dry-run immutability and
-redaction, identical dual ownership, idempotent install/update/disable/uninstall,
-missing runtime files, stale-file removal, unrelated profile chrome content,
-owned-file hash conflicts, and rollback after an injected partial mutation. Run:
-
-```powershell
-pwsh -NoProfile -File .\tests\installer.Tests.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
-```
-
-The exact package and manual interrupted-operation recovery procedure are in
-`docs/installation.md`.
-
-## 8. Private-window isolation and persistence
-
-- Browsing-derived private state remains in one private window's runtime and bridge objects.
-- Process-global state may contain only version, capability, registration, and health metadata that cannot identify a page or tab.
-- Normal windows never subscribe to a private window's tab, title, URL, favicon, query, selection, history, or download snapshots.
-- Closing a private window synchronously disposes project hosts, subscriptions, timers, mappings, opaque-ID mappings, and in-memory browsing-derived state.
-- Profile preferences may persist only reviewed, schema-defined shell settings whose value does not depend on private browsing activity. Window layout preferences must have the same meaning whether changed from a normal or private window.
-- Recent items, last input, selected tab, sidebar content, page-derived labels, and feature usage derived from a private window are never persisted.
-- Normal diagnostics may record `windowKind=private` for lifecycle failure routing, but never a private page value or durable window identifier.
-- If a bridge or feature cannot prove these boundaries, the complete private window remains on native Firefox fallback.
-
-## 9. Security-review triggers
-
-The issue and pull request must link a dedicated security review before any of these changes:
-
-| Trigger | Minimum additional evidence |
+| Question | Required evidence |
 | --- | --- |
-| Runtime network access, remote configuration, analytics, updates, fonts, CSS, templates, or executable code | New ADR, endpoint/data-flow inventory, threat model, offline/failure behavior, and explicit owner approval |
-| `eval`, `Function`, string-generated modules, dynamic module location, or other dynamic code | Necessity, alternatives, input provenance, CSP/principal analysis, and abuse tests |
-| New privileged runtime dependency or lifecycle/native-binary build dependency | Completed dependency record, exact lockfile diff, script/network sandbox evidence, artifact diff, and removal plan |
-| `contentaccessible=yes` or any `resource://` alias | Exact file inventory and ordinary-web-content access tests |
-| Chrome Registry `override`, monkey patch, or upstream script replacement | Dedicated ADR and issue, upstream source pin, security-update diff process, regression tests, and removal plan |
-| New profile persistence | Data classification, schema, private-window behavior, retention, migration, removal, and corruption recovery |
-| Untrusted HTML, CSS, SVG script, or markup processing | Sanitizer/provenance review, parser context, hostile-input tests, and text-only alternatives |
-| Installer deletion scope, ownership rules, or startup-cache mutation | Canonical-target fixtures, dry run, transaction/rollback evidence, and interrupted-operation recovery |
-| Permission, identity, authentication, certificate, extension-install, file-picker, or download-safety UI replacement | Separate threat model and complete Firefox parity/fallback evidence; prohibited in the initial roadmap |
-| Telemetry, crash upload, or external diagnostics | New architecture decision and privacy review; prohibited by the current roadmap |
+| What exact consumer needs the mapping? | Source/issue reference |
+| Which exact files become reachable? | Closed inventory; no globs |
+| Who can resolve/fetch them? | Current Firefox source and ordinary-content test |
+| Can the mapping expose source, diagnostics, secrets, or user data? | Negative review |
+| Can a narrower fixed import work? | Alternatives analysis |
+| How is removal tested? | Cold-start/content-context removal test |
+| Does it use `contentaccessible=yes` or `override`? | Dedicated issue, ADR, security review |
 
-An issue that does not trigger one of these still completes the normal security/privacy/resource/recovery sections in the repository templates with evidence or a precise `not applicable` rationale.
+`resource://fennevia/` remains reserved but absent until a real consumer and
+review exist.
 
-## 10. Security-sensitive Firefox compatibility changes
+## 7. Bridge and user-data controls
 
-When a Firefox update changes a principal check, resource accessibility, manifest behavior, native security prompt, process boundary, installer location, or fail-open path:
+### 7.1 Shared bridge
 
-1. keep or restore native UI and use safe start before retrying custom-shell activation;
-2. record the supported and failing Firefox versions/build IDs, project commit, first causal error, and privacy-safe stack;
-3. follow `docs/research-playbook.md`, including current canaries, Searchfox definition/callers/tests/blame, official Firefox commit, and Bugzilla when available;
-4. identify whether the change closes a security boundary, exposes a resource, or invalidates an accepted decision before adapting code;
-5. do not restore older behavior with an override, disabled prompt, broad mapping, or compatibility hack merely to make startup pass;
-6. update this threat model, the internals map, security policy, architecture decision, recovery procedure, and owning issue when the security boundary changes;
-7. add regression and failure-injection evidence, test uninstall/rollback, and re-enable activation only after native security UI and recovery remain operable.
+Every bridge must:
 
-Potentially exploitable details follow `SECURITY.md` and are not posted to a public compatibility issue before private triage.
+- be scoped to one validated browser-window context;
+- validate required/optional capabilities;
+- retain native handles privately;
+- expose frozen/bounded ordinary data;
+- use context-bound opaque IDs;
+- reject malformed, stale, foreign, and disposed IDs before native access;
+- use event/view/observer subscriptions rather than idle polling;
+- return idempotent disposers;
+- stop callbacks after disposal;
+- fail open on missing required capability;
+- log only fixed symbolic context.
 
-## 11. Verification commands for this baseline
+### 7.2 Tabs — implemented and validated
 
-```powershell
-pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\production-artifacts.Tests.ps1
-```
+Required controls:
 
-These tests exercise passing artifacts, inventory mismatch, endpoint and runtime-network leakage, HMR, bare and dynamic imports, source maps, development files, dynamic code, reparse points, traversal, exit codes, and privacy-safe finding output. They do not substitute for the real production build or Firefox smoke tests owned by later issues.
+- title maximum and text-only rendering;
+- no `{@html}`;
+- favicon reviewed allowlist;
+- property-only `img.src`;
+- static fallback and load-error removal;
+- no CSS URL interpolation;
+- no arbitrary URL accepted by new-tab action;
+- native action options remain private/mutable where Firefox requires them;
+- public snapshots remain immutable;
+- no tab data in logs/datasets/persistence.
 
-Issue #8 adds the resolved dependency, deterministic build, generated-artifact,
-and frontend smoke gates:
+### 7.3 Navigation/address — #12/#13 gate
+
+Before enabling:
+
+- current source for commands, selected-browser handoff, progress, fixup,
+  search, principal, disposition, and `Ctrl+L`;
+- bounded display/draft values;
+- no uncontrolled `loadURI`;
+- explicit dangerous/special scheme policy;
+- no input persistence or logging;
+- active-edit protection from background navigation;
+- healthy-only custom command ownership;
+- native fallback in inactive/failed/safe-start/unsupported/disposed states;
+- hostile input tests;
+- private-window isolation;
+- complete cleanup.
+
+### 7.4 Bookmarks — #14 gate
+
+Before enabling:
+
+- current source for Places roots/query/observer/open behavior;
+- bounded/lazy query and depth/page limits;
+- opaque IDs;
+- URL remains private when possible;
+- text-only title;
+- no bookmarklet execution;
+- no remote favicon/metadata;
+- live update reconciliation;
+- no unbounded mirror/polling;
+- native management paths retained;
+- private-window policy;
+- observer/query cleanup;
+- no bookmark data in logs/persistence.
+
+### 7.5 Downloads — #32 gate
+
+Before enabling:
+
+- current source for Downloads list/view/subscription/private behavior;
+- bounded item count and strings;
+- known/unknown aggregate definition;
+- native objects/paths/source URLs remain private;
+- no file actions;
+- no forced panel reveal;
+- native safety/reputation/notification/management retained;
+- event/view updates;
+- private-window isolation;
+- native view/listener cleanup;
+- no download data in logs/persistence.
+
+## 8. Four-edge UI controls
+
+The #31 contract is mandatory.
+
+### 8.1 Trigger and layout
+
+- narrow bounded trigger thickness;
+- pointer-transparent center;
+- no permanent content margin/padding;
+- one frame only;
+- four exact hosts only;
+- feature descendants remain inside owning host;
+- no native node reparenting;
+- no feature-owned z-index or trigger.
+
+### 8.2 Reveal/hold state
+
+Allow only fixed:
+
+- pointer;
+- keyboard;
+- focus;
+- popup;
+- bounded programmatic;
+- suspended;
+- disposed.
+
+Each hold has explicit acquire/release ownership. Timers are tracked and cleared
+on replacement/disposal. Exceptions enter fail-open cleanup.
+
+### 8.3 Focus/accessibility
+
+- keyboard/focus path for every edge;
+- meaningful landmark/name;
+- visible focus;
+- no hidden focused descendant;
+- predictable focus restoration;
+- `Escape` priority;
+- forced-colors support;
+- reduced-motion support;
+- near-solid fallback.
+
+### 8.4 Collision and suspension
+
+- deterministic corner ownership;
+- tested adjacent edge travel;
+- documented simultaneous holds;
+- no unreachable controls;
+- native modal/window-modal suspension;
+- DOM fullscreen suspension;
+- customize-mode suspension;
+- explicit browser-fullscreen behavior;
+- OS controls untouched.
+
+## 9. Native security UI and #15 activation gate
+
+Native Firefox continues to own:
+
+- permission/authentication/certificate/identity UI;
+- extension-install UI;
+- download safety/reputation;
+- file pickers;
+- notification boxes;
+- find bar;
+- modal/window-modal dialogs;
+- app/extension/Library/Downloads access without a completed replacement;
+- DevTools/Browser Toolbox;
+- titlebar and OS window controls.
+
+Before `active` can hide any native surface, #15 must provide a coverage
+inventory:
+
+| Field | Required |
+| --- | --- |
+| Native selector/capability | Exact current value |
+| Firefox owner/source | Path/revision/build |
+| User-visible purpose | Complete |
+| Fennevia replacement | Completed issue |
+| Retained native access path | Command/menu/fallback |
+| Failure behavior | Immediate native restoration |
+| Mode policy | fullscreen/DOM fullscreen/customize/modal |
+| Tests | normal/second/private plus failure matrix |
+
+Rules:
+
+- hide the narrowest possible surface;
+- never hide a broad parent with uncovered descendants;
+- every selector is gated by per-window `data-fennevia-active`;
+- missing/invalid activation CSS prevents activation;
+- clearing active restores native UI without restart/Svelte;
+- unsupported mode suspends/clears active;
+- no core native DOM is removed or reparented;
+- no feature implementation is smuggled into #15 to bypass blockers.
+
+## 10. Private-window controls
+
+Each feature records:
+
+- data read;
+- ordinary snapshot fields;
+- persistence;
+- process/global state;
+- cross-window identifiers;
+- disposal;
+- normal/private tests;
+- fallback decision.
+
+Allowed persistence is limited to schema-defined shell preferences independent
+of browsing activity.
+
+Prohibited persistence:
+
+- tabs/titles/favicons;
+- address/query/location;
+- bookmark selection/tree/contents;
+- download state;
+- feature usage that reveals private activity.
+
+If isolation, disposal, or semantics are uncertain, use complete native
+fallback.
+
+## 11. Installer and profile controls
+
+Required preflight:
+
+- explicit program/profile paths;
+- canonicalization;
+- expected Firefox program identity;
+- marker-owned unregistered profile;
+- no root/home/profile-parent/program-root target;
+- no traversal/reparse ambiguity;
+- permissions;
+- ownership/collision/hash verification;
+- all processes closed where required;
+- redacted plan digest.
+
+Mutation controls:
+
+- same-volume staging;
+- exact hashes;
+- backups only for owned files;
+- relative-path recovery journal;
+- rollback on caught failure;
+- interrupted transaction blocks later actions;
+- no recursive deletion without ownership proof;
+- no unrelated profile enumeration/logging;
+- dry run changes nothing.
+
+Recovery:
+
+- `Disable` must work with a broken/missing runtime;
+- `Uninstall` removes only owned files/metadata;
+- repeat action is idempotent;
+- stock cold start has no project record/error;
+- startup-cache action remains evidence-driven.
+
+## 12. External code and provenance gate
+
+Before direct reuse:
+
+- source repository and exact commit;
+- file path;
+- license and file-level notice;
+- copied/adapted/generated classification;
+- modifications;
+- required attribution;
+- compatibility/security review;
+- removal/update strategy.
+
+`my-firefox-custom` restrictions:
+
+- capability/broad visual reference only;
+- no `.uc.js` implementation;
+- no event/timer/global structure;
+- no selectors/IDs/classes/token names;
+- no numeric values;
+- no native-DOM mutation/reparenting;
+- no loader assumptions;
+- no module layout;
+- no pixel/component-for-component visual copy.
+
+Every design-reference implementation record states the exact consulted commit,
+concepts retained, independent Fennevia decisions, and no-copy confirmation.
+
+Issue #18 must be resolved before public distribution, substantial external
+contributions under unclear terms, or copying reusable implementation code.
+
+## 13. Security review triggers
+
+| Trigger | Minimum required record |
+| --- | --- |
+| Runtime network/update/telemetry | Threat model, endpoint/data inventory, consent, failure/offline behavior, new ADR |
+| Dynamic code generation | Necessity, alternatives, input boundary, CSP/privilege review, tests |
+| Privileged runtime dependency | Complete dependency review and artifact/runtime effect |
+| Content-accessible resource | Exact files, consumers, current-source/content-context tests |
+| Chrome Registry override | Upstream pin/diff workflow/security/update/removal tests |
+| New persistence | Schema, privacy classification, private-window behavior, cleanup |
+| Untrusted HTML/CSS | Sanitization boundary and hostile input tests |
+| Arbitrary scheme/URL load | Firefox principal/fixup/content-policy research and tests |
+| File open/execute/delete action | OS/Firefox safety semantics, user intent, path policy |
+| Native security UI replacement | Dedicated threat model, spoofing/fallback/accessibility tests |
+| Native visible parent hiding | Complete coverage inventory and retained paths |
+| Installer deletion-scope change | Canonical path/ownership/rollback/adversarial tests |
+| Custom titlebar/window controls | Platform-specific source/UX/security/recovery matrix |
+
+A normal PR checkbox does not waive a triggered review.
+
+## 14. Required verification commands
+
+Static/build baseline:
 
 ```powershell
 npm ci --ignore-scripts --no-fund
+npm run dependencies:audit
 npm run verify
-pwsh -NoProfile -File .\tests\firefox-frontend-recovery.Tests.ps1 `
-  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
-  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
-node .\tests\firefox-window-lifecycle.mjs `
-  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
-  --profile '<FENNEVIA_DEV_PROFILE>' `
-  --browser-toolbox
-```
 
-The build-host inventory and exact production results are in
-`docs/dependency-reviews/frontend-toolchain-2026-08-15.md`; real runtime and
-failure evidence is in `docs/research/firefox-153-svelte-build.md`.
-
-Issue #5 adds the lifecycle/privacy checks:
-
-```powershell
-node --test .\tests\window-lifecycle.test.mjs
-pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\window-lifecycle.Tests.ps1
-```
-
-The real copied-Firefox and missing-module probes, including their explicit
-system-access test boundary, are recorded in
-`docs/research/firefox-153-window-lifecycle.md`.
-
-Issue #6 adds the isolated-host, scanner-exception, and real Browser Toolbox
-ownership checks:
-
-```powershell
-node --test .\tests\shell-hosts.test.mjs .\tests\window-lifecycle.test.mjs
-pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
 pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
+pwsh -NoProfile -File .\tests\installer.Tests.ps1
+pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
+  -ArtifactRoot .\profile\chrome\fennevia `
+  -InventoryPath .\package-manifest.json
+```
+
+Real Firefox baseline, where applicable:
+
+```powershell
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>'
+
 node .\tests\firefox-window-lifecycle.mjs `
   --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
   --profile '<FENNEVIA_DEV_PROFILE>' `
   --browser-toolbox
 ```
 
-The browser probe keeps the main connection prompt enabled, accepts it, uses
-the Inspector walker, then restores temporary parent prefs and the child
-Browser Toolbox profile byte-identically. Exact evidence and limitations are
-in `docs/research/firefox-153-shell-hosts.md`.
+Use the feature-specific recovery wrapper documented in
+`docs/testing-and-recovery.md`. Every owned mutation wrapper restores exact bytes
+and verifies hashes in `finally`.
+
+## 15. Evidence and maintenance
+
+Current detailed evidence:
+
+- bootstrap: `docs/research/firefox-153-bootstrap.md`;
+- installer: `docs/research/fennevia-installer-validation.md`;
+- lifecycle: `docs/research/firefox-153-window-lifecycle.md`;
+- initial hosts: `docs/research/firefox-153-shell-hosts.md`;
+- health/recovery: `docs/research/firefox-153-shell-health-recovery.md`;
+- frontend: `docs/research/firefox-153-svelte-build.md`;
+- boundary: `docs/research/firefox-153-bridge-boundary.md`;
+- tabs bridge: `docs/research/firefox-153-tabs-bridge.md`;
+- tab UI: `docs/research/firefox-153-tab-strip.md`;
+- four-edge frame: `docs/research/firefox-153-four-edge-shell.md`.
+
+After every completed milestone:
+
+1. update issue #1;
+2. update README current status;
+3. update master plan/roadmap;
+4. update this threat model/control owner;
+5. update testing/recovery;
+6. update security/privacy for new data flows;
+7. update internals map and ADRs;
+8. preserve historical research evidence;
+9. record remaining blockers honestly.
