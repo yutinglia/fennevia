@@ -1,77 +1,175 @@
 # Fennevia
 
-Fennevia is an experimental custom browser chrome and browser shell for
+Fennevia is an experimental, content-first browser chrome and browser shell for
 **stock Firefox**.
 
 `Fennevia` and the `fennevia` package slug are the project's sole active
 identity. The migration from the provisional name is recorded in ADR-017 and
 `docs/research/fennevia-identity-migration.md`.
 
-The project is not intended to become another general-purpose `userChrome.js` loader, and its primary architecture is not an indefinitely growing collection of DOM patches. The goal is to use a minimal AutoConfig entry point to register a project-owned Chrome Registry package, load privileged ES modules, and build a replacement visible browser shell with a modern frontend toolchain.
+The project is not a general-purpose `userChrome.js` loader and is not intended
+to become an indefinitely growing collection of native-DOM patches. A minimal
+AutoConfig entry registers a project-owned Chrome Registry package, loads fixed
+privileged ES modules, and mounts project-owned Svelte UI through typed Firefox
+bridges.
 
-> Status: planning and feasibility-validation stage. A Windows-first,
-> ownership-guarded development package workflow is available for isolated
-> Firefox copies. The minimal bootstrap and deterministic normal/private
-> browser-window lifecycle plus three isolated XHTML diagnostic hosts are
-> validated on Firefox 153.0.4. An explicit health deadline, safe start, and
-> privileged emergency fallback are implemented. A Svelte 5 smoke island now
-> validates per-window state, events, XHTML templates, scoped CSS, official
-> unmount/remount, deterministic production output, and broken-bundle recovery
-> while native UI remains fully visible. No usable replacement shell,
-> daily-driver support, or end-user release is available yet.
+> **Current status — 2026-08-15:** package `0.6.0-dev` is validated on Firefox
+> 153.0.4 for Windows in an isolated copied Firefox program and marker-owned
+> development profile. Bootstrap, installation lifecycle, multi-window runtime,
+> health/recovery, deterministic Svelte production builds, the typed bridge
+> boundary, tab-state bridge, accessible tab UI, and the common four-edge
+> floating frame are implemented. The left edge already contains functional
+> vertical tabs. The top, right, and bottom surfaces are honest placeholders
+> until their feature issues land. Firefox native UI remains visible and
+> unchanged; content-only active mode is not implemented yet.
 
-## Architecture direction
+There is no daily-driver support, versioned end-user release, cross-platform
+support claim, or completed security audit.
+
+## Product direction
+
+Fennevia's final MVP uses four independent project-owned floating surfaces:
+
+- **Top:** primary browser controls.
+- **Left:** vertical tabs and the address input.
+- **Right:** bookmarks.
+- **Bottom:** download progress and status.
+
+Each surface is hidden at rest, reserves no permanent layout space, and is
+revealed by its matching window edge or an accessible keyboard/focus path. The
+surfaces share one Fennevia-owned reveal, collision, focus, popup-hold, cleanup,
+and frosted-glass design contract while retaining independent ownership and
+state.
+
+When the shell eventually enters healthy `active` mode, the normal Firefox
+client area should show only the current web page until one of those surfaces is
+revealed. Native OS window controls and Firefox security-sensitive prompts,
+dialogs, notifications, extension-install UI, download-safety UI, DevTools, and
+browser-content infrastructure remain Firefox-owned.
+
+## Current progress
+
+| Area | Status | Result |
+| --- | --- | --- |
+| Safe development and privileged-code baseline | Complete | Dedicated Windows profile workflow, threat model, redacted diagnostics, and recovery rules |
+| Bootstrap and package lifecycle | Complete | Minimal AutoConfig/Chrome Registry chain plus path-safe install, update, disable, and uninstall |
+| Window runtime and recovery | Complete | Existing/later normal and private windows, deterministic disposal, health states, safe start, and emergency fallback |
+| Frontend and bridge foundation | Complete | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership |
+| Tabs data and UI | Complete | Event-driven immutable tab state plus accessible vertical tab UI in the left surface |
+| Four-edge frame | Complete | Independent top/left/right/bottom XHTML surfaces, edge reveal controller, collision rules, glass tokens, and accessibility fallbacks |
+| Top primary controls | Pending — #12 | Navigation bridge and Back/Forward/Reload/Stop/New Tab UI |
+| Left address input | Pending — #13 | Firefox-consistent URL/search submission and `Ctrl+L` integration |
+| Right bookmarks | Pending — #14 | Typed Places bridge and bounded bookmark tree |
+| Bottom downloads | Pending — #32 | Typed Downloads bridge and accessible aggregate progress/status |
+| Content-only activation | Pending — #15 | Reversible hiding of only the native surfaces with complete replacements |
+| Hardening and Firefox-update workflow | Pending — #16 | Full regression, resource, performance, cleanup, and stable-update matrix |
+| Project license | Pending — #18 | Owner-approved license and third-party attribution policy |
+
+The tracking source of truth is issue #1. Historical research records preserve
+what was true at each earlier milestone; they should not be rewritten to pretend
+that later code already existed.
+
+## Architecture
 
 ```text
 Stock Firefox
   └─ minimal AutoConfig bootstrap
       └─ register chrome.manifest
-          ├─ chrome://fennevia/...
-          │   └─ privileged runtime and Firefox bridge
-          │       └─ Svelte shell
-          │           ├─ tabs
-          │           ├─ navigation
-          │           ├─ address input
-          │           └─ sidebar
-          └─ resource://fennevia/... (reserved; omitted until exposure review)
+          └─ chrome://fennevia/content/...
+              ├─ process runtime and per-window lifecycle
+              ├─ health gate, safe start, emergency fallback
+              ├─ typed Firefox bridges
+              │   ├─ tabs (implemented)
+              │   ├─ navigation/address (pending)
+              │   ├─ Places/bookmarks (pending)
+              │   └─ Downloads (pending)
+              └─ Svelte four-edge frame
+                  ├─ top: primary controls
+                  ├─ left: vertical tabs + address input
+                  ├─ right: bookmarks
+                  └─ bottom: download progress/status
 ```
 
-The project keeps Firefox's core browser infrastructure, including `gBrowser`, web-content containers, SessionStore, Places, Downloads, commands, permissions, dialogs, notifications, and DevTools. Native visible UI is hidden only after the custom shell mounts and passes health checks. It is not deleted during startup.
+Firefox continues to own `gBrowser`, web-content containers, SessionStore,
+Places, Downloads, commands, permissions, dialogs, notifications, native
+popups, DevTools, and the OS window frame. Fennevia owns only its XHTML frame and
+descendants. Native visible UI may be hidden only after the complete custom
+surface set passes the health and recovery gates; it is never deleted during
+startup.
 
 ## Primary goals
 
 - Run on the official Firefox binary without maintaining a Firefox source fork.
-- Replace the visible tabs, navigation, address input, and sidebar with project-owned UI.
-- Keep Firefox internals behind a small typed bridge boundary.
-- Use a reversible, fail-open native-UI gate.
-- Maintain an evidence-based workflow for Firefox updates and internal API breakage.
-- Keep the runtime deterministic, local, and free of remote executable dependencies.
+- Provide a distinct content-first four-edge browser interface.
+- Keep all custom surfaces hidden at rest and free of permanent content margins.
+- Keep Firefox internals behind small typed bridge modules.
+- Preserve immediate, Svelte-independent native fallback.
+- Maintain an evidence-based workflow for Firefox stable updates and internal
+  API breakage.
+- Keep privileged runtime artifacts deterministic, local, and free of remote
+  executable dependencies.
+- Preserve security-sensitive native Firefox UI and infrastructure.
 
 ## Non-goals for the initial roadmap
 
 - A generic `.uc.js` loader or userscript manager.
 - Compatibility with historical Firefox versions.
-- A complete rewrite of Firefox Urlbar providers, permission UI, Downloads, or SessionStore.
+- A complete replacement for Urlbar suggestions/providers, Firefox View,
+  identity/permission UI, bookmark management, Downloads management,
+  SessionStore, or extension actions.
+- Custom titlebar or OS window controls.
 - Overriding the complete `browser.xhtml`.
-- A branded Firefox fork, updater, or public end-user support product.
+- A branded Firefox fork, updater, public installer, or support product.
+- Pixel-for-pixel reproduction of Firefox, `my-firefox-custom`, Arc, Edge, or
+  another browser.
 
-## Initial technology choices
+## Technology and support choices
 
-- Firefox: latest stable during implementation; older versions are not supported.
-- First development platform: Windows. Other platforms require separate evidence before support is claimed.
-- Bootstrap: AutoConfig used only to register the manifest and load one privileged entry point.
-- Runtime: privileged `.sys.mjs` modules.
-- UI: Svelte 5 with TypeScript, compiled as one tree-fragment IIFE per browser-window global.
-- Build: Vite with a twice-built deterministic production output and no runtime CDN, HMR, source map, extra chunk, or network dependency.
-- Styling: extracted Svelte component CSS rooted at the project mount. Tailwind is not adopted for the validated spike.
+- **Firefox:** latest stable during implementation; current evidence is Firefox
+  153.0.4.
+- **Platform:** Windows-first. Linux and macOS require separate real evidence.
+- **Bootstrap:** AutoConfig only to register the manifest and import one fixed
+  privileged entry.
+- **Runtime:** privileged `.sys.mjs` modules with one process runtime and
+  per-window deterministic disposal.
+- **UI:** Svelte 5 with TypeScript, compiled as a fixed tree-fragment IIFE into
+  four project-owned XHTML roots.
+- **Build:** Vite with byte-reproduced production artifacts and no CDN, HMR,
+  source map, extra chunk, or runtime network dependency.
+- **Styling:** frame-scoped component CSS and Fennevia-owned glass tokens with
+  near-solid, reduced-transparency, reduced-motion, and forced-colors fallbacks.
+- **UI framework policy:** no Tailwind, Shadow DOM, or component library in the
+  validated implementation because the smaller local design system is
+  sufficient.
+
+## Design-reference boundary
+
+`yutinglia/my-firefox-custom` may be inspected for desired capabilities and
+broad visual concepts such as edge activation, delayed hiding, glass surfaces,
+right-side bookmarks, and download progress. It is not an implementation
+template.
+
+Do not copy its `.uc.js` code, selectors, IDs, classes, timers, global flags,
+numeric values, native-DOM mutation strategy, loader assumptions, module
+layout, or visual composition. Any implementation record that consults it must
+name the exact commit and explain Fennevia's independently selected architecture
+and design.
 
 ## Documentation
+
+### Plans and operating rules
 
 - [Agent rules](AGENTS.md)
 - [Master plan](plans/000-master-plan.md)
 - [Bootstrap feasibility spike](plans/001-bootstrap-spike.md)
 - [Shell implementation roadmap](plans/002-shell-roadmap.md)
 - [Security foundation plan](plans/003-security-foundation.md)
+- [Development workflow](docs/development-workflow.md)
+- [Windows Firefox development setup](docs/development-setup.md)
+- [Installation and package lifecycle](docs/installation.md)
+
+### Architecture, security, and testing
+
 - [Architecture](docs/architecture.md)
 - [Architecture decisions](docs/architecture-decisions.md)
 - [Firefox internals boundary map](docs/firefox-internals-map.md)
@@ -80,42 +178,72 @@ The project keeps Firefox's core browser infrastructure, including `gBrowser`, w
 - [Security and privacy](docs/security-and-privacy.md)
 - [Operational security controls and threat model](docs/security-controls.md)
 - [Dependency review template](docs/dependency-review-template.md)
-- [Development workflow](docs/development-workflow.md)
-- [Windows Firefox development setup](docs/development-setup.md)
-- [Installation and package lifecycle](docs/installation.md)
-- [Firefox 153 window-lifecycle research](docs/research/firefox-153-window-lifecycle.md)
-- [Firefox 153 isolated shell-host research](docs/research/firefox-153-shell-hosts.md)
-- [Firefox 153 shell health and recovery research](docs/research/firefox-153-shell-health-recovery.md)
-- [Firefox 153 Svelte build research](docs/research/firefox-153-svelte-build.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
 
-## Implementation workflow
+### Current implementation evidence
 
-Implementation is tracked through GitHub Issues. An agent must read `AGENTS.md`, the relevant plans and documentation, the complete issue body, and all blockers before starting. A pull request should normally address one issue and include reproducible research and test evidence.
+- [Firefox 153 window lifecycle](docs/research/firefox-153-window-lifecycle.md)
+- [Firefox 153 initial shell hosts](docs/research/firefox-153-shell-hosts.md)
+- [Firefox 153 shell health and recovery](docs/research/firefox-153-shell-health-recovery.md)
+- [Firefox 153 Svelte build](docs/research/firefox-153-svelte-build.md)
+- [Firefox 153 bridge boundary](docs/research/firefox-153-bridge-boundary.md)
+- [Firefox 153 tabs bridge](docs/research/firefox-153-tabs-bridge.md)
+- [Firefox 153 accessible tab UI](docs/research/firefox-153-tab-strip.md)
+- [Firefox 153 four-edge shell](docs/research/firefox-153-four-edge-shell.md)
 
-Start with the tracking issue, then follow the dependency order. Do not begin by hiding Firefox native UI.
+Historical research files are immutable evidence of the tested milestone they
+describe. Later decisions supersede their production architecture through ADRs
+and current plans rather than retroactively editing old observations.
 
-The frontend toolchain is pinned to the Node.js and npm versions in `.nvmrc`
-and `package.json`. After selecting that nvm-managed Node version, install and
-verify with:
+## Build and verification
+
+Use the exact Node.js and npm versions in `.nvmrc` and `package.json`:
 
 ```powershell
 npm ci --ignore-scripts --no-fund
 npm run verify
 ```
 
+`npm run verify` checks formatting, lint, Svelte/TypeScript diagnostics, tests,
+dependency policy, deterministic builds, package-manifest synchronization, and
+the production artifact gate.
+
+Real Firefox work additionally requires the copied Firefox program,
+marker-owned development profile, and the issue-specific smoke and recovery
+commands documented in `docs/testing-and-recovery.md`.
+
+## Implementation workflow
+
+Implementation is issue-first. Before changing code or documentation, read
+`AGENTS.md`, the complete issue and blockers, relevant plans, current
+implementation, latest relevant commits, decisions, and research records.
+
+Every feature must pass while native Firefox UI remains visible. Do not jump
+directly to #15 or hide native UI to make an incomplete surface appear finished.
+
 ## License status
 
-No repository license has been selected yet. Public visibility does not grant permission to copy, redistribute, or incorporate the code. The owner decision, contribution terms, and third-party attribution policy are tracked in issue #18.
+No repository license has been selected. Public visibility does not grant
+permission to copy, redistribute, or incorporate the code. Issue #18 owns the
+project-license, contribution, and attribution decision.
 
-Until that decision is complete, agents may research external implementations but must not directly copy third-party code without independently verifying and recording its license and provenance.
+External projects may be researched, but implementation code may not be copied
+without an independently verified license and recorded provenance.
 
 ## Safety warning
 
-This project executes system-principal code and relies on Firefox internal APIs that Mozilla does not promise to keep stable. A defect can make browser chrome unusable. Development and testing must use a separate Firefox profile, preserve native-UI fallback, and follow the recovery procedures before any daily-use profile is considered.
+Fennevia executes system-principal code and relies on Firefox internal APIs that
+Mozilla does not promise to keep stable. A defect can make browser chrome
+unusable. Development and testing must use the isolated workflow, preserve
+native fallback, and follow recovery procedures before any daily-use profile is
+considered.
 
-Preview every package action with `scripts/fennevia-package.ps1 -WhatIf`. The
-current installer is for an explicitly selected copied stock Firefox program and
-marker-owned, unregistered development profile; see
-`docs/installation.md` before running it.
+Preview every package mutation with:
+
+```powershell
+pwsh -NoProfile -File .\scripts\fennevia-package.ps1 <Action> `
+  -FirefoxProgramPath '<FIREFOX_PROGRAM>' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>' `
+  -WhatIf
+```
+
+Read `docs/installation.md` before running a non-preview package action.
