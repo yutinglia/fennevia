@@ -1,0 +1,594 @@
+#fennevia-shell-frame-host {
+  --fennevia-glass-surface: light-dark(
+    rgb(247 250 252 / 94%),
+    rgb(20 26 35 / 94%)
+  );
+  --fennevia-glass-tint: light-dark(
+    rgb(246 250 255 / 82%),
+    rgb(17 24 34 / 84%)
+  );
+  --fennevia-glass-text: light-dark(rgb(20 29 39), rgb(239 246 252));
+  --fennevia-glass-muted: light-dark(rgb(76 91 106), rgb(166 182 196));
+  --fennevia-glass-border: light-dark(
+    rgb(255 255 255 / 78%),
+    rgb(255 255 255 / 18%)
+  );
+  --fennevia-glass-separator: light-dark(
+    rgb(43 67 86 / 20%),
+    rgb(215 235 248 / 16%)
+  );
+  --fennevia-glass-blur: 18px;
+  --fennevia-glass-saturation: 145%;
+  --fennevia-glass-radius: 18px;
+  --fennevia-glass-shadow:
+    0 18px 54px rgb(0 12 24 / 28%), inset 0 1px 0 rgb(255 255 255 / 22%);
+  --fennevia-edge-inset: clamp(9px, 1.1vw, 15px);
+  --fennevia-edge-gap: clamp(8px, 1vw, 14px);
+  --fennevia-edge-trigger-thickness: 7px;
+  --fennevia-edge-side-width: min(clamp(220px, 24vw, 330px), 43%);
+  --fennevia-edge-top-height: clamp(96px, 17vh, 142px);
+  --fennevia-edge-bottom-height: clamp(82px, 14vh, 116px);
+  --fennevia-space-1: 4px;
+  --fennevia-space-2: 8px;
+  --fennevia-space-3: 12px;
+  --fennevia-space-4: 16px;
+  --fennevia-control-height: 32px;
+  --fennevia-motion-duration: 180ms;
+  --fennevia-motion-easing: cubic-bezier(0.2, 0.72, 0.2, 1);
+  --fennevia-focus-color: light-dark(rgb(0 92 184), rgb(114 190 255));
+  --fennevia-selected-surface: light-dark(
+    rgb(30 115 190 / 16%),
+    rgb(84 164 228 / 22%)
+  );
+  --fennevia-left-clearance: 0px;
+  --fennevia-right-clearance: 0px;
+  --fennevia-top-clearance: 0px;
+  --fennevia-bottom-clearance: 0px;
+  color-scheme: light dark;
+  font: menu;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+#fennevia-shell-frame-host[data-fennevia-left-visible] {
+  --fennevia-left-clearance: calc(
+    var(--fennevia-edge-side-width) + var(--fennevia-edge-gap)
+  );
+}
+
+#fennevia-shell-frame-host[data-fennevia-right-visible] {
+  --fennevia-right-clearance: calc(
+    var(--fennevia-edge-side-width) + var(--fennevia-edge-gap)
+  );
+}
+
+#fennevia-shell-frame-host[data-fennevia-top-visible] {
+  --fennevia-top-clearance: calc(
+    var(--fennevia-edge-top-height) + var(--fennevia-edge-gap)
+  );
+}
+
+#fennevia-shell-frame-host[data-fennevia-bottom-visible] {
+  --fennevia-bottom-clearance: calc(
+    var(--fennevia-edge-bottom-height) + var(--fennevia-edge-gap)
+  );
+}
+
+#fennevia-shell-frame-host,
+#fennevia-shell-frame-host *,
+#fennevia-shell-frame-host *::before,
+#fennevia-shell-frame-host *::after {
+  box-sizing: border-box;
+}
+
+#fennevia-shell-frame-host .fennevia-edge-root {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+#fennevia-shell-frame-host .fennevia-edge-trigger {
+  position: absolute;
+  z-index: 1;
+  background: transparent;
+  pointer-events: auto;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="top"]
+  .fennevia-edge-trigger,
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="bottom"]
+  .fennevia-edge-trigger {
+  inset-inline: var(--fennevia-edge-trigger-thickness);
+  block-size: var(--fennevia-edge-trigger-thickness);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="top"]
+  .fennevia-edge-trigger {
+  inset-block-start: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="bottom"]
+  .fennevia-edge-trigger {
+  inset-block-end: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="left"]
+  .fennevia-edge-trigger,
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="right"]
+  .fennevia-edge-trigger {
+  inset-block: 0;
+  inline-size: var(--fennevia-edge-trigger-thickness);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="left"]
+  .fennevia-edge-trigger {
+  inset-inline-start: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="right"]
+  .fennevia-edge-trigger {
+  inset-inline-end: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  visibility: hidden;
+  color: var(--fennevia-glass-text);
+  background: var(--fennevia-glass-surface);
+  border: 1px solid var(--fennevia-glass-border);
+  border-radius: var(--fennevia-glass-radius);
+  box-shadow: var(--fennevia-glass-shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--fennevia-motion-duration) var(--fennevia-motion-easing),
+    transform var(--fennevia-motion-duration) var(--fennevia-motion-easing),
+    visibility 0s linear var(--fennevia-motion-duration);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  #fennevia-shell-frame-host .fennevia-edge-panel {
+    background: var(--fennevia-glass-tint);
+    backdrop-filter: blur(var(--fennevia-glass-blur))
+      saturate(var(--fennevia-glass-saturation));
+  }
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-visible="true"]
+  .fennevia-edge-panel {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(0, 0);
+  transition-delay: 0s;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="top"]
+  .fennevia-edge-panel {
+  inset-block-start: var(--fennevia-edge-inset);
+  inset-inline-start: calc(
+    var(--fennevia-edge-inset) + var(--fennevia-left-clearance)
+  );
+  inset-inline-end: calc(
+    var(--fennevia-edge-inset) + var(--fennevia-right-clearance)
+  );
+  block-size: var(--fennevia-edge-top-height);
+  transform: translateY(calc(-100% - var(--fennevia-edge-inset)));
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="bottom"]
+  .fennevia-edge-panel {
+  inset-block-end: var(--fennevia-edge-inset);
+  inset-inline-start: calc(
+    var(--fennevia-edge-inset) + var(--fennevia-left-clearance)
+  );
+  inset-inline-end: calc(
+    var(--fennevia-edge-inset) + var(--fennevia-right-clearance)
+  );
+  block-size: var(--fennevia-edge-bottom-height);
+  transform: translateY(calc(100% + var(--fennevia-edge-inset)));
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="left"]
+  .fennevia-edge-panel,
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="right"]
+  .fennevia-edge-panel {
+  inset-block-start: calc(
+    var(--fennevia-edge-inset) + var(--fennevia-top-clearance)
+  );
+  inset-block-end: calc(
+    var(--fennevia-edge-inset) + var(--fennevia-bottom-clearance)
+  );
+  inline-size: var(--fennevia-edge-side-width);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="left"]
+  .fennevia-edge-panel {
+  inset-inline-start: var(--fennevia-edge-inset);
+  transform: translateX(calc(-100% - var(--fennevia-edge-inset)));
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="right"]
+  .fennevia-edge-panel {
+  inset-inline-end: var(--fennevia-edge-inset);
+  transform: translateX(calc(100% + var(--fennevia-edge-inset)));
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel__header,
+#fennevia-shell-frame-host .fennevia-edge-panel__footer,
+#fennevia-shell-frame-host .fennevia-tabs-summary {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fennevia-space-2);
+  padding: var(--fennevia-space-2) var(--fennevia-space-3);
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel__header {
+  min-block-size: 48px;
+  border-block-end: 1px solid var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel__identity {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+  gap: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel__identity > div {
+  display: grid;
+  min-inline-size: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel__identity strong,
+#fennevia-shell-frame-host .fennevia-edge-panel__identity span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel__identity span,
+#fennevia-shell-frame-host .fennevia-edge-panel__footer,
+#fennevia-shell-frame-host .fennevia-surface-placeholder > span,
+#fennevia-shell-frame-host .fennevia-tabs-summary > span {
+  color: var(--fennevia-glass-muted);
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel__mark {
+  inline-size: 10px;
+  block-size: 10px;
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--fennevia-focus-color) 60%, white);
+  border-radius: 50%;
+  background: var(--fennevia-focus-color);
+  box-shadow: 0 0 0 4px
+    color-mix(in srgb, var(--fennevia-focus-color) 16%, transparent);
+}
+
+#fennevia-shell-frame-host .fennevia-control {
+  min-block-size: var(--fennevia-control-height);
+  min-inline-size: var(--fennevia-control-height);
+  padding: 0 var(--fennevia-space-2);
+  color: inherit;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: 10px;
+  font: inherit;
+  cursor: default;
+}
+
+#fennevia-shell-frame-host .fennevia-control:hover {
+  background: color-mix(in srgb, currentColor 13%, transparent);
+}
+
+#fennevia-shell-frame-host .fennevia-control:active {
+  background: color-mix(in srgb, currentColor 19%, transparent);
+}
+
+#fennevia-shell-frame-host button:focus-visible,
+#fennevia-shell-frame-host [tabindex]:focus-visible {
+  outline: 2px solid var(--fennevia-focus-color);
+  outline-offset: 2px;
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel__dismiss {
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel__footer {
+  min-block-size: 34px;
+  border-block-start: 1px solid var(--fennevia-glass-separator);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+#fennevia-shell-frame-host .fennevia-edge-panel__footer kbd {
+  max-inline-size: 66%;
+  overflow: hidden;
+  padding: 2px 6px;
+  color: var(--fennevia-glass-muted);
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: 6px;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-surface-placeholder {
+  display: grid;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  align-content: center;
+  gap: var(--fennevia-space-1);
+  padding: var(--fennevia-space-4);
+  overflow: auto;
+}
+
+#fennevia-shell-frame-host .fennevia-surface-placeholder--top,
+#fennevia-shell-frame-host .fennevia-surface-placeholder--bottom {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--fennevia-space-3);
+}
+
+#fennevia-shell-frame-host
+  :is(.fennevia-surface-placeholder--top, .fennevia-surface-placeholder--bottom)
+  .fennevia-surface-placeholder__eyebrow {
+  grid-row: 1 / span 2;
+  padding: 5px 8px;
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: 999px;
+}
+
+#fennevia-shell-frame-host .fennevia-surface-placeholder__eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#fennevia-shell-frame-host .fennevia-tabs-summary {
+  padding-block-end: var(--fennevia-space-1);
+}
+
+#fennevia-shell-frame-host .fennevia-tabs-summary output {
+  min-inline-size: 24px;
+  padding: 2px 7px;
+  text-align: center;
+  background: color-mix(in srgb, var(--fennevia-focus-color) 14%, transparent);
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+  gap: var(--fennevia-space-2);
+  padding: var(--fennevia-space-2);
+  overflow: hidden;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+  gap: var(--fennevia-space-1);
+  padding: 2px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-color: color-mix(in srgb, currentColor 30%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px 30px;
+  flex: none;
+  min-block-size: 38px;
+  overflow: hidden;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border: 1px solid transparent;
+  border-radius: 11px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__item[data-fennevia-selected="true"] {
+  background: var(--fennevia-selected-surface);
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 48%,
+    transparent
+  );
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__item[data-fennevia-pinned="true"] {
+  border-inline-start-color: var(--fennevia-focus-color);
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__tab {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+  gap: var(--fennevia-space-2);
+  padding: 0 var(--fennevia-space-2);
+  overflow: hidden;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  font: inherit;
+  text-align: start;
+  cursor: default;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__visual {
+  position: relative;
+  display: grid;
+  inline-size: 16px;
+  block-size: 16px;
+  flex: 0 0 16px;
+  place-items: center;
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-tab-strip__fallback,
+    .fennevia-tab-strip__favicon,
+    .fennevia-tab-strip__loading
+  ) {
+  position: absolute;
+  inline-size: 16px;
+  block-size: 16px;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__fallback,
+#fennevia-shell-frame-host .fennevia-tab-strip__loading {
+  display: grid;
+  place-items: center;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__fallback {
+  color: var(--fennevia-glass-muted);
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__favicon {
+  object-fit: contain;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__loading {
+  color: var(--fennevia-focus-color);
+  background: var(--fennevia-glass-surface);
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__title {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__action {
+  min-inline-size: 28px;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  opacity: 0.56;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__item:is(:hover, :focus-within)
+  .fennevia-tab-strip__action {
+  opacity: 1;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__new {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fennevia-space-2);
+  inline-size: 100%;
+}
+
+#fennevia-shell-frame-host template {
+  display: none;
+}
+
+@media (max-width: 700px), (max-height: 520px) {
+  #fennevia-shell-frame-host {
+    --fennevia-edge-inset: 7px;
+    --fennevia-edge-gap: 7px;
+    --fennevia-edge-side-width: min(240px, 42%);
+    --fennevia-edge-top-height: 92px;
+    --fennevia-edge-bottom-height: 78px;
+    --fennevia-glass-radius: 14px;
+  }
+
+  #fennevia-shell-frame-host .fennevia-edge-panel__footer {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #fennevia-shell-frame-host {
+    --fennevia-motion-duration: 1ms;
+  }
+
+  #fennevia-shell-frame-host .fennevia-edge-panel,
+  #fennevia-shell-frame-host
+    .fennevia-edge-root[data-fennevia-visible="true"]
+    .fennevia-edge-panel {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  #fennevia-shell-frame-host .fennevia-edge-panel {
+    background: var(--fennevia-glass-surface);
+    backdrop-filter: none;
+  }
+}
+
+@media (forced-colors: active) {
+  #fennevia-shell-frame-host {
+    --fennevia-glass-surface: Canvas;
+    --fennevia-glass-tint: Canvas;
+    --fennevia-glass-text: CanvasText;
+    --fennevia-glass-muted: CanvasText;
+    --fennevia-glass-border: CanvasText;
+    --fennevia-glass-separator: CanvasText;
+    --fennevia-focus-color: Highlight;
+    --fennevia-selected-surface: Highlight;
+    --fennevia-glass-shadow: none;
+  }
+
+  #fennevia-shell-frame-host .fennevia-edge-panel {
+    backdrop-filter: none;
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-tab-strip__item[data-fennevia-selected="true"] {
+    color: HighlightText;
+    background: Highlight;
+    border-color: Highlight;
+  }
+
+  #fennevia-shell-frame-host .fennevia-edge-panel__mark {
+    background: Highlight;
+    border-color: Highlight;
+    box-shadow: none;
+  }
+}

@@ -233,6 +233,15 @@ styles of the native toolbox, sidebar, popup set, Urlbar input, application-menu
 button, or modal prompt. Missing and throwing frontend bundles removed partial
 project UI and left the retained native surface usable.
 
+Issue #31 supersedes that initial host geometry with one zero-layout frame over
+the browser content area. The frame is pointer-transparent except for its
+seven-CSS-pixel edge triggers and currently visible owned panels, so the center
+content hit target remains Firefox-owned. All four edges suspend for customize
+mode, DOM fullscreen, and native window/tab-modal state; browser fullscreen
+continues to follow `#browser` geometry without claiming OS controls. No native
+node is hidden, resized, moved, or placed under Svelte ownership, and issue #15
+still owns any future native-visible-shell gate.
+
 ## 9. Private windows
 
 - Private-window behavior must be explicit: fully supported or complete native fallback.
@@ -243,8 +252,9 @@ project UI and left the retained native surface usable.
 - A feature that cannot prove per-window memory, synchronous disposal, and normal/private separation must use complete native fallback in private windows.
 
 The Phase 2 base lifecycle fully supports private browser windows. Issue #6
-adds the same complete three-host set and fixed non-browsing diagnostic used by
-normal windows; it reads no tab, content, URL, title, query, or profile state.
+originally added the same complete three-host set and fixed non-browsing
+diagnostic used by normal windows; it read no tab, content, URL, title, query,
+or profile state. ADR-026 later superseded only that host geometry.
 Classification happens before the initializer, process-global snapshots retain
 counts only, and unload/runtime stop abort and dispose the private hosts and
 record. This does not pre-approve any future private-window bridge or feature:
@@ -303,6 +313,15 @@ state. Normal, second, and private windows remained isolated. Issue #12 must
 still prove the navigation data flow it introduces. Full evidence is in
 `docs/research/firefox-153-tabs-bridge.md` and
 `docs/research/firefox-153-tab-strip.md`.
+
+Issue #31 gives every normal or private window its own frame, four Svelte roots,
+four edge state machines, focus-origin map, environment observer, delegated
+listeners, and tracked timers. Edge identity, reveal phase, and hold reason are
+fixed enums with no browsing value; the controller never receives a title,
+favicon, URL, query, profile path, native tab, or native window. Reverse disposal
+clears every hold and timer before dropping per-window state. No edge state is
+persisted or shared across windows. Full evidence is in
+`docs/research/firefox-153-four-edge-shell.md`.
 
 ## 10. Source maps and debug artifacts
 

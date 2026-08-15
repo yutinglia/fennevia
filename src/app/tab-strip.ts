@@ -61,6 +61,7 @@ export function getTabStripKeyAction(
   currentTabId: string,
   key: string,
   direction: "ltr" | "rtl" = "ltr",
+  orientation: "horizontal" | "vertical" = "horizontal",
 ): TabStripKeyAction | null {
   const currentIndex = tabs.findIndex((tab) => tab.id === currentTabId);
   if (currentIndex < 0 || tabs.length === 0) {
@@ -79,7 +80,16 @@ export function getTabStripKeyAction(
     targetIndex = 0;
   } else if (key === "End") {
     targetIndex = tabs.length - 1;
-  } else if (key === "ArrowLeft" || key === "ArrowRight") {
+  } else if (
+    orientation === "vertical" &&
+    (key === "ArrowUp" || key === "ArrowDown")
+  ) {
+    const delta = key === "ArrowDown" ? 1 : -1;
+    targetIndex = (currentIndex + delta + tabs.length) % tabs.length;
+  } else if (
+    orientation === "horizontal" &&
+    (key === "ArrowLeft" || key === "ArrowRight")
+  ) {
     const logicalDelta = key === "ArrowRight" ? 1 : -1;
     const delta = direction === "rtl" ? -logicalDelta : logicalDelta;
     targetIndex = (currentIndex + delta + tabs.length) % tabs.length;

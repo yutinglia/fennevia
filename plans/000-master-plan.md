@@ -97,8 +97,11 @@ real Browser Toolbox ownership validation on the same build. Issue #7 completed
 the explicit six-state health lifecycle, two-second health deadline, safe start,
 privileged emergency fallback, privacy-safe failure records, and deterministic
 partial cleanup without entering `active` automatically. Phase 2's architectural
-deliverables are now complete; following issues must consume this lifecycle/host
-boundary rather than add a second window observer or native DOM owner.
+deliverables are now complete. Issue #31 later evolved ADR-020's initial
+three-island host shape into one zero-layout frame with four independently
+owned edge hosts through the same lifecycle and window manager. Following
+issues must consume that frame boundary rather than add a second window
+observer or native DOM owner.
 
 ### Phase 3: Frontend build feasibility
 
@@ -174,8 +177,14 @@ tab state, preserves Firefox order/selection, supplies safe text/favicon
 fallbacks and accessible keyboard/actions, and keeps native tabs unchanged.
 Real Firefox 153.0.4 normal, second, private, Browser Toolbox, rapid-action,
 cleanup, and fail-open recovery runs passed. Navigation/address/sidebar work
-remains in later issues. See ADR-025 and
-`docs/research/firefox-153-tab-strip.md`.
+remains in later issues. Issue #31 then establishes the shared Phase 5 shell
+foundation: one zero-layout frame, independent top/left/right/bottom Svelte
+surfaces, a framework-independent reveal controller, accessible keyboard and
+focus policy, glass-capable project tokens with solid, reduced-motion, and
+forced-colors fallbacks, and the existing tab strip reoriented into the left
+edge. Native UI remains visible. See ADR-025, ADR-026,
+`docs/research/firefox-153-tab-strip.md`, and
+`docs/research/firefox-153-four-edge-shell.md`.
 
 ### Phase 6: Hide the native visible shell
 
@@ -232,7 +241,7 @@ manifest gates.
 ## 7. Major risks and mitigations
 
 | Risk | Mitigation |
-|---|---|
+| --- | --- |
 | Firefox changes AutoConfig or manifest registration | Compatibility canaries, Searchfox, official source history, minimal bootstrap tests |
 | Svelte runtime conflicts with XHTML or mixed XUL/HTML chrome | Isolated-host spike and strict DOM ownership |
 | Firefox changes internal APIs | Small bridge modules, runtime capability checks, latest-stable-only policy |

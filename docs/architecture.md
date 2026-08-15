@@ -8,21 +8,21 @@ This project owns the visible browser shell and a privileged integration runtime
 
 ```text
 +--------------------------------------------+
-| Svelte shell                               |
-| components / local state / accessibility   |
+| Svelte shell |
+| components / local state / accessibility |
 +-------------------+------------------------+
                     | plain typed contracts
 +-------------------v------------------------+
-| Application state and controllers          |
+| Application state and controllers |
 +-------------------+------------------------+
                     | bridge API
 +-------------------v------------------------+
-| Firefox bridge                             |
-| gBrowser / commands / Places / Downloads   |
+| Firefox bridge |
+| gBrowser / commands / Places / Downloads |
 +-------------------+------------------------+
                     | privileged APIs
 +-------------------v------------------------+
-| Stock Firefox browser chrome and Gecko     |
+| Stock Firefox browser chrome and Gecko |
 +--------------------------------------------+
 ```
 
@@ -94,18 +94,19 @@ A per-window runtime owns:
 - one process-local random UUID and `normal` or `private` classification;
 - an `AbortSignal` that is triggered before disposal cleanup;
 - a reverse-order cleanup registry and one optional returned disposer;
-- eventually, that window's project XHTML hosts, Firefox bridge instances,
-  frontend root, health state, and native-UI gate.
+- that window's project XHTML frame and edge hosts, Firefox bridge instances,
+  frontend roots, health state, and native-UI gate.
 
-Issue #5 established the lifecycle. Issue #6 supplies its one initializer:
-`WindowShell.sys.mjs` validates the exact current document hierarchy before it
-creates a visible primary XHTML host, hidden sidebar XHTML host, and hidden,
-inert overlay XHTML host. Normal and private windows receive the same complete
-host set. The primary host is a direct `body` child immediately before
-`#browser`; the sidebar host is immediately before `#tabbrowser-tabbox`; the
-overlay host is immediately before `#a11y-announcement`. Project code owns only
-these nodes and their descendants. It never moves a native node or hides native
-UI.
+Issue #5 established the lifecycle, and issue #6 proved the first three-island
+initializer. ADR-026 supersedes that production geometry. The current
+`WindowShell.sys.mjs` validates the exact document hierarchy and creates one
+zero-layout XHTML frame as an absolute child of `#browser`, immediately before
+`#tabbrowser-tabbox`. Ordered top, left, right, and bottom XHTML hosts each own
+one empty mount target and one Svelte root. A generated style node is a separate
+frame child and does not participate in host ordering. Normal and private
+windows receive the same complete frame. Project code owns only this frame and
+its descendants; it never moves a native node, resizes browser content, or
+hides native UI.
 
 Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
 owns the only root-state transition table: `created -> mounted -> healthy ->
@@ -116,17 +117,17 @@ reported rather than accepted. Duplicate transitions and disposal are
 idempotent.
 
 The production initializer mounts synchronously and then applies a finite
-2,000 ms health deadline. Its current self-check validates exact host identity,
-placement, XHTML descendants, hidden/inert auxiliary hosts, an attached inline
-stylesheet with parsed rules, the registered emergency handler, and every
-declared capability. The extension points used to inject failures in unit tests
-are ordinary constructor collaborators; the installed initializer always uses
-fixed production defaults and exposes no preference, DOM global, or runtime
-debug switch for choosing a failure mode.
+2,000 ms health deadline. Its current self-check validates exact frame and host
+identity, placement and order, four XHTML mount targets and frontend roots, an
+attached generated stylesheet with parsed rules, the registered emergency
+handler, and every declared capability. The extension points used to inject
+failures in unit tests are ordinary constructor collaborators; the installed
+initializer always uses fixed production defaults and exposes no preference,
+DOM global, or runtime debug switch for choosing a failure mode.
 
 `initializeWindowShell` stops at `healthy`. Only the explicit lifecycle
 controller can request `active`, and no production caller does so. Package
-`0.4.0-dev` introduced this boundary, and the current `0.5.0-dev` package still
+`0.4.0-dev` introduced this boundary, and the current `0.6.0-dev` package still
 contains no selector that hides Firefox UI. `Ctrl+Alt+Shift+F12` is registered directly on each chrome window in
 the capture and Mozilla system event groups. It reports the fixed recovery
 phase, clears state, removes every host/listener/timer/cleanup, and does not
@@ -148,8 +149,9 @@ kind, but never a page URL, title, query, profile path, or native object. The
 source and runtime evidence is in
 `docs/research/firefox-153-window-lifecycle.md`,
 `docs/research/firefox-153-shell-hosts.md`,
-`docs/research/firefox-153-shell-health-recovery.md`, ADR-019, ADR-020, and
-ADR-021.
+`docs/research/firefox-153-shell-health-recovery.md`,
+`docs/research/firefox-153-four-edge-shell.md`, ADR-019 through ADR-022, and
+ADR-026.
 
 ## 4. Firefox bridge
 
@@ -179,7 +181,7 @@ private installed ESM
 `chrome://fennevia/content/firefox/BridgeBoundary.sys.mjs`; the generated file
 is not source of truth. `WindowShell.sys.mjs` creates exactly one boundary from
 the existing `WindowManager` context for each managed window and retains it in
-the same target-keyed private record as the frontend API. It passes no bridge
+the same frame-keyed private record as the frontend API. It passes no bridge
 implementation object, native handle, or capability object to Svelte. Issue #10
 later passes only the frozen ordinary-data tabs contract described below.
 
@@ -233,13 +235,14 @@ The application layer coordinates ordinary typed state, controllers, and feature
 
 Svelte mounts only into project-created XHTML elements. It must not reconcile `navigator-toolbox`, `tabbrowser-tabbox`, the native sidebar, popup sets, or any other Firefox-owned children.
 
-Issue #8 validates one Svelte 5 root in the primary XHTML host of every managed
-normal or private browser window. The privileged runtime supplies only the
-ordinary `windowKind` prop and lifecycle callbacks; the component owns local
-immutable smoke state and receives no Firefox handle, `Services`, browsing
-value, or native DOM node other than its exact empty mount target. Mount,
-health, official unmount, and fresh-state remount are explicit frontend API
-operations.
+Issue #8 validated the original single Svelte 5 root. Issue #31 keeps the same
+fixed tree-fragment IIFE and one-shot API but mounts four independent roots in
+the ordered edge targets. The privileged runtime supplies ordinary window kind,
+the four owned targets, and narrow lifecycle/data contracts; components receive
+no Firefox handle, `Services`, browsing value, or Firefox-owned DOM node. One
+shared framework-independent controller coordinates edge visibility, while
+each root retains independent component ownership. Mount, health, official
+unmount, and fresh-state remount are explicit frontend API operations.
 
 The frontend owns:
 
@@ -269,18 +272,19 @@ Use this priority order:
 6. Use agent or author sheets only when an ordinary scoped stylesheet cannot solve a demonstrated problem.
 7. Prefer text rendering and safe property assignment over unsanitized HTML.
 
-The issue #8 result selects Svelte component CSS extracted at build time. Every
-authored selector starts at `#fennevia-shell-app-root`, and the generated style
-element is a child of the project-owned primary host. Real Firefox comparison
+The issue #31 result keeps Svelte component CSS extracted at build time. Every
+authored selector starts at `#fennevia-shell-frame-host`, and the generated
+style element is a child of the project-owned frame. Real Firefox comparison
 kept the computed styles of the native toolbox, sidebar, popup set, Urlbar
 input, application-menu button, and modal prompt unchanged when that style was
 toggled. Tailwind and Shadow DOM remain unselected because the scoped component
 CSS satisfied the measured isolation and theme requirements without another
 dependency or rendering boundary.
 
-Issue #11 keeps the same boundary for the tab strip. Pinned and regular items
-use bounded project-only layout, many tabs overflow inside one horizontal
-scroller, and forced-colors/focus rules remain rooted at the shell root. The
+Issue #11 first proved the tab strip boundary horizontally; ADR-026 retains its
+data and accessibility contract but reorients it into the left edge. Pinned and
+regular items use bounded project-only layout, many tabs overflow inside one
+vertical scroller, and forced-colors/focus rules remain rooted at the frame. The
 Browser Toolbox ownership walk excludes Firefox-generated native-anonymous
 scrollbar descendants before asserting XHTML project ownership; it does not
 reclassify those browser-owned XUL widgets as authored shell DOM. No selector
@@ -307,7 +311,7 @@ AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute.
 
 When a later issue implements the actual native-UI gate, native UI may be hidden
-only while active and must never be removed. Package `0.5.0-dev` does not hide
+only while active and must never be removed. Package `0.6.0-dev` does not hide
 it. Retaining native DOM preserves implicit dependencies in Firefox commands,
 popups, customization, titlebar, and platform integration and provides the
 recovery path.
@@ -351,7 +355,8 @@ Production artifacts must be:
 Each production build also has an exact reviewed file inventory and passes `scripts/check-production-artifacts.ps1`. Unexpected files, including dynamically emitted chunks, fail the gate rather than being accepted by a glob. The operational rule set is in `docs/security-controls.md`.
 
 ADR-022 selects one classic `ShellApp.js` IIFE for execution in each owning
-browser-window global. `ShellStyles.sys.mjs` contains the extracted CSS as a
+browser-window global. It mounts four roots inside the one validated frame.
+`ShellStyles.sys.mjs` contains the extracted CSS as a
 static string, and `THIRD_PARTY_NOTICES.txt` contains the bundled Svelte notice.
 The build runs twice and compares exact bytes before replacing only those three
 generated files, then synchronizes their SHA-256 values into
@@ -416,10 +421,16 @@ src/
     places.ts
     downloads.ts
   app/
+    edge-surfaces.ts
+    tab-state.ts
+    tab-strip.ts
     controllers/
     state/
   shell/
     App.svelte
+    index.ts
+    styles/
+      edge-shell.css
     components/
   styles/
     shell.css
@@ -428,8 +439,8 @@ src/
 
 This is a target boundary, not permission to scaffold unused abstractions before the Phase 1 and Phase 2 evidence exists.
 
-The current package combines the proven Phase 2 runtime boundary with the
-generated Phase 3 frontend:
+The current package combines the proven runtime/bridge boundary with the
+generated four-edge frontend:
 
 ```text
 profile/chrome/fennevia/content/
@@ -451,8 +462,8 @@ profile/chrome/fennevia/content/
 All eleven profile files are exact package artifacts with committed hashes. The
 bridge ESM and three shell files are reproducible only from `src/` and build
 configuration; the runtime modules remain reviewed source. The source/build
-boundaries and per-window execution decisions are recorded in ADR-022 and
-ADR-023.
+boundaries and per-window execution decisions are recorded in ADR-022,
+ADR-023, and ADR-026.
 
 ## 12. Dependency direction
 

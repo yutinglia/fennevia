@@ -68,15 +68,14 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   );
   assert.ok(styleMatch?.groups?.value);
   const css = /** @type {string} */ (JSON.parse(styleMatch.groups.value));
-  assert.match(css, /\.svelte-[a-z0-9]+/u);
   assert.doesNotMatch(css, /@import|url\s*\(|:global|\/\*\$vite\$/iu);
-  const selectorLines = css
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("#") && /[,{]$/u.test(line));
-  assert.ok(selectorLines.length >= 12);
-  assert.ok(
-    selectorLines.every((line) => line.startsWith("#fennevia-shell-app-root")),
+  assert.match(css, /^#fennevia-shell-frame-host \{/u);
+  assert.match(css, /#fennevia-shell-frame-host \.fennevia-edge-panel/u);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/u);
+  assert.match(css, /@media \(forced-colors: active\)/u);
+  assert.doesNotMatch(
+    css,
+    /#(?:navigator-toolbox|browser|tabbrowser-tabbox|main-window)\b/u,
   );
 
   assert.match(notices, /Package: svelte@5\.56\.9/u);
@@ -106,10 +105,14 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
 
   assert.match(
     runtime,
-    /const SHELL_APP_SCRIPT_URI =\s*\n\s*"chrome:\/\/fennevia\/content\/shell\/ShellApp\.js";/u,
+    /const SHELL_APP_SCRIPT_URI =\s*"chrome:\/\/fennevia\/content\/shell\/ShellApp\.js";/u,
   );
   assert.match(runtime, /Services\.scriptloader\.loadSubScript\(/u);
-  assert.match(runtime, /const productionShellByTarget = new WeakMap\(\)/u);
+  assert.match(runtime, /const productionShellByFrame = new WeakMap\(\)/u);
+  assert.match(
+    runtime,
+    /frame\.insertBefore\(style, mountPoints\.surfaces\.top\.host\)/u,
+  );
   assert.match(
     runtime,
     /createFirefoxBridgeBoundary,[\s\S]*createFirefoxTabsBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,

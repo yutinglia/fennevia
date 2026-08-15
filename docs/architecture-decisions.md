@@ -255,7 +255,8 @@ fail-open injection are recorded in
 
 ## ADR-020: Attach three validated XHTML islands without taking native DOM ownership
 
-**Status:** Accepted and validated on Firefox 153.0.4
+**Status:** Superseded by ADR-026 for the production host shape; retained as
+validated historical evidence for the initial three-island spike
 
 For each managed normal or private browser window, create exactly three
 project-owned XHTML hosts only after validating the exact `browser.xhtml`
@@ -337,6 +338,10 @@ procedure are recorded in
 
 **Status:** Accepted and validated on Firefox 153.0.4
 
+ADR-026 supersedes only the original one-root/primary-host mounting shape. The
+tree-fragment IIFE, one-shot registration, extracted local CSS, and official
+mount/unmount decisions remain current for four independent roots.
+
 Compile the issue #8 smoke frontend from Svelte 5 and TypeScript with Vite
 library mode into one fixed classic IIFE, one extracted component stylesheet
 module, and one generated third-party notice. `WindowShell.sys.mjs` loads only
@@ -387,7 +392,7 @@ Keep the typed source boundary in `src/firefox/bridge-boundary.ts` and compile
 it into one fixed private ESM,
 `chrome://fennevia/content/firefox/BridgeBoundary.sys.mjs`.
 `WindowShell.sys.mjs` creates one instance from the existing per-window
-`WindowManager` context, retains it only in a private target-keyed record, and
+`WindowManager` context, retains it only in a private frame-keyed record, and
 disposes it through the same reverse lifecycle as the Svelte frontend and host.
 The active context ID and native window are exclusive until disposal, so a
 normal, second, or private window cannot reuse another window's bridge.
@@ -471,7 +476,8 @@ Source, canary, security, failure, cleanup, and real three-window evidence is in
 
 ## ADR-025: Render the first tab strip as an owned accessible composite
 
-**Status:** Accepted and validated on Firefox 153.0.4
+**Status:** Accepted for the data/action/accessibility contract; ADR-026
+supersedes its horizontal geometry with a vertical left-edge presentation
 
 Render one horizontal `tablist` from the immutable issue #10 snapshot. Each
 ordered item has a primary `button[role="tab"]` plus sibling pin and close
@@ -515,3 +521,70 @@ native tab override. Native Firefox tabs stay visible and unchanged, so this
 issue does not enter the activation or native-hide phase. Sources, rejected
 alternatives, security effects, first causal errors, and the complete runtime
 matrix are recorded in `docs/research/firefox-153-tab-strip.md`.
+
+## ADR-026: Use one zero-layout frame with four independently owned edge surfaces
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Insert one project-owned XHTML frame as an absolute child of `#browser`
+immediately before `#tabbrowser-tabbox`. The frame reserves no layout space and
+contains ordered top, left, right, and bottom XHTML hosts. Each host owns one
+empty mount target, one Svelte root, one accessible region, one trigger, one
+state controller, and one deterministic disposer. Generated CSS is a separate
+frame child and cannot change edge-host ordering. Any missing target, partial
+attachment, mount, CSS, controller, or health failure disposes the complete
+frame through the ADR-021 fail-open lifecycle.
+
+Keep reveal policy in the framework-independent `src/app/edge-surfaces.ts`
+contract. Pointer, focus, keyboard, popup, and bounded programmatic holds are
+explicit; there is one 160 ms anti-flicker hide timer per edge and no polling.
+Pointer reveal is exclusive, while legitimate non-pointer holds may keep
+multiple surfaces visible. Side edges own exact corners. Features call the
+controller API and must not manipulate visibility classes, attributes, or
+timers directly.
+
+Expose keyboard access through exact
+`Ctrl+Alt+Shift+ArrowUp|Left|Right|Down` commands. A keyboard reveal moves focus
+to a named owned control, holds visibility while focus remains, lets `Escape`
+dismiss unless a popup has priority, and restores the originating HTML or XUL
+control. A bounded focus-transfer guard covers native tab-close animation;
+disposal clears it. Future `Ctrl+L` routing remains issue #13.
+
+Suspend all four surfaces during customize mode, DOM fullscreen, and native
+window/tab-modal state. Continue in browser fullscreen because the frame tracks
+the current `#browser` geometry and never owns OS controls. Observe only the
+current source-backed root attributes and `tabDialogShowing`; do not add a
+second window manager, continuous DOM scan, or periodic timer.
+
+Use one plain extracted stylesheet rooted at
+`#fennevia-shell-frame-host`. Project-owned tokens define surface/tint, text,
+border, blur/saturation, radius, elevation, inset/trigger, dimensions, spacing,
+density, motion, focus, and selected state. A near-solid base is valid without
+backdrop filtering; reduced transparency removes blur, reduced motion removes
+translation, and forced colors uses system colors. Top, side, and bottom
+geometry differs by function, with shared clearances preventing overlap. No
+Tailwind, component library, Shadow DOM, runtime stylesheet fetch, or native
+selector is introduced.
+
+The design concepts were independently derived after inspecting only the
+license, README, and selected CSS reference files at
+[`yutinglia/my-firefox-custom@7a02f60bb23abe9c191c7fd8cd2a7096bb63aee5`](https://github.com/yutinglia/my-firefox-custom/tree/7a02f60bb23abe9c191c7fd8cd2a7096bb63aee5).
+No `.uc.js`, handler structure, timer, flag, selector, ID, class, token name,
+numeric value, module layout, native-DOM strategy, or loader assumption was
+copied or adapted.
+
+**Reasoning:** Firefox 153 makes `#browser` a relative containing block and
+keeps `#tabbrowser-tabbox`, browser stacks, dialogs, DevTools, and content under
+Firefox ownership. One zero-layout frame is the smallest owned coordination
+boundary that can float over content without resizing or reconciling native
+children. Independent hosts preserve feature/lifecycle isolation; a shared
+controller and token system prevent each feature from inventing conflicting
+edge policy. Native UI remains visible and production still stops at
+`healthy`, so issue #15 retains sole ownership of native hiding.
+
+ADR-026 supersedes ADR-020's production three-host layout, ADR-022's original
+single-root mount shape, and only ADR-025's horizontal presentation. It retains
+their namespace, build, bridge, tab-state, accessibility, safety, and cleanup
+decisions. Source evidence, rejected alternatives, visual-reference provenance,
+security effects, first causal failures, and real validation are in
+`docs/research/firefox-153-four-edge-shell.md`.

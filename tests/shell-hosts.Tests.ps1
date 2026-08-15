@@ -35,19 +35,22 @@ $shellContent = Get-Content -Raw -LiteralPath $shellPath
 $firefoxTestContent = Get-Content -Raw -LiteralPath $firefoxTestPath
 foreach ($requiredToken in @(
     'http://www\.w3\.org/1999/xhtml',
-    'fennevia-shell-primary-host',
-    'fennevia-shell-sidebar-host',
-    'fennevia-shell-overlay-host',
+    'fennevia-shell-frame-host',
+    'fennevia-shell-top-host',
+    'fennevia-shell-left-host',
+    'fennevia-shell-right-host',
+    'fennevia-shell-bottom-host',
     'document\.createElementNS\(XHTML_NAMESPACE',
-    'body\.insertBefore',
-    'browser\.insertBefore',
+    'insertionPoints\.browser\.insertBefore',
     'tabbrowser-tabbox',
     'window-modal-dialog',
     'a11y-announcement',
     'fullscr-toggler',
     'pointer-events:\s*none',
-    'aria-live',
-    'Native UI retained'
+    'MutationObserver',
+    'customizing',
+    'inDOMFullscreen',
+    'tabDialogShowing'
 )) {
     Assert-True -Condition ($shellContent -match $requiredToken) -Message "The shell-host runtime is missing a required ownership, namespace, placement, or accessibility boundary."
 }

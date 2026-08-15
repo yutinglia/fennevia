@@ -564,28 +564,24 @@ async function collectShellHostState(client) {
   return client.execute(`
     const XHTML_NS = "http://www.w3.org/1999/xhtml";
     const hostIds = [
-      "fennevia-shell-primary-host",
-      "fennevia-shell-sidebar-host",
-      "fennevia-shell-overlay-host",
+      "fennevia-shell-frame-host",
+      "fennevia-shell-top-host",
+      "fennevia-shell-left-host",
+      "fennevia-shell-right-host",
+      "fennevia-shell-bottom-host",
     ];
-    const [primary, sidebar, overlay] = hostIds.map(id =>
-      document.getElementById(id)
-    );
-    const hostSelector = hostIds.map(id => "#" + id).join(",");
+    const edgeNames = ["top", "left", "right", "bottom"];
+    const [frame, ...edgeHosts] = hostIds.map(id => document.getElementById(id));
     const toolbox = document.getElementById("navigator-toolbox");
     const browser = document.getElementById("browser");
     const tabbox = document.getElementById("tabbrowser-tabbox");
-    const announcement = document.getElementById("a11y-announcement");
     const modalDialog = document.getElementById("window-modal-dialog");
-    const primaryRect = primary?.getBoundingClientRect();
-    const toolboxRect = toolbox?.getBoundingClientRect();
+    const style = document.getElementById("fennevia-shell-style");
+    const appStyle = document.getElementById("fennevia-shell-app-style");
+    const frameRect = frame?.getBoundingClientRect();
     const browserRect = browser?.getBoundingClientRect();
-    const bodyChildren = Array.from(document.body.children);
     const browserChildren = Array.from(browser?.children ?? []);
-    const allProjectElements = hostIds.flatMap(id => {
-      const host = document.getElementById(id);
-      return host ? [host, ...host.querySelectorAll("*")] : [];
-    });
+    const allProjectElements = frame ? [frame, ...frame.querySelectorAll("*")] : [];
     const contentHit = browserRect
       ? document.elementFromPoint(
           Math.round(browserRect.left + browserRect.width / 2),
@@ -599,11 +595,46 @@ async function collectShellHostState(client) {
       contentHitInsideProjectHost: Boolean(
         contentHit?.closest?.('[id^="fennevia-shell-"]')
       ),
-      diagnosticText:
-        primary
-          ?.querySelector(".fennevia-shell-diagnostic")
-          ?.textContent?.replace(/\\s+/gu, " ")
-          .trim() ?? "",
+      edgeHosts: Object.fromEntries(edgeNames.map((edge, index) => {
+        const host = edgeHosts[index];
+        const target = document.getElementById(
+          "fennevia-shell-" + edge + "-mount"
+        );
+        const root = document.getElementById(
+          "fennevia-shell-" + edge + "-root"
+        );
+        const panel = root?.querySelector(
+          '[data-fennevia-edge-panel="' + edge + '"]'
+        );
+        const trigger = root?.querySelector(
+          '[data-fennevia-edge-trigger="' + edge + '"]'
+        );
+        return [edge, {
+          hostParentIsFrame: host?.parentElement === frame,
+          hostPosition: frame ? [...frame.children].filter(
+            child => child.hasAttribute("data-fennevia-edge-host")
+          ).indexOf(host) : -1,
+          mountParentIsHost: target?.parentElement === host,
+          mountStatus: target?.getAttribute("data-fennevia-framework-status") ?? null,
+          panelHidden: panel?.getAttribute("aria-hidden") === "true",
+          panelInert: Boolean(panel?.inert),
+          panelPointerEvents: panel ? getComputedStyle(panel).pointerEvents : null,
+          rootEdge: root?.getAttribute("data-fennevia-edge") ?? null,
+          rootVisible: root?.getAttribute("data-fennevia-visible") ?? null,
+          triggerPointerEvents: trigger ? getComputedStyle(trigger).pointerEvents : null,
+        }];
+      })),
+      environment: frame?.getAttribute("data-fennevia-environment") ?? null,
+      frame: {
+        appStyleParent: appStyle?.parentElement === frame,
+        browserGeometryPreserved:
+          Math.round(frameRect?.width ?? -1) === Math.round(browserRect?.width ?? -2) &&
+          Math.round(frameRect?.height ?? -1) === Math.round(browserRect?.height ?? -2),
+        parentIsBrowser: frame?.parentElement === browser,
+        pointerEvents: frame ? getComputedStyle(frame).pointerEvents : null,
+        position: frame ? getComputedStyle(frame).position : null,
+        runtimeStyleParent: style?.parentElement === frame,
+      },
       hostCount: hostIds.filter(id => document.getElementById(id)).length,
       hostIdCount: hostIds.reduce(
         (count, id) =>
@@ -629,41 +660,19 @@ async function collectShellHostState(client) {
       namespaceComplete: allProjectElements.every(
         element => element.namespaceURI === XHTML_NS
       ),
-      overlay: {
-        hidden: Boolean(overlay?.hidden),
-        inert: Boolean(overlay?.hasAttribute("inert")),
-        parentIsBody: overlay?.parentElement === document.body,
-        pointerEvents: overlay ? getComputedStyle(overlay).pointerEvents : null,
-      },
-      ownershipComplete: allProjectElements.every(element => {
-        const host = element.closest?.(hostSelector);
-        return host && hostIds.includes(host.id);
-      }),
+      ownershipComplete: allProjectElements.every(
+        element => element === frame || frame?.contains(element)
+      ),
       placement: {
-        overlayBeforeAnnouncement:
-          bodyChildren.indexOf(overlay) + 1 ===
-          bodyChildren.indexOf(announcement),
-        primaryBeforeBrowser:
-          bodyChildren.indexOf(primary) + 1 === bodyChildren.indexOf(browser),
-        sidebarBeforeTabbox:
-          browserChildren.indexOf(sidebar) + 1 ===
-          browserChildren.indexOf(tabbox),
+        frameImmediatelyBeforeTabbox:
+          browserChildren.indexOf(frame) + 1 === browserChildren.indexOf(tabbox),
       },
-      primary: {
-        browserStartsAfterHost:
-          Math.round(primaryRect?.bottom ?? -1) ===
-          Math.round(browserRect?.top ?? -2),
-        height: Math.round(primaryRect?.height ?? 0),
-        parentIsBody: primary?.parentElement === document.body,
-        toolboxEndsBeforeHost:
-          Math.round(toolboxRect?.bottom ?? -1) ===
-          Math.round(primaryRect?.top ?? -2),
-        visible: primary ? getComputedStyle(primary).display !== "none" : false,
-      },
-      sidebar: {
-        hidden: Boolean(sidebar?.hidden),
-        parentIsBrowser: sidebar?.parentElement === browser,
-      },
+      rootCount: edgeNames.filter(
+        edge => document.getElementById("fennevia-shell-" + edge + "-root")
+      ).length,
+      targetCount: edgeNames.filter(
+        edge => document.getElementById("fennevia-shell-" + edge + "-mount")
+      ).length,
     };
   `);
 }
@@ -671,10 +680,21 @@ async function collectShellHostState(client) {
 async function collectFrontendState(client) {
   return client.execute(`
     const XHTML_NS = "http://www.w3.org/1999/xhtml";
-    const mount = document.getElementById("fennevia-shell-app-mount");
-    const root = document.getElementById("fennevia-shell-app-root");
+    const edgeNames = ["top", "left", "right", "bottom"];
+    const frame = document.getElementById("fennevia-shell-frame-host");
+    const roots = Object.fromEntries(edgeNames.map(edge => [
+      edge,
+      document.getElementById("fennevia-shell-" + edge + "-root"),
+    ]));
+    const mounts = Object.fromEntries(edgeNames.map(edge => [
+      edge,
+      document.getElementById("fennevia-shell-" + edge + "-mount"),
+    ]));
+    const root = roots.left;
     const style = document.getElementById("fennevia-shell-app-style");
-    const template = root?.querySelector("template[data-fennevia-template]");
+    const template = roots.top?.querySelector(
+      "template[data-fennevia-template]"
+    );
     const nativeTabs = Array.isArray(gBrowser?.openTabs)
       ? gBrowser.openTabs
       : [];
@@ -690,7 +710,10 @@ async function collectFrontendState(client) {
     } catch {
       cssRuleCount = 0;
     }
-    const elements = root ? [root, ...root.querySelectorAll("*")] : [];
+    const elements = edgeNames.flatMap(edge => {
+      const edgeRoot = roots[edge];
+      return edgeRoot ? [edgeRoot, ...edgeRoot.querySelectorAll("*")] : [];
+    });
     const templateContent = template?.content?.firstElementChild ?? null;
     if (templateContent) {
       elements.push(templateContent);
@@ -699,27 +722,40 @@ async function collectFrontendState(client) {
       allElementsUseXhtml: elements.every(
         element => element.namespaceURI === XHTML_NS
       ),
-      conditionalVisible: Boolean(
-        root?.querySelector("[data-fennevia-conditional]")
-      ),
-      counter:
-        root?.querySelector("[data-fennevia-counter]")?.textContent?.trim() ??
-        null,
-      eventCount:
-        root
-          ?.querySelector("[data-fennevia-event-count]")
-          ?.textContent?.trim() ?? null,
-      input: root?.querySelector("input[data-fennevia-input]")?.value ?? null,
-      inputOutput:
-        root
-          ?.querySelector("[data-fennevia-input-output]")
-          ?.textContent?.trim() ?? null,
-      actionControlsNamed: root
-        ? [...root.querySelectorAll(
-            '.fennevia-tab-strip__action, [data-fennevia-action="new-tab"]'
-          )].every(control => Boolean(control.getAttribute("aria-label")))
-        : false,
+      actionControlsNamed: elements
+        .filter(element => element.matches?.(
+          '.fennevia-tab-strip__action, [data-fennevia-action="new-tab"], [data-fennevia-dismiss]'
+        ))
+        .every(control => Boolean(control.getAttribute("aria-label"))),
       customTabCount: customTabs.length,
+      frameEnvironment: frame?.getAttribute("data-fennevia-environment") ?? null,
+      frameReady: frame?.hasAttribute("data-fennevia-frontend-ready") ?? false,
+      landmarks: Object.fromEntries(edgeNames.map(edge => {
+        const edgeRoot = roots[edge];
+        const panel = edgeRoot?.querySelector(
+          '[data-fennevia-edge-panel="' + edge + '"]'
+        );
+        return [edge, {
+          dismissCount: edgeRoot?.querySelectorAll(
+            '[data-fennevia-dismiss="' + edge + '"]'
+          ).length ?? 0,
+          hidden: panel?.getAttribute("aria-hidden") ?? null,
+          inert: Boolean(panel?.inert),
+          label: panel?.getAttribute("aria-label") ?? null,
+          phase: edgeRoot?.getAttribute("data-fennevia-phase") ?? null,
+          role: panel?.getAttribute("role") ?? null,
+          triggerCount: edgeRoot?.querySelectorAll(
+            '[data-fennevia-edge-trigger="' + edge + '"]'
+          ).length ?? 0,
+          visible: edgeRoot?.getAttribute("data-fennevia-visible") ?? null,
+        }];
+      })),
+      mounts: Object.fromEntries(edgeNames.map(edge => [edge, {
+        parentId: mounts[edge]?.parentElement?.id ?? null,
+        status: mounts[edge]?.getAttribute(
+          "data-fennevia-framework-status"
+        ) ?? null,
+      }])),
       nativeTabCount: nativeTabs.length,
       nestedInteractiveCount: customTabs.filter(tab =>
         tab.querySelector("button, input, select, textarea, a[href]")
@@ -762,19 +798,18 @@ async function collectFrontendState(client) {
         root
           ?.querySelector("[data-fennevia-tab-list]")
           ?.getAttribute("role") ?? null,
-      mountParentIsPrimary:
-        mount?.parentElement?.id === "fennevia-shell-primary-host",
-      mountStatus: mount?.getAttribute("data-fennevia-framework-status") ?? null,
+      tabListOrientation:
+        root
+          ?.querySelector("[data-fennevia-tab-list]")
+          ?.getAttribute("aria-orientation") ?? null,
       registrationCallbackPresent: Object.hasOwn(
         window,
         "__fenneviaRegisterShellFrontend"
       ),
       rootCount: document.querySelectorAll(
-        "#fennevia-shell-app-root[data-fennevia-shell-root]"
+        "[data-fennevia-surface-root]"
       ).length,
-      rootNamespace: root?.namespaceURI ?? null,
-      styleParentIsPrimary:
-        style?.parentElement?.id === "fennevia-shell-primary-host",
+      styleParentIsFrame: style?.parentElement === frame,
       styleRuleCount: cssRuleCount,
       tabCount:
         root?.querySelector("[data-fennevia-tab-count]")?.textContent?.trim() ??
@@ -787,32 +822,43 @@ async function collectFrontendState(client) {
         ),
         namespace: template?.namespaceURI ?? null,
       },
-      toggleExpanded:
-        root
-          ?.querySelector('[data-fennevia-action="toggle-details"]')
-          ?.getAttribute("aria-expanded") ?? null,
-      windowKind: root?.getAttribute("data-fennevia-window-kind") ?? null,
+      windowKinds: edgeNames.map(
+        edge => roots[edge]?.getAttribute("data-fennevia-window-kind") ?? null
+      ),
       xhtmlNamespace: XHTML_NS,
     };
   `);
 }
 
-function assertFrontendState(state, windowKind, expected = {}) {
-  const expectedState = {
-    count: "0",
-    eventCount: "0",
-    input: "",
-    inputOutput: "Empty",
-    ...expected,
-  };
+function assertFrontendState(state, windowKind) {
   assert.equal(state.allElementsUseXhtml, true);
-  assert.equal(state.conditionalVisible, true);
-  assert.equal(state.counter, expectedState.count);
-  assert.equal(state.eventCount, expectedState.eventCount);
-  assert.equal(state.input, expectedState.input);
-  assert.equal(state.inputOutput, expectedState.inputOutput);
   assert.equal(state.actionControlsNamed, true);
   assert.equal(state.customTabCount, state.nativeTabCount);
+  assert.equal(state.frameEnvironment, "normal");
+  assert.equal(state.frameReady, true);
+  for (const edge of ["top", "left", "right", "bottom"]) {
+    assert.deepEqual(state.landmarks[edge], {
+      dismissCount: 1,
+      hidden: "true",
+      inert: true,
+      label:
+        edge === "top"
+          ? "Browser controls"
+          : edge === "left"
+            ? "Tabs and address"
+            : edge === "right"
+              ? "Bookmarks"
+              : "Downloads",
+      phase: "hidden",
+      role: "region",
+      triggerCount: 1,
+      visible: "false",
+    });
+    assert.deepEqual(state.mounts[edge], {
+      parentId: `fennevia-shell-${edge}-host`,
+      status: "mounted",
+    });
+  }
   assert.equal(state.nestedInteractiveCount, 0);
   assert.equal(state.newTabControlCount, 1);
   assert.equal(state.rovingTabCount, 1);
@@ -820,13 +866,11 @@ function assertFrontendState(state, windowKind, expected = {}) {
   assert.equal(state.stateMatchesNative, true);
   assert.equal(state.tabAccessibleNamesComplete, true);
   assert.equal(state.tabListRole, "tablist");
+  assert.equal(state.tabListOrientation, "vertical");
   assert.equal(state.tabOrderMatchesNative, true);
-  assert.equal(state.mountParentIsPrimary, true);
-  assert.equal(state.mountStatus, "mounted");
   assert.equal(state.registrationCallbackPresent, false);
-  assert.equal(state.rootCount, 1);
-  assert.equal(state.rootNamespace, state.xhtmlNamespace);
-  assert.equal(state.styleParentIsPrimary, true);
+  assert.equal(state.rootCount, 4);
+  assert.equal(state.styleParentIsFrame, true);
   assert.ok(state.styleRuleCount > 0);
   assert.equal(state.tabCount, String(state.nativeTabCount));
   assert.deepEqual(state.template, {
@@ -835,8 +879,7 @@ function assertFrontendState(state, windowKind, expected = {}) {
     instance: true,
     namespace: state.xhtmlNamespace,
   });
-  assert.equal(state.toggleExpanded, "true");
-  assert.equal(state.windowKind, windowKind);
+  assert.deepEqual(state.windowKinds, Array(4).fill(windowKind));
 }
 
 async function waitForFrontendTabCount(client, expectedCount) {
@@ -854,73 +897,332 @@ async function waitForFrontendTabCount(client, expectedCount) {
   throw new Error("FENNEVIA_FIREFOX_TEST_TAB_STATE_TIMEOUT");
 }
 
-async function exerciseFrontendSmoke(client, { increments, input }) {
+async function exerciseEdgeShell(client) {
   return client.execute(`
     return (async () => {
-      const root = document.getElementById("fennevia-shell-app-root");
-      const increment = root?.querySelector(
-        '[data-fennevia-action="increment"]'
-      );
-      const textInput = root?.querySelector("input[data-fennevia-input]");
-      const toggle = root?.querySelector(
-        '[data-fennevia-action="toggle-details"]'
-      );
-      if (!root || !increment || !textInput || !toggle) {
-        throw new Error("FENNEVIA_FIREFOX_TEST_FRONTEND_CONTROL_MISSING");
+      const edgeNames = ["top", "left", "right", "bottom"];
+      const keyByEdge = {
+        top: "ArrowUp",
+        left: "ArrowLeft",
+        right: "ArrowRight",
+        bottom: "ArrowDown",
+      };
+      const frame = document.getElementById("fennevia-shell-frame-host");
+      const browser = document.getElementById("browser");
+      const roots = Object.fromEntries(edgeNames.map(edge => [
+        edge,
+        document.getElementById("fennevia-shell-" + edge + "-root"),
+      ]));
+      if (!frame || !browser || edgeNames.some(edge => !roots[edge])) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_EDGE_SHELL_MISSING");
       }
-      for (let index = 0; index < ${increments}; index += 1) {
-        increment.click();
+
+      const sleep = delay => new Promise(
+        resolve => window.setTimeout(resolve, delay)
+      );
+      const visible = edge =>
+        roots[edge].getAttribute("data-fennevia-visible") === "true";
+      const waitFor = async (predicate, code) => {
+        const deadline = Date.now() + 3000;
+        while (Date.now() < deadline) {
+          if (predicate()) {
+            return;
+          }
+          await sleep(20);
+        }
+        throw new Error(code);
+      };
+      const trigger = edge => roots[edge].querySelector(
+        '[data-fennevia-edge-trigger="' + edge + '"]'
+      );
+      const coordinates = edge => {
+        const rect = frame.getBoundingClientRect();
+        if (edge === "top") {
+          return { x: rect.left + rect.width / 2, y: rect.top };
+        }
+        if (edge === "bottom") {
+          return { x: rect.left + rect.width / 2, y: rect.bottom - 1 };
+        }
+        if (edge === "left") {
+          return { x: rect.left, y: rect.top + rect.height / 2 };
+        }
+        return { x: rect.right - 1, y: rect.top + rect.height / 2 };
+      };
+      const dispatchPointer = (edge, type, point = coordinates(edge)) => {
+        trigger(edge).dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            clientX: point.x,
+            clientY: point.y,
+            pointerId: 1,
+            pointerType: "mouse",
+          })
+        );
+      };
+      const revealWithPointer = async edge => {
+        dispatchPointer(edge, "pointermove");
+        await waitFor(
+          () => visible(edge),
+          "FENNEVIA_FIREFOX_TEST_EDGE_POINTER_REVEAL_TIMEOUT"
+        );
+      };
+      const releasePointer = async edge => {
+        dispatchPointer(edge, "pointerout");
+        await waitFor(
+          () => !visible(edge),
+          "FENNEVIA_FIREFOX_TEST_EDGE_POINTER_HIDE_TIMEOUT"
+        );
+      };
+      const dispatchKeyboard = key => window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          altKey: true,
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          key,
+          shiftKey: true,
+        })
+      );
+      const dispatchEscape = () => window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "Escape",
+        })
+      );
+      const overlaps = (first, second) =>
+        first.left < second.right &&
+        first.right > second.left &&
+        first.top < second.bottom &&
+        first.bottom > second.top;
+
+      const initialHidden = edgeNames.every(edge => !visible(edge));
+      const browserRectBefore = browser.getBoundingClientRect();
+      const pointerReveal = {};
+      const pendingHidePhases = {};
+      for (const edge of edgeNames) {
+        await revealWithPointer(edge);
+        pointerReveal[edge] =
+          visible(edge) && edgeNames
+            .filter(candidate => candidate !== edge)
+            .every(candidate => !visible(candidate));
+        dispatchPointer(edge, "pointerout");
+        await waitFor(
+          () =>
+            roots[edge].getAttribute("data-fennevia-phase") ===
+            "pending-hide",
+          "FENNEVIA_FIREFOX_TEST_EDGE_PENDING_HIDE_TIMEOUT"
+        );
+        pendingHidePhases[edge] =
+          roots[edge].getAttribute("data-fennevia-phase");
+        await waitFor(
+          () => !visible(edge),
+          "FENNEVIA_FIREFOX_TEST_EDGE_HIDE_TIMEOUT"
+        );
       }
-      textInput.value = ${JSON.stringify(input)};
-      textInput.dispatchEvent(new Event("input", { bubbles: true }));
-      toggle.click();
-      await new Promise(resolve => window.setTimeout(resolve, 0));
-      const hiddenAfterFirstToggle =
-        root.querySelector("[data-fennevia-conditional]") === null;
-      const collapsedAfterFirstToggle =
-        toggle.getAttribute("aria-expanded") === "false";
-      toggle.click();
-      await new Promise(resolve => window.setTimeout(resolve, 0));
+
+      await revealWithPointer("top");
+      dispatchPointer("top", "pointerout");
+      await sleep(60);
+      dispatchPointer("top", "pointermove");
+      await sleep(180);
+      const reentryCancelledHide = visible("top");
+      await releasePointer("top");
+
+      const frameRect = frame.getBoundingClientRect();
+      const topLeft = { x: frameRect.left, y: frameRect.top };
+      dispatchPointer("top", "pointermove", topLeft);
+      await sleep(30);
+      const topIgnoredOwnedCorner = !visible("top") && !visible("left");
+      dispatchPointer("left", "pointermove", topLeft);
+      await waitFor(
+        () => visible("left"),
+        "FENNEVIA_FIREFOX_TEST_TOP_LEFT_CORNER_TIMEOUT"
+      );
+      const topLeftOwnedByLeft = visible("left") && !visible("top");
+      await releasePointer("left");
+
+      const bottomRight = {
+        x: frameRect.right - 1,
+        y: frameRect.bottom - 1,
+      };
+      dispatchPointer("bottom", "pointermove", bottomRight);
+      await sleep(30);
+      const bottomIgnoredOwnedCorner = !visible("bottom") && !visible("right");
+      dispatchPointer("right", "pointermove", bottomRight);
+      await waitFor(
+        () => visible("right"),
+        "FENNEVIA_FIREFOX_TEST_BOTTOM_RIGHT_CORNER_TIMEOUT"
+      );
+      const bottomRightOwnedByRight = visible("right") && !visible("bottom");
+      await releasePointer("right");
+
+      const focusOrigin = document.getElementById("urlbar-input");
+      if (!focusOrigin || typeof focusOrigin.focus !== "function") {
+        throw new Error("FENNEVIA_FIREFOX_TEST_FOCUS_ORIGIN_MISSING");
+      }
+      const keyboardReveal = {};
+      const focusRestoration = {};
+      const focusHold = {};
+      for (const edge of edgeNames) {
+        focusOrigin.focus();
+        dispatchKeyboard(keyByEdge[edge]);
+        await waitFor(
+          () => visible(edge),
+          "FENNEVIA_FIREFOX_TEST_EDGE_KEYBOARD_REVEAL_TIMEOUT"
+        );
+        keyboardReveal[edge] = roots[edge].contains(document.activeElement);
+        await sleep(220);
+        focusHold[edge] = visible(edge);
+        dispatchEscape();
+        await waitFor(
+          () => !visible(edge),
+          "FENNEVIA_FIREFOX_TEST_EDGE_ESCAPE_TIMEOUT"
+        );
+        focusRestoration[edge] = document.activeElement === focusOrigin;
+      }
+
+      focusOrigin.focus();
+      await revealWithPointer("top");
+      dispatchKeyboard(keyByEdge.left);
+      await waitFor(
+        () => visible("top") && visible("left"),
+        "FENNEVIA_FIREFOX_TEST_TWO_EDGE_HOLD_TIMEOUT"
+      );
+      const topPanel = roots.top.querySelector(
+        '[data-fennevia-edge-panel="top"]'
+      );
+      const leftPanel = roots.left.querySelector(
+        '[data-fennevia-edge-panel="left"]'
+      );
+      const twoHeldWithoutOverlap = !overlaps(
+        topPanel.getBoundingClientRect(),
+        leftPanel.getBoundingClientRect()
+      );
+      dispatchEscape();
+      await releasePointer("top");
+
+      await revealWithPointer("bottom");
+      window.dispatchEvent(
+        new PointerEvent("pointerout", {
+          bubbles: true,
+          relatedTarget: null,
+        })
+      );
+      await waitFor(
+        () => !visible("bottom"),
+        "FENNEVIA_FIREFOX_TEST_WINDOW_POINTER_LEAVE_TIMEOUT"
+      );
+      const windowPointerLeaveHides = true;
+
+      const environment = {};
+      const documentRoot = document.documentElement;
+      try {
+        documentRoot.setAttribute("customizing", "");
+        await waitFor(
+          () => frame.getAttribute("data-fennevia-environment") === "customize-mode",
+          "FENNEVIA_FIREFOX_TEST_CUSTOMIZE_MODE_TIMEOUT"
+        );
+        environment.customize =
+          getComputedStyle(frame).visibility === "hidden" &&
+          edgeNames.every(edge =>
+            roots[edge].getAttribute("data-fennevia-phase") === "disabled"
+          );
+      } finally {
+        documentRoot.removeAttribute("customizing");
+      }
+      await waitFor(
+        () => frame.getAttribute("data-fennevia-environment") === "normal",
+        "FENNEVIA_FIREFOX_TEST_CUSTOMIZE_EXIT_TIMEOUT"
+      );
+      try {
+        documentRoot.setAttribute("inDOMFullscreen", "");
+        await waitFor(
+          () => frame.getAttribute("data-fennevia-environment") === "dom-fullscreen",
+          "FENNEVIA_FIREFOX_TEST_DOM_FULLSCREEN_TIMEOUT"
+        );
+        environment.domFullscreen =
+          getComputedStyle(frame).visibility === "hidden";
+      } finally {
+        documentRoot.removeAttribute("inDOMFullscreen");
+      }
+      await waitFor(
+        () => frame.getAttribute("data-fennevia-environment") === "normal",
+        "FENNEVIA_FIREFOX_TEST_DOM_FULLSCREEN_EXIT_TIMEOUT"
+      );
+      try {
+        documentRoot.setAttribute("inFullscreen", "");
+        await waitFor(
+          () => frame.hasAttribute("data-fennevia-browser-fullscreen"),
+          "FENNEVIA_FIREFOX_TEST_BROWSER_FULLSCREEN_TIMEOUT"
+        );
+        environment.browserFullscreen =
+          frame.getAttribute("data-fennevia-environment") === "normal";
+      } finally {
+        documentRoot.removeAttribute("inFullscreen");
+      }
+      await waitFor(
+        () => !frame.hasAttribute("data-fennevia-browser-fullscreen"),
+        "FENNEVIA_FIREFOX_TEST_BROWSER_FULLSCREEN_EXIT_TIMEOUT"
+      );
+
+      const browserRectAfter = browser.getBoundingClientRect();
       return {
-        collapsedAfterFirstToggle,
-        conditionalVisible: Boolean(
-          root.querySelector("[data-fennevia-conditional]")
-        ),
-        counter:
-          root.querySelector("[data-fennevia-counter]")?.textContent?.trim() ??
-          null,
-        eventCount:
-          root
-            .querySelector("[data-fennevia-event-count]")
-            ?.textContent?.trim() ?? null,
-        hiddenAfterFirstToggle,
-        input: textInput.value,
-        inputOutput:
-          root
-            .querySelector("[data-fennevia-input-output]")
-            ?.textContent?.trim() ?? null,
-        toggleExpanded: toggle.getAttribute("aria-expanded"),
+        bottomIgnoredOwnedCorner,
+        bottomRightOwnedByRight,
+        browserGeometryPreserved:
+          browserRectBefore.width === browserRectAfter.width &&
+          browserRectBefore.height === browserRectAfter.height,
+        environment,
+        focusHold,
+        focusRestoration,
+        initialHidden,
+        keyboardReveal,
+        pendingHidePhases,
+        pointerReveal,
+        reentryCancelledHide,
+        topIgnoredOwnedCorner,
+        topLeftOwnedByLeft,
+        twoHeldWithoutOverlap,
+        windowPointerLeaveHides,
       };
     })();
   `);
 }
 
-function assertFrontendInteraction(result, { increments, input }) {
+function assertEdgeShellInteraction(result) {
+  const allTrue = Object.fromEntries(
+    ["top", "left", "right", "bottom"].map((edge) => [edge, true]),
+  );
   const expected = {
-    collapsedAfterFirstToggle: true,
-    conditionalVisible: true,
-    counter: String(increments),
-    eventCount: String(increments + 3),
-    hiddenAfterFirstToggle: true,
-    input,
-    inputOutput: input,
-    toggleExpanded: "true",
+    bottomIgnoredOwnedCorner: true,
+    bottomRightOwnedByRight: true,
+    browserGeometryPreserved: true,
+    environment: {
+      browserFullscreen: true,
+      customize: true,
+      domFullscreen: true,
+    },
+    focusHold: allTrue,
+    focusRestoration: allTrue,
+    initialHidden: true,
+    keyboardReveal: allTrue,
+    pendingHidePhases: Object.fromEntries(
+      ["top", "left", "right", "bottom"].map((edge) => [edge, "pending-hide"]),
+    ),
+    pointerReveal: allTrue,
+    reentryCancelledHide: true,
+    topIgnoredOwnedCorner: true,
+    topLeftOwnedByLeft: true,
+    twoHeldWithoutOverlap: true,
+    windowPointerLeaveHides: true,
   };
   try {
     assert.deepEqual(result, expected);
   } catch (error) {
     console.error(
-      `frontendInteractionDiagnostics=${JSON.stringify({ expected, result })}`,
+      `edgeShellDiagnostics=${JSON.stringify({ expected, result })}`,
     );
     throw error;
   }
@@ -929,11 +1231,11 @@ function assertFrontendInteraction(result, { increments, input }) {
 async function exerciseTabStripMvp(client) {
   return client.execute(`
     return (async () => {
-      const root = document.getElementById("fennevia-shell-app-root");
+      const root = document.getElementById("fennevia-shell-left-root");
       const newTab = root?.querySelector(
         '[data-fennevia-action="new-tab"]'
       );
-      const scroll = root?.querySelector(".fennevia-tab-strip__scroll");
+      const scroll = root?.querySelector(".fennevia-tab-strip__list");
       if (!root || !newTab || !scroll) {
         throw new Error("FENNEVIA_FIREFOX_TEST_TAB_STRIP_MISSING");
       }
@@ -971,13 +1273,28 @@ async function exerciseTabStripMvp(client) {
         );
       };
 
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          altKey: true,
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          key: "ArrowLeft",
+          shiftKey: true,
+        })
+      );
+      await waitFor(
+        () => root.getAttribute("data-fennevia-visible") === "true",
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_REVEAL_TIMEOUT"
+      );
+
       const initialCount = gBrowser.openTabs.length;
       const originalNativeTab = gBrowser.selectedTab;
-      for (let index = 0; index < 8; index += 1) {
+      for (let index = 0; index < 14; index += 1) {
         newTab.click();
       }
-      await waitForCount(initialCount + 8);
-      const manyTabsOverflow = scroll.scrollWidth > scroll.clientWidth;
+      await waitForCount(initialCount + 14);
+      const manyTabsOverflow = scroll.scrollHeight > scroll.clientHeight;
       const synchronizedAfterBurst =
         customTabs().length === gBrowser.openTabs.length &&
         customTabs().filter(
@@ -1052,8 +1369,14 @@ async function exerciseTabStripMvp(client) {
       );
       const pinnedLayoutStable =
         Boolean(pinnedItem && regularItem) &&
-        pinnedItem.getBoundingClientRect().width <
-          regularItem.getBoundingClientRect().width;
+        Math.abs(
+          pinnedItem.getBoundingClientRect().width -
+            regularItem.getBoundingClientRect().width
+        ) < 2 &&
+        Math.abs(
+          pinnedItem.getBoundingClientRect().height -
+            regularItem.getBoundingClientRect().height
+        ) < 2;
       const pinDidNotSelect =
         gBrowser.selectedTab === selectedBeforeBackgroundAction;
 
@@ -1083,12 +1406,21 @@ async function exerciseTabStripMvp(client) {
       );
       const homeSelectedFirst = true;
 
-      dispatchKey(customTabs().at(0), "ArrowLeft");
+      const wrappedNativeTab = gBrowser.openTabs.at(-1);
+      dispatchKey(customTabs().at(0), "ArrowUp");
       await waitFor(
-        () =>
-          gBrowser.selectedTab === gBrowser.openTabs.at(-1) &&
-          document.activeElement === customTabs().at(-1),
-        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_WRAP_TIMEOUT"
+        () => gBrowser.selectedTab === wrappedNativeTab,
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_WRAP_SELECTION_TIMEOUT"
+      );
+      await waitFor(
+        () => {
+          const wrappedIndex = gBrowser.openTabs.indexOf(wrappedNativeTab);
+          return (
+            wrappedIndex >= 0 &&
+            document.activeElement === customTabs().at(wrappedIndex)
+          );
+        },
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_WRAP_FOCUS_TIMEOUT"
       );
       const arrowWrapped = true;
 
@@ -1131,6 +1463,11 @@ async function exerciseTabStripMvp(client) {
         customTabs().length === 1 &&
         gBrowser.openTabs.length === 1 &&
         gBrowser.selectedTab === originalNativeTab;
+      await waitFor(
+        () =>
+          document.querySelectorAll("tabbrowser-tab[closing]").length === 0,
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_BURST_SETTLE_TIMEOUT"
+      );
 
       newTab.click();
       await waitForCount(2);
@@ -1139,23 +1476,46 @@ async function exerciseTabStripMvp(client) {
         ?.querySelector('[data-fennevia-action="close-tab"]')
         ?.click();
       await waitForCount(1);
-      await waitFor(
-        () =>
-          document.activeElement === customTabs().at(0) &&
-          customTabs().at(0)?.tabIndex === 0,
-        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_CLOSE_FOCUS_TIMEOUT"
-      );
-      const closeButtonRestoredFocus = true;
+      await new Promise(resolve => window.setTimeout(resolve, 500));
+      const closeButtonRestoredFocus =
+        document.activeElement === customTabs().at(0) &&
+        customTabs().at(0)?.tabIndex === 0;
+      const closeFocusDiagnostics = {
+        activeDataTab: document.activeElement?.hasAttribute?.(
+          "data-fennevia-tab"
+        ) ?? false,
+        activeId: document.activeElement?.id ?? null,
+        activeLocalName: document.activeElement?.localName ?? null,
+        activeTabIndex: document.activeElement?.tabIndex ?? null,
+        firstConnected: customTabs().at(0)?.isConnected ?? false,
+        firstSelected:
+          customTabs().at(0)?.getAttribute("aria-selected") ?? null,
+        firstTabIndex: customTabs().at(0)?.tabIndex ?? null,
+        rootContainsActive: root.contains(document.activeElement),
+        surfacePhase: root.getAttribute("data-fennevia-phase"),
+      };
       await waitFor(
         () =>
           document.querySelectorAll("tabbrowser-tab[closing]").length === 0,
         "FENNEVIA_FIREFOX_TEST_TAB_STRIP_CLOSE_SETTLE_TIMEOUT"
+      );
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "Escape",
+        })
+      );
+      await waitFor(
+        () => root.getAttribute("data-fennevia-visible") === "false",
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_DISMISS_TIMEOUT"
       );
 
       return {
         arrowWrapped,
         backgroundCloseDidNotSelect,
         closeButtonRestoredFocus,
+        closeFocusDiagnostics,
         failedFaviconFallback,
         finalCustomTabCount: customTabs().length,
         finalNativeTabCount: gBrowser.openTabs.length,
@@ -1167,6 +1527,7 @@ async function exerciseTabStripMvp(client) {
         rapidCleanupComplete,
         selectedCloseRestoredFocus,
         synchronizedAfterBurst,
+        surfaceDismissedAfterExercise: true,
         titleInjectionSafe,
         unpinDidNotSelect,
       };
@@ -1175,6 +1536,7 @@ async function exerciseTabStripMvp(client) {
 }
 
 function assertTabStripMvp(result) {
+  const { closeFocusDiagnostics, ...actual } = result;
   const expected = {
     arrowWrapped: true,
     backgroundCloseDidNotSelect: true,
@@ -1190,14 +1552,15 @@ function assertTabStripMvp(result) {
     rapidCleanupComplete: true,
     selectedCloseRestoredFocus: true,
     synchronizedAfterBurst: true,
+    surfaceDismissedAfterExercise: true,
     titleInjectionSafe: true,
     unpinDidNotSelect: true,
   };
   try {
-    assert.deepEqual(result, expected);
+    assert.deepEqual(actual, expected);
   } catch (error) {
     console.error(
-      `tabStripDiagnostics=${JSON.stringify({ expected, result })}`,
+      `tabStripDiagnostics=${JSON.stringify({ closeFocusDiagnostics, expected, result })}`,
     );
     throw error;
   }
@@ -1263,8 +1626,9 @@ async function exerciseFrontendUnmountRemount(client) {
   return client.execute(`
     return (async () => {
       const XHTML_NS = "http://www.w3.org/1999/xhtml";
+      const edgeNames = ["top", "left", "right", "bottom"];
       const key = "__fenneviaRegisterShellFrontend";
-      if (document.getElementById("fennevia-shell-app-mount") || key in window) {
+      if (document.getElementById("fennevia-shell-frame-host") || key in window) {
         throw new Error("FENNEVIA_FIREFOX_TEST_FRONTEND_REMOUNT_PRECONDITION");
       }
 
@@ -1288,12 +1652,24 @@ async function exerciseFrontendUnmountRemount(client) {
         throw new Error("FENNEVIA_FIREFOX_TEST_FRONTEND_API_MISSING");
       }
 
-      const host = document.createElementNS(XHTML_NS, "section");
-      host.id = "fennevia-test-frontend-remount-host";
-      const target = document.createElementNS(XHTML_NS, "div");
-      target.id = "fennevia-shell-app-mount";
-      host.append(target);
-      document.body.insertBefore(host, document.getElementById("browser"));
+      const frame = document.createElementNS(XHTML_NS, "div");
+      frame.id = "fennevia-shell-frame-host";
+      frame.setAttribute("data-fennevia-environment", "normal");
+      const targets = {};
+      for (const edge of edgeNames) {
+        const host = document.createElementNS(XHTML_NS, "section");
+        host.id = "fennevia-shell-" + edge + "-host";
+        host.setAttribute("data-fennevia-edge-host", edge);
+        const target = document.createElementNS(XHTML_NS, "div");
+        target.id = "fennevia-shell-" + edge + "-mount";
+        host.append(target);
+        frame.append(host);
+        targets[edge] = target;
+      }
+      document.getElementById("browser").insertBefore(
+        frame,
+        document.getElementById("tabbrowser-tabbox")
+      );
 
       const prototype = window.EventTarget.prototype;
       const originalAdd = prototype.addEventListener;
@@ -1331,6 +1707,7 @@ async function exerciseFrontendUnmountRemount(client) {
       let secondDispose;
       let tabSubscriptionCount = 0;
       let tabUnsubscriptionCount = 0;
+      const fatalErrors = [];
       const unmountErrors = [];
       const testTab = Object.freeze({
         faviconUrl: "chrome://branding/content/icon32.png",
@@ -1360,67 +1737,76 @@ async function exerciseFrontendUnmountRemount(client) {
         },
         unpin() {},
       });
+      const options = {
+        frame,
+        onFatalError(error) {
+          fatalErrors.push(String(error?.name ?? "unknown"));
+        },
+        onUnmountError(error) {
+          unmountErrors.push(String(error?.name ?? "unknown"));
+        },
+        tabs,
+        targets,
+        windowKind: "normal",
+      };
+
       try {
-        firstDispose = api.mountShellApp({
-          onUnmountError(error) {
-            unmountErrors.push(String(error?.name ?? "unknown"));
-          },
-          target,
-          tabs,
+        firstDispose = api.mountShellApp(options);
+        api.verifyShellAppHealth({
+          frame,
+          targets,
           windowKind: "normal",
         });
-        api.verifyShellAppHealth({ target, windowKind: "normal" });
-        const firstRoot = target.firstElementChild;
-        const firstButton = firstRoot.querySelector(
-          '[data-fennevia-action="increment"]'
+        const firstRoots = edgeNames.map(
+          edge => targets[edge].firstElementChild
         );
-        const firstCounter = firstRoot.querySelector(
-          "[data-fennevia-counter]"
-        );
-        const firstFavicon = firstRoot.querySelector(
+        const firstFavicon = firstRoots[1].querySelector(
           ".fennevia-tab-strip__favicon"
         );
-        firstButton.click();
-        await new Promise(resolve => window.setTimeout(resolve, 0));
-        const firstCounterAfterClick = firstCounter.textContent.trim();
         const firstDisposeResult = firstDispose();
         firstDispose = null;
         await Promise.resolve();
-        const firstStatusAfterDispose = target.getAttribute(
-          "data-fennevia-framework-status"
+        const firstStatusesDisposed = edgeNames.every(
+          edge =>
+            targets[edge].getAttribute("data-fennevia-framework-status") ===
+            "disposed"
         );
-        const descendantsAfterFirstDispose = target.childNodes.length;
-        firstButton.click();
-        await new Promise(resolve => window.setTimeout(resolve, 0));
-        const detachedCounterAfterClick = firstCounter.textContent.trim();
+        const descendantsAfterFirstDispose = edgeNames.reduce(
+          (count, edge) => count + targets[edge].childNodes.length,
+          0
+        );
 
-        secondDispose = api.mountShellApp({
-          onUnmountError(error) {
-            unmountErrors.push(String(error?.name ?? "unknown"));
-          },
-          target,
-          tabs,
+        secondDispose = api.mountShellApp(options);
+        api.verifyShellAppHealth({
+          frame,
+          targets,
           windowKind: "normal",
         });
-        api.verifyShellAppHealth({ target, windowKind: "normal" });
-        const secondRoot = target.firstElementChild;
-        const secondInitialCounter = secondRoot
-          .querySelector("[data-fennevia-counter]")
-          .textContent.trim();
+        const secondRoots = edgeNames.map(
+          edge => targets[edge].firstElementChild
+        );
+        const secondRootsAreNew = secondRoots.every(
+          (root, index) => root !== firstRoots[index]
+        );
         const secondDisposeResult = secondDispose();
         secondDispose = null;
         await Promise.resolve();
 
         return {
-          detachedCounterAfterClick,
           descendantsAfterFirstDispose,
-          descendantsAfterSecondDispose: target.childNodes.length,
-          firstCounterAfterClick,
+          descendantsAfterSecondDispose: edgeNames.reduce(
+            (count, edge) => count + targets[edge].childNodes.length,
+            0
+          ),
+          fatalErrorCount: fatalErrors.length,
           firstDisposeResult,
           firstFaviconErrorCleared: firstFavicon.onerror === null,
           firstFaviconSourceCleared: !firstFavicon.hasAttribute("src"),
-          firstRootDisconnected: !firstRoot.isConnected,
-          firstStatusAfterDispose,
+          firstRootsDisconnected: firstRoots.every(root => !root.isConnected),
+          firstRootCount: firstRoots.length,
+          firstStatusesDisposed,
+          frameReadyAfterDispose:
+            frame.hasAttribute("data-fennevia-frontend-ready"),
           listenerAddCount: registrations.length,
           listenerOutstandingCount: registrations.filter(
             registration => !registration.removed
@@ -1434,10 +1820,12 @@ async function exerciseFrontendUnmountRemount(client) {
           ).length,
           registrationCallbackPresent: Object.hasOwn(window, key),
           secondDisposeResult,
-          secondInitialCounter,
-          secondRootIsNew: secondRoot !== firstRoot,
-          secondStatusAfterDispose: target.getAttribute(
-            "data-fennevia-framework-status"
+          secondRootCount: secondRoots.length,
+          secondRootsAreNew,
+          secondStatusesDisposed: edgeNames.every(
+            edge =>
+              targets[edge].getAttribute("data-fennevia-framework-status") ===
+              "disposed"
           ),
           tabSubscriptionCount,
           tabUnsubscriptionCount,
@@ -1448,13 +1836,12 @@ async function exerciseFrontendUnmountRemount(client) {
         try { secondDispose?.(); } catch {}
         prototype.addEventListener = originalAdd;
         prototype.removeEventListener = originalRemove;
-        host.remove();
+        frame.remove();
         Reflect.deleteProperty(window, key);
       }
     })();
   `);
 }
-
 function assertShellHostState(state, windowKind) {
   assert.equal(state.active, false);
   assert.equal(state.browserStillPresent, true);
@@ -1462,8 +1849,8 @@ function assertShellHostState(state, windowKind) {
   assert.equal(state.nativeModalAvailable, true);
   assert.equal(state.nativeWindowControlsPresent, true);
   assert.equal(state.completeSet, true);
-  assert.equal(state.hostCount, 3);
-  assert.equal(state.hostIdCount, 3);
+  assert.equal(state.hostCount, 5);
+  assert.equal(state.hostIdCount, 5);
   assert.deepEqual(state.health, {
     created: true,
     failed: false,
@@ -1473,33 +1860,34 @@ function assertShellHostState(state, windowKind) {
   });
   assert.equal(state.namespaceComplete, true);
   assert.equal(state.ownershipComplete, true);
-  assert.equal(state.primary.parentIsBody, true);
-  assert.equal(state.primary.visible, true);
-  assert.ok(state.primary.height >= 30);
-  assert.equal(state.primary.toolboxEndsBeforeHost, true);
-  assert.equal(state.primary.browserStartsAfterHost, true);
-  assert.equal(state.sidebar.parentIsBrowser, true);
-  assert.equal(state.sidebar.hidden, true);
-  assert.equal(state.overlay.parentIsBody, true);
-  assert.equal(state.overlay.hidden, true);
-  assert.equal(state.overlay.inert, true);
-  assert.equal(state.overlay.pointerEvents, "none");
-  assert.equal(state.placement.primaryBeforeBrowser, true);
-  assert.equal(state.placement.sidebarBeforeTabbox, true);
-  assert.equal(state.placement.overlayBeforeAnnouncement, true);
+  assert.equal(state.environment, "normal");
+  assert.deepEqual(state.frame, {
+    appStyleParent: true,
+    browserGeometryPreserved: true,
+    parentIsBrowser: true,
+    pointerEvents: "none",
+    position: "absolute",
+    runtimeStyleParent: true,
+  });
+  for (const [index, edge] of ["top", "left", "right", "bottom"].entries()) {
+    assert.deepEqual(state.edgeHosts[edge], {
+      hostParentIsFrame: true,
+      hostPosition: index,
+      mountParentIsHost: true,
+      mountStatus: "mounted",
+      panelHidden: true,
+      panelInert: true,
+      panelPointerEvents: "none",
+      rootEdge: edge,
+      rootVisible: "false",
+      triggerPointerEvents: "auto",
+    });
+  }
+  assert.equal(state.placement.frameImmediatelyBeforeTabbox, true);
+  assert.equal(state.rootCount, 4);
+  assert.equal(state.targetCount, 4);
   assert.equal(state.contentHitInsideProjectHost, false);
-  assert.match(state.diagnosticText, /Fennevia host layer ready/u);
-  assert.match(
-    state.diagnosticText,
-    windowKind === "private" ? /Private window/u : /Normal window/u,
-  );
-  assert.match(state.diagnosticText, /Native UI retained/u);
-  assert.match(state.diagnosticText, /Recovery Ctrl\+Alt\+Shift\+F12/u);
-  assert.match(state.diagnosticText, /State healthy/u);
-  assert.doesNotMatch(
-    state.diagnosticText,
-    /(?:https?:|file:|about:|chrome:|resource:|[A-Za-z]:[\\/]|\\\\)/iu,
-  );
+  assert.equal(windowKind === "normal" || windowKind === "private", true);
 }
 
 async function assertNoShellHosts(client) {
@@ -1913,25 +2301,26 @@ async function runBrowserToolboxOwnershipProbe(client) {
       const walker = inspector.walker;
       const rootNode = await walker.getRootNode();
       const query = selector => walker.querySelector(rootNode, selector);
-      const [body, browser, toolbox, tabbox, primary, sidebar, overlay] =
+      const [browser, toolbox, tabbox, frame, top, left, right, bottom] =
         await Promise.all([
-          query("body"),
           query("#browser"),
           query("#navigator-toolbox"),
           query("#tabbrowser-tabbox"),
-          query("#fennevia-shell-primary-host"),
-          query("#fennevia-shell-sidebar-host"),
-          query("#fennevia-shell-overlay-host"),
+          query("#fennevia-shell-frame-host"),
+          query("#fennevia-shell-top-host"),
+          query("#fennevia-shell-left-host"),
+          query("#fennevia-shell-right-host"),
+          query("#fennevia-shell-bottom-host"),
         ]);
-      const hosts = [primary, sidebar, overlay];
+      const hosts = [frame, top, left, right, bottom];
       const nativeNodes = [browser, toolbox, tabbox];
-      if ([body, ...hosts, ...nativeNodes].some(node => !node)) {
+      if ([...hosts, ...nativeNodes].some(node => !node)) {
         return JSON.stringify({ error: "FENNEVIA_HOST_OR_NATIVE_NODE_MISSING" });
       }
 
       const projectElements = [];
       let nativeAnonymousElementCount = 0;
-      for (const host of hosts) {
+      for (const host of [frame]) {
         const pending = [host];
         while (pending.length > 0) {
           const node = pending.shift();
@@ -1957,7 +2346,7 @@ async function runBrowserToolboxOwnershipProbe(client) {
         return true;
       });
 
-      inspector.selection.setNodeFront(primary, {
+      inspector.selection.setNodeFront(frame, {
         reason: "fennevia-ownership-probe",
       });
 
@@ -1976,11 +2365,12 @@ async function runBrowserToolboxOwnershipProbe(client) {
           })),
         nativeAnonymousElementCount,
         nativeOutsideHosts,
-        overlayParentIsBody: overlay.parentNode() === body,
-        primaryParentIsBody: primary.parentNode() === body,
+        edgeParentsAreFrame: [top, left, right, bottom].every(
+          host => host.parentNode() === frame
+        ),
+        frameParentIsBrowser: frame.parentNode() === browser,
         projectElementCount: projectElements.length,
         selectedHostId: inspector.selection.nodeFront.id,
-        sidebarParentIsBrowser: sidebar.parentNode() === browser,
         toolId: gToolbox.currentToolId,
       });
     })()`;
@@ -2078,14 +2468,13 @@ async function runBrowserToolboxOwnershipProbe(client) {
         )}`,
       );
     }
-    assert.equal(inspectorResult.hostCount, 3);
+    assert.equal(inspectorResult.hostCount, 5);
     assert.equal(inspectorResult.namespaceComplete, true);
     assert.equal(inspectorResult.nativeOutsideHosts, true);
-    assert.equal(inspectorResult.overlayParentIsBody, true);
-    assert.equal(inspectorResult.primaryParentIsBody, true);
-    assert.ok(inspectorResult.projectElementCount >= 10);
-    assert.equal(inspectorResult.selectedHostId, "fennevia-shell-primary-host");
-    assert.equal(inspectorResult.sidebarParentIsBrowser, true);
+    assert.equal(inspectorResult.edgeParentsAreFrame, true);
+    assert.equal(inspectorResult.frameParentIsBrowser, true);
+    assert.ok(inspectorResult.projectElementCount >= 30);
+    assert.equal(inspectorResult.selectedHostId, "fennevia-shell-frame-host");
     assert.equal(inspectorResult.toolId, "inspector");
     return inspectorResult;
   } finally {
@@ -2463,9 +2852,15 @@ async function run() {
       throw error;
     }
     assert.equal(initialState.initializingWindowCount, 0);
+    const startupEvidence = await collectEvidence(client);
+    assert.equal(countEvent(startupEvidence, "bootstrap.success"), 1);
+    assert.equal(countEvent(startupEvidence, "runtime.started"), 1);
+    assert.equal(startupEvidence.firstPartyScriptErrorCount, 0);
 
     assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
     assertShellHostState(await collectShellHostState(client), "normal");
+    assertFrontendState(await collectFrontendState(client), "normal");
+    assertEdgeShellInteraction(await exerciseEdgeShell(client));
     assertFrontendState(await collectFrontendState(client), "normal");
     await assertNativeModalUnobstructed(client);
     if (options.browserToolbox) {
@@ -2476,14 +2871,6 @@ async function run() {
     await assertNativeStylesIsolated(client);
     assertTabStripMvp(await exerciseTabStripMvp(client));
     assertFrontendState(await collectFrontendState(client), "normal");
-    const firstWindowInteraction = {
-      increments: 2,
-      input: "first-window",
-    };
-    assertFrontendInteraction(
-      await exerciseFrontendSmoke(client, firstWindowInteraction),
-      firstWindowInteraction,
-    );
 
     const tabResult = await client.request("WebDriver:NewWindow", {
       focus: false,
@@ -2535,6 +2922,7 @@ async function run() {
     await client.request("Marionette:SetContext", { value: "chrome" });
     assertShellHostState(await collectShellHostState(client), "normal");
     assertFrontendState(await collectFrontendState(client), "normal");
+    assertEdgeShellInteraction(await exerciseEdgeShell(client));
     await client.execute(`
       gBrowser.addTrustedTab(BROWSER_NEW_TAB_URL, { inBackground: true });
     `);
@@ -2555,24 +2943,11 @@ async function run() {
       });
     `);
     await waitForFrontendTabCount(client, 1);
-    const secondWindowInteraction = {
-      increments: 1,
-      input: "second-window",
-    };
-    assertFrontendInteraction(
-      await exerciseFrontendSmoke(client, secondWindowInteraction),
-      secondWindowInteraction,
-    );
     await client.request("WebDriver:SwitchToWindow", {
       handle: originalHandle,
     });
     await client.request("Marionette:SetContext", { value: "chrome" });
-    assertFrontendState(await collectFrontendState(client), "normal", {
-      count: "2",
-      eventCount: "5",
-      input: "first-window",
-      inputOutput: "first-window",
-    });
+    assertFrontendState(await collectFrontendState(client), "normal");
     await client.request("WebDriver:SwitchToWindow", {
       handle: secondWindow.handle,
     });
@@ -2586,15 +2961,16 @@ async function run() {
     });
     await assertNoShellHosts(client);
     const remount = await exerciseFrontendUnmountRemount(client);
-    assert.equal(remount.detachedCounterAfterClick, "1");
     assert.equal(remount.descendantsAfterFirstDispose, 0);
     assert.equal(remount.descendantsAfterSecondDispose, 0);
-    assert.equal(remount.firstCounterAfterClick, "1");
+    assert.equal(remount.fatalErrorCount, 0);
     assert.equal(remount.firstDisposeResult, true);
     assert.equal(remount.firstFaviconErrorCleared, true);
     assert.equal(remount.firstFaviconSourceCleared, true);
-    assert.equal(remount.firstRootDisconnected, true);
-    assert.equal(remount.firstStatusAfterDispose, "disposed");
+    assert.equal(remount.firstRootCount, 4);
+    assert.equal(remount.firstRootsDisconnected, true);
+    assert.equal(remount.firstStatusesDisposed, true);
+    assert.equal(remount.frameReadyAfterDispose, false);
     assert.ok(remount.listenerAddCount >= 4);
     const listenerDiagnostics = JSON.stringify({
       add: remount.listenerAddCount,
@@ -2617,9 +2993,9 @@ async function run() {
     );
     assert.equal(remount.registrationCallbackPresent, false);
     assert.equal(remount.secondDisposeResult, true);
-    assert.equal(remount.secondInitialCounter, "0");
-    assert.equal(remount.secondRootIsNew, true);
-    assert.equal(remount.secondStatusAfterDispose, "disposed");
+    assert.equal(remount.secondRootCount, 4);
+    assert.equal(remount.secondRootsAreNew, true);
+    assert.equal(remount.secondStatusesDisposed, true);
     assert.equal(remount.tabSubscriptionCount, 2);
     assert.equal(remount.tabUnsubscriptionCount, 2);
     assert.equal(remount.unmountErrorCount, 0);
@@ -2628,12 +3004,7 @@ async function run() {
     });
     await client.request("Marionette:SetContext", { value: "chrome" });
     assertShellHostState(await collectShellHostState(client), "normal");
-    assertFrontendState(await collectFrontendState(client), "normal", {
-      count: "2",
-      eventCount: "5",
-      input: "first-window",
-      inputOutput: "first-window",
-    });
+    assertFrontendState(await collectFrontendState(client), "normal");
     await client.request("WebDriver:SwitchToWindow", {
       handle: secondWindow.handle,
     });
@@ -2670,6 +3041,7 @@ async function run() {
     await client.request("Marionette:SetContext", { value: "chrome" });
     assertShellHostState(await collectShellHostState(client), "private");
     assertFrontendState(await collectFrontendState(client), "private");
+    assertEdgeShellInteraction(await exerciseEdgeShell(client));
     await client.execute(`
       gBrowser.addTrustedTab(BROWSER_NEW_TAB_URL, { inBackground: true });
     `);
@@ -2681,14 +3053,6 @@ async function run() {
       });
     `);
     await waitForFrontendTabCount(client, 1);
-    const privateWindowInteraction = {
-      increments: 3,
-      input: "private-window",
-    };
-    assertFrontendInteraction(
-      await exerciseFrontendSmoke(client, privateWindowInteraction),
-      privateWindowInteraction,
-    );
     await client.request("WebDriver:CloseWindow");
     await client.request("WebDriver:SwitchToWindow", {
       handle: originalHandle,
@@ -2699,12 +3063,7 @@ async function run() {
       (state) => state?.managedWindowCount === 1,
       "FENNEVIA_FIREFOX_TEST_PRIVATE_WINDOW_CLOSE_TIMEOUT",
     );
-    assertFrontendState(await collectFrontendState(client), "normal", {
-      count: "2",
-      eventCount: "5",
-      input: "first-window",
-      inputOutput: "first-window",
-    });
+    assertFrontendState(await collectFrontendState(client), "normal");
 
     const firstStop = await client.execute(`
       const { startProcessRuntime } = ChromeUtils.importESModule(
@@ -2763,8 +3122,6 @@ async function run() {
     await client.request("Marionette:SetContext", { value: "chrome" });
 
     evidence = await collectEvidence(client);
-    assert.equal(countEvent(evidence, "bootstrap.success"), 1);
-    assert.equal(countEvent(evidence, "runtime.started"), 1);
     assert.equal(countEvent(evidence, "runtime.stopped"), 1);
     assert.equal(countEvent(evidence, "window.initialized", "normal"), 2);
     assert.equal(countEvent(evidence, "window.initialized", "private"), 1);
@@ -2852,7 +3209,7 @@ async function run() {
     await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
 
     const browserToolboxEvidence = options.browserToolbox
-      ? " Browser Toolbox Inspector selected the primary host and confirmed the XHTML ownership boundary;"
+      ? " Browser Toolbox Inspector selected the shared frame and confirmed all four XHTML ownership boundaries;"
       : "";
     console.log(
       "PASS: Firefox lifecycle managed existing, second, and private windows;" +
