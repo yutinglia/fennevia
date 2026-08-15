@@ -55,7 +55,9 @@ export default defineConfig(
       "scripts/*.mjs",
       "svelte.config.js",
       "tests/firefox-boundary.test.mjs",
+      "tests/firefox-tabs.test.mjs",
       "tests/frontend-smoke.test.mjs",
+      "tests/tab-state.test.mjs",
       "vite*.config.ts",
     ],
     languageOptions: {

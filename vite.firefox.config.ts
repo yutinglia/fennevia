@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 const bridgeEntry = fileURLToPath(
-  new URL("./src/firefox/bridge-boundary.ts", import.meta.url),
+  new URL("./src/firefox/index.ts", import.meta.url),
 );
 
 export default defineConfig({

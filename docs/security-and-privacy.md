@@ -268,9 +268,24 @@ private browser window. Active native windows and random process-local window
 IDs are exclusive until disposal. Opaque handle IDs additionally include a
 process-local registry generation, so an ID from another or already-disposed
 context cannot resolve to a native object in the current context. No browsing
-value is persisted or logged. This validates the boundary machinery only;
-issues #10 and #12 must still prove the privacy behavior of the tab and
-navigation data they introduce.
+value is persisted or logged.
+
+Issue #10 uses that machinery for tab state. Native tabs remain in one
+context-scoped registry; the public and reactive snapshots contain only opaque
+ID, bounded title text, booleans, and an optional allowlisted favicon value.
+Titles and favicon values are never logged, persisted, placed in datasets, or
+included in errors. Unknown fields are dropped again by the application-state
+adapter. Normal and private state is held only by the owning window and is
+cleared on frontend, tabs-controller, boundary, or window disposal.
+
+The favicon boundary accepts bounded `chrome://`, `resource://`,
+`moz-remote-image:`, and base64 raster image values. It rejects raw remote,
+`about:`, SVG-data, malformed, oversized, whitespace/quote-bearing, and unknown
+values to the no-favicon fallback. The bridge itself never loads the value; a
+future component must assign it through an image property, not HTML or CSS.
+The new-tab action accepts no browsing URL and uses only Firefox's fixed
+`BROWSER_NEW_TAB_URL`. Issue #12 must still prove the navigation data flow it
+introduces. Full evidence is in `docs/research/firefox-153-tabs-bridge.md`.
 
 ## 10. Source maps and debug artifacts
 

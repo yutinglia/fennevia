@@ -191,6 +191,10 @@ function T({ buildId: e, contextId: n, firefoxVersion: r, window: i, windowKind:
 		return u;
 	}, _ = () => Object.freeze(w(g()).map((e) => e.snapshot));
 	return Object.freeze({
+		assertOwnsWindow(e) {
+			if (e !== g()) throw y("FENNEVIA_FIREFOX_CONTEXT_WINDOW_MISMATCH", "firefox-context-access", "window", o);
+			return !0;
+		},
 		assertRequiredCapabilities() {
 			let e = w(g()), t = e.find((e) => e.snapshot.requirement === "required" && !e.snapshot.available);
 			if (t) throw y("FENNEVIA_FIREFOX_CAPABILITY_MISSING", "firefox-bridge-capability", t.snapshot.symbol, o, t.cause);
@@ -253,4 +257,262 @@ function T({ buildId: e, contextId: n, firefoxVersion: r, window: i, windowKind:
 	});
 }
 //#endregion
-export { g as FirefoxBridgeError, T as createFirefoxBridgeBoundary, b as createIdempotentDisposer, S as createOpaqueHandleRegistry, _ as isFirefoxBridgeError, x as subscribeFirefoxEvent, v as toFirefoxBridgeDiagnostic };
+//#region src/firefox/tabs.ts
+var E = Object.freeze([
+	"TabOpen",
+	"TabClose",
+	"TabSelect",
+	"TabMove",
+	"TabPinned",
+	"TabUnpinned",
+	"TabAttrModified"
+]), D = new Set([
+	"busy",
+	"image",
+	"label",
+	"selected"
+]), O = 262144, k = /[\s"'<>\\]/u, A = /^data:image\/(?:avif|gif|jpeg|png|vnd\.microsoft\.icon|webp|x-icon);base64,[a-z0-9+/]+={0,2}$/iu, j = (e) => typeof e == "object" && !!e || typeof e == "function", M = (e) => typeof e == "object" && !!e, N = (e) => typeof e == "function", P = (e) => e.gBrowser, F = (e, t) => {
+	let n = P(e);
+	return M(n) ? n[t] : void 0;
+}, I = Object.freeze([
+	Object.freeze({
+		isAvailable: Array.isArray,
+		name: "firefox.open-tabs",
+		read: (e) => F(e, "openTabs"),
+		symbol: "window.gBrowser.openTabs"
+	}),
+	Object.freeze({
+		isAvailable: j,
+		name: "firefox.selected-tab",
+		read: (e) => F(e, "selectedTab"),
+		symbol: "window.gBrowser.selectedTab"
+	}),
+	...[
+		["add-tab", "addTrustedTab"],
+		["remove-tab", "removeTab"],
+		["pin-tab", "pinTab"],
+		["unpin-tab", "unpinTab"]
+	].map(([e, t]) => Object.freeze({
+		isAvailable: N,
+		name: `firefox.${e}`,
+		read: (e) => F(e, t),
+		symbol: `window.gBrowser.${t}`
+	})),
+	Object.freeze({
+		isAvailable: (e) => typeof e == "string" && e.length > 0 && e.length <= 2048,
+		name: "firefox.new-tab-url",
+		read: (e) => e.BROWSER_NEW_TAB_URL,
+		symbol: "window.BROWSER_NEW_TAB_URL"
+	})
+]), L = (e) => Object.freeze(I.map((t) => {
+	let n = !1, r;
+	try {
+		n = t.isAvailable(t.read(e));
+	} catch (e) {
+		r = e;
+	}
+	return Object.freeze({
+		...r === void 0 ? {} : { cause: r },
+		snapshot: Object.freeze({
+			available: n,
+			name: t.name,
+			requirement: "required",
+			symbol: t.symbol
+		})
+	});
+})), R = (e) => {
+	let t = e.snapshot();
+	return Object.freeze({
+		buildId: t.buildId,
+		firefoxVersion: t.firefoxVersion,
+		windowKind: t.windowKind
+	});
+}, z = (e, t, n, r, i) => new g({
+	cause: i,
+	code: t,
+	context: R(e),
+	phase: n,
+	symbol: r
+}), B = (e, t) => {
+	if (!M(t) || typeof t.getAttribute != "function" || typeof t.hasAttribute != "function") throw z(e, "FENNEVIA_FIREFOX_TAB_SHAPE_INVALID", "firefox-tabs-snapshot", "MozTabbrowserTab.getAttribute");
+	return t;
+}, V = (e) => {
+	if (typeof e == "string" && e.length !== 0 && (e.length <= 2048 && (e.startsWith("chrome://") || e.startsWith("resource://") || e.startsWith("moz-remote-image:")) && !k.test(e) || e.length <= O && A.test(e))) return e;
+}, H = (e, t) => e.length === t.length && e.every((e, n) => {
+	let r = t[n];
+	return r !== void 0 && e.id === r.id && e.title === r.title && e.selected === r.selected && e.pinned === r.pinned && e.loading === r.loading && e.faviconUrl === r.faviconUrl;
+}), U = (e) => {
+	if (!M(e) || !M(e.detail)) return !0;
+	let t = e.detail.changed;
+	return !Array.isArray(t) || t.some((e) => typeof e != "string") ? !0 : t.some((e) => D.has(e));
+};
+function W({ boundary: e, onError: t, window: n }) {
+	if (e.assertOwnsWindow(n), !M(n) || typeof t != "function") throw z(e, "FENNEVIA_FIREFOX_TABS_OPTIONS_INVALID", "firefox-tabs-create", "window");
+	let r = n, i = !1, a = null, o = 0, s = Object.freeze([]), c = new Set(), l = new Set(), u = [], d = e.createHandleRegistry("tab"), f = () => {
+		if (i || !r) throw z(e, "FENNEVIA_FIREFOX_TABS_DISPOSED", "firefox-tabs-access", "window.gBrowser.openTabs");
+		if (a) throw a;
+		return e.assertOwnsWindow(r), r;
+	}, p = () => {
+		let t = f().gBrowser;
+		if (!M(t)) throw z(e, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-capability", "window.gBrowser");
+		return t;
+	}, m = () => {
+		let t = L(f()), n = t.find((e) => !e.snapshot.available);
+		if (n) throw z(e, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-capability", n.snapshot.symbol, n.cause);
+		return Object.freeze(t.map((e) => e.snapshot));
+	}, h = () => {
+		let t = p().openTabs;
+		if (!Array.isArray(t)) throw z(e, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-snapshot", "window.gBrowser.openTabs");
+		let n = t.map((t) => B(e, t));
+		if (new Set(n).size !== n.length) throw z(e, "FENNEVIA_FIREFOX_TAB_ORDER_INVALID", "firefox-tabs-snapshot", "window.gBrowser.openTabs");
+		return n;
+	}, g = (e, t) => Reflect.apply(e.getAttribute, e, [t]), v = (e, t) => !!Reflect.apply(e.hasAttribute, e, [t]), y = (e, t) => {
+		let n = String(g(e, "label") ?? "").slice(0, 256), r = V(g(e, "image"));
+		return Object.freeze({
+			...r === void 0 ? {} : { faviconUrl: r },
+			id: d.register(e),
+			loading: v(e, "busy"),
+			pinned: v(e, "pinned"),
+			selected: t === e,
+			title: n
+		});
+	}, x = () => {
+		let n = Object.freeze({
+			revision: o,
+			tabs: s,
+			type: "snapshot"
+		});
+		for (let r of Array.from(l)) try {
+			r(n);
+		} catch (n) {
+			t(z(e, "FENNEVIA_FIREFOX_TABS_SUBSCRIBER_FAILED", "firefox-tabs-notify", "tabs.subscribe", n));
+		}
+	}, S = (e) => {
+		let t = p(), n = h().map((e) => y(e, t.selectedTab)), r = new Set(n.map((e) => e.id));
+		for (let e of Array.from(c)) r.has(e) || (d.release(e), c.delete(e));
+		for (let e of r) c.add(e);
+		let i = Object.freeze(n);
+		return !H(s, i) && (s = i, o += 1, e && x(), !0);
+	}, C = (n, r) => {
+		a = _(n) ? n : z(e, "FENNEVIA_FIREFOX_TABS_EVENT_FAILED", "firefox-tabs-event", `window.gBrowser.tabContainer.${r}`, n), t(a);
+	}, w = (t) => {
+		f();
+		let n = d.resolve(t);
+		if (!h().includes(n)) throw d.release(t), c.delete(t), z(e, "FENNEVIA_FIREFOX_TAB_STALE", "firefox-tabs-action", "tab.opaque-id");
+		return n;
+	}, T = (t, n) => {
+		let r = p(), i = r[t];
+		if (typeof i != "function") throw z(e, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", `window.gBrowser.${t}`);
+		return Reflect.apply(i, r, n);
+	}, D = (t) => {
+		if (t === void 0) return Object.freeze({ selected: !0 });
+		if (!M(t) || Object.keys(t).some((e) => e !== "selected") || t.selected !== void 0 && typeof t.selected != "boolean") throw z(e, "FENNEVIA_FIREFOX_TAB_OPEN_OPTIONS_INVALID", "firefox-tabs-action", "tabs.open.options");
+		return Object.freeze({ selected: t.selected ?? !0 });
+	}, O = Object.freeze({
+		close(e) {
+			let t = w(e);
+			T("removeTab", [t, Object.freeze({
+				animate: !0,
+				isUserTriggered: !0
+			})]), S(!0);
+		},
+		open(t) {
+			let n = D(t), r = f().BROWSER_NEW_TAB_URL;
+			if (typeof r != "string" || r.length === 0) throw z(e, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "window.BROWSER_NEW_TAB_URL");
+			let i = B(e, T("addTrustedTab", [r, Object.freeze({ inBackground: !n.selected })]));
+			if (!h().includes(i)) throw z(e, "FENNEVIA_FIREFOX_TAB_OPEN_REJECTED", "firefox-tabs-action", "window.gBrowser.addTrustedTab");
+			let a = d.register(i);
+			if (S(!0), n.selected && p().selectedTab !== i) throw z(e, "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED", "firefox-tabs-action", "window.gBrowser.selectedTab");
+			return a;
+		},
+		pin(t) {
+			let n = w(t);
+			if (!v(n, "pinned")) {
+				if (T("pinTab", [n]), !v(n, "pinned")) throw z(e, "FENNEVIA_FIREFOX_TAB_PIN_REJECTED", "firefox-tabs-action", "window.gBrowser.pinTab");
+				S(!0);
+			}
+		},
+		select(t) {
+			let n = w(t), r = p();
+			if (r.selectedTab !== n) {
+				if (!Reflect.set(r, "selectedTab", n) || r.selectedTab !== n) throw z(e, "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED", "firefox-tabs-action", "window.gBrowser.selectedTab");
+				S(!0);
+			}
+		},
+		snapshot() {
+			return f(), s;
+		},
+		subscribe(t) {
+			if (f(), typeof t != "function") throw z(e, "FENNEVIA_FIREFOX_TABS_LISTENER_INVALID", "firefox-tabs-subscribe", "tabs.subscribe");
+			return l.add(t), b(() => {
+				l.delete(t);
+			});
+		},
+		unpin(t) {
+			let n = w(t);
+			if (v(n, "pinned")) {
+				if (T("unpinTab", [n]), v(n, "pinned")) throw z(e, "FENNEVIA_FIREFOX_TAB_UNPIN_REJECTED", "firefox-tabs-action", "window.gBrowser.unpinTab");
+				S(!0);
+			}
+		}
+	});
+	try {
+		e.assertRequiredCapabilities(), m(), S(!1);
+		let t = p().tabContainer;
+		for (let n of E) u.push(e.subscribe(t, n, (e) => {
+			if (!(i || a)) try {
+				if (n === "TabAttrModified" && !U(e)) return;
+				S(!0);
+			} catch (e) {
+				C(e, n);
+			}
+		}));
+	} catch (n) {
+		i = !0, r = null;
+		let a;
+		for (let e of u.reverse()) try {
+			e();
+		} catch (e) {
+			a ??= e;
+		}
+		try {
+			d.dispose();
+		} catch (e) {
+			a ??= e;
+		}
+		throw a !== void 0 && t(z(e, "FENNEVIA_FIREFOX_TABS_DISPOSE_FAILED", "firefox-tabs-dispose", "window.gBrowser.tabContainer", a)), n;
+	}
+	return Object.freeze({
+		assertRequiredCapabilities: m,
+		dispose() {
+			if (i) return !1;
+			i = !0, r = null;
+			let t;
+			for (let e of u.reverse()) try {
+				e();
+			} catch (e) {
+				t ??= e;
+			}
+			u.length = 0, l.clear(), c.clear(), s = Object.freeze([]);
+			try {
+				d.dispose();
+			} catch (e) {
+				t ??= e;
+			}
+			if (t !== void 0) throw z(e, "FENNEVIA_FIREFOX_TABS_DISPOSE_FAILED", "firefox-tabs-dispose", "window.gBrowser.tabContainer", t);
+			return !0;
+		},
+		snapshot() {
+			return Object.freeze({
+				disposed: i,
+				failed: a !== null,
+				revision: o,
+				subscriberCount: l.size,
+				tabCount: s.length
+			});
+		},
+		tabs: O
+	});
+}
+//#endregion
+export { g as FirefoxBridgeError, T as createFirefoxBridgeBoundary, W as createFirefoxTabsBridge, b as createIdempotentDisposer, S as createOpaqueHandleRegistry, _ as isFirefoxBridgeError, x as subscribeFirefoxEvent, v as toFirefoxBridgeDiagnostic };

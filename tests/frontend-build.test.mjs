@@ -110,7 +110,7 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
   assert.match(runtime, /const productionShellByTarget = new WeakMap\(\)/u);
   assert.match(
     runtime,
-    /import \{ createFirefoxBridgeBoundary \} from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
+    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxTabsBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
   );
   assert.match(runtime, /Reflect\.deleteProperty\(/u);
   assert.doesNotMatch(runtime, /ShellApp\.sys\.mjs|import\s*\(/u);
@@ -136,6 +136,7 @@ test("the generated Firefox boundary is one deterministic private ESM artifact",
   ]);
 
   assert.match(bridge, /createFirefoxBridgeBoundary/u);
+  assert.match(bridge, /createFirefoxTabsBridge/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_CAPABILITY_MISSING/u);
   assert.match(bridge, /export \{/u);
   assert.doesNotMatch(

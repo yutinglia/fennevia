@@ -180,7 +180,8 @@ private installed ESM
 is not source of truth. `WindowShell.sys.mjs` creates exactly one boundary from
 the existing `WindowManager` context for each managed window and retains it in
 the same target-keyed private record as the frontend API. It passes no bridge
-object, native handle, or capability object to Svelte.
+implementation object, native handle, or capability object to Svelte. Issue #10
+later passes only the frozen ordinary-data tabs contract described below.
 
 The boundary validates `window.document.defaultView`, the browser document URI,
 the process-local window ID, and normal/private kind before claiming a context.
@@ -198,15 +199,31 @@ registry IDs produce distinct typed errors. Registry snapshots contain counts
 and fixed state only. Event subscriptions and cleanup callbacks return
 idempotent disposers, and boundary disposal continues through all owned
 subscriptions and registries before reporting a typed cleanup error. These are
-the only shared utilities introduced for the upcoming tabs and navigation
-bridges; no service locator, dependency-injection framework, or generic Firefox
-SDK exists.
+the only shared utilities consumed by the tabs bridge and reserved for the
+upcoming navigation bridge; no service locator, dependency-injection framework,
+or generic Firefox SDK exists.
 
 ESLint applies a static boundary to `src/shell/` and ordinary `src/app/` code:
 Firefox implementation imports, privileged globals, and direct Firefox-owned
 properties such as `gBrowser` are rejected. Future public bridge contracts must
 contain ordinary snapshots/events/actions only and remain separate from the
 privileged implementation.
+
+Issue #10 adds `src/firefox/tabs.ts` to the same generated private ESM. One
+controller per boundary reads `gBrowser.openTabs`, keeps native tabs in that
+boundary's opaque registry, and reconciles immutable snapshots after the
+minimal open/close/select/move/pin/unpin/attribute event set. The public object
+contains only primitive snapshots and explicit actions; `WindowShell.sys.mjs`
+passes that object, never the controller or native window, to the frontend.
+
+`src/app/tab-state.ts` is a second, unprivileged copy boundary. It validates and
+copies exact snapshot fields into a Svelte-independent reactive adapter, drops
+unknown properties, owns frontend subscriptions, and releases the public bridge
+on unmount. The current Svelte smoke island renders only the synchronized tab
+count. Full tab visuals remain #11. Titles stay bounded text, favicon values use
+a strict internal/raster allowlist with an explicit fallback, and no browsing
+value enters logs or diagnostics. Current-source and runtime evidence is in
+`docs/research/firefox-153-tabs-bridge.md` and ADR-024.
 
 ## 5. Application and frontend layers
 
