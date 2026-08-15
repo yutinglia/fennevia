@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "fennevia",
-  "packageVersion": "0.6.0-dev",
+  "packageVersion": "0.7.0-dev",
   "expectedFiles": [
     "chrome.manifest",
     "content/Bootstrap.sys.mjs",
@@ -39,7 +39,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs",
-      "sha256": "3ebe1226a3ec14ef588199fe40e5bcb08a4e1108ae41a98a4c3a2567e0015035"
+      "sha256": "a1633bd03d22e8c79e98d772b5732bfe266f6073bc04068c1e58af7e3f026244"
     },
     {
       "scope": "profile",
@@ -64,17 +64,17 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
-      "sha256": "9024b497878525b0d9ddf81967a4ccb8d2d56f291dc66c3e13ca85ab5fef76df"
+      "sha256": "f2dd24008b60d1e953ae2ede6a351e12f8200753bff7c607e1f8ebee14bd47b3"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/shell/ShellApp.js",
-      "sha256": "641055e805b67e2efb243f8332e458e6a5432cdd9be52b1416c64b0c48e81348"
+      "sha256": "bc5d91b5d5c7944917e0450641a05e3cd108304d801674b47b4bd786d924c16d"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/shell/ShellStyles.sys.mjs",
-      "sha256": "93d880e0e89c5eba1f4ac94262e2c6ac49bb101e6699b8100e693053c9a96583"
+      "sha256": "0bd0dc845caaf06ee7e4ed5f276d9560473899391f70093eca8a271393f424d4"
     },
     {
       "scope": "profile",

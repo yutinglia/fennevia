@@ -10,6 +10,11 @@
     type EdgeSurfaceController,
   } from "../app/edge-surfaces";
   import {
+    createBrowserNavigationState,
+    type BrowserNavigationState,
+    type BrowserNavigationStateAdapter,
+  } from "../app/navigation-state";
+  import {
     createBrowserTabsState,
     type BrowserTabsState,
     type BrowserTabsStateAdapter,
@@ -27,8 +32,10 @@
   type Props = Readonly<{
     edge: EdgeName;
     frame: HTMLElement;
+    navigation?: BrowserNavigationStateAdapter;
     onDismiss: (edge: EdgeName) => void;
     onDisposed: (edge: EdgeName) => void;
+    onFatalError: (error: unknown) => void;
     shell: EdgeShellController;
     surface: EdgeSurfaceController;
     tabs?: BrowserTabsStateAdapter;
@@ -43,6 +50,15 @@
   };
 
   const props: Props = $props();
+  let currentNavigation: BrowserNavigationState = $state(
+    createBrowserNavigationState({
+      canGoBack: false,
+      canGoForward: false,
+      displayUri: "",
+      loading: false,
+      title: "",
+    }),
+  );
   let currentTabs: BrowserTabsState = $state(createBrowserTabsState([]));
   let rootElement: HTMLDivElement | undefined = $state();
   let rovingTabId: string | null = $state(null);
@@ -70,6 +86,17 @@
       surfaceRevision += 1;
     });
     return unsubscribe;
+  });
+
+  $effect(() => {
+    const navigation = props.navigation;
+    if (props.edge !== "top" || !navigation) {
+      return;
+    }
+    currentNavigation = navigation.snapshot();
+    return navigation.subscribe((nextState) => {
+      currentNavigation = nextState;
+    });
   });
 
   $effect(() => {
@@ -111,6 +138,23 @@
       throw new Error("FENNEVIA_LEFT_SURFACE_TABS_UNAVAILABLE");
     }
     return props.tabs;
+  };
+
+  const requireNavigation = (): BrowserNavigationStateAdapter => {
+    if (!props.navigation) {
+      throw new Error("FENNEVIA_TOP_SURFACE_NAVIGATION_UNAVAILABLE");
+    }
+    return props.navigation;
+  };
+
+  const runNavigationAction = (
+    action: (navigation: BrowserNavigationStateAdapter) => unknown,
+  ) => {
+    try {
+      action(requireNavigation());
+    } catch (error) {
+      props.onFatalError(error);
+    }
   };
 
   const focusTab = async (tabId: string | null) => {
@@ -366,8 +410,8 @@
     inert={!surfaceState.visible}
     onpointerout={handlePanelPointerOut}
     onpointerover={handlePanelPointerOver}
-  role="region"
->
+    role="region"
+  >
     <header class="fennevia-edge-panel__header">
       <div class="fennevia-edge-panel__identity">
         <span aria-hidden="true" class="fennevia-edge-panel__mark"></span>
@@ -497,14 +541,80 @@
         </button>
       </div>
     {:else if props.edge === "top"}
-      <div
-        class="fennevia-surface-placeholder fennevia-surface-placeholder--top"
-      >
-        <span class="fennevia-surface-placeholder__eyebrow"
-          >Primary surface</span
+      <div class="fennevia-navigation" data-fennevia-navigation="">
+        <div
+          aria-label="Primary navigation"
+          class="fennevia-navigation__controls"
+          role="group"
         >
-        <strong>Browser controls mount ready</strong>
-        <span>Navigation actions connect here without owning Firefox DOM.</span>
+          <button
+            aria-label="Go back"
+            class="fennevia-control fennevia-navigation__button"
+            data-fennevia-action="back"
+            disabled={!currentNavigation.snapshot.canGoBack}
+            onclick={() =>
+              runNavigationAction((navigation) => navigation.back())}
+            title="Back"
+            type="button"
+          >
+            <span aria-hidden="true">←</span>
+          </button>
+          <button
+            aria-label="Go forward"
+            class="fennevia-control fennevia-navigation__button"
+            data-fennevia-action="forward"
+            disabled={!currentNavigation.snapshot.canGoForward}
+            onclick={() =>
+              runNavigationAction((navigation) => navigation.forward())}
+            title="Forward"
+            type="button"
+          >
+            <span aria-hidden="true">→</span>
+          </button>
+          <button
+            aria-busy={currentNavigation.snapshot.loading}
+            aria-label={currentNavigation.snapshot.loading
+              ? "Stop loading"
+              : "Reload page"}
+            class="fennevia-control fennevia-navigation__button"
+            data-fennevia-action="reload-stop"
+            data-fennevia-loading={currentNavigation.snapshot.loading}
+            onclick={() =>
+              runNavigationAction((navigation) => navigation.reloadOrStop())}
+            title={currentNavigation.snapshot.loading ? "Stop" : "Reload"}
+            type="button"
+          >
+            <span aria-hidden="true"
+              >{currentNavigation.snapshot.loading ? "■" : "↻"}</span
+            >
+          </button>
+          <button
+            aria-label="Open new tab"
+            class="fennevia-control fennevia-navigation__button fennevia-navigation__new-tab"
+            data-fennevia-action="new-tab"
+            onclick={() =>
+              runNavigationAction((navigation) => navigation.newTab())}
+            title="New tab"
+            type="button"
+          >
+            <span aria-hidden="true">+</span>
+            <span class="fennevia-navigation__new-tab-label">New tab</span>
+          </button>
+        </div>
+
+        <output
+          aria-label="Current page"
+          aria-live="off"
+          class="fennevia-navigation__status"
+          data-fennevia-navigation-status=""
+        >
+          <strong dir="auto"
+            >{currentNavigation.snapshot.title || "Untitled page"}</strong
+          >
+          <span dir="ltr"
+            >{currentNavigation.snapshot.displayUri || "No page address"}</span
+          >
+        </output>
       </div>
     {:else if props.edge === "right"}
       <div class="fennevia-surface-placeholder">

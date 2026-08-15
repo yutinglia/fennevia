@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
@@ -15,6 +16,7 @@ function parseArguments(argv) {
   const result = {
     expectFailOpen: false,
     expectBridgeFailOpen: false,
+    expectNavigationBridgeFailOpen: false,
     expectSafeStart: false,
     expectShellFailOpen: false,
     expectShellMissingFailOpen: false,
@@ -40,6 +42,10 @@ function parseArguments(argv) {
     }
     if (argument === "--expect-bridge-fail-open") {
       result.expectBridgeFailOpen = true;
+      continue;
+    }
+    if (argument === "--expect-navigation-bridge-fail-open") {
+      result.expectNavigationBridgeFailOpen = true;
       continue;
     }
     if (argument === "--expect-stock") {
@@ -80,6 +86,7 @@ function parseArguments(argv) {
     [
       result.expectFailOpen,
       result.expectBridgeFailOpen,
+      result.expectNavigationBridgeFailOpen,
       result.expectSafeStart,
       result.expectShellFailOpen,
       result.expectShellMissingFailOpen,
@@ -94,6 +101,7 @@ function parseArguments(argv) {
     result.browserToolbox &&
     (result.expectFailOpen ||
       result.expectBridgeFailOpen ||
+      result.expectNavigationBridgeFailOpen ||
       result.expectSafeStart ||
       result.expectShellFailOpen ||
       result.expectShellMissingFailOpen ||
@@ -691,6 +699,7 @@ async function collectFrontendState(client) {
       document.getElementById("fennevia-shell-" + edge + "-mount"),
     ]));
     const root = roots.left;
+    const topRoot = roots.top;
     const style = document.getElementById("fennevia-shell-app-style");
     const template = roots.top?.querySelector(
       "template[data-fennevia-template]"
@@ -724,7 +733,7 @@ async function collectFrontendState(client) {
       ),
       actionControlsNamed: elements
         .filter(element => element.matches?.(
-          '.fennevia-tab-strip__action, [data-fennevia-action="new-tab"], [data-fennevia-dismiss]'
+          '.fennevia-tab-strip__action, [data-fennevia-navigation] button, [data-fennevia-action="new-tab"], [data-fennevia-dismiss]'
         ))
         .every(control => Boolean(control.getAttribute("aria-label"))),
       customTabCount: customTabs.length,
@@ -757,6 +766,43 @@ async function collectFrontendState(client) {
         ) ?? null,
       }])),
       nativeTabCount: nativeTabs.length,
+      navigation: {
+        backDisabled:
+          topRoot?.querySelector('[data-fennevia-action="back"]')?.disabled ??
+          null,
+        backMatchesNative:
+          topRoot?.querySelector('[data-fennevia-action="back"]')?.disabled ===
+          document.getElementById("Browser:Back")?.hasAttribute("disabled"),
+        controlCount:
+          topRoot?.querySelectorAll("[data-fennevia-navigation] button").length ??
+          0,
+        editableCount:
+          topRoot?.querySelectorAll("input, textarea, [contenteditable]").length ??
+          0,
+        forwardDisabled:
+          topRoot?.querySelector('[data-fennevia-action="forward"]')?.disabled ??
+          null,
+        forwardMatchesNative:
+          topRoot?.querySelector('[data-fennevia-action="forward"]')?.disabled ===
+          document.getElementById("Browser:Forward")?.hasAttribute("disabled"),
+        loadingMatchesNative:
+          topRoot
+            ?.querySelector('[data-fennevia-action="reload-stop"]')
+            ?.getAttribute("data-fennevia-loading") ===
+          String(
+            !document.getElementById("Browser:Stop")?.hasAttribute("disabled")
+          ),
+        menuCount:
+          topRoot?.querySelectorAll(
+            '[aria-haspopup], [role="menu"], [data-fennevia-action*="menu"]'
+          ).length ?? 0,
+        statusCount:
+          topRoot?.querySelectorAll("[data-fennevia-navigation-status]")
+            .length ?? 0,
+        tabCount:
+          topRoot?.querySelectorAll('[role="tab"], [role="tablist"]').length ??
+          0,
+      },
       nestedInteractiveCount: customTabs.filter(tab =>
         tab.querySelector("button, input, select, textarea, a[href]")
       ).length,
@@ -860,6 +906,16 @@ function assertFrontendState(state, windowKind) {
     });
   }
   assert.equal(state.nestedInteractiveCount, 0);
+  assert.equal(typeof state.navigation.backDisabled, "boolean");
+  assert.equal(state.navigation.backMatchesNative, true);
+  assert.equal(state.navigation.controlCount, 4);
+  assert.equal(state.navigation.editableCount, 0);
+  assert.equal(typeof state.navigation.forwardDisabled, "boolean");
+  assert.equal(state.navigation.forwardMatchesNative, true);
+  assert.equal(state.navigation.loadingMatchesNative, true);
+  assert.equal(state.navigation.menuCount, 0);
+  assert.equal(state.navigation.statusCount, 1);
+  assert.equal(state.navigation.tabCount, 0);
   assert.equal(state.newTabControlCount, 1);
   assert.equal(state.rovingTabCount, 1);
   assert.equal(state.selectedMatchesNative, true);
@@ -1226,6 +1282,361 @@ function assertEdgeShellInteraction(result) {
     );
     throw error;
   }
+}
+
+async function exerciseNavigationControls(client) {
+  const requests = { broken: 0, first: 0, reload: 0, second: 0, slow: 0 };
+  const responseTimers = new Set();
+  const longTitle = `${"Navigation title ".repeat(24)}<status-text-only>`;
+  const server = createServer((request, response) => {
+    const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+    if (pathname === "/broken") {
+      requests.broken += 1;
+      request.socket.destroy();
+      return;
+    }
+    if (pathname === "/slow") {
+      requests.slow += 1;
+      response.writeHead(200, {
+        "Cache-Control": "no-store",
+        "Content-Type": "text/html; charset=utf-8",
+      });
+      response.write("<!doctype html><title>Slow local page</title><p>loading");
+      const timer = setTimeout(() => {
+        responseTimers.delete(timer);
+        if (!response.writableEnded) {
+          response.end(" complete</p>");
+        }
+      }, 5_000);
+      responseTimers.add(timer);
+      return;
+    }
+    if (pathname === "/reload") {
+      requests.reload += 1;
+      response.writeHead(200, {
+        "Cache-Control": "no-store",
+        "Content-Type": "text/html; charset=utf-8",
+      });
+      response.write(
+        "<!doctype html><title>Reload local page</title><main>reload",
+      );
+      const timer = setTimeout(() => {
+        responseTimers.delete(timer);
+        if (!response.writableEnded) {
+          response.end(" complete</main>");
+        }
+      }, 500);
+      responseTimers.add(timer);
+      return;
+    }
+    const isSecond = pathname === "/second";
+    requests[isSecond ? "second" : "first"] += 1;
+    response.writeHead(200, {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/html; charset=utf-8",
+    });
+    response.end(
+      `<!doctype html><title>${isSecond ? longTitle.replaceAll("<", "&lt;").replaceAll(">", "&gt;") : "First local page"}</title><main>${isSecond ? "second" : "first"}</main>`,
+    );
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    throw new Error("FENNEVIA_FIREFOX_TEST_NAVIGATION_SERVER_INVALID");
+  }
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  try {
+    const result = await client.execute(`
+      return (async () => {
+        const baseUrl = ${JSON.stringify(baseUrl)};
+        const root = document.getElementById("fennevia-shell-top-root");
+        const panel = root?.querySelector('[data-fennevia-edge-panel="top"]');
+        const controls = {
+          back: root?.querySelector('[data-fennevia-action="back"]'),
+          forward: root?.querySelector('[data-fennevia-action="forward"]'),
+          newTab: root?.querySelector('[data-fennevia-action="new-tab"]'),
+          reloadStop: root?.querySelector(
+            '[data-fennevia-action="reload-stop"]'
+          ),
+        };
+        const status = root?.querySelector(
+          "[data-fennevia-navigation-status]"
+        );
+        if (
+          !root ||
+          !panel ||
+          !controls.back ||
+          !controls.forward ||
+          !controls.newTab ||
+          !controls.reloadStop ||
+          !status
+        ) {
+          throw new Error("FENNEVIA_FIREFOX_TEST_NAVIGATION_CONTROLS_MISSING");
+        }
+
+        const waitFor = async (predicate, code, timeoutMs = 8000) => {
+          const deadline = Date.now() + timeoutMs;
+          while (Date.now() < deadline) {
+            if (predicate()) {
+              return;
+            }
+            await new Promise(resolve => window.setTimeout(resolve, 20));
+          }
+          throw new Error(code);
+        };
+        const currentSpec = () => gBrowser.selectedBrowser.currentURI.spec;
+        const currentStatusUri = () =>
+          status.querySelector("span")?.textContent ?? "";
+        const load = async url => {
+          gBrowser.selectedBrowser.fixupAndLoadURIString(url, {
+            triggeringPrincipal:
+              Services.scriptSecurityManager.getSystemPrincipal(),
+          });
+          await waitFor(
+            () =>
+              currentSpec() === url &&
+              !gBrowser.selectedTab.hasAttribute("busy") &&
+              currentStatusUri() === url,
+            "FENNEVIA_FIREFOX_TEST_NAVIGATION_LOAD_TIMEOUT"
+          );
+        };
+
+        window.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            altKey: true,
+            bubbles: true,
+            ctrlKey: true,
+            key: "ArrowUp",
+            shiftKey: true,
+          })
+        );
+        await waitFor(
+          () =>
+            root.getAttribute("data-fennevia-visible") === "true" &&
+            root.contains(document.activeElement),
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_KEYBOARD_REVEAL_TIMEOUT"
+        );
+        const keyboardRevealFocused = root.contains(document.activeElement);
+
+        const initialTabCount = gBrowser.openTabs.length;
+        const initialSelectedTab = gBrowser.selectedTab;
+        controls.newTab.click();
+        await waitFor(
+          () =>
+            gBrowser.openTabs.length === initialTabCount + 1 &&
+            gBrowser.selectedTab !== initialSelectedTab &&
+            currentStatusUri() === gBrowser.currentURI.displaySpec,
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_NEW_TAB_TIMEOUT"
+        );
+        const openedTab = gBrowser.selectedTab;
+        const newTabSelected = openedTab !== initialSelectedTab;
+
+        const firstUrl = baseUrl + "/first";
+        const reloadUrl = baseUrl + "/reload";
+        const secondUrl = baseUrl + "/second";
+        const slowUrl = baseUrl + "/slow";
+        const brokenUrl = baseUrl + "/broken";
+        await load(firstUrl);
+        await load(secondUrl);
+        await waitFor(
+          () =>
+            !controls.back.disabled &&
+            controls.back.disabled ===
+              document.getElementById("Browser:Back").hasAttribute("disabled"),
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_BACK_STATE_TIMEOUT"
+        );
+        const boundedTitleLength =
+          status.querySelector("strong")?.textContent?.length ?? 0;
+        const titleRenderedAsText =
+          boundedTitleLength <= 256 && status.querySelector("img") === null;
+
+        controls.back.click();
+        await waitFor(
+          () => currentSpec() === firstUrl && !controls.forward.disabled,
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_BACK_TIMEOUT"
+        );
+        const customBackWorked = currentSpec() === firstUrl;
+        BrowserCommands.forward();
+        await waitFor(
+          () => currentSpec() === secondUrl,
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_NATIVE_FORWARD_TIMEOUT"
+        );
+        BrowserCommands.back();
+        await waitFor(
+          () => currentSpec() === firstUrl,
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_NATIVE_BACK_TIMEOUT"
+        );
+        controls.forward.click();
+        await waitFor(
+          () =>
+            currentSpec() === secondUrl &&
+            !gBrowser.selectedTab.hasAttribute("busy"),
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_FORWARD_TIMEOUT"
+        );
+        const alternatingNativeCustomWorked = currentSpec() === secondUrl;
+
+        await load(reloadUrl);
+
+        let reloadStarted = false;
+        let reloadStopped = false;
+        const reloadBrowser = gBrowser.selectedBrowser;
+        const progressListener = {
+          onStateChange(browser, progress, request, flags) {
+            if (browser !== reloadBrowser || !progress.isTopLevel) {
+              return;
+            }
+            if (
+              flags & Ci.nsIWebProgressListener.STATE_START &&
+              flags & Ci.nsIWebProgressListener.STATE_IS_NETWORK
+            ) {
+              reloadStarted = true;
+            }
+            if (
+              flags & Ci.nsIWebProgressListener.STATE_STOP &&
+              flags & Ci.nsIWebProgressListener.STATE_IS_NETWORK
+            ) {
+              reloadStopped = true;
+            }
+          },
+        };
+        gBrowser.addTabsProgressListener(progressListener);
+        try {
+          controls.reloadStop.click();
+          await waitFor(
+            () => reloadStarted && reloadStopped,
+            "FENNEVIA_FIREFOX_TEST_NAVIGATION_RELOAD_TIMEOUT"
+          );
+        } finally {
+          gBrowser.removeTabsProgressListener(progressListener);
+        }
+
+        gBrowser.selectedBrowser.fixupAndLoadURIString(slowUrl, {
+          triggeringPrincipal:
+            Services.scriptSecurityManager.getSystemPrincipal(),
+        });
+        await waitFor(
+          () =>
+            controls.reloadStop.title === "Stop" &&
+            controls.reloadStop.getAttribute("data-fennevia-loading") === "true",
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_STOP_MODE_TIMEOUT"
+        );
+        const stopModeObserved = true;
+        controls.reloadStop.click();
+        await waitFor(
+          () =>
+            controls.reloadStop.title === "Reload" &&
+            !gBrowser.selectedTab.hasAttribute("busy"),
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_STOP_TIMEOUT"
+        );
+        const stopWorked = true;
+
+        gBrowser.selectedBrowser.fixupAndLoadURIString(brokenUrl, {
+          triggeringPrincipal:
+            Services.scriptSecurityManager.getSystemPrincipal(),
+        });
+        await waitFor(
+          () =>
+            currentSpec() === brokenUrl &&
+            !gBrowser.selectedTab.hasAttribute("busy") &&
+            currentStatusUri() === brokenUrl,
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_ERROR_PAGE_TIMEOUT"
+        );
+        const errorPageSettled = true;
+
+        gBrowser.selectedBrowser.fixupAndLoadURIString(slowUrl, {
+          triggeringPrincipal:
+            Services.scriptSecurityManager.getSystemPrincipal(),
+        });
+        await waitFor(
+          () => controls.reloadStop.title === "Stop",
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_PENDING_CLOSE_START_TIMEOUT"
+        );
+        gBrowser.removeTab(openedTab, {
+          animate: false,
+          isUserTriggered: true,
+        });
+        await waitFor(
+          () =>
+            gBrowser.selectedTab === initialSelectedTab &&
+            currentStatusUri() === gBrowser.currentURI.displaySpec &&
+            controls.reloadStop.getAttribute("data-fennevia-loading") ===
+              String(
+                !document
+                  .getElementById("Browser:Stop")
+                  .hasAttribute("disabled")
+              ),
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_PENDING_CLOSE_HANDOFF_TIMEOUT"
+        );
+        const pendingCloseHandoffWorked = true;
+
+        window.dispatchEvent(
+          new KeyboardEvent("keydown", { bubbles: true, key: "Escape" })
+        );
+        await waitFor(
+          () => root.getAttribute("data-fennevia-visible") === "false",
+          "FENNEVIA_FIREFOX_TEST_NAVIGATION_ESCAPE_TIMEOUT"
+        );
+
+        return {
+          alternatingNativeCustomWorked,
+          backMatchesNative:
+            controls.back.disabled ===
+            document.getElementById("Browser:Back").hasAttribute("disabled"),
+          customBackWorked,
+          errorPageSettled,
+          escapedHidden: root.getAttribute("data-fennevia-visible") === "false",
+          forwardMatchesNative:
+            controls.forward.disabled ===
+            document
+              .getElementById("Browser:Forward")
+              .hasAttribute("disabled"),
+          keyboardRevealFocused,
+          newTabSelected,
+          pendingCloseHandoffWorked,
+          reloadStarted,
+          reloadStopped,
+          stopModeObserved,
+          stopWorked,
+          titleRenderedAsText,
+        };
+      })();
+    `);
+    return { ...result, requests: { ...requests } };
+  } finally {
+    for (const timer of responseTimers) {
+      clearTimeout(timer);
+    }
+    responseTimers.clear();
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
+function assertNavigationControls(result) {
+  assert.equal(result.alternatingNativeCustomWorked, true);
+  assert.equal(result.backMatchesNative, true);
+  assert.equal(result.customBackWorked, true);
+  assert.equal(result.errorPageSettled, true);
+  assert.equal(result.escapedHidden, true);
+  assert.equal(result.forwardMatchesNative, true);
+  assert.equal(result.keyboardRevealFocused, true);
+  assert.equal(result.newTabSelected, true);
+  assert.equal(result.pendingCloseHandoffWorked, true);
+  assert.equal(result.reloadStarted, true);
+  assert.equal(result.reloadStopped, true);
+  assert.equal(result.stopModeObserved, true);
+  assert.equal(result.stopWorked, true);
+  assert.equal(result.titleRenderedAsText, true);
+  assert.ok(result.requests.first >= 1);
+  assert.ok(result.requests.reload >= 2);
+  assert.ok(result.requests.second >= 1);
+  assert.ok(result.requests.slow >= 2);
+  assert.ok(result.requests.broken >= 1);
 }
 
 async function exerciseTabStripMvp(client) {
@@ -1705,6 +2116,8 @@ async function exerciseFrontendUnmountRemount(client) {
 
       let firstDispose;
       let secondDispose;
+      let navigationSubscriptionCount = 0;
+      let navigationUnsubscriptionCount = 0;
       let tabSubscriptionCount = 0;
       let tabUnsubscriptionCount = 0;
       const fatalErrors = [];
@@ -1737,8 +2150,38 @@ async function exerciseFrontendUnmountRemount(client) {
         },
         unpin() {},
       });
+      const navigation = Object.freeze({
+        back() { return false; },
+        forward() { return false; },
+        newTab() { return true; },
+        reload() { return true; },
+        reloadOrStop() { return "reload"; },
+        snapshot() {
+          return Object.freeze({
+            canGoBack: false,
+            canGoForward: false,
+            displayUri: "about:blank",
+            loading: false,
+            title: "Remount test page",
+          });
+        },
+        stop() { return false; },
+        subscribe() {
+          navigationSubscriptionCount += 1;
+          let active = true;
+          return () => {
+            if (!active) {
+              return false;
+            }
+            active = false;
+            navigationUnsubscriptionCount += 1;
+            return true;
+          };
+        },
+      });
       const options = {
         frame,
+        navigation,
         onFatalError(error) {
           fatalErrors.push(String(error?.name ?? "unknown"));
         },
@@ -1818,6 +2261,8 @@ async function exerciseFrontendUnmountRemount(client) {
           listenerRemoveCount: registrations.filter(
             registration => registration.removed
           ).length,
+          navigationSubscriptionCount,
+          navigationUnsubscriptionCount,
           registrationCallbackPresent: Object.hasOwn(window, key),
           secondDisposeResult,
           secondRootCount: secondRoots.length,
@@ -2689,6 +3134,7 @@ async function run() {
       options.expectShellFailOpen ||
       options.expectShellMissingFailOpen ||
       options.expectBridgeFailOpen ||
+      options.expectNavigationBridgeFailOpen ||
       options.expectTabsBridgeFailOpen
     ) {
       await new Promise((resolve) => setTimeout(resolve, 750));
@@ -2720,7 +3166,11 @@ async function run() {
       assert.equal(countEvent(evidence, "window.disposed", "normal"), 1);
       assert.equal(countEvent(evidence, "shell.hosts-ready", "normal"), 1);
       assert.equal(countEvent(evidence, "shell.hosts-disposed", "normal"), 1);
-      if (options.expectBridgeFailOpen || options.expectTabsBridgeFailOpen) {
+      if (
+        options.expectBridgeFailOpen ||
+        options.expectNavigationBridgeFailOpen ||
+        options.expectTabsBridgeFailOpen
+      ) {
         assert.equal(
           countEvent(evidence, "bridge.boundary-created", "normal"),
           1,
@@ -2738,35 +3188,42 @@ async function run() {
         (record) => record.event === "shell.lifecycle-failed",
       );
       assert.equal(shellFailures.length, 1);
-      const expectedShellFailure = options.expectTabsBridgeFailOpen
+      const expectedShellFailure = options.expectNavigationBridgeFailOpen
         ? {
-            code: "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
-            phase: "firefox-tabs-capability",
+            code: "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
+            phase: "firefox-navigation-capability",
           }
-        : options.expectBridgeFailOpen
+        : options.expectTabsBridgeFailOpen
           ? {
-              code: "FENNEVIA_FIREFOX_CAPABILITY_MISSING",
-              phase: "firefox-bridge-capability",
+              code: "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
+              phase: "firefox-tabs-capability",
             }
-          : options.expectShellMissingFailOpen
+          : options.expectBridgeFailOpen
             ? {
-                code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
-                phase: "shell-frontend-load",
+                code: "FENNEVIA_FIREFOX_CAPABILITY_MISSING",
+                phase: "firefox-bridge-capability",
               }
-            : {
-                code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
-                phase: "shell-frontend-mount",
-              };
+            : options.expectShellMissingFailOpen
+              ? {
+                  code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
+                  phase: "shell-frontend-load",
+                }
+              : {
+                  code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
+                  phase: "shell-frontend-mount",
+                };
       assert.equal(shellFailures[0].code, expectedShellFailure.code);
       assert.equal(shellFailures[0].phase, expectedShellFailure.phase);
       assert.equal(shellFailures[0].windowKind, "normal");
       assert.equal(
         shellFailures[0].firefoxSymbol,
-        options.expectTabsBridgeFailOpen
-          ? "window.gBrowser.openTabs"
-          : options.expectBridgeFailOpen
-            ? "window.gBrowser"
-            : undefined,
+        options.expectNavigationBridgeFailOpen
+          ? "window.gBrowser.removeTabsProgressListener"
+          : options.expectTabsBridgeFailOpen
+            ? "window.gBrowser.openTabs"
+            : options.expectBridgeFailOpen
+              ? "window.gBrowser"
+              : undefined,
       );
       assert.ok(Array.isArray(shellFailures[0].stack));
       assert.ok(
@@ -2785,7 +3242,7 @@ async function run() {
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
-        `PASS: a ${options.expectTabsBridgeFailOpen ? "missing required tabs capability" : options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
+        `PASS: a ${options.expectNavigationBridgeFailOpen ? "missing required navigation capability" : options.expectTabsBridgeFailOpen ? "missing required tabs capability" : options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
           "path, removed every project host, and retained native browser UI.",
       );
       return;
@@ -2869,6 +3326,8 @@ async function run() {
       assertFrontendState(await collectFrontendState(client), "normal");
     }
     await assertNativeStylesIsolated(client);
+    assertNavigationControls(await exerciseNavigationControls(client));
+    assertFrontendState(await collectFrontendState(client), "normal");
     assertTabStripMvp(await exerciseTabStripMvp(client));
     assertFrontendState(await collectFrontendState(client), "normal");
 
@@ -2991,6 +3450,8 @@ async function run() {
       remount.listenerAddCount,
       `frontendListenerDiagnostics=${listenerDiagnostics}`,
     );
+    assert.equal(remount.navigationSubscriptionCount, 2);
+    assert.equal(remount.navigationUnsubscriptionCount, 2);
     assert.equal(remount.registrationCallbackPresent, false);
     assert.equal(remount.secondDisposeResult, true);
     assert.equal(remount.secondRootCount, 4);

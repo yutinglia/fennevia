@@ -8,6 +8,7 @@ import {
 } from "./HealthState.sys.mjs";
 import {
   createFirefoxBridgeBoundary,
+  createFirefoxNavigationBridge,
   createFirefoxTabsBridge,
 } from "../firefox/BridgeBoundary.sys.mjs";
 import { shellAppCss } from "../shell/ShellStyles.sys.mjs";
@@ -958,6 +959,7 @@ const mountProductionShell = ({
   });
 
   let disposeApp;
+  let navigationBridge;
   let style;
   let tabsBridge;
   try {
@@ -974,6 +976,20 @@ const mountProductionShell = ({
       onError: reportError,
       window: browserWindow,
     });
+    navigationBridge = createFirefoxNavigationBridge({
+      boundary: bridge,
+      onError(error) {
+        requestFallback(
+          annotateShellLifecycleError(error, {
+            code:
+              error?.fenneviaCode ??
+              "FENNEVIA_FIREFOX_NAVIGATION_RUNTIME_FAILED",
+            phase: error?.fenneviaPhase ?? "firefox-navigation-event",
+          }),
+        );
+      },
+      window: browserWindow,
+    });
     style = createElement(frame.ownerDocument, "style", {
       id: SHELL_APP_STYLE_ID,
       textContent: shellAppCss,
@@ -983,6 +999,7 @@ const mountProductionShell = ({
     const frontend = loadProductionFrontend(targets.top);
     const candidateDisposeApp = frontend.mountShellApp({
       frame,
+      navigation: navigationBridge.navigation,
       targets,
       tabs: tabsBridge.tabs,
       windowKind,
@@ -1015,12 +1032,18 @@ const mountProductionShell = ({
       bridge,
       frontend,
       logger,
+      navigationBridge,
       readyLogged: false,
       tabsBridge,
     });
   } catch (error) {
     productionShellByFrame.delete(frame);
     style?.remove();
+    try {
+      navigationBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
     try {
       tabsBridge?.dispose();
     } catch (cleanupError) {
@@ -1056,6 +1079,11 @@ const mountProductionShell = ({
     productionShellByFrame.delete(frame);
     try {
       style?.remove();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      navigationBridge?.dispose();
     } catch (error) {
       firstError ??= error;
     }
@@ -1115,6 +1143,7 @@ const checkProductionShell = ({ mountPoints, windowKind }) => {
       "shell-frontend-health",
     );
   }
+  record.navigationBridge.assertRequiredCapabilities();
   record.tabsBridge.assertRequiredCapabilities();
   return record.frontend.verifyShellAppHealth({
     frame,
@@ -1133,6 +1162,8 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     );
   }
   const bridgeCapabilities = record.bridge.assertRequiredCapabilities();
+  const navigationCapabilities =
+    record.navigationBridge.assertRequiredCapabilities();
   const tabsCapabilities = record.tabsBridge.assertRequiredCapabilities();
   const frontendCapabilities = record.frontend.getShellAppCapabilities({
     frame,
@@ -1152,6 +1183,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   }
   return Object.freeze([
     ...bridgeCapabilities,
+    ...navigationCapabilities,
     ...tabsCapabilities,
     ...frontendCapabilities,
   ]);

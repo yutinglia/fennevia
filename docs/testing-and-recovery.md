@@ -879,7 +879,117 @@ the exact modified artifact, reran the normal matrix, and left no Firefox
 process. No diagnostic contained the exercised page title, favicon, URL,
 profile path, or private-window browsing state.
 
-## 15. Firefox stable-update procedure
+## 15. Phase 5 navigation-control evidence
+
+Issue #12 adds a selected-navigation bridge, ordinary state adapter, and the
+first real contents of the top edge while retaining the native navbar and
+Urlbar. ADR-027 and
+`docs/research/firefox-153-navigation-controls.md` record the current Firefox
+source, compatibility canaries, event/action choice, first causal test failure,
+privacy review, and remaining risks.
+
+The pure/static matrix in `npm test` covers:
+
+- exact required selected-browser/tab, URI, progress, event, observer, native
+  command-element, and `BrowserCommands` method capabilities;
+- native Back/Forward enabled and Stop/loading command truth;
+- selected/top-level location, same-document, redirect-style, title, busy,
+  selection, and command-state reconciliation without polling;
+- fresh selected-browser resolution for every Back, Forward, Reload, Stop, and
+  New Tab action;
+- bounded immutable title/display-URI state, malformed/stale event rejection,
+  subscriber/action errors, and no native/private value in diagnostics;
+- exact tab/progress/observer/application cleanup, duplicate disposal, and no
+  callback after disposal;
+- frontend health requiring four named top controls and text status while tabs,
+  editable address input, and menu remain outside the top surface.
+
+The final local commands are:
+
+```powershell
+npm run verify
+pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
+pwsh -NoProfile -File .\tests\shell-health.Tests.ps1
+pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
+pwsh -NoProfile -File .\tests\project-identity.Tests.ps1
+pwsh -NoProfile -File .\tests\installer.Tests.ps1
+```
+
+The Node matrix reports 97/97 passing tests, including 14 navigation bridge /
+state tests. Lint and Svelte/TypeScript checks report zero error or warning.
+The deterministic build retains the exact eleven-profile-file package and
+reproduces the changed generated artifacts:
+
+| Artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `content/firefox/BridgeBoundary.sys.mjs` | 27,465 | `a1633bd03d22e8c79e98d772b5732bfe266f6073bc04068c1e58af7e3f026244` |
+| `content/shell/ShellApp.js` | 64,615 | `bc5d91b5d5c7944917e0450641a05e3cd108304d801674b47b4bd786d924c16d` |
+| `content/shell/ShellStyles.sys.mjs` | 19,867 | `0bd0dc845caaf06ee7e4ed5f276d9560473899391f70093eca8a271393f424d4` |
+
+The current package remains `0.7.0-dev`; the generated third-party notice is
+unchanged because issue #12 adds no dependency. Production scans continue to
+reject runtime endpoints, remote assets, dynamic loading/code, source maps,
+debug artifacts, and unexpected inventory entries.
+
+Run the real matrix only against the marker-owned copied Firefox program and
+development profile after updating the exact package:
+
+```powershell
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>'
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --browser-toolbox
+pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+pwsh -NoProfile -File .\tests\firefox-frontend-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+pwsh -NoProfile -File .\tests\firefox-shell-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+```
+
+Firefox 153.0.4 passed top-edge keyboard reveal and focus, exact four-control
+presence, native/custom Back and Forward alternation, native enabled-state
+comparison, a delayed Reload with network start/stop and server request proof,
+Stop during a pending response, New Tab selection, a broken-response error
+page, and selected-tab close while progress was pending. The status rendered a
+long markup-like title and URI as bounded text only. `Escape` dismissed the
+surface and restored focus through issue #31's controller.
+
+The same process repeated synchronization and isolation in the initial normal,
+second normal, and private windows. Direct frontend unmount/remount removed and
+recreated the navigation subscription with fresh state. Window close,
+emergency fallback, and runtime stop removed the exact tab listeners, tabs
+progress listener, command observer, application subscription, top controls,
+and owned frame. Native toolbox, navbar, Urlbar, tabbox, browser content,
+modal/prompt infrastructure, titlebar, and OS controls remained present; no
+unexpected first-party Browser Console error was observed.
+
+The Browser Toolbox variant repeated the complete matrix, selected the shared
+frame in Inspector, and reconfirmed all four XHTML ownership boundaries without
+placing any Firefox-owned node under Svelte.
+
+The first frontend-restoration run reached the correct Stop mode immediately
+after Forward and therefore timed out while the test expected Reload. The
+harness now waits for Forward to leave `busy`, then uses a dedicated 500 ms
+loopback page and requires both progress start/stop and at least two requests.
+The ordinary retry and complete frontend recovery matrix passed; this was a
+test-ordering correction, not a runtime compatibility workaround.
+
+The bridge recovery wrapper passed missing base-boundary, tabs, and navigation
+capabilities. The frontend wrapper passed missing and throwing bundles. The
+shell wrapper passed safe start with complete and broken packages. Every wrapper
+restored exact committed bytes, reran ordinary startup where applicable, left
+native UI usable, finished with zero Firefox process, and used no startup-cache
+action. No lifecycle/failure diagnostic contained the exercised title, URI,
+profile path, private-window state, or local test-server address.
+
+## 16. Firefox stable-update procedure
 
 For every stable update:
 
@@ -894,7 +1004,7 @@ For every stable update:
 
 Never claim compatibility from version-number inspection alone.
 
-## 16. Automation boundary
+## 17. Automation boundary
 
 Suitable for automation:
 

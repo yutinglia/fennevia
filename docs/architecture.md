@@ -127,7 +127,7 @@ DOM global, or runtime debug switch for choosing a failure mode.
 
 `initializeWindowShell` stops at `healthy`. Only the explicit lifecycle
 controller can request `active`, and no production caller does so. Package
-`0.4.0-dev` introduced this boundary, and the current `0.6.0-dev` package still
+`0.4.0-dev` introduced this boundary, and the current `0.7.0-dev` package still
 contains no selector that hides Firefox UI. `Ctrl+Alt+Shift+F12` is registered directly on each chrome window in
 the capture and Mozilla system event groups. It reports the fixed recovery
 phase, clears state, removes every host/listener/timer/cleanup, and does not
@@ -182,8 +182,9 @@ private installed ESM
 is not source of truth. `WindowShell.sys.mjs` creates exactly one boundary from
 the existing `WindowManager` context for each managed window and retains it in
 the same frame-keyed private record as the frontend API. It passes no bridge
-implementation object, native handle, or capability object to Svelte. Issue #10
-later passes only the frozen ordinary-data tabs contract described below.
+implementation object, native handle, or capability object to Svelte. Issues
+#10 and #12 pass only frozen ordinary-data tabs and navigation contracts through
+separate application adapters.
 
 The boundary validates `window.document.defaultView`, the browser document URI,
 the process-local window ID, and normal/private kind before claiming a context.
@@ -201,9 +202,8 @@ registry IDs produce distinct typed errors. Registry snapshots contain counts
 and fixed state only. Event subscriptions and cleanup callbacks return
 idempotent disposers, and boundary disposal continues through all owned
 subscriptions and registries before reporting a typed cleanup error. These are
-the only shared utilities consumed by the tabs bridge and reserved for the
-upcoming navigation bridge; no service locator, dependency-injection framework,
-or generic Firefox SDK exists.
+the only shared utilities consumed by the tabs and navigation bridges; no
+service locator, dependency-injection framework, or generic Firefox SDK exists.
 
 ESLint applies a static boundary to `src/shell/` and ordinary `src/app/` code:
 Firefox implementation imports, privileged globals, and direct Firefox-owned
@@ -229,6 +229,25 @@ explicit fallback, and no browsing value enters logs or diagnostics. Current
 source and runtime evidence is in `docs/research/firefox-153-tabs-bridge.md`,
 `docs/research/firefox-153-tab-strip.md`, ADR-024, and ADR-025.
 
+Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
+private ESM. One controller per boundary separately validates the retained
+native command elements, `BrowserCommands` actions, selected browser/tab,
+paired tabs progress methods, event target, URI shape, and command observer.
+It reconciles an immutable selected-navigation snapshot from selected/top-level
+location and state callbacks, selected tab/attribute events, and command
+`disabled` mutations. Background or non-top-level progress is ignored, equal
+snapshots do not publish, and there is no polling.
+
+Actions invoke the current window's `BrowserCommands` methods after re-reading
+the selected browser and relevant command state; session-history, reload/cache,
+stop, principal, and new-tab policy remain Firefox-owned. The public contract
+contains only booleans, bounded title/display-URI text, subscriptions, and named
+actions. `src/app/navigation-state.ts` validates and copies it again before the
+top Svelte root receives an adapter. Native browsers, tabs, command elements,
+observers, progress objects, and windows remain inside the privileged boundary.
+Missing or later-failing dependencies use the existing health/fail-open path.
+See ADR-027 and `docs/research/firefox-153-navigation-controls.md`.
+
 ## 5. Application and frontend layers
 
 The application layer coordinates ordinary typed state, controllers, and feature policy. It must be usable without importing Firefox implementation modules directly.
@@ -243,6 +262,12 @@ no Firefox handle, `Services`, browsing value, or Firefox-owned DOM node. One
 shared framework-independent controller coordinates edge visibility, while
 each root retains independent component ownership. Mount, health, official
 unmount, and fresh-state remount are explicit frontend API operations.
+
+Issue #12 replaces only the top placeholder with four accessible controls and
+a secondary bounded text status. It consumes the application navigation
+adapter and the existing top-edge focus/reveal contract; it does not import a
+Firefox module, inspect command DOM, create another trigger/timer/controller,
+or add the editable address field owned by issue #13.
 
 The frontend owns:
 
@@ -290,6 +315,13 @@ scrollbar descendants before asserting XHTML project ownership; it does not
 reclassify those browser-owned XUL widgets as authored shell DOM. No selector
 targets the native tab strip, and native UI remains visible.
 
+The issue #12 top controls use the same frame-rooted token and control classes.
+Navigation-specific selectors cover compact/narrow layout, native-disabled
+state, loading emphasis, text ellipsis/bidi isolation, and forced-color
+fallbacks. Hover, active, and focus-visible behavior remains the common owned
+control policy. No selector targets the native navbar, Urlbar, command set, or
+toolbox.
+
 ## 7. Native UI gate
 
 The implemented root state attributes are:
@@ -311,7 +343,7 @@ AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute.
 
 When a later issue implements the actual native-UI gate, native UI may be hidden
-only while active and must never be removed. Package `0.6.0-dev` does not hide
+only while active and must never be removed. Package `0.7.0-dev` does not hide
 it. Retaining native DOM preserves implicit dependencies in Firefox commands,
 popups, customization, titlebar, and platform integration and provides the
 recovery path.

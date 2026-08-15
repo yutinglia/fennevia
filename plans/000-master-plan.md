@@ -156,8 +156,19 @@ IDs, and exposes select/open-new-tab/close/pin/unpin actions with typed stale an
 foreign-ID failures. A separate ordinary-data adapter drives only a Svelte tab
 count diagnostic; #11 still owns the visual tab strip. Bounded text and
 allowlisted favicon fallback, missing-capability fail-open injection, and real
-normal/second/private-window synchronization passed. Navigation remains #12.
+normal/second/private-window synchronization passed. Navigation was reserved
+for #12.
 See ADR-024 and `docs/research/firefox-153-tabs-bridge.md`.
+
+Issue #12 now supplies the selected-navigation slice. One controller per
+boundary mirrors retained native command enabled/loading state, invokes the
+current window's source-validated `BrowserCommands`, and publishes bounded
+title/display-URI text after selected/top-level progress, tab, and command
+events. A separate ordinary-data adapter drives only the top Svelte surface;
+native browser, tab, command, observer, and progress handles remain private.
+Normal/second/private synchronization, exact capability failure, cleanup, and
+all recovery matrices passed without polling or native hiding. See ADR-027 and
+`docs/research/firefox-153-navigation-controls.md`.
 
 ### Phase 5: Usable UI slices
 
@@ -176,8 +187,8 @@ native-hide phase. The owned Svelte tab strip consumes only immutable ordinary
 tab state, preserves Firefox order/selection, supplies safe text/favicon
 fallbacks and accessible keyboard/actions, and keeps native tabs unchanged.
 Real Firefox 153.0.4 normal, second, private, Browser Toolbox, rapid-action,
-cleanup, and fail-open recovery runs passed. Navigation/address/sidebar work
-remains in later issues. Issue #31 then establishes the shared Phase 5 shell
+cleanup, and fail-open recovery runs passed. Navigation, address, and sidebar
+work were left to later issues. Issue #31 then establishes the shared Phase 5 shell
 foundation: one zero-layout frame, independent top/left/right/bottom Svelte
 surfaces, a framework-independent reveal controller, accessible keyboard and
 focus policy, glass-capable project tokens with solid, reduced-motion, and
@@ -185,6 +196,13 @@ forced-colors fallbacks, and the existing tab strip reoriented into the left
 edge. Native UI remains visible. See ADR-025, ADR-026,
 `docs/research/firefox-153-tab-strip.md`, and
 `docs/research/firefox-153-four-edge-shell.md`.
+
+Issue #12 completes the second usable slice in that frame. The top edge now
+contains native-synchronized Back, Forward, Reload/Stop, and New Tab controls
+plus bounded text-only page status, with keyboard reveal/focus/Escape,
+responsive and forced-color styling, deterministic cleanup, and fail-open
+recovery. The editable address input, sidebar, and native-hide gate remain in
+their later issues; Firefox's navbar and Urlbar stay visible.
 
 ### Phase 6: Hide the native visible shell
 

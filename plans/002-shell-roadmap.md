@@ -148,6 +148,16 @@ normal/second/private isolation, disposal, and injected tabs-capability
 fail-open behavior passed. See ADR-024 and
 `docs/research/firefox-153-tabs-bridge.md`.
 
+Issue #12 implements the second consumer without combining it with tabs. The
+per-window navigation controller mirrors five retained command elements,
+invokes five current `BrowserCommands` methods, and reconciles one immutable
+selected snapshot from two tab events, selected/top-level progress callbacks,
+and one command-attribute observer. `src/app/navigation-state.ts` provides the
+separate ordinary reactive adapter. Bounded title/URI text, fresh selected-
+browser actions, missing-capability fail-open, normal/second/private isolation,
+and deterministic disposal passed. See ADR-027 and
+`docs/research/firefox-153-navigation-controls.md`.
+
 ## Milestone E: Custom tab strip MVP
 
 Implement in this order:
@@ -193,9 +203,9 @@ Phase 5 features:
 - project-scoped glass tokens with near-solid, reduced-transparency,
   reduced-motion, and forced-colors fallbacks.
 
-The top, right, and bottom surfaces remain honest placeholders until their
-feature issues land. The frame does not hide, replace, or resize Firefox-owned
-UI or content. See ADR-026 and
+The right and bottom surfaces remain honest placeholders until their feature
+issues land; issue #12 replaces only the top placeholder. The frame does not
+hide, replace, or resize Firefox-owned UI or content. See ADR-026 and
 `docs/research/firefox-153-four-edge-shell.md`.
 
 ## Milestone F: Navigation and address input MVP
@@ -209,6 +219,15 @@ Implement:
 - basic URL and search submission through Firefox's existing semantics.
 
 Do not reimplement Firefox Urlbar providers, rich suggestions, autofill, search modes, extension integration, identity UI, or permission UI in the MVP. Research the current Firefox submission path and keep any temporary native controller dependency behind the bridge.
+
+Progress (2026-08-15): issue #12 completes the navigation half on Firefox
+153.0.4 for Windows. Back/Forward enabled state and Reload/Stop loading state
+match Firefox's retained command elements; all five actions use current
+`BrowserCommands`. Selected title/display URI remain bounded per-window text,
+and all updates are event-driven. The top edge reuses issue #31's reveal,
+focus, keyboard, collision, glass, environment, and cleanup contracts without
+another trigger or timer. Native navbar/Urlbar remain visible. Issue #13 still
+owns independent address editing, URL/search submission, and `Ctrl+L`.
 
 ## Milestone G: Sidebar MVP
 

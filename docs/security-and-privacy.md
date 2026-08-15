@@ -97,6 +97,15 @@ browser, event, principal, URL, title, query, or profile path. The privileged
 boundary object itself is retained by `WindowShell.sys.mjs` and is never passed
 to Svelte or ordinary application state.
 
+Issue #12 deliberately adds current title and display URI to the navigation
+snapshot because they are required visible status data. The bridge and
+application adapter cap them at 256 and 2,048 characters respectively. They
+exist only in the owning window's memory and text nodes; they are never passed
+to the logger, error constructors, datasets, persistence, another window, or a
+network API. Navigation diagnostics retain only fixed code, phase, current-
+build symbol, Firefox version/build, and normal/private kind. A native cause is
+available only to the existing stack-redaction boundary.
+
 ## 5. Dependency and supply-chain policy
 
 Before adding a runtime or build dependency, record:
@@ -154,6 +163,11 @@ Issue #9 also adds no manifest directive. Its generated bridge ESM remains
 inside the same privileged-only `chrome://fennevia/content/` package and is
 imported only by the fixed runtime module. It exposes no `resource:` alias,
 content-accessible flag, arbitrary path, or runtime loader API.
+
+Issue #12 adds navigation source to that existing generated private ESM and
+top controls to the existing frontend/CSS artifacts. It adds no mapping,
+resource alias, content-accessible flag, runtime endpoint, arbitrary command or
+URL argument, or remote asset.
 
 ## 7. Installation and file-system safety
 
@@ -242,6 +256,13 @@ continues to follow `#browser` geometry without claiming OS controls. No native
 node is hidden, resized, moved, or placed under Svelte ownership, and issue #15
 still owns any future native-visible-shell gate.
 
+Issue #12 fills only the project-owned top surface. It invokes Firefox's
+retained command methods and leaves the native navbar, Urlbar, identity block,
+permission UI, prompt sets, titlebar, and OS controls visible and unchanged.
+The bounded page title and display URI are convenience status text, not a
+security indicator or editable submission field. Firefox remains the
+authoritative security UI, and issue #15 still owns any native hiding.
+
 ## 9. Private windows
 
 - Private-window behavior must be explicit: fully supported or complete native fallback.
@@ -309,8 +330,8 @@ booleans, and counts, never the exercised title or favicon value.
 Each window still owns its own adapter, Svelte state, focus registry, bridge
 subscription, and at most one close-focus retry timer. Every action replaces
 that timer; unmount clears it and the root-delegated listeners before dropping
-state. Normal, second, and private windows remained isolated. Issue #12 must
-still prove the navigation data flow it introduces. Full evidence is in
+state. Normal, second, and private windows remained isolated. Issue #12 later
+proved its navigation data flow independently. Tab evidence is in
 `docs/research/firefox-153-tabs-bridge.md` and
 `docs/research/firefox-153-tab-strip.md`.
 
@@ -322,6 +343,17 @@ favicon, URL, query, profile path, native tab, or native window. Reverse disposa
 clears every hold and timer before dropping per-window state. No edge state is
 persisted or shared across windows. Full evidence is in
 `docs/research/firefox-153-four-edge-shell.md`.
+
+Issue #12 gives each window its own navigation controller, selected snapshot,
+subscriber set, two tab listeners, one tabs progress listener, one command
+observer, application adapter, and top text output. Title and display URI may
+describe private browsing, so they are never process-global, persisted,
+logged, placed in datasets/errors, or copied to another window. Background and
+non-top-level progress is ignored. Frontend unmount, emergency fallback,
+window close, runtime stop, capability failure, and startup rollback remove all
+listeners/observers/subscribers and release the snapshot with that window.
+Normal, second, and private-window isolation passed in real Firefox. Full
+evidence is in `docs/research/firefox-153-navigation-controls.md`.
 
 ## 10. Source maps and debug artifacts
 
@@ -340,6 +372,10 @@ and references. Issue #9 applies the same rules to the bridge build; the current
 package installs only the exact eleven-file profile inventory. Installed startup
 and generated files have explicit repository EOL attributes so their manifest
 hashes describe stable bytes across Windows checkouts.
+
+Issue #12 keeps that exact inventory and introduces no dependency or debug
+artifact. The deterministic bridge/frontend builds and production endpoint,
+source-map, dynamic-loader, and unexpected-file scans remain mandatory.
 
 ## 11. Security review triggers
 

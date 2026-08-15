@@ -76,7 +76,7 @@ Assert-True -Condition (Test-Path -LiteralPath $targetPath -PathType Leaf) -Mess
 Assert-True -Condition ((Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant() -ceq $expectedHash) -Message "The installed bridge artifact does not match the committed package hash."
 
 $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd("\", "/")
-$tempRoot = [IO.Path]::GetFullPath((Join-Path $tempBase ("fennevia-issue9-bridge-recovery-" + [guid]::NewGuid().ToString("N"))))
+$tempRoot = [IO.Path]::GetFullPath((Join-Path $tempBase ("fennevia-issue12-navigation-recovery-" + [guid]::NewGuid().ToString("N"))))
 Assert-True -Condition $tempRoot.StartsWith($tempBase + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -Message "The temporary recovery root escaped the operating-system temporary directory."
 New-Item -ItemType Directory -Path $tempRoot | Out-Null
 $bridgeBackupPath = Join-Path $tempRoot "BridgeBoundary.sys.mjs"
@@ -132,6 +132,48 @@ export function createFirefoxBridgeBoundary({
     snapshot() {
       return Object.freeze({ contextId, disposed, windowKind });
     },
+  });
+}
+
+export function createFirefoxNavigationBridge() {
+  let disposed = false;
+  const navigation = Object.freeze({
+    back() { return false; },
+    forward() { return false; },
+    newTab() { return true; },
+    reload() { return true; },
+    reloadOrStop() { return "reload"; },
+    snapshot() {
+      return Object.freeze({
+        canGoBack: false,
+        canGoForward: false,
+        displayUri: "about:blank",
+        loading: false,
+        title: "",
+      });
+    },
+    stop() { return false; },
+    subscribe() {
+      let active = true;
+      return () => {
+        if (!active) {
+          return false;
+        }
+        active = false;
+        return true;
+      };
+    },
+  });
+  return Object.freeze({
+    assertRequiredCapabilities() { return Object.freeze([]); },
+    dispose() {
+      if (disposed) {
+        return false;
+      }
+      disposed = true;
+      return true;
+    },
+    navigation,
   });
 }
 
@@ -197,6 +239,10 @@ export function createFirefoxBridgeBoundary({
   });
 }
 
+export function createFirefoxNavigationBridge() {
+  throw new Error("FENNEVIA_TEST_NAVIGATION_SHOULD_NOT_INITIALIZE");
+}
+
 export function createFirefoxTabsBridge({ boundary }) {
   const context = boundary.snapshot();
   const error = new Error("FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING");
@@ -228,6 +274,98 @@ export function createFirefoxTabsBridge({ boundary }) {
 }
 '@
 
+$missingNavigationCapabilityBridge = @'
+export function createFirefoxBridgeBoundary({
+  buildId,
+  contextId,
+  firefoxVersion,
+  windowKind,
+}) {
+  let disposed = false;
+  return Object.freeze({
+    dispose() {
+      if (disposed) {
+        return false;
+      }
+      disposed = true;
+      return true;
+    },
+    snapshot() {
+      return Object.freeze({
+        buildId: String(buildId),
+        contextId,
+        disposed,
+        firefoxVersion: String(firefoxVersion),
+        windowKind,
+      });
+    },
+  });
+}
+
+export function createFirefoxNavigationBridge({ boundary }) {
+  const context = boundary.snapshot();
+  const error = new Error("FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING");
+  Object.defineProperties(error, {
+    fenneviaBuildId: { value: context.buildId, enumerable: false },
+    fenneviaCode: {
+      value: "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
+      enumerable: false,
+    },
+    fenneviaFirefoxVersion: {
+      value: context.firefoxVersion,
+      enumerable: false,
+    },
+    fenneviaPhase: {
+      value: "firefox-navigation-capability",
+      enumerable: false,
+    },
+    fenneviaSymbol: {
+      value: "window.gBrowser.removeTabsProgressListener",
+      enumerable: false,
+    },
+    fenneviaWindowKind: { value: context.windowKind, enumerable: false },
+    name: {
+      value: "FenneviaFirefoxNavigationBridgeTestError",
+      enumerable: false,
+    },
+  });
+  throw error;
+}
+
+export function createFirefoxTabsBridge() {
+  let disposed = false;
+  const tabs = Object.freeze({
+    close() {},
+    open() { return "tab-registry-1-handle-1"; },
+    pin() {},
+    select() {},
+    snapshot() { return Object.freeze([]); },
+    subscribe() {
+      let active = true;
+      return () => {
+        if (!active) {
+          return false;
+        }
+        active = false;
+        return true;
+      };
+    },
+    unpin() {},
+  });
+  return Object.freeze({
+    assertRequiredCapabilities() { return Object.freeze([]); },
+    dispose() {
+      if (disposed) {
+        return false;
+      }
+      disposed = true;
+      return true;
+    },
+    tabs,
+  });
+}
+'@
+
 try {
     Write-Utf8NoBom -Path $targetPath -Content $missingCapabilityBridge
     & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-bridge-fail-open
@@ -236,6 +374,10 @@ try {
     Write-Utf8NoBom -Path $targetPath -Content $missingTabsCapabilityBridge
     & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-tabs-bridge-fail-open
     Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "A missing required tabs capability did not fail open at the shell health boundary."
+
+    Write-Utf8NoBom -Path $targetPath -Content $missingNavigationCapabilityBridge
+    & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile --expect-navigation-bridge-fail-open
+    Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "A missing required navigation capability did not fail open at the shell health boundary."
 
     Copy-Item -LiteralPath $bridgeBackupPath -Destination $targetPath -Force
     & $node.Source $harnessPath --firefox $canonicalFirefox --profile $canonicalProfile
@@ -257,4 +399,4 @@ if ($testFailure) {
 }
 
 Assert-True -Condition (@(Get-CimInstance Win32_Process -Filter "Name='firefox.exe'").Count -eq 0) -Message "The bridge recovery matrix left a Firefox process running."
-Write-Output "PASS: missing boundary and tabs capabilities failed open, then exact restoration recovered ordinary startup."
+Write-Output "PASS: missing boundary, tabs, and navigation capabilities failed open, then exact restoration recovered ordinary startup."

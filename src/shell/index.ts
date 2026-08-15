@@ -10,6 +10,11 @@ import {
   type EdgeShellController,
 } from "../app/edge-surfaces";
 import {
+  createBrowserNavigationStateAdapter,
+  type BrowserNavigationBridge,
+  type BrowserNavigationStateAdapter,
+} from "../app/navigation-state";
+import {
   createBrowserTabsStateAdapter,
   type BrowserTabsBridge,
   type BrowserTabsStateAdapter,
@@ -36,6 +41,7 @@ export type EdgeMountTargets = Readonly<Record<EdgeName, Element>>;
 
 type MountOptions = Readonly<{
   frame: HTMLElement;
+  navigation: BrowserNavigationBridge;
   onFatalError: (error: unknown) => void;
   onUnmountError: (error: unknown) => void;
   tabs: BrowserTabsBridge;
@@ -57,6 +63,7 @@ type MountedComponent = Readonly<{
 
 type MountedShell = Readonly<{
   components: readonly MountedComponent[];
+  navigation: BrowserNavigationStateAdapter;
   shell: EdgeShellController;
   tabs: BrowserTabsStateAdapter;
 }>;
@@ -128,6 +135,7 @@ function getFocusableOrigin(
 
 export function mountShellApp({
   frame,
+  navigation,
   onFatalError,
   onUnmountError,
   tabs,
@@ -152,6 +160,7 @@ export function mountShellApp({
   let disposed = false;
   let environmentObserver: MutationObserver | undefined;
   let listenersRegistered = false;
+  let navigationState: BrowserNavigationStateAdapter | undefined;
   let tabsState: BrowserTabsStateAdapter | undefined;
   const components: MountedComponent[] = [];
   const controllerSubscriptions: Array<() => boolean> = [];
@@ -343,6 +352,11 @@ export function mountShellApp({
     }
     mountedFrames.delete(frame);
     try {
+      navigationState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
       tabsState?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -365,6 +379,7 @@ export function mountShellApp({
 
   try {
     tabsState = createBrowserTabsStateAdapter(tabs);
+    navigationState = createBrowserNavigationStateAdapter(navigation);
     for (const edge of edgeNames) {
       const surface = shell.getSurface(edge);
       controllerSubscriptions.push(
@@ -387,7 +402,9 @@ export function mountShellApp({
         props: {
           edge,
           frame,
+          ...(edge === "top" ? { navigation: navigationState } : {}),
           onDismiss: dismissSurface,
+          onFatalError,
           onDisposed(disposedEdge: EdgeName) {
             targets[disposedEdge].setAttribute(
               MOUNT_STATUS_ATTRIBUTE,
@@ -435,6 +452,7 @@ export function mountShellApp({
 
     const record = Object.freeze({
       components: Object.freeze([...components]),
+      navigation: navigationState,
       shell,
       tabs: tabsState,
     });
@@ -489,11 +507,19 @@ export function verifyShellAppHealth({
     'button[data-fennevia-action="new-tab"]',
     "output[data-fennevia-tab-count]",
   ];
+  const requiredTopSelectors = [
+    'button[data-fennevia-action="back"]',
+    'button[data-fennevia-action="forward"]',
+    'button[data-fennevia-action="reload-stop"]',
+    'button[data-fennevia-action="new-tab"]',
+    "output[data-fennevia-navigation-status]",
+  ];
 
   if (
     frame.getAttribute(FRAME_READY_ATTRIBUTE) !== "" ||
     !mounted ||
     mounted.components.length !== edgeNames.length ||
+    mounted.navigation.status().disposed ||
     mounted.tabs.status().disposed ||
     roots.some((root, index) => {
       const edge = edgeNames[index];
@@ -521,6 +547,8 @@ export function verifyShellAppHealth({
     requiredLeftSelectors.some(
       (selector) => !leftRoot.querySelector(selector),
     ) ||
+    !topRoot ||
+    requiredTopSelectors.some((selector) => !topRoot.querySelector(selector)) ||
     !template ||
     typeof templateConstructor !== "function" ||
     !(template instanceof templateConstructor) ||
@@ -577,6 +605,10 @@ export function getShellAppCapabilities({
     Object.freeze({
       available: Boolean(mounted && !mounted.tabs.status().disposed),
       name: "frontend.tabs-state",
+    }),
+    Object.freeze({
+      available: Boolean(mounted && !mounted.navigation.status().disposed),
+      name: "frontend.navigation-state",
     }),
     Object.freeze({
       available: edgeNames.every((edge) =>
