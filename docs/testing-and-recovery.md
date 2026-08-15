@@ -748,7 +748,70 @@ native Firefox usable. The wrapper restores the exact original bridge hash,
 reruns the complete matrix, confirms no Firefox process remains, and does not
 clear startup cache.
 
-## 13. Firefox stable-update procedure
+## 13. Phase 5 tab-strip evidence
+
+Issue #11 renders the issue #10 ordinary adapter as the first usable custom tab
+strip while retaining the native strip. Architecture, accessibility sources,
+security review, first causal errors, and rejected alternatives are in
+`docs/research/firefox-153-tab-strip.md`; ADR-025 records the accepted model.
+
+The static/pure matrix is part of `npm test` and covers:
+
+- safe display and accessible labels for empty, long, pinned, loading, favicon,
+  and bidirectional title state without including favicon data in names;
+- roving-focus recovery from live, stale, selected, first, and empty states;
+- LTR/RTL Arrow wrapping, Home/End, Enter/Space, Delete, and close-neighbor
+  selection;
+- semantic sibling tab/pin/close controls, no nested interactive content,
+  property-only favicon binding, no HTML/CSS injection, and no Firefox globals;
+- a native fixture that mutates `addTrustedTab` and `removeTab` options, proving
+  the private temporary records are writable while public state stays frozen.
+
+The real Firefox commands remain:
+
+```powershell
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>'
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --browser-toolbox
+pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+```
+
+Firefox 153.0.4 verified nine-tab horizontal overflow, exact native order and
+selected/pinned/loading state, long markup-like bidirectional title text, a
+failed raster-data favicon fallback, background pin/unpin and close without
+selection, rapid open/close, RTL-aware roving keyboard behavior, and focus
+restoration after selected or button-driven close. The matrix then repeated
+native/external synchronization in the existing, second normal, and private
+windows. Each other window retained isolated state.
+
+The first real new-tab click exposed Firefox's writable-options contract:
+`addTrustedTab` assigns `triggeringPrincipal`. Replacing the frozen native-call
+record with a fresh private mutable record fixed the causal TypeError, and the
+new mutation fixture covers it. Repeated close smoke also exposed a focus race
+with Firefox's native close animation. Immediate focus plus one tracked 200 ms
+retry passed repeated ordinary and recovery runs; each subsequent action and
+unmount cancels the retry.
+
+Direct official unmount/remount left zero descendants, bridge subscriptions,
+and outstanding event listeners. Root-level `focusin` delegation replaced the
+initial per-tab direct listeners. Browser Toolbox selected the primary host,
+kept native browser/tab nodes outside project ownership, and classified the XUL
+scrollbar generated for the XHTML overflow scroller as Firefox-owned native
+anonymous content before validating all authored descendants as XHTML. The
+native tab strip stayed visible and computed native styles remained unchanged.
+
+The owned bridge recovery wrapper passed both base-boundary and tabs-capability
+fail-open injections, restored the exact bridge artifact, reran the complete
+normal/second/private matrix, and left no Firefox process. No normal lifecycle
+or failure diagnostic contained a page title, URL, or favicon value.
+
+## 14. Firefox stable-update procedure
 
 For every stable update:
 
@@ -763,7 +826,7 @@ For every stable update:
 
 Never claim compatibility from version-number inspection alone.
 
-## 14. Automation boundary
+## 15. Automation boundary
 
 Suitable for automation:
 

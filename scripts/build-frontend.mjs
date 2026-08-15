@@ -36,6 +36,7 @@ const expectedGeneratedFiles = Object.freeze([
 const expectedSvelteDiagnosticSlugs = Object.freeze([
   "async_derived_orphan",
   "derived_inert",
+  "each_key_duplicate",
   "effect_in_teardown",
   "effect_in_unowned_derived",
   "effect_orphan",
@@ -54,6 +55,8 @@ const allowedDomNamespaceUris = Object.freeze([
   "http://www.w3.org/1999/xlink",
   "http://www.w3.org/2000/svg",
 ]);
+const rawSvelteWhitespaceTemplate = "` \t\n\\r\\f\\xA0\\v\uFEFF`";
+const escapedSvelteWhitespaceTemplate = "` \\t\\n\\r\\f\\xA0\\v\\uFEFF`";
 
 /** @param {string} path */
 function assertOwnedTarget(path) {
@@ -117,8 +120,17 @@ function renderStyleModule(css) {
 /** @param {Buffer} bundle */
 function replaceSvelteDiagnosticUris(bundle) {
   const source = bundle.toString("utf8");
+  if (source.split(rawSvelteWhitespaceTemplate).length - 1 !== 1) {
+    throw new Error("FENNEVIA_BUILD_SVELTE_WHITESPACE_SET_INVALID");
+  }
+  const normalizedSource = source.replace(
+    rawSvelteWhitespaceTemplate,
+    escapedSvelteWhitespaceTemplate,
+  );
   const pattern = /https:\/\/svelte\.dev\/e\/([a-z0-9_]+)/gu;
-  const slugs = [...source.matchAll(pattern)].map((match) => match[1]).sort();
+  const slugs = [...normalizedSource.matchAll(pattern)]
+    .map((match) => match[1])
+    .sort();
   if (
     JSON.stringify(slugs) !==
     JSON.stringify([...expectedSvelteDiagnosticSlugs].sort())
@@ -126,7 +138,7 @@ function replaceSvelteDiagnosticUris(bundle) {
     throw new Error("FENNEVIA_BUILD_SVELTE_DIAGNOSTIC_SET_INVALID");
   }
 
-  const replaced = source.replace(
+  const replaced = normalizedSource.replace(
     pattern,
     (_match, slug) => `FENNEVIA_SVELTE_RUNTIME_${String(slug).toUpperCase()}`,
   );

@@ -468,3 +468,50 @@ No polling loop, arbitrary URL action, global debug surface, remote load,
 native DOM ownership, compatibility branch, or tab-group abstraction is added.
 Source, canary, security, failure, cleanup, and real three-window evidence is in
 `docs/research/firefox-153-tabs-bridge.md`.
+
+## ADR-025: Render the first tab strip as an owned accessible composite
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Render one horizontal `tablist` from the immutable issue #10 snapshot. Each
+ordered item has a primary `button[role="tab"]` plus sibling pin and close
+buttons inside a presentational wrapper; interactive controls are never nested.
+Exactly one primary tab participates in roving `tabindex`. Left/Right follows
+computed text direction and wraps, Home/End selects an edge, Enter/Space
+selects, and Delete closes. Firefox remains the source of selected state and
+tab order. The custom component does not claim or link to a native tab panel,
+because doing so would introduce a forbidden frontend dependency on Firefox DOM.
+
+Keep pinned and regular tabs in the same native order. Pinned items use one
+fixed compact width, regular items use bounded widths, and the project-owned
+strip scrolls horizontally under pressure. Page titles are text with
+`dir="auto"`, plaintext bidi isolation, ellipsis, a bounded accessible name,
+and an untitled fallback. An allowlisted favicon is assigned only to an image
+`src` property over a static fallback; a load error hides the image and removes
+its source. No title or favicon enters HTML, CSS interpolation, a dataset, a
+log, persistence, or an error.
+
+Use root-level `focusin`/`focusout` delegation instead of one direct focus
+listener per tab. Closing chooses the next native-order tab or the previous
+one, focuses it after Svelte flush, and performs one 200 ms retry after
+Firefox's close animation can move focus. The retry is replaced by every new
+action and cleared on unmount, so there is at most one owned timer. Official
+unmount/remount instrumentation verifies zero outstanding listeners,
+subscriptions, timers, descendants, or reused state.
+
+Pass fresh boundary-local mutable option records into `addTrustedTab` and
+`removeTab`; continue freezing every public snapshot and contract. Firefox
+153's `addTrustedTab` assigns `options.triggeringPrincipal` before delegating,
+so freezing a native-call option record caused the first real new-tab action to
+fail. A native-mutation regression fixture now proves those temporary records
+remain writable without exposing them across the bridge.
+
+**Reasoning:** The WAI-ARIA tabs and tabs-with-actions patterns provide the
+smallest keyboard and semantic model compatible with a browser tab strip,
+while sibling actions avoid invalid markup and accidental selection. Plain
+root-scoped Svelte CSS and platform controls satisfy layout, forced-colors,
+focus, bidi, and overflow requirements without a component dependency or a
+native tab override. Native Firefox tabs stay visible and unchanged, so this
+issue does not enter the activation or native-hide phase. Sources, rejected
+alternatives, security effects, first causal errors, and the complete runtime
+matrix are recorded in `docs/research/firefox-153-tab-strip.md`.

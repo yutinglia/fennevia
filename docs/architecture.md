@@ -219,11 +219,13 @@ passes that object, never the controller or native window, to the frontend.
 `src/app/tab-state.ts` is a second, unprivileged copy boundary. It validates and
 copies exact snapshot fields into a Svelte-independent reactive adapter, drops
 unknown properties, owns frontend subscriptions, and releases the public bridge
-on unmount. The current Svelte smoke island renders only the synchronized tab
-count. Full tab visuals remain #11. Titles stay bounded text, favicon values use
-a strict internal/raster allowlist with an explicit fallback, and no browsing
-value enters logs or diagnostics. Current-source and runtime evidence is in
-`docs/research/firefox-153-tabs-bridge.md` and ADR-024.
+on unmount. Issue #11 renders that ordinary state as one accessible project-owned
+tab strip. Primary tab buttons expose selected semantics and roving keyboard
+focus; pin and close remain sibling controls. Titles stay bounded text, favicon
+values use a strict internal/raster allowlist with a property-only image and
+explicit fallback, and no browsing value enters logs or diagnostics. Current
+source and runtime evidence is in `docs/research/firefox-153-tabs-bridge.md`,
+`docs/research/firefox-153-tab-strip.md`, ADR-024, and ADR-025.
 
 ## 5. Application and frontend layers
 
@@ -275,6 +277,14 @@ input, application-menu button, and modal prompt unchanged when that style was
 toggled. Tailwind and Shadow DOM remain unselected because the scoped component
 CSS satisfied the measured isolation and theme requirements without another
 dependency or rendering boundary.
+
+Issue #11 keeps the same boundary for the tab strip. Pinned and regular items
+use bounded project-only layout, many tabs overflow inside one horizontal
+scroller, and forced-colors/focus rules remain rooted at the shell root. The
+Browser Toolbox ownership walk excludes Firefox-generated native-anonymous
+scrollbar descendants before asserting XHTML project ownership; it does not
+reclassify those browser-owned XUL widgets as authored shell DOM. No selector
+targets the native tab strip, and native UI remains visible.
 
 ## 7. Native UI gate
 

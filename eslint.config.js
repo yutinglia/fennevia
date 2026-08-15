@@ -9,9 +9,16 @@ const browserGlobals = {
   AbortSignal: "readonly",
   Element: "readonly",
   Event: "readonly",
+  FocusEvent: "readonly",
+  HTMLButtonElement: "readonly",
+  HTMLDivElement: "readonly",
+  HTMLElement: "readonly",
+  HTMLImageElement: "readonly",
   HTMLInputElement: "readonly",
   HTMLTemplateElement: "readonly",
+  KeyboardEvent: "readonly",
   Node: "readonly",
+  Window: "readonly",
 };
 
 const nodeGlobals = {
@@ -58,6 +65,7 @@ export default defineConfig(
       "tests/firefox-tabs.test.mjs",
       "tests/frontend-smoke.test.mjs",
       "tests/tab-state.test.mjs",
+      "tests/tab-strip.test.mjs",
       "vite*.config.ts",
     ],
     languageOptions: {

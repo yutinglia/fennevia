@@ -50,6 +50,8 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /^\(function\(\)\{/u);
   assert.match(bundle, /__fenneviaRegisterShellFrontend/u);
   assert.match(bundle, /FENNEVIA_SVELTE_RUNTIME_/u);
+  assert.doesNotMatch(bundle, /[\r\n]/u);
+  assert.doesNotMatch(bundle, /[ \t]+$/u);
   assert.doesNotMatch(bundle, /\b(?:import|export)\s/u);
   assert.doesNotMatch(bundle, /\bimport\s*\(/u);
   assert.doesNotMatch(

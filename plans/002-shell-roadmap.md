@@ -149,6 +149,19 @@ Implement in this order:
 
 Do not begin complex drag-and-drop, multi-select, groups, or workspace behavior before the first three items are stable.
 
+Progress (2026-08-15): issue #11 completes the MVP on Firefox 153.0.4 for
+Windows. One Svelte tablist renders the issue #10 native order, selected/title,
+safe favicon fallback, pinned, and loading state. It supports select, new,
+close, pin/unpin, RTL-aware roving arrow navigation, Home/End, Enter/Space,
+Delete, named sibling actions, deterministic close-focus restoration, bounded
+pinned/regular widths, and horizontal overflow. Long bidirectional/markup-like
+titles and failed image data remained text/property-only. Normal, second,
+private, Browser Toolbox, rapid action, disposal/remount, native-style
+isolation, and bridge-capability fail-open matrices passed while the native tab
+strip stayed visible. Drag reorder, groups/workspaces, multi-select, audio,
+attention, previews, and full context menus remain deferred. See ADR-025 and
+`docs/research/firefox-153-tab-strip.md`.
+
 ## Milestone F: Navigation and address input MVP
 
 Implement:
