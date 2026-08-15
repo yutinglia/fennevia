@@ -268,11 +268,15 @@ pwsh -NoProfile -File .\tests\installer.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
 ```
 
-The current package is `0.4.0-dev` and contains seven exact profile artifacts.
+The current package is `0.5.0-dev` and contains ten exact profile artifacts:
+the manifest, bootstrap, five runtime modules, and three generated shell files.
 `.gitattributes` fixes AutoConfig/default/manifest files to CRLF and privileged
-`.mjs` modules to LF so the committed SHA-256 values remain stable on Windows
-and non-Windows checkouts. Do not recompute hashes from an unintended line-end
-conversion; normalize the source according to that contract first.
+`.mjs`, `.js`, and notice files to LF so the committed SHA-256 values remain
+stable on Windows and non-Windows checkouts. Do not recompute hashes from an
+unintended line-end conversion; normalize the source according to that contract
+first. Run `npm run build` before package preview whenever frontend source or
+build configuration changes; the command rebuilds the exact shell directory
+and synchronizes package hashes.
 Before a real install or update, also run the runtime/package gates:
 
 ```powershell
@@ -280,6 +284,7 @@ pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
 pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
 pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
 pwsh -NoProfile -File .\tests\shell-health.Tests.ps1
+npm run verify
 pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -ArtifactRoot .\profile\chrome\fennevia `
   -InventoryPath .\package-manifest.json

@@ -94,7 +94,7 @@ Before adding a runtime or build dependency, record:
 - bundle-size and attack-surface effect;
 - removal or replacement cost.
 
-Use `docs/dependency-review-template.md` for additions and upgrades, store accepted records under `docs/dependency-reviews/`, and link the record from the issue and pull request. `docs/dependency-reviews/frontend-toolchain-2026-08-14.md` is the preliminary no-install example for Svelte, the Svelte Vite plugin, Vite, and TypeScript.
+Use `docs/dependency-review-template.md` for additions and upgrades, store accepted records under `docs/dependency-reviews/`, and link the record from the issue and pull request. `docs/dependency-reviews/frontend-toolchain-2026-08-14.md` is the preliminary no-install assessment; `docs/dependency-reviews/frontend-toolchain-2026-08-15.md` is the accepted issue #8 resolved-graph review.
 
 Requirements:
 
@@ -106,6 +106,16 @@ Requirements:
 - CI should verify the production bundle contains no unexpected remote endpoints or runtime loaders.
 - The resolved lockfile review must enumerate lifecycle scripts, native/platform binaries, optional packages, network behavior, and the difference when installation scripts are disabled; top-level registry metadata alone is not approval.
 
+Issue #8 pins 12 exact development dependencies and commits npm lockfile v3.
+The resolved inventory contains 173 package paths; 148 apply to the validated
+Windows host. Project-level `ignore-scripts=true` prevents lifecycle execution.
+The only lock entry flagged with an install script is optional macOS-only
+`fsevents`; it is not installed on Windows. Rolldown and Lightning CSS each add
+one Windows `.node` build-host binary, neither of which enters the Firefox
+package. Registry signatures, tarball integrity, licenses, provenance where
+published, native files, declared CLIs, and zero known audit vulnerabilities
+are recorded in the accepted review and machine-readable lock inventory.
+
 ## 6. Chrome and resource exposure
 
 - Project resources use dedicated namespaces.
@@ -116,6 +126,13 @@ Requirements:
 - A resource override requires the additional review defined in the override policy.
 
 The initial manifest omits `contentaccessible=yes` and omits the `resource` directive. Firefox 153's current internal-URL documentation defines both `chrome:` and `resource:` mappings as privileged-only by default and defines `contentaccessible=yes` as an explicit hole punch. Phase 1 verified that an ordinary loopback HTTP page could not fetch the project Chrome entry. A future resource alias is still omitted until a real consumer, exact inventory, current-source review, content-context test, and removal test exist. No content-accessible mapping may contain privileged modules, source maps, debug data, diagnostics, private data, or secrets.
+
+Issue #8 adds no manifest directive. Its privileged adapter loads exactly the
+already private `chrome://fennevia/content/shell/ShellApp.js` URI into a
+validated browser-window global. The temporary registration property rejects
+collisions, is deleted after synchronous evaluation even on error, and cannot
+select another path. This narrow local load is not script discovery, remote
+loading, or a new content-accessible surface.
 
 ## 7. Installation and file-system safety
 
@@ -189,6 +206,12 @@ emergency handler clears the active marker before disposing project hosts, so
 the retained toolbox, browser, modal, titlebar, and security prompts remain the
 independent recovery surface.
 
+Issue #8 mounts only inside the primary project host and still never enters
+`active`. Toggling the extracted component style did not change the computed
+styles of the native toolbox, sidebar, popup set, Urlbar input, application-menu
+button, or modal prompt. Missing and throwing frontend bundles removed partial
+project UI and left the retained native surface usable.
+
 ## 9. Private windows
 
 - Private-window behavior must be explicit: fully supported or complete native fallback.
@@ -213,6 +236,12 @@ results, persist nothing, and are synchronously removed on that window's
 fallback or disposal. Triggering fallback in one normal window does not mutate
 another normal or private window.
 
+Issue #8 creates one Svelte instance and immutable interaction state per mount
+target. Normal, second normal, and private windows did not share counter or
+input state. The frontend receives only the fixed normal/private classification,
+persists nothing, and logs no input; its API is held in a `WeakMap` until
+per-window unmount and is never process-global serializable state.
+
 ## 10. Source maps and debug artifacts
 
 - Development source maps may remain local.
@@ -222,10 +251,13 @@ another normal or private window.
 - Production builds require an exact file inventory and must pass `scripts/check-production-artifacts.ps1`; scanner findings have no silent bypass.
 
 The production scanner continues to reject runtime endpoints. Its only literal
-exception is an exact single- or double-quoted XHTML or XUL namespace URI;
-adding any suffix, path, query, or different URL remains a finding. Installed
-startup files have explicit repository EOL attributes so their manifest hashes
-describe stable bytes across Windows checkouts.
+exceptions are exact single-, double-, or backtick-quoted XHTML, XUL, SVG,
+MathML, and XLink standards namespace URIs used by DOM creation; adding any
+suffix, path, query, concatenation, or different URL remains a finding.
+Issue #8 sets Vite production source maps to false, rejects source-map files and
+references, and installs only the exact ten-file profile inventory. Installed
+startup and generated files have explicit repository EOL attributes so their
+manifest hashes describe stable bytes across Windows checkouts.
 
 ## 11. Security review triggers
 

@@ -111,6 +111,17 @@ Deliverables:
 
 Gate: state, event, CSS, cleanup, and multi-window smoke tests pass in Firefox chrome.
 
+Progress (2026-08-15): issue #8 completes this phase on Firefox 153.0.4 for
+Windows. Svelte 5 and TypeScript compile through Vite into one fixed per-window
+classic IIFE, one extracted root-scoped CSS module, and one notice file. The
+tree-fragment compiler strategy passes XML/XHTML element and template paths;
+normal, second, and private windows keep independent state and deterministic
+official unmount/remount cleanup. The build is byte-reproduced twice, source
+maps/HMR/network endpoints/chunks are rejected, the exact ten-file profile
+inventory passes the production scanner, missing and throwing bundles fail
+open, and initial Windows CI runs the static pipeline. See ADR-022,
+`docs/research/firefox-153-svelte-build.md`, and the accepted dependency review.
+
 ### Phase 4: Firefox bridge and state model
 
 Deliverables:
@@ -181,9 +192,10 @@ plans/
 
 Issue #3 validated the minimal bootstrap files, and issue #4 stabilized their
 source and installed boundaries through `package-manifest.json`, `program/`,
-and `profile/chrome/fennevia/`. The future generated `runtime/` and `shell/`
-contents remain provisional until the frontend build spike supplies a reviewed
-artifact inventory.
+and `profile/chrome/fennevia/`. Issues #5 through #7 supply the reviewed runtime
+modules; issue #8 supplies the three generated `shell/` files and exact
+production inventory. Future bridge artifacts must enter the same build and
+manifest gates.
 
 ## 7. Major risks and mitigations
 

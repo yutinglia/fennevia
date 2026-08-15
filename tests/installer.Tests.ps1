@@ -222,7 +222,10 @@ function Copy-TestPackage {
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/Logger.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/Runtime.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/WindowManager.sys.mjs" },
-        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/WindowShell.sys.mjs" }
+        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/WindowShell.sys.mjs" },
+        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/shell/ShellApp.js" },
+        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/shell/ShellStyles.sys.mjs" },
+        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/shell/THIRD_PARTY_NOTICES.txt" }
     )
     if ($IncludeLegacy) {
         $fileDefinitions += [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/Legacy.sys.mjs" }

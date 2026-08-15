@@ -283,10 +283,13 @@ function Add-FenneviaPatternFindings {
 
     $endpointContent = $Content
     foreach ($namespaceUri in @(
+        "http://www.w3.org/1998/Math/MathML",
         "http://www.w3.org/1999/xhtml",
+        "http://www.w3.org/1999/xlink",
+        "http://www.w3.org/2000/svg",
         "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
     )) {
-        foreach ($quote in @('"', "'")) {
+        foreach ($quote in @('"', "'", "``")) {
             $quotedNamespace = $quote + $namespaceUri + $quote
             $endpointContent = $endpointContent.Replace(
                 $quotedNamespace,

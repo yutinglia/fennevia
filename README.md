@@ -14,9 +14,11 @@ The project is not intended to become another general-purpose `userChrome.js` lo
 > Firefox copies. The minimal bootstrap and deterministic normal/private
 > browser-window lifecycle plus three isolated XHTML diagnostic hosts are
 > validated on Firefox 153.0.4. An explicit health deadline, safe start, and
-> privileged emergency fallback are implemented while native UI remains fully
-> visible. No replacement shell, daily-driver support, or end-user release is
-> available yet.
+> privileged emergency fallback are implemented. A Svelte 5 smoke island now
+> validates per-window state, events, XHTML templates, scoped CSS, official
+> unmount/remount, deterministic production output, and broken-bundle recovery
+> while native UI remains fully visible. No usable replacement shell,
+> daily-driver support, or end-user release is available yet.
 
 ## Architecture direction
 
@@ -59,9 +61,9 @@ The project keeps Firefox's core browser infrastructure, including `gBrowser`, w
 - First development platform: Windows. Other platforms require separate evidence before support is claimed.
 - Bootstrap: AutoConfig used only to register the manifest and load one privileged entry point.
 - Runtime: privileged `.sys.mjs` modules.
-- UI candidate: Svelte 5 with TypeScript, subject to the XHTML/runtime feasibility spike.
-- Build: Vite with deterministic production output and no runtime CDN, HMR, or network dependency.
-- Styling: scoped project CSS. Tailwind remains optional and, if adopted, must disable Preflight and use a project prefix.
+- UI: Svelte 5 with TypeScript, compiled as one tree-fragment IIFE per browser-window global.
+- Build: Vite with a twice-built deterministic production output and no runtime CDN, HMR, source map, extra chunk, or network dependency.
+- Styling: extracted Svelte component CSS rooted at the project mount. Tailwind is not adopted for the validated spike.
 
 ## Documentation
 
@@ -84,6 +86,7 @@ The project keeps Firefox's core browser infrastructure, including `gBrowser`, w
 - [Firefox 153 window-lifecycle research](docs/research/firefox-153-window-lifecycle.md)
 - [Firefox 153 isolated shell-host research](docs/research/firefox-153-shell-hosts.md)
 - [Firefox 153 shell health and recovery research](docs/research/firefox-153-shell-health-recovery.md)
+- [Firefox 153 Svelte build research](docs/research/firefox-153-svelte-build.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 
@@ -92,6 +95,15 @@ The project keeps Firefox's core browser infrastructure, including `gBrowser`, w
 Implementation is tracked through GitHub Issues. An agent must read `AGENTS.md`, the relevant plans and documentation, the complete issue body, and all blockers before starting. A pull request should normally address one issue and include reproducible research and test evidence.
 
 Start with the tracking issue, then follow the dependency order. Do not begin by hiding Firefox native UI.
+
+The frontend toolchain is pinned to the Node.js and npm versions in `.nvmrc`
+and `package.json`. After selecting that nvm-managed Node version, install and
+verify with:
+
+```powershell
+npm ci --ignore-scripts --no-fund
+npm run verify
+```
 
 ## License status
 

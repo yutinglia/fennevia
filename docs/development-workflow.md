@@ -64,7 +64,23 @@ For a privileged integration change:
 8. Update internals, security, testing, and decision documentation.
 9. Only then consider activation or native-UI hiding effects.
 
-## 5. Pull-request evidence
+## 5. Frontend build and verification
+
+Use the nvm-managed version in `.nvmrc`; do not substitute another Node.js
+installation. A clean frontend validation is:
+
+```powershell
+npm ci --ignore-scripts --no-fund
+npm run dependencies:audit
+npm run verify
+```
+
+`npm run build` performs two isolated production builds, compares exact bytes,
+replaces only the owned generated shell directory, and synchronizes hashes into
+`package-manifest.json`. A dirty tree after rebuilding means source, generated
+artifacts, or the manifest is stale. Do not hand-edit generated shell files.
+
+## 6. Pull-request evidence
 
 A pull request should include:
 
@@ -84,7 +100,7 @@ A pull request should include:
 
 Mark each test as pass, fail, blocked, or not run. Do not imply a GUI integration test was executed because a unit test passed.
 
-## 6. Review focus
+## 7. Review focus
 
 Reviewers should check:
 
@@ -104,7 +120,7 @@ Reviewers should check:
 - copied external code without license provenance;
 - unsupported compatibility or platform claims.
 
-## 7. Merge readiness
+## 8. Merge readiness
 
 A change is ready to merge when:
 

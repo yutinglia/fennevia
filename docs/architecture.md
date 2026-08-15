@@ -125,9 +125,9 @@ fixed production defaults and exposes no preference, DOM global, or runtime
 debug switch for choosing a failure mode.
 
 `initializeWindowShell` stops at `healthy`. Only the explicit lifecycle
-controller can request `active`, and no production caller does so in this
-milestone. Consequently package `0.4.0-dev` contains no selector that hides
-Firefox UI. `Ctrl+Alt+Shift+F12` is registered directly on each chrome window in
+controller can request `active`, and no production caller does so. Package
+`0.4.0-dev` introduced this boundary, and the current `0.5.0-dev` package still
+contains no selector that hides Firefox UI. `Ctrl+Alt+Shift+F12` is registered directly on each chrome window in
 the capture and Mozilla system event groups. It reports the fixed recovery
 phase, clears state, removes every host/listener/timer/cleanup, and does not
 depend on Svelte, application state, or a Firefox bridge. AutoConfig separately
@@ -179,6 +179,14 @@ The application layer coordinates ordinary typed state, controllers, and feature
 
 Svelte mounts only into project-created XHTML elements. It must not reconcile `navigator-toolbox`, `tabbrowser-tabbox`, the native sidebar, popup sets, or any other Firefox-owned children.
 
+Issue #8 validates one Svelte 5 root in the primary XHTML host of every managed
+normal or private browser window. The privileged runtime supplies only the
+ordinary `windowKind` prop and lifecycle callbacks; the component owns local
+immutable smoke state and receives no Firefox handle, `Services`, browsing
+value, or native DOM node other than its exact empty mount target. Mount,
+health, official unmount, and fresh-state remount are explicit frontend API
+operations.
+
 The frontend owns:
 
 - rendering;
@@ -207,6 +215,15 @@ Use this priority order:
 6. Use agent or author sheets only when an ordinary scoped stylesheet cannot solve a demonstrated problem.
 7. Prefer text rendering and safe property assignment over unsanitized HTML.
 
+The issue #8 result selects Svelte component CSS extracted at build time. Every
+authored selector starts at `#fennevia-shell-app-root`, and the generated style
+element is a child of the project-owned primary host. Real Firefox comparison
+kept the computed styles of the native toolbox, sidebar, popup set, Urlbar
+input, application-menu button, and modal prompt unchanged when that style was
+toggled. Tailwind and Shadow DOM remain unselected because the scoped component
+CSS satisfied the measured isolation and theme requirements without another
+dependency or rendering boundary.
+
 ## 7. Native UI gate
 
 The implemented root state attributes are:
@@ -228,7 +245,7 @@ AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute.
 
 When a later issue implements the actual native-UI gate, native UI may be hidden
-only while active and must never be removed. Package `0.4.0-dev` does not hide
+only while active and must never be removed. Package `0.5.0-dev` does not hide
 it. Retaining native DOM preserves implicit dependencies in Firefox commands,
 popups, customization, titlebar, and platform integration and provides the
 recovery path.
@@ -254,11 +271,11 @@ Therefore:
 
 ## 9. Build, package, and artifacts
 
-Application and frontend source belongs in `src/`. The current directly authored
-bootstrap package is rooted at `program/` and `profile/`; installable files and
-their committed hashes are defined only by `package-manifest.json`. Future
-generated frontend/runtime artifacts must enter that inventory through their
-documented build rather than by editing `dist/` or installed files.
+Application and frontend source belongs in `src/`. Directly authored bootstrap
+and runtime source is rooted at `program/` and `profile/`; installable files and
+their committed hashes are defined only by `package-manifest.json`. Generated
+frontend artifacts enter that same inventory through `npm run build`; they are
+never hand-edited in `profile/`, `dist/`, or an installed Firefox copy.
 
 Production artifacts must be:
 
@@ -271,9 +288,18 @@ Production artifacts must be:
 
 Each production build also has an exact reviewed file inventory and passes `scripts/check-production-artifacts.ps1`. Unexpected files, including dynamically emitted chunks, fail the gate rather than being accepted by a glob. The operational rule set is in `docs/security-controls.md`.
 
-Whether the final entry is an IIFE, ES module, or mixed runtime is decided by the bootstrap and frontend spikes from real Firefox evidence, not fixed in advance.
+ADR-022 selects one classic `ShellApp.js` IIFE for execution in each owning
+browser-window global. `ShellStyles.sys.mjs` contains the extracted CSS as a
+static string, and `THIRD_PARTY_NOTICES.txt` contains the bundled Svelte notice.
+The build runs twice and compares exact bytes before replacing only those three
+generated files, then synchronizes their SHA-256 values into
+`package-manifest.json`. No source map, development source, loader package,
+bare/dynamic import, HMR client, extra chunk, or runtime network endpoint is
+installed.
 
-Source-map policy must distinguish local development artifacts from installed artifacts. Privileged source maps must not be unintentionally exposed through a content-accessible mapping.
+Installed privileged source maps are prohibited for the current build. A later
+debug-map proposal requires an explicit exposure and packaging decision; local
+tool output must never enter the package inventory accidentally.
 
 `scripts/fennevia-package.ps1` owns the Windows-first package lifecycle. It
 accepts explicit program and profile targets, emits a redacted exact dry run,
@@ -332,8 +358,8 @@ src/
 
 This is a target boundary, not permission to scaffold unused abstractions before the Phase 1 and Phase 2 evidence exists.
 
-The current pre-build implementation corresponding to the proven Phase 2
-boundary is installed directly as reviewed source:
+The current package combines the proven Phase 2 runtime boundary with the
+generated Phase 3 frontend:
 
 ```text
 profile/chrome/fennevia/content/
@@ -344,11 +370,16 @@ profile/chrome/fennevia/content/
     Runtime.sys.mjs
     WindowManager.sys.mjs
     WindowShell.sys.mjs
+  shell/
+    ShellApp.js
+    ShellStyles.sys.mjs
+    THIRD_PARTY_NOTICES.txt
 ```
 
-These files are exact package artifacts with committed hashes; they are not
-hand-edited generated `dist/` output. Issue #8 owns any later source/build
-transition.
+All ten profile files are exact package artifacts with committed hashes. The
+three shell files are reproducible only from `src/` and build configuration;
+the runtime modules remain reviewed source. The source/build boundary and
+per-window execution decision are recorded in ADR-022.
 
 ## 12. Dependency direction
 

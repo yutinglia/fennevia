@@ -20,8 +20,8 @@ Status terms:
 | AutoConfig entry and process bootstrap | Malformed, replaced, duplicated, or compromised system-principal code | Arbitrary privileged execution, repeated initialization, or unusable startup | Minimal bootstrap, no generic loader, no dynamic code, fail open | Implement the smallest startup chain, one-time guard, privacy-safe fatal error, and failure injection | [#3](https://github.com/yutinglia/fennevia/issues/3) |
 | Chrome Registry manifest | A malformed or over-broad declaration exposes files or replaces Firefox resources | Web-content access, privilege-boundary confusion, or missed upstream security fixes | Dedicated namespace; no `override`; no `contentaccessible=yes`; review in section 6 | Validate the final manifest and content-process access on the supported Firefox build | [#3](https://github.com/yutinglia/fennevia/issues/3) |
 | `resource://` mapping | A later `contentaccessible=yes` flag or over-broad inventory exposes files that were intended to remain privileged | Disclosure of source maps, implementation code, diagnostics, or private assets | Initial manifest omits `resource`; default access is privileged-only, and any hole punch is rejected | Concrete consumer, exact inventory, current-source review, ordinary-content test, and removal test before adding a mapping | [ADR-016](architecture-decisions.md#adr-016-follow-firefoxs-current-internal-url-access-model-and-omit-unused-mappings); runtime validation: [#3](https://github.com/yutinglia/fennevia/issues/3) |
-| npm registry, dependencies, and build tools | A compromised maintainer, package, lifecycle script, native binary, or transitive dependency executes during install/build | Developer-host compromise or malicious system-principal artifact | Exact review record, committed lockfile, no unreviewed lifecycle scripts, no runtime package manager | Resolve and review the actual lockfile and build in a constrained environment | [#8](https://github.com/yutinglia/fennevia/issues/8); upgrades: [#16](https://github.com/yutinglia/fennevia/issues/16) |
-| Generated JavaScript, CSS, XHTML, maps, and chunks | HMR, remote endpoints, bare imports, dynamic chunks, source maps, debug code, or executable binaries leak into installation | Runtime network execution, non-determinism, source disclosure, or unreviewed code | `scripts/check-production-artifacts.ps1` and explicit artifact inventory | Run against the selected production build and then in CI | [#8](https://github.com/yutinglia/fennevia/issues/8), [#16](https://github.com/yutinglia/fennevia/issues/16) |
+| npm registry, dependencies, and build tools | A compromised maintainer, package, lifecycle script, native binary, or transitive dependency executes during install/build | Developer-host compromise or malicious system-principal artifact | #8 pins and reviews the complete lock graph, disables lifecycle scripts, inventories native/platform payloads, and keeps all tooling out of the Firefox package | Repeat signature, audit, graph, native-file, lifecycle, artifact, and Firefox checks on every upgrade | [#8](https://github.com/yutinglia/fennevia/issues/8); upgrades: [#16](https://github.com/yutinglia/fennevia/issues/16) |
+| Generated JavaScript, CSS, XHTML, maps, and chunks | HMR, remote endpoints, bare imports, dynamic chunks, source maps, debug code, or executable binaries leak into installation | Runtime network execution, non-determinism, source disclosure, or unreviewed code | #8 builds twice, compares exact bytes, installs three named shell artifacts, scans the complete package, and runs the gate in CI | Preserve the fixed inventory and repeat real-Firefox failure injection after build changes | [#8](https://github.com/yutinglia/fennevia/issues/8), [#16](https://github.com/yutinglia/fennevia/issues/16) |
 | Page titles, URLs, favicon values, and address input | Page-controlled strings are interpreted as HTML, CSS, code, privileged URIs, or native API arguments without validation | Chrome injection, spoofing, unintended navigation, or privileged API misuse | Text rendering only, typed bridge boundary, runtime validation, no arbitrary HTML | Implement per-feature validation and hostile-string tests | [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#11](https://github.com/yutinglia/fennevia/issues/11), [#12](https://github.com/yutinglia/fennevia/issues/12), [#13](https://github.com/yutinglia/fennevia/issues/13), [#14](https://github.com/yutinglia/fennevia/issues/14) |
 | Normal diagnostics and shared evidence | URLs, titles, queries, history, local paths, secrets, or private-window state enter logs or screenshots | Browsing-data or identity disclosure | Bootstrap and #5 runtime loggers use allowlisted schemas, line-preserving redaction, hostile-value tests, and no network sink | Extend the same adapter contract to each future bridge/frontend logger | [#3](https://github.com/yutinglia/fennevia/issues/3), [#5](https://github.com/yutinglia/fennevia/issues/5) |
 | Private-window per-window state | Private tab data is copied to process-global state, normal windows, persisted preferences, or diagnostics | Private-browsing disclosure after or during the session | Section 8 requires per-window memory, no browsing-derived persistence, and native fallback on uncertainty; #5 validates base lifecycle and disposal in a real private window | Validate each browsing-data bridge and UI feature separately before enabling it in private windows | [#5](https://github.com/yutinglia/fennevia/issues/5), [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#12](https://github.com/yutinglia/fennevia/issues/12), [#13](https://github.com/yutinglia/fennevia/issues/13), [#14](https://github.com/yutinglia/fennevia/issues/14) |
@@ -49,12 +49,11 @@ Every production build must have a committed, reviewed inventory. Example:
 }
 ```
 
-The current bootstrap inventory is the exact `expectedFiles` list in
-`package-manifest.json`. The paths above remain illustrative only for the future
-#8 frontend build. That issue must add its exact generated file set; globs are
-prohibited because they cannot detect an unexpected chunk.
+The current production inventory is the exact `expectedFiles` list in
+`package-manifest.json`. The abbreviated paths above remain illustrative only;
+globs are prohibited because they cannot detect an unexpected chunk.
 
-After issue #7, the current privileged profile inventory is exactly:
+After issue #8, the current privileged profile inventory is exactly:
 
 ```text
 chrome.manifest
@@ -64,18 +63,21 @@ content/runtime/Logger.sys.mjs
 content/runtime/Runtime.sys.mjs
 content/runtime/WindowManager.sys.mjs
 content/runtime/WindowShell.sys.mjs
+content/shell/ShellApp.js
+content/shell/ShellStyles.sys.mjs
+content/shell/THIRD_PARTY_NOTICES.txt
 ```
 
-The package version is `0.4.0-dev`. Every entry has a committed SHA-256 in
+The package version is `0.5.0-dev`. Every entry has a committed SHA-256 in
 `package-manifest.json`; no new Chrome Registry declaration accompanies the
-five runtime modules.
+three generated shell files.
 
 Run the gate with:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
-  -ArtifactRoot .\dist `
-  -InventoryPath .\config\production-artifacts.json
+  -ArtifactRoot .\profile\chrome\fennevia `
+  -InventoryPath .\package-manifest.json
 ```
 
 Exit codes are `0` for pass, `1` for findings, and `2` for invalid input or policy. Output contains only a stable rule ID, artifact-relative path, and line number. It does not echo matched URLs, source text, or the absolute artifact root.
@@ -93,16 +95,14 @@ The automated baseline detects:
 - `eval`, `new Function`, executable binaries, and unscannably large text;
 - junctions and symbolic links inside the artifact tree.
 
-The two standards-defined namespace identifiers used by DOM APIs are the only
-endpoint-literal exception: the scanner permits exact quoted
-`http://www.w3.org/1999/xhtml` and
-`http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul` values. It
-replaces only the exact quoted token before endpoint matching, so any suffix,
-path, query, alternate scheme, concatenation, or other URL remains blocked.
-The scanner fixture proves both the accepted constants and a rejected
-namespace-looking URL with a query.
+The standards-defined namespace identifiers used by DOM APIs are the only
+endpoint-literal exception: the scanner permits exact single-, double-, or
+backtick-quoted XHTML, XUL, SVG, MathML, and XLink namespace values. It replaces
+only the complete quoted token before endpoint matching, so any suffix, path,
+query, alternate scheme, concatenation, or other URL remains blocked. Scanner
+fixtures prove every accepted constant and rejected namespace-looking URLs.
 
-The scanner has no bypass flag. A legitimate finding requires a dedicated review and a visible policy/code change, not an ignored CI warning. Passing this static gate does not prove runtime safety; #8 must also run the built artifacts in the development profile, and #16 must make the gate part of CI.
+The scanner has no bypass flag. A legitimate finding requires a dedicated review and a visible policy/code change, not an ignored CI warning. Passing this static gate does not prove runtime safety. Issue #8 therefore also runs the built artifacts and broken-bundle cases in the development profile and adds an initial Windows CI gate; issue #16 still owns later release/update hardening.
 
 ## 4. Privacy-safe logging contract
 
@@ -296,6 +296,25 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\production-artif
 ```
 
 These tests exercise passing artifacts, inventory mismatch, endpoint and runtime-network leakage, HMR, bare and dynamic imports, source maps, development files, dynamic code, reparse points, traversal, exit codes, and privacy-safe finding output. They do not substitute for the real production build or Firefox smoke tests owned by later issues.
+
+Issue #8 adds the resolved dependency, deterministic build, generated-artifact,
+and frontend smoke gates:
+
+```powershell
+npm ci --ignore-scripts --no-fund
+npm run verify
+pwsh -NoProfile -File .\tests\firefox-frontend-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --browser-toolbox
+```
+
+The build-host inventory and exact production results are in
+`docs/dependency-reviews/frontend-toolchain-2026-08-15.md`; real runtime and
+failure evidence is in `docs/research/firefox-153-svelte-build.md`.
 
 Issue #5 adds the lifecycle/privacy checks:
 

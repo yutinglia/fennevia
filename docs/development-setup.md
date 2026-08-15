@@ -46,8 +46,27 @@ The remote-debugging confirmation remains enabled. Do not change it to `false` m
 - Windows 11 or another explicitly tested Windows version;
 - stock Firefox stable;
 - PowerShell 7 (`pwsh`) or Windows PowerShell 5.1;
+- nvm-windows with the Node.js version from `.nvmrc` available;
 - a clean repository checkout;
 - no Firefox process using `<FENNEVIA_DEV_PROFILE>`.
+
+The issue #8 frontend baseline uses Node.js 24.18.0 and npm 11.16.0. Select the
+repository version through nvm-windows, then install exactly the committed graph
+with package lifecycle scripts disabled:
+
+```powershell
+nvm use 24.18.0
+node --version
+npm --version
+npm ci --ignore-scripts --no-fund
+npm run dependencies:audit
+npm run verify
+```
+
+Do not install a separate standalone Node.js. `.npmrc` enforces the engine,
+exact lockfile, and scripts-disabled policy. The accepted graph and build-host
+binary inventory are in
+`docs/dependency-reviews/frontend-toolchain-2026-08-15.md`.
 
 Use an explicit Firefox executable when more than one installation or channel is present. The tested stock 64-bit location was:
 

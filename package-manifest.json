@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "fennevia",
-  "packageVersion": "0.4.0-dev",
+  "packageVersion": "0.5.0-dev",
   "expectedFiles": [
     "chrome.manifest",
     "content/Bootstrap.sys.mjs",
@@ -9,7 +9,10 @@
     "content/runtime/Logger.sys.mjs",
     "content/runtime/Runtime.sys.mjs",
     "content/runtime/WindowManager.sys.mjs",
-    "content/runtime/WindowShell.sys.mjs"
+    "content/runtime/WindowShell.sys.mjs",
+    "content/shell/ShellApp.js",
+    "content/shell/ShellStyles.sys.mjs",
+    "content/shell/THIRD_PARTY_NOTICES.txt"
   ],
   "files": [
     {
@@ -55,7 +58,22 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
-      "sha256": "317b5432f5f5ca2fc43e56bb8e3704e0f60a91e5435ca14e4b1bb73aa4019a0e"
+      "sha256": "89b4c003f483706994afaa87a783f39a88acbf667c63398a89039402b90c3e39"
+    },
+    {
+      "scope": "profile",
+      "path": "chrome/fennevia/content/shell/ShellApp.js",
+      "sha256": "92338b310d522ede99955d214aae3faa5c71194cb798c10dcd2a97c8304e3da3"
+    },
+    {
+      "scope": "profile",
+      "path": "chrome/fennevia/content/shell/ShellStyles.sys.mjs",
+      "sha256": "2a80d21a31bb541aca31ee4713a75087537ad42b7b0de3a375806823da3c842a"
+    },
+    {
+      "scope": "profile",
+      "path": "chrome/fennevia/content/shell/THIRD_PARTY_NOTICES.txt",
+      "sha256": "0cd8b75a5e96e98009ec60de17b5536ef15d00f1b4f469a0c7189a30681ac7ea"
     }
   ]
 }

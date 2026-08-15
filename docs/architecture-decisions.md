@@ -332,3 +332,49 @@ compatibility layer, or production failure-selection hook is added. Source and
 runtime evidence, rejected loader baggage, failure matrix, and recovery
 procedure are recorded in
 `docs/research/firefox-153-shell-health-recovery.md`.
+
+## ADR-022: Load one tree-fragment Svelte IIFE in each browser-window global
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Compile the issue #8 smoke frontend from Svelte 5 and TypeScript with Vite
+library mode into one fixed classic IIFE, one extracted component stylesheet
+module, and one generated third-party notice. `WindowShell.sys.mjs` loads only
+`chrome://fennevia/content/shell/ShellApp.js` synchronously into the owning
+browser-window global with `Services.scriptloader.loadSubScript`. A temporary
+non-enumerable registration callback accepts exactly one frozen three-function
+frontend API, is deleted in `finally`, and the captured API is retained only in
+a private `WeakMap` until official Svelte unmount.
+
+Use Svelte's maintained `fragments: "tree"` compiler option. The default HTML
+fragment strategy populated a template through `innerHTML`; in Firefox's
+XML/XHTML `browser.xhtml` document, the resulting traversal reached a node from
+the wrong DOM assumptions and failed at `Node.nextSibling`. Tree fragments
+construct and clone DOM nodes directly and passed ordinary element,
+`HTMLTemplateElement.content`, conditional-render, event, unmount, and remount
+checks without a Svelte runtime patch.
+
+Extract component CSS, convert it into a static local module, and attach it only
+beside the project-owned mount target. Every authored selector remains rooted
+under `#fennevia-shell-app-root`; no global reset or native selector is emitted.
+Plain component CSS is sufficient for the spike, so Tailwind, Shadow DOM,
+runtime stylesheet registration, and a component library are not adopted.
+
+The build runs twice in isolated OS temporary directories and requires
+byte-identical output before replacing the exact owned shell directory. It
+disables source maps, HMR, module preloading, and code splitting; rejects
+unexpected files and runtime endpoints; converts Svelte's fixed documentation
+URLs to local error codes; and synchronizes generated hashes into the package
+manifest. Missing, throwing, invalid, or incomplete frontend code fails before
+`healthy`, removes partial project nodes/styles, and leaves all native Firefox
+UI visible.
+
+**Reasoning:** A shared privileged ESM global does not provide the target
+window bindings expected by Svelte's browser runtime. Loading a fixed local
+classic script into each validated browser-window global supplies those
+bindings and naturally isolates Svelte state per window. This is a narrow
+runtime adapter, not arbitrary script discovery, metadata parsing, a generic
+loader, or a remote module mechanism. The exact dependency review, rejected
+alternatives, first causal errors, source references, and real-Firefox matrix
+are recorded in `docs/dependency-reviews/frontend-toolchain-2026-08-15.md` and
+`docs/research/firefox-153-svelte-build.md`.
