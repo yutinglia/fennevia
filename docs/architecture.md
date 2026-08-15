@@ -48,11 +48,12 @@ capability check; `Services.sys.mjs` is not packaged in the supported build.
 Structured records include phase, stable code, Firefox version, build ID, and a
 path/URL-redacted stack.
 
-Phase 2 keeps that entry singular. `Bootstrap.sys.mjs` imports four fixed
-project modules (`Logger`, `WindowManager`, `WindowShell`, and `Runtime`) plus
-Firefox's fixed `PrivateBrowsingUtils` module, starts one process runtime, and
-returns the same frozen bootstrap contract. AutoConfig still knows nothing
-about windows, features, or module discovery.
+Phase 2 keeps that entry singular. `Bootstrap.sys.mjs` directly imports four
+fixed project modules (`Logger`, `WindowManager`, `WindowShell`, and `Runtime`)
+plus Firefox's fixed `PrivateBrowsingUtils` module. `WindowShell` has one fixed
+relative import of `HealthState`; there is still no discovery or dynamic import.
+The entry starts one process runtime and returns the same frozen bootstrap
+contract. AutoConfig still knows nothing about windows or features.
 
 ### Chrome Registry package
 
@@ -96,15 +97,42 @@ A per-window runtime owns:
 - eventually, that window's project XHTML hosts, Firefox bridge instances,
   frontend root, health state, and native-UI gate.
 
-Issue #5 established the lifecycle. Issue #6 now supplies its one initializer:
+Issue #5 established the lifecycle. Issue #6 supplies its one initializer:
 `WindowShell.sys.mjs` validates the exact current document hierarchy before it
 creates a visible primary XHTML host, hidden sidebar XHTML host, and hidden,
 inert overlay XHTML host. Normal and private windows receive the same complete
 host set. The primary host is a direct `body` child immediately before
 `#browser`; the sidebar host is immediately before `#tabbrowser-tabbox`; the
 overlay host is immediately before `#a11y-announcement`. Project code owns only
-these nodes and their descendants. It never moves a native node, sets an active
-gate, or hides native UI.
+these nodes and their descendants. It never moves a native node or hides native
+UI.
+
+Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
+owns the only root-state transition table: `created -> mounted -> healthy ->
+active`, plus terminal `failed` and `disposed` handling. State attributes are
+project-prefixed, cumulative through `active`, and removed on disposal. An
+illegal transition enters `failed`, removes the active marker first, and is
+reported rather than accepted. Duplicate transitions and disposal are
+idempotent.
+
+The production initializer mounts synchronously and then applies a finite
+2,000 ms health deadline. Its current self-check validates exact host identity,
+placement, XHTML descendants, hidden/inert auxiliary hosts, an attached inline
+stylesheet with parsed rules, the registered emergency handler, and every
+declared capability. The extension points used to inject failures in unit tests
+are ordinary constructor collaborators; the installed initializer always uses
+fixed production defaults and exposes no preference, DOM global, or runtime
+debug switch for choosing a failure mode.
+
+`initializeWindowShell` stops at `healthy`. Only the explicit lifecycle
+controller can request `active`, and no production caller does so in this
+milestone. Consequently package `0.4.0-dev` contains no selector that hides
+Firefox UI. `Ctrl+Alt+Shift+F12` is registered directly on each chrome window in
+the capture and Mozilla system event groups. It reports the fixed recovery
+phase, clears state, removes every host/listener/timer/cleanup, and does not
+depend on Svelte, application state, or a Firefox bridge. AutoConfig separately
+checks Firefox safe mode and `fennevia.safeStart` before manifest lookup, so a
+missing runtime module cannot prevent safe start.
 
 Window unload removes the record, aborts pending initialization, and runs every
 registered cleanup exactly once. A late asynchronous result is immediately
@@ -119,7 +147,9 @@ build, stable phase/code, process-local window UUID, and `normal`/`private`
 kind, but never a page URL, title, query, profile path, or native object. The
 source and runtime evidence is in
 `docs/research/firefox-153-window-lifecycle.md`,
-`docs/research/firefox-153-shell-hosts.md`, ADR-019, and ADR-020.
+`docs/research/firefox-153-shell-hosts.md`,
+`docs/research/firefox-153-shell-health-recovery.md`, ADR-019, ADR-020, and
+ADR-021.
 
 ## 4. Firefox bridge
 
@@ -179,20 +209,29 @@ Use this priority order:
 
 ## 7. Native UI gate
 
-Recommended root state attributes include:
+The implemented root state attributes are:
 
 ```text
 [data-fennevia-created]
 [data-fennevia-mounted]
 [data-fennevia-healthy]
 [data-fennevia-active]
-[data-fennevia-safe-start]
 [data-fennevia-failed]
+[data-fennevia-state="created|mounted|healthy|active|failed"]
 ```
 
-Only a healthy shell may become active. Native-UI hiding rules must depend on `data-fennevia-active`. A bootstrap, bridge, CSS, or frontend failure must prevent or remove that attribute.
+Only a healthy shell may become active. Native-UI hiding rules must depend on
+`data-fennevia-active`. A bootstrap, bridge, CSS, or frontend failure must
+prevent or remove that attribute. `disposed` is controller state, not a retained
+DOM marker: disposal removes every project state attribute. Safe start exits in
+AutoConfig before a browser-window controller exists and therefore deliberately
+sets no DOM attribute.
 
-Native UI is initially hidden rather than removed. This preserves implicit dependencies in Firefox commands, popups, customization, titlebar, and platform integration, and provides a recovery path.
+When a later issue implements the actual native-UI gate, native UI may be hidden
+only while active and must never be removed. Package `0.4.0-dev` does not hide
+it. Retaining native DOM preserves implicit dependencies in Firefox commands,
+popups, customization, titlebar, and platform integration and provides the
+recovery path.
 
 ## 8. Override policy
 
@@ -300,6 +339,7 @@ boundary is installed directly as reviewed source:
 profile/chrome/fennevia/content/
   Bootstrap.sys.mjs
   runtime/
+    HealthState.sys.mjs
     Logger.sys.mjs
     Runtime.sys.mjs
     WindowManager.sys.mjs

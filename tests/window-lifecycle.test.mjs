@@ -599,6 +599,7 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
     opaqueId: "window-00000000-0000-4000-8000-000000000001",
     projectUri: "chrome://fennevia/content/runtime/Runtime.sys.mjs",
     domPath: "html#main-window>body>#browser",
+    shellState: "failed",
     url: "https://private.invalid/should-not-serialize",
     title: "secret title",
     privateContent: "secret-private-content",
@@ -617,6 +618,7 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
   assert.equal(record.title, undefined);
   assert.equal(record.privateContent, undefined);
   assert.equal(record.domPath, "html#main-window>body>#browser");
+  assert.equal(record.shellState, "failed");
   assert.equal(record.stack.length, 11);
   assert.ok(record.stack.includes("Error: <REDACTED_MESSAGE>"));
   assert.ok(record.stack.some(line => line.includes("<REMOTE_URL>")));
@@ -625,6 +627,11 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
   assert.ok(record.stack.some(line => line.includes("<OPAQUE_URL>")));
   assert.ok(record.stack.some(line => line.includes("<OTHER_URI>")));
   assert.ok(record.stack.some(line => line.includes("<REDACTED_SUFFIX>")));
+  assert.ok(
+    record.stack.some(line =>
+      line.includes("chrome://fennevia/content/runtime/Runtime.sys.mjs")
+    )
+  );
 
   for (const forbidden of [
     "private.invalid",

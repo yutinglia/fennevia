@@ -218,6 +218,7 @@ function Copy-TestPackage {
         [pscustomobject]@{ Scope = "program"; Path = "fennevia.cfg" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/chrome.manifest" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/Bootstrap.sys.mjs" },
+        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/HealthState.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/Logger.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/Runtime.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/WindowManager.sys.mjs" },
@@ -379,6 +380,7 @@ try {
     foreach ($relativePath in @(
         "chrome\fennevia\chrome.manifest",
         "chrome\fennevia\content\Bootstrap.sys.mjs",
+        "chrome\fennevia\content\runtime\HealthState.sys.mjs",
         "chrome\fennevia\content\runtime\Logger.sys.mjs",
         "chrome\fennevia\content\runtime\Runtime.sys.mjs",
         "chrome\fennevia\content\runtime\WindowManager.sys.mjs",

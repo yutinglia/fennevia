@@ -21,11 +21,13 @@ function Assert-True {
 }
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
+$healthPath = Join-Path $repositoryRoot "profile\chrome\fennevia\content\runtime\HealthState.sys.mjs"
 $shellPath = Join-Path $repositoryRoot "profile\chrome\fennevia\content\runtime\WindowShell.sys.mjs"
+$healthTestPath = Join-Path $repositoryRoot "tests\health-state.test.mjs"
 $testPath = Join-Path $repositoryRoot "tests\shell-hosts.test.mjs"
 $firefoxTestPath = Join-Path $repositoryRoot "tests\firefox-window-lifecycle.mjs"
 
-foreach ($requiredFile in @($shellPath, $testPath, $firefoxTestPath)) {
+foreach ($requiredFile in @($healthPath, $shellPath, $healthTestPath, $testPath, $firefoxTestPath)) {
     Assert-True -Condition (Test-Path -LiteralPath $requiredFile -PathType Leaf) -Message "A shell-host source or test file is missing."
 }
 
@@ -78,7 +80,7 @@ foreach ($prohibitedToken in @(
 }
 
 $nodeCommand = Get-Command node -ErrorAction Stop
-& $nodeCommand.Source --test $testPath
+& $nodeCommand.Source --test $healthTestPath $testPath
 Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "The Node.js shell-host tests must pass."
 & $nodeCommand.Source --check $firefoxTestPath
 Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "The real-Firefox harness must parse."

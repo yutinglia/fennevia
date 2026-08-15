@@ -54,20 +54,21 @@ The current bootstrap inventory is the exact `expectedFiles` list in
 #8 frontend build. That issue must add its exact generated file set; globs are
 prohibited because they cannot detect an unexpected chunk.
 
-After issue #6, the current privileged profile inventory is exactly:
+After issue #7, the current privileged profile inventory is exactly:
 
 ```text
 chrome.manifest
 content/Bootstrap.sys.mjs
+content/runtime/HealthState.sys.mjs
 content/runtime/Logger.sys.mjs
 content/runtime/Runtime.sys.mjs
 content/runtime/WindowManager.sys.mjs
 content/runtime/WindowShell.sys.mjs
 ```
 
-The package version is `0.3.0-dev`. Every entry has a committed SHA-256 in
+The package version is `0.4.0-dev`. Every entry has a committed SHA-256 in
 `package-manifest.json`; no new Chrome Registry declaration accompanies the
-four runtime modules.
+five runtime modules.
 
 Run the gate with:
 

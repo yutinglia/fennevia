@@ -293,3 +293,42 @@ native modal top layer preserves security UI.
 The stock-DOM snapshot, current-source links, rejected placements, Browser
 Toolbox Inspector evidence, privacy review, failure injection, and cleanup
 matrix are recorded in `docs/research/firefox-153-shell-hosts.md`.
+
+## ADR-021: Gate activation behind an explicit fail-open health lifecycle
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Give each managed browser window one project-owned lifecycle with validated
+`created`, `mounted`, `healthy`, `active`, `failed`, and `disposed` states. The
+root markers are cumulative through `active`; `failed` is exclusive; disposal
+removes every marker. Only `healthy -> active` is legal, and issue #7 deliberately
+has no production caller that activates or hides native UI.
+
+Health is bounded by a 2,000 ms deadline and requires exact host ownership and
+placement, XHTML descendants, usable project CSS, a registered recovery
+handler, declared capability success, and a literal successful health result.
+Any exception, false/invalid result, timeout, illegal transition, missing CSS,
+or missing capability clears the active marker before deterministic reverse
+cleanup and emits a privacy-safe fixed phase/code with Firefox version, build
+ID, and redacted stack.
+
+Register `Ctrl+Alt+Shift+F12` directly on each privileged browser window with
+capture and `mozSystemGroup`. Its synchronous fallback owns no Svelte, app, or
+bridge dependency and disposes only that window's project lifecycle. Keep the
+existing `fennevia.safeStart` AutoConfig preference and Firefox safe-mode check
+ahead of manifest lookup, registration, and module import. Therefore safe start
+works even when a runtime module is missing.
+
+**Reasoning:** A CSS-only or frontend-owned escape path can fail with the shell
+it is meant to recover. An explicit state machine makes activation auditable;
+the early preference handles startup breakage, while the system-group key
+handles a mounted or active runtime. Stock Firefox uses unmodified F12 for
+DevTools and exposes user-customizable shortcuts, so the four-modifier binding
+minimizes but cannot eliminate collision risk. Windows is the only tested
+platform; other platforms require a separately sourced native-key test.
+
+No dependency, manifest mapping, remote behavior, native DOM removal, loader
+compatibility layer, or production failure-selection hook is added. Source and
+runtime evidence, rejected loader baggage, failure matrix, and recovery
+procedure are recorded in
+`docs/research/firefox-153-shell-health-recovery.md`.

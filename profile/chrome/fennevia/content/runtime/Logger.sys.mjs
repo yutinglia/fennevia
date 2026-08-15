@@ -43,8 +43,8 @@ const redactStackLine = line =>
       "$1<REDACTED_SUFFIX>"
     )
     .replace(
-      /\b(?!(?:chrome|resource):)[A-Za-z][A-Za-z0-9+.-]*:.*$/giu,
-      "<OTHER_URI>"
+      /(^|[\s(@])(?!(?:chrome|resource):)[A-Za-z][A-Za-z0-9+.-]*:.*$/giu,
+      "$1<OTHER_URI>"
     )
     .slice(0, 1000);
 
@@ -70,6 +70,16 @@ const safeStack = error => {
 
 const normalizeWindowKind = value =>
   value === "normal" || value === "private" || value === "unsupported"
+    ? value
+    : undefined;
+
+const normalizeShellState = value =>
+  value === "created" ||
+  value === "mounted" ||
+  value === "healthy" ||
+  value === "active" ||
+  value === "failed" ||
+  value === "disposed"
     ? value
     : undefined;
 
@@ -113,6 +123,11 @@ export function createRuntimeLogger({
     const windowKind = normalizeWindowKind(fields?.windowKind);
     if (windowKind) {
       record.windowKind = windowKind;
+    }
+
+    const shellState = normalizeShellState(fields?.shellState);
+    if (shellState) {
+      record.shellState = shellState;
     }
 
     if (
