@@ -282,10 +282,27 @@ The favicon boundary accepts bounded `chrome://`, `resource://`,
 `moz-remote-image:`, and base64 raster image values. It rejects raw remote,
 `about:`, SVG-data, malformed, oversized, whitespace/quote-bearing, and unknown
 values to the no-favicon fallback. The bridge itself never loads the value; a
-future component must assign it through an image property, not HTML or CSS.
-The new-tab action accepts no browsing URL and uses only Firefox's fixed
-`BROWSER_NEW_TAB_URL`. Issue #12 must still prove the navigation data flow it
-introduces. Full evidence is in `docs/research/firefox-153-tabs-bridge.md`.
+component may assign it only through an image property, not HTML or CSS. The
+new-tab action accepts no browsing URL and uses only Firefox's fixed
+`BROWSER_NEW_TAB_URL`.
+
+Issue #11 implements that consumer without widening the data boundary. Titles
+are inserted as text and as property-bound accessible/tooltip labels; `dir="auto"`
+and plaintext bidi handling affect layout only. The optional favicon is bound
+only to `img.src` with a static fallback and `referrerpolicy="no-referrer"`; a
+load error hides the image and removes `src`. There is no `{@html}`, CSS URL,
+style interpolation, content-accessible mapping, runtime fetch API, persistence,
+or new dependency. Opaque IDs are retained in closures rather than DOM dataset
+values. Normal diagnostics and test failure records contain only fixed codes,
+booleans, and counts, never the exercised title or favicon value.
+
+Each window still owns its own adapter, Svelte state, focus registry, bridge
+subscription, and at most one close-focus retry timer. Every action replaces
+that timer; unmount clears it and the root-delegated listeners before dropping
+state. Normal, second, and private windows remained isolated. Issue #12 must
+still prove the navigation data flow it introduces. Full evidence is in
+`docs/research/firefox-153-tabs-bridge.md` and
+`docs/research/firefox-153-tab-strip.md`.
 
 ## 10. Source maps and debug artifacts
 

@@ -411,15 +411,15 @@ function W({ boundary: e, onError: t, window: n }) {
 	}, O = Object.freeze({
 		close(e) {
 			let t = w(e);
-			T("removeTab", [t, Object.freeze({
+			T("removeTab", [t, {
 				animate: !0,
 				isUserTriggered: !0
-			})]), S(!0);
+			}]), S(!0);
 		},
 		open(t) {
 			let n = D(t), r = f().BROWSER_NEW_TAB_URL;
 			if (typeof r != "string" || r.length === 0) throw z(e, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "window.BROWSER_NEW_TAB_URL");
-			let i = B(e, T("addTrustedTab", [r, Object.freeze({ inBackground: !n.selected })]));
+			let i = B(e, T("addTrustedTab", [r, { inBackground: !n.selected }]));
 			if (!h().includes(i)) throw z(e, "FENNEVIA_FIREFOX_TAB_OPEN_REJECTED", "firefox-tabs-action", "window.gBrowser.addTrustedTab");
 			let a = d.register(i);
 			if (S(!0), n.selected && p().selectedTab !== i) throw z(e, "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED", "firefox-tabs-action", "window.gBrowser.selectedTab");

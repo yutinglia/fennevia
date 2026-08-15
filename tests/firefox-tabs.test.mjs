@@ -76,6 +76,7 @@ function createNativeWindow({ privateWindow = false } = {}) {
   const gBrowser = {
     actionCalls,
     addTrustedTab(uri, options) {
+      options.triggeringPrincipal ??= { testPrincipal: true };
       actionCalls.push(["addTrustedTab", uri, options]);
       const tab = createTab("New Tab");
       tabs.push(tab);
@@ -110,6 +111,7 @@ function createNativeWindow({ privateWindow = false } = {}) {
       tabContainer.dispatch("TabPinned", tab, {});
     },
     removeTab(tab, options) {
+      options.skipPermitUnload ??= false;
       actionCalls.push(["removeTab", tab, options]);
       const index = tabs.indexOf(tab);
       if (index === -1 || tab.blockClose) {
@@ -374,6 +376,15 @@ test("bridge actions synchronize both directions and reject stale or foreign IDs
     const openedId = first.controller.tabs.open({ selected: false });
     assert.equal(first.controller.tabs.snapshot().at(-1).id, openedId);
     assert.equal(firstNative.gBrowser.actionCalls.at(-1)[2].inBackground, true);
+    assert.equal(
+      firstNative.gBrowser.actionCalls.at(-1)[2].triggeringPrincipal
+        .testPrincipal,
+      true,
+    );
+    assert.equal(
+      Object.isFrozen(firstNative.gBrowser.actionCalls.at(-1)[2]),
+      false,
+    );
     first.controller.tabs.select(openedId);
     assert.equal(
       first.controller.tabs.snapshot().find((tab) => tab.id === openedId)
@@ -390,6 +401,11 @@ test("bridge actions synchronize both directions and reject stale or foreign IDs
       false,
     );
     first.controller.tabs.close(openedId);
+    const removeCall = firstNative.gBrowser.actionCalls.findLast(
+      ([action]) => action === "removeTab",
+    );
+    assert.equal(removeCall[2].skipPermitUnload, false);
+    assert.equal(Object.isFrozen(removeCall[2]), false);
     assert.equal(
       first.controller.tabs.snapshot().some((tab) => tab.id === openedId),
       false,

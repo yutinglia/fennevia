@@ -168,6 +168,15 @@ Implement in this order:
 
 Gate: basic browsing can be completed through the custom shell while native UI remains visible as a comparison and fallback.
 
+Progress (2026-08-15): issue #11 completes the first item without entering the
+native-hide phase. The owned Svelte tab strip consumes only immutable ordinary
+tab state, preserves Firefox order/selection, supplies safe text/favicon
+fallbacks and accessible keyboard/actions, and keeps native tabs unchanged.
+Real Firefox 153.0.4 normal, second, private, Browser Toolbox, rapid-action,
+cleanup, and fail-open recovery runs passed. Navigation/address/sidebar work
+remains in later issues. See ADR-025 and
+`docs/research/firefox-153-tab-strip.md`.
+
 ### Phase 6: Hide the native visible shell
 
 Deliverables:

@@ -9,7 +9,7 @@ import App from "./App.svelte";
 
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const MOUNT_STATUS_ATTRIBUTE = "data-fennevia-framework-status";
-const ROOT_SELECTOR = "#fennevia-shell-app-root[data-fennevia-smoke-root]";
+const ROOT_SELECTOR = "#fennevia-shell-app-root[data-fennevia-shell-root]";
 
 export type ShellWindowKind = "normal" | "private";
 
@@ -148,6 +148,9 @@ export function verifyShellAppHealth({
   const templateContent = template?.content?.firstElementChild;
   const mounted = mountedTargets.get(target);
   const requiredSelectors = [
+    '[role="tablist"][data-fennevia-tab-list]',
+    'button[role="tab"][data-fennevia-tab]',
+    'button[data-fennevia-action="new-tab"]',
     'button[data-fennevia-action="increment"]',
     'button[data-fennevia-action="toggle-details"]',
     "input[data-fennevia-input]",

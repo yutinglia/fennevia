@@ -485,7 +485,7 @@ export function createFirefoxTabsBridge({
       const tab = requireOwnedTab(tabId);
       callTabMethod("removeTab", [
         tab,
-        Object.freeze({ animate: true, isUserTriggered: true }),
+        { animate: true, isUserTriggered: true },
       ]);
       reconcile(true);
     },
@@ -503,7 +503,7 @@ export function createFirefoxTabsBridge({
       }
       const candidate = callTabMethod("addTrustedTab", [
         newTabUrl,
-        Object.freeze({ inBackground: !normalized.selected }),
+        { inBackground: !normalized.selected },
       ]);
       const tab = asNativeTab(boundary, candidate);
       if (!readOpenTabs().includes(tab)) {

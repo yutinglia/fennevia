@@ -352,8 +352,11 @@ class MarionetteClient {
       ) {
         if (response[2]) {
           const remoteMessage = String(response[2].message ?? "");
-          if (/^FENNEVIA_[A-Z0-9_]{1,120}$/u.test(remoteMessage)) {
-            throw new Error(remoteMessage);
+          const projectCode = remoteMessage.match(
+            /\bFENNEVIA_[A-Z0-9_]{1,120}\b/u,
+          )?.[0];
+          if (projectCode) {
+            throw new Error(projectCode);
           }
           const remoteCode = String(response[2].error ?? "unknown error")
             .replace(/[^A-Za-z0-9_-]/gu, "_")
@@ -672,6 +675,15 @@ async function collectFrontendState(client) {
     const root = document.getElementById("fennevia-shell-app-root");
     const style = document.getElementById("fennevia-shell-app-style");
     const template = root?.querySelector("template[data-fennevia-template]");
+    const nativeTabs = Array.isArray(gBrowser?.openTabs)
+      ? gBrowser.openTabs
+      : [];
+    const customTabs = root
+      ? [...root.querySelectorAll('button[role="tab"][data-fennevia-tab]')]
+      : [];
+    const customItems = root
+      ? [...root.querySelectorAll(".fennevia-tab-strip__item")]
+      : [];
     let cssRuleCount = 0;
     try {
       cssRuleCount = style?.sheet?.cssRules?.length ?? 0;
@@ -702,9 +714,54 @@ async function collectFrontendState(client) {
         root
           ?.querySelector("[data-fennevia-input-output]")
           ?.textContent?.trim() ?? null,
-      nativeTabCount: Array.isArray(gBrowser?.openTabs)
-        ? gBrowser.openTabs.length
-        : null,
+      actionControlsNamed: root
+        ? [...root.querySelectorAll(
+            '.fennevia-tab-strip__action, [data-fennevia-action="new-tab"]'
+          )].every(control => Boolean(control.getAttribute("aria-label")))
+        : false,
+      customTabCount: customTabs.length,
+      nativeTabCount: nativeTabs.length,
+      nestedInteractiveCount: customTabs.filter(tab =>
+        tab.querySelector("button, input, select, textarea, a[href]")
+      ).length,
+      newTabControlCount:
+        root?.querySelectorAll('[data-fennevia-action="new-tab"]').length ??
+        0,
+      rovingTabCount: customTabs.filter(tab => tab.tabIndex === 0).length,
+      selectedMatchesNative:
+        customTabs.findIndex(tab => tab.getAttribute("aria-selected") === "true") ===
+        nativeTabs.indexOf(gBrowser?.selectedTab),
+      stateMatchesNative:
+        customItems.length === nativeTabs.length &&
+        customItems.every((item, index) => {
+          const nativeTab = nativeTabs[index];
+          return (
+            item.getAttribute("data-fennevia-loading") ===
+              String(nativeTab?.hasAttribute("busy")) &&
+            item.getAttribute("data-fennevia-pinned") ===
+              String(nativeTab?.hasAttribute("pinned")) &&
+            item.getAttribute("data-fennevia-selected") ===
+              String(nativeTab === gBrowser?.selectedTab)
+          );
+        }),
+      tabAccessibleNamesComplete: customTabs.every(tab =>
+        Boolean(tab.getAttribute("aria-label"))
+      ),
+      tabOrderMatchesNative:
+        customTabs.length === nativeTabs.length &&
+        customTabs.every((tab, index) => {
+          const nativeTitle = String(
+            nativeTabs[index]?.getAttribute("label") ?? ""
+          );
+          const expectedTitle = nativeTitle.trim()
+            ? nativeTitle
+            : "Untitled tab";
+          return tab.getAttribute("title") === expectedTitle;
+        }),
+      tabListRole:
+        root
+          ?.querySelector("[data-fennevia-tab-list]")
+          ?.getAttribute("role") ?? null,
       mountParentIsPrimary:
         mount?.parentElement?.id === "fennevia-shell-primary-host",
       mountStatus: mount?.getAttribute("data-fennevia-framework-status") ?? null,
@@ -713,7 +770,7 @@ async function collectFrontendState(client) {
         "__fenneviaRegisterShellFrontend"
       ),
       rootCount: document.querySelectorAll(
-        "#fennevia-shell-app-root[data-fennevia-smoke-root]"
+        "#fennevia-shell-app-root[data-fennevia-shell-root]"
       ).length,
       rootNamespace: root?.namespaceURI ?? null,
       styleParentIsPrimary:
@@ -754,6 +811,16 @@ function assertFrontendState(state, windowKind, expected = {}) {
   assert.equal(state.eventCount, expectedState.eventCount);
   assert.equal(state.input, expectedState.input);
   assert.equal(state.inputOutput, expectedState.inputOutput);
+  assert.equal(state.actionControlsNamed, true);
+  assert.equal(state.customTabCount, state.nativeTabCount);
+  assert.equal(state.nestedInteractiveCount, 0);
+  assert.equal(state.newTabControlCount, 1);
+  assert.equal(state.rovingTabCount, 1);
+  assert.equal(state.selectedMatchesNative, true);
+  assert.equal(state.stateMatchesNative, true);
+  assert.equal(state.tabAccessibleNamesComplete, true);
+  assert.equal(state.tabListRole, "tablist");
+  assert.equal(state.tabOrderMatchesNative, true);
   assert.equal(state.mountParentIsPrimary, true);
   assert.equal(state.mountStatus, "mounted");
   assert.equal(state.registrationCallbackPresent, false);
@@ -854,6 +921,283 @@ function assertFrontendInteraction(result, { increments, input }) {
   } catch (error) {
     console.error(
       `frontendInteractionDiagnostics=${JSON.stringify({ expected, result })}`,
+    );
+    throw error;
+  }
+}
+
+async function exerciseTabStripMvp(client) {
+  return client.execute(`
+    return (async () => {
+      const root = document.getElementById("fennevia-shell-app-root");
+      const newTab = root?.querySelector(
+        '[data-fennevia-action="new-tab"]'
+      );
+      const scroll = root?.querySelector(".fennevia-tab-strip__scroll");
+      if (!root || !newTab || !scroll) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_TAB_STRIP_MISSING");
+      }
+
+      const customTabs = () => [
+        ...root.querySelectorAll('button[role="tab"][data-fennevia-tab]'),
+      ];
+      const customItems = () => [
+        ...root.querySelectorAll(".fennevia-tab-strip__item"),
+      ];
+      const waitFor = async (predicate, code) => {
+        const deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+          if (predicate()) {
+            return;
+          }
+          await new Promise(resolve => window.setTimeout(resolve, 20));
+        }
+        throw new Error(code);
+      };
+      const waitForCount = count =>
+        waitFor(
+          () =>
+            gBrowser.openTabs.length === count &&
+            customTabs().length === count,
+          "FENNEVIA_FIREFOX_TEST_TAB_STRIP_COUNT_TIMEOUT"
+        );
+      const dispatchKey = (target, key) => {
+        target.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            key,
+          })
+        );
+      };
+
+      const initialCount = gBrowser.openTabs.length;
+      const originalNativeTab = gBrowser.selectedTab;
+      for (let index = 0; index < 8; index += 1) {
+        newTab.click();
+      }
+      await waitForCount(initialCount + 8);
+      const manyTabsOverflow = scroll.scrollWidth > scroll.clientWidth;
+      const synchronizedAfterBurst =
+        customTabs().length === gBrowser.openTabs.length &&
+        customTabs().filter(
+          tab => tab.getAttribute("aria-selected") === "true"
+        ).length === 1;
+
+      const testNativeTab = gBrowser.openTabs.find(
+        tab => tab !== originalNativeTab
+      );
+      const itemForNativeTab = nativeTab =>
+        customItems().at(gBrowser.openTabs.indexOf(nativeTab));
+      const selectedBeforeBackgroundAction = gBrowser.selectedTab;
+      const pageTitle =
+        '<img data-fennevia-injected="true"> RTL \u202e abc \u202c العربية ' +
+        "x".repeat(180);
+      testNativeTab.setAttribute("label", pageTitle);
+      testNativeTab.setAttribute("busy", "true");
+      testNativeTab.setAttribute("image", "data:image/png;base64,AAAA");
+      testNativeTab.dispatchEvent(
+        new CustomEvent("TabAttrModified", {
+          bubbles: true,
+          detail: { changed: ["busy", "image", "label"] },
+        })
+      );
+      await waitFor(
+        () =>
+          itemForNativeTab(testNativeTab)?.getAttribute(
+            "data-fennevia-loading"
+          ) === "true" &&
+          itemForNativeTab(testNativeTab)
+            ?.querySelector(".fennevia-tab-strip__title")
+            ?.textContent?.trim() === pageTitle.trim(),
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_STATE_TIMEOUT"
+      );
+      const updatedItem = itemForNativeTab(testNativeTab);
+      const loadingStateVisible = Boolean(
+        updatedItem?.querySelector(".fennevia-tab-strip__loading")
+      );
+      const titleInjectionSafe =
+        !root.querySelector("[data-fennevia-injected]") &&
+        !updatedItem?.getAttribute("style");
+      await waitFor(
+        () => {
+          const image = updatedItem?.querySelector(
+            ".fennevia-tab-strip__favicon"
+          );
+          return Boolean(image && (image.hidden || !image.hasAttribute("src")));
+        },
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_FAVICON_TIMEOUT"
+      );
+      const failedFaviconFallback = Boolean(
+        updatedItem?.querySelector(".fennevia-tab-strip__fallback") &&
+          updatedItem
+            ?.querySelector(".fennevia-tab-strip__favicon")
+            ?.hidden
+      );
+
+      updatedItem
+        ?.querySelector('[data-fennevia-action="pin-tab"]')
+        ?.click();
+      await waitFor(
+        () =>
+          testNativeTab.hasAttribute("pinned") &&
+          itemForNativeTab(testNativeTab)?.getAttribute(
+            "data-fennevia-pinned"
+          ) === "true",
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_PIN_TIMEOUT"
+      );
+      const pinnedItem = itemForNativeTab(testNativeTab);
+      const regularItem = customItems().find(
+        item => item.getAttribute("data-fennevia-pinned") === "false"
+      );
+      const pinnedLayoutStable =
+        Boolean(pinnedItem && regularItem) &&
+        pinnedItem.getBoundingClientRect().width <
+          regularItem.getBoundingClientRect().width;
+      const pinDidNotSelect =
+        gBrowser.selectedTab === selectedBeforeBackgroundAction;
+
+      pinnedItem
+        ?.querySelector('[data-fennevia-action="unpin-tab"]')
+        ?.click();
+      await waitFor(
+        () =>
+          !testNativeTab.hasAttribute("pinned") &&
+          itemForNativeTab(testNativeTab)?.getAttribute(
+            "data-fennevia-pinned"
+          ) === "false",
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_UNPIN_TIMEOUT"
+      );
+      const unpinDidNotSelect =
+        gBrowser.selectedTab === selectedBeforeBackgroundAction;
+
+      const selectedButton = root.querySelector(
+        'button[role="tab"][aria-selected="true"]'
+      );
+      dispatchKey(selectedButton, "Home");
+      await waitFor(
+        () =>
+          gBrowser.selectedTab === gBrowser.openTabs.at(0) &&
+          document.activeElement === customTabs().at(0),
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_HOME_TIMEOUT"
+      );
+      const homeSelectedFirst = true;
+
+      dispatchKey(customTabs().at(0), "ArrowLeft");
+      await waitFor(
+        () =>
+          gBrowser.selectedTab === gBrowser.openTabs.at(-1) &&
+          document.activeElement === customTabs().at(-1),
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_WRAP_TIMEOUT"
+      );
+      const arrowWrapped = true;
+
+      const beforeSelectedClose = gBrowser.openTabs.length;
+      dispatchKey(document.activeElement, "Delete");
+      await waitForCount(beforeSelectedClose - 1);
+      const selectedCloseRestoredFocus =
+        document.activeElement?.matches?.(
+          'button[role="tab"][data-fennevia-tab]'
+        ) &&
+        document.activeElement.getAttribute("aria-selected") === "true" &&
+        document.activeElement.tabIndex === 0;
+
+      const selectedBeforeBackgroundClose = gBrowser.selectedTab;
+      itemForNativeTab(testNativeTab)
+        ?.querySelector('[data-fennevia-action="close-tab"]')
+        ?.click();
+      await waitForCount(beforeSelectedClose - 2);
+      const backgroundCloseDidNotSelect =
+        gBrowser.selectedTab === selectedBeforeBackgroundClose;
+
+      const originalIndex = gBrowser.openTabs.indexOf(originalNativeTab);
+      customTabs().at(originalIndex)?.click();
+      await waitFor(
+        () => gBrowser.selectedTab === originalNativeTab,
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_ORIGINAL_SELECT_TIMEOUT"
+      );
+      while (gBrowser.openTabs.length > 1) {
+        const count = gBrowser.openTabs.length;
+        const disposableIndex = gBrowser.openTabs.findIndex(
+          tab => tab !== originalNativeTab
+        );
+        customItems()
+          .at(disposableIndex)
+          ?.querySelector('[data-fennevia-action="close-tab"]')
+          ?.click();
+        await waitForCount(count - 1);
+      }
+      const rapidCleanupComplete =
+        customTabs().length === 1 &&
+        gBrowser.openTabs.length === 1 &&
+        gBrowser.selectedTab === originalNativeTab;
+
+      newTab.click();
+      await waitForCount(2);
+      customItems()
+        .find(item => item.getAttribute("data-fennevia-selected") === "true")
+        ?.querySelector('[data-fennevia-action="close-tab"]')
+        ?.click();
+      await waitForCount(1);
+      await waitFor(
+        () =>
+          document.activeElement === customTabs().at(0) &&
+          customTabs().at(0)?.tabIndex === 0,
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_CLOSE_FOCUS_TIMEOUT"
+      );
+      const closeButtonRestoredFocus = true;
+      await waitFor(
+        () =>
+          document.querySelectorAll("tabbrowser-tab[closing]").length === 0,
+        "FENNEVIA_FIREFOX_TEST_TAB_STRIP_CLOSE_SETTLE_TIMEOUT"
+      );
+
+      return {
+        arrowWrapped,
+        backgroundCloseDidNotSelect,
+        closeButtonRestoredFocus,
+        failedFaviconFallback,
+        finalCustomTabCount: customTabs().length,
+        finalNativeTabCount: gBrowser.openTabs.length,
+        homeSelectedFirst,
+        loadingStateVisible,
+        manyTabsOverflow,
+        pinDidNotSelect,
+        pinnedLayoutStable,
+        rapidCleanupComplete,
+        selectedCloseRestoredFocus,
+        synchronizedAfterBurst,
+        titleInjectionSafe,
+        unpinDidNotSelect,
+      };
+    })();
+  `);
+}
+
+function assertTabStripMvp(result) {
+  const expected = {
+    arrowWrapped: true,
+    backgroundCloseDidNotSelect: true,
+    closeButtonRestoredFocus: true,
+    failedFaviconFallback: true,
+    finalCustomTabCount: 1,
+    finalNativeTabCount: 1,
+    homeSelectedFirst: true,
+    loadingStateVisible: true,
+    manyTabsOverflow: true,
+    pinDidNotSelect: true,
+    pinnedLayoutStable: true,
+    rapidCleanupComplete: true,
+    selectedCloseRestoredFocus: true,
+    synchronizedAfterBurst: true,
+    titleInjectionSafe: true,
+    unpinDidNotSelect: true,
+  };
+  try {
+    assert.deepEqual(result, expected);
+  } catch (error) {
+    console.error(
+      `tabStripDiagnostics=${JSON.stringify({ expected, result })}`,
     );
     throw error;
   }
@@ -988,12 +1332,20 @@ async function exerciseFrontendUnmountRemount(client) {
       let tabSubscriptionCount = 0;
       let tabUnsubscriptionCount = 0;
       const unmountErrors = [];
+      const testTab = Object.freeze({
+        faviconUrl: "chrome://branding/content/icon32.png",
+        id: "tab-registry-1-handle-1",
+        loading: false,
+        pinned: false,
+        selected: true,
+        title: "Remount test tab",
+      });
       const tabs = Object.freeze({
         close() {},
         open() { return "tab-registry-1-handle-1"; },
         pin() {},
         select() {},
-        snapshot() { return Object.freeze([]); },
+        snapshot() { return Object.freeze([testTab]); },
         subscribe() {
           tabSubscriptionCount += 1;
           let active = true;
@@ -1024,6 +1376,9 @@ async function exerciseFrontendUnmountRemount(client) {
         );
         const firstCounter = firstRoot.querySelector(
           "[data-fennevia-counter]"
+        );
+        const firstFavicon = firstRoot.querySelector(
+          ".fennevia-tab-strip__favicon"
         );
         firstButton.click();
         await new Promise(resolve => window.setTimeout(resolve, 0));
@@ -1062,12 +1417,18 @@ async function exerciseFrontendUnmountRemount(client) {
           descendantsAfterSecondDispose: target.childNodes.length,
           firstCounterAfterClick,
           firstDisposeResult,
+          firstFaviconErrorCleared: firstFavicon.onerror === null,
+          firstFaviconSourceCleared: !firstFavicon.hasAttribute("src"),
           firstRootDisconnected: !firstRoot.isConnected,
           firstStatusAfterDispose,
           listenerAddCount: registrations.length,
           listenerOutstandingCount: registrations.filter(
             registration => !registration.removed
           ).length,
+          listenerOutstandingTypes: registrations
+            .filter(registration => !registration.removed)
+            .map(registration => registration.type)
+            .sort(),
           listenerRemoveCount: registrations.filter(
             registration => registration.removed
           ).length,
@@ -1569,10 +1930,17 @@ async function runBrowserToolboxOwnershipProbe(client) {
       }
 
       const projectElements = [];
+      let nativeAnonymousElementCount = 0;
       for (const host of hosts) {
         const pending = [host];
         while (pending.length > 0) {
           const node = pending.shift();
+          if (node.isNativeAnonymous) {
+            if (node.nodeType === 1) {
+              nativeAnonymousElementCount += 1;
+            }
+            continue;
+          }
           if (node.nodeType === 1) {
             projectElements.push(node);
           }
@@ -1598,6 +1966,15 @@ async function runBrowserToolboxOwnershipProbe(client) {
         namespaceComplete: projectElements.every(
           node => node.namespaceURI === XHTML_NS
         ),
+        namespaceMismatches: projectElements
+          .filter(node => node.namespaceURI !== XHTML_NS)
+          .map(node => ({
+            isAnonymous: Boolean(node.isAnonymous),
+            isNativeAnonymous: Boolean(node.isNativeAnonymous),
+            name: node.nodeName,
+            namespace: node.namespaceURI,
+          })),
+        nativeAnonymousElementCount,
         nativeOutsideHosts,
         overlayParentIsBody: overlay.parentNode() === body,
         primaryParentIsBody: primary.parentNode() === body,
@@ -1694,6 +2071,13 @@ async function runBrowserToolboxOwnershipProbe(client) {
     );
 
     assert.equal(inspectorResult.error, undefined);
+    if (!inspectorResult.namespaceComplete) {
+      console.error(
+        `browserToolboxNamespaceDiagnostics=${JSON.stringify(
+          inspectorResult.namespaceMismatches,
+        )}`,
+      );
+    }
     assert.equal(inspectorResult.hostCount, 3);
     assert.equal(inspectorResult.namespaceComplete, true);
     assert.equal(inspectorResult.nativeOutsideHosts, true);
@@ -2090,6 +2474,8 @@ async function run() {
       assertFrontendState(await collectFrontendState(client), "normal");
     }
     await assertNativeStylesIsolated(client);
+    assertTabStripMvp(await exerciseTabStripMvp(client));
+    assertFrontendState(await collectFrontendState(client), "normal");
     const firstWindowInteraction = {
       increments: 2,
       input: "first-window",
@@ -2205,14 +2591,20 @@ async function run() {
     assert.equal(remount.descendantsAfterSecondDispose, 0);
     assert.equal(remount.firstCounterAfterClick, "1");
     assert.equal(remount.firstDisposeResult, true);
+    assert.equal(remount.firstFaviconErrorCleared, true);
+    assert.equal(remount.firstFaviconSourceCleared, true);
     assert.equal(remount.firstRootDisconnected, true);
     assert.equal(remount.firstStatusAfterDispose, "disposed");
     assert.ok(remount.listenerAddCount >= 4);
     const listenerDiagnostics = JSON.stringify({
       add: remount.listenerAddCount,
       outstanding: remount.listenerOutstandingCount,
+      outstandingTypes: remount.listenerOutstandingTypes,
       remove: remount.listenerRemoveCount,
     });
+    if (remount.listenerOutstandingCount !== 0) {
+      console.error(`frontendListenerDiagnostics=${listenerDiagnostics}`);
+    }
     assert.equal(
       remount.listenerOutstandingCount,
       0,
