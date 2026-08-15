@@ -75,10 +75,11 @@ npm run dependencies:audit
 npm run verify
 ```
 
-`npm run build` performs two isolated production builds, compares exact bytes,
-replaces only the owned generated shell directory, and synchronizes hashes into
-`package-manifest.json`. A dirty tree after rebuilding means source, generated
-artifacts, or the manifest is stale. Do not hand-edit generated shell files.
+`npm run build` performs two isolated runs for each production target, compares
+exact bytes, replaces only the owned generated shell and Firefox-boundary
+directories, and synchronizes hashes into `package-manifest.json`. A dirty tree
+after rebuilding means source, generated artifacts, or the manifest is stale.
+Do not hand-edit generated shell or bridge files.
 
 ## 6. Pull-request evidence
 

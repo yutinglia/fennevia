@@ -133,6 +133,19 @@ Deliverables:
 
 Gate: native actions and shell actions remain synchronized without DOM polling or leaked native objects.
 
+Progress (2026-08-15): issue #9 establishes the enforceable bridge foundation
+without implementing tab or navigation features. One generated private ESM
+creates an exclusive context for each managed normal/private window, validates
+the current `gBrowser` tab/event/selection capabilities inside the existing
+fail-open health gate, keeps native handles behind context-scoped opaque IDs,
+and owns idempotent subscriptions/disposal. Typed diagnostics retain only fixed
+current-build context, and ESLint rejects shell/app imports or direct Firefox
+globals/properties. Pure tests plus repeated Firefox 153.0.4 normal, second,
+private, Browser Toolbox, missing-capability, exact-restoration, and cleanup
+evidence passed. Tabs/state synchronization remains owned by #10 and navigation
+by #12. See ADR-023 and
+`docs/research/firefox-153-bridge-boundary.md`.
+
 ### Phase 5: Usable UI slices
 
 Implement in this order:

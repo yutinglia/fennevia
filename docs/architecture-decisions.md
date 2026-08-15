@@ -378,3 +378,53 @@ loader, or a remote module mechanism. The exact dependency review, rejected
 alternatives, first causal errors, source references, and real-Firefox matrix
 are recorded in `docs/dependency-reviews/frontend-toolchain-2026-08-15.md` and
 `docs/research/firefox-153-svelte-build.md`.
+
+## ADR-023: Use one generated, context-scoped Firefox boundary per window
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Keep the typed source boundary in `src/firefox/bridge-boundary.ts` and compile
+it into one fixed private ESM,
+`chrome://fennevia/content/firefox/BridgeBoundary.sys.mjs`.
+`WindowShell.sys.mjs` creates one instance from the existing per-window
+`WindowManager` context, retains it only in a private target-keyed record, and
+disposes it through the same reverse lifecycle as the Svelte frontend and host.
+The active context ID and native window are exclusive until disposal, so a
+normal, second, or private window cannot reuse another window's bridge.
+
+Probe the exact current symbols needed by the next tabs/navigation slices:
+`window.gBrowser`, `gBrowser.tabs`, `gBrowser.tabContainer`, and
+`gBrowser.selectedBrowser` are required;
+`gBrowser.selectedBrowser.webNavigation` is an explicit optional presence
+probe until navigation consumes and revalidates it. Required failure occurs
+inside the #7 health check and produces a typed fixed-code error with phase,
+symbol, Firefox version/build, and window kind. It removes all project state
+while native UI remains visible. Optional absence does not fail or partially
+activate a window.
+
+Native handles remain private to context-scoped registries. Their opaque IDs
+include a process-local registry generation, remain stable only while owned,
+and distinguish malformed, stale, and cross-context use. Public snapshots and
+diagnostics contain only primitives, fixed enums, counts, capability names, and
+symbols. Every subscription and boundary-owned cleanup has an idempotent
+disposer; disposal continues through the complete owned set before surfacing a
+typed cleanup failure.
+
+Enforce the other side of the boundary with ESLint: `src/shell/` and ordinary
+`src/app/` modules cannot import `src/firefox/`, reference privileged Firefox
+globals, or dereference known Firefox-owned global properties. No bridge value
+is passed into Svelte in this issue. The module supplies only the foundation
+needed by issues #10 and #12; it contains no tab UI, navigation UI, generic
+service container, persistence, compatibility branch, global debug API, or
+native-UI hiding.
+
+**Reasoning:** Firefox documents `gBrowser` as one object per browser window,
+and Firefox 153 constructs it before ordinary browser-window consumers while
+its tab collection, event target, selected browser, and web-navigation surface
+remain native objects. Capturing those objects inside one validated privileged
+context localizes update risk and prevents the UI state model from acquiring
+system-principal handles. A generated ESM keeps TypeScript as source of truth
+and brings the bridge under the deterministic package gate without adding a
+runtime dependency or new Chrome Registry exposure. Source, canary, failure,
+cleanup, and real normal/second/private-window evidence is recorded in
+`docs/research/firefox-153-bridge-boundary.md`.

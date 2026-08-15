@@ -268,15 +268,16 @@ pwsh -NoProfile -File .\tests\installer.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
 ```
 
-The current package is `0.5.0-dev` and contains ten exact profile artifacts:
-the manifest, bootstrap, five runtime modules, and three generated shell files.
+The current package is `0.5.0-dev` and contains eleven exact profile artifacts:
+the manifest, bootstrap, one generated private bridge ESM, five runtime
+modules, and three generated shell files.
 `.gitattributes` fixes AutoConfig/default/manifest files to CRLF and privileged
 `.mjs`, `.js`, and notice files to LF so the committed SHA-256 values remain
 stable on Windows and non-Windows checkouts. Do not recompute hashes from an
 unintended line-end conversion; normalize the source according to that contract
-first. Run `npm run build` before package preview whenever frontend source or
-build configuration changes; the command rebuilds the exact shell directory
-and synchronizes package hashes.
+first. Run `npm run build` before package preview whenever frontend/Firefox
+source or build configuration changes; the command rebuilds the exact shell and
+bridge directories and synchronizes package hashes.
 Before a real install or update, also run the runtime/package gates:
 
 ```powershell

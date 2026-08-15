@@ -173,6 +173,41 @@ A bridge should not:
 - combine unrelated Firefox subsystems into one large module;
 - store privileged objects in serializable state or diagnostics.
 
+Issue #9 implements the first enforceable boundary in
+`src/firefox/bridge-boundary.ts`. Vite compiles that source into the single
+private installed ESM
+`chrome://fennevia/content/firefox/BridgeBoundary.sys.mjs`; the generated file
+is not source of truth. `WindowShell.sys.mjs` creates exactly one boundary from
+the existing `WindowManager` context for each managed window and retains it in
+the same target-keyed private record as the frontend API. It passes no bridge
+object, native handle, or capability object to Svelte.
+
+The boundary validates `window.document.defaultView`, the browser document URI,
+the process-local window ID, and normal/private kind before claiming a context.
+An active window or context ID cannot be claimed twice. Required capabilities
+are asserted inside the existing bounded health check; optional capabilities
+are reported explicitly but do not create a half-initialized failure. Errors
+carry only a fixed code, phase, Firefox version, build ID, window kind, and
+allowlisted Firefox symbol. A missing required symbol therefore follows the
+same reverse cleanup and native-visible fail-open path as every other #7 health
+failure.
+
+Opaque native-handle registries are scoped to one boundary generation. IDs are
+stable only while that registry owns the handle; malformed, stale, and foreign
+registry IDs produce distinct typed errors. Registry snapshots contain counts
+and fixed state only. Event subscriptions and cleanup callbacks return
+idempotent disposers, and boundary disposal continues through all owned
+subscriptions and registries before reporting a typed cleanup error. These are
+the only shared utilities introduced for the upcoming tabs and navigation
+bridges; no service locator, dependency-injection framework, or generic Firefox
+SDK exists.
+
+ESLint applies a static boundary to `src/shell/` and ordinary `src/app/` code:
+Firefox implementation imports, privileged globals, and direct Firefox-owned
+properties such as `gBrowser` are rejected. Future public bridge contracts must
+contain ordinary snapshots/events/actions only and remain separate from the
+privileged implementation.
+
 ## 5. Application and frontend layers
 
 The application layer coordinates ordinary typed state, controllers, and feature policy. It must be usable without importing Firefox implementation modules directly.
@@ -297,6 +332,13 @@ generated files, then synchronizes their SHA-256 values into
 bare/dynamic import, HMR client, extra chunk, or runtime network endpoint is
 installed.
 
+ADR-023 adds a separate deterministic ESM build for
+`BridgeBoundary.sys.mjs`. It runs twice in isolated temporary directories,
+requires one exact output, and rejects source maps, HMR, dynamic imports,
+runtime network APIs, and endpoint literals. `npm run build` completes both
+generated targets before synchronizing all source and artifact hashes into the
+package manifest.
+
 Installed privileged source maps are prohibited for the current build. A later
 debug-map proposal requires an explicit exposure and packaging decision; local
 tool output must never enter the package inventory accidentally.
@@ -337,9 +379,10 @@ src/
     HealthState.ts
     Logger.ts
   firefox/
-    context.ts
-    capabilities.ts
-    disposables.ts
+    bridge-boundary.ts       # current context/capability/disposal boundary
+    context.ts               # future split only when real consumers require it
+    capabilities.ts          # future split only when real consumers require it
+    disposables.ts           # future split only when real consumers require it
     tabs.ts
     navigation.ts
     commands.ts
@@ -364,6 +407,8 @@ generated Phase 3 frontend:
 ```text
 profile/chrome/fennevia/content/
   Bootstrap.sys.mjs
+  firefox/
+    BridgeBoundary.sys.mjs
   runtime/
     HealthState.sys.mjs
     Logger.sys.mjs
@@ -376,10 +421,11 @@ profile/chrome/fennevia/content/
     THIRD_PARTY_NOTICES.txt
 ```
 
-All ten profile files are exact package artifacts with committed hashes. The
-three shell files are reproducible only from `src/` and build configuration;
-the runtime modules remain reviewed source. The source/build boundary and
-per-window execution decision are recorded in ADR-022.
+All eleven profile files are exact package artifacts with committed hashes. The
+bridge ESM and three shell files are reproducible only from `src/` and build
+configuration; the runtime modules remain reviewed source. The source/build
+boundaries and per-window execution decisions are recorded in ADR-022 and
+ADR-023.
 
 ## 12. Dependency direction
 

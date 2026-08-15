@@ -81,6 +81,22 @@ not serialize keyboard event objects, native windows, user input, browsing
 state, or arbitrary collaborator results. The diagnostic adds only fixed state
 and recovery-binding labels.
 
+Issue #9 adds one allowlisted `firefoxSymbol` field. It accepts only a short
+ASCII property-path grammar and is populated from fixed capability
+specifications such as `window.gBrowser`; URL/query punctuation, local paths,
+and caller-provided browsing values are rejected. Typed bridge errors have a
+fixed code/message and non-enumerable context containing only phase, symbol,
+Firefox version/build, and normal/private kind. Their ordinary diagnostic form
+contains exactly those six fields. Native causes remain private and pass only
+through the existing stack redactor.
+
+Bridge capability snapshots contain booleans, fixed names, fixed symbols, and
+required/optional classification. Boundary and opaque-registry snapshots add
+only fixed lifecycle state and counts. They never contain a native window, tab,
+browser, event, principal, URL, title, query, or profile path. The privileged
+boundary object itself is retained by `WindowShell.sys.mjs` and is never passed
+to Svelte or ordinary application state.
+
 ## 5. Dependency and supply-chain policy
 
 Before adding a runtime or build dependency, record:
@@ -133,6 +149,11 @@ validated browser-window global. The temporary registration property rejects
 collisions, is deleted after synchronous evaluation even on error, and cannot
 select another path. This narrow local load is not script discovery, remote
 loading, or a new content-accessible surface.
+
+Issue #9 also adds no manifest directive. Its generated bridge ESM remains
+inside the same privileged-only `chrome://fennevia/content/` package and is
+imported only by the fixed runtime module. It exposes no `resource:` alias,
+content-accessible flag, arbitrary path, or runtime loader API.
 
 ## 7. Installation and file-system safety
 
@@ -242,6 +263,15 @@ input state. The frontend receives only the fixed normal/private classification,
 persists nothing, and logs no input; its API is held in a `WeakMap` until
 per-window unmount and is never process-global serializable state.
 
+Issue #9 creates a separate bridge context for each existing, second, and
+private browser window. Active native windows and random process-local window
+IDs are exclusive until disposal. Opaque handle IDs additionally include a
+process-local registry generation, so an ID from another or already-disposed
+context cannot resolve to a native object in the current context. No browsing
+value is persisted or logged. This validates the boundary machinery only;
+issues #10 and #12 must still prove the privacy behavior of the tab and
+navigation data they introduce.
+
 ## 10. Source maps and debug artifacts
 
 - Development source maps may remain local.
@@ -254,10 +284,11 @@ The production scanner continues to reject runtime endpoints. Its only literal
 exceptions are exact single-, double-, or backtick-quoted XHTML, XUL, SVG,
 MathML, and XLink standards namespace URIs used by DOM creation; adding any
 suffix, path, query, concatenation, or different URL remains a finding.
-Issue #8 sets Vite production source maps to false, rejects source-map files and
-references, and installs only the exact ten-file profile inventory. Installed
-startup and generated files have explicit repository EOL attributes so their
-manifest hashes describe stable bytes across Windows checkouts.
+Issue #8 sets Vite production source maps to false and rejects source-map files
+and references. Issue #9 applies the same rules to the bridge build; the current
+package installs only the exact eleven-file profile inventory. Installed startup
+and generated files have explicit repository EOL attributes so their manifest
+hashes describe stable bytes across Windows checkouts.
 
 ## 11. Security review triggers
 

@@ -5,6 +5,7 @@
   "expectedFiles": [
     "chrome.manifest",
     "content/Bootstrap.sys.mjs",
+    "content/firefox/BridgeBoundary.sys.mjs",
     "content/runtime/HealthState.sys.mjs",
     "content/runtime/Logger.sys.mjs",
     "content/runtime/Runtime.sys.mjs",
@@ -37,13 +38,18 @@
     },
     {
       "scope": "profile",
+      "path": "chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs",
+      "sha256": "7eb9413ae09800e183f28a91ba1bb5bbdb483bb8f92f3e62fee301385db0e5b2"
+    },
+    {
+      "scope": "profile",
       "path": "chrome/fennevia/content/runtime/HealthState.sys.mjs",
       "sha256": "d117019a8b457b41af6e771339f0dcc6aad1459f2b5e2b47564e399a25e2f14a"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/Logger.sys.mjs",
-      "sha256": "d7120a007139918d2339c72d3dd381b50023a92233c156b4f9436f8ac9c182dc"
+      "sha256": "292791f26fe0d1c06c9ba384a99db91d2f3e8c186a5f337b0f0c3ab98f8bbf31"
     },
     {
       "scope": "profile",
@@ -58,7 +64,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
-      "sha256": "89b4c003f483706994afaa87a783f39a88acbf667c63398a89039402b90c3e39"
+      "sha256": "c6575bae382d626801356667ecd69af2cd78c17c854bd0813ab01b24e79ac791"
     },
     {
       "scope": "profile",

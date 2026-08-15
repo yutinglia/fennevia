@@ -112,6 +112,18 @@ interface BrowserTabsBridge {
 
 Create a similarly small navigation contract. Native tab, browser, and window references must never become serializable Svelte state. The bridge owns opaque-ID-to-native-handle mappings and their cleanup.
 
+Progress (2026-08-15): issue #9 implements only the shared boundary required by
+those future contracts. `src/firefox/bridge-boundary.ts` supplies exclusive
+per-window contexts, required/optional capability snapshots, privacy-safe typed
+errors, idempotent event disposal, and context-scoped opaque native-handle
+registries. `WindowShell.sys.mjs` health-gates and privately owns the generated
+bridge ESM; Svelte receives none of it. ESLint enforces the shell/app side of
+the boundary. Firefox 153.0.4 normal, second, private, Browser Toolbox, injected
+required-capability failure, restoration, and cleanup matrices passed. No tab
+or navigation action, service container, compatibility fallback, or native-hide
+rule was added. See ADR-023 and
+`docs/research/firefox-153-bridge-boundary.md`.
+
 ## Milestone E: Custom tab strip MVP
 
 Implement in this order:

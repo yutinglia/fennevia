@@ -94,11 +94,12 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
 });
 
 test("the privileged adapter loads only the fixed per-window bundle", async () => {
-  const [runtime, viteConfig] = await Promise.all([
+  const [runtime, viteConfig, bridgeConfig] = await Promise.all([
     readProjectFile(
       "profile/chrome/fennevia/content/runtime/WindowShell.sys.mjs",
     ),
     readProjectFile("vite.config.ts"),
+    readProjectFile("vite.firefox.config.ts"),
   ]);
 
   assert.match(
@@ -106,7 +107,11 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
     /const SHELL_APP_SCRIPT_URI =\s*\n\s*"chrome:\/\/fennevia\/content\/shell\/ShellApp\.js";/u,
   );
   assert.match(runtime, /Services\.scriptloader\.loadSubScript\(/u);
-  assert.match(runtime, /const productionFrontendByTarget = new WeakMap\(\)/u);
+  assert.match(runtime, /const productionShellByTarget = new WeakMap\(\)/u);
+  assert.match(
+    runtime,
+    /import \{ createFirefoxBridgeBoundary \} from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
+  );
   assert.match(runtime, /Reflect\.deleteProperty\(/u);
   assert.doesNotMatch(runtime, /ShellApp\.sys\.mjs|import\s*\(/u);
 
@@ -114,4 +119,39 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
   assert.match(viteConfig, /formats: \["iife"\]/u);
   assert.match(viteConfig, /codeSplitting: false/u);
   assert.match(viteConfig, /sourcemap: false/u);
+  assert.match(bridgeConfig, /formats: \["es"\]/u);
+  assert.match(bridgeConfig, /codeSplitting: false/u);
+  assert.match(bridgeConfig, /sourcemap: false/u);
+});
+
+test("the generated Firefox boundary is one deterministic private ESM artifact", async () => {
+  const [bridge, manifest] = await Promise.all([
+    readProjectFile(
+      "profile/chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs",
+    ),
+    readProjectFile("package-manifest.json").then(
+      (content) =>
+        /** @type {{expectedFiles: string[]}} */ (JSON.parse(content)),
+    ),
+  ]);
+
+  assert.match(bridge, /createFirefoxBridgeBoundary/u);
+  assert.match(bridge, /FENNEVIA_FIREFOX_CAPABILITY_MISSING/u);
+  assert.match(bridge, /export \{/u);
+  assert.doesNotMatch(
+    bridge,
+    /sourceMappingURL|import\.meta\.hot|\bimport\s*\(/u,
+  );
+  assert.doesNotMatch(
+    bridge,
+    /\b(?:fetch|WebSocket|EventSource|XMLHttpRequest|importScripts)\s*\(/u,
+  );
+  assert.doesNotMatch(bridge, /\b(?:https?|wss?):\/\//iu);
+
+  assert.deepEqual(
+    manifest.expectedFiles.filter((file) =>
+      file.startsWith("content/firefox/"),
+    ),
+    ["content/firefox/BridgeBoundary.sys.mjs"],
+  );
 });

@@ -630,7 +630,71 @@ and emitted fixed frontend phases/codes without browsing values. It then
 restored exact bytes, ran the ordinary matrix, and left zero Firefox process.
 No startup-cache action or native-hide rule was used.
 
-## 11. Firefox stable-update procedure
+## 11. Phase 4 bridge-boundary evidence
+
+Issue #9 adds the first generated Firefox boundary without adding tab or
+navigation UI. Architecture and current-source evidence is in
+`docs/research/firefox-153-bridge-boundary.md`; ADR-023 records the accepted
+scope.
+
+The static/pure matrix is part of `npm test` and covers:
+
+- required and optional capability classification;
+- fixed typed errors with current Firefox build context and no browsing data;
+- exclusive normal/private/second-window context ownership;
+- idempotent direct and boundary-owned subscription cleanup;
+- stable context-scoped opaque IDs plus malformed, stale, and foreign-ID
+  failures;
+- snapshots that serialize no native object;
+- a live ESLint fixture proving that shell/app Firefox imports, globals, and
+  owned-property dereferences are rejected;
+- the existing #7 required-capability fail-open lifecycle.
+
+The build reproduces one additional private artifact twice before package
+manifest synchronization:
+
+| Artifact | Bytes | SHA-256 |
+|---|---:|---|
+| `content/firefox/BridgeBoundary.sys.mjs` | 8,177 | `7eb9413ae09800e183f28a91ba1bb5bbdb483bb8f92f3e62fee301385db0e5b2` |
+
+Real Firefox commands are:
+
+```powershell
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>'
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --browser-toolbox
+pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
+```
+
+Firefox 153.0.4 normal, second normal, and private windows each emitted one
+created/ready/disposed bridge sequence while retaining independent frontend
+state and native UI. Closing a window, emergency fallback, and runtime stop
+removed the matching bridge exactly once. Browser Toolbox repeated the matrix
+and found no ownership regression or unexpected first-party exception.
+
+The owned recovery wrapper replaced only the hash-verified bridge artifact with
+a deterministic fixture whose required `window.gBrowser` capability fails.
+The failure retained Firefox version/build/window kind and the fixed symbol,
+stopped before `healthy`, removed the Svelte root/style/hosts and bridge, and
+left the native browser/toolbox usable. The wrapper restored the exact original
+hash, reran the complete normal/second/private matrix successfully, and left no
+Firefox process or temporary file.
+
+One first ordinary run tripped the pre-existing broad Svelte delegated-listener
+instrumentation after all bridge startup checks had passed. The harness cleaned
+up its process; the assertion was augmented with count-only diagnostics, and
+the immediate retry, recovery rerun, and Browser Toolbox rerun all passed. No
+bridge subscription was registered in #9 and no Browser Console error appeared.
+This remains a test-instrumentation watch item rather than a platform-support or
+cleanup claim beyond the passing repeated evidence.
+
+## 12. Firefox stable-update procedure
 
 For every stable update:
 
@@ -645,7 +709,7 @@ For every stable update:
 
 Never claim compatibility from version-number inspection alone.
 
-## 12. Automation boundary
+## 13. Automation boundary
 
 Suitable for automation:
 
