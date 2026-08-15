@@ -7,7 +7,7 @@ This is an initial ownership and dependency map, not a stable API list. Every sy
 | Area | Ownership |
 | --- | --- |
 | Shell XHTML hosts | Created, mounted, and removed by this project |
-| Visible tabs, navigation, compact address/status launcher, centered address popup, and sidebar | This project |
+| Visible tabs, navigation, compact address/status launcher, centered address popup, and right bookmarks panel | This project |
 | Shell state and controllers | This project |
 | Firefox bridge adapters | This project, with documented internal dependencies |
 | Build and installation scripts | This project |
@@ -108,14 +108,29 @@ The MVP needs only basic display and submission. Suggestions, autofill, search m
 
 ### Places
 
-Research:
+Issue #14 verified the following dependencies on Firefox 153.0.4 release, build
+ID `20260810162159`, official tag `FIREFOX_153_0_4_RELEASE`, commit
+`c178247e1dfea52241a6b18b18cf3a00f8da935c`, on Windows 11 25H2. The complete
+source/canary/runtime record is
+`docs/research/firefox-153-bookmarks-surface.md`; ADR-029 records the selected
+data, opening, lifecycle, and accessibility policy.
 
-- `PlacesUtils`;
-- current browser Places UI helpers;
-- bookmark and history observers;
-- callers and tests.
+| Dependency | Firefox 153 source-backed behavior | Project owner and failure behavior |
+| --- | --- | --- |
+| `resource://gre/modules/PlacesUtils.sys.mjs` / `PlacesUtils.bookmarks` | [`PlacesUtils.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/toolkit/components/places/PlacesUtils.sys.mjs), blob `767a6a1ae24b48e4b2847ff3b7f84810631f8558`, exposes the bookmarks API and observers. | `src/firefox/bookmarks.ts` imports this one fixed URI through the privileged runtime loader. Missing module/object fails before health with fixed module/symbol diagnostics; no URL, profile path, or Places value is logged. |
+| `Bookmarks.userContentRoots` and `getLocalizedTitle(info)` | [`Bookmarks.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/toolkit/components/places/Bookmarks.sys.mjs), blob `acd57c4ab9317d7c9ee24e61546d1cccdc3afe68`, defines toolbar, menu, unfiled/Other, and mobile roots in that order and resolves their current localized titles. | All four are required. The bridge fetches each root, validates its record, translates only title/type/children plus an opaque ID, and exposes no root GUID. Invalid count/order/GUID/title capability fails health. |
+| `Bookmarks.fetch({ guid })` and `fetch({ parentGuid, index })` | The same source returns current bookmark records, including `URL` objects for bookmark URLs and child count for folders. `fetchTree()` in this release throws `Not yet implemented`. | One loaded page performs one parent fetch plus at most 32 indexed child fetches. Page offset is bounded to 1,000,000, visible depth to 8, and open folders to 20. Missing/stale records return a fixed stale result; malformed records produce a typed error. Fennevia never calls `fetchTree()` or recursively mirrors the database. |
+| `TYPE_BOOKMARK`, `TYPE_FOLDER`, `TYPE_SEPARATOR`, record `guid`, `parentGuid`, `index`, `title`, `childCount`, and bookmark `url` | `Bookmarks.sys.mjs` documents the three item types, 12-character GUIDs, child order, title behavior, and URL-object output. | Only kind, a title capped at 160 Unicode code points, and `hasChildren` cross the boundary. GUIDs map to context-scoped opaque handles; records and URLs remain private. Separators render inertly and never enter roving focus. |
+| `PlacesUtils.observers.addListener()` / `removeListener()` | [`PlacesUtils.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/toolkit/components/places/PlacesUtils.sys.mjs) fronts [`PlacesObservers.webidl`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/dom/chrome-webidl/PlacesObservers.webidl), blob `ad4e292ad01b6095ef6e778b382465aed728cce8`, with paired listener registration/removal. | One per-window listener owns the exact event-type array and callback. Disposal removes that exact pair once. Observer failure requests per-window fail-open; there is no timer or polling fallback. |
+| `bookmark-added`, `bookmark-removed`, `bookmark-moved`, `bookmark-title-changed`, and `bookmark-url-changed` | [`PlacesEvent.webidl`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/dom/chrome-webidl/PlacesEvent.webidl), blob `d41de887bdf8a425c84e5364e5f5e4a5a2469fd9`, defines bookmark event parent/new/old-parent, index, tagging, and descendant-removal fields. `Bookmarks.reorder()` emits moved records for its reordered children. | The bridge validates fixed fields, ignores tag operations, includes old/new loaded parents for moves, invalidates direct removed handles, and emits only opaque affected-parent IDs. More than 128 records or 16 parents collapses to a bounded all-scope event. The app microtask-coalesces bursts and refreshes only loaded branches. |
+| `moz-src:///browser/components/places/PlacesUIUtils.sys.mjs` | Firefox [`browser.js`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/base/content/browser.js), blob `c919cf5c91b39c9b8ed13b25bd8efbfffe25cc52`, imports `PlacesUIUtils` from this current `moz-src:///` URI. | `WindowShell.sys.mjs` supplies only a fixed `ChromeUtils.importESModule()` loader to the bookmarks controller. A missing helper/module is required-capability fail-open; no dynamic or remote module URI is accepted. |
+| `PlacesUIUtils.promiseNodeLikeFromFetchInfo()` | [`PlacesUIUtils.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/components/places/PlacesUIUtils.sys.mjs), blob `7c11a2004c87aa6f0c61cf05ca522c7471c7be71`, converts a current fetch record into a node-like bookmark value and rejects separators/place nodes. | Conversion occurs only after opaque-ID resolution and current record re-fetch. The node-like value remains inside `src/firefox/`; conversion failure returns a fixed failed result without serializing the URL or record. |
+| `PlacesUIUtils.openNodeIn(node, "current" | "tab", { ownerWindow }, isPrivate)` | The same source resolves the owner window, checks URL security/type, avoids followed-bookmark marking in a private window, records native bookmark tab-transition data, honors the background preference, and calls `openTrustedLinkIn()` with native private/principal policy. [`URILoadingHelper.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/modules/URILoadingHelper.sys.mjs), blob `b0f17c20bcca640c519b547149179cc03a86aa54`, owns the downstream trusted-link behavior. | The bridge rejects stale/foreign/non-bookmark and `javascript:`, `data:`, `vbscript:`, or `place:` values first, then delegates HTTP(S), internal, file, and other non-blocked schemes to Firefox. It passes only the owning window and its existing normal/private classification; no custom `loadURI`, principal, container, or popup policy is invented. |
 
-Initially expose read-only ordinary snapshots. Do not place Places result objects in frontend state.
+The right root/edge host is a project-owned DOM dependency, not a Places API.
+The four native bookmark roots are profile data shared by Firefox; Fennevia's
+loaded pages, selection, expansion, scroll/focus, opaque mappings, and observer
+subscription remain independent per browser window and are never persisted.
 
 ### SessionStore
 

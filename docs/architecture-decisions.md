@@ -710,3 +710,88 @@ building a parallel Urlbar provider stack. Source pins, product-reference
 provenance, first causal failures, rejected alternatives, privacy review, and
 normal/second/private/Browser-Toolbox evidence are recorded in
 `docs/research/firefox-153-address-popup.md`.
+
+## ADR-029: Use per-window opaque Places views with bounded lazy bookmark pages
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Create one bookmarks controller inside each ADR-023 window boundary. Firefox's
+profile Places database remains shared according to native policy, but every
+Fennevia handle registry, observer subscription, selected root, loaded page,
+expanded-folder set, focus position, and disposer belongs to one normal or
+private browser window. Do not introduce a process-global bookmark mirror or
+persist project bookmark UI state.
+
+Load only the fixed `PlacesUtils` and `PlacesUIUtils` module URIs used by the
+current Firefox browser frontend. Present the four current
+`Bookmarks.userContentRoots` in native order with `getLocalizedTitle()`. For a
+loaded branch, fetch its parent once and then fetch no more than 32 child
+positions through `Bookmarks.fetch({ parentGuid, index })`. Keep only the
+current page for that branch, cap offsets at 1,000,000, visible depth at 8, and
+simultaneously expanded folders at 20. Collapse discards all owned descendant
+pages. Do not use `fetchTree()`, which is explicitly unimplemented in Firefox
+153, or an unbounded recursive query.
+
+Translate only folder, bookmark, and separator type, a title of at most 160
+Unicode code points, `hasChildren`, and a context-bound opaque ID into ordinary
+immutable state. Keep Places records, GUIDs, URLs, native node-like objects,
+services, observers, and windows private. Svelte receives no URL or user-data
+identifier and stores none in a DOM attribute. Render title values through text
+bindings and use project-owned type glyphs; remote favicon and metadata loading
+remain out of scope.
+
+Register one exact `PlacesUtils.observers` listener for bookmark added,
+removed, moved, title-changed, and URL-changed events. Reorder is covered by
+Firefox's moved notifications. Convert only already-registered affected parent
+GUIDs to opaque IDs, include both old and new parents for a move, and refresh
+only loaded branches. Coalesce application refreshes by microtask. Collapse an
+event batch over 128 records or more than 16 affected parents to one bounded
+all-scope refresh signal. Use no timer or continuous polling. Malformed observer
+data requests the existing fail-open path; the exact listener/event array is
+removed during idempotent disposal.
+
+For opening, resolve the current opaque ID and re-fetch the bookmark at action
+time. Reject stale/foreign IDs, folders, separators, and `javascript:`, `data:`,
+`vbscript:`, or `place:` schemes before native opening. Convert the current
+record with `PlacesUIUtils.promiseNodeLikeFromFetchInfo()` and delegate to
+`PlacesUIUtils.openNodeIn()` with `current` or `tab`, the owning window, and its
+private kind. Firefox therefore retains URL security checks,
+`openTrustedLinkIn()` principal and popup policy, bookmark transition data,
+background-tab preference, and private targeting. Ordinary HTTP(S), internal,
+file, and other non-blocked schemes remain subject to Firefox's native checks.
+
+Render the right surface as a four-root tablist followed by one ordinary nested
+list rather than an ARIA tree. Root Left/Right/Home/End behavior and item
+Up/Down/Home/End, folder Left/Right, Enter/Space, Ctrl/Command+Enter, middle
+click, and explicit new-tab behavior are implemented directly and tested in
+Firefox chrome. Separators do not enter roving focus. Stable opaque keys retain
+focus through title/URL/reorder updates; removing the focused item selects the
+nearest surviving action or the selected root. Loading, empty, paged, stale,
+unavailable, and error output remains text-accessible.
+
+Consume ADR-026's existing right host, reveal/focus controller, one anti-flicker
+timer, corner arbitration, collision bounds, glass tokens, environment
+suspension, and disposer. The panel adds no second edge trigger, timer, z-index
+system, popup owner, native sidebar mutation, or native-hide selector. Initial
+roots and first-page readiness are health-gated, and missing Places/query/open
+capability follows ADR-021 fail-open while Firefox's native toolbar, sidebar,
+Library, bookmark dialogs, and `Ctrl+D` remain attached and visible.
+
+**Reasoning:** A per-window view aligns native object ownership with the
+existing boundary and prevents normal/private UI state leakage, while Firefox
+continues to own the shared profile database. Indexed pages bound privileged
+work without assuming a small profile. The simpler list pattern gives reliable
+keyboard and chrome accessibility without pretending a paged partial tree is a
+complete ARIA tree. Native `PlacesUIUtils` opening preserves more Firefox
+security and preference policy than a custom `loadURI` shortcut.
+
+The capability reference
+`yutinglia/my-firefox-custom@7a02f60bb23abe9c191c7fd8cd2a7096bb63aee5`
+was inspected only for the broad goal of compact right-edge bookmark access.
+Its repository `LICENSE` states MIT for the author's original work, while the
+GitHub API reports `NOASSERTION`; regardless, its source, DOM strategy,
+selectors, timers, CSS values, dimensions, icons, drag-and-drop code, and
+visual composition were not copied or adapted.
+Current source pins, canary review, alternatives, security analysis, first
+causal failure, and real normal/second/private-window evidence are recorded in
+`docs/research/firefox-153-bookmarks-surface.md`.

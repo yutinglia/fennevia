@@ -9,19 +9,20 @@ later ADR supersedes their production architecture.
 
 As of 2026-08-16:
 
-- package: `0.7.0-dev`;
+- package: `0.8.0-dev`;
 - Firefox: 153.0.4 release;
 - build ID: `20260810162159`;
 - first platform: Windows 11;
 - environment: copied stock Firefox program plus marker-owned direct-path
   development profile;
-- completed runtime/UI milestones: #3–#13 and #31;
+- completed runtime/UI milestones: #3–#14 and #31;
 - current shell: one zero-layout frame with independent top, left, right, and
   bottom surfaces plus one centered address-overlay root;
 - current functional features: vertical tabs and compact address/status
-  launcher in the left surface, centered address/search popup, and primary
-  navigation controls with bounded page status in the top surface;
-- current placeholders: right and bottom;
+  launcher in the left surface, centered address/search popup, primary
+  navigation controls with bounded page status in the top surface, and bounded
+  lazy bookmarks in the right surface;
+- current placeholder: bottom;
 - native Firefox visible UI: retained and unchanged;
 - production active state: not entered.
 
@@ -296,7 +297,7 @@ sent to an external service.
 
 Evidence: `docs/research/firefox-153-address-popup.md`.
 
-### 6.4 Right bookmarks — required for #14
+### 6.4 Right bookmarks — validated for #14
 
 Validate:
 
@@ -314,6 +315,24 @@ Validate:
   logs/persistence;
 - native Library, `Ctrl+D`, dialogs, and management paths retained;
 - Places capability/query/observer/surface failure.
+
+The unit matrix covers fixed four-root translation, 32-item paging and
+last-page normalization, lazy branches, depth/expansion behavior, code-point
+title bounds, separators, stale/foreign IDs, event bursts, descendant-handle
+release, supported and rejected schemes, private opening, cleanup, and
+capability failure. The real harness creates only fixed
+GUID test fixtures in the marker-owned profile, mutates them through native
+`PlacesUtils.bookmarks`, and removes them in `finally`. It verified hidden
+create, open rename/URL change, move, reorder, focused delete, current-tab and
+Ctrl+Enter new-tab opening, keyboard traversal, and no URL-bearing panel DOM.
+
+The ordinary and Browser Toolbox runs passed in the initial normal window, a
+second normal window, and a private window. The bridge recovery wrapper now
+injects a missing Places capability in addition to base/tabs/navigation
+failures, proves native UI and zero project hosts, restores the exact committed
+hash, and then reruns ordinary startup. Frontend missing/throwing bundle
+recovery passed after the bookmark component was added. Evidence: ADR-029 and
+`docs/research/firefox-153-bookmarks-surface.md`.
 
 ### 6.5 Bottom downloads — required for #32
 
@@ -384,7 +403,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.7.0-dev` stops at `healthy`. The health phase requires:
+Current package `0.8.0-dev` stops at `healthy`. The health phase requires:
 
 - exact frame identity and placement;
 - ordered top/left/right/bottom hosts plus the final address-overlay host;
@@ -392,6 +411,7 @@ Current package `0.7.0-dev` stops at `healthy`. The health phase requires:
 - five frontend roots;
 - attached parsed project CSS;
 - edge reveal controller;
+- initialized four-root bookmarks state and a successful first bounded page;
 - environment/suspension handling;
 - privileged emergency handler;
 - every declared required capability;
@@ -600,6 +620,11 @@ pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
 
 ```
 
+The bridge recovery command includes a dedicated
+`FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING` run. The ordinary lifecycle
+command contains the native bookmark fixture/update/open matrix; no separate
+profile mutation command is required.
+
 Use only harnesses that exist on the current branch. When a future issue adds a
 feature-specific harness, document its exact target validation, mutation scope,
 restoration path, and sensitive-output policy.
@@ -625,6 +650,7 @@ of the installed package.
 | Four-edge frame            | `docs/research/firefox-153-four-edge-shell.md`       |
 | Top navigation             | `docs/research/firefox-153-navigation-controls.md`   |
 | Address launcher and popup | `docs/research/firefox-153-address-popup.md`         |
+| Right-edge bookmarks       | `docs/research/firefox-153-bookmarks-surface.md`     |
 
 Those records describe the exact milestone tested. Current production state is
 summarized in README, the master plan, the shell roadmap, architecture, issue

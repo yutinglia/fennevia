@@ -173,7 +173,9 @@
     <header class="fennevia-address-popup__header">
       <div>
         <span class="fennevia-address-popup__eyebrow"
-          >{props.windowKind === "private" ? "Private browsing" : "Fennevia"}</span
+          >{props.windowKind === "private"
+            ? "Private browsing"
+            : "Fennevia"}</span
         >
         <h2 id="fennevia-address-popup-title">Address and search</h2>
       </div>
@@ -188,8 +190,9 @@
       >
     </header>
 
-    <label class="fennevia-address-popup__label" for="fennevia-address-popup-input"
-      >Enter an address or search</label
+    <label
+      class="fennevia-address-popup__label"
+      for="fennevia-address-popup-input">Enter an address or search</label
     >
     <div class="fennevia-address-popup__field-shell">
       <span aria-hidden="true" class="fennevia-address-popup__glyph">⌁</span>

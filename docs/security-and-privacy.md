@@ -28,7 +28,7 @@ controls, private-window rules, and review triggers.
 
 ## 2. Current security baseline
 
-Current validated package: `0.7.0-dev` on Firefox 153.0.4 for Windows.
+Current validated package: `0.8.0-dev` on Firefox 153.0.4 for Windows.
 
 Implemented controls:
 
@@ -124,9 +124,10 @@ Requirements:
 - disposal clears all holds, timers, observers, delegated listeners, roots, and
   focus-origin records.
 
-The right and bottom placeholders are not feature-complete. The top navigation
-surface is complete for #12 but does not replace the pending address, bookmarks,
-or Downloads features required before #15.
+The bottom placeholder is not feature-complete. The top navigation, left
+address/status, centered popup, and right bookmarks surfaces are complete for
+#12–#14 but do not replace the pending Downloads and #37 permissions/page-
+action coverage required before #15.
 
 ## 6. Data classification and logging
 
@@ -260,21 +261,54 @@ The fifth address-overlay root remains inside the project frame. Popup activity
 suppresses the four edge surfaces, and disposal clears its draft, focus history,
 subscribers, listeners, and root before host removal.
 
-### 7.3 Bookmarks — pending #14
+### 7.3 Bookmarks — implemented #14
 
-Before implementation:
+The Places controller is per window and holds native modules, records, GUIDs,
+URL objects, observers, node-like opening values, and the owner window only in
+`src/firefox/bookmarks.ts`. Svelte receives immutable ordinary nodes containing
+only an opaque context-bound ID, fixed kind, title, and `hasChildren`. URLs,
+GUIDs, numeric database IDs, principals, native objects, and folder paths never
+enter application state, DOM attributes, serialized data, or diagnostics.
 
-- use bounded/lazy roots and child queries;
-- keep Places records, GUIDs/IDs, URLs, observers, services, and principals
-  private;
-- prefer opaque-ID open actions so a bookmark URL need not enter Svelte state;
-- bound title length, item count, page size, and recursion depth;
-- render titles as text;
-- do not support bookmarklets/executable URLs without a separate security issue;
-- do not add remote favicons/metadata;
-- do not mirror an unbounded tree;
-- do not log or persist bookmark contents;
-- preserve native Library, dialogs, `Ctrl+D`, and management paths.
+Bookmark and folder titles are browsing data. They may exist as text only in
+the owning window's in-memory bounded page and rendered panel. Each title is
+limited to 160 Unicode code points. The bridge returns at most 32 children per
+page, the application keeps one page per loaded branch, visible depth is capped
+at 8, at most 20 folders may remain expanded, and collapse discards descendant
+pages. There is no recursive `fetchTree()`, complete database mirror, polling,
+project preference, session persistence, clipboard export, search index,
+analytics, or network sink.
+
+One paired native observer covers add/remove/move/reorder/title/URL changes.
+Events expose only already-known opaque affected-parent IDs; batches above 128
+records or 16 parents collapse to one fixed all-scope signal. Subscriber and
+observer errors carry fixed code/phase/symbol/build/window-kind fields only and
+request the existing per-window fail-open path. They never include title, URL,
+folder contents, Places GUID, or private activity. Removal events immediately
+release every registered removed-node handle, including descendant removals.
+
+Opening accepts only an opaque bookmark ID and current/new-tab disposition. The
+bridge re-fetches the current native record, rejects stale/foreign/folder/
+separator handles and `javascript:`, `data:`, `vbscript:`, or `place:` schemes,
+then delegates node conversion and opening to current `PlacesUIUtils`.
+Firefox retains its URL security check, trusted-link principal behavior,
+bookmark transition data, background-tab preference, native-window/default
+context policy, and private targeting. Fennevia does not provide a `loadURI` shortcut,
+bookmarklet execution, or project-owned principal.
+
+Firefox natively shares profile bookmarks with private windows. Fennevia shows
+that same native data but gives every private window an independent transient
+view, handle registry, observer subscription, selected root, loaded page,
+expansion, scroll/focus, and disposer. It records no private-window bookmark
+activity and shares no project state with normal windows.
+
+Titles are rendered through Svelte text bindings with type glyphs. No remote
+favicon, thumbnail, metadata, synchronization, or CSS URL is added. The native
+bookmarks toolbar, sidebar, Library, dialogs, `Ctrl+D`, and management paths
+remain attached, visible, and authoritative. Initial query or required Places/
+opening capability failure blocks health and leaves those native paths usable.
+Source evidence and real hostile-title/private/fail-open tests are in
+`docs/research/firefox-153-bookmarks-surface.md` and ADR-029.
 
 ### 7.4 Downloads — pending #32
 
@@ -466,8 +500,9 @@ Global rules:
 Implemented:
 
 - base lifecycle, health, frame, edge controller, tabs bridge, vertical tab UI,
-  navigation/address bridge, compact launcher, centered popup, and top controls
-  have isolated normal, second-normal, and private instances;
+  navigation/address bridge, compact launcher, centered popup, top controls,
+  and bookmarks bridge/right panel have isolated normal, second-normal, and
+  private instances;
 - opaque IDs include context/registry generation;
 - controllers, roots, holds, timers, listeners, mappings, and state are removed
   per window;
@@ -475,24 +510,26 @@ Implemented:
 
 Pending:
 
-- #14 bookmarks;
 - #32 Downloads.
 
 Each pending feature must prove its own isolation before enabling in private
 windows.
 
-Issues #12 and #13 give each window its own navigation controller, selected
-snapshot, navigation and popup subscriber sets, popup controller/draft, two tab
-listeners, one tabs progress listener, one command observer, application
-adapter, five roots, and text output. Title, display URI, address text, and draft
-may describe private browsing, so they are never process-global, persisted,
-logged, placed in datasets/errors, or copied to another window. Background and
-non-top-level progress is ignored. Frontend unmount, emergency fallback, window
-close, runtime stop, capability failure, and startup rollback remove all
-listeners/observers/subscribers and release the snapshot/draft with that
+Issues #12–#14 give each window its own navigation and bookmarks controllers,
+selected snapshot, navigation and popup subscriber sets, popup controller/draft, two tab
+listeners, one tabs progress listener, one command observer, one Places
+observer, application adapters, five roots, and text output. Title, display
+URI, address text, draft, and bookmark titles may describe private browsing, so
+they are never process-global, persisted, logged, placed in datasets/errors, or
+copied to another window. Background and non-top-level progress is ignored.
+Frontend unmount, emergency fallback, window close, runtime stop, capability
+failure, and startup rollback remove all listeners/observers/subscribers and
+release snapshots, drafts, loaded pages, and opaque mappings with that
 window.
 Normal, second, and private-window isolation passed in real Firefox. Full
-evidence is in `docs/research/firefox-153-navigation-controls.md`.
+evidence is in `docs/research/firefox-153-navigation-controls.md`,
+`docs/research/firefox-153-address-popup.md`, and
+`docs/research/firefox-153-bookmarks-surface.md`.
 
 ## 14. External code, design references, and provenance
 
