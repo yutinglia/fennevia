@@ -2,6 +2,11 @@
 
 This document defines the implementation order after the bootstrap chain is proven. Every custom UI slice must first be tested while Firefox native UI remains visible.
 
+Issue #5 established the single process runtime and per-window lifecycle used by
+all milestones below. New host or recovery work registers only through that
+initializer/cleanup boundary; it must not create a parallel browser-window
+observer or retain native windows outside the runtime.
+
 ## Milestone A: Isolated shell hosts
 
 Create project-owned XHTML mount islands for each managed browser window, initially including:

@@ -11,7 +11,9 @@ The project is not intended to become another general-purpose `userChrome.js` lo
 
 > Status: planning and feasibility-validation stage. A Windows-first,
 > ownership-guarded development package workflow is available for isolated
-> Firefox copies; no daily-driver or end-user release is available yet.
+> Firefox copies. The minimal bootstrap and deterministic normal/private
+> browser-window lifecycle are validated on Firefox 153.0.4; no shell UI,
+> daily-driver support, or end-user release is available yet.
 
 ## Architecture direction
 
@@ -76,6 +78,7 @@ The project keeps Firefox's core browser infrastructure, including `gBrowser`, w
 - [Development workflow](docs/development-workflow.md)
 - [Windows Firefox development setup](docs/development-setup.md)
 - [Installation and package lifecycle](docs/installation.md)
+- [Firefox 153 window-lifecycle research](docs/research/firefox-153-window-lifecycle.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 

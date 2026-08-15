@@ -216,3 +216,39 @@ chooses a default/registered profile, recursively removes a Firefox, profile, or
 general `chrome` parent, or clears arbitrary cache directories. The Windows-first
 development workflow and its current copied-program support boundary are
 documented in `docs/installation.md`.
+
+## ADR-019: Manage browser windows at Firefox delayed startup with strict project-owned cleanup
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Keep one process-global Fennevia runtime. Its `WindowManager` first registers
+for `browser-delayed-startup-finished`, then enumerates already-existing
+`navigator:browser` windows. It accepts only an open top-level chrome window
+whose exact document is `chrome://browser/content/browser.xhtml`, exact root
+`windowtype` is `navigator:browser`, and delayed-startup flag is true. A weak
+identity set allows at most one initialization attempt per window.
+
+Normal and private browser windows receive the same base lifecycle. Firefox's
+`PrivateBrowsingUtils.isWindowPrivate()` performs classification before any
+initializer runs. Every context has a process-local random UUID, an
+`AbortSignal`, and a cleanup registry. Window unload and process-runtime stop
+abort pending work and deterministically dispose all registered resources;
+stop is idempotent. A late asynchronous initializer result is disposed
+immediately and cannot revive a closed record.
+
+**Reasoning:** Firefox 153 sets the delayed-startup flag, resolves its startup
+promise, and then publishes the browser-specific observer topic. Firefox's own
+`EveryWindow` module uses the same enumerator and readiness boundary. Registering
+before enumeration closes the discovery race, while exact browser identity
+checks avoid the generic dialog/document handling carried by customization
+loaders. A project-owned manager is retained instead of importing
+`EveryWindow` because Fennevia requires explicit runtime stop, cancellation,
+privacy-safe window identity, initialization-failure rollback, and a future
+host initializer contract.
+
+This decision adds no generic script discovery, historical Firefox branches,
+Svelte UI, host elements, native-UI hiding, Chrome Registry mapping, override,
+runtime network behavior, or third-party dependency. The pinned research,
+canary differences, automated tests, real normal/private-window matrix, and
+fail-open injection are recorded in
+`docs/research/firefox-153-window-lifecycle.md`.

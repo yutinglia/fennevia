@@ -19,7 +19,12 @@ program/
   fennevia.cfg
 profile/chrome/fennevia/
   chrome.manifest
-  content/Bootstrap.sys.mjs
+  content/
+    Bootstrap.sys.mjs
+    runtime/
+      Logger.sys.mjs
+      Runtime.sys.mjs
+      WindowManager.sys.mjs
 ```
 
 The installer verifies the manifest schema, package identity, version, exact
@@ -42,7 +47,12 @@ The installed layout is:
 <FENNEVIA_PROFILE>/
   chrome/fennevia/
     chrome.manifest
-    content/Bootstrap.sys.mjs
+    content/
+      Bootstrap.sys.mjs
+      runtime/
+        Logger.sys.mjs
+        Runtime.sys.mjs
+        WindowManager.sys.mjs
   .fennevia/ownership.json
 ```
 
@@ -252,6 +262,17 @@ output in both supported PowerShell runtimes:
 ```powershell
 pwsh -NoProfile -File .\tests\installer.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
+```
+
+The current package is `0.2.0-dev` and contains five exact profile artifacts.
+Before a real install or update, also run the runtime/package gates:
+
+```powershell
+pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
+pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
+pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
+  -ArtifactRoot .\profile\chrome\fennevia `
+  -InventoryPath .\package-manifest.json
 ```
 
 Real-Firefox evidence must use the marker-owned profile and copied program,

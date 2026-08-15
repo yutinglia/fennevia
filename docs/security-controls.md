@@ -23,12 +23,12 @@ Status terms:
 | npm registry, dependencies, and build tools | A compromised maintainer, package, lifecycle script, native binary, or transitive dependency executes during install/build | Developer-host compromise or malicious system-principal artifact | Exact review record, committed lockfile, no unreviewed lifecycle scripts, no runtime package manager | Resolve and review the actual lockfile and build in a constrained environment | [#8](https://github.com/yutinglia/fennevia/issues/8); upgrades: [#16](https://github.com/yutinglia/fennevia/issues/16) |
 | Generated JavaScript, CSS, XHTML, maps, and chunks | HMR, remote endpoints, bare imports, dynamic chunks, source maps, debug code, or executable binaries leak into installation | Runtime network execution, non-determinism, source disclosure, or unreviewed code | `scripts/check-production-artifacts.ps1` and explicit artifact inventory | Run against the selected production build and then in CI | [#8](https://github.com/yutinglia/fennevia/issues/8), [#16](https://github.com/yutinglia/fennevia/issues/16) |
 | Page titles, URLs, favicon values, and address input | Page-controlled strings are interpreted as HTML, CSS, code, privileged URIs, or native API arguments without validation | Chrome injection, spoofing, unintended navigation, or privileged API misuse | Text rendering only, typed bridge boundary, runtime validation, no arbitrary HTML | Implement per-feature validation and hostile-string tests | [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#11](https://github.com/yutinglia/fennevia/issues/11), [#12](https://github.com/yutinglia/fennevia/issues/12), [#13](https://github.com/yutinglia/fennevia/issues/13), [#14](https://github.com/yutinglia/fennevia/issues/14) |
-| Normal diagnostics and shared evidence | URLs, titles, queries, history, local paths, secrets, or private-window state enter logs or screenshots | Browsing-data or identity disclosure | Allowlisted logging schema and line-preserving redaction in section 4; no network sink | Implement bootstrap/runtime logger adapters and redaction tests | [#3](https://github.com/yutinglia/fennevia/issues/3), [#5](https://github.com/yutinglia/fennevia/issues/5) |
-| Private-window per-window state | Private tab data is copied to process-global state, normal windows, persisted preferences, or diagnostics | Private-browsing disclosure after or during the session | Section 8 requires per-window memory, no browsing-derived persistence, and native fallback on uncertainty | Validate lifecycle, disposal, and bridge behavior in real private windows | [#5](https://github.com/yutinglia/fennevia/issues/5), [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#12](https://github.com/yutinglia/fennevia/issues/12), [#13](https://github.com/yutinglia/fennevia/issues/13), [#14](https://github.com/yutinglia/fennevia/issues/14) |
+| Normal diagnostics and shared evidence | URLs, titles, queries, history, local paths, secrets, or private-window state enter logs or screenshots | Browsing-data or identity disclosure | Bootstrap and #5 runtime loggers use allowlisted schemas, line-preserving redaction, hostile-value tests, and no network sink | Extend the same adapter contract to each future bridge/frontend logger | [#3](https://github.com/yutinglia/fennevia/issues/3), [#5](https://github.com/yutinglia/fennevia/issues/5) |
+| Private-window per-window state | Private tab data is copied to process-global state, normal windows, persisted preferences, or diagnostics | Private-browsing disclosure after or during the session | Section 8 requires per-window memory, no browsing-derived persistence, and native fallback on uncertainty; #5 validates base lifecycle and disposal in a real private window | Validate each browsing-data bridge and UI feature separately before enabling it in private windows | [#5](https://github.com/yutinglia/fennevia/issues/5), [#9](https://github.com/yutinglia/fennevia/issues/9), [#10](https://github.com/yutinglia/fennevia/issues/10), [#12](https://github.com/yutinglia/fennevia/issues/12), [#13](https://github.com/yutinglia/fennevia/issues/13), [#14](https://github.com/yutinglia/fennevia/issues/14) |
 | Installer, updater, and uninstaller | Relative, broad, reparse-point, wrong-install, or daily-profile targets cause path escape, overwrite, or recursive deletion | Firefox damage or loss of unrelated profile files | Canonical preflight, redacted dry run, dual ownership manifest, same-volume staging, recovery journal, rollback, and exact deletion rules in section 7 | Repeat the real-Firefox lifecycle on each supported installer/platform change | [#4](https://github.com/yutinglia/fennevia/issues/4) |
 | Startup cache and installed stale state | Removed or replaced privileged code continues to execute from stale state | Old vulnerable behavior survives update, disable, or uninstall | Evidence-first cleanup; complete installed-file inventory; installer reports `startupCacheAction=none`; no arbitrary cache deletion | Revalidate only when a Firefox update or observed stale-code symptom supplies evidence | [#3](https://github.com/yutinglia/fennevia/issues/3), [#4](https://github.com/yutinglia/fennevia/issues/4) |
 | Native permission, authentication, certificate, extension-install, file-picker, and download-safety UI | The custom shell hides, replaces, overlays, or makes a prompt unreachable | Spoofing, unsafe consent, or inability to respond to Firefox security state | Firefox ownership is accepted in ADR-014; native UI remains on fail-open path | Verify hosts do not obstruct prompts, then test before hiding native visible UI | [#6](https://github.com/yutinglia/fennevia/issues/6), [#7](https://github.com/yutinglia/fennevia/issues/7), [#15](https://github.com/yutinglia/fennevia/issues/15) |
-| Window/runtime listeners, mappings, styles, and roots | Incomplete cleanup retains privileged state or duplicates handlers across windows | Cross-window data leaks, stale actions, or repeated privileged effects | One process runtime, one idempotent disposer per window, deterministic cleanup invariant | Implement and exercise second/private window close and disposal | [#5](https://github.com/yutinglia/fennevia/issues/5), [#6](https://github.com/yutinglia/fennevia/issues/6), [#9](https://github.com/yutinglia/fennevia/issues/9) |
+| Window/runtime listeners, mappings, styles, and roots | Incomplete cleanup retains privileged state or duplicates handlers across windows | Cross-window data leaks, stale actions, or repeated privileged effects | #5 implements one process runtime, weak duplicate suppression, abort-first per-window cleanup, idempotent stop, and real second/private-window disposal | Require every future host, bridge, timer, mapping, style, and root to register with the same cleanup boundary | [#5](https://github.com/yutinglia/fennevia/issues/5), [#6](https://github.com/yutinglia/fennevia/issues/6), [#9](https://github.com/yutinglia/fennevia/issues/9) |
 | Third-party source and copied snippets | Incompatible, absent, or unclear licensing and provenance | Legal inability to distribute, stale vulnerable code, or lost attribution | Record source URL, commit, license, modifications, and attribution; unlicensed code is unavailable | Select project license and attribution policy before copying implementation code | [#18](https://github.com/yutinglia/fennevia/issues/18) |
 | Runtime network, analytics, configuration, fonts, templates, and update checks | A remote party changes privileged behavior or receives browser data | Remote code execution, tracking, or unreproducible recovery | ADR-012 prohibits all such runtime dependencies; artifact scanner detects common leakage | Any proposed exception requires a dedicated issue and new architecture decision before implementation | [ADR-012](architecture-decisions.md#adr-012-no-runtime-remote-executable-dependencies); otherwise prohibited |
 
@@ -53,6 +53,20 @@ The current bootstrap inventory is the exact `expectedFiles` list in
 `package-manifest.json`. The paths above remain illustrative only for the future
 #8 frontend build. That issue must add its exact generated file set; globs are
 prohibited because they cannot detect an unexpected chunk.
+
+After issue #5, the current privileged profile inventory is exactly:
+
+```text
+chrome.manifest
+content/Bootstrap.sys.mjs
+content/runtime/Logger.sys.mjs
+content/runtime/Runtime.sys.mjs
+content/runtime/WindowManager.sys.mjs
+```
+
+The package version is `0.2.0-dev`. Every entry has a committed SHA-256 in
+`package-manifest.json`; no new Chrome Registry declaration accompanies the
+three runtime modules.
 
 Run the gate with:
 
@@ -103,13 +117,19 @@ Logging calls accept a defined event record, not arbitrary objects, native Firef
 
 No spread operator or generic serializer may turn an input context object into log fields. Values derived from a page, tab, query, title, URL, favicon, history, download, file picker, profile, principal, certificate, header, token, cookie, or private-window content are prohibited even if they appear harmless.
 
+`Logger.sys.mjs` is the implemented runtime adapter for this schema. Successful
+lifecycle records do not accept an exception or native context object. Error
+records inspect only `name` and `stack`; the upstream message is replaced by
+`<REDACTED_MESSAGE>`. `windowKind=private` is classification metadata, not a
+private browsing value, and its UUID is random, process-local, and never stored.
+
 ### 4.2 Error and stack handling
 
 The logger must:
 
 1. select a stable project `code` and constant safe summary;
 2. retain the error class;
-3. preserve every stack frame and line while replacing `file:`, local profile/program paths, user names, page `http(s)` URIs, query text, and fragments with symbolic placeholders;
+3. preserve every stack frame and line while replacing `file:`, local profile/program paths, user names, page and non-source URI schemes, query text, and fragments with symbolic placeholders;
 4. allow fixed project `chrome://fennevia/` paths and source-validated Firefox `chrome://` or `resource://` module paths;
 5. fall back to a minimal code-only record if redaction itself fails;
 6. keep detailed opt-in diagnostics local, off by default, non-persistent unless explicitly exported, and disconnected from any network sink.
@@ -264,3 +284,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\production-artif
 ```
 
 These tests exercise passing artifacts, inventory mismatch, endpoint and runtime-network leakage, HMR, bare and dynamic imports, source maps, development files, dynamic code, reparse points, traversal, exit codes, and privacy-safe finding output. They do not substitute for the real production build or Firefox smoke tests owned by later issues.
+
+Issue #5 adds the lifecycle/privacy checks:
+
+```powershell
+node --test .\tests\window-lifecycle.test.mjs
+pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\window-lifecycle.Tests.ps1
+```
+
+The real copied-Firefox and missing-module probes, including their explicit
+system-access test boundary, are recorded in
+`docs/research/firefox-153-window-lifecycle.md`.
