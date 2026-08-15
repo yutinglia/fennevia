@@ -1,6 +1,12 @@
 import { flushSync, mount, unmount } from "svelte";
 
 import {
+  createAddressPopupController,
+  type AddressPopupController,
+  type AddressPopupInvocationSource,
+  type AddressPopupSnapshot,
+} from "../app/address-popup";
+import {
   createEdgeShellController,
   edgeNames,
   edgeSurfaceTiming,
@@ -20,6 +26,7 @@ import {
   type BrowserTabsStateAdapter,
 } from "../app/tab-state";
 import App from "./App.svelte";
+import AddressPopup from "./AddressPopup.svelte";
 import "./styles/edge-shell.css";
 
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
@@ -28,6 +35,8 @@ const FRAME_READY_ATTRIBUTE = "data-fennevia-frontend-ready";
 const FRAME_ENVIRONMENT_ATTRIBUTE = "data-fennevia-environment";
 const ROOT_SELECTOR = "[data-fennevia-surface-root]";
 const KEYBOARD_LISTENER_OPTIONS = Object.freeze({ capture: false });
+const ADDRESS_POPUP_CLOSE_DELAY_MS = 110;
+const OVERLAY_TARGET_ID = "fennevia-shell-address-overlay-mount";
 
 const targetIds: Readonly<Record<EdgeName, string>> = Object.freeze({
   top: "fennevia-shell-top-mount",
@@ -44,6 +53,7 @@ type MountOptions = Readonly<{
   navigation: BrowserNavigationBridge;
   onFatalError: (error: unknown) => void;
   onUnmountError: (error: unknown) => void;
+  overlayTarget: Element;
   tabs: BrowserTabsBridge;
   targets: EdgeMountTargets;
   windowKind: ShellWindowKind;
@@ -51,17 +61,19 @@ type MountOptions = Readonly<{
 
 type HealthOptions = Readonly<{
   frame: HTMLElement;
+  overlayTarget: Element;
   targets: EdgeMountTargets;
   windowKind: ShellWindowKind;
 }>;
 
 type MountedComponent = Readonly<{
   component: Record<string, unknown>;
-  edge: EdgeName;
+  name: EdgeName | "address-popup";
   target: Element;
 }>;
 
 type MountedShell = Readonly<{
+  addressPopup: AddressPopupController;
   components: readonly MountedComponent[];
   navigation: BrowserNavigationStateAdapter;
   shell: EdgeShellController;
@@ -72,6 +84,7 @@ type FocusableElement = Element &
   Readonly<{
     blur?: () => void;
     focus: (options?: FocusOptions) => void;
+    select?: () => void;
   }>;
 
 const mountedFrames = new WeakMap<Element, MountedShell>();
@@ -91,7 +104,11 @@ function isWindowKind(value: string): value is ShellWindowKind {
   return value === "normal" || value === "private";
 }
 
-function validateMounts(frame: HTMLElement, targets: EdgeMountTargets): void {
+function validateMounts(
+  frame: HTMLElement,
+  overlayTarget: Element,
+  targets: EdgeMountTargets,
+): void {
   if (
     frame.namespaceURI !== XHTML_NAMESPACE ||
     frame.id !== "fennevia-shell-frame-host" ||
@@ -122,6 +139,18 @@ function validateMounts(frame: HTMLElement, targets: EdgeMountTargets): void {
       throw createFrontendError("FENNEVIA_FRONTEND_TARGET_INVALID");
     }
   }
+  const overlayHost = overlayTarget?.parentElement;
+  if (
+    overlayTarget?.namespaceURI !== XHTML_NAMESPACE ||
+    overlayTarget.id !== OVERLAY_TARGET_ID ||
+    overlayTarget.childNodes.length !== 0 ||
+    mountedTargets.has(overlayTarget) ||
+    overlayHost?.parentElement !== frame ||
+    overlayHost.getAttribute("data-fennevia-overlay-host") !== "address" ||
+    Array.from(frame.children).at(-1) !== overlayHost
+  ) {
+    throw createFrontendError("FENNEVIA_FRONTEND_OVERLAY_TARGET_INVALID");
+  }
 }
 
 function getFocusableOrigin(
@@ -138,6 +167,7 @@ export function mountShellApp({
   navigation,
   onFatalError,
   onUnmountError,
+  overlayTarget,
   tabs,
   targets,
   windowKind,
@@ -149,7 +179,7 @@ export function mountShellApp({
   ) {
     throw createFrontendError("FENNEVIA_FRONTEND_OPTIONS_INVALID");
   }
-  validateMounts(frame, targets);
+  validateMounts(frame, overlayTarget, targets);
 
   const view = frame.ownerDocument.defaultView;
   const MutationObserverConstructor = view?.MutationObserver;
@@ -160,6 +190,10 @@ export function mountShellApp({
   let disposed = false;
   let environmentObserver: MutationObserver | undefined;
   let listenersRegistered = false;
+  let addressPopup: AddressPopupController | undefined;
+  let addressPopupCloseTimer: number | undefined;
+  let addressPopupFocusOrigin: FocusableElement | null = null;
+  let addressPopupOriginEdge: EdgeName | null = null;
   let navigationState: BrowserNavigationStateAdapter | undefined;
   let tabsState: BrowserTabsStateAdapter | undefined;
   const components: MountedComponent[] = [];
@@ -194,7 +228,7 @@ export function mountShellApp({
     }
   };
 
-  const focusSurface = (edge: EdgeName): void => {
+  const focusSurface = (edge: EdgeName, selectText = false): boolean => {
     const active = getFocusableOrigin(frame.ownerDocument.activeElement);
     if (active && !frame.contains(active)) {
       focusOrigins.set(edge, active);
@@ -218,18 +252,173 @@ export function mountShellApp({
       }
     }
     flushSync();
-    const focusTarget = targets[edge].querySelector<HTMLElement>(
+    const focusTarget = targets[edge].querySelector<FocusableElement>(
       "[data-fennevia-default-focus]",
     );
     if (!focusTarget) {
       throw createFrontendError("FENNEVIA_EDGE_FOCUS_TARGET_MISSING");
     }
     focusTarget.focus({ preventScroll: true });
+    if (selectText) {
+      focusTarget.select?.();
+    }
+    return targets[edge].contains(frame.ownerDocument.activeElement);
   };
 
   const dismissSurface = (edge: EdgeName): void => {
     restoreFocus(edge);
     shell.dismiss(edge);
+  };
+
+  const cancelAddressPopupCloseTimer = (): void => {
+    if (addressPopupCloseTimer === undefined) {
+      return;
+    }
+    view.clearTimeout(addressPopupCloseTimer);
+    addressPopupCloseTimer = undefined;
+  };
+
+  const addressPopupIsVisible = (snapshot?: AddressPopupSnapshot): boolean => {
+    const current = snapshot ?? addressPopup?.snapshot();
+    return Boolean(
+      current && current.phase !== "hidden" && current.phase !== "disposed",
+    );
+  };
+
+  const focusAddressPopup = (): boolean => {
+    flushSync();
+    const input = overlayTarget.querySelector<FocusableElement>(
+      "[data-fennevia-address-popup-input]",
+    );
+    if (!input) {
+      throw createFrontendError("FENNEVIA_ADDRESS_POPUP_FOCUS_TARGET_MISSING");
+    }
+    input.focus({ preventScroll: true });
+    input.select?.();
+    return overlayTarget.contains(frame.ownerDocument.activeElement);
+  };
+
+  const focusSelectedContent = (): void => {
+    try {
+      navigationState?.focusContent();
+    } catch (error) {
+      onFatalError(error);
+    }
+  };
+
+  const restoreAddressPopupFocus = (snapshot: AddressPopupSnapshot): void => {
+    if (
+      frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) !== "normal" ||
+      snapshot.closeReason === "environment" ||
+      snapshot.closeReason === "focus-failed"
+    ) {
+      const active = getFocusableOrigin(frame.ownerDocument.activeElement);
+      if (active && overlayTarget.contains(active)) {
+        active.blur?.();
+      }
+      return;
+    }
+
+    if (
+      snapshot.closeReason === "committed" ||
+      snapshot.closeReason === "tab-changed"
+    ) {
+      focusSelectedContent();
+      return;
+    }
+
+    if (snapshot.invocationSource === "left-launcher") {
+      shell.revealProgrammatically("left");
+      flushSync();
+      const launcher = targets.left.querySelector<FocusableElement>(
+        "[data-fennevia-address-launcher]",
+      );
+      if (launcher?.isConnected) {
+        launcher.focus({ preventScroll: true });
+        if (targets.left.contains(frame.ownerDocument.activeElement)) {
+          return;
+        }
+      }
+      focusSelectedContent();
+      return;
+    }
+
+    const origin = addressPopupFocusOrigin;
+    if (addressPopupOriginEdge) {
+      shell.revealProgrammatically(addressPopupOriginEdge);
+      flushSync();
+    }
+    if (origin?.isConnected && !overlayTarget.contains(origin)) {
+      origin.focus({ preventScroll: true });
+      return;
+    }
+    focusSelectedContent();
+  };
+
+  const completeAddressPopupClose = (
+    closingSnapshot: AddressPopupSnapshot,
+  ): void => {
+    cancelAddressPopupCloseTimer();
+    if (!addressPopup || closingSnapshot.phase !== "closing") {
+      return;
+    }
+    addressPopup.completeClose();
+    shell.setInteractionSuppressed(false);
+    restoreAddressPopupFocus(closingSnapshot);
+    addressPopupFocusOrigin = null;
+    addressPopupOriginEdge = null;
+  };
+
+  const scheduleAddressPopupClose = (snapshot: AddressPopupSnapshot): void => {
+    if (snapshot.phase !== "closing" || addressPopupCloseTimer !== undefined) {
+      return;
+    }
+    addressPopupCloseTimer = view.setTimeout(() => {
+      addressPopupCloseTimer = undefined;
+      try {
+        completeAddressPopupClose(snapshot);
+      } catch (error) {
+        onFatalError(error);
+      }
+    }, ADDRESS_POPUP_CLOSE_DELAY_MS);
+  };
+
+  const openAddressPopup = (source: AddressPopupInvocationSource): boolean => {
+    if (
+      disposed ||
+      !addressPopup ||
+      frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) !== "normal"
+    ) {
+      return false;
+    }
+    try {
+      const previousSnapshot = addressPopup.snapshot();
+      const wasVisible = addressPopupIsVisible(previousSnapshot);
+      const active = getFocusableOrigin(frame.ownerDocument.activeElement);
+      if (!wasVisible) {
+        addressPopupFocusOrigin = active;
+        addressPopupOriginEdge = active
+          ? (edgeNames.find((edge) => targets[edge].contains(active)) ?? null)
+          : null;
+      }
+      cancelAddressPopupCloseTimer();
+      addressPopup.requestOpen(source);
+      flushSync();
+      if (!focusAddressPopup()) {
+        addressPopup.requestClose("focus-failed");
+        const closingSnapshot = addressPopup.snapshot();
+        if (closingSnapshot.phase === "closing") {
+          completeAddressPopupClose(closingSnapshot);
+        }
+        return false;
+      }
+      addressPopup.confirmOpen();
+      shell.setInteractionSuppressed(true);
+      return true;
+    } catch (error) {
+      onFatalError(error);
+      return false;
+    }
   };
 
   const syncEnvironment = (): void => {
@@ -238,6 +427,14 @@ export function mountShellApp({
     }
     const shouldEnable =
       frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) === "normal";
+    if (!shouldEnable && addressPopupIsVisible()) {
+      const popup = addressPopup;
+      popup?.requestClose("environment");
+      const closingSnapshot = popup?.snapshot();
+      if (closingSnapshot?.phase === "closing") {
+        completeAddressPopupClose(closingSnapshot);
+      }
+    }
     if (shell.snapshot().enabled !== shouldEnable) {
       for (const edge of edgeNames) {
         restoreFocus(edge);
@@ -247,11 +444,26 @@ export function mountShellApp({
   };
 
   const onKeyDown = (event: KeyboardEvent): void => {
-    if (disposed || event.defaultPrevented) {
+    if (
+      disposed ||
+      event.defaultPrevented ||
+      frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) !== "normal"
+    ) {
       return;
     }
     try {
       const revealEdge = getKeyboardRevealEdge(event);
+      if (addressPopupIsVisible()) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          addressPopup?.requestClose("cancelled");
+        } else if (revealEdge) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
       if (revealEdge) {
         event.preventDefault();
         event.stopPropagation();
@@ -270,7 +482,10 @@ export function mountShellApp({
         (snapshot.activeEdge && snapshot.surfaces[snapshot.activeEdge].visible
           ? snapshot.activeEdge
           : null);
-      if (!target || snapshot.surfaces[target].holds.popup) {
+      if (!target) {
+        return;
+      }
+      if (snapshot.surfaces[target].holds.popup) {
         return;
       }
       event.preventDefault();
@@ -322,6 +537,7 @@ export function mountShellApp({
 
   const disposeMountedState = (): unknown => {
     let firstError: unknown;
+    cancelAddressPopupCloseTimer();
     environmentObserver?.disconnect();
     environmentObserver = undefined;
     removeDomListeners();
@@ -352,6 +568,11 @@ export function mountShellApp({
     }
     mountedFrames.delete(frame);
     try {
+      addressPopup?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
       navigationState?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -369,17 +590,37 @@ export function mountShellApp({
     for (const edge of edgeNames) {
       frame.removeAttribute(`data-fennevia-${edge}-visible`);
     }
+    frame.removeAttribute("data-fennevia-address-popup-visible");
     focusOrigins.clear();
+    addressPopupFocusOrigin = null;
+    addressPopupOriginEdge = null;
     return firstError;
   };
 
   for (const edge of edgeNames) {
     targets[edge].setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounting");
   }
+  overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounting");
 
   try {
     tabsState = createBrowserTabsStateAdapter(tabs);
     navigationState = createBrowserNavigationStateAdapter(navigation);
+    addressPopup = createAddressPopupController({
+      navigation: navigationState,
+      tabs: tabsState,
+    });
+    controllerSubscriptions.push(
+      addressPopup.subscribe((snapshot) => {
+        frame.toggleAttribute(
+          "data-fennevia-address-popup-visible",
+          addressPopupIsVisible(snapshot),
+        );
+        scheduleAddressPopupClose(snapshot);
+      }),
+      navigationState.subscribeAddressPopupOpen((request) => {
+        return openAddressPopup(request.source);
+      }),
+    );
     for (const edge of edgeNames) {
       const surface = shell.getSurface(edge);
       controllerSubscriptions.push(
@@ -388,7 +629,7 @@ export function mountShellApp({
             `data-fennevia-${edge}-visible`,
             snapshot.visible,
           );
-          if (!snapshot.visible) {
+          if (!snapshot.visible && !addressPopupIsVisible()) {
             restoreFocus(edge);
           }
         }),
@@ -402,7 +643,9 @@ export function mountShellApp({
         props: {
           edge,
           frame,
-          ...(edge === "top" ? { navigation: navigationState } : {}),
+          ...(edge === "top" || edge === "left"
+            ? { navigation: navigationState }
+            : {}),
           onDismiss: dismissSurface,
           onFatalError,
           onDisposed(disposedEdge: EdgeName) {
@@ -413,15 +656,43 @@ export function mountShellApp({
           },
           shell,
           surface: shell.getSurface(edge),
-          ...(edge === "left" ? { tabs: tabsState } : {}),
+          ...(edge === "left"
+            ? {
+                addressPopup,
+                onOpenAddress: () => openAddressPopup("left-launcher"),
+                tabs: tabsState,
+              }
+            : {}),
           windowKind,
         },
         target,
       }) as Record<string, unknown>;
-      components.push(Object.freeze({ component, edge, target }));
+      components.push(Object.freeze({ component, name: edge, target }));
       mountedTargets.add(target);
       target.setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounted");
     }
+
+    const addressPopupComponent = mount(AddressPopup, {
+      props: {
+        navigation: navigationState,
+        onDisposed() {
+          overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "disposed");
+        },
+        onFatalError,
+        popup: addressPopup,
+        windowKind,
+      },
+      target: overlayTarget,
+    }) as Record<string, unknown>;
+    components.push(
+      Object.freeze({
+        component: addressPopupComponent,
+        name: "address-popup",
+        target: overlayTarget,
+      }),
+    );
+    mountedTargets.add(overlayTarget);
+    overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounted");
     flushSync();
 
     environmentObserver = new MutationObserverConstructor(() => {
@@ -451,6 +722,7 @@ export function mountShellApp({
     frame.setAttribute(FRAME_READY_ATTRIBUTE, "");
 
     const record = Object.freeze({
+      addressPopup,
       components: Object.freeze([...components]),
       navigation: navigationState,
       shell,
@@ -476,6 +748,8 @@ export function mountShellApp({
       targets[edge].replaceChildren();
       targets[edge].setAttribute(MOUNT_STATUS_ATTRIBUTE, "failed");
     }
+    overlayTarget.replaceChildren();
+    overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "failed");
     if (cleanupError !== undefined) {
       onUnmountError(cleanupError);
     }
@@ -485,6 +759,7 @@ export function mountShellApp({
 
 export function verifyShellAppHealth({
   frame,
+  overlayTarget,
   targets,
   windowKind,
 }: HealthOptions): true {
@@ -496,12 +771,19 @@ export function verifyShellAppHealth({
   );
   const topRoot = roots[edgeNames.indexOf("top")];
   const leftRoot = roots[edgeNames.indexOf("left")];
+  const addressPopupRoot = overlayTarget.querySelector<HTMLElement>(
+    "#fennevia-address-popup-root[data-fennevia-address-popup-root]",
+  );
   const template = topRoot?.querySelector<HTMLTemplateElement>(
     "template[data-fennevia-template]",
   );
   const templateConstructor =
     frame.ownerDocument.defaultView?.HTMLTemplateElement;
   const requiredLeftSelectors = [
+    "section[data-fennevia-address-launcher-region]",
+    "button[data-fennevia-address-launcher]",
+    "[data-fennevia-connection-status]",
+    "[data-fennevia-protection-status]",
     '[role="tablist"][aria-orientation="vertical"][data-fennevia-tab-list]',
     'button[role="tab"][data-fennevia-tab]',
     'button[data-fennevia-action="new-tab"]',
@@ -514,11 +796,23 @@ export function verifyShellAppHealth({
     'button[data-fennevia-action="new-tab"]',
     "output[data-fennevia-navigation-status]",
   ];
+  const requiredAddressPopupSelectors = [
+    "button[data-fennevia-address-popup-backdrop]",
+    'div[role="dialog"][aria-modal="false"][data-fennevia-address-popup]',
+    'label[for="fennevia-address-popup-input"]',
+    "input#fennevia-address-popup-input[data-fennevia-address-popup-input]",
+    "output[data-fennevia-address-popup-status]",
+    "[data-fennevia-address-popup-details]",
+    "[data-fennevia-connection-detail]",
+    "[data-fennevia-protection-detail]",
+    "button[data-fennevia-address-popup-close]",
+  ];
 
   if (
     frame.getAttribute(FRAME_READY_ATTRIBUTE) !== "" ||
     !mounted ||
-    mounted.components.length !== edgeNames.length ||
+    mounted.components.length !== edgeNames.length + 1 ||
+    mounted.addressPopup.status().disposed ||
     mounted.navigation.status().disposed ||
     mounted.tabs.status().disposed ||
     roots.some((root, index) => {
@@ -543,12 +837,25 @@ export function verifyShellAppHealth({
       (edge) =>
         targets[edge].getAttribute(MOUNT_STATUS_ATTRIBUTE) !== "mounted",
     ) ||
+    overlayTarget.getAttribute(MOUNT_STATUS_ATTRIBUTE) !== "mounted" ||
     !leftRoot ||
     requiredLeftSelectors.some(
       (selector) => !leftRoot.querySelector(selector),
     ) ||
+    leftRoot.querySelector("input") !== null ||
     !topRoot ||
     requiredTopSelectors.some((selector) => !topRoot.querySelector(selector)) ||
+    !addressPopupRoot ||
+    addressPopupRoot.parentElement !== overlayTarget ||
+    addressPopupRoot.namespaceURI !== XHTML_NAMESPACE ||
+    addressPopupRoot.getAttribute("data-fennevia-window-kind") !== windowKind ||
+    requiredAddressPopupSelectors.some(
+      (selector) => !addressPopupRoot.querySelector(selector),
+    ) ||
+    addressPopupRoot.querySelectorAll("input").length !== 1 ||
+    Array.from(addressPopupRoot.querySelectorAll("*")).some(
+      (element) => element.namespaceURI !== XHTML_NAMESPACE,
+    ) ||
     !template ||
     typeof templateConstructor !== "function" ||
     !(template instanceof templateConstructor) ||
@@ -561,6 +868,7 @@ export function verifyShellAppHealth({
 
 export function getShellAppCapabilities({
   frame,
+  overlayTarget,
   targets,
   windowKind,
 }: HealthOptions): ReadonlyArray<
@@ -577,8 +885,11 @@ export function getShellAppCapabilities({
             targets[edge].querySelector(
               `#fennevia-shell-${edge}-root${ROOT_SELECTOR}`,
             ) !== null,
-        ),
-      name: "frontend.svelte-four-roots",
+        ) &&
+        overlayTarget.querySelector(
+          "#fennevia-address-popup-root[data-fennevia-address-popup-root]",
+        ) !== null,
+      name: "frontend.svelte-owned-roots",
     }),
     Object.freeze({
       available: Boolean(
@@ -609,6 +920,25 @@ export function getShellAppCapabilities({
     Object.freeze({
       available: Boolean(mounted && !mounted.navigation.status().disposed),
       name: "frontend.navigation-state",
+    }),
+    Object.freeze({
+      available: Boolean(
+        mounted &&
+        !mounted.addressPopup.status().disposed &&
+        !mounted.navigation.status().disposed &&
+        targets.left.querySelector("[data-fennevia-address-launcher]") &&
+        overlayTarget.querySelector("[data-fennevia-address-popup-input]"),
+      ),
+      name: "frontend.address-popup-state",
+    }),
+    Object.freeze({
+      available: Boolean(
+        targets.left.querySelector("[data-fennevia-connection-status]") &&
+        targets.left.querySelector("[data-fennevia-protection-status]") &&
+        overlayTarget.querySelector("[data-fennevia-connection-detail]") &&
+        overlayTarget.querySelector("[data-fennevia-protection-detail]"),
+      ),
+      name: "frontend.firefox-site-status",
     }),
     Object.freeze({
       available: edgeNames.every((edge) =>

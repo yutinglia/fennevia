@@ -214,30 +214,51 @@ Rules:
 - new-tab action accepts no arbitrary URL;
 - stale/foreign/disposed IDs fail before native access.
 
-### 7.2 Navigation — implemented; address — pending #13
+### 7.2 Navigation and address/status popup — implemented (#12 and #13)
 
-Issue #12 exposes only `canGoBack`, `canGoForward`, loading state, bounded title
-text (256 code units), bounded display-URI text (2,048 code units), and explicit
-Back, Forward, Reload, Stop, and New Tab actions.
+Issues #12 and #13 expose only `canGoBack`, `canGoForward`, loading state,
+bounded title text (256 code units), bounded display-URI text (2,048 code
+units), bounded committed/draft address text (4,096 code units), fixed
+connection/protection enums, and explicit named actions.
 
 Rules:
 
-- browser, controller, principal, command, observer, progress, and native event
+- browser, controller, principal, Urlbar, identity/protections handler,
+  content-blocking allow-list, command, observer, progress, and native event
   objects stay private;
-- title and display URI are rendered as text only and never enter logs, datasets,
-  persistence, network requests, or native API arguments;
-- displayed location is status text, not a security or identity indicator;
+- title, display URI, committed address, and draft are rendered or edited as
+  text only and never enter logs, errors, datasets, persistence, project
+  network requests, or another window;
 - navigation actions accept no arbitrary URL and invoke the current window's
   source-validated `BrowserCommands` methods;
 - action state is re-resolved against the current selected browser immediately
   before invocation;
-- background and non-top-level progress cannot update selected navigation state.
+- background and non-top-level progress cannot update selected navigation
+  state;
+- the compact launcher contains committed text only and no editable field;
+- one popup draft exists only in the owning window's memory while open;
+  background same-tab navigation cannot overwrite it, while selected-tab
+  change closes and discards it;
+- empty, over-4,096-character, `data:`, `javascript:`, and `vbscript:` input is
+  rejected before native access;
+- accepted input is assigned to the current native Urlbar and submitted through
+  `gURLBar.handleCommand()`, leaving fixup, ordinary search, principal,
+  disposition, and telemetry policy with Firefox;
+- custom `Ctrl+L` cancellation occurs only when the healthy popup accepts the
+  request; otherwise Firefox's retained native command proceeds;
+- connection and protection labels derive only from fixed enum mappings of
+  current Firefox handler state. Unknown, transient, and non-handleable states
+  are `unavailable`; URL inference and decorative fake security claims are
+  prohibited;
+- no certificate material, permission record, exception principal, or native
+  handler state crosses into Svelte;
+- the popup summarizes connection/protection state but does not replace
+  Firefox's authoritative identity or protections panels. Permissions/page-
+  action expansion is separately reviewed in #37.
 
-Issue #13 must independently research and implement draft editing, Firefox URL/
-search submission, principal and special-scheme handling, and healthy-only
-`Ctrl+L` ownership. Draft text must remain independent from background
-navigation, unpersisted, and absent from logs. Native `Ctrl+L` must remain
-available while inactive, failed, safe-started, unsupported, or disposed.
+The fifth address-overlay root remains inside the project frame. Popup activity
+suppresses the four edge surfaces, and disposal clears its draft, focus history,
+subscribers, listeners, and root before host removal.
 
 ### 7.3 Bookmarks — pending #14
 
@@ -445,8 +466,8 @@ Global rules:
 Implemented:
 
 - base lifecycle, health, frame, edge controller, tabs bridge, vertical tab UI,
-  navigation bridge, and top controls have isolated normal, second-normal, and
-  private instances;
+  navigation/address bridge, compact launcher, centered popup, and top controls
+  have isolated normal, second-normal, and private instances;
 - opaque IDs include context/registry generation;
 - controllers, roots, holds, timers, listeners, mappings, and state are removed
   per window;
@@ -454,21 +475,22 @@ Implemented:
 
 Pending:
 
-- #13 address;
 - #14 bookmarks;
 - #32 Downloads.
 
 Each pending feature must prove its own isolation before enabling in private
 windows.
 
-Issue #12 gives each window its own navigation controller, selected snapshot,
-subscriber set, two tab listeners, one tabs progress listener, one command
-observer, application adapter, and top text output. Title and display URI may
-describe private browsing, so they are never process-global, persisted,
+Issues #12 and #13 give each window its own navigation controller, selected
+snapshot, navigation and popup subscriber sets, popup controller/draft, two tab
+listeners, one tabs progress listener, one command observer, application
+adapter, five roots, and text output. Title, display URI, address text, and draft
+may describe private browsing, so they are never process-global, persisted,
 logged, placed in datasets/errors, or copied to another window. Background and
-non-top-level progress is ignored. Frontend unmount, emergency fallback,
-window close, runtime stop, capability failure, and startup rollback remove all
-listeners/observers/subscribers and release the snapshot with that window.
+non-top-level progress is ignored. Frontend unmount, emergency fallback, window
+close, runtime stop, capability failure, and startup rollback remove all
+listeners/observers/subscribers and release the snapshot/draft with that
+window.
 Normal, second, and private-window isolation passed in real Firefox. Full
 evidence is in `docs/research/firefox-153-navigation-controls.md`.
 

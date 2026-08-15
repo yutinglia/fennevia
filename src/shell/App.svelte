@@ -2,6 +2,9 @@
   import { onDestroy, tick, untrack } from "svelte";
 
   import {
+    type AddressPopupController,
+  } from "../app/address-popup";
+  import {
     edgeKeyboardBindings,
     edgeTriggerThicknessCssPixels,
     resolveEdgeAtPoint,
@@ -28,14 +31,20 @@
     getTabStripKeyAction,
     resolveRovingTabId,
   } from "../app/tab-strip";
+  import {
+    getConnectionSecurityPresentation,
+    getTrackingProtectionPresentation,
+  } from "./navigation-labels";
 
   type Props = Readonly<{
+    addressPopup?: AddressPopupController;
     edge: EdgeName;
     frame: HTMLElement;
     navigation?: BrowserNavigationStateAdapter;
     onDismiss: (edge: EdgeName) => void;
     onDisposed: (edge: EdgeName) => void;
     onFatalError: (error: unknown) => void;
+    onOpenAddress?: () => boolean;
     shell: EdgeShellController;
     surface: EdgeSurfaceController;
     tabs?: BrowserTabsStateAdapter;
@@ -50,13 +59,17 @@
   };
 
   const props: Props = $props();
+  let addressPopupVisible = $state(false);
   let currentNavigation: BrowserNavigationState = $state(
     createBrowserNavigationState({
+      addressValue: "",
       canGoBack: false,
       canGoForward: false,
+      connectionSecurity: "unavailable",
       displayUri: "",
       loading: false,
       title: "",
+      trackingProtection: "unavailable",
     }),
   );
   let currentTabs: BrowserTabsState = $state(createBrowserTabsState([]));
@@ -67,6 +80,16 @@
     void surfaceRevision;
     return props.surface.snapshot();
   });
+  let connectionStatus = $derived(
+    getConnectionSecurityPresentation(
+      currentNavigation.snapshot.connectionSecurity,
+    ),
+  );
+  let protectionStatus = $derived(
+    getTrackingProtectionPresentation(
+      currentNavigation.snapshot.trackingProtection,
+    ),
+  );
   let delayedFocusTimer: DelayedFocusTimer | undefined;
   let focusReleaseTimer: DelayedFocusTimer | undefined;
   const tabButtons: Array<{
@@ -90,12 +113,26 @@
 
   $effect(() => {
     const navigation = props.navigation;
-    if (props.edge !== "top" || !navigation) {
+    if ((props.edge !== "top" && props.edge !== "left") || !navigation) {
       return;
     }
     currentNavigation = navigation.snapshot();
     return navigation.subscribe((nextState) => {
       currentNavigation = nextState;
+    });
+  });
+
+  $effect(() => {
+    const popup = props.addressPopup;
+    if (props.edge !== "left" || !popup) {
+      return;
+    }
+    const updateVisibility = (phase: string) => {
+      addressPopupVisible = phase !== "hidden" && phase !== "disposed";
+    };
+    updateVisibility(popup.snapshot().phase);
+    return popup.subscribe((snapshot) => {
+      updateVisibility(snapshot.phase);
     });
   });
 
@@ -142,7 +179,7 @@
 
   const requireNavigation = (): BrowserNavigationStateAdapter => {
     if (!props.navigation) {
-      throw new Error("FENNEVIA_TOP_SURFACE_NAVIGATION_UNAVAILABLE");
+      throw new Error("FENNEVIA_SURFACE_NAVIGATION_UNAVAILABLE");
     }
     return props.navigation;
   };
@@ -155,6 +192,10 @@
     } catch (error) {
       props.onFatalError(error);
     }
+  };
+
+  const dismissPanel = () => {
+    props.onDismiss(props.edge);
   };
 
   const focusTab = async (tabId: string | null) => {
@@ -377,6 +418,9 @@
     cancelDelayedFocus();
     cancelFocusRelease();
     tabButtons.length = 0;
+    if (props.edge === "left") {
+      addressPopupVisible = false;
+    }
     props.onDisposed(props.edge);
   });
 </script>
@@ -423,15 +467,58 @@
       <button
         aria-label={`Hide ${surfaceLabels[props.edge].toLowerCase()}`}
         class="fennevia-control fennevia-edge-panel__dismiss"
-        data-fennevia-default-focus=""
+        data-fennevia-default-focus={props.edge === "left" ? undefined : ""}
         data-fennevia-dismiss={props.edge}
-        onclick={() => props.onDismiss(props.edge)}
+        onclick={dismissPanel}
         title="Hide surface"
         type="button">×</button
       >
     </header>
 
     {#if props.edge === "left"}
+      <section
+        aria-label="Address and site status"
+        class="fennevia-address-launcher"
+        data-fennevia-address-launcher-region=""
+      >
+        <button
+          aria-controls="fennevia-address-popup"
+          aria-expanded={addressPopupVisible}
+          aria-haspopup="dialog"
+          aria-label="Open address and search"
+          class="fennevia-address-launcher__button"
+          data-fennevia-address-launcher=""
+          data-fennevia-default-focus=""
+          onclick={() => props.onOpenAddress?.()}
+          title="Open address and search"
+          type="button"
+        >
+          <span aria-hidden="true" class="fennevia-address-launcher__glyph"
+            >⌁</span
+          >
+          <span class="fennevia-address-launcher__location" dir="auto">
+            {currentNavigation.snapshot.addressValue ||
+              "Search or enter address"}
+          </span>
+          <span class="fennevia-address-launcher__indicators">
+            <span
+              aria-label={connectionStatus.label}
+              class="fennevia-address-launcher__indicator"
+              data-fennevia-connection-status=""
+              data-fennevia-status-tone={connectionStatus.tone}
+              title={connectionStatus.label}>{connectionStatus.badge}</span
+            >
+            <span
+              aria-label={protectionStatus.label}
+              class="fennevia-address-launcher__indicator"
+              data-fennevia-protection-status=""
+              data-fennevia-status-tone={protectionStatus.tone}
+              title={protectionStatus.label}>{protectionStatus.badge}</span
+            >
+          </span>
+        </button>
+      </section>
+
       <div class="fennevia-tabs-summary">
         <span>Open tabs</span>
         <output

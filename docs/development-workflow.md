@@ -36,19 +36,19 @@ Current feature order:
 
 ```text
 #31 four-edge frame (complete)
-├─ #12 top navigation
+├─ #12 top navigation (complete)
 ├─ #14 right bookmarks
 ├─ #32 bottom downloads
 └─ #11 left tabs (complete)
-    └─ #13 left address input (also depends on #12)
+    └─ #13 compact address/status launcher and popup (complete; depends on #12)
         └─ #15 content-only activation
             └─ #16 hardening
 ```
 
-#12, #14, and #32 may proceed in parallel when their current-source research
-and bridge prerequisites are satisfied. #13 must compose with the existing #11
-tab UI and reuse navigation/address work from #12. No feature issue may build a
-second edge controller or bypass #31.
+#14 and #32 may proceed in parallel when their current-source research and
+bridge prerequisites are satisfied. Completed #13 composes with #11 and reuses
+#12's navigation controller; #37 owns fuller Urlbar permissions/page-action
+coverage. No feature issue may build a second edge controller or bypass #31.
 
 ## 3. Branch and commit conventions
 

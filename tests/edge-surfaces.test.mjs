@@ -192,6 +192,50 @@ test("the shared shell keeps pointer reveal exclusive while preserving legitimat
   assert.equal(clock.size(), 0);
 });
 
+test("address popup suppression clears every edge and rejects new interactions", () => {
+  const clock = createScheduler();
+  const shell = createEdgeShellController({
+    hideDelayMs: 10,
+    scheduler: clock.scheduler,
+  });
+
+  shell.revealFromPointer("top");
+  shell.setFocusHeld("left", true);
+  shell.setPopupHeld("right", true);
+  shell.revealProgrammatically("bottom", 100);
+  assert.equal(clock.size(), 1);
+
+  assert.equal(shell.setInteractionSuppressed(true), true);
+  const suppressed = shell.snapshot();
+  assert.equal(suppressed.enabled, true);
+  assert.equal(suppressed.interactionSuppressed, true);
+  assert.equal(suppressed.activeEdge, null);
+  assert.ok(
+    edgeNames.every(
+      (edge) =>
+        suppressed.surfaces[edge].phase === "disabled" &&
+        !suppressed.surfaces[edge].visible &&
+        Object.values(suppressed.surfaces[edge].holds).every((held) => !held),
+    ),
+  );
+  assert.equal(clock.size(), 0);
+  assert.equal(shell.revealFromPointer("top"), false);
+  assert.equal(shell.revealFromKeyboard("left"), false);
+  assert.equal(shell.revealProgrammatically("right"), false);
+  assert.equal(shell.setFocusHeld("bottom", true), false);
+  assert.equal(shell.setPopupHeld("top", true), false);
+
+  assert.equal(shell.setInteractionSuppressed(false), true);
+  assert.equal(shell.snapshot().interactionSuppressed, false);
+  assert.ok(
+    edgeNames.every(
+      (edge) => shell.snapshot().surfaces[edge].phase === "hidden",
+    ),
+  );
+  assert.equal(shell.revealFromKeyboard("left"), true);
+  assert.equal(shell.snapshot().surfaces.left.phase, "keyboard-held");
+});
+
 test("natural hide clears the active edge so an unrelated Escape remains available", () => {
   const clock = createScheduler();
   const shell = createEdgeShellController({

@@ -50,6 +50,7 @@ export type EdgeShellSnapshot = Readonly<{
   activeEdge: EdgeName | null;
   disposed: boolean;
   enabled: boolean;
+  interactionSuppressed: boolean;
   surfaces: Readonly<Record<EdgeName, EdgeSurfaceSnapshot>>;
 }>;
 
@@ -64,6 +65,7 @@ export type EdgeShellController = Readonly<{
   revealProgrammatically: (edge: EdgeName, durationMs?: number) => boolean;
   setEnabled: (enabled: boolean) => boolean;
   setFocusHeld: (edge: EdgeName, held: boolean) => boolean;
+  setInteractionSuppressed: (suppressed: boolean) => boolean;
   setPointerHeld: (edge: EdgeName, held: boolean) => boolean;
   setPopupHeld: (edge: EdgeName, held: boolean) => boolean;
   snapshot: () => EdgeShellSnapshot;
@@ -469,6 +471,7 @@ export function createEdgeShellController(
   let activeEdge: EdgeName | null = null;
   let disposed = false;
   let enabled = true;
+  let interactionSuppressed = false;
 
   const requireEdge = (edge: EdgeName): EdgeSurfaceController => {
     if (!isEdgeName(edge)) {
@@ -490,7 +493,19 @@ export function createEdgeShellController(
     return changed;
   };
 
+  const interactionsEnabled = (): boolean => enabled && !interactionSuppressed;
+
+  const syncSurfaceEnabled = (): void => {
+    const nextEnabled = interactionsEnabled();
+    for (const edge of edgeNames) {
+      surfaces[edge].setEnabled(nextEnabled);
+    }
+  };
+
   const revealPointer = (edge: EdgeName): boolean => {
+    if (!interactionsEnabled()) {
+      return false;
+    }
     let changed = false;
     for (const candidate of edgeNames) {
       changed =
@@ -546,6 +561,7 @@ export function createEdgeShellController(
       }
       disposed = true;
       enabled = false;
+      interactionSuppressed = false;
       activeEdge = null;
       for (const edge of [...edgeNames].reverse()) {
         surfaces[edge].dispose();
@@ -565,6 +581,9 @@ export function createEdgeShellController(
 
     revealFromKeyboard(edge) {
       requireUsable();
+      if (!interactionsEnabled()) {
+        return false;
+      }
       return markActive(edge, requireEdge(edge).revealFromKeyboard());
     },
 
@@ -576,6 +595,9 @@ export function createEdgeShellController(
 
     revealProgrammatically(edge, durationMs) {
       requireUsable();
+      if (!interactionsEnabled()) {
+        return false;
+      }
       return markActive(
         edge,
         requireEdge(edge).revealProgrammatically(durationMs),
@@ -589,19 +611,37 @@ export function createEdgeShellController(
       }
       enabled = nextEnabled;
       activeEdge = null;
-      for (const edge of edgeNames) {
-        surfaces[edge].setEnabled(nextEnabled);
-      }
+      syncSurfaceEnabled();
       return true;
     },
 
     setFocusHeld(edge, held) {
       requireUsable();
+      if (held && !interactionsEnabled()) {
+        return false;
+      }
       return markActive(edge, requireEdge(edge).setFocusHeld(held));
+    },
+
+    setInteractionSuppressed(nextSuppressed) {
+      requireUsable();
+      if (
+        typeof nextSuppressed !== "boolean" ||
+        interactionSuppressed === nextSuppressed
+      ) {
+        return false;
+      }
+      interactionSuppressed = nextSuppressed;
+      activeEdge = null;
+      syncSurfaceEnabled();
+      return true;
     },
 
     setPointerHeld(edge, held) {
       requireUsable();
+      if (held && !interactionsEnabled()) {
+        return false;
+      }
       if (held) {
         requireEdge(edge);
         return revealPointer(edge);
@@ -611,6 +651,9 @@ export function createEdgeShellController(
 
     setPopupHeld(edge, held) {
       requireUsable();
+      if (held && !interactionsEnabled()) {
+        return false;
+      }
       return markActive(edge, requireEdge(edge).setPopupHeld(held));
     },
 
@@ -620,6 +663,7 @@ export function createEdgeShellController(
         activeEdge,
         disposed,
         enabled,
+        interactionSuppressed,
         surfaces: Object.freeze(
           Object.fromEntries(
             edgeNames.map((edge) => [edge, surfaces[edge].snapshot()]),

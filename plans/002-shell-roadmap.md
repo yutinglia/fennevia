@@ -16,9 +16,12 @@ Validated baseline as of 2026-08-16:
 
 - package `0.7.0-dev`;
 - Firefox 153.0.4 release on Windows;
-- #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #17, #22, and #31
+- #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #17, #22, and #31
   complete;
-- functional vertical tabs in the left surface;
+- functional vertical tabs and a compact address/status launcher in the left
+  surface;
+- one centered address/search popup with detailed connection and protection
+  state in a fifth owned root;
 - functional primary navigation and bounded page status in the top surface;
 - right and bottom surfaces mounted as honest non-functional placeholders;
 - Firefox native visible UI retained;
@@ -26,10 +29,10 @@ Validated baseline as of 2026-08-16:
 
 Next feature work:
 
-1. #13 combines the left address input with the completed tab surface and
-   depends on the navigation/address contract;
-2. #14 right bookmarks and #32 bottom downloads may proceed after their
+1. #14 right bookmarks and #32 bottom downloads may proceed after their
    research/bridge prerequisites;
+2. #37 inventories fuller native Urlbar permissions/page-action coverage before
+   any related native surface can be hidden;
 3. #15 activates content-only mode only after all feature blockers pass;
 4. #16 hardens the complete MVP.
 
@@ -71,11 +74,12 @@ ordered independent:
 - left host;
 - right host;
 - bottom host;
+- centered address-overlay host, ordered last;
 - one project-owned generated style node.
 
-Each host contains exactly one project-owned mount target and one Svelte root.
-Project ownership stops at the frame descendants. Firefox-native nodes are
-neither moved nor reconciled.
+Each of the four edge hosts and the address-overlay host contains exactly one
+project-owned mount target and one Svelte root. Project ownership stops at the
+frame descendants. Firefox-native nodes are neither moved nor reconciled.
 
 Gate: complete mount or complete fail-open rollback in normal, second-normal,
 and private windows.
@@ -316,53 +320,68 @@ Gate:
 Validated on Firefox 153.0.4 for Windows in normal, second-normal, private, and
 Browser Toolbox runs. Missing navigation capability, frontend failure, safe
 start, cleanup, rapid tab/navigation changes, and Reload/Stop timing all passed.
-Issue #13 still owns independent address editing, URL/search submission, and
-`Ctrl+L`.
 
 Evidence: ADR-027 and
 `docs/research/firefox-153-navigation-controls.md`.
 
-## Milestone H: Left-edge address input — pending (#13)
+## Milestone H: Compact address launcher and centered popup — complete (#13)
 
-Compose the address input with the completed #11 tab UI inside the existing left
-surface.
+Compose one short, non-editable launcher with the completed #11 tab UI and put
+the sole custom editable address field in a centered project-owned overlay.
 
 ### Bridge and command work
 
-Research current Firefox semantics for:
+The bridge adopts current Firefox semantics for:
 
 - user-facing display location;
 - URL fixup;
 - ordinary search submission;
 - principals and load options;
-- dangerous/special schemes;
+- executable/special schemes;
 - current-tab disposition;
-- `Ctrl+L` command ownership and fallback.
+- `Ctrl+L` command ownership and fallback;
+- connection/HTTPS classification;
+- Enhanced Tracking Protection detection, blocking, and exceptions.
 
-Expose only bounded ordinary text, typed state, and explicit actions.
+Only bounded ordinary text, fixed typed state, and explicit actions cross the
+privileged boundary. Native Urlbar, browser, identity/protections handler,
+allow-list, progress, command, and event objects stay private.
 
 ### UI work
 
-- compact address region above the tab list;
-- independent draft while editing;
-- `Ctrl+L` reveals left edge, focuses, and selects only while the healthy custom
-  shell owns the command;
+- compact launcher above the tab list with bounded committed location and real
+  Firefox connection/protection badges;
+- centered nonmodal popup with one independent draft and fuller status text;
+- `Ctrl+L` opens, focuses, and selects the popup only while the healthy custom
+  shell accepts the command;
 - native `Ctrl+L` remains available while inactive, failed, safe-started,
   unsupported, or disposed;
 - Enter submits;
-- first Escape reverts editing, later Escape dismisses the surface through #31;
-- coherent focus order between input and tabs;
-- no suggestions, rich results, search modes, identity UI, or arbitrary
-  `loadURI` helper.
+- Escape/cancel discards the draft and restores a valid prior target or content;
+- selected-tab changes close/discard; background same-tab navigation cannot
+  overwrite an active draft;
+- popup priority suppresses the four edge surfaces without creating another
+  edge controller;
+- no suggestions, rich results, search modes, moved native DOM, fake security
+  icon, or arbitrary `loadURI` helper.
 
 Gate:
 
-- URL-like and search-like input matches basic native Urlbar behavior;
+- URL-like and search-like input delegates to current native Urlbar behavior;
 - navigation cannot overwrite an active draft;
 - no input or complete URL enters diagnostics or persistence;
-- combined left surface remains bounded and hidden at rest;
+- the combined left surface remains compact, bounded, and hidden at rest;
+- compact and detailed status match the same current Firefox state and become
+  conservatively unavailable when Firefox has no coherent status;
 - native Urlbar remains visible and unchanged;
 - failure restores native fallback.
+
+Validated on Firefox 153.0.4 in normal, second-normal, private, fail-open,
+frontend-recovery, and Browser Toolbox runs. Full native permissions/page-action
+coverage is intentionally deferred to #37.
+
+Evidence: ADR-028 and
+`docs/research/firefox-153-address-popup.md`.
 
 ## Milestone I: Right-edge bookmarks — pending (#14)
 

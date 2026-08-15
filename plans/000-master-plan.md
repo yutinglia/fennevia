@@ -11,9 +11,14 @@ and project-owned Svelte UI.
 The target interface has four independent floating edge surfaces:
 
 - **Top:** primary browser controls.
-- **Left:** vertical tabs and address input.
+- **Left:** vertical tabs and a compact address/status launcher.
 - **Right:** bookmarks.
 - **Bottom:** download progress and status.
+
+The launcher opens a centered project-owned address/search popup. Compact and
+detailed connection/HTTPS and tracking-protection status comes from current
+Firefox state; native identity, protections, permission, and page-action panels
+remain Firefox-owned.
 
 All four surfaces are hidden at rest and reserve no permanent layout space.
 They reveal through their matching pointer edge or an accessible keyboard/focus
@@ -46,11 +51,13 @@ Completed:
 - #31: zero-layout four-edge frame, shared reveal controller, corner/collision
   policy, glass tokens, accessibility fallbacks, and complete cleanup;
 - #12: event-driven selected-navigation bridge and top-edge Back, Forward,
-  Reload/Stop, and New Tab controls with bounded page status.
+  Reload/Stop, and New Tab controls with bounded page status;
+- #13: compact left address/status launcher, centered address/search popup,
+  native Urlbar submission and healthy-only `Ctrl+L`, real Firefox connection
+  and tracking-protection state, and a fifth owned overlay root.
 
 Remaining MVP feature work:
 
-- #13: left-edge address input and `Ctrl+L` integration;
 - #14: Places bridge and right-edge bookmarks;
 - #32: Downloads bridge and bottom-edge progress/status;
 - #15: health-gated content-only activation and narrow native-UI hiding;
@@ -81,8 +88,9 @@ navigation controls. The project is not ready for daily use or public release.
   reduced-transparency, and forced-colors fallbacks.
 - A frontend framework that manages only project-owned descendants.
 - Firefox internal APIs isolated behind small typed bridge modules.
-- A usable top navigation surface, combined left tabs/address surface, right
-  bookmarks surface, and bottom download-status surface.
+- A usable top navigation surface, combined left tabs/address-launcher surface,
+  centered address popup, right bookmarks surface, and bottom download-status
+  surface.
 - A fail-open recovery path that immediately restores native Firefox UI without
   depending on Svelte.
 - A reviewed native-UI coverage inventory before any native surface is hidden.
@@ -212,7 +220,8 @@ Deliverables:
 
 - Svelte 5, TypeScript, and Vite production build;
 - one fixed tree-fragment IIFE and extracted frame-scoped CSS;
-- four independent official roots under the #31 frame;
+- four independent edge roots plus one centered address-overlay root under the
+  shared frame;
 - deterministic byte-for-byte production output;
 - no CDN, HMR, source map, runtime network dependency, or unexpected chunk;
 - mount, unmount, remount, XHTML namespace, event, and CSS-isolation evidence.
@@ -246,15 +255,16 @@ Tabs deliverables:
 Gate for each bridge: native and shell actions remain synchronized without
 polling or leaked native objects.
 
-Completed: #9, #10, and the navigation bridge in #12. Issue #12 keeps native
-browser, command, event, observer, and progress objects private while exposing
-one immutable bounded selected-navigation snapshot and explicit current-window
-actions. See ADR-027 and
-`docs/research/firefox-153-navigation-controls.md`.
+Completed: #9, #10, the navigation bridge in #12, and the address/status
+extension in #13. Issues #12 and #13 keep native browser, command, Urlbar,
+identity/protections handler, event, observer, and progress objects private
+while exposing immutable bounded ordinary state and explicit current-window
+actions. See ADR-027, ADR-028,
+`docs/research/firefox-153-navigation-controls.md`, and
+`docs/research/firefox-153-address-popup.md`.
 
 Remaining bridge consumers:
 
-- #13 address/fixup/search and command focus;
 - #14 Places/bookmarks;
 - #32 Downloads.
 
@@ -310,13 +320,22 @@ Evidence: ADR-025, ADR-026, and
 Evidence: ADR-027 and
 `docs/research/firefox-153-navigation-controls.md`.
 
-#### Left address input — pending (#13)
+#### Compact address launcher and centered popup — complete (#13)
 
-- selected-tab display location;
-- independent draft/editing state;
-- Firefox-consistent URL/search submission;
-- healthy-only `Ctrl+L` ownership and native fallback;
-- coherent composition with #11 in the existing left surface.
+- non-editable bounded committed location in a compact left launcher;
+- compact real Firefox connection/HTTPS and tracking-protection status;
+- one centered project-owned popup with independent draft/editing state and
+  fuller status text;
+- Firefox-owned URL fixup/search/principal/load behavior through the native
+  Urlbar command path;
+- healthy-only `Ctrl+L` ownership with unchanged native fallback;
+- popup-priority suppression of the four edge surfaces, focus restoration, and
+  deterministic cleanup;
+- native Urlbar, identity/protections panels, permissions, and page actions
+  retained; fuller reviewed coverage is tracked in #37.
+
+Evidence: ADR-028 and
+`docs/research/firefox-153-address-popup.md`.
 
 #### Right bookmarks — pending (#14)
 
@@ -397,7 +416,7 @@ profile/chrome/fennevia/
 src/
   firefox/                       # Firefox-internal source boundary
   app/                           # ordinary state/controllers
-  shell/                         # Svelte four-edge UI
+  shell/                         # Svelte four-edge UI and centered address overlay
 patches/                         # empty by default; reviewed overrides only
 scripts/                         # build, package, diagnostics, and profile helpers
 tests/
@@ -411,30 +430,29 @@ and hashes. Generated files are never hand-edited.
 
 ## 8. Major risks and mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Firefox changes AutoConfig or manifest registration | Current-source research, compatibility canaries, minimal bootstrap tests |
-| Firefox changes internal APIs/events/DOM | Small bridge modules, capability checks, internals map, latest-stable-only policy |
-| Svelte or CSS affects native chrome | Project-owned roots, frame-scoped selectors, no global reset, Browser Toolbox comparison |
-| Edge triggers block web content | Narrow measured trigger regions, deterministic corners, pointer-transparent frame |
-| A surface becomes stuck or retains focus | Explicit hold state, tracked timers, `Escape`, focus restoration, disposal tests |
-| Native UI is hidden before feature coverage | #15 blockers, native-UI coverage inventory, active-only rules |
-| Custom shell fails after activation | Safe start, privileged emergency fallback, immediate active clearing |
-| Native prompts or extension surfaces become inaccessible | Firefox ownership, modal suspension, narrowest possible native hiding |
-| Multi-window/private state leaks | Per-window contexts, opaque IDs, no browsing-derived persistence, cleanup |
-| Build or dependency compromise | Locked graph, lifecycle scripts disabled, deterministic builds, artifact scanner |
-| Installer damages another profile | Explicit canonical targets, ownership manifests, dry run, rollback, hard refusal |
-| Logs expose browsing data | Default-deny schemas, redaction, hostile-value tests, no network sink |
-| External code is copied without permission | License/provenance gate and #18 owner decision |
+| Risk                                                     | Mitigation                                                                               |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Firefox changes AutoConfig or manifest registration      | Current-source research, compatibility canaries, minimal bootstrap tests                 |
+| Firefox changes internal APIs/events/DOM                 | Small bridge modules, capability checks, internals map, latest-stable-only policy        |
+| Svelte or CSS affects native chrome                      | Project-owned roots, frame-scoped selectors, no global reset, Browser Toolbox comparison |
+| Edge triggers block web content                          | Narrow measured trigger regions, deterministic corners, pointer-transparent frame        |
+| A surface becomes stuck or retains focus                 | Explicit hold state, tracked timers, `Escape`, focus restoration, disposal tests         |
+| Native UI is hidden before feature coverage              | #15 blockers, native-UI coverage inventory, active-only rules                            |
+| Custom shell fails after activation                      | Safe start, privileged emergency fallback, immediate active clearing                     |
+| Native prompts or extension surfaces become inaccessible | Firefox ownership, modal suspension, narrowest possible native hiding                    |
+| Multi-window/private state leaks                         | Per-window contexts, opaque IDs, no browsing-derived persistence, cleanup                |
+| Build or dependency compromise                           | Locked graph, lifecycle scripts disabled, deterministic builds, artifact scanner         |
+| Installer damages another profile                        | Explicit canonical targets, ownership manifests, dry run, rollback, hard refusal         |
+| Logs expose browsing data                                | Default-deny schemas, redaction, hostile-value tests, no network sink                    |
+| External code is copied without permission               | License/provenance gate and #18 owner decision                                           |
 
 ## 9. Issue execution rules
 
 - Complete shared foundations before feature-specific UI.
 - Do not jump directly to #15.
 - Every feature issue must pass while native Firefox UI remains visible.
-- #12, #14, and #32 may proceed in parallel after #31 and their bridge
-  prerequisites; #13 follows the completed tabs UI and the navigation/address
-  contract from #12.
+- #14 and #32 may proceed in parallel after #31 and their bridge prerequisites;
+  completed #13 builds on the tabs UI and navigation contract from #12.
 - Feature issues use the shared #31 edge contract and the #9 bridge boundary.
 - Research work must produce reproducible evidence or a clear negative result,
   not a list of links.

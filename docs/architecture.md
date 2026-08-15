@@ -102,11 +102,12 @@ initializer. ADR-026 supersedes that production geometry. The current
 `WindowShell.sys.mjs` validates the exact document hierarchy and creates one
 zero-layout XHTML frame as an absolute child of `#browser`, immediately before
 `#tabbrowser-tabbox`. Ordered top, left, right, and bottom XHTML hosts each own
-one empty mount target and one Svelte root. A generated style node is a separate
-frame child and does not participate in host ordering. Normal and private
-windows receive the same complete frame. Project code owns only this frame and
-its descendants; it never moves a native node, resizes browser content, or
-hides native UI.
+one empty mount target and one Svelte root. One address-overlay XHTML host is
+ordered last and owns the centered popup's fifth target/root. A generated style
+node is a separate frame child and does not participate in edge-host ordering.
+Normal and private windows receive the same complete frame. Project code owns
+only this frame and its descendants; it never moves a native node, resizes
+browser content, or hides native UI.
 
 Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
 owns the only root-state transition table: `created -> mounted -> healthy ->
@@ -118,7 +119,7 @@ idempotent.
 
 The production initializer mounts synchronously and then applies a finite
 2,000 ms health deadline. Its current self-check validates exact frame and host
-identity, placement and order, four XHTML mount targets and frontend roots, an
+identity, placement and order, five XHTML mount targets and frontend roots, an
 attached generated stylesheet with parsed rules, the registered emergency
 handler, and every declared capability. The extension points used to inject
 failures in unit tests are ordinary constructor collaborators; the installed
@@ -183,8 +184,8 @@ is not source of truth. `WindowShell.sys.mjs` creates exactly one boundary from
 the existing `WindowManager` context for each managed window and retains it in
 the same frame-keyed private record as the frontend API. It passes no bridge
 implementation object, native handle, or capability object to Svelte. Issues
-#10 and #12 pass only frozen ordinary-data tabs and navigation contracts through
-separate application adapters.
+#10, #12, and #13 pass only frozen ordinary-data tabs and navigation/address
+contracts through separate application adapters.
 
 The boundary validates `window.document.defaultView`, the browser document URI,
 the process-local window ID, and normal/private kind before claiming a context.
@@ -230,23 +231,31 @@ source and runtime evidence is in `docs/research/firefox-153-tabs-bridge.md`,
 `docs/research/firefox-153-tab-strip.md`, ADR-024, and ADR-025.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
-private ESM. One controller per boundary separately validates the retained
-native command elements, `BrowserCommands` actions, selected browser/tab,
-paired tabs progress methods, event target, URI shape, and command observer.
-It reconciles an immutable selected-navigation snapshot from selected/top-level
-location and state callbacks, selected tab/attribute events, and command
-`disabled` mutations. Background or non-top-level progress is ignored, equal
-snapshots do not publish, and there is no polling.
+private ESM. Issue #13 extends that same coherent per-window controller rather
+than introducing a second native navigation owner. It validates retained native
+command elements, `BrowserCommands` actions, Urlbar value/submission, selected
+browser/tab, identity and protections handlers, the content-blocking allow
+list, paired tabs progress methods, event target, URI shape, and command
+observer. It reconciles one immutable selected-navigation snapshot from
+selected/top-level location, state, security, and content-blocking callbacks,
+selected tab/attribute events, and command `disabled` mutations. Background or
+non-top-level progress is ignored, equal snapshots do not publish, and there is
+no polling.
 
 Actions invoke the current window's `BrowserCommands` methods after re-reading
 the selected browser and relevant command state; session-history, reload/cache,
-stop, principal, and new-tab policy remain Firefox-owned. The public contract
-contains only booleans, bounded title/display-URI text, subscriptions, and named
-actions. `src/app/navigation-state.ts` validates and copies it again before the
-top Svelte root receives an adapter. Native browsers, tabs, command elements,
-observers, progress objects, and windows remain inside the privileged boundary.
-Missing or later-failing dependencies use the existing health/fail-open path.
-See ADR-027 and `docs/research/firefox-153-navigation-controls.md`.
+stop, and new-tab policy remain Firefox-owned. Address submission writes only a
+validated bounded draft to the native Urlbar and invokes `handleCommand()`, so
+Firefox retains fixup, search, principal, disposition, and telemetry policy.
+The public contract contains only booleans, bounded title/display/location
+text, fixed connection/protection enums, subscriptions, and named actions.
+`src/app/navigation-state.ts` validates and copies it again before Svelte
+receives an adapter. Native browsers, tabs, Urlbar, command elements, handlers,
+allow-list, observers, progress objects, and windows remain inside the
+privileged boundary. Missing or later-failing dependencies use the existing
+health/fail-open path. See ADR-027, ADR-028,
+`docs/research/firefox-153-navigation-controls.md`, and
+`docs/research/firefox-153-address-popup.md`.
 
 ## 5. Application and frontend layers
 
@@ -256,8 +265,9 @@ Svelte mounts only into project-created XHTML elements. It must not reconcile `n
 
 Issue #8 validated the original single Svelte 5 root. Issue #31 keeps the same
 fixed tree-fragment IIFE and one-shot API but mounts four independent roots in
-the ordered edge targets. The privileged runtime supplies ordinary window kind,
-the four owned targets, and narrow lifecycle/data contracts; components receive
+the ordered edge targets. Issue #13 adds one final address-overlay target/root
+inside the same frame. The privileged runtime supplies ordinary window kind,
+the five owned targets, and narrow lifecycle/data contracts; components receive
 no Firefox handle, `Services`, browsing value, or Firefox-owned DOM node. One
 shared framework-independent controller coordinates edge visibility, while
 each root retains independent component ownership. Mount, health, official
@@ -266,8 +276,16 @@ unmount, and fresh-state remount are explicit frontend API operations.
 Issue #12 replaces only the top placeholder with four accessible controls and
 a secondary bounded text status. It consumes the application navigation
 adapter and the existing top-edge focus/reveal contract; it does not import a
-Firefox module, inspect command DOM, create another trigger/timer/controller,
-or add the editable address field owned by issue #13.
+Firefox module, inspect command DOM, or create another trigger/timer/controller.
+
+Issue #13 replaces the old left address placeholder with a non-editable compact
+launcher above tabs and mounts `AddressPopup.svelte` in the fifth root. The
+launcher displays bounded committed location plus compact labels derived from
+real Firefox connection/protection enums. The popup owns the sole custom input,
+an independent per-window draft, fuller labels, focus restoration, and
+popup-priority edge suppression. It never moves native Urlbar/identity/
+protections DOM or renders inferred security state. Full permissions and page-
+action coverage remains #37.
 
 The frontend owns:
 
@@ -387,7 +405,8 @@ Production artifacts must be:
 Each production build also has an exact reviewed file inventory and passes `scripts/check-production-artifacts.ps1`. Unexpected files, including dynamically emitted chunks, fail the gate rather than being accepted by a glob. The operational rule set is in `docs/security-controls.md`.
 
 ADR-022 selects one classic `ShellApp.js` IIFE for execution in each owning
-browser-window global. It mounts four roots inside the one validated frame.
+browser-window global. ADR-028 extends its current mount shape to four edge
+roots plus one address-overlay root inside the one validated frame.
 `ShellStyles.sys.mjs` contains the extracted CSS as a
 static string, and `THIRD_PARTY_NOTICES.txt` contains the bundled Svelte notice.
 The build runs twice and compares exact bytes before replacing only those three

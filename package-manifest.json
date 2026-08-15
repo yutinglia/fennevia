@@ -39,7 +39,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs",
-      "sha256": "a1633bd03d22e8c79e98d772b5732bfe266f6073bc04068c1e58af7e3f026244"
+      "sha256": "183a82b9d675e6309aeb0c7c7366a514e5408947ee83a33648b5100b26d0a095"
     },
     {
       "scope": "profile",
@@ -64,17 +64,17 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
-      "sha256": "f2dd24008b60d1e953ae2ede6a351e12f8200753bff7c607e1f8ebee14bd47b3"
+      "sha256": "348f5c310872c620955b3e180e028286bc8dcd3093556ac5ae966f6cb79462d2"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/shell/ShellApp.js",
-      "sha256": "bc5d91b5d5c7944917e0450641a05e3cd108304d801674b47b4bd786d924c16d"
+      "sha256": "20008fa1992d2ab0549f512384ee84a53ca1ad016b7df4d7fbb4ca4534feec19"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/shell/ShellStyles.sys.mjs",
-      "sha256": "0bd0dc845caaf06ee7e4ed5f276d9560473899391f70093eca8a271393f424d4"
+      "sha256": "6e2163b75311525fd8caa41530fdb8b0215585295be592de96cad2f37fd40b04"
     },
     {
       "scope": "profile",

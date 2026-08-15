@@ -28,12 +28,14 @@ const HOST_IDS = Object.freeze({
   left: "fennevia-shell-left-host",
   right: "fennevia-shell-right-host",
   bottom: "fennevia-shell-bottom-host",
+  overlay: "fennevia-shell-address-overlay-host",
 });
 const MOUNT_IDS = Object.freeze({
   top: "fennevia-shell-top-mount",
   left: "fennevia-shell-left-mount",
   right: "fennevia-shell-right-mount",
   bottom: "fennevia-shell-bottom-mount",
+  overlay: "fennevia-shell-address-overlay-mount",
 });
 
 const SHELL_STYLE_ID = "fennevia-shell-style";
@@ -68,7 +70,9 @@ const SHELL_STYLE = `
 }
 
 #fennevia-shell-frame-host > [data-fennevia-edge-host],
-#fennevia-shell-frame-host [data-fennevia-edge-mount] {
+#fennevia-shell-frame-host [data-fennevia-edge-mount],
+#fennevia-shell-frame-host > [data-fennevia-overlay-host],
+#fennevia-shell-frame-host [data-fennevia-overlay-mount] {
   box-sizing: border-box;
   position: absolute;
   inset: 0;
@@ -447,12 +451,93 @@ const createEdgeHostController = ({ document, edge, frame }) => {
   });
 };
 
+const createAddressOverlayHostController = ({ document, frame }) => {
+  const host = createElement(document, "section", {
+    id: HOST_IDS.overlay,
+    className: "fennevia-shell-overlay-host fennevia-shell-overlay-host--address",
+    attributes: {
+      "aria-label": "Fennevia address and search popup layer",
+      "data-fennevia-overlay-host": "address",
+      "data-fennevia-lifecycle-state": "created",
+    },
+  });
+  const target = createElement(document, "div", {
+    id: MOUNT_IDS.overlay,
+    className:
+      "fennevia-shell-overlay-mount fennevia-shell-overlay-mount--address",
+    attributes: {
+      "data-fennevia-overlay-mount": "address",
+      "data-fennevia-framework-status": "unmounted",
+    },
+  });
+  host.append(target);
+  let state = "created";
+
+  return Object.freeze({
+    attach() {
+      if (state === "attached") {
+        return false;
+      }
+      if (state === "disposed") {
+        throw createShellError(
+          "FENNEVIA_SHELL_OVERLAY_ATTACH_STATE_INVALID",
+          `#${HOST_IDS.overlay}`,
+        );
+      }
+      frame.append(host);
+      state = "attached";
+      return true;
+    },
+    detach() {
+      if (state === "disposed" || state === "detached") {
+        return false;
+      }
+      host.remove();
+      state = "detached";
+      return true;
+    },
+    dispose() {
+      if (state === "disposed") {
+        return false;
+      }
+      host.remove();
+      state = "disposed";
+      return true;
+    },
+    getMountPoint() {
+      return Object.freeze({ host, kind: "address", target });
+    },
+    setLifecycleState(nextState) {
+      host.setAttribute(FRAME_LIFECYCLE_ATTRIBUTE, nextState);
+    },
+    snapshot() {
+      return Object.freeze({ kind: "address", state });
+    },
+    verify() {
+      if (
+        state !== "attached" ||
+        document.getElementById(HOST_IDS.overlay) !== host ||
+        document.getElementById(MOUNT_IDS.overlay) !== target ||
+        host.parentElement !== frame ||
+        target.parentElement !== host ||
+        Array.from(frame.children).at(-1) !== host
+      ) {
+        throw createShellError(
+          "FENNEVIA_SHELL_OVERLAY_OWNERSHIP_INVALID",
+          `#${HOST_IDS.frame}>#${HOST_IDS.overlay}`,
+        );
+      }
+      return true;
+    },
+  });
+};
+
 const createDetachedHosts = ({ document }) => {
   const frame = createElement(document, "div", {
     id: HOST_IDS.frame,
     className: "fennevia-shell-frame-host",
     attributes: {
-      "aria-label": "Fennevia floating edge shell",
+      "aria-label": "Fennevia floating browser shell",
       "data-fennevia-host": "frame",
       "data-fennevia-lifecycle-state": "created",
       "data-fennevia-environment": "normal",
@@ -471,8 +556,10 @@ const createDetachedHosts = ({ document }) => {
       ]),
     ),
   );
+  const overlay = createAddressOverlayHostController({ document, frame });
   const mountPoints = Object.freeze({
     frame,
+    overlay: overlay.getMountPoint(),
     surfaces: Object.freeze(
       Object.fromEntries(
         EDGE_NAMES.map((edge) => [edge, edges[edge].getMountPoint()]),
@@ -480,7 +567,7 @@ const createDetachedHosts = ({ document }) => {
     ),
   });
 
-  return Object.freeze({ edges, frame, mountPoints, style });
+  return Object.freeze({ edges, frame, mountPoints, overlay, style });
 };
 
 const descendantsOf = (element) => [
@@ -523,6 +610,11 @@ export function createShellHosts({
       firstError = error;
     }
     environmentObserver = undefined;
+    try {
+      hosts.overlay.detach();
+    } catch (error) {
+      firstError ??= error;
+    }
     for (const edge of [...EDGE_NAMES].reverse()) {
       try {
         hosts.edges[edge].detach();
@@ -566,6 +658,8 @@ export function createShellHosts({
           currentDomPath = `#${HOST_IDS.frame}>#${HOST_IDS[edge]}`;
           hosts.edges[edge].attach();
         }
+        currentDomPath = `#${HOST_IDS.frame}>#${HOST_IDS.overlay}`;
+        hosts.overlay.attach();
         currentDomPath = `#${HOST_IDS.frame}`;
         environmentObserver = createFrameEnvironmentObserver({
           window,
@@ -611,6 +705,7 @@ export function createShellHosts({
       for (const edge of EDGE_NAMES) {
         hosts.edges[edge].setLifecycleState(nextState);
       }
+      hosts.overlay.setLifecycleState(nextState);
       return true;
     },
 
@@ -674,6 +769,7 @@ export function createShellHosts({
       for (const [index, edge] of EDGE_NAMES.entries()) {
         hosts.edges[edge].verify(index);
       }
+      hosts.overlay.verify();
       if (
         descendantsOf(hosts.frame).some(
           (element) => element.namespaceURI !== XHTML_NAMESPACE,
@@ -694,6 +790,11 @@ export function createShellHosts({
       try {
         detach();
       } finally {
+        try {
+          hosts.overlay.dispose();
+        } catch {
+          // `detach` already surfaces the first exact cleanup failure.
+        }
         for (const edge of [...EDGE_NAMES].reverse()) {
           try {
             hosts.edges[edge].dispose();
@@ -715,7 +816,8 @@ export function createShellHosts({
           ),
         ),
         environment: environmentObserver?.snapshot().environment ?? null,
-        hostCount: state === "attached" ? EDGE_NAMES.length : 0,
+        hostCount: state === "attached" ? EDGE_NAMES.length + 1 : 0,
+        overlay: hosts.overlay.snapshot(),
         state,
         windowKind,
       });
@@ -922,7 +1024,22 @@ const getProductionAppMounts = (mountPoints) => {
       }),
     ),
   );
-  return Object.freeze({ frame, targets });
+  const overlayMountPoint = mountPoints.overlay;
+  const overlayTarget = overlayMountPoint?.target;
+  if (
+    overlayMountPoint?.kind !== "address" ||
+    overlayMountPoint.host?.id !== HOST_IDS.overlay ||
+    overlayMountPoint.host?.parentElement !== frame ||
+    overlayTarget?.id !== MOUNT_IDS.overlay ||
+    overlayTarget.parentElement !== overlayMountPoint.host ||
+    overlayTarget.namespaceURI !== XHTML_NAMESPACE
+  ) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FRONTEND_OVERLAY_TARGET_UNAVAILABLE",
+      "shell-frontend-mount",
+    );
+  }
+  return Object.freeze({ frame, overlayTarget, targets });
 };
 
 const mountProductionShell = ({
@@ -943,7 +1060,7 @@ const mountProductionShell = ({
     );
   }
 
-  const { frame, targets } = getProductionAppMounts(mountPoints);
+  const { frame, overlayTarget, targets } = getProductionAppMounts(mountPoints);
   if (frame.ownerDocument.defaultView !== browserWindow) {
     throw createShellLifecycleError(
       "FENNEVIA_FIREFOX_CONTEXT_WINDOW_MISMATCH",
@@ -1000,6 +1117,7 @@ const mountProductionShell = ({
     const candidateDisposeApp = frontend.mountShellApp({
       frame,
       navigation: navigationBridge.navigation,
+      overlayTarget,
       targets,
       tabs: tabsBridge.tabs,
       windowKind,
@@ -1116,7 +1234,7 @@ const mountProductionShell = ({
 };
 
 const checkProductionShell = ({ mountPoints, windowKind }) => {
-  const { frame, targets } = getProductionAppMounts(mountPoints);
+  const { frame, overlayTarget, targets } = getProductionAppMounts(mountPoints);
   const record = productionShellByFrame.get(frame);
   if (!record) {
     throw createShellLifecycleError(
@@ -1147,13 +1265,14 @@ const checkProductionShell = ({ mountPoints, windowKind }) => {
   record.tabsBridge.assertRequiredCapabilities();
   return record.frontend.verifyShellAppHealth({
     frame,
+    overlayTarget,
     targets,
     windowKind,
   });
 };
 
 const getProductionCapabilities = ({ mountPoints, windowKind }) => {
-  const { frame, targets } = getProductionAppMounts(mountPoints);
+  const { frame, overlayTarget, targets } = getProductionAppMounts(mountPoints);
   const record = productionShellByFrame.get(frame);
   if (!record) {
     throw createShellLifecycleError(
@@ -1167,6 +1286,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   const tabsCapabilities = record.tabsBridge.assertRequiredCapabilities();
   const frontendCapabilities = record.frontend.getShellAppCapabilities({
     frame,
+    overlayTarget,
     targets,
     windowKind,
   });

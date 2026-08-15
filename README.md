@@ -19,10 +19,12 @@ bridges.
 > health/recovery, deterministic Svelte production builds, the typed bridge
 > boundary, tab-state bridge, accessible tab UI, and the common four-edge
 > floating frame are implemented. The left edge contains functional vertical
-> tabs, and the top edge contains native-synchronized Back, Forward,
-> Reload/Stop, and New Tab controls plus bounded page status. The right and
-> bottom surfaces remain honest placeholders. Firefox native UI remains visible
-> and unchanged; content-only active mode is not implemented yet.
+> tabs plus a compact address launcher with real Firefox connection and
+> tracking-protection status. A centered popup provides address/search editing
+> and fuller status text. The top edge contains native-synchronized Back,
+> Forward, Reload/Stop, and New Tab controls plus bounded page status. The right
+> and bottom surfaces remain honest placeholders. Firefox native UI remains
+> visible and unchanged; content-only active mode is not implemented yet.
 
 There is no daily-driver support, versioned end-user release, cross-platform
 support claim, or completed security audit.
@@ -32,9 +34,13 @@ support claim, or completed security audit.
 Fennevia's final MVP uses four independent project-owned floating surfaces:
 
 - **Top:** primary browser controls.
-- **Left:** vertical tabs and the address input.
+- **Left:** vertical tabs and a compact address/status launcher.
 - **Right:** bookmarks.
 - **Bottom:** download progress and status.
+
+The sole custom editable address field opens in a fifth, centered
+project-owned overlay root. Firefox retains its native Urlbar, identity and
+protections panels, permissions, page actions, and security prompts.
 
 Each surface is hidden at rest, reserves no permanent layout space, and is
 revealed by its matching window edge or an accessible keyboard/focus path. The
@@ -66,21 +72,21 @@ useful.
 
 ## Current progress
 
-| Area | Status | Result |
-| --- | --- | --- |
-| Safe development and privileged-code baseline | Complete | Dedicated Windows profile workflow, threat model, redacted diagnostics, and recovery rules |
-| Bootstrap and package lifecycle | Complete | Minimal AutoConfig/Chrome Registry chain plus path-safe install, update, disable, and uninstall |
-| Window runtime and recovery | Complete | Existing/later normal and private windows, deterministic disposal, health states, safe start, and emergency fallback |
-| Frontend and bridge foundation | Complete | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership |
-| Tabs data and UI | Complete | Event-driven immutable tab state plus accessible vertical tab UI in the left surface |
-| Four-edge frame | Complete | Independent top/left/right/bottom XHTML surfaces, edge reveal controller, collision rules, glass tokens, and accessibility fallbacks |
-| Top primary controls | Complete — #12 | Event-driven navigation bridge and Back/Forward/Reload/Stop/New Tab UI with bounded text-only page status |
-| Left address input | Pending — #13 | Firefox-consistent URL/search submission and `Ctrl+L` integration |
-| Right bookmarks | Pending — #14 | Typed Places bridge and bounded bookmark tree |
-| Bottom downloads | Pending — #32 | Typed Downloads bridge and accessible aggregate progress/status |
-| Content-only activation | Pending — #15 | Reversible hiding of only the native surfaces with complete replacements |
-| Hardening and Firefox-update workflow | Pending — #16 | Full regression, resource, performance, cleanup, and stable-update matrix |
-| Project license | Pending — #18 | Owner-approved license and third-party attribution policy |
+| Area                                          | Status         | Result                                                                                                                                                        |
+| --------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Safe development and privileged-code baseline | Complete       | Dedicated Windows profile workflow, threat model, redacted diagnostics, and recovery rules                                                                    |
+| Bootstrap and package lifecycle               | Complete       | Minimal AutoConfig/Chrome Registry chain plus path-safe install, update, disable, and uninstall                                                               |
+| Window runtime and recovery                   | Complete       | Existing/later normal and private windows, deterministic disposal, health states, safe start, and emergency fallback                                          |
+| Frontend and bridge foundation                | Complete       | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership                                          |
+| Tabs data and UI                              | Complete       | Event-driven immutable tab state plus accessible vertical tab UI in the left surface                                                                          |
+| Four-edge frame                               | Complete       | Independent top/left/right/bottom XHTML surfaces, edge reveal controller, collision rules, glass tokens, and accessibility fallbacks                          |
+| Top primary controls                          | Complete — #12 | Event-driven navigation bridge and Back/Forward/Reload/Stop/New Tab UI with bounded text-only page status                                                     |
+| Address launcher and popup                    | Complete — #13 | Compact committed location plus real Firefox connection/protection badges, centered address/search popup, native Urlbar submission, and healthy-only `Ctrl+L` |
+| Right bookmarks                               | Pending — #14  | Typed Places bridge and bounded bookmark tree                                                                                                                 |
+| Bottom downloads                              | Pending — #32  | Typed Downloads bridge and accessible aggregate progress/status                                                                                               |
+| Content-only activation                       | Pending — #15  | Reversible hiding of only the native surfaces with complete replacements                                                                                      |
+| Hardening and Firefox-update workflow         | Pending — #16  | Full regression, resource, performance, cleanup, and stable-update matrix                                                                                     |
+| Project license                               | Pending — #18  | Owner-approved license and third-party attribution policy                                                                                                     |
 
 The tracking source of truth is issue #1. Historical research records preserve
 what was true at each earlier milestone; they should not be rewritten to pretend
@@ -98,14 +104,15 @@ Stock Firefox
               ├─ typed Firefox bridges
               │   ├─ tabs (implemented)
               │   ├─ navigation (implemented)
-              │   ├─ address/fixup/search (pending)
+              │   ├─ address/status popup (implemented)
               │   ├─ Places/bookmarks (pending)
               │   └─ Downloads (pending)
-              └─ Svelte four-edge frame
+              └─ Svelte frame with five owned roots
                   ├─ top: primary controls
-                  ├─ left: vertical tabs + address input
+                  ├─ left: vertical tabs + compact address/status launcher
                   ├─ right: bookmarks
-                  └─ bottom: download progress/status
+                  ├─ bottom: download progress/status
+                  └─ center overlay: address/search popup + status details
 ```
 
 Firefox continues to own `gBrowser`, web-content containers, SessionStore,
@@ -151,7 +158,7 @@ startup.
 - **Runtime:** privileged `.sys.mjs` modules with one process runtime and
   per-window deterministic disposal.
 - **UI:** Svelte 5 with TypeScript, compiled as a fixed tree-fragment IIFE into
-  four project-owned XHTML roots.
+  four edge roots and one address-overlay root, all project-owned XHTML.
 - **Build:** Vite with byte-reproduced production artifacts and no CDN, HMR,
   source map, extra chunk, or runtime network dependency.
 - **Styling:** frame-scoped component CSS and Fennevia-owned glass tokens with
@@ -207,6 +214,8 @@ and design.
 - [Firefox 153 tabs bridge](docs/research/firefox-153-tabs-bridge.md)
 - [Firefox 153 accessible tab UI](docs/research/firefox-153-tab-strip.md)
 - [Firefox 153 four-edge shell](docs/research/firefox-153-four-edge-shell.md)
+- [Firefox 153 top navigation](docs/research/firefox-153-navigation-controls.md)
+- [Firefox 153 compact address launcher and popup](docs/research/firefox-153-address-popup.md)
 
 Historical research files are immutable evidence of the tested milestone they
 describe. Later decisions supersede their production architecture through ADRs

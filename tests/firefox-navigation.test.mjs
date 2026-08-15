@@ -16,11 +16,11 @@ function createEventTarget() {
     addEventListener(type, listener, options) {
       listeners.push({ listener, options, type });
     },
-    dispatch(type, target, detail = undefined) {
+    dispatch(type, target, detail = undefined, properties = {}) {
       for (const record of listeners
         .filter((candidate) => candidate.type === type)
         .slice()) {
-        record.listener({ detail, target, type });
+        record.listener({ ...properties, detail, target, type });
       }
     },
     listenerCount: () => listeners.length,
@@ -43,6 +43,9 @@ function createNativeWindow() {
   const observerRecords = new Set();
   const progressListeners = new Set();
   const actionCalls = [];
+  const addressSubmissions = [];
+  const focusCalls = [];
+  let shellHealthy = false;
 
   class FakeMutationObserver {
     constructor(callback) {
@@ -61,7 +64,9 @@ function createNativeWindow() {
 
   function createCommand(disabled = false) {
     let isDisabled = disabled;
+    const eventTarget = createEventTarget();
     const command = {
+      ...eventTarget,
       hasAttribute(name) {
         return name === "disabled" && isDisabled;
       },
@@ -85,6 +90,7 @@ function createNativeWindow() {
     ["Browser:Forward", createCommand(true)],
     ["Browser:Reload", createCommand(false)],
     ["Browser:Stop", createCommand(true)],
+    ["Browser:OpenLocation", createCommand(false)],
     ["cmd_newNavigatorTabNoEvent", createCommand(false)],
   ]);
 
@@ -93,6 +99,9 @@ function createNativeWindow() {
       canGoBack: false,
       canGoForward: false,
       currentURI: { displaySpec: uri },
+      focus() {
+        focusCalls.push(id);
+      },
       id,
       webNavigation: {},
     };
@@ -120,7 +129,66 @@ function createNativeWindow() {
     createTab("tab-1", "One", browsers[0]),
     createTab("tab-2", "Two", browsers[1]),
   ];
+  const addressValues = ["https://example.invalid/one", ""];
+  const proxyStates = ["valid", "valid"];
+  const connectionStates = ["secure", "not-secure"];
+  const protectionStates = [
+    {
+      anyBlocking: true,
+      anyDetected: true,
+      canHandle: true,
+      hasException: false,
+    },
+    {
+      anyBlocking: false,
+      anyDetected: false,
+      canHandle: false,
+      hasException: false,
+    },
+  ];
   let selectedIndex = 0;
+
+  const urlbarEvents = createEventTarget();
+  const gURLBar = {
+    ...urlbarEvents,
+    getAttribute(name) {
+      return name === "pageproxystate" ? proxyStates[selectedIndex] : "";
+    },
+    handleCommand() {
+      addressSubmissions.push({
+        browserId: gBrowser.selectedBrowser.id,
+        value: addressValues[selectedIndex],
+      });
+    },
+    get value() {
+      return addressValues[selectedIndex];
+    },
+    set value(nextValue) {
+      addressValues[selectedIndex] = String(nextValue);
+      proxyStates[selectedIndex] = "invalid";
+      urlbarEvents.dispatch("ValueChange", gURLBar);
+    },
+  };
+
+  const gIdentityHandler = {
+    getConnectionSecurityInformation() {
+      return connectionStates[selectedIndex];
+    },
+  };
+  const gProtectionsHandler = {};
+  gProtectionsHandler.onContentBlockingEvent = () => {};
+  for (const member of ["anyBlocking", "anyDetected", "hasException"]) {
+    Object.defineProperty(gProtectionsHandler, member, {
+      configurable: true,
+      get: () => protectionStates[selectedIndex][member],
+    });
+  }
+  const ContentBlockingAllowList = {
+    canHandle(browser) {
+      const index = browsers.indexOf(browser);
+      return index >= 0 && protectionStates[index].canHandle;
+    },
+  };
 
   const syncSelectedCommands = () => {
     const browser = browsers[selectedIndex];
@@ -174,6 +242,15 @@ function createNativeWindow() {
       const tab = createTab(`tab-${index}`, "New Tab", browser);
       browsers.push(browser);
       tabs.push(tab);
+      addressValues.push("");
+      proxyStates.push("valid");
+      connectionStates.push("not-secure");
+      protectionStates.push({
+        anyBlocking: false,
+        anyDetected: false,
+        canHandle: false,
+        hasException: false,
+      });
       gBrowser.selectedTab = tab;
     },
     reload() {
@@ -186,22 +263,33 @@ function createNativeWindow() {
 
   const window = {
     BrowserCommands,
+    ContentBlockingAllowList,
     MutationObserver: FakeMutationObserver,
     document: {
       defaultView: null,
+      documentElement: {
+        hasAttribute(name) {
+          return name === "data-fennevia-healthy" && shellHealthy;
+        },
+      },
       documentURI: BROWSER_URI,
       getElementById(id) {
         return commandsById.get(id) ?? null;
       },
     },
     gBrowser,
+    gIdentityHandler,
+    gProtectionsHandler,
+    gURLBar,
   };
   window.document.defaultView = window;
 
   return {
     actionCalls,
+    addressSubmissions,
     browsers,
     commandsById,
+    focusCalls,
     fireProgress(method, browser = gBrowser.selectedBrowser, topLevel = true) {
       for (const listener of Array.from(progressListeners)) {
         listener[method]?.(browser, { isTopLevel: topLevel }, null, null, 0);
@@ -209,6 +297,8 @@ function createNativeWindow() {
     },
     gBrowser,
     observerCount: () => observerRecords.size,
+    openLocationListenerCount: () =>
+      commandsById.get("Browser:OpenLocation")?.listenerCount() ?? 0,
     progressListenerCount: () => progressListeners.size,
     setState(index, patch, { event = "location" } = {}) {
       const browser = browsers[index];
@@ -221,6 +311,20 @@ function createNativeWindow() {
       }
       if (patch.displayUri !== undefined) {
         browser.currentURI = { displaySpec: patch.displayUri };
+        addressValues[index] = patch.displayUri;
+        proxyStates[index] = "valid";
+      }
+      if (patch.addressValue !== undefined) {
+        addressValues[index] = patch.addressValue;
+      }
+      if (patch.proxyState !== undefined) {
+        proxyStates[index] = patch.proxyState;
+      }
+      if (patch.connectionSecurity !== undefined) {
+        connectionStates[index] = patch.connectionSecurity;
+      }
+      if (patch.trackingProtection !== undefined) {
+        Object.assign(protectionStates[index], patch.trackingProtection);
       }
       if (patch.loading !== undefined) {
         browser.loading = patch.loading;
@@ -238,10 +342,33 @@ function createNativeWindow() {
         this.fireProgress("onLocationChange", browser);
       } else if (event === "state") {
         this.fireProgress("onStateChange", browser);
+      } else if (event === "security") {
+        this.fireProgress("onSecurityChange", browser);
+      } else if (event === "content-blocking") {
+        this.fireProgress("onContentBlockingEvent", browser);
       }
     },
     tabContainer,
     tabs,
+    dispatchOpenLocation(keyId = "focusURLBar") {
+      let prevented = false;
+      let stopped = false;
+      const command = commandsById.get("Browser:OpenLocation");
+      command.dispatch("command", command, undefined, {
+        preventDefault() {
+          prevented = true;
+        },
+        sourceEvent: keyId === null ? undefined : { target: { id: keyId } },
+        stopPropagation() {
+          stopped = true;
+        },
+      });
+      return { prevented, stopped };
+    },
+    setHealthy(value) {
+      shellHealthy = value;
+    },
+    urlbarListenerCount: () => urlbarEvents.listenerCount(),
     window,
   };
 }
@@ -278,11 +405,14 @@ test("initial navigation snapshot is bounded ordinary data with native command s
   try {
     const snapshot = pair.controller.navigation.snapshot();
     assert.deepEqual(snapshot, {
+      addressValue: "https://example.invalid/one",
       canGoBack: false,
       canGoForward: false,
+      connectionSecurity: "secure",
       displayUri: "https://example.invalid/one",
       loading: false,
       title: "One",
+      trackingProtection: "blocking",
     });
     assert.ok(Object.isFrozen(snapshot));
     assert.doesNotMatch(
@@ -296,6 +426,8 @@ test("initial navigation snapshot is bounded ordinary data with native command s
     );
     assert.equal(native.progressListenerCount(), 1);
     assert.equal(native.observerCount(), 1);
+    assert.equal(native.openLocationListenerCount(), 1);
+    assert.equal(native.urlbarListenerCount(), 0);
   } finally {
     disposePair(pair);
   }
@@ -309,14 +441,24 @@ test("location, title, loading, command, same-document, and selected-tab updates
     pair.controller.navigation.subscribe((event) => events.push(event));
     native.setState(0, {
       canGoBack: true,
+      connectionSecurity: "secure-cert-user-overridden",
       displayUri: "https://example.invalid/one#same-document",
       loading: true,
       title: "Updated title",
+      trackingProtection: {
+        anyBlocking: false,
+        anyDetected: true,
+        canHandle: true,
+      },
     });
+    native.setState(0, {}, { event: "security" });
+    native.setState(0, {}, { event: "content-blocking" });
     let snapshot = pair.controller.navigation.snapshot();
     assert.equal(snapshot.canGoBack, true);
     assert.equal(snapshot.loading, true);
     assert.equal(snapshot.title, "Updated title");
+    assert.equal(snapshot.connectionSecurity, "secure-certificate-override");
+    assert.equal(snapshot.trackingProtection, "detected");
     assert.match(snapshot.displayUri, /same-document$/u);
 
     native.setState(1, {
@@ -336,11 +478,14 @@ test("location, title, loading, command, same-document, and selected-tab updates
     native.gBrowser.selectedTab = native.tabs[1];
     snapshot = pair.controller.navigation.snapshot();
     assert.deepEqual(snapshot, {
+      addressValue: "https://example.invalid/redirected",
       canGoBack: false,
       canGoForward: true,
+      connectionSecurity: "not-secure",
       displayUri: "https://example.invalid/redirected",
       loading: false,
       title: "Redirected",
+      trackingProtection: "unavailable",
     });
     assert.ok(events.length >= 3);
     assert.ok(events.every(Object.isFrozen));
@@ -377,6 +522,7 @@ test("actions re-read the selected tab and reload-or-stop state at invocation", 
       pair.controller.navigation.snapshot().displayUri,
       "about:newtab",
     );
+    assert.equal(pair.controller.navigation.snapshot().addressValue, "");
   } finally {
     disposePair(pair);
   }
@@ -464,6 +610,96 @@ test("action failures are typed without serializing the native cause", () => {
   }
 });
 
+test("address submission delegates bounded current-tab text to native Urlbar semantics", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    assert.deepEqual(
+      pair.controller.navigation.submitAddress("example.invalid/path"),
+      { status: "accepted" },
+    );
+    assert.deepEqual(native.addressSubmissions, [
+      { browserId: "browser-1", value: "example.invalid/path" },
+    ]);
+    assert.equal(
+      pair.controller.navigation.snapshot().addressValue,
+      "https://example.invalid/one",
+    );
+
+    assert.deepEqual(pair.controller.navigation.submitAddress("   "), {
+      reason: "empty",
+      status: "rejected",
+    });
+    assert.deepEqual(
+      pair.controller.navigation.submitAddress("x".repeat(4_097)),
+      { reason: "too-long", status: "rejected" },
+    );
+    for (const value of [
+      "javascript:document.body.textContent='unsafe'",
+      " DATA : text/html,<script>alert(1)</script>",
+      "vbscript:msgbox(1)",
+    ]) {
+      assert.deepEqual(pair.controller.navigation.submitAddress(value), {
+        reason: "unsafe-scheme",
+        status: "rejected",
+      });
+    }
+    assert.equal(native.addressSubmissions.length, 1);
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("Ctrl+L command redirects only after health and successful custom focus", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  const requests = [];
+  const unsubscribe = pair.controller.navigation.subscribeAddressPopupOpen(
+    (request) => {
+      requests.push(request);
+      return true;
+    },
+  );
+  try {
+    assert.deepEqual(native.dispatchOpenLocation(), {
+      prevented: false,
+      stopped: false,
+    });
+    native.setHealthy(true);
+    assert.deepEqual(native.dispatchOpenLocation("focusURLBar2"), {
+      prevented: false,
+      stopped: false,
+    });
+    assert.deepEqual(native.dispatchOpenLocation(null), {
+      prevented: false,
+      stopped: false,
+    });
+    assert.equal(requests.length, 0);
+
+    assert.deepEqual(native.dispatchOpenLocation(), {
+      prevented: true,
+      stopped: true,
+    });
+    assert.deepEqual(requests, [
+      {
+        selectAll: true,
+        source: "ctrl-l",
+        type: "address-popup-open",
+      },
+    ]);
+    assert.ok(Object.isFrozen(requests[0]));
+
+    assert.equal(unsubscribe(), true);
+    pair.controller.navigation.subscribeAddressPopupOpen(() => false);
+    assert.deepEqual(native.dispatchOpenLocation(), {
+      prevented: false,
+      stopped: false,
+    });
+  } finally {
+    disposePair(pair);
+  }
+});
+
 test("disposal removes tab, progress, command, and application listeners", () => {
   const native = createNativeWindow();
   const pair = createController(native);
@@ -474,15 +710,20 @@ test("disposal removes tab, progress, command, and application listeners", () =>
   assert.equal(native.tabContainer.listenerCount(), 2);
   assert.equal(native.progressListenerCount(), 1);
   assert.equal(native.observerCount(), 1);
+  assert.equal(native.openLocationListenerCount(), 1);
+  assert.equal(native.urlbarListenerCount(), 0);
 
   assert.equal(pair.controller.dispose(), true);
   assert.equal(pair.controller.dispose(), false);
   assert.equal(native.tabContainer.listenerCount(), 0);
   assert.equal(native.progressListenerCount(), 0);
   assert.equal(native.observerCount(), 0);
+  assert.equal(native.openLocationListenerCount(), 0);
+  assert.equal(native.urlbarListenerCount(), 0);
   native.setState(0, { loading: true, title: "After dispose" });
   assert.equal(callbackCount, 0);
   assert.deepEqual(pair.controller.snapshot(), {
+    addressPopupSubscriberCount: 0,
     disposed: true,
     failed: false,
     revision: 1,
@@ -493,6 +734,38 @@ test("disposal removes tab, progress, command, and application listeners", () =>
     /FENNEVIA_FIREFOX_NAVIGATION_DISPOSED/u,
   );
   pair.boundary.dispose();
+});
+
+test("missing native Urlbar submission capability fails before listeners attach", () => {
+  const native = createNativeWindow();
+  native.window.gURLBar.handleCommand = undefined;
+  const boundary = createFirefoxBridgeBoundary({
+    buildId: "20260810162159",
+    contextId: "window-00000000-0000-4000-8000-999999999996",
+    firefoxVersion: "153.0.4",
+    window: native.window,
+    windowKind: "normal",
+  });
+  try {
+    assert.throws(
+      () =>
+        createFirefoxNavigationBridge({
+          boundary,
+          onError() {},
+          window: native.window,
+        }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode ===
+          "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING" &&
+        error.fenneviaSymbol === "window.gURLBar.handleCommand",
+    );
+    assert.equal(native.tabContainer.listenerCount(), 0);
+    assert.equal(native.openLocationListenerCount(), 0);
+    assert.equal(native.urlbarListenerCount(), 0);
+  } finally {
+    boundary.dispose();
+  }
 });
 
 test("missing required navigation capabilities fail with build-scoped diagnostics", () => {
