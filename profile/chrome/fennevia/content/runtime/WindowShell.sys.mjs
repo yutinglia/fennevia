@@ -8,6 +8,7 @@ import {
 } from "./HealthState.sys.mjs";
 import {
   createFirefoxBridgeBoundary,
+  createFirefoxBookmarksBridge,
   createFirefoxNavigationBridge,
   createFirefoxTabsBridge,
 } from "../firefox/BridgeBoundary.sys.mjs";
@@ -454,7 +455,8 @@ const createEdgeHostController = ({ document, edge, frame }) => {
 const createAddressOverlayHostController = ({ document, frame }) => {
   const host = createElement(document, "section", {
     id: HOST_IDS.overlay,
-    className: "fennevia-shell-overlay-host fennevia-shell-overlay-host--address",
+    className:
+      "fennevia-shell-overlay-host fennevia-shell-overlay-host--address",
     attributes: {
       "aria-label": "Fennevia address and search popup layer",
       "data-fennevia-overlay-host": "address",
@@ -1076,6 +1078,7 @@ const mountProductionShell = ({
   });
 
   let disposeApp;
+  let bookmarksBridge;
   let navigationBridge;
   let style;
   let tabsBridge;
@@ -1087,6 +1090,23 @@ const mountProductionShell = ({
       windowKind,
       opaqueId: contextId,
       projectUri: BRIDGE_PROJECT_URI,
+    });
+    bookmarksBridge = createFirefoxBookmarksBridge({
+      boundary: bridge,
+      moduleLoader(uri) {
+        return ChromeUtils.importESModule(uri);
+      },
+      onError(error) {
+        requestFallback(
+          annotateShellLifecycleError(error, {
+            code:
+              error?.fenneviaCode ??
+              "FENNEVIA_FIREFOX_BOOKMARKS_RUNTIME_FAILED",
+            phase: error?.fenneviaPhase ?? "firefox-bookmarks-observer",
+          }),
+        );
+      },
+      window: browserWindow,
     });
     tabsBridge = createFirefoxTabsBridge({
       boundary: bridge,
@@ -1115,6 +1135,7 @@ const mountProductionShell = ({
 
     const frontend = loadProductionFrontend(targets.top);
     const candidateDisposeApp = frontend.mountShellApp({
+      bookmarks: bookmarksBridge.bookmarks,
       frame,
       navigation: navigationBridge.navigation,
       overlayTarget,
@@ -1147,6 +1168,7 @@ const mountProductionShell = ({
     }
     disposeApp = candidateDisposeApp;
     productionShellByFrame.set(frame, {
+      bookmarksBridge,
       bridge,
       frontend,
       logger,
@@ -1157,6 +1179,11 @@ const mountProductionShell = ({
   } catch (error) {
     productionShellByFrame.delete(frame);
     style?.remove();
+    try {
+      bookmarksBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
     try {
       navigationBridge?.dispose();
     } catch (cleanupError) {
@@ -1197,6 +1224,11 @@ const mountProductionShell = ({
     productionShellByFrame.delete(frame);
     try {
       style?.remove();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      bookmarksBridge?.dispose();
     } catch (error) {
       firstError ??= error;
     }
@@ -1261,6 +1293,7 @@ const checkProductionShell = ({ mountPoints, windowKind }) => {
       "shell-frontend-health",
     );
   }
+  record.bookmarksBridge.assertRequiredCapabilities();
   record.navigationBridge.assertRequiredCapabilities();
   record.tabsBridge.assertRequiredCapabilities();
   return record.frontend.verifyShellAppHealth({
@@ -1281,6 +1314,8 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     );
   }
   const bridgeCapabilities = record.bridge.assertRequiredCapabilities();
+  const bookmarksCapabilities =
+    record.bookmarksBridge.assertRequiredCapabilities();
   const navigationCapabilities =
     record.navigationBridge.assertRequiredCapabilities();
   const tabsCapabilities = record.tabsBridge.assertRequiredCapabilities();
@@ -1303,6 +1338,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   }
   return Object.freeze([
     ...bridgeCapabilities,
+    ...bookmarksCapabilities,
     ...navigationCapabilities,
     ...tabsCapabilities,
     ...frontendCapabilities,

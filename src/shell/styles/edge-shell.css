@@ -375,6 +375,229 @@
   text-transform: uppercase;
 }
 
+#fennevia-shell-frame-host .fennevia-bookmarks {
+  display: flex;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__roots {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: var(--fennevia-space-2) var(--fennevia-space-3);
+  border-block-end: 1px solid var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__root,
+#fennevia-shell-frame-host .fennevia-bookmarks__item-button,
+#fennevia-shell-frame-host .fennevia-bookmarks__new-tab,
+#fennevia-shell-frame-host .fennevia-bookmarks__branch button {
+  min-inline-size: 0;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  font: inherit;
+  cursor: default;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__root {
+  display: flex;
+  min-block-size: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  overflow: hidden;
+  color: var(--fennevia-glass-muted);
+  border-radius: 10px;
+  text-align: start;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__root > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__root[aria-selected="true"] {
+  color: var(--fennevia-glass-text);
+  background: var(--fennevia-selected-surface);
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 32%,
+    transparent
+  );
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__root:hover,
+#fennevia-shell-frame-host .fennevia-bookmarks__item:hover,
+#fennevia-shell-frame-host .fennevia-bookmarks__item:focus-within {
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__list {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  padding: 6px var(--fennevia-space-2) var(--fennevia-space-2);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__item {
+  --fennevia-bookmark-indent: calc(var(--fennevia-bookmark-depth, 0) * 14px);
+  display: flex;
+  min-inline-size: 0;
+  align-items: center;
+  margin-block: 1px;
+  margin-inline-start: var(--fennevia-bookmark-indent);
+  border-radius: 10px;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__item-button {
+  display: flex;
+  min-block-size: 34px;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 7px;
+  overflow: hidden;
+  border-radius: 10px;
+  text-align: start;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__item-icon {
+  display: grid;
+  inline-size: 18px;
+  block-size: 18px;
+  flex: none;
+  place-items: center;
+  color: var(--fennevia-focus-color);
+  background: color-mix(in srgb, var(--fennevia-focus-color) 12%, transparent);
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks__item[data-fennevia-bookmark-kind="bookmark"]
+  .fennevia-bookmarks__item-icon {
+  color: var(--fennevia-glass-muted);
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  font-size: 15px;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__item-title {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__new-tab {
+  inline-size: 28px;
+  block-size: 28px;
+  flex: 0 0 28px;
+  padding: 0;
+  color: var(--fennevia-glass-muted);
+  border-radius: 8px;
+  opacity: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks__item:is(:hover, :focus-within)
+  .fennevia-bookmarks__new-tab,
+#fennevia-shell-frame-host .fennevia-bookmarks__new-tab:focus-visible {
+  opacity: 1;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__new-tab:hover,
+#fennevia-shell-frame-host .fennevia-bookmarks__branch button:hover {
+  color: var(--fennevia-glass-text);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  border-color: var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__separator {
+  --fennevia-bookmark-indent: calc(var(--fennevia-bookmark-depth, 0) * 14px);
+  block-size: 1px;
+  margin: 7px 9px 7px calc(var(--fennevia-bookmark-indent) + 9px);
+  background: var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__branch {
+  --fennevia-bookmark-indent: calc(var(--fennevia-bookmark-depth, 0) * 14px);
+  display: flex;
+  min-block-size: 34px;
+  align-items: center;
+  gap: 7px;
+  margin-inline-start: var(--fennevia-bookmark-indent);
+  padding: 6px 8px;
+  color: var(--fennevia-glass-muted);
+  font-size: 11px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks__branch[data-fennevia-bookmark-branch-phase="error"],
+#fennevia-shell-frame-host
+  .fennevia-bookmarks__branch[data-fennevia-bookmark-branch-phase="stale"] {
+  color: var(--fennevia-danger-color);
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__branch > button {
+  min-block-size: 26px;
+  padding: 3px 7px;
+  border-color: var(--fennevia-glass-separator);
+  border-radius: 8px;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__pager {
+  display: grid;
+  inline-size: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__pager span {
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__empty {
+  display: grid;
+  min-block-size: 110px;
+  place-content: center;
+  justify-items: center;
+  gap: var(--fennevia-space-2);
+  padding: var(--fennevia-space-3);
+  color: var(--fennevia-glass-muted);
+  text-align: center;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__status {
+  min-block-size: 38px;
+  flex: 0 0 auto;
+  padding: 7px var(--fennevia-space-3);
+  overflow: hidden;
+  color: var(--fennevia-glass-muted);
+  border-block-start: 1px solid var(--fennevia-glass-separator);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks
+  button:disabled:not(.fennevia-bookmarks__root) {
+  opacity: 0.52;
+}
+
 #fennevia-shell-frame-host .fennevia-address-launcher {
   flex: 0 0 auto;
   padding: var(--fennevia-space-2) var(--fennevia-space-3);
@@ -1058,6 +1281,25 @@
     color: HighlightText;
     background: Highlight;
     border-color: Highlight;
+  }
+
+  #fennevia-shell-frame-host .fennevia-bookmarks__root[aria-selected="true"] {
+    color: HighlightText;
+    background: Highlight;
+    border-color: Highlight;
+  }
+
+  #fennevia-shell-frame-host .fennevia-bookmarks__item-icon,
+  #fennevia-shell-frame-host
+    .fennevia-bookmarks__item[data-fennevia-bookmark-kind="bookmark"]
+    .fennevia-bookmarks__item-icon {
+    color: CanvasText;
+    background: Canvas;
+    border: 1px solid CanvasText;
+  }
+
+  #fennevia-shell-frame-host .fennevia-bookmarks__separator {
+    background: CanvasText;
   }
 
   #fennevia-shell-frame-host .fennevia-edge-panel__mark {

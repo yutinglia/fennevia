@@ -14,23 +14,23 @@ collision system, glass token set, or window-global coordination layer.
 
 Validated baseline as of 2026-08-16:
 
-- package `0.7.0-dev`;
+- package `0.8.0-dev`;
 - Firefox 153.0.4 release on Windows;
-- #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #17, #22, and #31
-  complete;
+- #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #17, #22,
+  and #31 complete;
 - functional vertical tabs and a compact address/status launcher in the left
   surface;
 - one centered address/search popup with detailed connection and protection
   state in a fifth owned root;
 - functional primary navigation and bounded page status in the top surface;
-- right and bottom surfaces mounted as honest non-functional placeholders;
+- bounded lazy Firefox Places bookmarks in the right surface;
+- bottom surface mounted as an honest non-functional placeholder;
 - Firefox native visible UI retained;
 - no production caller enters `active`.
 
 Next feature work:
 
-1. #14 right bookmarks and #32 bottom downloads may proceed after their
-   research/bridge prerequisites;
+1. #32 implements bottom downloads after its research/bridge prerequisites;
 2. #37 inventories fuller native Urlbar permissions/page-action coverage before
    any related native surface can be hidden;
 3. #15 activates content-only mode only after all feature blockers pass;
@@ -265,7 +265,7 @@ Current contents:
 
 - left: functional vertical tabs;
 - top: functional primary navigation and bounded page status;
-- right: non-functional placeholder;
+- right: functional bounded/lazy bookmarks;
 - bottom: non-functional placeholder.
 
 Gate: pointer, keyboard, focus, popup, corner, suspension, layout, and cleanup
@@ -383,14 +383,14 @@ coverage is intentionally deferred to #37.
 Evidence: ADR-028 and
 `docs/research/firefox-153-address-popup.md`.
 
-## Milestone I: Right-edge bookmarks — pending (#14)
+## Milestone I: Right-edge bookmarks — complete (#14)
 
 Replace the obsolete generic “sidebar MVP” direction with a focused,
 project-owned right-edge bookmarks feature.
 
 ### Places bridge
 
-Research and implement:
+Implemented and validated:
 
 - major Firefox bookmark roots;
 - bounded/lazy folder-child queries;
@@ -422,6 +422,17 @@ Gate:
 - right surface is hidden at rest and adds no permanent width;
 - native bookmark access remains usable;
 - failures fail open.
+
+The selected bridge uses one per-window opaque registry and one exact Places
+observer. Child pages are limited to 32 items, visible depth to 8, and expanded
+folders to 20. It delegates non-executable bookmark opening to current
+`PlacesUIUtils`, never exposes URLs/GUIDs to Svelte, and health-gates the four
+roots plus first page. The ordinary, second-window, private-window, Browser
+Toolbox, missing-capability, and frontend-recovery matrices passed on Firefox
+153.0.4 while native bookmark UI remained visible.
+
+Evidence: ADR-029 and
+`docs/research/firefox-153-bookmarks-surface.md`.
 
 ## Milestone J: Bottom-edge download progress/status — pending (#32)
 

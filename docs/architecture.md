@@ -128,7 +128,7 @@ DOM global, or runtime debug switch for choosing a failure mode.
 
 `initializeWindowShell` stops at `healthy`. Only the explicit lifecycle
 controller can request `active`, and no production caller does so. Package
-`0.4.0-dev` introduced this boundary, and the current `0.7.0-dev` package still
+`0.4.0-dev` introduced this boundary, and the current `0.8.0-dev` package still
 contains no selector that hides Firefox UI. `Ctrl+Alt+Shift+F12` is registered directly on each chrome window in
 the capture and Mozilla system event groups. It reports the fixed recovery
 phase, clears state, removes every host/listener/timer/cleanup, and does not
@@ -184,8 +184,9 @@ is not source of truth. `WindowShell.sys.mjs` creates exactly one boundary from
 the existing `WindowManager` context for each managed window and retains it in
 the same frame-keyed private record as the frontend API. It passes no bridge
 implementation object, native handle, or capability object to Svelte. Issues
-#10, #12, and #13 pass only frozen ordinary-data tabs and navigation/address
-contracts through separate application adapters.
+#10, #12, #13, and #14 pass only frozen ordinary-data tabs,
+navigation/address, and bookmarks contracts through separate application
+adapters.
 
 The boundary validates `window.document.defaultView`, the browser document URI,
 the process-local window ID, and normal/private kind before claiming a context.
@@ -203,8 +204,9 @@ registry IDs produce distinct typed errors. Registry snapshots contain counts
 and fixed state only. Event subscriptions and cleanup callbacks return
 idempotent disposers, and boundary disposal continues through all owned
 subscriptions and registries before reporting a typed cleanup error. These are
-the only shared utilities consumed by the tabs and navigation bridges; no
-service locator, dependency-injection framework, or generic Firefox SDK exists.
+the only shared utilities consumed by the tabs, navigation, and bookmarks
+bridges; no service locator, dependency-injection framework, or generic Firefox
+SDK exists.
 
 ESLint applies a static boundary to `src/shell/` and ordinary `src/app/` code:
 Firefox implementation imports, privileged globals, and direct Firefox-owned
@@ -257,6 +259,31 @@ health/fail-open path. See ADR-027, ADR-028,
 `docs/research/firefox-153-navigation-controls.md`, and
 `docs/research/firefox-153-address-popup.md`.
 
+Issue #14 adds `src/firefox/bookmarks.ts` to the same generated private ESM.
+One controller per window loads the fixed current Places modules, registers one
+paired `PlacesUtils.observers` listener, and keeps bookmark GUIDs, result
+records, URL objects, native node-like values, services, and the owning window
+inside the privileged layer. Its public object exposes only four localized root
+snapshots, opaque context-bound IDs, bounded child pages, one fixed tree-change
+event, and current/new-tab open actions.
+
+The bridge never calls the unimplemented `Bookmarks.fetchTree()`. A child page
+uses one parent lookup plus at most 32 indexed `Bookmarks.fetch()` calls; the
+application retains only one page per loaded branch, caps depth at 8 and open
+folders at 20, and drops descendant pages on collapse. Observer bursts are
+bounded and coalesced, refresh only already-loaded affected parents, and use no
+polling or process-global tree mirror. Initial roots and the first page must
+finish before health succeeds.
+
+Opening resolves the opaque ID back to a current bookmark record, rejects
+stale/foreign/folder and `javascript:`, `data:`, `vbscript:`, or `place:`
+targets, then delegates node conversion and opening to
+`PlacesUIUtils.promiseNodeLikeFromFetchInfo()` and `openNodeIn()`. Firefox keeps
+URL security checks, trusted-link principal policy, bookmark transition data,
+background-tab preference, and private-window targeting. URLs never enter the
+public snapshot or DOM. See ADR-029 and
+`docs/research/firefox-153-bookmarks-surface.md`.
+
 ## 5. Application and frontend layers
 
 The application layer coordinates ordinary typed state, controllers, and feature policy. It must be usable without importing Firefox implementation modules directly.
@@ -286,6 +313,17 @@ an independent per-window draft, fuller labels, focus restoration, and
 popup-priority edge suppression. It never moves native Urlbar/identity/
 protections DOM or renders inferred security state. Full permissions and page-
 action coverage remains #37.
+
+Issue #14 replaces the right placeholder with `BookmarksPanel.svelte`. It uses
+the existing right host, trigger, controller, focus restoration, collision
+rules, glass tokens, and disposer. A compact four-root tablist fronts one
+ordinary nested list. Folder children load only on expansion; fixed Previous
+and Next controls replace rather than accumulate pages. Arrow keys, Home/End,
+Enter/Space, Ctrl/Command+Enter, middle click, and an explicit new-tab control
+cover traversal and opening. Separators are non-focusable, stable opaque IDs
+preserve focus across rename/reorder, and deletion moves focus to the nearest
+surviving item or selected root. No second trigger, timer, popup stack, URL,
+favicon request, bookmark-management action, or native Places DOM is added.
 
 The frontend owns:
 
@@ -340,6 +378,13 @@ fallbacks. Hover, active, and focus-visible behavior remains the common owned
 control policy. No selector targets the native navbar, Urlbar, command set, or
 toolbox.
 
+The issue #14 right panel likewise uses only frame-rooted project classes and
+the existing responsive right-edge bounds. It renders type glyphs rather than
+remote favicons, uses text/property bindings for hostile titles, and provides
+solid, reduced-motion, and forced-colors states through the shared shell
+contract. No selector targets Firefox's bookmarks toolbar, sidebar, Library,
+popup set, or Places views.
+
 ## 7. Native UI gate
 
 The implemented root state attributes are:
@@ -361,7 +406,7 @@ AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute.
 
 When a later issue implements the actual native-UI gate, native UI may be hidden
-only while active and must never be removed. Package `0.7.0-dev` does not hide
+only while active and must never be removed. Package `0.8.0-dev` does not hide
 it. Retaining native DOM preserves implicit dependencies in Firefox commands,
 popups, customization, titlebar, and platform integration and provides the
 recovery path.

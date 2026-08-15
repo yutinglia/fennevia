@@ -1,9 +1,8 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
 
-  import {
-    type AddressPopupController,
-  } from "../app/address-popup";
+  import { type AddressPopupController } from "../app/address-popup";
+  import type { BrowserBookmarksStateAdapter } from "../app/bookmark-state";
   import {
     edgeKeyboardBindings,
     edgeTriggerThicknessCssPixels,
@@ -35,9 +34,11 @@
     getConnectionSecurityPresentation,
     getTrackingProtectionPresentation,
   } from "./navigation-labels";
+  import BookmarksPanel from "./BookmarksPanel.svelte";
 
   type Props = Readonly<{
     addressPopup?: AddressPopupController;
+    bookmarks?: BrowserBookmarksStateAdapter;
     edge: EdgeName;
     frame: HTMLElement;
     navigation?: BrowserNavigationStateAdapter;
@@ -467,7 +468,10 @@
       <button
         aria-label={`Hide ${surfaceLabels[props.edge].toLowerCase()}`}
         class="fennevia-control fennevia-edge-panel__dismiss"
-        data-fennevia-default-focus={props.edge === "left" ? undefined : ""}
+        data-fennevia-default-focus={props.edge === "top" ||
+        props.edge === "bottom"
+          ? ""
+          : undefined}
         data-fennevia-dismiss={props.edge}
         onclick={dismissPanel}
         title="Hide surface"
@@ -704,13 +708,12 @@
         </output>
       </div>
     {:else if props.edge === "right"}
-      <div class="fennevia-surface-placeholder">
-        <span class="fennevia-surface-placeholder__eyebrow"
-          >Library surface</span
-        >
-        <strong>Bookmarks mount ready</strong>
-        <span>Saved places will remain private to this window.</span>
-      </div>
+      {#if props.bookmarks}
+        <BookmarksPanel
+          bookmarks={props.bookmarks}
+          onFatalError={props.onFatalError}
+        />
+      {/if}
     {:else}
       <div
         aria-live="polite"

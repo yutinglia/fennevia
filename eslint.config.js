@@ -17,6 +17,7 @@ const browserGlobals = {
   HTMLInputElement: "readonly",
   HTMLTemplateElement: "readonly",
   KeyboardEvent: "readonly",
+  MouseEvent: "readonly",
   Node: "readonly",
   MutationObserver: "readonly",
   PointerEvent: "readonly",
@@ -25,8 +26,10 @@ const browserGlobals = {
 
 const nodeGlobals = {
   Buffer: "readonly",
+  URL: "readonly",
   console: "readonly",
   process: "readonly",
+  setImmediate: "readonly",
 };
 
 export default defineConfig(
@@ -63,7 +66,9 @@ export default defineConfig(
       "eslint.config.js",
       "scripts/*.mjs",
       "svelte.config.js",
+      "tests/bookmark-state.test.mjs",
       "tests/edge-surfaces.test.mjs",
+      "tests/firefox-bookmarks.test.mjs",
       "tests/firefox-boundary.test.mjs",
       "tests/firefox-navigation.test.mjs",
       "tests/firefox-tabs.test.mjs",

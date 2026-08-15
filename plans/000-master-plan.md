@@ -34,7 +34,7 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-16, package `0.7.0-dev` is validated on Firefox 153.0.4 for
+As of 2026-08-16, package `0.8.0-dev` is validated on Firefox 153.0.4 for
 Windows in an isolated copied Firefox program and marker-owned development
 profile.
 
@@ -55,18 +55,20 @@ Completed:
 - #13: compact left address/status launcher, centered address/search popup,
   native Urlbar submission and healthy-only `Ctrl+L`, real Firefox connection
   and tracking-protection state, and a fifth owned overlay root.
+- #14: bounded/lazy typed Places bridge, event-driven right-edge bookmarks,
+  opaque opening actions, and keyboard-accessible hierarchy.
 
 Remaining MVP feature work:
 
-- #14: Places bridge and right-edge bookmarks;
 - #32: Downloads bridge and bottom-edge progress/status;
 - #15: health-gated content-only activation and narrow native-UI hiding;
 - #16: full hardening and Firefox stable-update workflow;
 - #18: project license and third-party attribution decision.
 
-Firefox native visible UI remains present. The right and bottom Fennevia
-surfaces are non-functional placeholders; the top surface contains functional
-navigation controls. The project is not ready for daily use or public release.
+Firefox native visible UI remains present. The right surface contains
+functional bounded bookmarks; the bottom Fennevia surface remains a
+non-functional placeholder. The top surface contains functional navigation
+controls. The project is not ready for daily use or public release.
 
 ## 3. Success criteria
 
@@ -232,7 +234,7 @@ tests pass in Firefox chrome.
 Evidence: #8, ADR-022, ADR-026, and
 `docs/research/firefox-153-svelte-build.md`.
 
-### Phase 4: Typed Firefox bridge and state model — tabs and navigation complete
+### Phase 4: Typed Firefox bridge and state model — tabs, navigation, and bookmarks complete
 
 Shared deliverables:
 
@@ -255,17 +257,18 @@ Tabs deliverables:
 Gate for each bridge: native and shell actions remain synchronized without
 polling or leaked native objects.
 
-Completed: #9, #10, the navigation bridge in #12, and the address/status
-extension in #13. Issues #12 and #13 keep native browser, command, Urlbar,
-identity/protections handler, event, observer, and progress objects private
-while exposing immutable bounded ordinary state and explicit current-window
-actions. See ADR-027, ADR-028,
+Completed: #9, #10, the navigation bridge in #12, the address/status extension
+in #13, and the Places/bookmarks bridge in #14. Issues #12–#14 keep native
+browser, command, Urlbar, identity/protections handler, Places record, URL,
+event, observer, and progress objects private while exposing immutable bounded
+ordinary state and explicit current-window actions. See ADR-027, ADR-028,
+ADR-029,
 `docs/research/firefox-153-navigation-controls.md`, and
-`docs/research/firefox-153-address-popup.md`.
+`docs/research/firefox-153-address-popup.md`, and
+`docs/research/firefox-153-bookmarks-surface.md`.
 
 Remaining bridge consumers:
 
-- #14 Places/bookmarks;
 - #32 Downloads.
 
 ### Phase 5A: Four-edge shell foundation — complete
@@ -337,13 +340,22 @@ Evidence: ADR-027 and
 Evidence: ADR-028 and
 `docs/research/firefox-153-address-popup.md`.
 
-#### Right bookmarks — pending (#14)
+#### Right bookmarks — complete (#14)
 
 - typed Places bridge;
 - bounded/lazy roots and child queries;
 - event-driven native bookmark updates;
 - current-tab and source-validated new-tab opening;
 - right-edge tree/list accessibility.
+
+The implementation uses four localized roots, 32-item replaceable pages,
+depth/expansion caps, per-window opaque IDs and observers, native
+`PlacesUIUtils` opening, and the shared #31 right-edge/focus contract. Native
+bookmark UI remains visible. Normal, second, private, live-mutation,
+Browser-Toolbox, cleanup, and fail-open recovery evidence passed.
+
+Evidence: ADR-029 and
+`docs/research/firefox-153-bookmarks-surface.md`.
 
 #### Bottom downloads — pending (#32)
 
@@ -451,8 +463,8 @@ and hashes. Generated files are never hand-edited.
 - Complete shared foundations before feature-specific UI.
 - Do not jump directly to #15.
 - Every feature issue must pass while native Firefox UI remains visible.
-- #14 and #32 may proceed in parallel after #31 and their bridge prerequisites;
-  completed #13 builds on the tabs UI and navigation contract from #12.
+- #32 is the next edge feature after completed #14; completed #13 builds on the
+  tabs UI and navigation contract from #12.
 - Feature issues use the shared #31 edge contract and the #9 bridge boundary.
 - Research work must produce reproducible evidence or a clear negative result,
   not a list of links.

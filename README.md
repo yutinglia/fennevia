@@ -13,7 +13,7 @@ AutoConfig entry registers a project-owned Chrome Registry package, loads fixed
 privileged ES modules, and mounts project-owned Svelte UI through typed Firefox
 bridges.
 
-> **Current status — 2026-08-16:** package `0.7.0-dev` is validated on Firefox
+> **Current status — 2026-08-16:** package `0.8.0-dev` is validated on Firefox
 > 153.0.4 for Windows in an isolated copied Firefox program and marker-owned
 > development profile. Bootstrap, installation lifecycle, multi-window runtime,
 > health/recovery, deterministic Svelte production builds, the typed bridge
@@ -23,8 +23,10 @@ bridges.
 > tracking-protection status. A centered popup provides address/search editing
 > and fuller status text. The top edge contains native-synchronized Back,
 > Forward, Reload/Stop, and New Tab controls plus bounded page status. The right
-> and bottom surfaces remain honest placeholders. Firefox native UI remains
-> visible and unchanged; content-only active mode is not implemented yet.
+> edge contains a bounded, lazy, event-driven bookmarks panel backed by Firefox
+> Places and opaque per-window handles. The bottom surface remains an honest
+> placeholder. Firefox native UI remains visible and unchanged; content-only
+> active mode is not implemented yet.
 
 There is no daily-driver support, versioned end-user release, cross-platform
 support claim, or completed security audit.
@@ -82,7 +84,7 @@ useful.
 | Four-edge frame                               | Complete       | Independent top/left/right/bottom XHTML surfaces, edge reveal controller, collision rules, glass tokens, and accessibility fallbacks                          |
 | Top primary controls                          | Complete — #12 | Event-driven navigation bridge and Back/Forward/Reload/Stop/New Tab UI with bounded text-only page status                                                     |
 | Address launcher and popup                    | Complete — #13 | Compact committed location plus real Firefox connection/protection badges, centered address/search popup, native Urlbar submission, and healthy-only `Ctrl+L` |
-| Right bookmarks                               | Pending — #14  | Typed Places bridge and bounded bookmark tree                                                                                                                 |
+| Right bookmarks                               | Complete — #14 | Typed Places bridge, bounded lazy hierarchy, native live updates, and Firefox-owned current/new-tab opening                                                   |
 | Bottom downloads                              | Pending — #32  | Typed Downloads bridge and accessible aggregate progress/status                                                                                               |
 | Content-only activation                       | Pending — #15  | Reversible hiding of only the native surfaces with complete replacements                                                                                      |
 | Hardening and Firefox-update workflow         | Pending — #16  | Full regression, resource, performance, cleanup, and stable-update matrix                                                                                     |
@@ -105,7 +107,7 @@ Stock Firefox
               │   ├─ tabs (implemented)
               │   ├─ navigation (implemented)
               │   ├─ address/status popup (implemented)
-              │   ├─ Places/bookmarks (pending)
+              │   ├─ Places/bookmarks (implemented)
               │   └─ Downloads (pending)
               └─ Svelte frame with five owned roots
                   ├─ top: primary controls
@@ -216,6 +218,7 @@ and design.
 - [Firefox 153 four-edge shell](docs/research/firefox-153-four-edge-shell.md)
 - [Firefox 153 top navigation](docs/research/firefox-153-navigation-controls.md)
 - [Firefox 153 compact address launcher and popup](docs/research/firefox-153-address-popup.md)
+- [Firefox 153 right-edge bookmarks](docs/research/firefox-153-bookmarks-surface.md)
 
 Historical research files are immutable evidence of the tested milestone they
 describe. Later decisions supersede their production architecture through ADRs

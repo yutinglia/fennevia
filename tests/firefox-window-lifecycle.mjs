@@ -16,6 +16,7 @@ function parseArguments(argv) {
   const result = {
     expectFailOpen: false,
     expectBridgeFailOpen: false,
+    expectBookmarksBridgeFailOpen: false,
     expectNavigationBridgeFailOpen: false,
     expectSafeStart: false,
     expectShellFailOpen: false,
@@ -42,6 +43,10 @@ function parseArguments(argv) {
     }
     if (argument === "--expect-bridge-fail-open") {
       result.expectBridgeFailOpen = true;
+      continue;
+    }
+    if (argument === "--expect-bookmarks-bridge-fail-open") {
+      result.expectBookmarksBridgeFailOpen = true;
       continue;
     }
     if (argument === "--expect-navigation-bridge-fail-open") {
@@ -86,6 +91,7 @@ function parseArguments(argv) {
     [
       result.expectFailOpen,
       result.expectBridgeFailOpen,
+      result.expectBookmarksBridgeFailOpen,
       result.expectNavigationBridgeFailOpen,
       result.expectSafeStart,
       result.expectShellFailOpen,
@@ -101,6 +107,7 @@ function parseArguments(argv) {
     result.browserToolbox &&
     (result.expectFailOpen ||
       result.expectBridgeFailOpen ||
+      result.expectBookmarksBridgeFailOpen ||
       result.expectNavigationBridgeFailOpen ||
       result.expectSafeStart ||
       result.expectShellFailOpen ||
@@ -720,6 +727,7 @@ async function collectFrontendState(client) {
     ]));
     const root = roots.left;
     const topRoot = roots.top;
+    const rightRoot = roots.right;
     const overlayMount = document.getElementById(
       "fennevia-shell-address-overlay-mount"
     );
@@ -797,6 +805,44 @@ async function collectFrontendState(client) {
         protectionIndicatorCount:
           root?.querySelectorAll("[data-fennevia-protection-status]").length ??
           0,
+      },
+      bookmarks: {
+        branchReadyCount:
+          rightRoot?.querySelectorAll(
+            '[data-fennevia-bookmark-branch-phase="ready"]'
+          ).length ?? 0,
+        itemCount:
+          rightRoot?.querySelectorAll("[data-fennevia-bookmark-item]")
+            .length ?? 0,
+        linkAttributeCount:
+          rightRoot?.querySelectorAll("[href], [src], [data-url]").length ?? 0,
+        listCount:
+          rightRoot?.querySelectorAll("[data-fennevia-bookmark-list]")
+            .length ?? 0,
+        listRole:
+          rightRoot
+            ?.querySelector("[data-fennevia-bookmark-list]")
+            ?.getAttribute("role") ?? null,
+        panelCount:
+          rightRoot?.querySelectorAll("[data-fennevia-bookmarks]").length ?? 0,
+        rootCount:
+          rightRoot?.querySelectorAll("[data-fennevia-bookmark-root]")
+            .length ?? 0,
+        rootRovingCount:
+          rightRoot?.querySelectorAll(
+            '[data-fennevia-bookmark-root][tabindex="0"]'
+          ).length ?? 0,
+        rootSelectedCount:
+          rightRoot?.querySelectorAll(
+            '[data-fennevia-bookmark-root][aria-selected="true"]'
+          ).length ?? 0,
+        rootsRole:
+          rightRoot
+            ?.querySelector("[data-fennevia-bookmark-roots]")
+            ?.getAttribute("role") ?? null,
+        statusCount:
+          rightRoot?.querySelectorAll("[data-fennevia-bookmark-status]")
+            .length ?? 0,
       },
       allElementsUseXhtml: elements.every(
         element => element.namespaceURI === XHTML_NS
@@ -963,6 +1009,17 @@ function assertFrontendState(state, windowKind) {
     protectionDetailCount: 1,
     protectionIndicatorCount: 1,
   });
+  assert.ok(state.bookmarks.branchReadyCount >= 1);
+  assert.equal(Number.isSafeInteger(state.bookmarks.itemCount), true);
+  assert.equal(state.bookmarks.linkAttributeCount, 0);
+  assert.equal(state.bookmarks.listCount, 1);
+  assert.equal(state.bookmarks.listRole, "list");
+  assert.equal(state.bookmarks.panelCount, 1);
+  assert.equal(state.bookmarks.rootCount, 4);
+  assert.equal(state.bookmarks.rootRovingCount, 1);
+  assert.equal(state.bookmarks.rootSelectedCount, 1);
+  assert.equal(state.bookmarks.rootsRole, "tablist");
+  assert.equal(state.bookmarks.statusCount, 1);
   assert.equal(state.allElementsUseXhtml, true);
   assert.equal(state.actionControlsNamed, true);
   assert.equal(state.customTabCount, state.nativeTabCount);
@@ -2708,6 +2765,412 @@ function assertTabStripMvp(result) {
   }
 }
 
+async function exerciseBookmarksMvp(client) {
+  const requests = { current: 0, newTab: 0 };
+  const server = createServer((request, response) => {
+    const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+    if (pathname === "/bookmark-current") {
+      requests.current += 1;
+    } else if (pathname === "/bookmark-new-tab") {
+      requests.newTab += 1;
+    } else {
+      response.writeHead(404, {
+        "Cache-Control": "no-store",
+        "Content-Type": "text/plain; charset=utf-8",
+      });
+      response.end("not found");
+      return;
+    }
+    response.writeHead(200, {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/html; charset=utf-8",
+    });
+    response.end(
+      `<!doctype html><title>Fennevia bookmark opening probe</title><main>${pathname}</main>`,
+    );
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    throw new Error("FENNEVIA_FIREFOX_TEST_BOOKMARK_SERVER_INVALID");
+  }
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const folderGuid = "fennevia14F_";
+  const firstGuid = "fennevia14A_";
+  const secondGuid = "fennevia14B_";
+
+  const removeFixtures = async () => {
+    await client.execute(`
+      return (async () => {
+        const { PlacesUtils } = ChromeUtils.importESModule(
+          "resource://gre/modules/PlacesUtils.sys.mjs"
+        );
+        for (const guid of [
+          ${JSON.stringify(folderGuid)},
+          ${JSON.stringify(secondGuid)},
+          ${JSON.stringify(firstGuid)},
+        ]) {
+          if (await PlacesUtils.bookmarks.fetch(guid)) {
+            await PlacesUtils.bookmarks.remove(guid);
+          }
+        }
+      })();
+    `);
+  };
+
+  try {
+    await removeFixtures();
+    const result = await client.execute(`
+      return (async () => {
+        const { PlacesUtils } = ChromeUtils.importESModule(
+          "resource://gre/modules/PlacesUtils.sys.mjs"
+        );
+        const bookmarks = PlacesUtils.bookmarks;
+        const folderGuid = ${JSON.stringify(folderGuid)};
+        const firstGuid = ${JSON.stringify(firstGuid)};
+        const secondGuid = ${JSON.stringify(secondGuid)};
+        const currentUrl = ${JSON.stringify(`${baseUrl}/bookmark-current`)};
+        const newTabUrl = ${JSON.stringify(`${baseUrl}/bookmark-new-tab`)};
+        const folderTitle = "Fennevia live folder";
+        const firstTitle = "Fennevia bookmark A";
+        const renamedTitle =
+          "Fennevia <img data-fennevia-bookmark-injected> 😀 \u202e title";
+        const secondTitle = "Fennevia bookmark B";
+        const rightRoot = document.getElementById("fennevia-shell-right-root");
+        const focusOrigin = document.getElementById("urlbar-input");
+        if (!rightRoot || !focusOrigin) {
+          throw new Error("FENNEVIA_FIREFOX_TEST_BOOKMARK_PANEL_MISSING");
+        }
+
+        const waitFor = async (predicate, code) => {
+          const deadline = Date.now() + 6000;
+          while (Date.now() < deadline) {
+            if (predicate()) {
+              return;
+            }
+            await new Promise(resolve => window.setTimeout(resolve, 20));
+          }
+          throw new Error(code);
+        };
+        const rootButtons = () => [
+          ...rightRoot.querySelectorAll("[data-fennevia-bookmark-root]"),
+        ];
+        const itemButtons = () => [
+          ...rightRoot.querySelectorAll("[data-fennevia-bookmark-item]"),
+        ];
+        const itemByTitle = (title, depth = null) =>
+          itemButtons().find(button => {
+            if (button.getAttribute("title") !== title) {
+              return false;
+            }
+            if (depth === null) {
+              return true;
+            }
+            return (
+              button.parentElement?.style.getPropertyValue(
+                "--fennevia-bookmark-depth"
+              ) === String(depth)
+            );
+          });
+        const dispatchKey = (target, key, modifiers = {}) => {
+          target.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              bubbles: true,
+              cancelable: true,
+              key,
+              ...modifiers,
+            })
+          );
+        };
+        const revealRight = () =>
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              altKey: true,
+              bubbles: true,
+              cancelable: true,
+              ctrlKey: true,
+              key: "ArrowRight",
+              shiftKey: true,
+            })
+          );
+        const ensureVisible = async () => {
+          if (rightRoot.getAttribute("data-fennevia-visible") === "true") {
+            return;
+          }
+          focusOrigin.focus();
+          revealRight();
+          await waitFor(
+            () => rightRoot.getAttribute("data-fennevia-visible") === "true",
+            "FENNEVIA_FIREFOX_TEST_BOOKMARK_REVEAL_RETRY_TIMEOUT"
+          );
+        };
+        const dismiss = () =>
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              bubbles: true,
+              cancelable: true,
+              key: "Escape",
+            })
+          );
+
+        focusOrigin.focus();
+        revealRight();
+        await waitFor(
+          () =>
+            rightRoot.getAttribute("data-fennevia-visible") === "true" &&
+            document.activeElement === rootButtons().at(0),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_REVEAL_TIMEOUT"
+        );
+        dispatchKey(document.activeElement, "ArrowRight");
+        await waitFor(
+          () =>
+            rootButtons().at(1)?.getAttribute("aria-selected") === "true" &&
+            document.activeElement === rootButtons().at(1),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_ROOT_MENU_TIMEOUT"
+        );
+        dispatchKey(document.activeElement, "ArrowRight");
+        await waitFor(
+          () =>
+            rootButtons().at(2)?.getAttribute("aria-selected") === "true" &&
+            document.activeElement === rootButtons().at(2),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_ROOT_OTHER_TIMEOUT"
+        );
+        dismiss();
+        await waitFor(
+          () => rightRoot.getAttribute("data-fennevia-visible") === "false",
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_INITIAL_DISMISS_TIMEOUT"
+        );
+
+        await bookmarks.insert({
+          guid: folderGuid,
+          parentGuid: bookmarks.unfiledGuid,
+          title: folderTitle,
+          type: bookmarks.TYPE_FOLDER,
+        });
+        await bookmarks.insert({
+          guid: firstGuid,
+          parentGuid: folderGuid,
+          title: firstTitle,
+          type: bookmarks.TYPE_BOOKMARK,
+          url: currentUrl + "-before-update",
+        });
+        await bookmarks.insert({
+          guid: secondGuid,
+          parentGuid: folderGuid,
+          title: secondTitle,
+          type: bookmarks.TYPE_BOOKMARK,
+          url: newTabUrl,
+        });
+        await bookmarks.insert({
+          parentGuid: folderGuid,
+          type: bookmarks.TYPE_SEPARATOR,
+        });
+        await waitFor(
+          () => Boolean(itemByTitle(folderTitle, 0)),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_HIDDEN_CREATE_TIMEOUT"
+        );
+        const hiddenCreateReflected =
+          rightRoot.getAttribute("data-fennevia-visible") === "false";
+
+        focusOrigin.focus();
+        revealRight();
+        await waitFor(
+          () => rightRoot.getAttribute("data-fennevia-visible") === "true",
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_SECOND_REVEAL_TIMEOUT"
+        );
+        const folderButton = itemByTitle(folderTitle, 0);
+        folderButton.focus();
+        dispatchKey(folderButton, "ArrowRight");
+        await waitFor(
+          () =>
+            folderButton.getAttribute("aria-expanded") === "true" &&
+            Boolean(itemByTitle(firstTitle, 1)) &&
+            Boolean(itemByTitle(secondTitle, 1)),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_EXPAND_TIMEOUT"
+        );
+        dispatchKey(folderButton, "ArrowRight");
+        await waitFor(
+          () => document.activeElement === itemByTitle(firstTitle, 1),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_CHILD_FOCUS_TIMEOUT"
+        );
+        const keyboardExpansionWorked = true;
+        const separatorRendered =
+          rightRoot.querySelectorAll("[data-fennevia-bookmark-separator]")
+            .length === 1;
+
+        await bookmarks.update({
+          guid: firstGuid,
+          title: renamedTitle,
+          url: currentUrl,
+        });
+        await waitFor(
+          () => Boolean(itemByTitle(renamedTitle, 1)),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_RENAME_TIMEOUT"
+        );
+        const renamedButton = itemByTitle(renamedTitle, 1);
+        const renamePreservedFocus = document.activeElement === renamedButton;
+        const titleInjectionSafe =
+          !rightRoot.querySelector("[data-fennevia-bookmark-injected]") &&
+          renamedButton.textContent.includes(renamedTitle);
+
+        dispatchKey(renamedButton, "Enter");
+        await waitFor(
+          () => gBrowser.selectedBrowser.currentURI.spec === currentUrl,
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_CURRENT_OPEN_TIMEOUT"
+        );
+        const currentTabOpenedNative = true;
+        await ensureVisible();
+
+        await bookmarks.update({
+          guid: secondGuid,
+          index: bookmarks.DEFAULT_INDEX,
+          parentGuid: bookmarks.unfiledGuid,
+        });
+        await waitFor(
+          () => Boolean(itemByTitle(secondTitle, 0)),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_MOVE_TIMEOUT"
+        );
+        const moveReflected = !itemByTitle(secondTitle, 1);
+
+        await bookmarks.reorder(bookmarks.unfiledGuid, [
+          secondGuid,
+          folderGuid,
+        ]);
+        await waitFor(
+          () => {
+            const rootLevelTitles = itemButtons()
+              .filter(
+                button =>
+                  button.parentElement?.style.getPropertyValue(
+                    "--fennevia-bookmark-depth"
+                  ) === "0"
+              )
+              .map(button => button.getAttribute("title"));
+            return (
+              rootLevelTitles.at(0) === secondTitle &&
+              rootLevelTitles.at(1) === folderTitle
+            );
+          },
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_REORDER_TIMEOUT"
+        );
+        const reorderReflected = true;
+
+        const nativeTabCountBeforeOpen = gBrowser.openTabs.length;
+        const secondButton = itemByTitle(secondTitle, 0);
+        secondButton.focus();
+        dispatchKey(secondButton, "Enter", { ctrlKey: true });
+        await waitFor(
+          () =>
+            gBrowser.openTabs.length === nativeTabCountBeforeOpen + 1 &&
+            gBrowser.openTabs.some(
+              tab => tab.linkedBrowser.currentURI.spec === newTabUrl
+            ),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_NEW_TAB_OPEN_TIMEOUT"
+        );
+        const newTabOpenedNative = true;
+        const openedTab = gBrowser.openTabs.find(
+          tab => tab.linkedBrowser.currentURI.spec === newTabUrl
+        );
+        gBrowser.removeTab(openedTab, {
+          animate: false,
+          isUserTriggered: true,
+        });
+        await waitFor(
+          () => gBrowser.openTabs.length === nativeTabCountBeforeOpen,
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_NEW_TAB_CLOSE_TIMEOUT"
+        );
+
+        await ensureVisible();
+        const focusedBeforeDelete = itemByTitle(renamedTitle, 1);
+        focusedBeforeDelete.focus();
+        await bookmarks.remove(firstGuid);
+        await waitFor(
+          () => !itemByTitle(renamedTitle),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_DELETE_TIMEOUT"
+        );
+        await waitFor(
+          () => document.activeElement === itemByTitle(folderTitle, 0),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_DELETE_FOCUS_TIMEOUT"
+        );
+        const deleteRestoredNearestFocus = true;
+
+        await bookmarks.remove(folderGuid);
+        await bookmarks.remove(secondGuid);
+        await waitFor(
+          () =>
+            !itemByTitle(folderTitle) &&
+            !itemByTitle(firstTitle) &&
+            !itemByTitle(renamedTitle) &&
+            !itemByTitle(secondTitle),
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_CLEANUP_TIMEOUT"
+        );
+        const nativeChangesCleaned = true;
+        const selectedRootRetained =
+          rootButtons().at(2)?.getAttribute("aria-selected") === "true";
+        const urlNeverEnteredDom =
+          rightRoot.querySelectorAll("[href], [src], [data-url]").length === 0;
+        dismiss();
+        await waitFor(
+          () => rightRoot.getAttribute("data-fennevia-visible") === "false",
+          "FENNEVIA_FIREFOX_TEST_BOOKMARK_FINAL_DISMISS_TIMEOUT"
+        );
+
+        return {
+          currentTabOpenedNative,
+          deleteRestoredNearestFocus,
+          hiddenCreateReflected,
+          keyboardExpansionWorked,
+          moveReflected,
+          nativeChangesCleaned,
+          newTabOpenedNative,
+          reorderReflected,
+          renamePreservedFocus,
+          selectedRootRetained,
+          separatorRendered,
+          surfaceDismissed: true,
+          titleInjectionSafe,
+          urlNeverEnteredDom,
+        };
+      })();
+    `);
+    return { ...result, requests: { ...requests } };
+  } finally {
+    try {
+      await removeFixtures();
+    } finally {
+      server.closeAllConnections();
+      await new Promise((resolve) => server.close(resolve));
+    }
+  }
+}
+
+function assertBookmarksMvp(result) {
+  for (const key of [
+    "currentTabOpenedNative",
+    "deleteRestoredNearestFocus",
+    "hiddenCreateReflected",
+    "keyboardExpansionWorked",
+    "moveReflected",
+    "nativeChangesCleaned",
+    "newTabOpenedNative",
+    "reorderReflected",
+    "renamePreservedFocus",
+    "selectedRootRetained",
+    "separatorRendered",
+    "surfaceDismissed",
+    "titleInjectionSafe",
+    "urlNeverEnteredDom",
+  ]) {
+    assert.equal(result[key], true, key);
+  }
+  assert.ok(result.requests.current >= 1);
+  assert.ok(result.requests.newTab >= 1);
+}
+
 async function assertNativeStylesIsolated(client) {
   const result = await client.execute(`
     const style = document.getElementById("fennevia-shell-app-style");
@@ -2854,6 +3317,8 @@ async function exerciseFrontendUnmountRemount(client) {
 
       let firstDispose;
       let secondDispose;
+      let bookmarkSubscriptionCount = 0;
+      let bookmarkUnsubscriptionCount = 0;
       let navigationSubscriptionCount = 0;
       let navigationUnsubscriptionCount = 0;
       let addressPopupSubscriptionCount = 0;
@@ -2889,6 +3354,62 @@ async function exerciseFrontendUnmountRemount(client) {
           };
         },
         unpin() {},
+      });
+      const bookmarkRoots = Object.freeze([
+        Object.freeze({
+          hasChildren: false,
+          id: "bookmark-root-toolbar",
+          kind: "folder",
+          title: "Bookmarks Toolbar",
+        }),
+        Object.freeze({
+          hasChildren: false,
+          id: "bookmark-root-menu",
+          kind: "folder",
+          title: "Bookmarks Menu",
+        }),
+        Object.freeze({
+          hasChildren: false,
+          id: "bookmark-root-unfiled",
+          kind: "folder",
+          title: "Other Bookmarks",
+        }),
+        Object.freeze({
+          hasChildren: false,
+          id: "bookmark-root-mobile",
+          kind: "folder",
+          title: "Mobile Bookmarks",
+        }),
+      ]);
+      const bookmarks = Object.freeze({
+        async children(parentId, { offset = 0 } = {}) {
+          return Object.freeze({
+            items: Object.freeze([]),
+            offset,
+            parentId,
+            status: "ok",
+            totalCount: 0,
+            truncated: false,
+          });
+        },
+        async open() {
+          return Object.freeze({ reason: "stale", status: "rejected" });
+        },
+        async roots() {
+          return bookmarkRoots;
+        },
+        subscribe() {
+          bookmarkSubscriptionCount += 1;
+          let active = true;
+          return () => {
+            if (!active) {
+              return false;
+            }
+            active = false;
+            bookmarkUnsubscriptionCount += 1;
+            return true;
+          };
+        },
       });
       const navigation = Object.freeze({
         back() { return false; },
@@ -2937,6 +3458,7 @@ async function exerciseFrontendUnmountRemount(client) {
         },
       });
       const options = {
+        bookmarks,
         frame,
         navigation,
         onFatalError(error) {
@@ -2953,7 +3475,7 @@ async function exerciseFrontendUnmountRemount(client) {
 
       try {
         firstDispose = api.mountShellApp(options);
-        api.verifyShellAppHealth({
+        await api.verifyShellAppHealth({
           frame,
           overlayTarget,
           targets,
@@ -2981,7 +3503,7 @@ async function exerciseFrontendUnmountRemount(client) {
         ) + overlayTarget.childNodes.length;
 
         secondDispose = api.mountShellApp(options);
-        api.verifyShellAppHealth({
+        await api.verifyShellAppHealth({
           frame,
           overlayTarget,
           targets,
@@ -2999,6 +3521,8 @@ async function exerciseFrontendUnmountRemount(client) {
         await Promise.resolve();
 
         return {
+          bookmarkSubscriptionCount,
+          bookmarkUnsubscriptionCount,
           descendantsAfterFirstDispose,
           descendantsAfterSecondDispose: edgeNames.reduce(
             (count, edge) => count + targets[edge].childNodes.length,
@@ -3908,6 +4432,7 @@ async function run() {
       options.expectShellFailOpen ||
       options.expectShellMissingFailOpen ||
       options.expectBridgeFailOpen ||
+      options.expectBookmarksBridgeFailOpen ||
       options.expectNavigationBridgeFailOpen ||
       options.expectTabsBridgeFailOpen
     ) {
@@ -3942,6 +4467,7 @@ async function run() {
       assert.equal(countEvent(evidence, "shell.hosts-disposed", "normal"), 1);
       if (
         options.expectBridgeFailOpen ||
+        options.expectBookmarksBridgeFailOpen ||
         options.expectNavigationBridgeFailOpen ||
         options.expectTabsBridgeFailOpen
       ) {
@@ -3967,25 +4493,30 @@ async function run() {
             code: "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
             phase: "firefox-navigation-capability",
           }
-        : options.expectTabsBridgeFailOpen
+        : options.expectBookmarksBridgeFailOpen
           ? {
-              code: "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
-              phase: "firefox-tabs-capability",
+              code: "FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING",
+              phase: "firefox-bookmarks-capability",
             }
-          : options.expectBridgeFailOpen
+          : options.expectTabsBridgeFailOpen
             ? {
-                code: "FENNEVIA_FIREFOX_CAPABILITY_MISSING",
-                phase: "firefox-bridge-capability",
+                code: "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
+                phase: "firefox-tabs-capability",
               }
-            : options.expectShellMissingFailOpen
+            : options.expectBridgeFailOpen
               ? {
-                  code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
-                  phase: "shell-frontend-load",
+                  code: "FENNEVIA_FIREFOX_CAPABILITY_MISSING",
+                  phase: "firefox-bridge-capability",
                 }
-              : {
-                  code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
-                  phase: "shell-frontend-mount",
-                };
+              : options.expectShellMissingFailOpen
+                ? {
+                    code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
+                    phase: "shell-frontend-load",
+                  }
+                : {
+                    code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
+                    phase: "shell-frontend-mount",
+                  };
       assert.equal(shellFailures[0].code, expectedShellFailure.code);
       assert.equal(shellFailures[0].phase, expectedShellFailure.phase);
       assert.equal(shellFailures[0].windowKind, "normal");
@@ -3993,11 +4524,13 @@ async function run() {
         shellFailures[0].firefoxSymbol,
         options.expectNavigationBridgeFailOpen
           ? "window.gBrowser.removeTabsProgressListener"
-          : options.expectTabsBridgeFailOpen
-            ? "window.gBrowser.openTabs"
-            : options.expectBridgeFailOpen
-              ? "window.gBrowser"
-              : undefined,
+          : options.expectBookmarksBridgeFailOpen
+            ? "PlacesUtils.bookmarks.fetch"
+            : options.expectTabsBridgeFailOpen
+              ? "window.gBrowser.openTabs"
+              : options.expectBridgeFailOpen
+                ? "window.gBrowser"
+                : undefined,
       );
       assert.ok(Array.isArray(shellFailures[0].stack));
       assert.ok(
@@ -4016,7 +4549,7 @@ async function run() {
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
-        `PASS: a ${options.expectNavigationBridgeFailOpen ? "missing required navigation capability" : options.expectTabsBridgeFailOpen ? "missing required tabs capability" : options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
+        `PASS: a ${options.expectNavigationBridgeFailOpen ? "missing required navigation capability" : options.expectBookmarksBridgeFailOpen ? "missing required bookmarks capability" : options.expectTabsBridgeFailOpen ? "missing required tabs capability" : options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
           "path, removed every project host, and retained native browser UI.",
       );
       return;
@@ -4120,6 +4653,8 @@ async function run() {
     assertFrontendState(await collectFrontendState(client), "normal");
     assertTabStripMvp(await exerciseTabStripMvp(client));
     assertFrontendState(await collectFrontendState(client), "normal");
+    assertBookmarksMvp(await exerciseBookmarksMvp(client));
+    assertFrontendState(await collectFrontendState(client), "normal");
     const featureEvidence = await collectEvidence(client);
     assert.equal(
       featureEvidence.records.filter((record) => record.level === "error")
@@ -4219,6 +4754,8 @@ async function run() {
     });
     await assertNoShellHosts(client);
     const remount = await exerciseFrontendUnmountRemount(client);
+    assert.equal(remount.bookmarkSubscriptionCount, 2);
+    assert.equal(remount.bookmarkUnsubscriptionCount, 2);
     assert.equal(remount.descendantsAfterFirstDispose, 0);
     assert.equal(remount.descendantsAfterSecondDispose, 0);
     assert.equal(remount.fatalErrorCount, 0);
