@@ -231,7 +231,7 @@ function createBrowserWindow() {
   );
 
   const eventListeners = [];
-  return {
+  const window = {
     document,
     elements: {
       announcement,
@@ -270,6 +270,14 @@ function createBrowserWindow() {
       return eventListeners.slice();
     },
   };
+  document.defaultView = window;
+  const selectedBrowser = { webNavigation: {} };
+  window.gBrowser = {
+    selectedBrowser,
+    tabContainer: window,
+    tabs: [{ linkedBrowser: selectedBrowser }],
+  };
+  return window;
 }
 
 function descendants(element) {

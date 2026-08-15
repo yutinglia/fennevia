@@ -599,6 +599,7 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
     opaqueId: "window-00000000-0000-4000-8000-000000000001",
     projectUri: "chrome://fennevia/content/runtime/Runtime.sys.mjs",
     domPath: "html#main-window>body>#browser",
+    firefoxSymbol: "window.gBrowser",
     shellState: "failed",
     url: "https://private.invalid/should-not-serialize",
     title: "secret title",
@@ -618,6 +619,7 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
   assert.equal(record.title, undefined);
   assert.equal(record.privateContent, undefined);
   assert.equal(record.domPath, "html#main-window>body>#browser");
+  assert.equal(record.firefoxSymbol, "window.gBrowser");
   assert.equal(record.shellState, "failed");
   assert.equal(record.stack.length, 11);
   assert.ok(record.stack.includes("Error: <REDACTED_MESSAGE>"));
@@ -674,10 +676,12 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
     phase: "shell-host-attach",
     code: "FENNEVIA_SHELL_HOSTS_READY",
     domPath: "https://private.invalid/unsafe-dom-path",
+    firefoxSymbol: "window.gBrowser.currentURI.spec?private",
   });
   const unsafePathRecord = JSON.parse(
     lines[2].replace(/^\[Fennevia runtime\] /u, "")
   );
   assert.equal(unsafePathRecord.domPath, undefined);
+  assert.equal(unsafePathRecord.firefoxSymbol, undefined);
   assert.equal(lines[2].includes("private.invalid"), false);
 });

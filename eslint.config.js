@@ -54,11 +54,85 @@ export default defineConfig(
       "eslint.config.js",
       "scripts/*.mjs",
       "svelte.config.js",
+      "tests/firefox-boundary.test.mjs",
       "tests/frontend-smoke.test.mjs",
-      "vite.config.ts",
+      "vite*.config.ts",
     ],
     languageOptions: {
       globals: nodeGlobals,
+    },
+  },
+  {
+    files: ["src/app/**/*.ts", "src/shell/**/*.{ts,svelte}"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "Cc",
+          message: "Firefox globals belong in src/firefox/.",
+        },
+        {
+          name: "ChromeUtils",
+          message: "Firefox globals belong in src/firefox/.",
+        },
+        {
+          name: "Ci",
+          message: "Firefox globals belong in src/firefox/.",
+        },
+        {
+          name: "Cr",
+          message: "Firefox globals belong in src/firefox/.",
+        },
+        {
+          name: "Cu",
+          message: "Firefox globals belong in src/firefox/.",
+        },
+        {
+          name: "Downloads",
+          message: "Firefox globals belong in src/firefox/.",
+        },
+        {
+          name: "gBrowser",
+          message: "Firefox globals belong in src/firefox/.",
+        },
+        {
+          name: "PlacesUtils",
+          message: "Firefox globals belong in src/firefox/.",
+        },
+        {
+          name: "Services",
+          message: "Firefox globals belong in src/firefox/.",
+        },
+        {
+          name: "SessionStore",
+          message: "Firefox globals belong in src/firefox/.",
+        },
+      ],
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/firefox", "**/firefox/**"],
+              message:
+                "Shell and application state must use ordinary public contracts, not src/firefox implementations.",
+            },
+          ],
+        },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[computed=false][property.name=/^(Downloads|PlacesUtils|Services|SessionStore|gBrowser)$/]",
+          message: "Firefox-owned globals and handles belong in src/firefox/.",
+        },
+        {
+          selector:
+            "MemberExpression[computed=true][property.value=/^(Downloads|PlacesUtils|Services|SessionStore|gBrowser)$/]",
+          message: "Firefox-owned globals and handles belong in src/firefox/.",
+        },
+      ],
     },
   },
   {

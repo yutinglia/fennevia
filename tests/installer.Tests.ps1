@@ -218,6 +218,7 @@ function Copy-TestPackage {
         [pscustomobject]@{ Scope = "program"; Path = "fennevia.cfg" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/chrome.manifest" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/Bootstrap.sys.mjs" },
+        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/HealthState.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/Logger.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/Runtime.sys.mjs" },

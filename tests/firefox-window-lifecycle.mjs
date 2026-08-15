@@ -14,6 +14,7 @@ const BROWSER_TOOLBOX_TIMEOUT_MS = 45_000;
 function parseArguments(argv) {
   const result = {
     expectFailOpen: false,
+    expectBridgeFailOpen: false,
     expectSafeStart: false,
     expectShellFailOpen: false,
     expectShellMissingFailOpen: false,
@@ -34,6 +35,10 @@ function parseArguments(argv) {
     }
     if (argument === "--expect-fail-open") {
       result.expectFailOpen = true;
+      continue;
+    }
+    if (argument === "--expect-bridge-fail-open") {
+      result.expectBridgeFailOpen = true;
       continue;
     }
     if (argument === "--expect-stock") {
@@ -69,6 +74,7 @@ function parseArguments(argv) {
   if (
     [
       result.expectFailOpen,
+      result.expectBridgeFailOpen,
       result.expectSafeStart,
       result.expectShellFailOpen,
       result.expectShellMissingFailOpen,
@@ -81,6 +87,7 @@ function parseArguments(argv) {
   if (
     result.browserToolbox &&
     (result.expectFailOpen ||
+      result.expectBridgeFailOpen ||
       result.expectSafeStart ||
       result.expectShellFailOpen ||
       result.expectShellMissingFailOpen ||
@@ -154,6 +161,7 @@ async function validateTarget(
   const requiredArtifacts = [
     "chrome/fennevia/chrome.manifest",
     "chrome/fennevia/content/Bootstrap.sys.mjs",
+    "chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs",
     "chrome/fennevia/content/runtime/Logger.sys.mjs",
     "chrome/fennevia/content/runtime/Runtime.sys.mjs",
     "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
@@ -1837,7 +1845,11 @@ async function run() {
       return;
     }
 
-    if (options.expectShellFailOpen || options.expectShellMissingFailOpen) {
+    if (
+      options.expectShellFailOpen ||
+      options.expectShellMissingFailOpen ||
+      options.expectBridgeFailOpen
+    ) {
       await new Promise(resolve => setTimeout(resolve, 750));
       assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
       await assertNoShellHosts(client);
@@ -1867,25 +1879,39 @@ async function run() {
       assert.equal(countEvent(evidence, "window.disposed", "normal"), 1);
       assert.equal(countEvent(evidence, "shell.hosts-ready", "normal"), 1);
       assert.equal(countEvent(evidence, "shell.hosts-disposed", "normal"), 1);
+      if (options.expectBridgeFailOpen) {
+        assert.equal(countEvent(evidence, "bridge.boundary-created", "normal"), 1);
+        assert.equal(countEvent(evidence, "bridge.boundary-ready", "normal"), 0);
+        assert.equal(countEvent(evidence, "bridge.boundary-disposed", "normal"), 1);
+      }
       const shellFailures = evidence.records.filter(
         record => record.event === "shell.lifecycle-failed"
       );
       assert.equal(shellFailures.length, 1);
-      const expectedShellFailure = options.expectShellMissingFailOpen
+      const expectedShellFailure = options.expectBridgeFailOpen
         ? {
-            code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
-            phase: "shell-frontend-load",
+            code: "FENNEVIA_FIREFOX_CAPABILITY_MISSING",
+            phase: "firefox-bridge-capability",
           }
-        : {
-            code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
-            phase: "shell-frontend-mount",
-          };
+        : options.expectShellMissingFailOpen
+          ? {
+              code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
+              phase: "shell-frontend-load",
+            }
+          : {
+              code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
+              phase: "shell-frontend-mount",
+            };
       assert.equal(
         shellFailures[0].code,
         expectedShellFailure.code
       );
       assert.equal(shellFailures[0].phase, expectedShellFailure.phase);
       assert.equal(shellFailures[0].windowKind, "normal");
+      assert.equal(
+        shellFailures[0].firefoxSymbol,
+        options.expectBridgeFailOpen ? "window.gBrowser" : undefined
+      );
       assert.ok(Array.isArray(shellFailures[0].stack));
       assert.ok(
         shellFailures[0].stack.some(line =>
@@ -1903,7 +1929,7 @@ async function run() {
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
-        `PASS: a ${options.expectShellMissingFailOpen ? "missing" : "throwing"} frontend bundle followed the per-window fail-open ` +
+        `PASS: a ${options.expectBridgeFailOpen ? "missing required bridge capability" : options.expectShellMissingFailOpen ? "missing frontend bundle" : "throwing frontend bundle"} followed the per-window fail-open ` +
           "path, removed every project host, and retained native browser UI."
       );
       return;
@@ -2073,8 +2099,21 @@ async function run() {
     assert.equal(remount.firstRootDisconnected, true);
     assert.equal(remount.firstStatusAfterDispose, "disposed");
     assert.ok(remount.listenerAddCount >= 4);
-    assert.equal(remount.listenerOutstandingCount, 0);
-    assert.equal(remount.listenerRemoveCount, remount.listenerAddCount);
+    const listenerDiagnostics = JSON.stringify({
+      add: remount.listenerAddCount,
+      outstanding: remount.listenerOutstandingCount,
+      remove: remount.listenerRemoveCount,
+    });
+    assert.equal(
+      remount.listenerOutstandingCount,
+      0,
+      `frontendListenerDiagnostics=${listenerDiagnostics}`
+    );
+    assert.equal(
+      remount.listenerRemoveCount,
+      remount.listenerAddCount,
+      `frontendListenerDiagnostics=${listenerDiagnostics}`
+    );
     assert.equal(remount.registrationCallbackPresent, false);
     assert.equal(remount.secondDisposeResult, true);
     assert.equal(remount.secondInitialCounter, "0");
@@ -2211,6 +2250,12 @@ async function run() {
     assert.equal(countEvent(evidence, "shell.hosts-ready", "private"), 1);
     assert.equal(countEvent(evidence, "shell.hosts-disposed", "normal"), 2);
     assert.equal(countEvent(evidence, "shell.hosts-disposed", "private"), 1);
+    assert.equal(countEvent(evidence, "bridge.boundary-created", "normal"), 2);
+    assert.equal(countEvent(evidence, "bridge.boundary-created", "private"), 1);
+    assert.equal(countEvent(evidence, "bridge.boundary-ready", "normal"), 2);
+    assert.equal(countEvent(evidence, "bridge.boundary-ready", "private"), 1);
+    assert.equal(countEvent(evidence, "bridge.boundary-disposed", "normal"), 2);
+    assert.equal(countEvent(evidence, "bridge.boundary-disposed", "private"), 1);
     const expectedShellFailures = evidence.records.filter(
       record => record.event === "shell.hosts-failed"
     );

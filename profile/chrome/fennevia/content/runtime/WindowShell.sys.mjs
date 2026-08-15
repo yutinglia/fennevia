@@ -6,6 +6,7 @@ import {
   registerEmergencyFallback,
   runShellHealthCheck,
 } from "./HealthState.sys.mjs";
+import { createFirefoxBridgeBoundary } from "../firefox/BridgeBoundary.sys.mjs";
 import { shellAppCss } from "../shell/ShellStyles.sys.mjs";
 
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
@@ -14,6 +15,8 @@ const XUL_NAMESPACE =
 const BROWSER_DOCUMENT_URI = "chrome://browser/content/browser.xhtml";
 const PROJECT_URI =
   "chrome://fennevia/content/runtime/WindowShell.sys.mjs";
+const BRIDGE_PROJECT_URI =
+  "chrome://fennevia/content/firefox/BridgeBoundary.sys.mjs";
 
 const HOST_IDS = Object.freeze({
   overlay: "fennevia-shell-overlay-host",
@@ -741,17 +744,19 @@ const validateRequiredCapabilities = capabilities => {
     );
   }
   for (const capability of capabilities) {
+    const requirement = capability?.requirement ?? "required";
     if (
       !capability ||
       !CAPABILITY_PATTERN.test(String(capability.name ?? "")) ||
-      typeof capability.available !== "boolean"
+      typeof capability.available !== "boolean" ||
+      (requirement !== "required" && requirement !== "optional")
     ) {
       throw createShellLifecycleError(
         "FENNEVIA_SHELL_CAPABILITY_RESULT_INVALID",
         "shell-health-check"
       );
     }
-    if (!capability.available) {
+    if (requirement === "required" && !capability.available) {
       throw createShellLifecycleError(
         "FENNEVIA_SHELL_CAPABILITY_MISSING",
         "shell-health-check",
@@ -765,7 +770,7 @@ const validateRequiredCapabilities = capabilities => {
 const defaultMountShell = () => undefined;
 const defaultCheckHealth = () => true;
 
-const productionFrontendByTarget = new WeakMap();
+const productionShellByTarget = new WeakMap();
 
 const loadProductionFrontend = target => {
   const browserWindow = target.ownerDocument?.defaultView;
@@ -857,6 +862,11 @@ const getProductionAppMount = mountPoints => {
 };
 
 const mountProductionShell = ({
+  browserWindow,
+  buildId,
+  contextId,
+  firefoxVersion,
+  logger,
   mountPoints,
   windowKind,
   reportError,
@@ -869,14 +879,37 @@ const mountProductionShell = ({
   }
 
   const target = getProductionAppMount(mountPoints);
-  const style = createElement(target.ownerDocument, "style", {
-    id: SHELL_APP_STYLE_ID,
-    textContent: shellAppCss,
+  if (target.ownerDocument.defaultView !== browserWindow) {
+    throw createShellLifecycleError(
+      "FENNEVIA_FIREFOX_CONTEXT_WINDOW_MISMATCH",
+      "firefox-context-create"
+    );
+  }
+  const bridge = createFirefoxBridgeBoundary({
+    buildId,
+    contextId,
+    firefoxVersion,
+    window: browserWindow,
+    windowKind,
   });
-  mountPoints.primary.insertBefore(style, target);
 
   let disposeApp;
+  let style;
   try {
+    logger.info({
+      event: "bridge.boundary-created",
+      phase: "firefox-context-create",
+      code: "FENNEVIA_FIREFOX_BRIDGE_CREATED",
+      windowKind,
+      opaqueId: contextId,
+      projectUri: BRIDGE_PROJECT_URI,
+    });
+    style = createElement(target.ownerDocument, "style", {
+      id: SHELL_APP_STYLE_ID,
+      textContent: shellAppCss,
+    });
+    mountPoints.primary.insertBefore(style, target);
+
     const frontend = loadProductionFrontend(target);
     const candidateDisposeApp = frontend.mountShellApp({
       target,
@@ -897,10 +930,29 @@ const mountProductionShell = ({
       );
     }
     disposeApp = candidateDisposeApp;
-    productionFrontendByTarget.set(target, frontend);
+    productionShellByTarget.set(target, {
+      bridge,
+      frontend,
+      logger,
+      readyLogged: false,
+    });
   } catch (error) {
-    productionFrontendByTarget.delete(target);
-    style.remove();
+    productionShellByTarget.delete(target);
+    style?.remove();
+    try {
+      if (bridge.dispose()) {
+        logger.info({
+          event: "bridge.boundary-disposed",
+          phase: "firefox-context-dispose",
+          code: "FENNEVIA_FIREFOX_BRIDGE_DISPOSED",
+          windowKind,
+          opaqueId: contextId,
+          projectUri: BRIDGE_PROJECT_URI,
+        });
+      }
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
     throw annotateShellLifecycleError(error, {
       code: error?.fenneviaCode ?? "FENNEVIA_FRONTEND_MOUNT_FAILED",
       phase: error?.fenneviaPhase ?? "shell-frontend-mount",
@@ -914,9 +966,23 @@ const mountProductionShell = ({
     } catch (error) {
       firstError = error;
     }
-    productionFrontendByTarget.delete(target);
+    productionShellByTarget.delete(target);
     try {
-      style.remove();
+      style?.remove();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      if (bridge.dispose()) {
+        logger.info({
+          event: "bridge.boundary-disposed",
+          phase: "firefox-context-dispose",
+          code: "FENNEVIA_FIREFOX_BRIDGE_DISPOSED",
+          windowKind,
+          opaqueId: contextId,
+          projectUri: BRIDGE_PROJECT_URI,
+        });
+      }
     } catch (error) {
       firstError ??= error;
     }
@@ -933,8 +999,8 @@ const mountProductionShell = ({
 
 const checkProductionShell = ({ mountPoints, windowKind }) => {
   const target = getProductionAppMount(mountPoints);
-  const frontend = productionFrontendByTarget.get(target);
-  if (!frontend) {
+  const record = productionShellByTarget.get(target);
+  if (!record) {
     throw createShellLifecycleError(
       "FENNEVIA_FRONTEND_INSTANCE_UNAVAILABLE",
       "shell-frontend-health"
@@ -959,22 +1025,38 @@ const checkProductionShell = ({ mountPoints, windowKind }) => {
       "shell-frontend-health"
     );
   }
-  return frontend.verifyShellAppHealth({ target, windowKind });
+  return record.frontend.verifyShellAppHealth({ target, windowKind });
 };
 
 const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   const target = getProductionAppMount(mountPoints);
-  const frontend = productionFrontendByTarget.get(target);
-  if (!frontend) {
+  const record = productionShellByTarget.get(target);
+  if (!record) {
     throw createShellLifecycleError(
       "FENNEVIA_FRONTEND_INSTANCE_UNAVAILABLE",
       "shell-frontend-health"
     );
   }
-  return frontend.getShellAppCapabilities({
+  const bridgeCapabilities = record.bridge.assertRequiredCapabilities();
+  const frontendCapabilities = record.frontend.getShellAppCapabilities({
     target,
     windowKind,
   });
+  if (!record.readyLogged) {
+    record.readyLogged = true;
+    record.logger.info({
+      event: "bridge.boundary-ready",
+      phase: "firefox-bridge-capability",
+      code: "FENNEVIA_FIREFOX_BRIDGE_READY",
+      windowKind,
+      opaqueId: record.bridge.snapshot().contextId,
+      projectUri: BRIDGE_PROJECT_URI,
+    });
+  }
+  return Object.freeze([
+    ...bridgeCapabilities,
+    ...frontendCapabilities,
+  ]);
 };
 
 export function createWindowShellLifecycle({
@@ -1092,6 +1174,7 @@ export function createWindowShellLifecycle({
       opaqueId: context.opaqueId,
       projectUri: PROJECT_URI,
       domPath: error?.fenneviaDomPath,
+      firefoxSymbol: error?.fenneviaSymbol,
       capability: error?.fenneviaCapability,
       available:
         typeof error?.fenneviaCapability === "string" ? false : undefined,
@@ -1183,6 +1266,11 @@ export function createWindowShellLifecycle({
             phase = "shell-mount";
             const mountResult = mountShell({
               addCleanup: callback => cleanup.add(callback),
+              browserWindow: context.window,
+              buildId: appInfo.appBuildID,
+              contextId: context.opaqueId,
+              firefoxVersion: appInfo.version,
+              logger,
               mountPoints: shell.getMountPoints(),
               reportError: error => logCleanupError(error),
               signal: healthAbortController.signal,

@@ -16,11 +16,14 @@
   "include": [
     "eslint.config.js",
     "scripts/audit-frontend-dependencies.mjs",
+    "scripts/build-firefox-bridge.mjs",
     "scripts/build-frontend.mjs",
     "scripts/sync-package-manifest.mjs",
     "svelte.config.js",
+    "tests/firefox-boundary.test.mjs",
     "tests/frontend-build.test.mjs",
     "tests/frontend-smoke.test.mjs",
-    "vite.config.ts"
+    "vite.config.ts",
+    "vite.firefox.config.ts"
   ]
 }

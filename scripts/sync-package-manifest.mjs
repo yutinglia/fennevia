@@ -17,6 +17,10 @@ const packageFiles = Object.freeze([
   }),
   Object.freeze({
     scope: "profile",
+    path: "chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs",
+  }),
+  Object.freeze({
+    scope: "profile",
     path: "chrome/fennevia/content/runtime/HealthState.sys.mjs",
   }),
   Object.freeze({
