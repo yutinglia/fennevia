@@ -50,6 +50,8 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /^\(function\(\)\{/u);
   assert.match(bundle, /__fenneviaRegisterShellFrontend/u);
   assert.match(bundle, /FENNEVIA_SVELTE_RUNTIME_/u);
+  assert.match(bundle, /data-fennevia-navigation-status/u);
+  assert.match(bundle, /data-fennevia-action/u);
   assert.doesNotMatch(bundle, /[\r\n]/u);
   assert.doesNotMatch(bundle, /[ \t]+$/u);
   assert.doesNotMatch(bundle, /\b(?:import|export)\s/u);
@@ -71,6 +73,9 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.doesNotMatch(css, /@import|url\s*\(|:global|\/\*\$vite\$/iu);
   assert.match(css, /^#fennevia-shell-frame-host \{/u);
   assert.match(css, /#fennevia-shell-frame-host \.fennevia-edge-panel/u);
+  assert.match(css, /#fennevia-shell-frame-host \.fennevia-navigation/u);
+  assert.match(css, /\.fennevia-navigation__button:disabled/u);
+  assert.match(css, /data-fennevia-loading="true"/u);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(css, /@media \(forced-colors: active\)/u);
   assert.doesNotMatch(
@@ -115,7 +120,7 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
   );
   assert.match(
     runtime,
-    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxTabsBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
+    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxNavigationBridge,[\s\S]*createFirefoxTabsBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
   );
   assert.match(runtime, /Reflect\.deleteProperty\(/u);
   assert.doesNotMatch(runtime, /ShellApp\.sys\.mjs|import\s*\(/u);
@@ -141,6 +146,7 @@ test("the generated Firefox boundary is one deterministic private ESM artifact",
   ]);
 
   assert.match(bridge, /createFirefoxBridgeBoundary/u);
+  assert.match(bridge, /createFirefoxNavigationBridge/u);
   assert.match(bridge, /createFirefoxTabsBridge/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_CAPABILITY_MISSING/u);
   assert.match(bridge, /export \{/u);

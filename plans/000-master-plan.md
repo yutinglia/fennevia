@@ -29,7 +29,7 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-15, package `0.6.0-dev` is validated on Firefox 153.0.4 for
+As of 2026-08-16, package `0.7.0-dev` is validated on Firefox 153.0.4 for
 Windows in an isolated copied Firefox program and marker-owned development
 profile.
 
@@ -44,11 +44,12 @@ Completed:
 - #9 and #10: enforceable Firefox boundary and typed tab-state bridge;
 - #11: accessible custom tab UI, now rendered vertically in the left edge;
 - #31: zero-layout four-edge frame, shared reveal controller, corner/collision
-  policy, glass tokens, accessibility fallbacks, and complete cleanup.
+  policy, glass tokens, accessibility fallbacks, and complete cleanup;
+- #12: event-driven selected-navigation bridge and top-edge Back, Forward,
+  Reload/Stop, and New Tab controls with bounded page status.
 
 Remaining MVP feature work:
 
-- #12: navigation bridge and top-edge controls;
 - #13: left-edge address input and `Ctrl+L` integration;
 - #14: Places bridge and right-edge bookmarks;
 - #32: Downloads bridge and bottom-edge progress/status;
@@ -56,9 +57,9 @@ Remaining MVP feature work:
 - #16: full hardening and Firefox stable-update workflow;
 - #18: project license and third-party attribution decision.
 
-Firefox native visible UI remains present. The top, right, and bottom Fennevia
-surfaces are non-functional placeholders. The project is not ready for daily use
-or public release.
+Firefox native visible UI remains present. The right and bottom Fennevia
+surfaces are non-functional placeholders; the top surface contains functional
+navigation controls. The project is not ready for daily use or public release.
 
 ## 3. Success criteria
 
@@ -222,7 +223,7 @@ tests pass in Firefox chrome.
 Evidence: #8, ADR-022, ADR-026, and
 `docs/research/firefox-153-svelte-build.md`.
 
-### Phase 4: Typed Firefox bridge and state model — tabs complete
+### Phase 4: Typed Firefox bridge and state model — tabs and navigation complete
 
 Shared deliverables:
 
@@ -245,11 +246,14 @@ Tabs deliverables:
 Gate for each bridge: native and shell actions remain synchronized without
 polling or leaked native objects.
 
-Completed: #9 and #10.
+Completed: #9, #10, and the navigation bridge in #12. Issue #12 keeps native
+browser, command, event, observer, and progress objects private while exposing
+one immutable bounded selected-navigation snapshot and explicit current-window
+actions. See ADR-027 and
+`docs/research/firefox-153-navigation-controls.md`.
 
 Remaining bridge consumers:
 
-- #12 navigation;
 - #13 address/fixup/search and command focus;
 - #14 Places/bookmarks;
 - #32 Downloads.
@@ -291,13 +295,20 @@ Evidence: ADR-026 and
 Evidence: ADR-025, ADR-026, and
 `docs/research/firefox-153-tab-strip.md`.
 
-#### Top primary controls — pending (#12)
+#### Top primary controls — complete (#12)
 
 - selected-browser navigation bridge;
 - Back and Forward enabled state;
 - Back, Forward, Reload/Stop, and New Tab actions;
 - current Firefox command semantics;
-- top-edge UI through #31's contract.
+- bounded text-only title and display-URI status;
+- selected/top-level event-driven synchronization without polling;
+- top-edge UI through #31's reveal, focus, collision, and accessibility contract;
+- normal, second-normal, private, cleanup, capability-failure, and recovery
+  validation while native navbar and Urlbar remain visible.
+
+Evidence: ADR-027 and
+`docs/research/firefox-153-navigation-controls.md`.
 
 #### Left address input — pending (#13)
 

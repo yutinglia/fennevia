@@ -588,3 +588,56 @@ their namespace, build, bridge, tab-state, accessibility, safety, and cleanup
 decisions. Source evidence, rejected alternatives, visual-reference provenance,
 security effects, first causal failures, and real validation are in
 `docs/research/firefox-153-four-edge-shell.md`.
+
+## ADR-027: Mirror native command state and invoke current `BrowserCommands` for navigation
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+Create one selected-navigation controller per issue #9 window boundary. Expose
+only an immutable ordinary snapshot containing `canGoBack`, `canGoForward`,
+`loading`, bounded display URI, and bounded title, plus explicit Back, Forward,
+Reload, Stop, Reload-or-Stop, and New Tab actions. A separate application
+adapter validates and copies those fields before Svelte renders the issue #31
+top surface.
+
+Treat Firefox's retained `Browser:Back`, `Browser:Forward`, `Browser:Reload`,
+and `Browser:Stop` command `disabled` attributes as the native enabled/loading
+truth. Invoke the current owning window's `BrowserCommands.back`, `forward`,
+`reload`, `stop`, and `openTab` methods rather than recreating history,
+reload/cache, stop, principal, observer, new-tab, or telemetry policy. Resolve
+the selected browser and command again inside every action so a tab switch
+cannot target a captured prior browser.
+
+Reconcile state from selected/top-level `addTabsProgressListener` location and
+network-state callbacks, `TabSelect`, relevant selected `TabAttrModified`
+notifications, and one scoped `MutationObserver` over the five retained command
+elements. Ignore background/non-top-level progress and equal snapshots. Pair
+every tab listener, progress listener, command observer, application
+subscription, and Svelte adapter with deterministic per-window cleanup; use no
+polling or process-global browsing state.
+
+Bound title to 256 characters and display URI to 2,048 characters. They may
+exist only as text in the owning window's memory and top status output. They do
+not enter logs, errors, datasets, persistence, another window, HTML/CSS
+interpolation, or network traffic. Current title/URI are convenience status,
+not replacement security indicators; Firefox's native Urlbar, identity,
+permission, and prompt surfaces remain visible and authoritative.
+
+Every selected-browser, URI, event, progress, observer, command-element, and
+`BrowserCommands` dependency is required and independently identified by a
+fixed symbol. Missing startup capabilities fail before `healthy`; a later
+event, action, or subscriber failure requests ADR-021 fail-open and retains the
+native navbar. The top UI consumes ADR-026's existing host, trigger, focus,
+keyboard, hide timer, glass tokens, collision rules, environment suspension,
+and disposer. It adds no editable address field, menu placeholder, native DOM
+ownership, native-hide rule, dependency, mapping, or override.
+
+**Reasoning:** Firefox already synchronizes its visible controls through
+command state and centralizes current navigation semantics in
+`BrowserCommands`. Consuming those two boundaries produces exact native/custom
+agreement while keeping policy and privileged handles out of application UI.
+The selected event set covers location, redirects, same-document changes,
+error pages, title, loading, command state, and selected-browser handoff without
+a continuous DOM poll. Source, canary, failure, cleanup, privacy, and real
+normal/second/private-window evidence is recorded in
+`docs/research/firefox-153-navigation-controls.md`.

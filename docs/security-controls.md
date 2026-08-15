@@ -19,14 +19,13 @@ formal audit or penetration test.
 
 Current validated baseline:
 
-- package `0.6.0-dev`;
+- package `0.7.0-dev`;
 - Firefox 153.0.4 release, Windows;
 - copied Firefox program plus marker-owned development profile;
 - native Firefox visible UI retained;
-- functional left-edge vertical tabs;
+- functional left-edge vertical tabs and top-edge navigation controls;
 - four-edge frame/reveal/design foundation complete;
-- top navigation, address input, bookmarks, Downloads, and active native hiding
-  pending.
+- address input, bookmarks, Downloads, and active native hiding pending.
 
 ## 2. Threat model and ownership
 
@@ -36,22 +35,22 @@ Current validated baseline:
 | Chrome Registry manifest | Broad mapping or override can expose files or miss upstream security fixes | Dedicated `content fennevia` package, no `contentaccessible=yes`, no active `resource` alias, no override, ordinary-content denial test | Dedicated review before any new mapping/directive | #3; ADR-016 |
 | Generated privileged artifacts | HMR, endpoints, source maps, dynamic imports, extra chunks, or binaries can create remote execution/non-determinism | Exact eleven-file inventory, deterministic double builds, hash synchronization, scanner, Windows CI | Repeat after every build/tooling change | #8, #9, #16 |
 | npm/build supply chain | Compromised package, lifecycle script, or native binary can compromise developer host/artifacts | Exact dev dependencies, lockfile v3, install scripts disabled, resolved graph/native binary/license review, audit | Repeat complete dependency record on upgrades | #8, #16 |
-| Browser windows and lifecycle | Duplicate/late callbacks or retained native windows can cross contexts and leak state | One process runtime, strict browser filtering, abort-first per-window cleanup, idempotent stop | Repeat lifecycle/leak matrix for later features | #5, #16 |
+| Browser windows and lifecycle | Duplicate/late callbacks or retained native windows can cross contexts and leak state | One process runtime, strict browser filtering, abort-first per-window cleanup, idempotent stop; #12 removes tab/progress/command/application listeners and observers per window | Repeat lifecycle/leak matrix for later features | #5, #12, #16 |
 | Four-edge frame and triggers | Broad overlays can block web content, prompts, or OS controls; stuck holds can trap focus | Zero-layout project frame, narrow triggers, pointer-transparent center, deterministic corners, modal/DOM-fullscreen/customize suspension, tracked holds/timers, reverse cleanup | Revalidate after geometry/controller changes and before #15 | #31, #15, #16 |
 | Svelte/native DOM boundary | Framework may reconcile Firefox-owned children or leak styles | Four project-owned XHTML roots, frame-scoped CSS, Browser Toolbox ownership walk, native computed-style comparison | Revalidate after root/style changes | #8, #31 |
-| Firefox native handles | Native tab/browser/controller/service may enter reactive state or survive disposal | Enforced `src/firefox/` boundary, context-scoped opaque registries, typed stale/foreign failures, idempotent disposal, lint rules | Apply the same contract to navigation, Places, Downloads | #9, #10, #12, #14, #32 |
+| Firefox native handles | Native tab/browser/controller/service may enter reactive state or survive disposal | Enforced `src/firefox/` boundary, context-scoped opaque registries, typed stale/foreign failures, idempotent disposal, lint rules; #12 keeps selected browser/commands/progress private and re-resolves actions | Apply the same contract to Places and Downloads | #9, #10, #12, #14, #32 |
 | Tab title/favicon data | Page-controlled strings/images can inject HTML/CSS, spoof UI, or leak | Bounded text-only titles, `dir=auto`, reviewed favicon allowlist, property-only `img.src`, static fallback, no referrer, no datasets/logging | Continue hostile-data tests after tab UI changes | #10, #11 |
-| Address and navigation input | Input can bypass Firefox fixup/principal/security behavior or leak to logs | Uncontrolled load helpers prohibited; bridge boundary and log policy ready | Current-source command/fixup/search/principal research; hostile input and native fallback | #12, #13 |
+| Navigation status and address input | Page-controlled location or input can spoof UI, bypass Firefox fixup/principal/security behavior, or leak to logs | #12 exposes bounded text-only title/display URI and explicit current-window commands with no arbitrary URL action; uncontrolled load helpers remain prohibited | #13 must validate editing, fixup/search/principal semantics, hostile input, and native fallback | #12, #13 |
 | Bookmark data and opening | Large/user-controlled tree can become unbounded UI state; unsafe opening can bypass principal/scheme behavior | Bounded/lazy data, opaque-ID opening, text-only rendering, no bookmarklets/remote metadata required by policy | Implement Places bridge, live observers, private policy, cleanup | #14 |
 | Download data and file actions | Paths/source URLs/private state can leak; unsafe actions can execute files | Bounded status-only contract, no file actions, no forced reveal, native safety retained by policy | Implement current Downloads view/bridge and privacy matrix | #32 |
-| Normal diagnostics | URLs, titles, queries, bookmarks, downloads, paths, secrets, or private data can leak | Default-deny schemas, stable codes, redacted stacks, no network sink, hostile-value tests | Extend fixed adapters to each future bridge/feature | #3, #5, #9–#14, #32 |
-| Private-window state | State can leak to normal windows, process globals, preferences, or diagnostics | Per-window lifecycle/frame/tabs instances, opaque generations, no browsing persistence, complete fallback on uncertainty | Validate each pending bridge/feature independently | #5, #9–#14, #31, #32 |
-| Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native UI retained; four edges suspend for modal state; emergency fallback; #15 coverage inventory required | Full prompt/retained-access/stacking matrix before activation | #7, #31, #15 |
+| Normal diagnostics | URLs, titles, queries, bookmarks, downloads, paths, secrets, or private data can leak | Default-deny schemas, stable codes, redacted stacks, no network sink, hostile-value tests; #12 errors contain fixed phase/code/symbol/build/window-kind only | Extend fixed adapters to each future bridge/feature | #3, #5, #9–#14, #32 |
+| Private-window state | State can leak to normal windows, process globals, preferences, or diagnostics | Per-window lifecycle/frame/tabs/navigation instances, opaque generations, bounded unpersisted state, complete fallback on uncertainty; #12 passed normal/second/private isolation and disposal | Validate each pending bridge/feature independently | #5, #9–#14, #31, #32 |
+| Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native UI retained; #12 commands use native semantics and its status text is not authoritative; four edges suspend for modal state; emergency fallback; #15 coverage inventory required | Full prompt/retained-access/stacking matrix before activation | #7, #12, #31, #15 |
 | Installer/updater/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data | Explicit canonical targets, marker checks, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion | Revalidate for every platform/scope change | #4, #16 |
 | Startup cache/stale installed code | Removed or fixed privileged code may continue to run | Exact inventory and evidence-first cache policy; validated changes took effect without routine clearing | Cache action only after observed stale symptom | #3, #4, #16 |
 | External implementation/design | Unlicensed or copied code/design can create legal and maintenance risk | License/provenance requirement; `my-firefox-custom` no-copy boundary; exact reference commit required | Owner license/attribution decision | #18 |
 | Runtime network/update/telemetry | Remote party can change privileged behavior or receive browsing data | Prohibited; scanner detects common endpoints/APIs | New issue + ADR + security review for any exception | ADR-012 |
-| Native UI hiding | Broad selectors can remove uncovered actions or leave no recovery | Production does not enter active; #15 narrow coverage inventory and reversible gate required | Complete #12/#13/#14/#32 and full failure/recovery matrix | #15 |
+| Native UI hiding | Broad selectors can remove uncovered actions or leave no recovery | Production does not enter active; #15 narrow coverage inventory and reversible gate required | Complete #13/#14/#32 and full failure/recovery matrix | #15 |
 
 Every unresolved high-risk row has an owner. An unimplemented control is a
 blocker, not an implicit risk acceptance.
@@ -60,7 +59,7 @@ blocker, not an implicit risk acceptance.
 
 ### 3.1 Current inventory
 
-`package-manifest.json` is the only source of truth. Package `0.6.0-dev`
+`package-manifest.json` is the only source of truth. Package `0.7.0-dev`
 contains the following profile paths:
 
 ```text
@@ -78,7 +77,10 @@ content/shell/THIRD_PARTY_NOTICES.txt
 ```
 
 Every path has a committed SHA-256. Globs are prohibited because they cannot
-detect an unexpected chunk.
+detect an unexpected chunk. No new Chrome Registry declaration accompanies the
+three generated shell files or generated private bridge ESM; the frontend and
+bridge builds are reproduced byte-for-byte twice and pass the same
+exact-inventory scanner.
 
 Run:
 
@@ -297,13 +299,24 @@ Required controls:
 - public snapshots remain immutable;
 - no tab data in logs/datasets/persistence.
 
-### 7.3 Navigation/address — #12/#13 gate
+### 7.3 Navigation — implemented; address — #13 gate
 
-Before enabling:
+Implemented navigation controls:
 
-- current source for commands, selected-browser handoff, progress, fixup,
-  search, principal, disposition, and `Ctrl+L`;
-- bounded display/draft values;
+- current source for selected-browser handoff, progress, command elements, and
+  `BrowserCommands`;
+- bounded text-only title/display URI;
+- no uncontrolled URL argument or `loadURI` action;
+- fresh current-window action resolution;
+- selected/top-level event filtering;
+- no browsing data in logs, datasets, persistence, or network output;
+- private-window isolation and complete cleanup;
+- required-capability fail-open recovery.
+
+Before enabling address input:
+
+- current source for fixup, search, principal, disposition, and `Ctrl+L`;
+- bounded draft values independent from committed navigation status;
 - no uncontrolled `loadURI`;
 - explicit dangerous/special scheme policy;
 - no input persistence or logging;
@@ -601,7 +614,8 @@ Current detailed evidence:
 - boundary: `docs/research/firefox-153-bridge-boundary.md`;
 - tabs bridge: `docs/research/firefox-153-tabs-bridge.md`;
 - tab UI: `docs/research/firefox-153-tab-strip.md`;
-- four-edge frame: `docs/research/firefox-153-four-edge-shell.md`.
+- four-edge frame: `docs/research/firefox-153-four-edge-shell.md`;
+- top navigation: `docs/research/firefox-153-navigation-controls.md`.
 
 After every completed milestone:
 

@@ -7,19 +7,20 @@ later ADR supersedes their production architecture.
 
 ## 1. Current validated baseline
 
-As of 2026-08-15:
+As of 2026-08-16:
 
-- package: `0.6.0-dev`;
+- package: `0.7.0-dev`;
 - Firefox: 153.0.4 release;
 - build ID: `20260810162159`;
 - first platform: Windows 11;
 - environment: copied stock Firefox program plus marker-owned direct-path
   development profile;
-- completed runtime/UI milestones: #3–#11 and #31;
+- completed runtime/UI milestones: #3–#12 and #31;
 - current shell: one zero-layout frame with independent top, left, right, and
   bottom surfaces;
-- current functional feature: vertical tabs in the left surface;
-- current placeholders: top, right, and bottom;
+- current functional features: vertical tabs in the left surface and primary
+  navigation controls with bounded page status in the top surface;
+- current placeholders: right and bottom;
 - native Firefox visible UI: retained and unchanged;
 - production active state: not entered.
 
@@ -232,7 +233,7 @@ Evidence:
 - `docs/research/firefox-153-tab-strip.md`;
 - `docs/research/firefox-153-four-edge-shell.md`.
 
-### 6.2 Top navigation — required for #12
+### 6.2 Top navigation — implemented
 
 Validate:
 
@@ -243,11 +244,16 @@ Validate:
 - redirects, same-document navigation, error pages, and tab close;
 - rapid command/tab-switch sequences;
 - no action against the previous selected browser;
+- bounded text-only title and display-URI state;
 - current Firefox command/controller semantics;
 - top-edge pointer/keyboard/focus/popup behavior;
 - no editable address field in the top surface;
 - native navbar/Urlbar/toolbox retained;
-- navigation capability and surface failure.
+- direct frontend unmount/remount and window/runtime disposal;
+- normal, second-normal, and private-window isolation;
+- navigation capability, frontend, and safe-start failure recovery.
+
+Evidence: `docs/research/firefox-153-navigation-controls.md`.
 
 ### 6.3 Left address input — required for #13
 
@@ -354,7 +360,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.6.0-dev` stops at `healthy`. The health phase requires:
+Current package `0.7.0-dev` stops at `healthy`. The health phase requires:
 
 - exact frame identity and placement;
 - ordered top/left/right/bottom hosts;
@@ -593,6 +599,7 @@ of the installed package.
 | Tabs bridge | `docs/research/firefox-153-tabs-bridge.md` |
 | Tab UI | `docs/research/firefox-153-tab-strip.md` |
 | Four-edge frame | `docs/research/firefox-153-four-edge-shell.md` |
+| Top navigation | `docs/research/firefox-153-navigation-controls.md` |
 
 Those records describe the exact milestone tested. Current production state is
 summarized in README, the master plan, the shell roadmap, architecture, issue

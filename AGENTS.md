@@ -31,7 +31,7 @@ instead of inventing a new architecture.
   behavior.
 - Initial support targets the latest Firefox stable available during
   implementation and a Windows-first development environment.
-- Current validated evidence is package `0.6.0-dev` on Firefox 153.0.4 for
+- Current validated evidence is package `0.7.0-dev` on Firefox 153.0.4 for
   Windows. This is an implementation baseline, not a versioned support promise.
 - Do not add branches, polyfills, or compatibility hacks for old Firefox
   versions unless an issue explicitly requires them.

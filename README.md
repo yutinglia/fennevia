@@ -13,15 +13,16 @@ AutoConfig entry registers a project-owned Chrome Registry package, loads fixed
 privileged ES modules, and mounts project-owned Svelte UI through typed Firefox
 bridges.
 
-> **Current status — 2026-08-15:** package `0.6.0-dev` is validated on Firefox
+> **Current status — 2026-08-16:** package `0.7.0-dev` is validated on Firefox
 > 153.0.4 for Windows in an isolated copied Firefox program and marker-owned
 > development profile. Bootstrap, installation lifecycle, multi-window runtime,
 > health/recovery, deterministic Svelte production builds, the typed bridge
 > boundary, tab-state bridge, accessible tab UI, and the common four-edge
-> floating frame are implemented. The left edge already contains functional
-> vertical tabs. The top, right, and bottom surfaces are honest placeholders
-> until their feature issues land. Firefox native UI remains visible and
-> unchanged; content-only active mode is not implemented yet.
+> floating frame are implemented. The left edge contains functional vertical
+> tabs, and the top edge contains native-synchronized Back, Forward,
+> Reload/Stop, and New Tab controls plus bounded page status. The right and
+> bottom surfaces remain honest placeholders. Firefox native UI remains visible
+> and unchanged; content-only active mode is not implemented yet.
 
 There is no daily-driver support, versioned end-user release, cross-platform
 support claim, or completed security audit.
@@ -57,7 +58,7 @@ browser-content infrastructure remain Firefox-owned.
 | Frontend and bridge foundation | Complete | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership |
 | Tabs data and UI | Complete | Event-driven immutable tab state plus accessible vertical tab UI in the left surface |
 | Four-edge frame | Complete | Independent top/left/right/bottom XHTML surfaces, edge reveal controller, collision rules, glass tokens, and accessibility fallbacks |
-| Top primary controls | Pending — #12 | Navigation bridge and Back/Forward/Reload/Stop/New Tab UI |
+| Top primary controls | Complete — #12 | Event-driven navigation bridge and Back/Forward/Reload/Stop/New Tab UI with bounded text-only page status |
 | Left address input | Pending — #13 | Firefox-consistent URL/search submission and `Ctrl+L` integration |
 | Right bookmarks | Pending — #14 | Typed Places bridge and bounded bookmark tree |
 | Bottom downloads | Pending — #32 | Typed Downloads bridge and accessible aggregate progress/status |
@@ -80,7 +81,8 @@ Stock Firefox
               ├─ health gate, safe start, emergency fallback
               ├─ typed Firefox bridges
               │   ├─ tabs (implemented)
-              │   ├─ navigation/address (pending)
+              │   ├─ navigation (implemented)
+              │   ├─ address/fixup/search (pending)
               │   ├─ Places/bookmarks (pending)
               │   └─ Downloads (pending)
               └─ Svelte four-edge frame

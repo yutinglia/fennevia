@@ -28,7 +28,7 @@ controls, private-window rules, and review triggers.
 
 ## 2. Current security baseline
 
-Current validated package: `0.6.0-dev` on Firefox 153.0.4 for Windows.
+Current validated package: `0.7.0-dev` on Firefox 153.0.4 for Windows.
 
 Implemented controls:
 
@@ -41,6 +41,7 @@ Implemented controls:
 - frame-scoped CSS and project-only XHTML ownership;
 - typed per-window Firefox boundary and context-scoped opaque IDs;
 - bounded tab titles and allowlisted property-only favicon values;
+- bounded navigation title/display-URI text and explicit native command actions;
 - hidden-at-rest four-edge state with pointer-transparent center;
 - explicit suspension for native modal state, DOM fullscreen, and customize
   mode;
@@ -49,7 +50,7 @@ Implemented controls:
 
 Not implemented yet:
 
-- navigation/address, Places/bookmarks, and Downloads feature bridges;
+- address, Places/bookmarks, and Downloads feature bridges;
 - final native-visible-shell hiding;
 - public release/security hardening;
 - project license decision.
@@ -123,8 +124,9 @@ Requirements:
 - disposal clears all holds, timers, observers, delegated listeners, roots, and
   focus-origin records.
 
-The top, right, and bottom placeholders are not feature-complete and must not be
-treated as satisfying #15.
+The right and bottom placeholders are not feature-complete. The top navigation
+surface is complete for #12 but does not replace the pending address, bookmarks,
+or Downloads features required before #15.
 
 ## 6. Data classification and logging
 
@@ -180,6 +182,9 @@ Implemented runtime records use process-local random window IDs and fixed
 normal/private classification. Bridge errors add only fixed phase, code,
 allowlisted Firefox symbol, Firefox version/build, and window kind.
 
+Issue #12 navigation errors use that same fixed schema. Bounded title and
+display-URI values never enter logger fields, error messages, or stacks.
+
 Edge-controller records may include only fixed edge/state/hold enums and counts.
 They must never receive browsing data.
 
@@ -209,21 +214,30 @@ Rules:
 - new-tab action accepts no arbitrary URL;
 - stale/foreign/disposed IDs fail before native access.
 
-### 7.2 Navigation and address — pending #12/#13
+### 7.2 Navigation — implemented; address — pending #13
 
-Before implementation:
+Issue #12 exposes only `canGoBack`, `canGoForward`, loading state, bounded title
+text (256 code units), bounded display-URI text (2,048 code units), and explicit
+Back, Forward, Reload, Stop, and New Tab actions.
 
-- research current Firefox commands/controllers/fixup/search/principal/load
-  semantics;
-- expose only bounded display text and explicit actions;
-- keep native browser/controller/principal/load objects private;
-- reject uncontrolled executable/special scheme handling;
-- keep an active draft independent from background navigation;
-- do not persist draft or committed address state;
-- do not log entered text or complete location;
-- own `Ctrl+L` only while the healthy custom shell is explicitly eligible;
-- preserve native `Ctrl+L` while inactive, failed, safe-started, unsupported, or
-  disposed.
+Rules:
+
+- browser, controller, principal, command, observer, progress, and native event
+  objects stay private;
+- title and display URI are rendered as text only and never enter logs, datasets,
+  persistence, network requests, or native API arguments;
+- displayed location is status text, not a security or identity indicator;
+- navigation actions accept no arbitrary URL and invoke the current window's
+  source-validated `BrowserCommands` methods;
+- action state is re-resolved against the current selected browser immediately
+  before invocation;
+- background and non-top-level progress cannot update selected navigation state.
+
+Issue #13 must independently research and implement draft editing, Firefox URL/
+search submission, principal and special-scheme handling, and healthy-only
+`Ctrl+L` ownership. Draft text must remain independent from background
+navigation, unpersisted, and absent from logs. Native `Ctrl+L` must remain
+available while inactive, failed, safe-started, unsupported, or disposed.
 
 ### 7.3 Bookmarks — pending #14
 
@@ -318,6 +332,8 @@ Current state:
 - no override;
 - generated shell and bridge artifacts remain inside the privileged-only
   package;
+- issue #12 adds no mapping, content-accessible resource, runtime endpoint, or
+  remote asset;
 - ordinary loopback content could not fetch the project entry in validated
   evidence.
 
@@ -343,6 +359,10 @@ debug API require an explicit reviewed decision.
 
 Failure injection is implemented through pure constructor collaborators and
 owned test wrappers, not a production preference, global, or UI control.
+
+Issue #12 adds no dependency or installed debug artifact. Its generated bridge,
+application, UI, and CSS changes remain subject to deterministic double-build,
+exact-inventory, and production-network/debug scans.
 
 ## 11. Installation and file-system safety
 
@@ -399,6 +419,10 @@ Current #31 behavior:
   notifications, prompts, and OS controls are not hidden, moved, resized, or
   owned by Svelte.
 
+Issue #12's top surface invokes retained Firefox commands. The native navbar,
+Urlbar, identity/permission UI, prompts, and security indicators remain visible
+and authoritative; Fennevia's bounded location text is not a security indicator.
+
 Issue #15 must build a current native-UI coverage inventory and hide only the
 narrowest surfaces with complete replacement and retained access. Missing
 coverage blocks activation.
@@ -420,8 +444,9 @@ Global rules:
 
 Implemented:
 
-- base lifecycle, health, frame, edge controller, tabs bridge, and vertical tab
-  UI have isolated normal, second-normal, and private instances;
+- base lifecycle, health, frame, edge controller, tabs bridge, vertical tab UI,
+  navigation bridge, and top controls have isolated normal, second-normal, and
+  private instances;
 - opaque IDs include context/registry generation;
 - controllers, roots, holds, timers, listeners, mappings, and state are removed
   per window;
@@ -429,13 +454,23 @@ Implemented:
 
 Pending:
 
-- #12 navigation;
 - #13 address;
 - #14 bookmarks;
 - #32 Downloads.
 
 Each pending feature must prove its own isolation before enabling in private
 windows.
+
+Issue #12 gives each window its own navigation controller, selected snapshot,
+subscriber set, two tab listeners, one tabs progress listener, one command
+observer, application adapter, and top text output. Title and display URI may
+describe private browsing, so they are never process-global, persisted,
+logged, placed in datasets/errors, or copied to another window. Background and
+non-top-level progress is ignored. Frontend unmount, emergency fallback,
+window close, runtime stop, capability failure, and startup rollback remove all
+listeners/observers/subscribers and release the snapshot with that window.
+Normal, second, and private-window isolation passed in real Firefox. Full
+evidence is in `docs/research/firefox-153-navigation-controls.md`.
 
 ## 14. External code, design references, and provenance
 

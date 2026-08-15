@@ -523,6 +523,84 @@
   inline-size: 100%;
 }
 
+#fennevia-shell-frame-host .fennevia-navigation {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 360px);
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 0;
+  min-inline-size: 0;
+  gap: var(--fennevia-space-3);
+  padding: var(--fennevia-space-2) var(--fennevia-space-3);
+  overflow: hidden;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__controls {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+  gap: var(--fennevia-space-1);
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__button:disabled {
+  color: var(--fennevia-glass-muted);
+  background: transparent;
+  opacity: 0.46;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-navigation__button[data-fennevia-loading="true"] {
+  color: var(--fennevia-focus-color);
+  background: color-mix(in srgb, var(--fennevia-focus-color) 16%, transparent);
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 48%,
+    transparent
+  );
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__new-tab {
+  min-inline-size: auto;
+  gap: 6px;
+  padding-inline: 10px;
+  font-size: inherit;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__new-tab > :first-child {
+  font-size: 17px;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__status {
+  display: grid;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: inherit;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__status strong,
+#fennevia-shell-frame-host .fennevia-navigation__status span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__status span {
+  color: var(--fennevia-glass-muted);
+  font-size: 11px;
+}
+
 #fennevia-shell-frame-host template {
   display: none;
 }
@@ -538,6 +616,37 @@
   }
 
   #fennevia-shell-frame-host .fennevia-edge-panel__footer {
+    display: none;
+  }
+
+  #fennevia-shell-frame-host .fennevia-navigation {
+    grid-template-columns: auto minmax(80px, 1fr);
+    justify-content: stretch;
+    gap: var(--fennevia-space-2);
+    padding-block: 5px;
+  }
+
+  #fennevia-shell-frame-host .fennevia-navigation__new-tab-label,
+  #fennevia-shell-frame-host .fennevia-navigation__status span {
+    display: none;
+  }
+
+  #fennevia-shell-frame-host .fennevia-navigation__new-tab {
+    min-inline-size: var(--fennevia-control-height);
+    padding: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  #fennevia-shell-frame-host .fennevia-navigation {
+    grid-template-columns: 1fr;
+  }
+
+  #fennevia-shell-frame-host .fennevia-navigation__controls {
+    justify-content: center;
+  }
+
+  #fennevia-shell-frame-host .fennevia-navigation__status {
     display: none;
   }
 }
@@ -590,5 +699,12 @@
     background: Highlight;
     border-color: Highlight;
     box-shadow: none;
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-navigation__button[data-fennevia-loading="true"] {
+    color: HighlightText;
+    background: Highlight;
+    border-color: Highlight;
   }
 }

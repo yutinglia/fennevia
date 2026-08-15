@@ -12,25 +12,26 @@ collision system, glass token set, or window-global coordination layer.
 
 ## Current status
 
-Validated baseline as of 2026-08-15:
+Validated baseline as of 2026-08-16:
 
-- package `0.6.0-dev`;
+- package `0.7.0-dev`;
 - Firefox 153.0.4 release on Windows;
-- #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #17, #22, and #31 complete;
+- #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #17, #22, and #31
+  complete;
 - functional vertical tabs in the left surface;
-- top, right, and bottom surfaces mounted as honest non-functional placeholders;
+- functional primary navigation and bounded page status in the top surface;
+- right and bottom surfaces mounted as honest non-functional placeholders;
 - Firefox native visible UI retained;
 - no production caller enters `active`.
 
 Next feature work:
 
-1. #12 top navigation controls;
-2. #14 right bookmarks and #32 bottom downloads may proceed in parallel with
-   #12 after their research/bridge prerequisites;
-3. #13 combines the left address input with the completed tab surface and
+1. #13 combines the left address input with the completed tab surface and
    depends on the navigation/address contract;
-4. #15 activates content-only mode only after all feature blockers pass;
-5. #16 hardens the complete MVP.
+2. #14 right bookmarks and #32 bottom downloads may proceed after their
+   research/bridge prerequisites;
+3. #15 activates content-only mode only after all feature blockers pass;
+4. #16 hardens the complete MVP.
 
 Historical research records remain accurate for the milestone they tested.
 Current production architecture is defined by this roadmap, the master plan,
@@ -259,7 +260,7 @@ classes, timers, z-index values, or trigger DOM directly.
 Current contents:
 
 - left: functional vertical tabs;
-- top: non-functional placeholder;
+- top: functional primary navigation and bounded page status;
 - right: non-functional placeholder;
 - bottom: non-functional placeholder.
 
@@ -270,7 +271,7 @@ native UI.
 Evidence: ADR-026 and
 `docs/research/firefox-153-four-edge-shell.md`.
 
-## Milestone G: Top-edge primary navigation — pending (#12)
+## Milestone G: Top-edge primary navigation — complete (#12)
 
 ### Bridge work
 
@@ -311,6 +312,15 @@ Gate:
 - top surface is hidden at rest and adds no permanent height;
 - native navbar remains visible and unchanged;
 - capability or surface failure fails open.
+
+Validated on Firefox 153.0.4 for Windows in normal, second-normal, private, and
+Browser Toolbox runs. Missing navigation capability, frontend failure, safe
+start, cleanup, rapid tab/navigation changes, and Reload/Stop timing all passed.
+Issue #13 still owns independent address editing, URL/search submission, and
+`Ctrl+L`.
+
+Evidence: ADR-027 and
+`docs/research/firefox-153-navigation-controls.md`.
 
 ## Milestone H: Left-edge address input — pending (#13)
 
