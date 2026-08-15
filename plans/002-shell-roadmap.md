@@ -14,27 +14,26 @@ collision system, glass token set, or window-global coordination layer.
 
 Validated baseline as of 2026-08-16:
 
-- package `0.8.0-dev`;
+- package `0.9.0-dev`;
 - Firefox 153.0.4 release on Windows;
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #17, #22,
-  and #31 complete;
+  #31, and #32 complete;
 - functional vertical tabs and a compact address/status launcher in the left
   surface;
 - one centered address/search popup with detailed connection and protection
   state in a fifth owned root;
 - functional primary navigation and bounded page status in the top surface;
 - bounded lazy Firefox Places bookmarks in the right surface;
-- bottom surface mounted as an honest non-functional placeholder;
+- event-driven anonymous aggregate Downloads status in the bottom surface;
 - Firefox native visible UI retained;
 - no production caller enters `active`.
 
 Next feature work:
 
-1. #32 implements bottom downloads after its research/bridge prerequisites;
-2. #37 inventories fuller native Urlbar permissions/page-action coverage before
+1. #37 inventories fuller native Urlbar permissions/page-action coverage before
    any related native surface can be hidden;
-3. #15 activates content-only mode only after all feature blockers pass;
-4. #16 hardens the complete MVP.
+2. #15 activates content-only mode only after all feature blockers pass;
+3. #16 hardens the complete MVP.
 
 Historical research records remain accurate for the milestone they tested.
 Current production architecture is defined by this roadmap, the master plan,
@@ -266,7 +265,7 @@ Current contents:
 - left: functional vertical tabs;
 - top: functional primary navigation and bounded page status;
 - right: functional bounded/lazy bookmarks;
-- bottom: non-functional placeholder.
+- bottom: functional bounded download progress/status.
 
 Gate: pointer, keyboard, focus, popup, corner, suspension, layout, and cleanup
 behavior pass in normal, second-normal, and private windows without changing
@@ -434,11 +433,11 @@ Toolbox, missing-capability, and frontend-recovery matrices passed on Firefox
 Evidence: ADR-029 and
 `docs/research/firefox-153-bookmarks-surface.md`.
 
-## Milestone J: Bottom-edge download progress/status — pending (#32)
+## Milestone J: Bottom-edge download progress/status — complete (#32)
 
 ### Downloads bridge
 
-Research and implement:
+Implemented and validated:
 
 - current Downloads modules/list/view semantics;
 - active, paused, succeeded, failed, and canceled state;
@@ -447,7 +446,7 @@ Research and implement:
 - normal/private isolation;
 - event/view-driven updates;
 - context-bound opaque IDs;
-- bounded safe display values;
+- bounded anonymous display values with no filenames;
 - deterministic native-view and subscription cleanup.
 
 Do not expose source URLs, referrers, headers, cookies, full target paths,
@@ -473,10 +472,24 @@ Gate:
 - filenames, paths, source URLs, and private activity do not enter normal logs;
 - failures fail open.
 
+The final bridge selects PUBLIC for normal windows and PRIVATE for private
+windows, registers one exact list view per window, ignores replayed terminal
+history, retains three newly observed terminal records, and exposes at most six
+anonymous items with counts capped at 999. Known-size progress is byte-weighted;
+any active unknown-size record makes the aggregate explicitly indeterminate.
+No timer, action, filename, path, source URL, private marker, or per-item byte
+value crosses into application/Svelte state.
+
+Normal, second-normal, private, hidden-update, native-panel alternation,
+keyboard reveal, Browser Toolbox, hard-disable, exact view removal, malformed
+data, missing capability, frontend, bootstrap, and safe-start matrices passed.
+Evidence: ADR-030 and
+`docs/research/firefox-153-downloads-surface.md`.
+
 ## Milestone K: Content-only active mode — pending (#15)
 
-Begin only after #7, #31, #11, #12, #13, #14, and #32 are complete with real
-native-visible validation.
+Begin only after #7, #31, #11, #12, #13, #14, #32, and #37 are complete with
+real native-visible validation.
 
 Create a reviewed native-UI coverage inventory mapping every candidate hidden
 surface to:

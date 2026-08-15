@@ -7,7 +7,7 @@ This is an initial ownership and dependency map, not a stable API list. Every sy
 | Area | Ownership |
 | --- | --- |
 | Shell XHTML hosts | Created, mounted, and removed by this project |
-| Visible tabs, navigation, compact address/status launcher, centered address popup, and right bookmarks panel | This project |
+| Visible tabs, navigation, compact address/status launcher, centered address popup, right bookmarks panel, and bottom download-status panel | This project |
 | Shell state and controllers | This project |
 | Firefox bridge adapters | This project, with documented internal dependencies |
 | Build and installation scripts | This project |
@@ -144,7 +144,27 @@ Do not replace SessionStore during the early roadmap.
 
 ### Downloads
 
-Research current browser and toolkit Downloads modules, events, panels, and safety prompts. Initially expose read-only state and leave download prompts to Firefox.
+Issue #32 verified the following dependencies on Firefox 153.0.4 release, build
+ID `20260810162159`, official tag `FIREFOX_153_0_4_RELEASE`, commit
+`c178247e1dfea52241a6b18b18cf3a00f8da935c`, on Windows 11 25H2. The complete
+source/canary/runtime record is
+`docs/research/firefox-153-downloads-surface.md`; ADR-030 records the selected
+data, aggregate, lifecycle, privacy, and UI policy.
+
+| Dependency | Firefox 153 source-backed behavior | Project owner and failure behavior |
+| --- | --- | --- |
+| `resource://gre/modules/Downloads.sys.mjs` / `Downloads` | [`Downloads.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/toolkit/components/downloads/Downloads.sys.mjs), blob `2eb8ead6b2ef188210bdf7a57df1adca84bcf63f`, exports the current object, list constants, `getList()`, `createDownload()`, and error constructor. | `src/firefox/downloads.ts` imports this one fixed URI through the privileged runtime loader. Missing module/object/function fails before health with fixed module/symbol diagnostics; no native error or download value is serialized. |
+| `Downloads.PUBLIC`, `Downloads.PRIVATE`, and `Downloads.getList(type)` | The same source defines distinct public/private list types and resolves them through the current list singleton. | A normal window selects PUBLIC; a private window selects PRIVATE. Each owns an independent view, opaque registry, subscribers, adapter, and cleanup while Firefox retains same-kind list sharing. The bridge never requests `Downloads.ALL`. |
+| `DownloadList.addView(view)` / `removeView(view)` | [`DownloadList.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/toolkit/components/downloads/DownloadList.sys.mjs), blob `8e6d1987c359c9388ae73aeeb57ec6c94be033e5`, synchronously replays current records between batch callbacks and later dispatches added/changed/removed events. Current [`test_DownloadList.js`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/toolkit/components/downloads/test/unit/test_DownloadList.js), blob `4e88f05866aed631c4d8ecd09006d8a2f091bb9f`, verifies paired view semantics. | One exact view is registered per window and removed once during reverse cleanup. Initial terminal history is ignored; current nonterminal records remain. Batch depth coalesces publication. View or callback failure requests fail-open. There is no polling/timer fallback. |
+| `onDownloadAdded`, `onDownloadChanged`, `onDownloadRemoved`, `onDownloadBatchStarting`, and `onDownloadBatchEnded` | `DownloadList.sys.mjs` invokes these optional methods for membership, state changes, and bounded replay/batch notification. | The bridge validates every candidate before mapping it, publishes only changed immutable snapshots, and never passes a native record or callback outside `src/firefox/`. Malformed data emits fixed `FENNEVIA_FIREFOX_DOWNLOAD_RECORD_INVALID` diagnostics and disposes through the window lifecycle. |
+| `stopped`, `succeeded`, `error`, `canceled`, `hasPartialData`, `hasProgress`, `progress`, `currentBytes`, and `totalBytes` | [`DownloadCore.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/toolkit/components/downloads/DownloadCore.sys.mjs), blob `0223747bb0b3bbcd84d08477a27d8582052ef0e1`, owns current lifecycle and progress fields. [`DownloadsCommon.stateOfDownload()`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/components/downloads/DownloadsCommon.sys.mjs), blob `b14c60d52e8b83b947985b9fcdd0b7f3be0d9be0`, defines browser state precedence. | Only fixed state, optional integer percentage, capped counts, and opaque IDs cross the boundary. Positive totals weight aggregate progress; any active `hasProgress=false` produces explicit indeterminate output. Byte values remain privileged and cannot be tied to named output. |
+| Download source, referrer, target, path, private marker, principal, headers, cookies, and error detail | `DownloadCore.sys.mjs` keeps sensitive network, filesystem, privacy, and failure data on native objects. | These fields are deliberately neither read for output nor represented in application contracts, Svelte, DOM attributes, persistence, or logs. Test sentinels prove non-exposure. At most six anonymous items, three newly observed terminal items, and counts capped at 999 reach state. |
+| Native indicator/button and Downloads panel | [`indicator.js`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/components/downloads/content/indicator.js), blob `4826fc260020b6a8b16a1e8d64f6341cb30a569e`, remains the current browser-chrome indicator path backed by Firefox Downloads data. | Fennevia neither hides nor mutates the native button/panel and provides no file action. Real Firefox tests open/close the native panel after using the custom bottom surface. Notifications, file picker, reputation, malware/executable warnings, confirmation, history, and management remain Firefox-owned. |
+
+The bottom host is an ADR-026 project-owned DOM dependency, not a Downloads
+API. Download callbacks update hidden state only and never acquire a reveal
+hold. The complete surface/view/subscriber/registry state is discarded on
+window close, fallback, hard disable, or runtime disposal.
 
 ### Sidebar
 

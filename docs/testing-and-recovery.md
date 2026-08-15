@@ -9,20 +9,21 @@ later ADR supersedes their production architecture.
 
 As of 2026-08-16:
 
-- package: `0.8.0-dev`;
+- package: `0.9.0-dev`;
 - Firefox: 153.0.4 release;
 - build ID: `20260810162159`;
 - first platform: Windows 11;
 - environment: copied stock Firefox program plus marker-owned direct-path
   development profile;
-- completed runtime/UI milestones: #3–#14 and #31;
+- completed runtime/UI milestones: #3–#14, #31, and #32;
 - current shell: one zero-layout frame with independent top, left, right, and
   bottom surfaces plus one centered address-overlay root;
 - current functional features: vertical tabs and compact address/status
   launcher in the left surface, centered address/search popup, primary
-  navigation controls with bounded page status in the top surface, and bounded
-  lazy bookmarks in the right surface;
-- current placeholder: bottom;
+  navigation controls with bounded page status in the top surface, bounded lazy
+  bookmarks in the right surface, and anonymous aggregate download status in
+  the bottom surface;
+- current placeholders: none inside the five pre-activation product surfaces;
 - native Firefox visible UI: retained and unchanged;
 - production active state: not entered.
 
@@ -334,9 +335,9 @@ hash, and then reruns ordinary startup. Frontend missing/throwing bundle
 recovery passed after the bookmark component was added. Evidence: ADR-029 and
 `docs/research/firefox-153-bookmarks-surface.md`.
 
-### 6.5 Bottom downloads — required for #32
+### 6.5 Bottom downloads — validated for #32
 
-Validate:
+Validated:
 
 - one and multiple known-size downloads;
 - mixed known/unknown sizes;
@@ -351,6 +352,17 @@ Validate:
   normal diagnostics;
 - native Downloads panel, notification, reputation, and safety UI retained;
 - Downloads module/view/subscription/surface failure.
+
+The real fixture adds native records to the current PUBLIC or PRIVATE list
+without starting a transfer or creating a target file. It validates 25/50/41
+percent known progress, mixed indeterminate progress, zero/one-byte/5-GiB
+records, pause/resume, terminal states, six-item burst bounds, hidden updates,
+shared keyboard reveal/Escape, and exact removal. It alternates the custom
+surface with Firefox's native Downloads panel and proves source/path sentinel
+values never enter the DOM. Normal, second, private, Browser Toolbox, frontend
+unmount/remount, missing Downloads capability, hard-disable/re-enable, and
+artifact restoration passed. Evidence: ADR-030 and
+`docs/research/firefox-153-downloads-surface.md`.
 
 ## 7. Native-UI activation matrix — required only for #15
 
@@ -403,7 +415,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.8.0-dev` stops at `healthy`. The health phase requires:
+Current package `0.9.0-dev` stops at `healthy`. The health phase requires:
 
 - exact frame identity and placement;
 - ordered top/left/right/bottom hosts plus the final address-overlay host;
@@ -412,6 +424,7 @@ Current package `0.8.0-dev` stops at `healthy`. The health phase requires:
 - attached parsed project CSS;
 - edge reveal controller;
 - initialized four-root bookmarks state and a successful first bounded page;
+- a ready PUBLIC/PRIVATE Downloads list view and valid bottom-panel state;
 - environment/suspension handling;
 - privileged emergency handler;
 - every declared required capability;
@@ -621,9 +634,12 @@ pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
 ```
 
 The bridge recovery command includes a dedicated
-`FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING` run. The ordinary lifecycle
-command contains the native bookmark fixture/update/open matrix; no separate
-profile mutation command is required.
+`FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING` and
+`FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING` run. The ordinary lifecycle
+command contains both native bookmark and Downloads fixture matrices; no
+separate profile mutation command is required. The same harness accepts
+`--expect-disabled` after an exact package `Disable` action and verifies native
+UI, zero project hosts, and zero Fennevia records before re-enable.
 
 Use only harnesses that exist on the current branch. When a future issue adds a
 feature-specific harness, document its exact target validation, mutation scope,
@@ -651,6 +667,7 @@ of the installed package.
 | Top navigation             | `docs/research/firefox-153-navigation-controls.md`   |
 | Address launcher and popup | `docs/research/firefox-153-address-popup.md`         |
 | Right-edge bookmarks       | `docs/research/firefox-153-bookmarks-surface.md`     |
+| Bottom-edge downloads      | `docs/research/firefox-153-downloads-surface.md`     |
 
 Those records describe the exact milestone tested. Current production state is
 summarized in README, the master plan, the shell roadmap, architecture, issue

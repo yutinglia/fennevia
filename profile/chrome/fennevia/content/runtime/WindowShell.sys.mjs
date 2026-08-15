@@ -9,6 +9,7 @@ import {
 import {
   createFirefoxBridgeBoundary,
   createFirefoxBookmarksBridge,
+  createFirefoxDownloadsBridge,
   createFirefoxNavigationBridge,
   createFirefoxTabsBridge,
 } from "../firefox/BridgeBoundary.sys.mjs";
@@ -1079,6 +1080,7 @@ const mountProductionShell = ({
 
   let disposeApp;
   let bookmarksBridge;
+  let downloadsBridge;
   let navigationBridge;
   let style;
   let tabsBridge;
@@ -1103,6 +1105,23 @@ const mountProductionShell = ({
               error?.fenneviaCode ??
               "FENNEVIA_FIREFOX_BOOKMARKS_RUNTIME_FAILED",
             phase: error?.fenneviaPhase ?? "firefox-bookmarks-observer",
+          }),
+        );
+      },
+      window: browserWindow,
+    });
+    downloadsBridge = createFirefoxDownloadsBridge({
+      boundary: bridge,
+      moduleLoader(uri) {
+        return ChromeUtils.importESModule(uri);
+      },
+      onError(error) {
+        requestFallback(
+          annotateShellLifecycleError(error, {
+            code:
+              error?.fenneviaCode ??
+              "FENNEVIA_FIREFOX_DOWNLOADS_RUNTIME_FAILED",
+            phase: error?.fenneviaPhase ?? "firefox-downloads-event",
           }),
         );
       },
@@ -1136,6 +1155,7 @@ const mountProductionShell = ({
     const frontend = loadProductionFrontend(targets.top);
     const candidateDisposeApp = frontend.mountShellApp({
       bookmarks: bookmarksBridge.bookmarks,
+      downloads: downloadsBridge.downloads,
       frame,
       navigation: navigationBridge.navigation,
       overlayTarget,
@@ -1170,6 +1190,7 @@ const mountProductionShell = ({
     productionShellByFrame.set(frame, {
       bookmarksBridge,
       bridge,
+      downloadsBridge,
       frontend,
       logger,
       navigationBridge,
@@ -1181,6 +1202,11 @@ const mountProductionShell = ({
     style?.remove();
     try {
       bookmarksBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
+    try {
+      downloadsBridge?.dispose();
     } catch (cleanupError) {
       reportError(cleanupError);
     }
@@ -1233,6 +1259,11 @@ const mountProductionShell = ({
       firstError ??= error;
     }
     try {
+      downloadsBridge?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
       navigationBridge?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -1265,7 +1296,7 @@ const mountProductionShell = ({
   };
 };
 
-const checkProductionShell = ({ mountPoints, windowKind }) => {
+const checkProductionShell = async ({ mountPoints, windowKind }) => {
   const { frame, overlayTarget, targets } = getProductionAppMounts(mountPoints);
   const record = productionShellByFrame.get(frame);
   if (!record) {
@@ -1294,6 +1325,8 @@ const checkProductionShell = ({ mountPoints, windowKind }) => {
     );
   }
   record.bookmarksBridge.assertRequiredCapabilities();
+  await record.downloadsBridge.ready();
+  record.downloadsBridge.assertRequiredCapabilities();
   record.navigationBridge.assertRequiredCapabilities();
   record.tabsBridge.assertRequiredCapabilities();
   return record.frontend.verifyShellAppHealth({
@@ -1316,6 +1349,8 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   const bridgeCapabilities = record.bridge.assertRequiredCapabilities();
   const bookmarksCapabilities =
     record.bookmarksBridge.assertRequiredCapabilities();
+  const downloadsCapabilities =
+    record.downloadsBridge.assertRequiredCapabilities();
   const navigationCapabilities =
     record.navigationBridge.assertRequiredCapabilities();
   const tabsCapabilities = record.tabsBridge.assertRequiredCapabilities();
@@ -1339,6 +1374,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   return Object.freeze([
     ...bridgeCapabilities,
     ...bookmarksCapabilities,
+    ...downloadsCapabilities,
     ...navigationCapabilities,
     ...tabsCapabilities,
     ...frontendCapabilities,

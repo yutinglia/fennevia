@@ -34,7 +34,7 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-16, package `0.8.0-dev` is validated on Firefox 153.0.4 for
+As of 2026-08-16, package `0.9.0-dev` is validated on Firefox 153.0.4 for
 Windows in an isolated copied Firefox program and marker-owned development
 profile.
 
@@ -56,19 +56,22 @@ Completed:
   native Urlbar submission and healthy-only `Ctrl+L`, real Firefox connection
   and tracking-protection state, and a fifth owned overlay root.
 - #14: bounded/lazy typed Places bridge, event-driven right-edge bookmarks,
-  opaque opening actions, and keyboard-accessible hierarchy.
+  opaque opening actions, and keyboard-accessible hierarchy;
+- #32: per-window typed Downloads list views, bounded anonymous state,
+  event-driven bottom-edge aggregate progress/status, and native
+  safety/management retention.
 
 Remaining MVP feature work:
 
-- #32: Downloads bridge and bottom-edge progress/status;
+- #37: fuller current Urlbar permission/page-action and retained-access
+  inventory;
 - #15: health-gated content-only activation and narrow native-UI hiding;
 - #16: full hardening and Firefox stable-update workflow;
 - #18: project license and third-party attribution decision.
 
-Firefox native visible UI remains present. The right surface contains
-functional bounded bookmarks; the bottom Fennevia surface remains a
-non-functional placeholder. The top surface contains functional navigation
-controls. The project is not ready for daily use or public release.
+Firefox native visible UI remains present. All four edge surfaces and the
+centered address overlay now have their planned pre-activation MVP function.
+The project is not ready for daily use or a versioned public release.
 
 ## 3. Success criteria
 
@@ -258,18 +261,20 @@ Gate for each bridge: native and shell actions remain synchronized without
 polling or leaked native objects.
 
 Completed: #9, #10, the navigation bridge in #12, the address/status extension
-in #13, and the Places/bookmarks bridge in #14. Issues #12–#14 keep native
-browser, command, Urlbar, identity/protections handler, Places record, URL,
-event, observer, and progress objects private while exposing immutable bounded
-ordinary state and explicit current-window actions. See ADR-027, ADR-028,
-ADR-029,
-`docs/research/firefox-153-navigation-controls.md`, and
-`docs/research/firefox-153-address-popup.md`, and
-`docs/research/firefox-153-bookmarks-surface.md`.
+in #13, the Places/bookmarks bridge in #14, and the Downloads bridge in #32.
+Issues #12–#14 and #32 keep native browser, command, Urlbar,
+identity/protections handler, Places record, URL, Downloads list/view/object,
+path, byte, event, observer, and progress values private while exposing
+immutable bounded ordinary state and explicit current-window actions. See
+ADR-027, ADR-028, ADR-029, ADR-030,
+`docs/research/firefox-153-navigation-controls.md`,
+`docs/research/firefox-153-address-popup.md`,
+`docs/research/firefox-153-bookmarks-surface.md`, and
+`docs/research/firefox-153-downloads-surface.md`.
 
-Remaining bridge consumers:
+Next bridge review:
 
-- #32 Downloads.
+- #37 fuller Urlbar permissions/page-action coverage.
 
 ### Phase 5A: Four-edge shell foundation — complete
 
@@ -357,7 +362,7 @@ Browser-Toolbox, cleanup, and fail-open recovery evidence passed.
 Evidence: ADR-029 and
 `docs/research/firefox-153-bookmarks-surface.md`.
 
-#### Bottom downloads — pending (#32)
+#### Bottom downloads — complete (#32)
 
 - typed Downloads bridge;
 - determinate and indeterminate aggregate progress;
@@ -366,6 +371,19 @@ Evidence: ADR-029 and
 - no unsolicited panel opening;
 - native safety and management UI retained.
 
+The implementation uses one Firefox PUBLIC or PRIVATE list view per managed
+window, context-bound opaque IDs, six anonymous items, three newly observed
+terminal states, state counts capped at 999, weighted known-size progress, and
+explicit indeterminate progress when any active total is unknown. Native
+objects, filenames, paths, source URLs, byte values, and private markers do not
+cross the bridge. The surface receives hidden updates without acquiring a
+reveal hold and adds no action or polling timer. Normal, second, private,
+native-panel alternation, Browser-Toolbox, hard-disable, cleanup, and fail-open
+evidence passed.
+
+Evidence: ADR-030 and
+`docs/research/firefox-153-downloads-surface.md`.
+
 Gate: basic browsing and required access paths work entirely through custom
 surfaces while native UI remains visible for comparison and fallback.
 
@@ -373,7 +391,7 @@ surfaces while native UI remains visible for comparison and fallback.
 
 Preconditions:
 
-- #7, #31, #11, #12, #13, #14, and #32 complete;
+- #7, #31, #11, #12, #13, #14, #32, and #37 complete;
 - every feature validated in normal, second-normal, and private windows while
   native UI remains visible;
 - native-UI coverage inventory contains no unexplained hidden descendant or
@@ -463,8 +481,8 @@ and hashes. Generated files are never hand-edited.
 - Complete shared foundations before feature-specific UI.
 - Do not jump directly to #15.
 - Every feature issue must pass while native Firefox UI remains visible.
-- #32 is the next edge feature after completed #14; completed #13 builds on the
-  tabs UI and navigation contract from #12.
+- #37 is the next coverage step after completed #32; it inventories fuller
+  Urlbar permissions/page actions and retained access before #15 may activate.
 - Feature issues use the shared #31 edge contract and the #9 bridge boundary.
 - Research work must produce reproducible evidence or a clear negative result,
   not a list of links.

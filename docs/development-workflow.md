@@ -38,27 +38,28 @@ Current feature order:
 #31 four-edge frame (complete)
 ├─ #12 top navigation (complete)
 ├─ #14 right bookmarks (complete)
-├─ #32 bottom downloads
+├─ #32 bottom downloads (complete)
 └─ #11 left tabs (complete)
     └─ #13 compact address/status launcher and popup (complete; depends on #12)
-        └─ #15 content-only activation
-            └─ #16 hardening
+        └─ #37 fuller Urlbar permissions/page-action coverage
+            └─ #15 content-only activation
+                └─ #16 hardening
 ```
 
-#32 is the next edge feature after completed #14. Completed #13 composes with
+#37 is the next coverage step after completed #32. Completed #13 composes with
 #11 and reuses #12's navigation controller; #37 owns fuller Urlbar
-permissions/page-action coverage. No feature issue may build a second edge
-controller or bypass #31.
+permissions/page-action and retained-access coverage before #15. No feature
+issue may build a second edge controller or bypass #31.
 
 ## 3. Branch and commit conventions
 
 Recommended branch names:
 
 ```text
-agent/issue-12-top-navigation
-agent/issue-14-right-bookmarks
-agent/issue-32-bottom-downloads
-agent/sync-current-progress-docs
+codex/issue-12-top-navigation
+codex/issue-14-right-bookmarks
+codex/issue-32-downloads
+codex/sync-current-progress-docs
 ```
 
 Commit messages should be imperative and scoped:
