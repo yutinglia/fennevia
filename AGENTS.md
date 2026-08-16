@@ -56,9 +56,11 @@ instead of inventing a new architecture.
 3. The content-first shell consists of four independent project-owned floating
    surfaces:
    - top: primary browser controls;
-   - left: vertical tabs and address input;
+   - left: vertical tabs and a compact address/status launcher;
    - right: bookmarks;
    - bottom: download progress and status.
+   A fifth centered project-owned overlay contains the only custom editable
+   address/search input; the left launcher is non-editable.
 4. Every surface is hidden at rest and must reserve no permanent browser-content
    space.
 5. Feature modules must consume the shared frame, edge trigger, reveal
