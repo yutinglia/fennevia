@@ -60,7 +60,10 @@ vertical presentation.
 
 Do not develop or validate privileged browser chrome in a daily-use profile.
 
-Follow `docs/development-setup.md`:
+Follow `docs/development-setup.md`. The recommended interactive entry is
+`pwsh -NoProfile -File .\scripts\fennevia.ps1`. That console redraws in place
+and accepts mouse clicks; it does not append a new menu after every key. The
+scripted equivalent is:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Initialize

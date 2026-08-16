@@ -87,19 +87,25 @@ Do not continue if the checksum does not match.
 
 ### 3. Preview the installation
 
-Extract the ZIP, open PowerShell in the extracted Fennevia directory, and set
-the two paths locally:
+Extract the ZIP and open PowerShell in the extracted Fennevia directory. The
+recommended installer is the interactive console:
+
+```powershell
+pwsh -NoProfile -File .\scripts\fennevia.ps1
+```
+
+Select `firefox.exe` and one registered profile **by name**. The console
+redraws in place and accepts keyboard or mouse input; it does not print a
+new menu after every key. Fennevia never preselects Firefox's default
+profile. Review the redacted plan, then confirm.
+
+Do not post your real profile path in an issue or public log. The scripted
+equivalent is:
 
 ```powershell
 $firefox = '<FIREFOX_PROGRAM>\firefox.exe'
 $profile = '<FIREFOX_PROFILE>'
-```
 
-Do not post your real profile path in an issue or public log.
-
-Preview every planned change first:
-
-```powershell
 pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Install `
   -FirefoxPath $firefox -ProfilePath $profile `
   -ProfileMode Registered -WhatIf
@@ -111,8 +117,8 @@ full update, recovery, and removal instructions.
 
 ### 4. Install
 
-After reviewing the preview, repeat the command without `-WhatIf` and approve
-the displayed plan:
+After reviewing the preview in the console, confirm the displayed plan. The
+scripted equivalent repeats the command without `-WhatIf`:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Install `

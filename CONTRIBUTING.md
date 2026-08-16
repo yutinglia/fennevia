@@ -13,7 +13,8 @@ privileged-code constraints below.
    records, and current implementation.
 5. Inspect the latest relevant commits.
 6. Use the dedicated copied Firefox program and marker-owned development
-   profile.
+   profile. The recommended entry is
+   `pwsh -NoProfile -File .\scripts\fennevia.ps1` or `npm run env`.
 7. Do not begin while a listed blocker is open unless the owner explicitly
    changes the dependency.
 

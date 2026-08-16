@@ -410,8 +410,11 @@ function Get-FenneviaReleaseSourceEntries {
         [pscustomobject]@{ Source = "release/INSTALL.md"; Destination = "INSTALL.md" },
         [pscustomobject]@{ Source = "LICENSE"; Destination = "LICENSE" },
         [pscustomobject]@{ Source = "THIRD_PARTY_NOTICES.md"; Destination = "THIRD_PARTY_NOTICES.md" },
+        [pscustomobject]@{ Source = "scripts/fennevia.ps1"; Destination = "scripts/fennevia.ps1" },
         [pscustomobject]@{ Source = "scripts/fennevia-package.ps1"; Destination = "scripts/fennevia-package.ps1" },
         [pscustomobject]@{ Source = "scripts/verify-release.ps1"; Destination = "scripts/verify-release.ps1" },
+        [pscustomobject]@{ Source = "scripts/lib/FenneviaConsole.psm1"; Destination = "scripts/lib/FenneviaConsole.psm1" },
+        [pscustomobject]@{ Source = "scripts/lib/FenneviaTui.psm1"; Destination = "scripts/lib/FenneviaTui.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaInstaller.psm1"; Destination = "scripts/lib/FenneviaInstaller.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaRelease.psm1"; Destination = "scripts/lib/FenneviaRelease.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/SecurityChecks.psm1"; Destination = "scripts/lib/SecurityChecks.psm1" }
@@ -723,8 +726,11 @@ function Test-FenneviaReleaseTree {
         "LICENSE",
         "THIRD_PARTY_NOTICES.md",
         "package-manifest.json",
+        "scripts/fennevia.ps1",
         "scripts/fennevia-package.ps1",
         "scripts/verify-release.ps1",
+        "scripts/lib/FenneviaConsole.psm1",
+        "scripts/lib/FenneviaTui.psm1",
         "scripts/lib/FenneviaInstaller.psm1",
         "scripts/lib/FenneviaRelease.psm1",
         "scripts/lib/SecurityChecks.psm1"

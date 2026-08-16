@@ -15,7 +15,8 @@ English.
 - [Current GitHub Releases](https://github.com/yutinglia/fennevia/releases) —
   versioned Windows packages and checksums.
 - [Release installation and recovery](../release/INSTALL.md) — the guide bundled
-  into each release archive.
+  into each release archive. The recommended entry is
+  `scripts/fennevia.ps1`.
 - [Complete package lifecycle](installation.md) — detailed install, update,
   repair, disable, enable, uninstall, rollback, and interrupted-operation rules.
 - [Security policy](../SECURITY.md) — supported security-reporting scope and how
@@ -29,7 +30,8 @@ Read these before changing code or current documentation:
 2. [Contributing](../CONTRIBUTING.md)
 3. [Master plan](../plans/000-master-plan.md)
 4. [Shell roadmap](../plans/002-shell-roadmap.md)
-5. [Development setup](development-setup.md)
+5. [Development setup](development-setup.md) — recommended entry:
+   `scripts/fennevia.ps1` or `npm run env`
 6. [Development workflow](development-workflow.md)
 7. [Research playbook](research-playbook.md)
 

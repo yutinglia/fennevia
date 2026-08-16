@@ -86,9 +86,10 @@ fennevia-<VERSION>/
   package-manifest.json
   program/
   profile/
+  scripts/fennevia.ps1
   scripts/fennevia-package.ps1
   scripts/verify-release.ps1
-  scripts/lib/{FenneviaInstaller,FenneviaRelease,SecurityChecks}.psm1
+  scripts/lib/{FenneviaConsole,FenneviaTui,FenneviaInstaller,FenneviaRelease,SecurityChecks}.psm1
   INSTALL.md
   LICENSE
   THIRD_PARTY_NOTICES.md
@@ -148,8 +149,28 @@ It does not enumerate unrelated profile files or print absolute paths.
 
 ## 3. Preview and execute
 
-Set the two variables locally; do not paste their values into an issue or pull
-request:
+The recommended interactive entry is the PowerShell console. From an extracted
+release or the source tree:
+
+```powershell
+pwsh -NoProfile -File .\scripts\fennevia.ps1
+```
+
+A release tree offers Status, Install, Update, Repair, Disable, Enable, and
+Uninstall against an explicitly selected registered profile. A source tree
+offers development setup, update, launch, recovery, and teardown against the
+marker-owned program copy and `fennevia-dev` profile. The console lists
+Firefox builds and registered profile **names** locally, never preselects
+Firefox's default profile, shows the redacted plan, and applies only after
+confirmation with that plan's `planSha256`. The interactive host is a native
+TUI: it enters an alternate screen, redraws in place, and accepts keyboard and
+mouse input. Click an action to select it; Esc cancels. Plan and status lines
+stay in the same frame instead of scrolling a new menu after every key.
+stdin/stdout redirection keeps a numbered fallback menu. Redirected or
+non-interactive hosts fail closed.
+
+The commands below remain the scripted API. Set the two variables locally; do
+not paste their values into an issue or pull request:
 
 ```powershell
 $firefox = '<FIREFOX_PROGRAM>\firefox.exe'

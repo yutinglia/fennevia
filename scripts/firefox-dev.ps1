@@ -3,7 +3,7 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("Initialize", "Verify", "Launch", "Environment", "Remove")]
+    [ValidateSet("Initialize", "Verify", "Launch", "Environment", "Remove", "CopyProgram", "RemoveProgram")]
     [string] $Action = "Verify",
 
     [string] $FirefoxPath,
@@ -107,6 +107,46 @@ switch ($Action) {
         }
         elseif (-not $WhatIfPreference) {
             Write-Output "The managed Firefox development profile was already absent."
+        }
+    }
+    "CopyProgram" {
+        $sourceFirefox = if (-not [string]::IsNullOrWhiteSpace($FirefoxPath)) {
+            Get-FenneviaFirefoxExecutable -FirefoxPath $FirefoxPath
+        }
+        else {
+            $candidates = @(Get-FenneviaFirefoxExecutableCandidates)
+            if ($candidates.Count -eq 0) {
+                throw "Firefox was not found. Pass -FirefoxPath with an explicit firefox.exe path."
+            }
+            if ($candidates.Count -gt 1) {
+                throw "Multiple Firefox installations were found. Pass -FirefoxPath to select one explicitly."
+            }
+            $candidates[0]
+        }
+        $copy = New-FenneviaFirefoxProgramCopy `
+            -SourceFirefoxPath $sourceFirefox `
+            -WhatIf:$WhatIfPreference `
+            -Confirm:$false
+        if ($copy.IsValid) {
+            Write-Output "Created or reused the marker-owned Firefox program copy at <FIREFOX_PROGRAM>."
+        }
+        elseif ($WhatIfPreference) {
+            Write-Output "WhatIf: would create the marker-owned Firefox program copy at <FIREFOX_PROGRAM>."
+        }
+        if ($RevealPaths -and $copy.IsValid) {
+            Write-Warning "Local-only Firefox program copy: $($copy.FirefoxPath). Redact it before sharing output."
+        }
+    }
+    "RemoveProgram" {
+        $removed = Remove-FenneviaFirefoxProgramCopy `
+            -Force:$Force `
+            -WhatIf:$WhatIfPreference `
+            -Confirm:$false
+        if ($removed) {
+            Write-Output "Removed the marker-owned Firefox program copy. The operation did not touch the stock Firefox installation."
+        }
+        elseif (-not $WhatIfPreference) {
+            Write-Output "The managed Firefox program copy was already absent."
         }
     }
 }

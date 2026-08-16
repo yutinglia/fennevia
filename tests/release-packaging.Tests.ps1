@@ -103,7 +103,11 @@ try {
 
     $validation = Test-FenneviaReleaseTree -PackageRoot $first.PackageRoot
     Assert-True -Condition $validation.Passed -Message "The staged package must pass its strict release policy."
-    Assert-Equal -Actual $validation.FileCount -Expected 24 -Message "The strict release tree must have the reviewed file count."
+    Assert-Equal -Actual $validation.FileCount -Expected 27 -Message "The strict release tree must have the reviewed file count."
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\fennevia.ps1") -PathType Leaf) -Message "The release tree must include the console entry."
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\lib\FenneviaConsole.psm1") -PathType Leaf) -Message "The release tree must include the console module."
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\lib\FenneviaTui.psm1") -PathType Leaf) -Message "The release tree must include the TUI host."
+    Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\lib\FirefoxDevProfile.psm1"))) -Message "The development-profile helper must not ship in the release ZIP."
     Assert-Equal -Actual ([string] $validation.Manifest.source.commit) -Expected $sourceCommit -Message "The release manifest must record the complete source commit."
     Assert-Equal -Actual ([string] $validation.Manifest.source.archive) -Expected "https://github.com/yutinglia/fennevia/archive/refs/tags/v0.10.0-beta.1.zip" -Message "The release manifest must identify corresponding preferred source."
     Assert-Equal -Actual @($validation.Manifest.firefoxCompatibility).Count -Expected 1 -Message "The release must carry an explicit Firefox compatibility allowlist."

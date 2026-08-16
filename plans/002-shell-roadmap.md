@@ -17,7 +17,7 @@ Validated baseline as of 2026-08-16:
 - public package `0.10.0-beta.1` prerelease;
 - Firefox 153.0.4 BuildID 20260810162159 release on Windows x64;
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16,
-  #17, #18, #22, #31, #32, #37, and #39 complete;
+  #17, #18, #22, #31, #32, #37, #39, and #57 complete;
 - functional vertical tabs and a compact address/status launcher in the left
   surface;
 - one centered address/search popup with detailed connection, protection,
@@ -44,6 +44,8 @@ Governance foundation:
 2. #39 established deterministic, checksum-published Windows prereleases with
    exact tagged source, a Firefox-build allowlist, explicit registered-profile
    installation, and independently reverified public assets.
+3. #57 added the PowerShell console as the recommended install and development
+   environment entry without changing the installer transaction contract.
 
 Historical research records remain accurate for the milestone they tested.
 Current production architecture is defined by this roadmap, the master plan,

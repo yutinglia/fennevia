@@ -4,6 +4,10 @@ $script:ProfileName = "fennevia-dev"
 $script:MarkerFileName = ".fennevia-dev-profile.json"
 $script:MarkerOwner = "fennevia"
 $script:MarkerSchemaVersion = 1
+$script:ProgramCopyName = "firefox-stable-copy"
+$script:ProgramMarkerFileName = ".fennevia-program-spike.json"
+$script:ProgramMarkerPurpose = "firefox-identity-regression"
+$script:ProgramMarkerState = "ready"
 
 function Get-FenneviaOptionalPropertyValue {
     [CmdletBinding()]
@@ -64,6 +68,24 @@ function Get-FenneviaDefaultProfilePath {
     param()
 
     return Join-Path (Get-FenneviaManagedProfileRoot) $script:ProfileName
+}
+
+function Get-FenneviaManagedProgramRoot {
+    [CmdletBinding()]
+    param()
+
+    if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+        throw "LOCALAPPDATA is unavailable; the managed Firefox program-spike root cannot be resolved."
+    }
+
+    return ConvertTo-FenneviaCanonicalPath -Path (Join-Path $env:LOCALAPPDATA "fennevia\program-spikes")
+}
+
+function Get-FenneviaDefaultProgramCopyPath {
+    [CmdletBinding()]
+    param()
+
+    return Join-Path (Get-FenneviaManagedProgramRoot) $script:ProgramCopyName
 }
 
 function Test-FenneviaPathWithin {
@@ -473,22 +495,9 @@ function Initialize-FenneviaFirefoxDevProfile {
     return Test-FenneviaFirefoxDevProfile -ProfilePath $canonicalProfile
 }
 
-function Get-FenneviaFirefoxExecutable {
+function Get-FenneviaFirefoxExecutableCandidates {
     [CmdletBinding()]
-    param(
-        [string] $FirefoxPath
-    )
-
-    if (-not [string]::IsNullOrWhiteSpace($FirefoxPath)) {
-        $canonicalPath = ConvertTo-FenneviaCanonicalPath -Path $FirefoxPath
-        if (-not (Test-Path -LiteralPath $canonicalPath -PathType Leaf)) {
-            throw "The explicitly selected Firefox executable does not exist."
-        }
-        if ([IO.Path]::GetFileName($canonicalPath) -ne "firefox.exe") {
-            throw "The explicitly selected executable must be firefox.exe."
-        }
-        return $canonicalPath
-    }
+    param()
 
     $candidates = @()
     $registryKeys = @(
@@ -530,13 +539,39 @@ function Get-FenneviaFirefoxExecutable {
         $candidates += Join-Path $programFilesX86 "Mozilla Firefox\firefox.exe"
     }
 
-    $resolvedCandidates = @(
+    return @(
         $candidates |
             Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_ -PathType Leaf) } |
             ForEach-Object { ConvertTo-FenneviaCanonicalPath -Path $_ } |
             Sort-Object -Unique
     )
+}
 
+function Get-FenneviaFirefoxExecutable {
+    [CmdletBinding()]
+    param(
+        [string] $FirefoxPath
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($FirefoxPath)) {
+        $canonicalPath = ConvertTo-FenneviaCanonicalPath -Path $FirefoxPath
+        if (-not (Test-Path -LiteralPath $canonicalPath -PathType Leaf)) {
+            throw "The explicitly selected Firefox executable does not exist."
+        }
+        if ([IO.Path]::GetFileName($canonicalPath) -ne "firefox.exe") {
+            throw "The explicitly selected executable must be firefox.exe."
+        }
+        return $canonicalPath
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+        $managedCopy = Test-FenneviaFirefoxProgramCopy
+        if ($managedCopy.IsValid) {
+            return $managedCopy.FirefoxPath
+        }
+    }
+
+    $resolvedCandidates = @(Get-FenneviaFirefoxExecutableCandidates)
     if ($resolvedCandidates.Count -eq 0) {
         throw "Firefox was not found. Pass -FirefoxPath with an explicit firefox.exe path."
     }
@@ -852,16 +887,399 @@ function Remove-FenneviaFirefoxDevProfile {
     return $false
 }
 
+function Assert-FenneviaItemIsNotReparsePoint {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $Path,
+
+        [Parameter(Mandatory)]
+        [string] $Message
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    $item = Get-Item -Force -LiteralPath $Path
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw $Message
+    }
+}
+
+function Assert-FenneviaProgramTreeHasNoReparsePoints {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProgramRoot
+    )
+
+    $pendingDirectories = @($ProgramRoot)
+    while ($pendingDirectories.Count -gt 0) {
+        $directory = $pendingDirectories[0]
+        if ($pendingDirectories.Count -eq 1) {
+            $pendingDirectories = @()
+        }
+        else {
+            $pendingDirectories = @($pendingDirectories[1..($pendingDirectories.Count - 1)])
+        }
+
+        $directoryItem = Get-Item -Force -LiteralPath $directory
+        if (($directoryItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Reparse points are not allowed in a removable Firefox program-spike tree."
+        }
+
+        foreach ($child in @(Get-ChildItem -Force -LiteralPath $directory)) {
+            if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Reparse points are not allowed in a removable Firefox program-spike tree."
+            }
+            if ($child.PSIsContainer) {
+                $pendingDirectories += $child.FullName
+            }
+        }
+    }
+}
+
+function Assert-FenneviaProgramCopyPathSafe {
+    [CmdletBinding()]
+    param(
+        [string] $ProgramRoot
+    )
+
+    $managedRoot = Get-FenneviaManagedProgramRoot
+    $expected = Get-FenneviaDefaultProgramCopyPath
+    $candidate = if ([string]::IsNullOrWhiteSpace($ProgramRoot)) {
+        $expected
+    }
+    else {
+        ConvertTo-FenneviaCanonicalPath -Path $ProgramRoot
+    }
+
+    if (-not (Test-FenneviaPathWithin -ChildPath $candidate -ParentPath $managedRoot)) {
+        throw "The disposable Firefox program copy must remain below the dedicated fennevia program-spike root."
+    }
+    if (-not [string]::Equals($candidate, $expected, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Only the fixed firefox-stable-copy program-spike name is supported."
+    }
+
+    Assert-FenneviaPathHasNoReparseAncestor -Path $candidate
+
+    $forbiddenPaths = @(
+        $managedRoot,
+        (ConvertTo-FenneviaCanonicalPath -Path $env:LOCALAPPDATA),
+        (ConvertTo-FenneviaCanonicalPath -Path $env:APPDATA),
+        (ConvertTo-FenneviaCanonicalPath -Path ([Environment]::GetFolderPath("UserProfile")))
+    )
+    foreach ($forbiddenPath in $forbiddenPaths) {
+        if ([string]::Equals($candidate, $forbiddenPath, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "The requested path is too broad for a disposable Firefox program copy."
+        }
+    }
+
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+        throw "The requested Firefox program-spike path is an existing file."
+    }
+
+    return $candidate
+}
+
+function Get-FenneviaProgramMarkerPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProgramRoot
+    )
+
+    return Join-Path $ProgramRoot $script:ProgramMarkerFileName
+}
+
+function Read-FenneviaProgramCopyMarker {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProgramRoot
+    )
+
+    $markerPath = Get-FenneviaProgramMarkerPath -ProgramRoot $ProgramRoot
+    if (-not (Test-Path -LiteralPath $markerPath -PathType Leaf)) {
+        return $null
+    }
+
+    $markerItem = Get-Item -Force -LiteralPath $markerPath
+    if (($markerItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        return $null
+    }
+
+    try {
+        $marker = Get-Content -Raw -LiteralPath $markerPath | ConvertFrom-Json
+    }
+    catch {
+        return $null
+    }
+
+    if ($null -eq $marker) {
+        return $null
+    }
+
+    $propertyNames = @($marker.PSObject.Properties.Name)
+    foreach ($requiredProperty in @("owner", "schemaVersion", "purpose", "state")) {
+        if ($propertyNames -notcontains $requiredProperty) {
+            return $null
+        }
+    }
+
+    try {
+        $schemaVersion = [int] $marker.schemaVersion
+    }
+    catch {
+        return $null
+    }
+
+    if (
+        $marker.owner -cne $script:MarkerOwner -or
+        $schemaVersion -ne $script:MarkerSchemaVersion -or
+        $marker.purpose -cne $script:ProgramMarkerPurpose -or
+        $marker.state -cne $script:ProgramMarkerState
+    ) {
+        return $null
+    }
+
+    return $marker
+}
+
+function Test-FenneviaProgramCopyInUse {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProgramRoot
+    )
+
+    $firefoxPath = Join-Path $ProgramRoot "firefox.exe"
+    $firefoxProcesses = @(Get-Process -Name firefox -ErrorAction SilentlyContinue)
+    if ($firefoxProcesses.Count -eq 0) {
+        return $false
+    }
+
+    try {
+        $processDetails = @(Get-CimInstance Win32_Process -Filter "Name = 'firefox.exe'")
+    }
+    catch {
+        throw "Firefox is running, but its program command line could not be inspected safely. Close Firefox before continuing."
+    }
+
+    foreach ($process in $processDetails) {
+        if (
+            (
+                -not [string]::IsNullOrWhiteSpace($process.ExecutablePath) -and
+                [string]::Equals($process.ExecutablePath, $firefoxPath, [StringComparison]::OrdinalIgnoreCase)
+            ) -or
+            (
+                -not [string]::IsNullOrWhiteSpace($process.CommandLine) -and
+                $process.CommandLine.IndexOf($ProgramRoot, [StringComparison]::OrdinalIgnoreCase) -ge 0
+            )
+        ) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Test-FenneviaFirefoxProgramCopy {
+    [CmdletBinding()]
+    param(
+        [string] $ProgramRoot
+    )
+
+    $canonicalProgram = Assert-FenneviaProgramCopyPathSafe -ProgramRoot $ProgramRoot
+    $problems = @()
+    $exists = Test-Path -LiteralPath $canonicalProgram -PathType Container
+    $markerValid = $false
+    $identityValid = $false
+    $firefoxPath = Join-Path $canonicalProgram "firefox.exe"
+
+    if (-not $exists) {
+        $problems += "The managed Firefox program copy has not been created."
+    }
+    else {
+        Assert-FenneviaProgramTreeHasNoReparsePoints -ProgramRoot $canonicalProgram
+        $markerValid = $null -ne (Read-FenneviaProgramCopyMarker -ProgramRoot $canonicalProgram)
+        if (-not $markerValid) {
+            $problems += "The program-spike ownership marker is missing or invalid."
+        }
+
+        $applicationIni = Join-Path $canonicalProgram "application.ini"
+        if (-not (Test-Path -LiteralPath $firefoxPath -PathType Leaf) -or -not (Test-Path -LiteralPath $applicationIni -PathType Leaf)) {
+            $problems += "The copied Firefox identity files are missing."
+        }
+        else {
+            Assert-FenneviaItemIsNotReparsePoint -Path $firefoxPath -Message "Reparse points are not allowed in a disposable Firefox program copy."
+            Assert-FenneviaItemIsNotReparsePoint -Path $applicationIni -Message "Reparse points are not allowed in a disposable Firefox program copy."
+            $appValues = @{}
+            $currentSection = ""
+            foreach ($line in Get-Content -LiteralPath $applicationIni) {
+                $trimmed = $line.Trim()
+                if ($trimmed -match "^\[(.+)\]$") {
+                    $currentSection = $Matches[1]
+                    continue
+                }
+                if ($currentSection -eq "App" -and $trimmed -match "^([^=]+)=(.*)$") {
+                    $appValues[$Matches[1].Trim()] = $Matches[2].Trim()
+                }
+            }
+            $identityValid = (
+                $appValues.ContainsKey("Name") -and
+                $appValues["Name"] -ceq "Firefox" -and
+                $appValues.ContainsKey("Version") -and
+                -not [string]::IsNullOrWhiteSpace([string] $appValues["Version"]) -and
+                $appValues.ContainsKey("BuildID") -and
+                -not [string]::IsNullOrWhiteSpace([string] $appValues["BuildID"])
+            )
+            if (-not $identityValid) {
+                $problems += "The copied program is not a source-identifiable stock Firefox build."
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        ProgramRoot = $canonicalProgram
+        FirefoxPath = $firefoxPath
+        Exists = $exists
+        MarkerValid = $markerValid
+        IdentityValid = $identityValid
+        IsValid = $exists -and $markerValid -and $identityValid
+        Problems = $problems
+    }
+}
+
+function New-FenneviaFirefoxProgramCopy {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
+    param(
+        [Parameter(Mandatory)]
+        [string] $SourceFirefoxPath
+    )
+
+    $sourceFirefox = Get-FenneviaFirefoxExecutable -FirefoxPath $SourceFirefoxPath
+    $sourceRoot = Split-Path -Parent $sourceFirefox
+    $applicationIni = Join-Path $sourceRoot "application.ini"
+    if (-not (Test-Path -LiteralPath $applicationIni -PathType Leaf)) {
+        throw "Firefox application.ini was not found beside the selected executable."
+    }
+    Assert-FenneviaItemIsNotReparsePoint -Path $sourceFirefox -Message "The source Firefox executable cannot be a reparse point."
+    Assert-FenneviaItemIsNotReparsePoint -Path $applicationIni -Message "The source Firefox application.ini cannot be a reparse point."
+    Assert-FenneviaItemIsNotReparsePoint -Path $sourceRoot -Message "The source Firefox program directory cannot be a reparse point."
+
+    $canonicalProgram = Assert-FenneviaProgramCopyPathSafe
+    $managedRoot = Get-FenneviaManagedProgramRoot
+    if (
+        [string]::Equals($sourceRoot, $canonicalProgram, [StringComparison]::OrdinalIgnoreCase) -or
+        (Test-FenneviaPathWithin -ChildPath $sourceRoot -ParentPath $managedRoot)
+    ) {
+        throw "The source Firefox program must not be the managed program-spike copy."
+    }
+
+    if (Test-Path -LiteralPath $canonicalProgram -PathType Container) {
+        $existing = Test-FenneviaFirefoxProgramCopy -ProgramRoot $canonicalProgram
+        if ($existing.IsValid) {
+            return $existing
+        }
+        throw "The disposable Firefox target already exists; verify its owner before reuse."
+    }
+
+    if (-not $PSCmdlet.ShouldProcess("<FIREFOX_PROGRAM>", "Create a marker-owned disposable Firefox program copy")) {
+        return [pscustomobject]@{
+            ProgramRoot = $canonicalProgram
+            FirefoxPath = Join-Path $canonicalProgram "firefox.exe"
+            Exists = $false
+            MarkerValid = $false
+            IdentityValid = $false
+            IsValid = $false
+            Problems = @("The managed Firefox program copy has not been created.")
+        }
+    }
+
+    if (-not (Test-Path -LiteralPath $managedRoot -PathType Container)) {
+        New-Item -ItemType Directory -Path $managedRoot -Force | Out-Null
+    }
+
+    $robocopy = Get-Command robocopy -ErrorAction Stop
+    & $robocopy.Source $sourceRoot $canonicalProgram /E /COPY:DAT /DCOPY:DAT /R:2 /W:1 /XJ /NFL /NDL /NJH /NJS /NC /NS | Out-Null
+    if ($LASTEXITCODE -gt 7) {
+        throw "Firefox copy failed with robocopy exit code $LASTEXITCODE."
+    }
+
+    foreach ($relativePath in @("firefox.exe", "application.ini")) {
+        $sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $sourceRoot $relativePath)).Hash
+        $copyHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $canonicalProgram $relativePath)).Hash
+        if ($copyHash -cne $sourceHash) {
+            throw "Copied Firefox identity file differs: $relativePath"
+        }
+    }
+
+    $marker = [ordered]@{
+        schemaVersion = $script:MarkerSchemaVersion
+        owner = $script:MarkerOwner
+        purpose = $script:ProgramMarkerPurpose
+        state = $script:ProgramMarkerState
+    }
+    Write-FenneviaUtf8NoBom -Path (Get-FenneviaProgramMarkerPath -ProgramRoot $canonicalProgram) -Content (($marker | ConvertTo-Json) + [Environment]::NewLine)
+
+    $status = Test-FenneviaFirefoxProgramCopy -ProgramRoot $canonicalProgram
+    if (-not $status.IsValid) {
+        throw "The disposable Firefox program copy was created but failed validation."
+    }
+    return $status
+}
+
+function Remove-FenneviaFirefoxProgramCopy {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
+    param(
+        [string] $ProgramRoot,
+
+        [switch] $Force
+    )
+
+    $canonicalProgram = Assert-FenneviaProgramCopyPathSafe -ProgramRoot $ProgramRoot
+    if (-not (Test-Path -LiteralPath $canonicalProgram)) {
+        return $false
+    }
+    if (-not (Test-Path -LiteralPath $canonicalProgram -PathType Container)) {
+        throw "The managed Firefox program-spike target is not a directory."
+    }
+    Assert-FenneviaProgramTreeHasNoReparsePoints -ProgramRoot $canonicalProgram
+    if ($null -eq (Read-FenneviaProgramCopyMarker -ProgramRoot $canonicalProgram)) {
+        throw "Refusing to delete a directory without a valid program-spike ownership marker."
+    }
+    if (Test-FenneviaProgramCopyInUse -ProgramRoot $canonicalProgram) {
+        throw "The managed Firefox program copy is currently in use. Close it before deletion."
+    }
+    if (-not $Force -and -not $WhatIfPreference) {
+        throw "Program-copy deletion requires the explicit -Force switch. Run with -WhatIf first."
+    }
+
+    if ($PSCmdlet.ShouldProcess("<FIREFOX_PROGRAM>", "Delete the marker-owned disposable Firefox program copy")) {
+        Remove-Item -LiteralPath $canonicalProgram -Recurse -Force
+        return $true
+    }
+
+    return $false
+}
+
 Export-ModuleMember -Function @(
     "Get-FenneviaAutoConfigAudit",
     "Get-FenneviaDefaultProfilePath",
+    "Get-FenneviaDefaultProgramCopyPath",
     "Get-FenneviaFirefoxDetails",
     "Get-FenneviaFirefoxEnvironmentRecord",
     "Get-FenneviaFirefoxExecutable",
+    "Get-FenneviaFirefoxExecutableCandidates",
     "Get-FenneviaFirefoxPolicyAudit",
     "Get-FenneviaProfileContaminationAudit",
     "Initialize-FenneviaFirefoxDevProfile",
+    "New-FenneviaFirefoxProgramCopy",
     "Remove-FenneviaFirefoxDevProfile",
+    "Remove-FenneviaFirefoxProgramCopy",
     "Start-FenneviaFirefoxDevProfile",
-    "Test-FenneviaFirefoxDevProfile"
+    "Test-FenneviaFirefoxDevProfile",
+    "Test-FenneviaFirefoxProgramCopy"
 )
