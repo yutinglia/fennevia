@@ -134,6 +134,7 @@ artifacts.
 | Second normal window             | Independent complete frame and feature state; no duplicate process runtime                                 |
 | Private window                   | Full explicitly tested feature support or complete native fallback; never partial initialization           |
 | Close/reopen window              | Hosts, roots, bridge contexts, listeners, observers, holds, timers, mappings, and pending work are removed |
+| Persisted session rehearsal      | A new process restores fixed native/frontend order, selected/pinned/lazy state; fail-open remains usable; cleanup restores the blank baseline |
 | Runtime stop twice               | First stop disposes; second is idempotent                                                                  |
 | Missing manifest                 | Clear bootstrap failure; native UI usable                                                                  |
 | Malformed manifest               | Clear registration/entry failure; native UI usable                                                         |
@@ -714,6 +715,9 @@ pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
   -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
   -ProfilePath '<FENNEVIA_DEV_PROFILE>'
 
+pwsh -NoProfile -File .\tests\firefox-session-restore.ps1 `
+  -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>'
 ```
 
 The explicit performance mode records only numeric aggregates: spawn-to-active
@@ -732,6 +736,38 @@ command contains bookmark, Downloads, and Urlbar state fixture matrices; no
 separate profile mutation command is required. The same harness accepts
 `--expect-disabled` after an exact package `Disable` action and verifies native
 UI, zero project hosts, and zero Fennevia records before re-enable.
+
+The SessionStore wrapper is a test-only four-process-boundary transaction:
+
+1. `prepare` creates four fixed local fixtures, snapshots seven allowlisted
+   preference user-value states, and performs a normal Firefox shutdown;
+2. `verify` starts a new process, waits for Firefox's all-windows-restored
+   promise, compares native and Fennevia order/selection/pinning, verifies the
+   exact lazy pending set before interaction, and exercises native reveal;
+3. `fail-open` temporarily removes the exact hash-validated installed frontend
+   bundle, starts another process, verifies zero project hosts and a usable
+   native restored session, activates one fixed pending tab, and restores the
+   prior selection and bundle bytes;
+4. `cleanup` restores one `about:blank` tab and every prior preference state,
+   exits normally, and removes the transaction marker only after process exit.
+
+An existing `.fennevia-session-restore-rehearsal.json` marker blocks `prepare`.
+After an interrupted manual phase, first ensure the package-managed
+`ShellApp.js` exactly matches `package-manifest.json`, close every Firefox
+process, and run only the cleanup phase:
+
+```powershell
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --session-restore cleanup
+```
+
+Do not delete the marker by hand or start another prepare run. If exact bundle
+restoration cannot be established, stop and use the package ownership/repair
+procedure before touching the session fixture. Evidence contains only fixed
+fixture IDs, enums, booleans, and counts; it excludes URLs, titles, raw session
+state, local paths, and native objects.
 
 Use only harnesses that exist on the current branch. When a future issue adds a
 feature-specific harness, document its exact target validation, mutation scope,
@@ -763,6 +799,7 @@ of the installed package.
 | Bottom-edge downloads      | `docs/research/firefox-153-downloads-surface.md`     |
 | Content-only activation    | `docs/research/firefox-153-content-only-activation.md` |
 | MVP hardening/update rehearsal | `docs/research/firefox-153-mvp-hardening-update-rehearsal.md` |
+| Persisted session restore  | `docs/research/firefox-153-session-restore-rehearsal.md` |
 
 Those records describe the exact milestone tested. Current production state is
 summarized in README, the master plan, the shell roadmap, architecture, issue

@@ -12,6 +12,7 @@ $testFiles = @(
     "installer.Tests.ps1",
     "production-artifacts.Tests.ps1",
     "project-identity.Tests.ps1",
+    "session-restore-harness.Tests.ps1",
     "shell-health.Tests.ps1",
     "shell-hosts.Tests.ps1",
     "window-lifecycle.Tests.ps1"

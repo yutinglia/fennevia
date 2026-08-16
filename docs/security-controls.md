@@ -54,6 +54,7 @@ Current validated baseline:
 | Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native DOM retained; #13/#37 summarize fixed state/availability; #15 provides complete navbar/sidebar reveal, popup/focus holds, modal/customize/DOM-fullscreen suspension, exact untargeted notification/titlebar/dialog infrastructure, and emergency fallback | Repeat prompt/retained-access/stacking/reveal matrix on Firefox updates | #7, #13, #15, #31, #37; ADR-032 |
 | Installer/updater/repair/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data or adopt stale state | Explicit canonical targets, marker checks, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion; Repair accepts only one wholly absent side, one exact survivor/source, and no residue | Revalidate for every platform/scope change | #4, #16; ADR-033 |
 | Test-only performance evidence | Firefox process records can expose origins, window URIs/titles, IDs, and threads | Explicit harness mode immediately reduces raw records to numeric process/memory/CPU aggregates and fixed timings; static test rejects sensitive fields; no production caller or sink | Revalidate API shape on every supported Firefox | #16; ADR-034 |
+| Test-only persisted-session evidence | Firefox SessionStore can expose complete browsing state, while preference or failure-injection residue can alter later starts | Explicit four-phase harness accepts only fixed local fixtures; default-deny evidence emits fixed IDs/counts/booleans; a stale marker blocks prepare; exact preference state, bundle bytes, one blank tab, and process baseline are restored; no production caller or sink | Revalidate restore timing, lazy pending semantics, and cleanup on every supported Firefox | #46; ADR-035 |
 | Startup cache/stale installed code | Removed or fixed privileged code may continue to run | Exact inventory and evidence-first cache policy; validated changes took effect without routine clearing | Cache action only after observed stale symptom | #3, #4, #16 |
 | External implementation/design | Unlicensed or copied code/design can create legal and maintenance risk | License/provenance requirement; `my-firefox-custom` no-copy boundary; exact reference commit required | Owner license/attribution decision | #18 |
 | Runtime network/update/telemetry | Remote party can change privileged behavior or receive browsing data | Prohibited; scanner detects common endpoints/APIs | New issue + ADR + security review for any exception | ADR-012 |
@@ -693,6 +694,8 @@ Current detailed evidence:
   `docs/research/firefox-153-content-only-activation.md`;
 - MVP hardening and update rehearsal:
   `docs/research/firefox-153-mvp-hardening-update-rehearsal.md`.
+- persisted SessionStore rehearsal:
+  `docs/research/firefox-153-session-restore-rehearsal.md`.
 
 After every completed milestone:
 
