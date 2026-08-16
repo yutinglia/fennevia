@@ -244,7 +244,11 @@ The tabs bridge/application/UI may expose:
 - opaque context-bound tab ID;
 - bounded title text;
 - selected, pinned, loading booleans;
-- optional bounded allowlisted favicon value.
+- optional bounded allowlisted favicon value;
+- optional closed audio enum (`playing` / `muted` / `blocked`);
+- optional attention and picture-in-picture booleans;
+- optional container `{ color, label }` where `color` is a closed Firefox
+  identity color name and `label` is at most 80 text characters.
 
 Rules:
 
@@ -259,7 +263,14 @@ Rules:
 - image load failure removes/hides the value;
 - native tab handles stay in the bridge registry;
 - new-tab action accepts no arbitrary URL;
-- stale/foreign/disposed IDs fail before native access.
+- stale/foreign/disposed IDs fail before native access;
+- container labels follow the title rule: shown as text/accessible name, never
+  logged, never placed in error text, and never stored as `userContextId`;
+- container colors are a closed enum mapped to CSS tokens, not page hex/URLs;
+- audio/attention/PiP are booleans or a closed enum; color names may appear in
+  `data-fennevia-container-color` because they are allowlisted tokens;
+- native `#tabContextMenu` remains the owner of Duplicate, Close others, Send
+  tab, Reopen in container, and Undo close.
 
 ### 7.2 Navigation and address/status popup — implemented (#12 and #13)
 

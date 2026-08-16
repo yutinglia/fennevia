@@ -48,6 +48,8 @@ Completed:
 - #8: deterministic Svelte 5/TypeScript/Vite production build;
 - #9 and #10: enforceable Firefox boundary and typed tab-state bridge;
 - #11: accessible custom tab UI, now rendered vertically in the left edge;
+- #60: left-edge flat-list native parity (audio, container, attention,
+  middle-click close, drag/keyboard reorder, Firefox `#tabContextMenu`);
 - #31: zero-layout four-edge frame, shared reveal controller, corner/collision
   policy, glass tokens, accessibility fallbacks, and complete cleanup;
 - #12: event-driven selected-navigation bridge and top-edge Back, Forward,
@@ -333,18 +335,19 @@ Evidence: ADR-026 and
 
 ### Phase 5B: Usable edge features — complete
 
-#### Left vertical tabs — complete (#11)
+#### Left vertical tabs — complete (#11, #60)
 
 - native-order vertical list;
-- selected/title/favicon/pinned/loading state;
-- select, new, close, pin, and unpin;
+- selected/title/favicon/pinned/loading/audio/attention/container state;
+- select, new, close, pin, unpin, mute, move, and native context-menu handoff;
 - bounded vertical overflow;
-- keyboard navigation and deterministic close-focus recovery;
+- keyboard navigation, drag reorder, and deterministic close-focus recovery;
 - ordinary bridge contracts only;
 - native tab strip retained.
 
-Evidence: ADR-025, ADR-026, and
-`docs/research/firefox-153-tab-strip.md`.
+Evidence: ADR-025, ADR-026, ADR-041,
+`docs/research/firefox-153-tab-strip.md`, and
+`docs/research/firefox-153-tab-strip-parity.md`.
 
 #### Top primary controls — complete (#12)
 

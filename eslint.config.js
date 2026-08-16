@@ -19,6 +19,7 @@ const browserGlobals = {
   HTMLTemplateElement: "readonly",
   KeyboardEvent: "readonly",
   MouseEvent: "readonly",
+  DragEvent: "readonly",
   Node: "readonly",
   MutationObserver: "readonly",
   PointerEvent: "readonly",

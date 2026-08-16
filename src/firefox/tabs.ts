@@ -1,10 +1,18 @@
 import type {
   BrowserTabsBridge,
   OpenTabOptions,
+  TabAudioState,
+  TabContainerColor,
+  TabContainerSnapshot,
+  TabContextMenuPoint,
   TabSnapshot,
   TabStateEvent,
 } from "../app/tab-state.ts";
-import { maximumTabTitleLength } from "../app/tab-state.ts";
+import {
+  isTabContainerColor,
+  maximumContainerLabelLength,
+  maximumTabTitleLength,
+} from "../app/tab-state.ts";
 import {
   FirefoxBridgeError,
   createIdempotentDisposer,
@@ -24,16 +32,40 @@ const TAB_EVENT_TYPES = Object.freeze([
   "TabUnpinned",
   "TabAttrModified",
 ]);
-const SNAPSHOT_ATTRIBUTES = new Set(["busy", "image", "label", "selected"]);
+const SNAPSHOT_ATTRIBUTES = new Set([
+  "activemedia-blocked",
+  "attention",
+  "busy",
+  "image",
+  "label",
+  "muted",
+  "pictureinpicture",
+  "selected",
+  "soundplaying",
+  "usercontextid",
+]);
 const MAX_FAVICON_URL_LENGTH = 262_144;
+const MAXIMUM_SCREEN_COORDINATE = 100_000;
+const CONTEXTUAL_IDENTITY_URI =
+  "resource://gre/modules/ContextualIdentityService.sys.mjs";
 const FORBIDDEN_INTERNAL_FAVICON_CHARACTER_PATTERN = /[\s"'<>\\]/u;
 const RASTER_DATA_FAVICON_PATTERN =
   /^data:image\/(?:avif|gif|jpeg|png|vnd\.microsoft\.icon|webp|x-icon);base64,[a-z0-9+/]+={0,2}$/iu;
+const CONTAINER_COLOR_ALIASES: Readonly<Record<string, TabContainerColor>> =
+  Object.freeze({
+    toolbar: "gray",
+    turquoise: "cyan",
+  });
 
 type NativeRecord = Record<string, unknown>;
+type NativeModuleLoader = (uri: string) => unknown;
 type NativeTab = NativeRecord & {
   getAttribute: (name: string) => unknown;
   hasAttribute: (name: string) => boolean;
+};
+type NativeIdentityService = NativeRecord & {
+  getPublicIdentityFromId: (userContextId: number) => unknown;
+  getUserContextLabel?: (userContextId: number) => unknown;
 };
 
 type TabsCapabilityEvaluation = Readonly<{
@@ -64,6 +96,21 @@ const readGBrowserMember = (window: NativeRecord, member: string): unknown => {
   return isNativeRecord(browser) ? browser[member] : undefined;
 };
 
+const getDocumentElementById = (window: NativeRecord, id: string): unknown => {
+  const document = window.document;
+  if (!isNativeRecord(document) || !isFunction(document.getElementById)) {
+    return undefined;
+  }
+  return Reflect.apply(document.getElementById, document, [id]);
+};
+
+const isNativeTabContextMenu = (value: unknown): value is NativeRecord =>
+  isNativeRecord(value) &&
+  isFunction(value.openPopup) &&
+  isFunction(value.moveTo) &&
+  isFunction(value.addEventListener) &&
+  isFunction(value.removeEventListener);
+
 const tabsCapabilitySpecifications: readonly TabsCapabilitySpecification[] =
   Object.freeze([
     Object.freeze({
@@ -83,6 +130,7 @@ const tabsCapabilitySpecifications: readonly TabsCapabilitySpecification[] =
       ["remove-tab", "removeTab"],
       ["pin-tab", "pinTab"],
       ["unpin-tab", "unpinTab"],
+      ["move-tab", "moveTabTo"],
     ].map(([name, member]) =>
       Object.freeze({
         isAvailable: isFunction,
@@ -97,6 +145,13 @@ const tabsCapabilitySpecifications: readonly TabsCapabilitySpecification[] =
       name: "firefox.new-tab-url",
       read: (window: NativeRecord) => window.BROWSER_NEW_TAB_URL,
       symbol: "window.BROWSER_NEW_TAB_URL",
+    }),
+    Object.freeze({
+      isAvailable: isNativeTabContextMenu,
+      name: "firefox.tab-context-menu",
+      read: (window: NativeRecord) =>
+        getDocumentElementById(window, "tabContextMenu"),
+      symbol: "document.tabContextMenu.openPopup.moveTo",
     }),
   ]);
 
@@ -205,7 +260,12 @@ const snapshotsEqual = (
       tab.selected === candidate.selected &&
       tab.pinned === candidate.pinned &&
       tab.loading === candidate.loading &&
-      tab.faviconUrl === candidate.faviconUrl
+      tab.faviconUrl === candidate.faviconUrl &&
+      tab.audio === candidate.audio &&
+      tab.attention === candidate.attention &&
+      tab.pictureInPicture === candidate.pictureInPicture &&
+      tab.container?.color === candidate.container?.color &&
+      tab.container?.label === candidate.container?.label
     );
   });
 
@@ -223,6 +283,29 @@ const isRelevantAttributeEvent = (event: unknown): boolean => {
   return changed.some((attribute) => SNAPSHOT_ATTRIBUTES.has(attribute));
 };
 
+const resolveContainerColor = (
+  value: unknown,
+): TabContainerColor | undefined => {
+  if (typeof value !== "string" || value.length === 0) {
+    return undefined;
+  }
+  const resolved = CONTAINER_COLOR_ALIASES[value] ?? value;
+  return isTabContainerColor(resolved) ? resolved : undefined;
+};
+
+const isTabContextMenuEvent = (event: unknown, menu: NativeRecord): boolean => {
+  if (!isNativeRecord(event)) {
+    return true;
+  }
+  if (event.target === undefined) {
+    return true;
+  }
+  return (
+    event.target === menu ||
+    (isNativeRecord(event.target) && event.target.id === "tabContextMenu")
+  );
+};
+
 export type FirefoxTabsBridgeController = Readonly<{
   assertRequiredCapabilities: () => readonly FirefoxCapabilitySnapshot[];
   dispose: () => boolean;
@@ -238,10 +321,12 @@ export type FirefoxTabsBridgeController = Readonly<{
 
 export function createFirefoxTabsBridge({
   boundary,
+  moduleLoader,
   onError,
   window,
 }: Readonly<{
   boundary: FirefoxBridgeBoundary;
+  moduleLoader?: NativeModuleLoader;
   onError: (error: unknown) => void;
   window: unknown;
 }>): FirefoxTabsBridgeController {
@@ -264,6 +349,25 @@ export function createFirefoxTabsBridge({
   const subscribers = new Set<(event: TabStateEvent) => void>();
   const listenerDisposers: IdempotentDisposer[] = [];
   const registry = boundary.createHandleRegistry<NativeTab>("tab");
+  let identityService: NativeIdentityService | null = null;
+  let tabContextMenu: NativeRecord | null = null;
+
+  if (typeof moduleLoader === "function") {
+    try {
+      const loaded = moduleLoader(CONTEXTUAL_IDENTITY_URI);
+      const candidate = isNativeRecord(loaded)
+        ? loaded.ContextualIdentityService
+        : undefined;
+      if (
+        isNativeRecord(candidate) &&
+        isFunction(candidate.getPublicIdentityFromId)
+      ) {
+        identityService = candidate as NativeIdentityService;
+      }
+    } catch {
+      identityService = null;
+    }
+  }
 
   const requireWindow = (): NativeRecord => {
     if (disposed || !nativeWindow) {
@@ -339,6 +443,78 @@ export function createFirefoxTabsBridge({
   const hasAttribute = (tab: NativeTab, name: string): boolean =>
     Boolean(Reflect.apply(tab.hasAttribute, tab, [name]));
 
+  const readAudio = (tab: NativeTab): TabAudioState | undefined => {
+    if (hasAttribute(tab, "activemedia-blocked")) {
+      return "blocked";
+    }
+    if (hasAttribute(tab, "muted")) {
+      return "muted";
+    }
+    if (hasAttribute(tab, "soundplaying")) {
+      return "playing";
+    }
+    return undefined;
+  };
+
+  const readContainer = (tab: NativeTab): TabContainerSnapshot | undefined => {
+    if (!identityService) {
+      return undefined;
+    }
+    const parsed = Number.parseInt(
+      String(readAttribute(tab, "usercontextid") ?? ""),
+      10,
+    );
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      return undefined;
+    }
+    let identity: unknown;
+    try {
+      identity = Reflect.apply(
+        identityService.getPublicIdentityFromId,
+        identityService,
+        [parsed],
+      );
+    } catch {
+      return undefined;
+    }
+    if (!isNativeRecord(identity)) {
+      return undefined;
+    }
+    const color = resolveContainerColor(identity.color);
+    if (!color) {
+      return undefined;
+    }
+    let label = "";
+    if (typeof identity.name === "string") {
+      label = identity.name;
+    }
+    if (
+      label.trim().length === 0 &&
+      isFunction(identityService.getUserContextLabel)
+    ) {
+      try {
+        const candidate = Reflect.apply(
+          identityService.getUserContextLabel,
+          identityService,
+          [parsed],
+        );
+        if (typeof candidate === "string") {
+          label = candidate;
+        }
+      } catch {
+        label = "";
+      }
+    }
+    const trimmed = label.trim();
+    return Object.freeze({
+      color,
+      label: (trimmed.length === 0 ? "Container" : trimmed).slice(
+        0,
+        maximumContainerLabelLength,
+      ),
+    });
+  };
+
   const createSnapshot = (
     tab: NativeTab,
     selectedTab: unknown,
@@ -348,8 +524,16 @@ export function createFirefoxTabsBridge({
       maximumTabTitleLength,
     );
     const faviconUrl = sanitizeFaviconUrl(readAttribute(tab, "image"));
+    const audio = readAudio(tab);
+    const container = readContainer(tab);
     return Object.freeze({
+      ...(hasAttribute(tab, "attention") ? { attention: true } : {}),
+      ...(audio === undefined ? {} : { audio }),
+      ...(container === undefined ? {} : { container }),
       ...(faviconUrl === undefined ? {} : { faviconUrl }),
+      ...(hasAttribute(tab, "pictureinpicture")
+        ? { pictureInPicture: true }
+        : {}),
       id: registry.register(tab),
       loading: hasAttribute(tab, "busy"),
       pinned: hasAttribute(tab, "pinned"),
@@ -358,12 +542,7 @@ export function createFirefoxTabsBridge({
     });
   };
 
-  const notifySubscribers = (): void => {
-    const event: TabStateEvent = Object.freeze({
-      revision,
-      tabs: currentTabs,
-      type: "snapshot",
-    });
+  const publish = (event: TabStateEvent): void => {
     for (const listener of Array.from(subscribers)) {
       try {
         listener(event);
@@ -379,6 +558,16 @@ export function createFirefoxTabsBridge({
         );
       }
     }
+  };
+
+  const notifySubscribers = (): void => {
+    publish(
+      Object.freeze({
+        revision,
+        tabs: currentTabs,
+        type: "snapshot",
+      }),
+    );
   };
 
   const reconcile = (notify: boolean): boolean => {
@@ -480,12 +669,70 @@ export function createFirefoxTabsBridge({
     return Object.freeze({ selected: options.selected ?? true });
   };
 
+  const normalizeContextMenuPoint = (
+    point: TabContextMenuPoint,
+  ): TabContextMenuPoint => {
+    if (
+      !isNativeRecord(point) ||
+      Object.keys(point).some(
+        (key) => key !== "screenX" && key !== "screenY",
+      ) ||
+      typeof point.screenX !== "number" ||
+      typeof point.screenY !== "number" ||
+      !Number.isFinite(point.screenX) ||
+      !Number.isFinite(point.screenY) ||
+      Math.abs(point.screenX) > MAXIMUM_SCREEN_COORDINATE ||
+      Math.abs(point.screenY) > MAXIMUM_SCREEN_COORDINATE
+    ) {
+      throw createTabsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_POINT_INVALID",
+        "firefox-tabs-action",
+        "tabs.openContextMenu.point",
+      );
+    }
+    return Object.freeze({
+      screenX: point.screenX,
+      screenY: point.screenY,
+    });
+  };
+
+  const requireTabContextMenu = (): NativeRecord => {
+    requireWindow();
+    if (!tabContextMenu || !isNativeTabContextMenu(tabContextMenu)) {
+      throw createTabsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
+        "firefox-tabs-action",
+        "document.tabContextMenu.openPopup.moveTo",
+      );
+    }
+    return tabContextMenu;
+  };
+
   const publicBridge: BrowserTabsBridge = Object.freeze({
     close(tabId: string): void {
       const tab = requireOwnedTab(tabId);
       callTabMethod("removeTab", [
         tab,
         { animate: true, isUserTriggered: true },
+      ]);
+      reconcile(true);
+    },
+
+    move(tabId: string, index: number): void {
+      const tab = requireOwnedTab(tabId);
+      if (!Number.isSafeInteger(index) || index < 0 || index > 10_000) {
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TAB_MOVE_INDEX_INVALID",
+          "firefox-tabs-action",
+          "tabs.move.index",
+        );
+      }
+      callTabMethod("moveTabTo", [
+        tab,
+        { isUserTriggered: true, tabIndex: index },
       ]);
       reconcile(true);
     },
@@ -525,6 +772,46 @@ export function createFirefoxTabsBridge({
         );
       }
       return id;
+    },
+
+    openContextMenu(tabId: string, point: TabContextMenuPoint): void {
+      const tab = requireOwnedTab(tabId);
+      const normalized = normalizeContextMenuPoint(point);
+      const menu = requireTabContextMenu();
+      const openPopup = menu.openPopup;
+      const moveTo = menu.moveTo;
+      if (!isFunction(openPopup) || !isFunction(moveTo)) {
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
+          "firefox-tabs-action",
+          "document.tabContextMenu.openPopup.moveTo",
+        );
+      }
+      try {
+        Reflect.apply(openPopup, menu, [tab, "after_start", 0, 0, true]);
+      } catch (error) {
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_REJECTED",
+          "firefox-tabs-action",
+          "document.tabContextMenu.openPopup",
+          error,
+        );
+      }
+      try {
+        Reflect.apply(moveTo, menu, [normalized.screenX, normalized.screenY]);
+      } catch (error) {
+        onError(
+          createTabsError(
+            boundary,
+            "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_POSITION_FAILED",
+            "firefox-tabs-action",
+            "document.tabContextMenu.moveTo",
+            error,
+          ),
+        );
+      }
     },
 
     pin(tabId: string): void {
@@ -588,6 +875,21 @@ export function createFirefoxTabsBridge({
       });
     },
 
+    toggleMute(tabId: string): void {
+      const tab = requireOwnedTab(tabId);
+      const method = tab.toggleMuteAudio;
+      if (!isFunction(method)) {
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
+          "firefox-tabs-action",
+          "MozTabbrowserTab.toggleMuteAudio",
+        );
+      }
+      Reflect.apply(method, tab, []);
+      reconcile(true);
+    },
+
     unpin(tabId: string): void {
       const tab = requireOwnedTab(tabId);
       if (hasAttribute(tab, "pinned")) {
@@ -630,6 +932,32 @@ export function createFirefoxTabsBridge({
         }),
       );
     }
+    const menu = getDocumentElementById(requireWindow(), "tabContextMenu");
+    if (!isNativeTabContextMenu(menu)) {
+      throw createTabsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
+        "firefox-tabs-capability",
+        "document.tabContextMenu.openPopup.moveTo",
+      );
+    }
+    tabContextMenu = menu;
+    listenerDisposers.push(
+      boundary.subscribe(menu, "popupshown", (event) => {
+        if (disposed || failedError || !isTabContextMenuEvent(event, menu)) {
+          return;
+        }
+        publish(Object.freeze({ open: true, type: "context-menu" }));
+      }),
+    );
+    listenerDisposers.push(
+      boundary.subscribe(menu, "popuphidden", (event) => {
+        if (disposed || !isTabContextMenuEvent(event, menu)) {
+          return;
+        }
+        publish(Object.freeze({ open: false, type: "context-menu" }));
+      }),
+    );
   } catch (error) {
     disposed = true;
     nativeWindow = null;
@@ -670,6 +998,16 @@ export function createFirefoxTabsBridge({
       disposed = true;
       nativeWindow = null;
       let firstError: unknown;
+      const hidePopup = tabContextMenu?.hidePopup;
+      if (tabContextMenu && isFunction(hidePopup)) {
+        try {
+          Reflect.apply(hidePopup, tabContextMenu, []);
+        } catch (error) {
+          firstError ??= error;
+        }
+      }
+      tabContextMenu = null;
+      identityService = null;
       for (const disposeListener of listenerDisposers.reverse()) {
         try {
           disposeListener();

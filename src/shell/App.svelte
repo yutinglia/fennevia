@@ -37,12 +37,15 @@
   import {
     findCloseFocusTarget,
     findOpenedTabIds,
+    findTabMoveIndex,
     getDisplayTabTitle,
     getTabAccessibleName,
     getTabActionAccessibleName,
+    getTabAudioAction,
     getTabStripKeyAction,
     newTabHighlightDurationMs,
     resolveRovingTabId,
+    resolveTabDropIndex,
   } from "../app/tab-strip";
   import {
     getConnectionSecurityPresentation,
@@ -119,6 +122,7 @@
   let highlightTimer: DelayedFocusTimer | undefined;
   let highlightedTabIds: readonly string[] = $state([]);
   let panelDragCandidate = false;
+  let draggingTabId: string | null = $state(null);
   const tabButtons: Array<{
     node: HTMLButtonElement;
     tabId: string;
@@ -449,6 +453,33 @@
   };
 
   const handleTabKeydown = (event: KeyboardEvent, tabId: string) => {
+    if (
+      event.ctrlKey &&
+      event.shiftKey &&
+      !event.altKey &&
+      !event.metaKey &&
+      (event.key === "ArrowUp" || event.key === "ArrowDown")
+    ) {
+      const targetIndex = findTabMoveIndex(
+        currentTabs.tabs,
+        tabId,
+        event.key === "ArrowDown" ? 1 : -1,
+      );
+      if (targetIndex === null) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      cancelDelayedFocus();
+      try {
+        requireTabs().move(tabId, targetIndex);
+      } catch (error) {
+        props.onFatalError(error);
+        return;
+      }
+      void focusTab(tabId);
+      return;
+    }
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
       return;
     }
@@ -468,6 +499,105 @@
       closeTab(action.tabId);
     } else {
       selectTab(action.tabId);
+    }
+  };
+
+  const handleTabAuxClick = (event: MouseEvent, tabId: string) => {
+    if (event.button !== 1) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    closeTab(tabId);
+  };
+
+  const handleTabContextMenu = (event: MouseEvent, tabId: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      requireTabs().openContextMenu(tabId, {
+        screenX: event.screenX,
+        screenY: event.screenY,
+      });
+    } catch (error) {
+      props.onFatalError(error);
+    }
+  };
+
+  const handleTabAudioAction = (event: MouseEvent, tabId: string) => {
+    event.stopPropagation();
+    cancelDelayedFocus();
+    try {
+      requireTabs().toggleMute(tabId);
+    } catch (error) {
+      props.onFatalError(error);
+      return;
+    }
+    void focusTab(tabId);
+  };
+
+  const handleTabDragStart = (event: DragEvent, tabId: string) => {
+    const transfer = event.dataTransfer;
+    if (!transfer) {
+      return;
+    }
+    transfer.effectAllowed = "move";
+    transfer.setData("application/x-fennevia-tab", tabId);
+    transfer.setData("text/plain", tabId);
+    draggingTabId = tabId;
+    props.shell.setPointerHeld("left", true);
+  };
+
+  const handleTabDragEnd = () => {
+    draggingTabId = null;
+    props.shell.setPointerHeld("left", false);
+  };
+
+  const handleTabListDragOver = (event: DragEvent) => {
+    if (!draggingTabId) {
+      return;
+    }
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+  };
+
+  const handleTabListDrop = (event: DragEvent) => {
+    const tabId =
+      event.dataTransfer?.getData("application/x-fennevia-tab") ||
+      event.dataTransfer?.getData("text/plain") ||
+      draggingTabId;
+    if (!tabId) {
+      return;
+    }
+    event.preventDefault();
+    const list = event.currentTarget;
+    if (!(list instanceof HTMLElement)) {
+      return;
+    }
+    const items = Array.from(
+      list.querySelectorAll<HTMLElement>("[data-fennevia-tab-item]"),
+    );
+    const mids = items.map((item) => {
+      const bounds = item.getBoundingClientRect();
+      return bounds.top + bounds.height / 2;
+    });
+    const targetIndex = resolveTabDropIndex(
+      currentTabs.tabs,
+      tabId,
+      mids,
+      event.clientY,
+    );
+    draggingTabId = null;
+    props.shell.setPointerHeld("left", false);
+    if (targetIndex === null) {
+      return;
+    }
+    try {
+      requireTabs().move(tabId, targetIndex);
+    } catch (error) {
+      props.onFatalError(error);
     }
   };
 
@@ -596,6 +726,10 @@
     highlightedTabIds = [];
     panelDragCandidate = false;
     tabButtons.length = 0;
+    if (draggingTabId) {
+      props.shell.setPointerHeld("left", false);
+    }
+    draggingTabId = null;
     if (props.edge === "left") {
       addressPopupVisible = false;
     }
@@ -708,15 +842,28 @@
           aria-orientation="vertical"
           class="fennevia-tab-strip__list"
           data-fennevia-tab-list=""
+          ondragover={handleTabListDragOver}
+          ondrop={handleTabListDrop}
           role="tablist"
+          tabindex="-1"
         >
           {#each currentTabs.tabs as tab, index (tab.id)}
+            {@const audioAction = getTabAudioAction(tab)}
             <div
               class="fennevia-tab-strip__item"
+              data-fennevia-attention={tab.attention === true}
+              data-fennevia-audio={tab.audio}
+              data-fennevia-container-color={tab.container?.color}
+              data-fennevia-dragging={draggingTabId === tab.id}
               data-fennevia-just-opened={highlightedTabIds.includes(tab.id)}
               data-fennevia-loading={tab.loading}
+              data-fennevia-picture-in-picture={tab.pictureInPicture === true}
               data-fennevia-pinned={tab.pinned}
               data-fennevia-selected={tab.selected}
+              data-fennevia-tab-item=""
+              onauxclick={(event) => handleTabAuxClick(event, tab.id)}
+              oncontextmenu={(event) => handleTabContextMenu(event, tab.id)}
+              onmousedown={preventMiddleAutoscroll}
               role="presentation"
             >
               <button
@@ -730,7 +877,10 @@
                 aria-selected={tab.selected}
                 class="fennevia-tab-strip__tab"
                 data-fennevia-tab=""
+                draggable="true"
                 onclick={() => selectTab(tab.id)}
+                ondragend={handleTabDragEnd}
+                ondragstart={(event) => handleTabDragStart(event, tab.id)}
                 onkeydown={(event) => handleTabKeydown(event, tab.id)}
                 role="tab"
                 tabindex={rovingTabId === tab.id ? 0 : -1}
@@ -756,7 +906,29 @@
                 <span class="fennevia-tab-strip__title" dir="auto">
                   {getDisplayTabTitle(tab)}
                 </span>
+                {#if tab.pictureInPicture}
+                  <span class="fennevia-tab-strip__pip" aria-hidden="true"
+                    >▭</span
+                  >
+                {/if}
               </button>
+
+              {#if audioAction}
+                <button
+                  aria-label={getTabActionAccessibleName(audioAction, tab)}
+                  class="fennevia-control fennevia-tab-strip__action"
+                  data-fennevia-action="toggle-mute"
+                  onclick={(event) => handleTabAudioAction(event, tab.id)}
+                  tabindex={rovingTabId === tab.id ? 0 : -1}
+                  title={getTabActionAccessibleName(audioAction, tab)}
+                  type="button"
+                  >{audioAction === "unmute"
+                    ? "ø"
+                    : audioAction === "resume-media"
+                      ? "■"
+                      : "♪"}</button
+                >
+              {/if}
 
               <button
                 aria-label={getTabActionAccessibleName(

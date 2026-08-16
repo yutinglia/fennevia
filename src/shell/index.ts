@@ -751,6 +751,9 @@ export function mountShellApp({
       navigationState.subscribeAddressPopupOpen((request) => {
         return openAddressPopup(request.source);
       }),
+      tabsState.subscribeContextMenu((open) => {
+        shell.setPopupHeld("left", open);
+      }),
     );
     for (const edge of edgeNames) {
       const surface = shell.getSurface(edge);

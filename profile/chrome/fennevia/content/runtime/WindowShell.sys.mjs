@@ -1181,6 +1181,9 @@ const mountProductionShell = ({
     });
     tabsBridge = createFirefoxTabsBridge({
       boundary: bridge,
+      moduleLoader(uri) {
+        return ChromeUtils.importESModule(uri);
+      },
       onError: reportError,
       window: browserWindow,
     });

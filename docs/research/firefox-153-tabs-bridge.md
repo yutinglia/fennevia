@@ -225,6 +225,10 @@ obligation was introduced.
 
 - Issue #11 may render these snapshots and actions as the tab-strip MVP without
   adding native handles or broadening the favicon sink.
+- Issue #60 later extended this snapshot with optional audio, attention,
+  picture-in-picture, and container color/label fields, plus `move`,
+  `toggleMute`, and native `#tabContextMenu` handoff. See
+  `docs/research/firefox-153-tab-strip-parity.md`. This #10 record is unchanged.
 - Issue #12 must independently validate selected-browser navigation symbols.
 - Re-run source/canary review, the real three-window matrix, failure injection,
   and cleanup tests when Firefox stable changes.

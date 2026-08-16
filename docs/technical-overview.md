@@ -18,7 +18,7 @@ The tested MVP includes:
 | Window runtime and recovery | Complete | Existing and later normal/private windows, persisted multi-tab Session Restore across separate Firefox processes, health states, safe start, emergency fallback, and deterministic disposal |
 | Frontend and bridge foundation | Complete | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership |
 | Four-edge frame | Complete | Independent top, left, right, and bottom XHTML surfaces, shared reveal/collision/focus policy, and accessibility fallbacks |
-| Tabs and address launcher | Complete | Event-driven vertical tabs, compact committed address/status launcher, and centred address/search popup |
+| Tabs and address launcher | Complete | Event-driven vertical tabs with audio/container/attention state, drag/keyboard reorder, native tab context-menu handoff, compact committed address/status launcher, and centred address/search popup |
 | Top controls | Complete | Native-synchronised Back, Forward, Reload/Stop, New Tab, and bounded page status |
 | Single-line toolbar and native handoffs | Focused implementation; real-Firefox matrix pending | One non-wrapping top row, fixed native tool/original-toolbar actions, project-owned window controls, 7px gutter, drag regions, and transient shortcut hint |
 | Urlbar coverage | Complete | Firefox-derived connection/protection/permission/action summaries and complete native Urlbar handoff |

@@ -254,6 +254,11 @@ runtime code or license obligation was introduced.
 
 ## Follow-up
 
+- Issue #60 later completed the remaining flat-list parity (audio, container
+  color/label, attention, middle-click close, drag/keyboard reorder, and native
+  `#tabContextMenu` handoff) without rewriting this #11 record. See
+  `docs/research/firefox-153-tab-strip-parity.md` and ADR-041. Tab groups,
+  split view, workspaces, multi-select, and thumbnails remain separate.
 - Issue #12 should add selected-browser navigation through a separately
   researched privileged adapter without importing Firefox internals into the
   Svelte/app layers.
