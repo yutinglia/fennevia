@@ -79,7 +79,11 @@ The source installer keeps `Development` as its backward-compatible default.
 Firefox's `profiles.ini`/`installs.ini`; it never scans for or chooses a target
 on the operator's behalf. A valid existing ownership pair remains proof for
 cleanup, and a valid surviving side remains proof for one-sided Registered-mode
-repair after registration is lost. Development-mode repair retains ADR-033's
+repair after registration is lost. A valid survivor also permits narrow
+package-independent Uninstall when peer metadata is wholly absent and every
+still-present owned file matches; this recovery path was added after exact
+preflight exposed an older marker-owned test installation whose original dirty
+source package no longer existed. Development-mode repair retains ADR-033's
 marker requirement.
 
 If `RELEASE-MANIFEST.json` is present, the installer validates the complete
@@ -148,6 +152,8 @@ Observed release-specific coverage:
 - unsupported Firefox blocks Enable while preserving hard-disabled state;
 - Disable and Uninstall remain usable on that unsupported build;
 - one-sided repair succeeds from surviving ownership after registration loss;
+- one-sided Uninstall succeeds without the old package, preserves unrelated
+  profile content, and rejects a modified surviving owned file;
 - a changed staged release file is rejected before installation.
 
 There is no earlier Fennevia release artifact, so an N-to-N+1 release fixture is

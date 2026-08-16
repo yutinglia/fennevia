@@ -1970,6 +1970,16 @@ function New-FenneviaInstallerUninstallPlan {
     }
     foreach ($scope in @("program", "profile")) {
         $ownershipPath = Get-FenneviaInstallerOwnershipPath -Root (Get-FenneviaInstallerScopeRoot -Targets $Targets -Scope $scope)
+        if (-not (Test-Path -LiteralPath $ownershipPath)) {
+            continue
+        }
+        if (-not (Test-Path -LiteralPath $ownershipPath -PathType Leaf)) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_METADATA_CONFLICT" -Message "A Fennevia ownership path exists but is not a regular file."
+        }
+        $ownershipContent = Get-Content -Raw -LiteralPath $ownershipPath
+        if ($ownershipContent -cne $OwnershipPair.Content) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_OWNERSHIP_MISMATCH" -Message "An ownership manifest changed after target validation."
+        }
         $ownershipHash = Get-FenneviaInstallerSha256 -Path $ownershipPath
         $operations.Add((New-FenneviaInstallerOperation -Kind RemoveFile -Scope $scope -Path "$($script:MetadataDirectoryName)/$($script:OwnershipFileName)" -ExpectedHash $ownershipHash -ExistingOwned))
     }
@@ -2079,6 +2089,17 @@ function New-FenneviaInstallerActionPlan {
         $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
         Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
         return New-FenneviaInstallerRepairPlan -Targets $targets -Package $package -OwnershipState $ownershipState
+    }
+
+    if ($Action -eq "Uninstall" -and $ownershipState.Kind -notin @("absent", "complete")) {
+        $missingSide = if ($ownershipState.MissingScope -eq "program") { $ownershipState.Program } else { $ownershipState.Profile }
+        if ($missingSide.MetadataExists) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_METADATA_CONFLICT" -Message "One-sided uninstall requires the missing ownership side to have no metadata residue."
+        }
+        $survivingScope = if ($ownershipState.MissingScope -eq "program") { "profile" } else { "program" }
+        Assert-FenneviaInstallerMetadataSideClean -Targets $targets -Scope $survivingScope
+        Assert-FenneviaInstallerProfileProof -Targets $targets -OwnershipPair $ownershipState.Survivor
+        return New-FenneviaInstallerUninstallPlan -Targets $targets -OwnershipPair $ownershipState.Survivor
     }
 
     if ($ownershipState.Kind -notin @("absent", "complete")) {

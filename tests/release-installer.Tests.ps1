@@ -324,6 +324,39 @@ try {
     Assert-True -Condition $enabledAfterRepair.Applied -Message "Enable must succeed from the exact release source after verified one-sided repair."
     [void] (Invoke-FenneviaPackageAction -Action Uninstall -FirefoxPath $repairTarget.FirefoxPath -ProfilePath $repairTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot)
 
+    $survivorUninstallTarget = New-TestFirefoxTarget -Name "registered-survivor-uninstall" -RegisterProfile
+    Write-TestFile -Path (Join-Path $survivorUninstallTarget.ProfileRoot "chrome\unrelated.css") -Content "/* unrelated and preserved */"
+    [void] (Invoke-FenneviaPackageAction -Action Install -FirefoxPath $survivorUninstallTarget.FirefoxPath -ProfilePath $survivorUninstallTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot)
+    $missingOwnershipMetadata = Join-Path $survivorUninstallTarget.ProfileRoot ".fennevia"
+    Remove-Item -LiteralPath (Join-Path $missingOwnershipMetadata "ownership.json") -Force
+    Remove-Item -LiteralPath $missingOwnershipMetadata -Force
+    Remove-Item -LiteralPath (Join-Path $env:APPDATA "Mozilla\Firefox\profiles.ini") -Force
+    $missingOldPackage = Join-Path $canonicalTestRoot "unavailable old package"
+    $survivorUninstallPlan = Invoke-FenneviaPackageAction -Action Uninstall -FirefoxPath $survivorUninstallTarget.FirefoxPath -ProfilePath $survivorUninstallTarget.ProfileRoot -ProfileMode Registered -PackageRoot $missingOldPackage -DryRun
+    Assert-Equal -Actual $survivorUninstallPlan.Status -Expected "ready" -Message "A valid surviving ownership side must permit package-independent uninstall."
+    Assert-True -Condition ($survivorUninstallPlan.PlannedMutationCount -gt 0) -Message "One-sided uninstall must plan removal of verified surviving owned content."
+    [void] (Invoke-FenneviaPackageAction -Action Uninstall -FirefoxPath $survivorUninstallTarget.FirefoxPath -ProfilePath $survivorUninstallTarget.ProfileRoot -ProfileMode Registered -PackageRoot $missingOldPackage)
+    Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $survivorUninstallTarget.ProgramRoot ".fennevia"))) -Message "One-sided uninstall must remove the surviving ownership metadata."
+    Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $survivorUninstallTarget.ProgramRoot "fennevia.cfg"))) -Message "One-sided uninstall must remove verified surviving program content."
+    Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $survivorUninstallTarget.ProfileRoot "chrome\fennevia"))) -Message "One-sided uninstall must remove verified owned content from the side whose ownership file is absent."
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $survivorUninstallTarget.ProfileRoot "chrome\unrelated.css") -PathType Leaf) -Message "One-sided uninstall must preserve unrelated profile content."
+
+    $modifiedSurvivorTarget = New-TestFirefoxTarget -Name "registered-modified-survivor" -RegisterProfile
+    [void] (Invoke-FenneviaPackageAction -Action Install -FirefoxPath $modifiedSurvivorTarget.FirefoxPath -ProfilePath $modifiedSurvivorTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot)
+    Remove-TestInstalledScope -Target $modifiedSurvivorTarget -Scope profile
+    [IO.File]::AppendAllText((Join-Path $modifiedSurvivorTarget.ProgramRoot "fennevia.cfg"), "modified")
+    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_OWNED_FILE_MODIFIED" -Message "One-sided uninstall must reject a modified surviving owned file." -Operation {
+        Invoke-FenneviaPackageAction -Action Uninstall -FirefoxPath $modifiedSurvivorTarget.FirefoxPath -ProfilePath $modifiedSurvivorTarget.ProfileRoot -ProfileMode Registered -PackageRoot $missingOldPackage -DryRun | Out-Null
+    }
+
+    $metadataSurvivorTarget = New-TestFirefoxTarget -Name "registered-metadata-survivor" -RegisterProfile
+    [void] (Invoke-FenneviaPackageAction -Action Install -FirefoxPath $metadataSurvivorTarget.FirefoxPath -ProfilePath $metadataSurvivorTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot)
+    Remove-TestInstalledScope -Target $metadataSurvivorTarget -Scope profile
+    Write-TestFile -Path (Join-Path $metadataSurvivorTarget.ProfileRoot ".fennevia\residue.txt") -Content "unexplained residue"
+    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_METADATA_CONFLICT" -Message "One-sided uninstall must reject metadata residue on the missing ownership side." -Operation {
+        Invoke-FenneviaPackageAction -Action Uninstall -FirefoxPath $metadataSurvivorTarget.FirefoxPath -ProfilePath $metadataSurvivorTarget.ProfileRoot -ProfileMode Registered -PackageRoot $missingOldPackage -DryRun | Out-Null
+    }
+
     $tamperedPackage = Join-Path $canonicalTestRoot "tampered release"
     Copy-Item -LiteralPath $release.PackageRoot -Destination $tamperedPackage -Recurse
     [IO.File]::AppendAllText((Join-Path $tamperedPackage "INSTALL.md"), "tampered")
@@ -332,7 +365,7 @@ try {
         Invoke-FenneviaPackageAction -Action Install -FirefoxPath $tamperTarget.FirefoxPath -ProfilePath $tamperTarget.ProfileRoot -ProfileMode Registered -PackageRoot $tamperedPackage -DryRun | Out-Null
     }
 
-    Write-Output "PASS: registered-profile release install, exact Firefox compatibility, recovery, repair, and tamper tests."
+    Write-Output "PASS: registered-profile release install, exact Firefox compatibility, survivor recovery/uninstall, repair, and tamper tests."
 }
 finally {
     Remove-Module FenneviaInstaller, FenneviaRelease -ErrorAction SilentlyContinue

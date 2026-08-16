@@ -85,13 +85,20 @@ residue, a different release, or modified files. If the new Firefox build is
 not listed in this release manifest, do not repair or enable this release; keep
 it disabled/absent and wait for a compatible Fennevia release.
 
+If exactly one valid ownership record survives but the exact old release is no
+longer available, preview `Uninstall` instead. It does not read package bytes:
+it verifies every still-present ownership-listed file, rejects modified files
+or missing-side metadata residue, and removes only those proven bytes, the
+surviving ownership record, and recorded empty directories.
+
 After a verified repair or update, preview and apply `Enable`. Enable requires
 the exact package source recorded by ownership and rechecks Firefox
 compatibility.
 
 To remove Fennevia, preview and apply `Uninstall` with the same explicit targets.
 Uninstall removes only ownership-listed files and empty project-created
-directories; unrelated profile `chrome` content remains untouched.
+directories; unrelated profile `chrome` content remains untouched. A valid
+single surviving ownership record remains sufficient for this narrow cleanup.
 
 ## Interrupted operation and emergency fallback
 

@@ -537,6 +537,9 @@ Install, update, repair, disable, enable, and uninstall must:
 - block later actions after interrupted transaction until recovery;
 - let repair reconstruct only one wholly absent side from a valid survivor and
   byte-identical package proof, rejecting partial residue or source mismatch;
+- let uninstall use one valid survivor without package bytes only when the peer
+  metadata is wholly absent, every present owned file still matches, and every
+  removal remains ownership-listed or an empty recorded directory;
 - validate a release's strict whole-tree inventory/digests before planning,
   require exact Firefox version/BuildID compatibility for install, update,
   repair, and enable, and require enable to use ownership's exact source
@@ -546,7 +549,9 @@ Install, update, repair, disable, enable, and uninstall must:
 - leave unrelated profile content untouched.
 
 `Disable` and `Uninstall` intentionally do not require release compatibility or
-a readable release manifest. They remain ownership-limited recovery actions
+a readable release manifest. Uninstall may also use one valid surviving
+ownership record, but cannot delete a changed present file or proceed through
+missing-side metadata residue. They remain ownership-limited recovery actions
 after Firefox updates. Registered mode is opt-in and proves only the explicitly
 passed path against Firefox registration; it never enumerates a profile into
 normal output or chooses one for the operator.

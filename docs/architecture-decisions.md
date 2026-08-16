@@ -1107,6 +1107,14 @@ requires ownership's exact package-manifest hash. Disable and Uninstall remain
 available without release compatibility so an unsupported Firefox update
 cannot trap privileged startup code in place.
 
+If exactly one valid ownership record survives and its peer metadata is wholly
+absent, Uninstall may use that survivor without the old package. It verifies all
+still-present ownership-listed files across both scopes, rejects changed files
+or path conflicts, removes only proven bytes and the surviving manifest, and
+removes only recorded empty directories. This narrowly supersedes ADR-033's
+complete-pair requirement for deletion; one-sided install, update, disable, and
+enable remain prohibited, while Repair still requires byte-identical source.
+
 **Reasoning:** The installed code executes with system principal, spans Firefox
 program/profile roots, and depends on unsupported internals. A loose source ZIP
 or default-profile heuristic would make provenance, compatibility, and recovery
@@ -1116,7 +1124,8 @@ without inventing an updater or trusting mutable assets.
 
 This decision extends ADR-033: Development-mode one-sided repair still requires
 the marker, while Registered mode may use exact registration or its valid
-surviving ownership proof. It does not claim stable/daily-driver support,
+surviving ownership proof; both modes may use that proof for the narrow
+one-sided Uninstall above. It does not claim stable/daily-driver support,
 Linux/macOS compatibility, ESR/Beta/Nightly compatibility, signing,
 attestations, an SBOM, automatic update, or an independent security audit.
 Implementation and validation evidence are recorded in

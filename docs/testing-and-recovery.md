@@ -586,16 +586,20 @@ preference to `false`, cold start, and verify no stale safe-start state remains.
 ### 8.4 Ownership repair, hard disable, and uninstall
 
 1. Close all Firefox and Browser Toolbox processes using the selected targets.
-2. If exactly one ownership side and all of its owned files survive, preview
-   `Repair` with the exact recorded package source. It must reject partial
-   residue, source mismatch, or unmarked targets; an injected partial repair
-   must restore the exact incomplete pre-repair state.
+2. If exactly one ownership side survives, choose one explicit recovery path:
+   preview `Repair` with the exact recorded package source to reconstruct the
+   missing side, or preview package-independent `Uninstall` to remove only
+   survivor-proven content. Repair must reject partial residue, source mismatch,
+   or unmarked targets; one-sided uninstall must reject missing-side metadata or
+   any modified still-present owned file.
 3. After repair or when a complete pair already exists, preview `Disable`
    against explicit program/profile paths.
 4. Run `Disable`; the AutoConfig preference is moved even when the runtime entry
    is broken.
 5. Cold start and confirm native UI with no Fennevia startup record.
-6. Preview and run ownership-manifest-based `Uninstall`.
+6. Preview and run ownership-manifest-based `Uninstall`; repeat the one-sided
+   path with the old package unavailable and with a deliberately modified owned
+   file to prove safe success and fail-closed rejection.
 7. Cold start stock Firefox and confirm no Fennevia record, manifest error, or
    owned residue.
 8. Use startup-cache cleanup only when an observed stale-code symptom remains.

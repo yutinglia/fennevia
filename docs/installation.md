@@ -126,9 +126,10 @@ applying changes. Every command requires both targets:
 - an existing AutoConfig declaration, unknown same-name file, differing
   ownership pair, unexplained hash change, or interrupted transaction stops the
   action before managed-file mutation;
-- an incomplete ownership pair blocks every ordinary action. Only the explicit
-  `Repair` action may reconstruct one completely absent side under the strict
-  rules in section 4;
+- an incomplete ownership pair blocks install, update, disable, and enable.
+  Explicit `Repair` may reconstruct one completely absent side, while explicit
+  `Uninstall` may remove only hash-verified content proven by one valid
+  survivor, under the strict rules in section 4;
 - when `RELEASE-MANIFEST.json` is present, `Install`, `Update`, `Repair`, and
   `Enable` require the selected Firefox version and BuildID to match an exact
   allowlist entry before mutation. `Enable` also requires the package-manifest
@@ -193,7 +194,7 @@ Available actions are:
 | `Repair` | Reconstruct one completely absent ownership side from one verified survivor and the exact recorded package source; never adopt partial residue or infer a new installation |
 | `Disable` | Move only `defaults/pref/fennevia.js` to `fennevia.js.disabled`; it does not need a working manifest or runtime entry |
 | `Enable` | Verify every owned file, exact recorded package source, release compatibility, and conflict check before moving the preference back into Firefox's active preference directory |
-| `Uninstall` | Remove exact existing owned files and metadata, tolerate already-missing owned files, and remove only recorded project-created directories that are empty |
+| `Uninstall` | Remove exact existing owned files and metadata, including from one valid surviving ownership record when its peer and metadata are wholly absent; tolerate already-missing owned files, reject changed present files, and remove only recorded project-created directories that are empty |
 
 Examples use the same explicit targets:
 
@@ -244,8 +245,13 @@ or recursively removed.
 If either ownership record is invalid or the pair differs, stop and investigate.
 Do not copy one manifest over the other merely to make the installer proceed.
 
-`Repair` is the only supported response to a valid one-sided ownership state.
-It is intentionally narrower than install or update:
+A valid one-sided ownership state has two explicit recovery exits. Use `Repair`
+only when the exact recorded source is available and the missing side should be
+reconstructed. Use `Uninstall` when the installation should be removed,
+including when that old source is no longer available. Neither path permits
+install, update, disable, or enable to infer a complete pair.
+
+`Repair` is intentionally narrower than install or update:
 
 - exactly one valid ownership record must survive; both absent is
   `FENNEVIA_INSTALL_NOT_INSTALLED` and requires a reviewed clean install;
@@ -269,7 +275,17 @@ It is intentionally narrower than install or update:
 
 A complete valid pair makes `Repair` an `already-complete` no-op. Use `Update`,
 not `Repair`, for a newer package. If repair rejects source mismatch or residue,
-preserve the state and follow the incident procedure in
+preserve the state or preview survivor-based `Uninstall`.
+
+One-sided `Uninstall` requires exactly one valid survivor, no metadata residue
+on the missing side, and the normal mode-specific marker, registration, or
+surviving-ownership proof. It validates every still-present file from both
+scopes against that survivor, fails on any hash or path conflict, skips already
+missing files, removes only ownership-listed bytes and the surviving ownership
+record, and removes only recorded project-created directories that are empty.
+It does not read `PackageRoot`, relax collision checks, synthesize the missing
+manifest, or adopt unrelated content. If it rejects a changed file or metadata
+residue, preserve the state and follow the incident procedure in
 `docs/firefox-update-workflow.md`.
 
 ## 5. Transaction and rollback model
