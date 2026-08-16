@@ -8,6 +8,7 @@
     "content/firefox/BridgeBoundary.sys.mjs",
     "content/runtime/HealthState.sys.mjs",
     "content/runtime/Logger.sys.mjs",
+    "content/runtime/NativeUi.sys.mjs",
     "content/runtime/Runtime.sys.mjs",
     "content/runtime/WindowManager.sys.mjs",
     "content/runtime/WindowShell.sys.mjs",
@@ -39,7 +40,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs",
-      "sha256": "5b5ddb78b513881cb45e24d83365599b3dd1927c044acaf7403aac8abdf9050d"
+      "sha256": "cc5b86e1d39336efc9443b8067b717ef4f18f86237cd1bc1605f4fe76d86e2eb"
     },
     {
       "scope": "profile",
@@ -50,6 +51,11 @@
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/Logger.sys.mjs",
       "sha256": "292791f26fe0d1c06c9ba384a99db91d2f3e8c186a5f337b0f0c3ab98f8bbf31"
+    },
+    {
+      "scope": "profile",
+      "path": "chrome/fennevia/content/runtime/NativeUi.sys.mjs",
+      "sha256": "6306bb9b82ca57bb54dd7e7d723a9f5401ea1619423ac10ebafb41eab68e10ce"
     },
     {
       "scope": "profile",
@@ -64,7 +70,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
-      "sha256": "efdcd2b430942ce5e1f3186ce12e425c0c7b2c82e173770372b779fbb083b6ae"
+      "sha256": "d8ebc00d0ce5c640a352257540b7cea37ddc6840bae26dc74f343079c8040018"
     },
     {
       "scope": "profile",

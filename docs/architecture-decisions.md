@@ -922,3 +922,60 @@ privacy classification, compatibility-canary review, normal/second/private
 evidence, HTTP/HTTPS/internal/error/permission/protection matrix, and fail-open
 proof are recorded in
 `docs/research/firefox-153-urlbar-coverage.md`.
+
+## ADR-032: Activate exact reversible native surfaces with retained native reveal
+
+**Status:** Accepted and validated on Firefox 153.0.4
+
+After every ADR-021 health and required-capability check succeeds, the fixed
+production initializer performs the explicit `healthy -> active` transition.
+One per-window `NativeUi.sys.mjs` controller owns an exact Firefox 153 target
+inventory, one project-owned five-rule stylesheet, reveal/suspension state,
+and deterministic cleanup. No preference or debug switch can activate a
+partially healthy production shell.
+
+In horizontal native-tab mode, collapse only
+`#TabsToolbar > .toolbar-items`, `#nav-bar`, `#PersonalToolbar`, and the exact
+native sidebar container/box/splitters. Keep `#TabsToolbar` itself so Firefox's
+current titlebar controls remain. When Firefox sets `tabs-hidden`, retain the
+navbar titlebar owner and collapse only its exact direct content children.
+Never target `#navigator-toolbox`, `#notifications-toolbar`, titlebar buttons,
+popup sets, tabbox/content infrastructure, find UI, prompts, dialogs, or
+DevTools.
+
+Every hiding selector requires `data-fennevia-active` and the absence of both
+native reveal and suspension markers. Native toolbox pointer/focus, an anchored
+popup, an open unsupported native sidebar, or ADR-031's Urlbar handoff reveals
+the complete retained native surface. The Urlbar bridge must request reveal
+synchronously before `window.openLocation()`. Returning focus to content and
+closing native popups releases the reveal after one short owned delay.
+
+Customize mode suspends through Firefox's `aftercustomization` event and hides
+the project frame. Native dialogs also suspend. DOM fullscreen suspends project
+hiding while Firefox's own fullscreen stylesheet remains authoritative, so
+project code cannot reveal chrome against the page fullscreen policy. Browser
+fullscreen retains active mode and Firefox's native autohide behavior.
+Unsupported popup/taskbar/AI/hidden-toolbar windows fail open before activation.
+
+Require exact native nodes, namespaces, direct parents, three current titlebar
+control groups, style identity/text/parent, and exactly five parsed rules.
+Style or stable target corruption first applies fail-open suspension and then
+requests ADR-021 per-window disposal. Structural checks are coalesced to the
+next event-loop turn so Firefox window teardown can dispose without a false
+runtime failure; style mutation remains immediate. Clearing active alone
+restores native layout without Svelte, restart, or stylesheet reload.
+
+**Reasoning:** The broad toolbox owns irreplaceable notifications, platform
+controls, and mode-specific layout. Exact reversible descendants achieve the
+content-first resting state while preserving Firefox ownership and one complete
+native access path for unknown extension, security, and future controls. A
+single privileged controller concentrates unsupported dependencies and makes
+version drift fail visible instead of leaving a half-hidden browser.
+
+ADR-032 activates the production caller that ADR-021 intentionally withheld;
+it does not weaken ADR-021's transition or recovery requirements. It fulfills
+ADR-031's native-handoff precondition and supersedes only older statements that
+package `0.10.0-dev` stops at healthy or contains no native-hide selector. The
+source inventory, rejected alternatives, provenance, and real
+normal/second/private/customize/fullscreen/Browser-Toolbox/fail-open evidence
+are in `docs/research/firefox-153-content-only-activation.md`.

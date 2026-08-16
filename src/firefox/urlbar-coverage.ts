@@ -181,9 +181,10 @@ const urlbarCoverageCapabilitySpecifications: readonly UrlbarCoverageCapabilityS
 
 const evaluateUrlbarCoverageCapabilities = (
   window: NativeRecord,
+  requestNativeUiReveal: () => boolean,
 ): readonly UrlbarCoverageCapabilityEvaluation[] =>
-  Object.freeze(
-    urlbarCoverageCapabilitySpecifications.map((specification) => {
+  Object.freeze([
+    ...urlbarCoverageCapabilitySpecifications.map((specification) => {
       let available = false;
       let cause: unknown;
       try {
@@ -201,7 +202,15 @@ const evaluateUrlbarCoverageCapabilities = (
         }),
       });
     }),
-  );
+    Object.freeze({
+      snapshot: Object.freeze({
+        available: isFunction(requestNativeUiReveal),
+        name: "firefox.urlbar-coverage-native-ui-handoff",
+        requirement: "required" as const,
+        symbol: "nativeUi.revealForUrlbar",
+      }),
+    }),
+  ]);
 
 const getErrorContext = (
   boundary: FirefoxBridgeBoundary,
@@ -297,14 +306,20 @@ export type FirefoxUrlbarCoverageBridgeController = Readonly<{
 export function createFirefoxUrlbarCoverageBridge({
   boundary,
   onError,
+  requestNativeUiReveal,
   window,
 }: Readonly<{
   boundary: FirefoxBridgeBoundary;
   onError: (error: unknown) => void;
+  requestNativeUiReveal: () => boolean;
   window: unknown;
 }>): FirefoxUrlbarCoverageBridgeController {
   boundary.assertOwnsWindow(window);
-  if (!isNativeRecord(window) || typeof onError !== "function") {
+  if (
+    !isNativeRecord(window) ||
+    typeof onError !== "function" ||
+    typeof requestNativeUiReveal !== "function"
+  ) {
     throw createUrlbarCoverageError(
       boundary,
       "FENNEVIA_FIREFOX_URLBAR_COVERAGE_OPTIONS_INVALID",
@@ -385,7 +400,10 @@ export function createFirefoxUrlbarCoverageBridge({
   };
 
   const assertRequiredCapabilities = () => {
-    const evaluations = evaluateUrlbarCoverageCapabilities(requireWindow());
+    const evaluations = evaluateUrlbarCoverageCapabilities(
+      requireWindow(),
+      requestNativeUiReveal,
+    );
     const missing = evaluations.find(
       (evaluation) => !evaluation.snapshot.available,
     );
@@ -569,9 +587,20 @@ export function createFirefoxUrlbarCoverageBridge({
         );
       }
       try {
+        if (requestNativeUiReveal() !== true) {
+          throw createUrlbarCoverageError(
+            boundary,
+            "FENNEVIA_FIREFOX_URLBAR_NATIVE_UI_HANDOFF_REJECTED",
+            "firefox-urlbar-native-access",
+            "nativeUi.revealForUrlbar",
+          );
+        }
         Reflect.apply(openLocation, currentWindow, []);
         return true;
       } catch (error) {
+        if (isFirefoxBridgeError(error)) {
+          throw error;
+        }
         throw createUrlbarCoverageError(
           boundary,
           "FENNEVIA_FIREFOX_URLBAR_NATIVE_ACCESS_FAILED",

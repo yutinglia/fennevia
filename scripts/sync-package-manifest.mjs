@@ -29,6 +29,10 @@ const packageFiles = Object.freeze([
   }),
   Object.freeze({
     scope: "profile",
+    path: "chrome/fennevia/content/runtime/NativeUi.sys.mjs",
+  }),
+  Object.freeze({
+    scope: "profile",
     path: "chrome/fennevia/content/runtime/Runtime.sys.mjs",
   }),
   Object.freeze({

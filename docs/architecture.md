@@ -106,8 +106,9 @@ one empty mount target and one Svelte root. One address-overlay XHTML host is
 ordered last and owns the centered popup's fifth target/root. A generated style
 node is a separate frame child and does not participate in edge-host ordering.
 Normal and private windows receive the same complete frame. Project code owns
-only this frame and its descendants; it never moves a native node, resizes
-browser content, or hides native UI.
+only this frame and its descendants; it never moves a native node or resizes
+browser content. ADR-032 adds one separate privileged controller that changes
+only the reversible visibility of exact source-validated native surfaces.
 
 Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
 owns the only root-state transition table: `created -> mounted -> healthy ->
@@ -126,10 +127,10 @@ failures in unit tests are ordinary constructor collaborators; the installed
 initializer always uses fixed production defaults and exposes no preference,
 DOM global, or runtime debug switch for choosing a failure mode.
 
-`initializeWindowShell` stops at `healthy`. Only the explicit lifecycle
-controller can request `active`, and no production caller does so. Package
-`0.4.0-dev` introduced this boundary, and the current `0.10.0-dev` package still
-contains no selector that hides Firefox UI. `Ctrl+Alt+Shift+F12` is registered directly on each chrome window in
+`initializeWindowShell` awaits the complete health result and then makes the
+single production call to `lifecycle.activate()`. Only this final transition
+enables ADR-032's exact native stylesheet; an exception reports failure and
+disposes that window before returning. `Ctrl+Alt+Shift+F12` is registered directly on each chrome window in
 the capture and Mozilla system event groups. It reports the fixed recovery
 phase, clears state, removes every host/listener/timer/cleanup, and does not
 depend on Svelte, application state, or a Firefox bridge. AutoConfig separately
@@ -152,7 +153,9 @@ source and runtime evidence is in
 `docs/research/firefox-153-shell-hosts.md`,
 `docs/research/firefox-153-shell-health-recovery.md`,
 `docs/research/firefox-153-four-edge-shell.md`, ADR-019 through ADR-022, and
-ADR-026.
+ADR-026. ADR-032 and
+`docs/research/firefox-153-content-only-activation.md` record the active native
+gate layered on that lifecycle.
 
 ## 4. Firefox bridge
 
@@ -397,7 +400,7 @@ Use this priority order:
 2. Project classes, attributes, custom events, and CSS variables use a consistent prefix.
 3. Do not apply unscoped rules to `button`, `input`, `*`, or other generic selectors.
 4. If Tailwind is adopted, disable Preflight and use a project-specific prefix.
-5. Changes to retained native UI belong in a separate `native-integration.css`; every rule requires a documented reason and current source reference.
+5. Changes to retained native UI belong only in the isolated native-UI controller stylesheet; every exact rule requires a documented reason and current source reference.
 6. Use agent or author sheets only when an ordinary scoped stylesheet cannot solve a demonstrated problem.
 7. Prefer text rendering and safe property assignment over unsanitized HTML.
 
@@ -417,21 +420,23 @@ vertical scroller, and forced-colors/focus rules remain rooted at the frame. The
 Browser Toolbox ownership walk excludes Firefox-generated native-anonymous
 scrollbar descendants before asserting XHTML project ownership; it does not
 reclassify those browser-owned XUL widgets as authored shell DOM. No selector
-targets the native tab strip, and native UI remains visible.
+in the component stylesheet targets the native tab strip. ADR-032's separate
+active-only sheet collapses only its `.toolbar-items` owner.
 
 The issue #12 top controls use the same frame-rooted token and control classes.
 Navigation-specific selectors cover compact/narrow layout, native-disabled
 state, loading emphasis, text ellipsis/bidi isolation, and forced-color
 fallbacks. Hover, active, and focus-visible behavior remains the common owned
 control policy. No selector targets the native navbar, Urlbar, command set, or
-toolbox.
+toolbox from component CSS; ADR-032 owns the separate reversible navbar rule.
 
 The issue #14 right panel likewise uses only frame-rooted project classes and
 the existing responsive right-edge bounds. It renders type glyphs rather than
 remote favicons, uses text/property bindings for hostile titles, and provides
 solid, reduced-motion, and forced-colors states through the shared shell
 contract. No selector targets Firefox's bookmarks toolbar, sidebar, Library,
-popup set, or Places views.
+popup set, or Places views from component CSS. ADR-032 independently owns the
+bookmarks-toolbar and exact native-sidebar visibility rules.
 
 The issue #32 bottom panel uses the same frame-rooted glass and accessibility
 tokens. Its progress value is a scoped custom property set only from a validated
@@ -466,11 +471,32 @@ DOM marker: disposal removes every project state attribute. Safe start exits in
 AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute.
 
-When a later issue implements the actual native-UI gate, native UI may be hidden
-only while active and must never be removed. Package `0.10.0-dev` does not hide
-it. Retaining native DOM preserves implicit dependencies in Firefox commands,
-popups, customization, titlebar, and platform integration and provides the
-recovery path.
+ADR-032 implements the gate with a five-rule project-owned style and two
+temporary root markers:
+
+```text
+[data-fennevia-native-ui-revealed]
+[data-fennevia-native-ui-suspended]
+```
+
+At active rest, horizontal native tab items, the horizontal navbar, bookmarks
+toolbar, and exact native sidebar surfaces collapse. Native vertical-tab mode
+keeps the navbar/titlebar owner and collapses only exact direct content. The
+entire toolbox, notifications toolbar, titlebar controls, popups, dialogs,
+tabbox, and content infrastructure are never project-targeted.
+
+Toolbox pointer/focus, anchored native popups, an open native sidebar, and the
+explicit Urlbar handoff set temporary reveal. Customize and native-dialog state
+set suspension. DOM fullscreen also suspends project hiding while Firefox's own
+fullscreen CSS remains authoritative; browser fullscreen retains active mode.
+The controller validates exact nodes and five parsed rules before health, then
+watches integrity. Invalid or partial CSS and stable target drift suspend first
+and request per-window fail-open disposal. Clearing active restores Firefox
+immediately without Svelte or restart. Retaining all native DOM preserves
+implicit command, popup, customization, titlebar, and platform integration.
+
+The complete owner/replacement/fallback inventory and Firefox 153 evidence are
+in `docs/research/firefox-153-content-only-activation.md`.
 
 ## 8. Override policy
 

@@ -16,8 +16,8 @@ Validated baseline as of 2026-08-16:
 
 - package `0.10.0-dev`;
 - Firefox 153.0.4 release on Windows;
-- #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #17, #22,
-  #31, #32, and #37 complete;
+- #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #17,
+  #22, #31, #32, and #37 complete;
 - functional vertical tabs and a compact address/status launcher in the left
   surface;
 - one centered address/search popup with detailed connection, protection,
@@ -26,13 +26,12 @@ Validated baseline as of 2026-08-16:
 - functional primary navigation and bounded page status in the top surface;
 - bounded lazy Firefox Places bookmarks in the right surface;
 - event-driven anonymous aggregate Downloads status in the bottom surface;
-- Firefox native visible UI retained;
-- no production caller enters `active`.
+- exact Firefox native DOM and complete reveal/fallback paths retained;
+- production enters `active` only after the complete health gate.
 
 Next feature work:
 
-1. #15 activates content-only mode now that all feature blockers pass;
-2. #16 hardens the complete MVP.
+1. #16 hardens the complete MVP and Firefox-update workflow.
 
 Historical research records remain accurate for the milestone they tested.
 Current production architecture is defined by this roadmap, the master plan,
@@ -106,8 +105,9 @@ Issue #7 provides:
 
 Issue #31 updates the current health checks to require the complete frame, all
 four ordered hosts, mount targets, roots, parsed frame-scoped styles, edge
-controller, emergency handler, and declared bridge capabilities. Production
-still stops at `healthy`; no native selector is hidden.
+controller, emergency handler, and declared bridge capabilities. ADR-032 later
+adds the sole production `healthy -> active` caller after those checks and owns
+the exact reversible native selectors; it does not change this health model.
 
 Gate: every broken host, frontend, CSS, controller, capability, or pending
 operation leaves native Firefox UI usable.
@@ -517,7 +517,7 @@ evidence.
 Evidence: ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-## Milestone L: Content-only active mode — pending (#15)
+## Milestone L: Content-only active mode — complete (#15)
 
 Begin only after #7, #31, #11, #12, #13, #14, #32, and #37 are complete with
 real native-visible validation.
@@ -552,6 +552,24 @@ Active-mode contract:
 - DOM fullscreen follows an explicit security-preserving policy.
 
 Gate: every controlled failure leaves or restores a usable native browser shell.
+
+ADR-032 implements the final `healthy -> active` production transition and one
+exact per-window native visibility controller. Horizontal native tab items and
+navbar, the bookmarks toolbar, and exact native sidebar surfaces collapse only
+at active rest. Native vertical-tab titlebar ownership, titlebar controls,
+notifications, popups, dialogs, tabbox/content, and DevTools remain intact.
+Pointer/focus, native popups, open sidebar panels, and #37's Urlbar handoff
+temporarily reveal the complete native owner; customize, native dialogs, and
+DOM fullscreen suspend project hiding. Partial activation CSS fails open only
+the affected window.
+
+Gate passed on Firefox 153.0.4 with normal/second/private, active rest and
+geometry, all edge paths, complete native Urlbar/Downloads/sidebar paths,
+customize/browser fullscreen, Browser Toolbox, emergency fallback, CSS
+corruption, safe-start, and cleanup evidence.
+
+Evidence: ADR-032 and
+`docs/research/firefox-153-content-only-activation.md`.
 
 ## Milestone M: Hardening and Firefox updates — pending (#16)
 
