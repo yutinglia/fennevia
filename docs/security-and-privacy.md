@@ -278,6 +278,12 @@ Rules:
   network requests, or another window;
 - navigation actions accept no arbitrary URL and invoke the current window's
   source-validated `BrowserCommands` methods;
+- Home invokes `BrowserCommands.home()` only. The configured homepage URL,
+  `HomePage` module, and homepage-changed observers stay Firefox-owned and
+  never cross the bridge;
+- middle-click Back/Forward/Home/Reload copies only `button` and modifier
+  booleans. Firefox still owns `whereToOpenLink`, `duplicateTabIn`, homepage
+  loading, and reload-or-duplicate policy; no URL is invented or logged;
 - action state is re-resolved against the current selected browser immediately
   before invocation;
 - background and non-top-level progress cannot update selected navigation

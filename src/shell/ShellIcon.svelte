@@ -8,6 +8,7 @@
     | "download"
     | "extensions"
     | "forward"
+    | "home"
     | "lock"
     | "maximize"
     | "menu"
@@ -52,6 +53,10 @@
     <rect fill="currentColor" height="10" rx="2" width="10" x="7" y="7" />
   {:else if name === "plus"}
     <path d="M12 5v14M5 12h14" />
+  {:else if name === "home"}
+    <path d="M4 11.5 12 4l8 7.5" />
+    <path d="M6.5 10.8V20h11V10.8" />
+    <path d="M10 20v-5.5h4V20" />
   {:else if name === "address"}
     <circle cx="10.5" cy="10.5" r="5.5" />
     <path d="m15 15 4 4" />

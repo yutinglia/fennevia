@@ -43,6 +43,7 @@ function createNativeWindow() {
   const observerRecords = new Set();
   const progressListeners = new Set();
   const actionCalls = [];
+  const actionGestures = [];
   const addressSubmissions = [];
   const focusCalls = [];
   let shellHealthy = false;
@@ -229,11 +230,20 @@ function createNativeWindow() {
   });
 
   const BrowserCommands = {
-    back() {
+    back(event) {
       actionCalls.push(["back", gBrowser.selectedBrowser.id]);
+      actionGestures.push(["back", event]);
     },
-    forward() {
+    forward(event) {
       actionCalls.push(["forward", gBrowser.selectedBrowser.id]);
+      actionGestures.push(["forward", event]);
+    },
+    home(event) {
+      actionCalls.push(["home", gBrowser.selectedBrowser.id]);
+      actionGestures.push(["home", event]);
+      const browser = gBrowser.selectedBrowser;
+      browser.currentURI = { displaySpec: "about:home" };
+      addressValues[selectedIndex] = "";
     },
     openTab() {
       actionCalls.push(["new-tab", gBrowser.selectedBrowser.id]);
@@ -255,6 +265,10 @@ function createNativeWindow() {
     },
     reload() {
       actionCalls.push(["reload", gBrowser.selectedBrowser.id]);
+    },
+    reloadOrDuplicate(event) {
+      actionCalls.push(["reload-or-duplicate", gBrowser.selectedBrowser.id]);
+      actionGestures.push(["reload-or-duplicate", event]);
     },
     stop() {
       actionCalls.push(["stop", gBrowser.selectedBrowser.id]);
@@ -286,6 +300,7 @@ function createNativeWindow() {
 
   return {
     actionCalls,
+    actionGestures,
     addressSubmissions,
     browsers,
     commandsById,
@@ -510,12 +525,14 @@ test("actions re-read the selected tab and reload-or-stop state at invocation", 
     native.setState(1, { loading: false }, { event: "state" });
     assert.equal(pair.controller.navigation.reloadOrStop(), "reload");
     assert.equal(pair.controller.navigation.forward(), false);
+    assert.equal(pair.controller.navigation.home(), true);
     assert.equal(pair.controller.navigation.newTab(), true);
 
     assert.deepEqual(native.actionCalls, [
       ["back", "browser-2"],
       ["stop", "browser-2"],
       ["reload", "browser-2"],
+      ["home", "browser-2"],
       ["new-tab", "browser-2"],
     ]);
     assert.equal(
@@ -523,6 +540,48 @@ test("actions re-read the selected tab and reload-or-stop state at invocation", 
       "about:newtab",
     );
     assert.equal(pair.controller.navigation.snapshot().addressValue, "");
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("middle-click gestures reach Firefox command methods without inventing URLs", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  const middleClick = Object.freeze({
+    altKey: false,
+    button: 1,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+  });
+  try {
+    native.setState(0, { canGoBack: true, canGoForward: true });
+    assert.equal(pair.controller.navigation.back(middleClick), true);
+    assert.equal(pair.controller.navigation.forward(middleClick), true);
+    assert.equal(pair.controller.navigation.home(middleClick), true);
+    assert.equal(pair.controller.navigation.reload(middleClick), true);
+    assert.deepEqual(
+      native.actionGestures.map(([name, event]) => [
+        name,
+        event?.button,
+        event?.ctrlKey,
+      ]),
+      [
+        ["back", 1, false],
+        ["forward", 1, false],
+        ["home", 1, false],
+        ["reload-or-duplicate", 1, false],
+      ],
+    );
+    assert.deepEqual(native.actionCalls.at(-1), [
+      "reload-or-duplicate",
+      "browser-1",
+    ]);
+    assert.doesNotMatch(
+      JSON.stringify(native.actionGestures),
+      /https?:|about:/u,
+    );
   } finally {
     disposePair(pair);
   }
@@ -824,6 +883,70 @@ test("missing native command elements identify the exact command boundary", () =
         error.fenneviaCode ===
           "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING" &&
         error.fenneviaSymbol === "document.commands[Browser-Back]",
+    );
+    assert.equal(native.tabContainer.listenerCount(), 0);
+    assert.equal(native.progressListenerCount(), 0);
+    assert.equal(native.observerCount(), 0);
+  } finally {
+    boundary.dispose();
+  }
+});
+
+test("missing BrowserCommands.home identifies the exact action boundary", () => {
+  const native = createNativeWindow();
+  native.window.BrowserCommands.home = undefined;
+  const boundary = createFirefoxBridgeBoundary({
+    buildId: "20260810162159",
+    contextId: "window-00000000-0000-4000-8000-999999999996",
+    firefoxVersion: "153.0.4",
+    window: native.window,
+    windowKind: "normal",
+  });
+  try {
+    assert.throws(
+      () =>
+        createFirefoxNavigationBridge({
+          boundary,
+          onError() {},
+          window: native.window,
+        }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode ===
+          "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING" &&
+        error.fenneviaSymbol === "window.BrowserCommands.home",
+    );
+    assert.equal(native.tabContainer.listenerCount(), 0);
+    assert.equal(native.progressListenerCount(), 0);
+    assert.equal(native.observerCount(), 0);
+  } finally {
+    boundary.dispose();
+  }
+});
+
+test("missing BrowserCommands.reloadOrDuplicate identifies the exact action boundary", () => {
+  const native = createNativeWindow();
+  native.window.BrowserCommands.reloadOrDuplicate = undefined;
+  const boundary = createFirefoxBridgeBoundary({
+    buildId: "20260810162159",
+    contextId: "window-00000000-0000-4000-8000-999999999995",
+    firefoxVersion: "153.0.4",
+    window: native.window,
+    windowKind: "normal",
+  });
+  try {
+    assert.throws(
+      () =>
+        createFirefoxNavigationBridge({
+          boundary,
+          onError() {},
+          window: native.window,
+        }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode ===
+          "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING" &&
+        error.fenneviaSymbol === "window.BrowserCommands.reloadOrDuplicate",
     );
     assert.equal(native.tabContainer.listenerCount(), 0);
     assert.equal(native.progressListenerCount(), 0);

@@ -177,6 +177,8 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(css, /data-fennevia-loading="true"/u);
   assert.match(css, /-moz-window-dragging: drag/u);
   assert.match(css, /@keyframes fennevia-shortcut-tip/u);
+  assert.match(css, /@keyframes fennevia-tab-opened/u);
+  assert.match(css, /data-fennevia-just-opened="true"/u);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(css, /@media \(forced-colors: active\)/u);
   assert.doesNotMatch(

@@ -3,11 +3,13 @@ import type {
   AddressSubmissionResult,
   BrowserNavigationBridge,
   ConnectionSecurityState,
+  NavigationPointerGesture,
   NavigationSnapshot,
   NavigationStateEvent,
   TrackingProtectionState,
 } from "../app/navigation-state.ts";
 import {
+  copyNavigationPointerGesture,
   maximumNavigationAddressLength,
   maximumNavigationDisplayUriLength,
   maximumNavigationTitleLength,
@@ -350,6 +352,19 @@ const navigationCapabilitySpecifications: readonly NavigationCapabilitySpecifica
         symbol: `window.BrowserCommands.${method}`,
       }),
     ]),
+    Object.freeze({
+      isAvailable: isFunction,
+      name: "firefox.navigation-action-home",
+      read: (window: NativeRecord) => readBrowserCommandsMember(window, "home"),
+      symbol: "window.BrowserCommands.home",
+    }),
+    Object.freeze({
+      isAvailable: isFunction,
+      name: "firefox.navigation-action-reloadOrDuplicate",
+      read: (window: NativeRecord) =>
+        readBrowserCommandsMember(window, "reloadOrDuplicate"),
+      symbol: "window.BrowserCommands.reloadOrDuplicate",
+    }),
   ]);
 
 const evaluateNavigationCapabilities = (
@@ -824,9 +839,54 @@ export function createFirefoxNavigationBridge({
     },
   });
 
+  const createCommandEvent = (
+    gesture: NavigationPointerGesture,
+  ): NativeRecord => ({
+    altKey: gesture.altKey,
+    button: gesture.button,
+    ctrlKey: gesture.ctrlKey,
+    metaKey: gesture.metaKey,
+    preventDefault() {},
+    shiftKey: gesture.shiftKey,
+  });
+
+  const invokeBrowserCommand = (
+    methodName: string,
+    gesture?: NavigationPointerGesture,
+  ): boolean => {
+    const currentWindow = requireWindow();
+    const commands = currentWindow.BrowserCommands;
+    const method = isNativeRecord(commands) ? commands[methodName] : undefined;
+    if (!isFunction(method)) {
+      throw createNavigationError(
+        boundary,
+        "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
+        "firefox-navigation-action",
+        `window.BrowserCommands.${methodName}`,
+      );
+    }
+    try {
+      Reflect.apply(
+        method,
+        commands,
+        gesture === undefined ? [] : [createCommandEvent(gesture)],
+      );
+      return true;
+    } catch (error) {
+      throw createNavigationError(
+        boundary,
+        "FENNEVIA_FIREFOX_NAVIGATION_ACTION_FAILED",
+        "firefox-navigation-action",
+        `window.BrowserCommands.${methodName}`,
+        error,
+      );
+    }
+  };
+
   const invokeCommand = (
     action: keyof typeof COMMANDS,
     requireEnabled = true,
+    gesture?: NavigationPointerGesture,
   ): boolean => {
     const specification = COMMANDS[action];
     requireSelectedBrowser();
@@ -837,31 +897,7 @@ export function createFirefoxNavigationBridge({
     ) {
       return false;
     }
-    const currentWindow = requireWindow();
-    const commands = currentWindow.BrowserCommands;
-    const method = isNativeRecord(commands)
-      ? commands[specification.method]
-      : undefined;
-    if (!isFunction(method)) {
-      throw createNavigationError(
-        boundary,
-        "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
-        "firefox-navigation-action",
-        `window.BrowserCommands.${specification.method}`,
-      );
-    }
-    try {
-      Reflect.apply(method, commands, []);
-      return true;
-    } catch (error) {
-      throw createNavigationError(
-        boundary,
-        "FENNEVIA_FIREFOX_NAVIGATION_ACTION_FAILED",
-        "firefox-navigation-action",
-        `window.BrowserCommands.${specification.method}`,
-        error,
-      );
-    }
+    return invokeBrowserCommand(specification.method, gesture);
   };
 
   const submitAddress = (value: string): AddressSubmissionResult => {
@@ -948,7 +984,14 @@ export function createFirefoxNavigationBridge({
   };
 
   const publicBridge: BrowserNavigationBridge = Object.freeze({
-    back: () => invokeCommand("back"),
+    back: (gesture?: NavigationPointerGesture) =>
+      invokeCommand(
+        "back",
+        true,
+        gesture === undefined
+          ? undefined
+          : copyNavigationPointerGesture(gesture),
+      ),
     focusContent(): boolean {
       const selectedBrowser = requireSelectedBrowser();
       const focus = selectedBrowser.focus;
@@ -973,9 +1016,34 @@ export function createFirefoxNavigationBridge({
         );
       }
     },
-    forward: () => invokeCommand("forward"),
+    forward: (gesture?: NavigationPointerGesture) =>
+      invokeCommand(
+        "forward",
+        true,
+        gesture === undefined
+          ? undefined
+          : copyNavigationPointerGesture(gesture),
+      ),
+    home(gesture?: NavigationPointerGesture): boolean {
+      requireSelectedBrowser();
+      return invokeBrowserCommand(
+        "home",
+        gesture === undefined
+          ? undefined
+          : copyNavigationPointerGesture(gesture),
+      );
+    },
     newTab: () => invokeCommand("newTab", false),
-    reload: () => invokeCommand("reload"),
+    reload(gesture?: NavigationPointerGesture): boolean {
+      if (gesture !== undefined) {
+        requireSelectedBrowser();
+        return invokeBrowserCommand(
+          "reloadOrDuplicate",
+          copyNavigationPointerGesture(gesture),
+        );
+      }
+      return invokeCommand("reload");
+    },
 
     reloadOrStop(): "reload" | "stop" {
       const action = readCommandEnabled(COMMANDS.stop.id) ? "stop" : "reload";

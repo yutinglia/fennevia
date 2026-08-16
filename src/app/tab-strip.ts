@@ -1,6 +1,7 @@
 import type { TabSnapshot } from "./tab-state";
 
 export const untitledTabLabel = "Untitled tab";
+export const newTabHighlightDurationMs = 1_600;
 
 export type TabStripKeyAction =
   | Readonly<{ tabId: string; type: "close" }>
@@ -43,6 +44,16 @@ export function resolveRovingTabId(
     return preferredTabId;
   }
   return tabs.find((tab) => tab.selected)?.id ?? tabs[0]?.id ?? null;
+}
+
+export function findOpenedTabIds(
+  previousTabs: readonly TabSnapshot[],
+  nextTabs: readonly TabSnapshot[],
+): readonly string[] {
+  const previousIds = new Set(previousTabs.map((tab) => tab.id));
+  return Object.freeze(
+    nextTabs.filter((tab) => !previousIds.has(tab.id)).map((tab) => tab.id),
+  );
 }
 
 export function findCloseFocusTarget(

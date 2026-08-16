@@ -2058,7 +2058,7 @@ function assertFrontendState(state, windowKind) {
   assert.equal(state.nestedInteractiveCount, 0);
   assert.equal(typeof state.navigation.backDisabled, "boolean");
   assert.equal(state.navigation.backMatchesNative, true);
-  assert.equal(state.navigation.controlCount, 13);
+  assert.equal(state.navigation.controlCount, 14);
   assert.equal(state.navigation.editableCount, 0);
   assert.equal(typeof state.navigation.forwardDisabled, "boolean");
   assert.equal(state.navigation.forwardMatchesNative, true);
@@ -5352,6 +5352,7 @@ async function exerciseFrontendUnmountRemount(client) {
         back() { return false; },
         focusContent() { return true; },
         forward() { return false; },
+        home() { return true; },
         newTab() { return true; },
         reload() { return true; },
         reloadOrStop() { return "reload"; },

@@ -925,6 +925,7 @@ export async function verifyShellAppHealth({
     'button[data-fennevia-action="back"]',
     'button[data-fennevia-action="forward"]',
     'button[data-fennevia-action="reload-stop"]',
+    'button[data-fennevia-action="home"]',
     'button[data-fennevia-browser-tool="extensions"]',
     'button[data-fennevia-browser-tool="downloads"]',
     'button[data-fennevia-browser-tool="application-menu"]',

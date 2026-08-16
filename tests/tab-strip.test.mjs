@@ -6,10 +6,12 @@ import { fileURLToPath } from "node:url";
 
 import {
   findCloseFocusTarget,
+  findOpenedTabIds,
   getDisplayTabTitle,
   getTabAccessibleName,
   getTabActionAccessibleName,
   getTabStripKeyAction,
+  newTabHighlightDurationMs,
   resolveRovingTabId,
 } from "../src/app/tab-strip.ts";
 
@@ -71,6 +73,17 @@ test("roving focus prefers a live target, then the selected tab, then native ord
   assert.equal(findCloseFocusTarget(tabs, "first"), "selected");
   assert.equal(findCloseFocusTarget(tabs, "last"), "selected");
   assert.equal(findCloseFocusTarget([tabs[0]], "first"), null);
+});
+
+test("opened-tab detection ignores reorder and reports only new ids", () => {
+  const first = tab({ id: "first", selected: true });
+  const second = tab({ id: "second" });
+  const opened = tab({ id: "opened", selected: true });
+
+  assert.deepEqual(findOpenedTabIds([first], [first, opened]), ["opened"]);
+  assert.deepEqual(findOpenedTabIds([first, second], [second, first]), []);
+  assert.deepEqual(findOpenedTabIds([], [first, second]), ["first", "second"]);
+  assert.equal(newTabHighlightDurationMs, 1_600);
 });
 
 test("keyboard navigation wraps, respects direction, and produces explicit actions", () => {
@@ -156,6 +169,19 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /releaseSurfaceFocus\(\);\s*\}, 0\)/u);
   assert.match(source, /onDestroy\(\(\) => \{\s*cancelDelayedFocus\(\)/u);
   assert.match(source, /cancelDelayedFocus\(\);\s*cancelFocusRelease\(\)/u);
+  assert.match(source, /cancelHighlight\(\)/u);
+  assert.match(source, /data-fennevia-action="home"/u);
+  assert.match(source, /handleNavigationAuxClick/u);
+  assert.match(source, /preventMiddleAutoscroll/u);
+  assert.match(source, /navigation\.reload\(gesture\)/u);
+  assert.match(
+    source,
+    /revealProgrammatically\("left", newTabHighlightDurationMs\)/u,
+  );
+  assert.match(
+    source,
+    /data-fennevia-just-opened=\{highlightedTabIds\.includes\(tab\.id\)\}/u,
+  );
   assert.match(source, /"ltr",\s*"vertical"/u);
   assert.match(styles, /@media \(forced-colors: active\)/u);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/u);
@@ -200,7 +226,12 @@ test("the component uses semantic sibling controls and property-safe rendering o
     [...styles.matchAll(/^\s*animation:\s*([^;]+);/gmu)].map(
       (match) => match[1],
     ),
-    ["fennevia-shortcut-tip 2800ms ease-out both", "none"],
+    [
+      "fennevia-shortcut-tip 2800ms ease-out both",
+      "fennevia-tab-opened 1600ms var(--fennevia-motion-easing) both",
+      "none",
+      "none",
+    ],
   );
   assert.doesNotMatch(
     styles,
