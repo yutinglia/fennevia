@@ -7,12 +7,15 @@ import { fileURLToPath } from "node:url";
 import {
   findCloseFocusTarget,
   findOpenedTabIds,
+  findTabMoveIndex,
   getDisplayTabTitle,
   getTabAccessibleName,
   getTabActionAccessibleName,
+  getTabAudioAction,
   getTabStripKeyAction,
   newTabHighlightDurationMs,
   resolveRovingTabId,
+  resolveTabDropIndex,
 } from "../src/app/tab-strip.ts";
 
 const projectRoot = path.resolve(
@@ -57,6 +60,44 @@ test("tab labels preserve page text as text and expose bounded ordinary state", 
     /data:image|favicon/iu,
   );
   assert.equal(getDisplayTabTitle(tab({ title: " \t " })), "Untitled tab");
+});
+
+test("accessible names include audio, attention, and container labels", () => {
+  const candidate = tab({
+    attention: true,
+    audio: "muted",
+    container: { color: "blue", label: "Personal" },
+    pictureInPicture: true,
+    title: "Example",
+  });
+  assert.equal(
+    getTabAccessibleName(candidate, 0, 2),
+    "Example, 1 of 2, Muted, Attention, Picture in picture, Personal",
+  );
+  assert.equal(getTabAudioAction(candidate), "unmute");
+  assert.equal(
+    getTabActionAccessibleName("unmute", candidate),
+    "Unmute Example",
+  );
+  assert.equal(getTabAudioAction(tab({ audio: "playing" })), "mute");
+  assert.equal(getTabAudioAction(tab({ audio: "blocked" })), "resume-media");
+  assert.equal(getTabAudioAction(tab()), null);
+});
+
+test("move helpers stay inside the pinned partition and ignore no-op drops", () => {
+  const tabs = [
+    tab({ id: "pinned-a", pinned: true }),
+    tab({ id: "pinned-b", pinned: true }),
+    tab({ id: "open-a", selected: true }),
+    tab({ id: "open-b" }),
+  ];
+  assert.equal(findTabMoveIndex(tabs, "open-a", 1), 3);
+  assert.equal(findTabMoveIndex(tabs, "open-a", -1), null);
+  assert.equal(findTabMoveIndex(tabs, "pinned-b", 1), null);
+  assert.equal(findTabMoveIndex(tabs, "pinned-a", 1), 1);
+  assert.equal(resolveTabDropIndex(tabs, "open-b", [10, 30, 50, 70], 20), 2);
+  assert.equal(resolveTabDropIndex(tabs, "open-b", [10, 30, 50, 70], 80), null);
+  assert.equal(resolveTabDropIndex(tabs, "pinned-a", [10, 30, 50, 70], 80), 1);
 });
 
 test("roving focus prefers a live target, then the selected tab, then native order", () => {
@@ -183,6 +224,17 @@ test("the component uses semantic sibling controls and property-safe rendering o
     /data-fennevia-just-opened=\{highlightedTabIds\.includes\(tab\.id\)\}/u,
   );
   assert.match(source, /"ltr",\s*"vertical"/u);
+  assert.match(source, /handleTabAuxClick/u);
+  assert.match(source, /openContextMenu/u);
+  assert.match(source, /draggable="true"/u);
+  assert.match(source, /data-fennevia-action="toggle-mute"/u);
+  assert.match(
+    source,
+    /data-fennevia-container-color=\{tab\.container\?\.color\}/u,
+  );
+  assert.match(source, /findTabMoveIndex/u);
+  assert.match(source, /resolveTabDropIndex/u);
+  assert.match(source, /setPointerHeld\("left", true\)/u);
   assert.match(styles, /@media \(forced-colors: active\)/u);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(styles, /@media \(prefers-reduced-transparency: reduce\)/u);
@@ -256,8 +308,8 @@ test("the component uses semantic sibling controls and property-safe rendering o
   const buttonClosings = [...itemBody.matchAll(/<\/button\s*>/gu)].map(
     (match) => match.index,
   );
-  assert.equal(buttonOpenings.length, 3);
-  assert.equal(buttonClosings.length, 3);
+  assert.equal(buttonOpenings.length, 4);
+  assert.equal(buttonClosings.length, 4);
   for (const [index, opening] of buttonOpenings.entries()) {
     assert.ok(opening < buttonClosings[index]);
     assert.ok(

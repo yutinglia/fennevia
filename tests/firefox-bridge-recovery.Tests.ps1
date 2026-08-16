@@ -264,7 +264,9 @@ export function createFirefoxTabsBridge() {
   let disposed = false;
   const tabs = Object.freeze({
     close() {},
+    move() {},
     open() { return "tab-registry-1-handle-1"; },
+    openContextMenu() {},
     pin() {},
     select() {},
     snapshot() { return Object.freeze([]); },
@@ -278,6 +280,7 @@ export function createFirefoxTabsBridge() {
         return true;
       };
     },
+    toggleMute() {},
     unpin() {},
   });
   return Object.freeze({
@@ -705,7 +708,9 @@ export function createFirefoxTabsBridge() {
   let disposed = false;
   const tabs = Object.freeze({
     close() {},
+    move() {},
     open() { return "tab-registry-1-handle-1"; },
+    openContextMenu() {},
     pin() {},
     select() {},
     snapshot() { return Object.freeze([]); },
@@ -719,6 +724,7 @@ export function createFirefoxTabsBridge() {
         return true;
       };
     },
+    toggleMute() {},
     unpin() {},
   });
   return Object.freeze({

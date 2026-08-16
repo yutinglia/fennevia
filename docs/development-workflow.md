@@ -41,6 +41,7 @@ Current feature order:
 ├─ #14 right bookmarks (complete)
 ├─ #32 bottom downloads (complete)
 └─ #11 left tabs (complete)
+    └─ #60 left-tab native parity (complete; groups still deferred)
     └─ #13 compact address/status launcher and popup (complete; depends on #12)
         └─ #37 fuller Urlbar permissions/page-action coverage (complete)
             └─ #15 content-only activation (complete)

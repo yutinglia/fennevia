@@ -56,6 +56,14 @@ function createTab(label, attributes = {}) {
     setAttribute(name, value) {
       values.set(name, String(value));
     },
+    toggleMuteAudio() {
+      if (values.has("muted")) {
+        values.delete("muted");
+        return;
+      }
+      values.set("muted", "true");
+      values.delete("soundplaying");
+    },
   };
 }
 
@@ -94,6 +102,10 @@ function createNativeWindow({ privateWindow = false } = {}) {
         currentIndex: index,
         previousIndex: oldIndex,
       });
+    },
+    moveTabTo(tab, options) {
+      actionCalls.push(["moveTabTo", tab, options]);
+      this.moveNativeTab(tab, options.tabIndex);
     },
     pinTab(tab) {
       actionCalls.push(["pinTab", tab]);
@@ -185,6 +197,21 @@ function createNativeWindow({ privateWindow = false } = {}) {
     },
   });
 
+  const tabContextMenu = {
+    ...createEventTarget(),
+    hidePopup() {
+      this.dispatch("popuphidden", this);
+    },
+    id: "tabContextMenu",
+    moveTo(screenX, screenY) {
+      this.lastMoveTo = [screenX, screenY];
+    },
+    openPopup(triggerNode, position, x, y, isContextMenu) {
+      this.lastOpenPopup = [triggerNode, position, x, y, isContextMenu];
+      this.triggerNode = triggerNode;
+      this.dispatch("popupshown", this);
+    },
+  };
   const window = {
     BROWSER_NEW_TAB_URL: privateWindow
       ? "about:privatebrowsing"
@@ -192,6 +219,9 @@ function createNativeWindow({ privateWindow = false } = {}) {
     document: {
       defaultView: null,
       documentURI: BROWSER_URI,
+      getElementById(id) {
+        return id === "tabContextMenu" ? tabContextMenu : null;
+      },
     },
     gBrowser,
   };
@@ -200,12 +230,13 @@ function createNativeWindow({ privateWindow = false } = {}) {
     gBrowser,
     getOpenTabsReadCount: () => openTabsReads,
     tabContainer,
+    tabContextMenu,
     tabs,
     window,
   };
 }
 
-function createController(native, errors = []) {
+function createController(native, errors = [], moduleLoader) {
   const contextId = `window-00000000-0000-4000-8000-${String(
     ++nextContextSequence,
   ).padStart(12, "0")}`;
@@ -220,6 +251,7 @@ function createController(native, errors = []) {
   });
   const controller = createFirefoxTabsBridge({
     boundary,
+    ...(moduleLoader === undefined ? {} : { moduleLoader }),
     onError(error) {
       errors.push(error);
     },
@@ -292,7 +324,7 @@ test("native events synchronize title, favicon fallback, loading, selection, pin
     const secondNativeTab = native.tabs[1];
     const readsBeforeIrrelevantEvent = native.getOpenTabsReadCount();
 
-    native.gBrowser.updateAttribute(native.tabs[0], "soundplaying", "true");
+    native.gBrowser.updateAttribute(native.tabs[0], "fadein", "true");
     assert.equal(native.getOpenTabsReadCount(), readsBeforeIrrelevantEvent);
     native.tabContainer.dispatch("TabAttrModified", native.tabs[0], {
       changed: [42],
@@ -321,7 +353,11 @@ test("native events synchronize title, favicon fallback, loading, selection, pin
     assert.equal(updated[1].faviconUrl, "data:image/png;base64,AA==");
     assert.ok(events.length >= 6);
     assert.ok(events.every(Object.isFrozen));
-    assert.ok(events.every((event) => Object.isFrozen(event.tabs)));
+    assert.ok(
+      events.every(
+        (event) => event.type === "snapshot" && Object.isFrozen(event.tabs),
+      ),
+    );
   } finally {
     disposePair(pair);
   }
@@ -457,10 +493,12 @@ test("disposal removes listeners, clears mappings, and prevents callbacks", () =
     callbackCount += 1;
   });
   assert.equal(native.tabContainer.listenerCount(), 7);
+  assert.equal(native.tabContextMenu.listenerCount(), 2);
 
   assert.equal(pair.controller.dispose(), true);
   assert.equal(pair.controller.dispose(), false);
   assert.equal(native.tabContainer.listenerCount(), 0);
+  assert.equal(native.tabContextMenu.listenerCount(), 0);
   native.gBrowser.updateAttribute(native.tabs[0], "label", "After dispose");
   assert.equal(callbackCount, 0);
   assert.deepEqual(pair.controller.snapshot(), {
@@ -533,5 +571,169 @@ test("subscriber failures are reported without exposing tab data or blocking pee
     );
   } finally {
     disposePair(pair);
+  }
+});
+
+test("audio, attention, picture-in-picture, and container fields reconcile from native attributes", () => {
+  const identities = new Map([
+    [1, { color: "blue", name: "Personal" }],
+    [2, { color: "turquoise", name: "Work" }],
+  ]);
+  const native = createNativeWindow();
+  const pair = createController(native, [], (uri) => {
+    assert.equal(
+      uri,
+      "resource://gre/modules/ContextualIdentityService.sys.mjs",
+    );
+    return {
+      ContextualIdentityService: {
+        getPublicIdentityFromId(userContextId) {
+          return identities.get(userContextId) ?? null;
+        },
+      },
+    };
+  });
+  try {
+    native.gBrowser.updateAttribute(native.tabs[0], "soundplaying", "true");
+    native.gBrowser.updateAttribute(native.tabs[0], "attention", "true");
+    native.gBrowser.updateAttribute(native.tabs[0], "pictureinpicture", "true");
+    native.gBrowser.updateAttribute(native.tabs[0], "usercontextid", "1");
+    let snapshot = pair.controller.tabs.snapshot();
+    assert.equal(snapshot[0].audio, "playing");
+    assert.equal(snapshot[0].attention, true);
+    assert.equal(snapshot[0].pictureInPicture, true);
+    assert.deepEqual(snapshot[0].container, {
+      color: "blue",
+      label: "Personal",
+    });
+
+    native.gBrowser.updateAttribute(native.tabs[0], "muted", "true");
+    snapshot = pair.controller.tabs.snapshot();
+    assert.equal(snapshot[0].audio, "muted");
+
+    native.tabs[0].removeAttribute("muted");
+    native.tabs[0].removeAttribute("soundplaying");
+    native.gBrowser.updateAttribute(
+      native.tabs[0],
+      "activemedia-blocked",
+      "true",
+    );
+    snapshot = pair.controller.tabs.snapshot();
+    assert.equal(snapshot[0].audio, "blocked");
+
+    native.gBrowser.updateAttribute(native.tabs[1], "usercontextid", "2");
+    snapshot = pair.controller.tabs.snapshot();
+    assert.equal(snapshot[1].container.color, "cyan");
+    assert.equal(snapshot[1].container.label, "Work");
+    assert.doesNotMatch(
+      JSON.stringify(snapshot),
+      /userContextId|usercontextid/u,
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("optional container lookup failures omit container fields without failing health", () => {
+  const native = createNativeWindow();
+  native.tabs[0].setAttribute("usercontextid", "1");
+  const pair = createController(native, [], () => {
+    throw new Error("identity module missing");
+  });
+  try {
+    const snapshot = pair.controller.tabs.snapshot();
+    assert.equal(snapshot[0].container, undefined);
+    assert.ok(
+      pair.controller
+        .assertRequiredCapabilities()
+        .every((capability) => capability.available),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("move, mute, and native context-menu handoff stay inside the bridge", () => {
+  const native = createNativeWindow();
+  const errors = [];
+  const pair = createController(native, errors);
+  const events = [];
+  try {
+    pair.controller.tabs.subscribe((event) => events.push(event));
+    const [firstId, secondId] = pair.controller.tabs
+      .snapshot()
+      .map((tab) => tab.id);
+    pair.controller.tabs.move(secondId, 0);
+    assert.equal(pair.controller.tabs.snapshot()[0].id, secondId);
+    assert.equal(native.gBrowser.actionCalls.at(-1)[0], "moveTabTo");
+    assert.equal(native.gBrowser.actionCalls.at(-1)[2].isUserTriggered, true);
+    assert.equal(native.gBrowser.actionCalls.at(-1)[2].tabIndex, 0);
+
+    native.gBrowser.updateAttribute(native.tabs[0], "soundplaying", "true");
+    pair.controller.tabs.toggleMute(secondId);
+    assert.equal(pair.controller.tabs.snapshot()[0].audio, "muted");
+
+    pair.controller.tabs.openContextMenu(firstId, { screenX: 24, screenY: 48 });
+    assert.equal(native.tabContextMenu.triggerNode, native.tabs[1]);
+    assert.deepEqual(native.tabContextMenu.lastMoveTo, [24, 48]);
+    assert.deepEqual(
+      events
+        .filter((event) => event.type === "context-menu")
+        .map((event) => event.open),
+      [true],
+    );
+
+    native.tabContextMenu.hidePopup();
+    assert.deepEqual(
+      events
+        .filter((event) => event.type === "context-menu")
+        .map((event) => event.open),
+      [true, false],
+    );
+    assert.equal(errors.length, 0);
+
+    assert.throws(
+      () => pair.controller.tabs.move(firstId, -1),
+      /FENNEVIA_FIREFOX_TAB_MOVE_INDEX_INVALID/u,
+    );
+    assert.throws(
+      () =>
+        pair.controller.tabs.openContextMenu(firstId, {
+          screenX: Number.NaN,
+          screenY: 1,
+        }),
+      /FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_POINT_INVALID/u,
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("missing moveTabTo fails health with a typed current-build diagnostic", () => {
+  const native = createNativeWindow();
+  native.gBrowser.moveTabTo = undefined;
+  const boundary = createFirefoxBridgeBoundary({
+    buildId: "20260810162159",
+    contextId: "window-00000000-0000-4000-8000-888888888888",
+    firefoxVersion: "153.0.4",
+    window: native.window,
+    windowKind: "normal",
+  });
+  try {
+    assert.throws(
+      () =>
+        createFirefoxTabsBridge({
+          boundary,
+          onError() {},
+          window: native.window,
+        }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING" &&
+        error.fenneviaSymbol === "window.gBrowser.moveTabTo" &&
+        error.fenneviaBuildId === "20260810162159",
+    );
+  } finally {
+    boundary.dispose();
   }
 });

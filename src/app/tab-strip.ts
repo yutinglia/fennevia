@@ -16,21 +16,58 @@ export function getTabAccessibleName(
   index: number,
   tabCount: number,
 ): string {
+  const audioLabel =
+    tab.audio === "playing"
+      ? "Playing"
+      : tab.audio === "muted"
+        ? "Muted"
+        : tab.audio === "blocked"
+          ? "Media blocked"
+          : undefined;
   const states = [
     `${index + 1} of ${tabCount}`,
     tab.pinned ? "Pinned" : undefined,
     tab.loading ? "Loading" : undefined,
+    audioLabel,
+    tab.attention ? "Attention" : undefined,
+    tab.pictureInPicture ? "Picture in picture" : undefined,
+    tab.container?.label,
   ].filter((state): state is string => state !== undefined);
   return `${getDisplayTabTitle(tab)}, ${states.join(", ")}`;
 }
 
 export function getTabActionAccessibleName(
-  action: "close" | "pin" | "unpin",
+  action: "close" | "mute" | "pin" | "resume-media" | "unmute" | "unpin",
   tab: TabSnapshot,
 ): string {
   const verb =
-    action === "close" ? "Close" : action === "pin" ? "Pin" : "Unpin";
+    action === "close"
+      ? "Close"
+      : action === "pin"
+        ? "Pin"
+        : action === "unpin"
+          ? "Unpin"
+          : action === "mute"
+            ? "Mute"
+            : action === "unmute"
+              ? "Unmute"
+              : "Allow media for";
   return `${verb} ${getDisplayTabTitle(tab)}`;
+}
+
+export function getTabAudioAction(
+  tab: TabSnapshot,
+): "mute" | "resume-media" | "unmute" | null {
+  if (tab.audio === "blocked") {
+    return "resume-media";
+  }
+  if (tab.audio === "muted") {
+    return "unmute";
+  }
+  if (tab.audio === "playing") {
+    return "mute";
+  }
+  return null;
 }
 
 export function resolveRovingTabId(
@@ -65,6 +102,61 @@ export function findCloseFocusTarget(
     return resolveRovingTabId(tabs);
   }
   return tabs[index + 1]?.id ?? tabs[index - 1]?.id ?? null;
+}
+
+export function findTabMoveIndex(
+  tabs: readonly TabSnapshot[],
+  tabId: string,
+  delta: -1 | 1,
+): number | null {
+  const index = tabs.findIndex((tab) => tab.id === tabId);
+  const tab = index < 0 ? undefined : tabs[index];
+  const neighbor = tab === undefined ? undefined : tabs[index + delta];
+  if (!tab || !neighbor || neighbor.pinned !== tab.pinned) {
+    return null;
+  }
+  return index + delta;
+}
+
+export function resolveTabDropIndex(
+  tabs: readonly TabSnapshot[],
+  draggingTabId: string,
+  itemMids: readonly number[],
+  pointerY: number,
+): number | null {
+  const draggingIndex = tabs.findIndex((tab) => tab.id === draggingTabId);
+  if (
+    draggingIndex < 0 ||
+    itemMids.length !== tabs.length ||
+    !Number.isFinite(pointerY)
+  ) {
+    return null;
+  }
+  const dragging = tabs[draggingIndex];
+  if (!dragging) {
+    return null;
+  }
+
+  let insertBefore = tabs.length;
+  for (const [index, midpoint] of itemMids.entries()) {
+    if (pointerY < midpoint) {
+      insertBefore = index;
+      break;
+    }
+  }
+
+  let targetIndex =
+    insertBefore > draggingIndex ? insertBefore - 1 : insertBefore;
+  const pinnedCount = tabs.filter((tab) => tab.pinned).length;
+  if (dragging.pinned) {
+    targetIndex = Math.min(
+      Math.max(targetIndex, 0),
+      Math.max(pinnedCount - 1, 0),
+    );
+  } else {
+    targetIndex = Math.min(Math.max(targetIndex, pinnedCount), tabs.length - 1);
+  }
+  return targetIndex === draggingIndex ? null : targetIndex;
 }
 
 export function getTabStripKeyAction(

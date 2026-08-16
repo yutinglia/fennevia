@@ -5226,7 +5226,9 @@ async function exerciseFrontendUnmountRemount(client) {
       });
       const tabs = Object.freeze({
         close() {},
+        move() {},
         open() { return "tab-registry-1-handle-1"; },
+        openContextMenu() {},
         pin() {},
         select() {},
         snapshot() { return Object.freeze([testTab]); },
@@ -5242,6 +5244,7 @@ async function exerciseFrontendUnmountRemount(client) {
             return true;
           };
         },
+        toggleMute() {},
         unpin() {},
       });
       const bookmarkRoots = Object.freeze([

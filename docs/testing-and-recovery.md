@@ -288,7 +288,13 @@ Validate:
 - rapid event/action bursts;
 - long, empty, emoji, markup-like, Unicode, and bidirectional titles;
 - rejected/failed favicon;
-- Up/Down, Home/End, Enter/Space, Delete, sibling pin/close controls;
+- Up/Down, Home/End, Enter/Space, Delete, sibling pin/close/mute controls;
+- middle-click close without autoscroll;
+- drag reorder and `Ctrl+Shift+ArrowUp/Down` within the pinned partition;
+- native `#tabContextMenu` on a background tab, including left-edge popup hold;
+- audio playing/muted/blocked indicator and mute toggle without first selecting;
+- container color stripe and bounded label; private windows omit container;
+- attention and picture-in-picture indicators;
 - deterministic close-focus recovery;
 - selected item remains reachable;
 - direct frontend unmount/remount;
@@ -303,7 +309,12 @@ Evidence:
 
 - `docs/research/firefox-153-tabs-bridge.md`;
 - `docs/research/firefox-153-tab-strip.md`;
+- `docs/research/firefox-153-tab-strip-parity.md`;
 - `docs/research/firefox-153-four-edge-shell.md`.
+
+Issue #60 real Firefox rows (middle-click, audio/mute, container stripe,
+background-tab native menu, drag/keyboard reorder, menu popup hold, private
+window without containers, fail-open, disposal during menu/drag): **not run**.
 
 ### 6.2 Top navigation — implemented
 

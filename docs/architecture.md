@@ -230,12 +230,16 @@ passes that object, never the controller or native window, to the frontend.
 copies exact snapshot fields into a Svelte-independent reactive adapter, drops
 unknown properties, owns frontend subscriptions, and releases the public bridge
 on unmount. Issue #11 renders that ordinary state as one accessible project-owned
-tab strip. Primary tab buttons expose selected semantics and roving keyboard
-focus; pin and close remain sibling controls. Titles stay bounded text, favicon
-values use a strict internal/raster allowlist with a property-only image and
-explicit fallback, and no browsing value enters logs or diagnostics. Current
-source and runtime evidence is in `docs/research/firefox-153-tabs-bridge.md`,
-`docs/research/firefox-153-tab-strip.md`, ADR-024, and ADR-025.
+tab strip. Issue #60 extends the same strip with audio/container/attention
+indicators, middle-click close, drag and keyboard reorder, and Firefox-owned
+`#tabContextMenu` handoff. Primary tab buttons expose selected semantics and
+roving keyboard focus; pin, mute, and close remain sibling controls. Titles
+stay bounded text, favicon values use a strict internal/raster allowlist with a
+property-only image and explicit fallback, and no browsing value enters logs or
+diagnostics. Current source and runtime evidence is in
+`docs/research/firefox-153-tabs-bridge.md`,
+`docs/research/firefox-153-tab-strip.md`,
+`docs/research/firefox-153-tab-strip-parity.md`, ADR-024, ADR-025, and ADR-041.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather

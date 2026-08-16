@@ -1,31 +1,76 @@
 export const maximumTabTitleLength = 256;
+export const maximumContainerLabelLength = 80;
+
+export const tabAudioStates = Object.freeze(["playing", "muted", "blocked"]);
+export type TabAudioState = (typeof tabAudioStates)[number];
+
+export const tabContainerColors = Object.freeze([
+  "blue",
+  "cyan",
+  "gray",
+  "green",
+  "orange",
+  "pink",
+  "purple",
+  "red",
+  "violet",
+  "yellow",
+]);
+export type TabContainerColor = (typeof tabContainerColors)[number];
+
+const tabAudioStateSet = new Set<string>(tabAudioStates);
+const tabContainerColorSet = new Set<string>(tabContainerColors);
+
+export type TabContainerSnapshot = Readonly<{
+  color: TabContainerColor;
+  label: string;
+}>;
 
 export type TabSnapshot = Readonly<{
+  attention?: boolean;
+  audio?: TabAudioState;
+  container?: TabContainerSnapshot;
   faviconUrl?: string;
   id: string;
   loading: boolean;
+  pictureInPicture?: boolean;
   pinned: boolean;
   selected: boolean;
   title: string;
 }>;
 
-export type TabStateEvent = Readonly<{
+export type TabSnapshotEvent = Readonly<{
   revision: number;
   tabs: readonly TabSnapshot[];
   type: "snapshot";
 }>;
 
+export type TabContextMenuEvent = Readonly<{
+  open: boolean;
+  type: "context-menu";
+}>;
+
+export type TabStateEvent = TabContextMenuEvent | TabSnapshotEvent;
+
 export type OpenTabOptions = Readonly<{
   selected?: boolean;
 }>;
 
+export type TabContextMenuPoint = Readonly<{
+  screenX: number;
+  screenY: number;
+}>;
+
 export type BrowserTabsBridge = Readonly<{
   close: (tabId: string) => void;
+  move: (tabId: string, index: number) => void;
   open: (options?: OpenTabOptions) => string;
+  openContextMenu: (tabId: string, point: TabContextMenuPoint) => void;
   pin: (tabId: string) => void;
   select: (tabId: string) => void;
   snapshot: () => readonly TabSnapshot[];
   subscribe: (listener: (event: TabStateEvent) => void) => () => boolean;
+  toggleMute: (tabId: string) => void;
   unpin: (tabId: string) => void;
 }>;
 
@@ -37,7 +82,9 @@ export type BrowserTabsState = Readonly<{
 export type BrowserTabsStateAdapter = Readonly<{
   close: (tabId: string) => void;
   dispose: () => boolean;
+  move: (tabId: string, index: number) => void;
   open: (options?: OpenTabOptions) => string;
+  openContextMenu: (tabId: string, point: TabContextMenuPoint) => void;
   pin: (tabId: string) => void;
   select: (tabId: string) => void;
   snapshot: () => BrowserTabsState;
@@ -48,6 +95,8 @@ export type BrowserTabsStateAdapter = Readonly<{
     tabCount: number;
   }>;
   subscribe: (listener: (state: BrowserTabsState) => void) => () => boolean;
+  subscribeContextMenu: (listener: (open: boolean) => void) => () => boolean;
+  toggleMute: (tabId: string) => void;
   unpin: (tabId: string) => void;
 }>;
 
@@ -59,6 +108,36 @@ const createStateError = (code: string): Error => {
     fenneviaPhase: { enumerable: false, value: "tab-state" },
   });
   return error;
+};
+
+export function isTabAudioState(value: unknown): value is TabAudioState {
+  return typeof value === "string" && tabAudioStateSet.has(value);
+}
+
+export function isTabContainerColor(
+  value: unknown,
+): value is TabContainerColor {
+  return typeof value === "string" && tabContainerColorSet.has(value);
+}
+
+const copyTabContainer = (
+  candidate: TabContainerSnapshot | undefined,
+): TabContainerSnapshot | undefined => {
+  if (candidate === undefined) {
+    return undefined;
+  }
+  if (
+    !candidate ||
+    typeof candidate !== "object" ||
+    !isTabContainerColor(candidate.color) ||
+    typeof candidate.label !== "string"
+  ) {
+    throw createStateError("FENNEVIA_TAB_STATE_SNAPSHOT_INVALID");
+  }
+  return Object.freeze({
+    color: candidate.color,
+    label: candidate.label.slice(0, maximumContainerLabelLength),
+  });
 };
 
 const copyTabSnapshot = (candidate: TabSnapshot): TabSnapshot => {
@@ -73,15 +152,25 @@ const copyTabSnapshot = (candidate: TabSnapshot): TabSnapshot => {
     typeof candidate.pinned !== "boolean" ||
     typeof candidate.selected !== "boolean" ||
     (candidate.faviconUrl !== undefined &&
-      typeof candidate.faviconUrl !== "string")
+      typeof candidate.faviconUrl !== "string") ||
+    (candidate.audio !== undefined && !isTabAudioState(candidate.audio)) ||
+    (candidate.attention !== undefined &&
+      typeof candidate.attention !== "boolean") ||
+    (candidate.pictureInPicture !== undefined &&
+      typeof candidate.pictureInPicture !== "boolean")
   ) {
     throw createStateError("FENNEVIA_TAB_STATE_SNAPSHOT_INVALID");
   }
 
+  const container = copyTabContainer(candidate.container);
   return Object.freeze({
+    ...(candidate.attention === true ? { attention: true } : {}),
+    ...(candidate.audio === undefined ? {} : { audio: candidate.audio }),
+    ...(container === undefined ? {} : { container }),
     ...(candidate.faviconUrl === undefined
       ? {}
       : { faviconUrl: candidate.faviconUrl }),
+    ...(candidate.pictureInPicture === true ? { pictureInPicture: true } : {}),
     id: candidate.id,
     loading: candidate.loading,
     pinned: candidate.pinned,
@@ -118,6 +207,9 @@ export function reduceBrowserTabsState(
   state: BrowserTabsState,
   event: TabStateEvent,
 ): BrowserTabsState {
+  if (event?.type === "context-menu") {
+    return state;
+  }
   if (
     event?.type !== "snapshot" ||
     !Number.isSafeInteger(event.revision) ||
@@ -138,11 +230,14 @@ export function createBrowserTabsStateAdapter(
     !bridge ||
     typeof bridge !== "object" ||
     typeof bridge.close !== "function" ||
+    typeof bridge.move !== "function" ||
     typeof bridge.open !== "function" ||
+    typeof bridge.openContextMenu !== "function" ||
     typeof bridge.pin !== "function" ||
     typeof bridge.select !== "function" ||
     typeof bridge.snapshot !== "function" ||
     typeof bridge.subscribe !== "function" ||
+    typeof bridge.toggleMute !== "function" ||
     typeof bridge.unpin !== "function"
   ) {
     throw createStateError("FENNEVIA_TAB_STATE_BRIDGE_INVALID");
@@ -152,8 +247,18 @@ export function createBrowserTabsStateAdapter(
   let disposed = false;
   let state = createBrowserTabsState(bridge.snapshot());
   const listeners = new Set<(state: BrowserTabsState) => void>();
+  const contextMenuListeners = new Set<(open: boolean) => void>();
   const unsubscribeBridge = bridge.subscribe((event) => {
     if (disposed) {
+      return;
+    }
+    if (event?.type === "context-menu") {
+      if (typeof event.open !== "boolean") {
+        throw createStateError("FENNEVIA_TAB_STATE_EVENT_INVALID");
+      }
+      for (const listener of Array.from(contextMenuListeners)) {
+        listener(event.open);
+      }
       return;
     }
     const nextState = reduceBrowserTabsState(state, event);
@@ -189,12 +294,21 @@ export function createBrowserTabsStateAdapter(
       disposed = true;
       activeBridge = null;
       listeners.clear();
+      contextMenuListeners.clear();
       unsubscribeBridge();
       return true;
     },
 
+    move(tabId: string, index: number): void {
+      requireBridge().move(tabId, index);
+    },
+
     open(options?: OpenTabOptions): string {
       return requireBridge().open(options);
+    },
+
+    openContextMenu(tabId: string, point: TabContextMenuPoint): void {
+      requireBridge().openContextMenu(tabId, point);
     },
 
     pin(tabId: string): void {
@@ -233,6 +347,27 @@ export function createBrowserTabsStateAdapter(
         listeners.delete(listener);
         return true;
       });
+    },
+
+    subscribeContextMenu(listener: (open: boolean) => void): () => boolean {
+      requireBridge();
+      if (typeof listener !== "function") {
+        throw createStateError("FENNEVIA_TAB_STATE_LISTENER_INVALID");
+      }
+      contextMenuListeners.add(listener);
+      let subscribed = true;
+      return Object.freeze(() => {
+        if (!subscribed) {
+          return false;
+        }
+        subscribed = false;
+        contextMenuListeners.delete(listener);
+        return true;
+      });
+    },
+
+    toggleMute(tabId: string): void {
+      requireBridge().toggleMute(tabId);
     },
 
     unpin(tabId: string): void {

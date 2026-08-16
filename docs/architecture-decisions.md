@@ -1280,3 +1280,33 @@ absolute paths, and a long program-copy snippet. A local console can remove
 that friction without changing ownership, transaction, or deletion contracts.
 Listing profile names is a local interactive exception to "no profile
 enumeration in normal output"; it is not automatic target selection.
+
+## ADR-041: Complete left-edge tab strip native parity through Firefox-owned menu handoff
+
+**Status:** Accepted for issue #60
+
+Keep the #10/#11 flat vertical tab list as the only left-edge tab model. Extend
+its ordinary snapshot with optional audio, attention, picture-in-picture, and
+container `{ color, label }` fields. Add `move`, `toggleMute`, and
+`openContextMenu({ screenX, screenY })`. Open Firefox `#tabContextMenu` with the
+native `<tab>` as `triggerNode`, then `moveTo` the cursor. Hold the left edge
+through the existing #31 `setPopupHeld("left")` path while that popup is open.
+
+Do not reimplement Duplicate, Close others, Send tab, Reopen in container, or
+Undo close in Svelte. Do not put native tab, menu, identity, or principal
+objects in stores, datasets, or diagnostics. Do not expose `userContextId`.
+Treat `ContextualIdentityService.getPublicIdentityFromId` as optional: missing
+service, private windows, or unknown colors omit container fields and do not
+fail the window. Tab groups, split view, workspaces, multi-select, thumbnails,
+and `resource://usercontext-content/` icons remain out of scope.
+
+**Reasoning:** `TabContextMenu.updateContextMenu` only accepts
+`triggerNode.tab`, `triggerNode.closest("tab")`, or `selectedTab`. A Svelte
+button as trigger would act on the selected tab, not a background tab.
+`gBrowser.moveTabTo` already clamps the pinned partition. Container names are
+user-derived text like titles: show them, never log them. Color names are a
+closed Firefox enum mapped to CSS tokens. Live `openPopup`+`moveTo` proof
+against a collapsed native tab strip was not run on this change; the
+source-selected sequence is recorded in
+`docs/research/firefox-153-tab-strip-parity.md`, with a bridge-owned `.tab`
+trigger node as the fallback if positioning fails on the supported build.

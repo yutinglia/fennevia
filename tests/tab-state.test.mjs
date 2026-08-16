@@ -34,6 +34,38 @@ test("tab state copies only ordinary fields into frozen ordered snapshots", () =
   assert.ok(Object.isFrozen(state.tabs[0]));
 });
 
+test("tab state copies audio, attention, and container fields and rejects invalid values", () => {
+  const state = createBrowserTabsState([
+    {
+      ...firstTab,
+      attention: true,
+      audio: "playing",
+      container: { color: "blue", label: "Personal".repeat(20) },
+      pictureInPicture: true,
+    },
+  ]);
+  assert.equal(state.tabs[0].audio, "playing");
+  assert.equal(state.tabs[0].attention, true);
+  assert.equal(state.tabs[0].pictureInPicture, true);
+  assert.equal(state.tabs[0].container.color, "blue");
+  assert.equal(state.tabs[0].container.label.length, 80);
+  assert.throws(
+    () => createBrowserTabsState([{ ...firstTab, audio: "loud" }]),
+    /FENNEVIA_TAB_STATE_SNAPSHOT_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      createBrowserTabsState([
+        { ...firstTab, container: { color: "neon", label: "X" } },
+      ]),
+    /FENNEVIA_TAB_STATE_SNAPSHOT_INVALID/u,
+  );
+  assert.strictEqual(
+    reduceBrowserTabsState(state, { open: true, type: "context-menu" }),
+    state,
+  );
+});
+
 test("the reducer replaces order atomically and ignores stale revisions", () => {
   const initial = createBrowserTabsState([firstTab]);
   const secondTab = Object.freeze({
@@ -95,6 +127,12 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
     pin(tabId) {
       actions.push(["pin", tabId]);
     },
+    move(tabId, index) {
+      actions.push(["move", tabId, index]);
+    },
+    openContextMenu(tabId, point) {
+      actions.push(["openContextMenu", tabId, point]);
+    },
     select(tabId) {
       actions.push(["select", tabId]);
     },
@@ -117,10 +155,17 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
     unpin(tabId) {
       actions.push(["unpin", tabId]);
     },
+    toggleMute(tabId) {
+      actions.push(["toggleMute", tabId]);
+    },
   });
   const adapter = createBrowserTabsStateAdapter(bridge);
   const observed = [];
+  const menuEvents = [];
   const unsubscribe = adapter.subscribe((state) => observed.push(state));
+  const unsubscribeMenu = adapter.subscribeContextMenu((open) =>
+    menuEvents.push(open),
+  );
 
   for (const listener of bridgeListeners) {
     listener({
@@ -128,25 +173,34 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
       tabs: [{ ...firstTab, loading: true }],
       type: "snapshot",
     });
+    listener({ open: true, type: "context-menu" });
   }
   assert.equal(adapter.snapshot().tabs[0].loading, true);
   assert.equal(observed.length, 1);
+  assert.deepEqual(menuEvents, [true]);
 
   const openedId = adapter.open({ selected: false });
   adapter.select(openedId);
   adapter.pin(openedId);
   adapter.unpin(openedId);
+  adapter.move(openedId, 1);
+  adapter.toggleMute(openedId);
+  adapter.openContextMenu(openedId, { screenX: 10, screenY: 20 });
   adapter.close(openedId);
   assert.deepEqual(actions, [
     ["open", { selected: false }],
     ["select", openedId],
     ["pin", openedId],
     ["unpin", openedId],
+    ["move", openedId, 1],
+    ["toggleMute", openedId],
+    ["openContextMenu", openedId, { screenX: 10, screenY: 20 }],
     ["close", openedId],
   ]);
 
   assert.equal(unsubscribe(), true);
   assert.equal(unsubscribe(), false);
+  assert.equal(unsubscribeMenu(), true);
   assert.equal(adapter.dispose(), true);
   assert.equal(adapter.dispose(), false);
   assert.equal(bridgeUnsubscribeCount, 1);

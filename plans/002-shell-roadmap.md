@@ -17,7 +17,7 @@ Validated baseline as of 2026-08-16:
 - public package `0.10.0-beta.1` prerelease;
 - Firefox 153.0.4 BuildID 20260810162159 release on Windows x64;
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16,
-  #17, #18, #22, #31, #32, #37, #39, and #57 complete;
+  #17, #18, #22, #31, #32, #37, #39, #57, and #60 complete;
 - functional vertical tabs and a compact address/status launcher in the left
   surface;
 - one centered address/search popup with detailed connection, protection,
@@ -243,16 +243,25 @@ ADR-026 reorients the same data, action, and accessibility contract vertically
 inside the left edge. Up/Down replaces horizontal arrow movement, and many tabs
 scroll inside the bounded left panel.
 
+Issue #60 completes the remaining flat-list parity on that same strip:
+
+- middle-click close;
+- audio playing/muted/blocked plus a sibling mute toggle;
+- container color stripe and bounded label;
+- attention and picture-in-picture indicators;
+- drag reorder and `Ctrl+Shift+ArrowUp/Down`;
+- Firefox-owned `#tabContextMenu` handoff with #31 popup hold.
+
 Deferred:
 
-- drag reorder;
-- tab groups/workspaces;
+- tab groups/workspaces/split view;
 - multi-select;
-- audio/attention/previews;
-- full native-equivalent context menus.
+- thumbnails/previews;
+- container icon loads from `resource://usercontext-content/`.
 
-Evidence: ADR-025, ADR-026, and
-`docs/research/firefox-153-tab-strip.md`.
+Evidence: ADR-025, ADR-026, ADR-041, and
+`docs/research/firefox-153-tab-strip.md`,
+`docs/research/firefox-153-tab-strip-parity.md`.
 
 ## Milestone F: Shared four-edge interaction and design frame — complete
 
@@ -656,7 +665,7 @@ The following require separate plans and issues:
 - complete bookmarks/history manager;
 - complete Downloads manager and file actions;
 - bookmark drag-and-drop/editing;
-- tab drag reorder, groups, workspaces, containers UI, and multi-select;
+- tab groups, split view, workspaces, multi-select, and container icons;
 - custom titlebar and OS window controls;
 - arbitrary theme editor or CSS injection;
 - any `browser.xhtml` or internal-component override;
