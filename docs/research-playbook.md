@@ -105,7 +105,10 @@ For every loader fix, answer:
 3. What is the minimum behavior required by this project?
 4. What evidence proves that minimum behavior is sufficient?
 
-Record the exact commit SHA or retrieval date for unstable references.
+Record the previous pin, current full commit SHA, commit date, relevant change,
+and applicability decision for every canary. Repository work uses the GitHub
+CLI according to `AGENTS.md`; do not rely on an authenticated browser session or
+copy tokens into commands/evidence.
 
 ## 4. Use Searchfox as the primary source browser
 
@@ -239,3 +242,12 @@ Before adopting a pattern, document which part works through stock-Firefox runti
 ```
 
 Move durable conclusions into `docs/`. A one-version incident may remain in an issue, but its evidence and validation must be complete.
+
+## 10. Firefox stable changes
+
+For every supported-stable change, follow
+`docs/firefox-update-workflow.md`. Capture the old-build baseline before code
+changes, compare all four canaries and current Firefox source, update the one
+normative internals inventory, repeat full runtime/failure/recovery/installer
+coverage, and publish before/after evidence. If no newer stable exists, label a
+same-build run as a rehearsal and leave the real-transition result `not run`.

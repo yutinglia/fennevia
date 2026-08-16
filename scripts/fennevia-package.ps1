@@ -3,7 +3,7 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet("Install", "Update", "Disable", "Enable", "Uninstall")]
+    [ValidateSet("Install", "Update", "Repair", "Disable", "Enable", "Uninstall")]
     [string] $Action,
 
     [Parameter(Mandatory)]

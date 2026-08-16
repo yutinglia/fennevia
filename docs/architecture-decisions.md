@@ -979,3 +979,55 @@ package `0.10.0-dev` stops at healthy or contains no native-hide selector. The
 source inventory, rejected alternatives, provenance, and real
 normal/second/private/customize/fullscreen/Browser-Toolbox/fail-open evidence
 are in `docs/research/firefox-153-content-only-activation.md`.
+
+## ADR-033: Repair only a completely absent ownership side from exact surviving proof
+
+**Status:** Accepted and validated in PowerShell 7 and Windows PowerShell 5.1
+
+Keep the byte-identical dual-root ownership pair as the normal invariant. When
+exactly one valid side survives a Firefox replacement or interrupted external
+operation, expose a separate `Repair` action instead of weakening `Update` or
+silently copying metadata. Every ordinary action continues to reject an
+incomplete pair.
+
+Repair is permitted only for the marker-owned development profile, one valid
+survivor whose own-scope files still match, and a supplied package that
+regenerates the complete survivor content byte-for-byte. The missing side's
+metadata directory, owned file set, alternate enabled/disabled preference, and
+profile package must be wholly absent. Any partial residue, foreign AutoConfig,
+source mismatch, unexplained directory requirement, modified survivor, or both-
+absent state fails before mutation. A successful plan creates only missing-side
+paths and the original ownership bytes through the existing reviewed dual-root
+transaction, plan digest, failure rollback, and residue cleanup.
+
+**Reasoning:** A stock Firefox update may replace program files while leaving
+the marker-owned profile package intact. Requiring a clean reinstall would lose
+useful exact proof, while accepting a one-sided manifest as general authority
+would let stale or planted metadata adopt files. The narrow reconstruction
+preserves fail-closed ownership and provides a reproducible recovery path. The
+complete operator contract and failure codes are in `docs/installation.md`.
+
+## ADR-034: Collect only aggregate Firefox resource evidence in the test harness
+
+**Status:** Accepted for test-only Firefox 153.0.4 evidence
+
+The real-Firefox harness may call the privileged, unsupported
+`ChromeUtils.requestProcInfo()` only in the explicit `--performance-baseline`
+mode. The collector immediately reduces the parent and child process records to
+numeric process count, committed memory bytes, CPU time nanoseconds, and CPU
+cycles. It never serializes or returns process IDs, origins, windows, document
+URIs/titles, threads, utility actors, or native records. Production runtime and
+Svelte code do not import or call this API.
+
+The baseline separately records harness-observed spawn-to-active time, a five-
+second hidden-surface idle delta, four-edge reveal p50/p95/max, and memory/CPU
+before and after five complete normal-window lifecycle cycles. Results are local
+diagnostic evidence with repeatable investigation thresholds, not a synthetic
+CI score or telemetry sink.
+
+**Reasoning:** Firefox 153's pinned
+`dom/chrome-webidl/ChromeUtils.webidl` defines process memory in bytes and CPU
+time in nanoseconds, but the same dictionaries can contain browsing-derived
+origins and window URI/title data. Immediate fixed-field aggregation detects
+obvious regressions without expanding Fennevia's runtime data surface or shared
+logs. The method and thresholds are in `docs/firefox-update-workflow.md`.

@@ -15,7 +15,7 @@ As of 2026-08-16:
 - first platform: Windows 11;
 - environment: copied stock Firefox program plus marker-owned direct-path
   development profile;
-- completed runtime/UI milestones: #3–#14, #31, #32, and #37;
+- completed runtime/UI milestones: #3–#16, #31, #32, and #37;
 - current shell: one zero-layout frame with independent top, left, right, and
   bottom surfaces plus one centered address-overlay root;
 - current functional features: vertical tabs and compact address/status
@@ -24,9 +24,11 @@ As of 2026-08-16:
   bookmarks in the right surface, and anonymous aggregate download status in
   the bottom surface; the centered popup also includes fixed Urlbar permission/
   action coverage and complete native handoff;
-- current placeholders: none inside the five pre-activation product surfaces;
-- native Firefox visible UI: retained and unchanged;
-- production active state: not entered.
+- current placeholders: none inside the five product surfaces;
+- native Firefox visible UI: exact ADR-032 toolbar/sidebar descendants collapse
+  only at active rest; the complete native DOM and transient reveal path remain;
+- production active state: entered only after health, with safe start,
+  suspension, emergency fallback, and per-window cleanup validated.
 
 The #6 primary/sidebar/overlay host record and #11 horizontal-tab record remain
 historical evidence. ADR-026 and #31 define the current four-edge geometry and
@@ -88,6 +90,7 @@ Use the exact Node.js and npm versions in `.nvmrc` and `package.json`.
 ```powershell
 npm ci --ignore-scripts --no-fund
 npm run dependencies:audit
+npm run test:powershell
 npm run verify
 ```
 
@@ -97,6 +100,8 @@ npm run verify
 - ESLint and the Firefox-boundary rules;
 - Svelte/TypeScript checking;
 - pure and component tests;
+- the fixed-list PowerShell bootstrap/profile/installer/artifact/identity/
+  health/host/lifecycle suites;
 - resolved dependency audit;
 - deterministic frontend and bridge builds;
 - package-manifest synchronization;
@@ -110,7 +115,7 @@ pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -InventoryPath .\package-manifest.json
 ```
 
-The current profile inventory contains exactly the eleven paths in
+The current profile inventory contains exactly the 12 paths in
 `package-manifest.json`. The gate rejects unplanned files/chunks, endpoints,
 runtime networking APIs, HMR/dev-server markers, bare or dynamic imports, source
 maps, development source, executable binaries, symlinks/junctions, and unsafe
@@ -231,7 +236,8 @@ Validate:
 - stale/foreign ID rejection;
 - bridge-capability failure;
 - no title, URL, or favicon value in normal diagnostics;
-- native tab strip remains visible and unchanged until #15.
+- native tab strip remains attached and unchanged; active rest may collapse its
+  exact item owner, while pointer/focus/popup/Urlbar reveal restores it.
 
 Evidence:
 
@@ -551,17 +557,22 @@ When the preference is injected through `user.js`, Firefox persists it into the
 profile preference store. Restore the original `user.js`, explicitly return the
 preference to `false`, cold start, and verify no stale safe-start state remains.
 
-### 8.4 Hard disable and uninstall
+### 8.4 Ownership repair, hard disable, and uninstall
 
 1. Close all Firefox and Browser Toolbox processes using the selected targets.
-2. Preview `Disable` against explicit program/profile paths.
-3. Run `Disable`; the AutoConfig preference is moved even when the runtime entry
+2. If exactly one ownership side and all of its owned files survive, preview
+   `Repair` with the exact recorded package source. It must reject partial
+   residue, source mismatch, or unmarked targets; an injected partial repair
+   must restore the exact incomplete pre-repair state.
+3. After repair or when a complete pair already exists, preview `Disable`
+   against explicit program/profile paths.
+4. Run `Disable`; the AutoConfig preference is moved even when the runtime entry
    is broken.
-4. Cold start and confirm native UI with no Fennevia startup record.
-5. Preview and run ownership-manifest-based `Uninstall`.
-6. Cold start stock Firefox and confirm no Fennevia record, manifest error, or
+5. Cold start and confirm native UI with no Fennevia startup record.
+6. Preview and run ownership-manifest-based `Uninstall`.
+7. Cold start stock Firefox and confirm no Fennevia record, manifest error, or
    owned residue.
-7. Use startup-cache cleanup only when an observed stale-code symptom remains.
+8. Use startup-cache cleanup only when an observed stale-code symptom remains.
 
 See `docs/installation.md` for exact commands and interrupted-operation recovery.
 
@@ -690,6 +701,11 @@ node .\tests\firefox-window-lifecycle.mjs `
   --profile '<FENNEVIA_DEV_PROFILE>' `
   --browser-toolbox
 
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --performance-baseline
+
 pwsh -NoProfile -File .\tests\firefox-frontend-recovery.Tests.ps1 `
   -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
   -ProfilePath '<FENNEVIA_DEV_PROFILE>'
@@ -699,6 +715,14 @@ pwsh -NoProfile -File .\tests\firefox-bridge-recovery.Tests.ps1 `
   -ProfilePath '<FENNEVIA_DEV_PROFILE>'
 
 ```
+
+The explicit performance mode records only numeric aggregates: spawn-to-active
+milliseconds, total Firefox-process CPU/memory deltas across a five-second idle
+window, four-edge reveal p50/p95/max, and before/after values for five complete
+normal-window lifecycle cycles. It discards process/window IDs, origins, URIs,
+titles, threads, and all browsing-derived fields. Repeat it three times on the
+same hardware and apply the investigation thresholds in
+`docs/firefox-update-workflow.md`; it is not a noisy CI pass/fail benchmark.
 
 The bridge recovery command includes a dedicated
 `FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING` and
@@ -738,6 +762,7 @@ of the installed package.
 | Right-edge bookmarks       | `docs/research/firefox-153-bookmarks-surface.md`     |
 | Bottom-edge downloads      | `docs/research/firefox-153-downloads-surface.md`     |
 | Content-only activation    | `docs/research/firefox-153-content-only-activation.md` |
+| MVP hardening/update rehearsal | `docs/research/firefox-153-mvp-hardening-update-rehearsal.md` |
 
 Those records describe the exact milestone tested. Current production state is
 summarized in README, the master plan, the shell roadmap, architecture, issue
@@ -767,6 +792,7 @@ Do not:
 - convert “not run” into a check mark;
 - infer real Firefox success from pure tests;
 - claim a platform or Firefox version not tested;
-- claim native-UI activation before #15;
+- claim native-UI activation, performance, or Firefox-version compatibility
+  beyond the exact recorded evidence;
 - claim a feature placeholder is a completed feature;
 - paste sensitive values into shared evidence.

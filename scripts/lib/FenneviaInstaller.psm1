@@ -950,6 +950,110 @@ function ConvertFrom-FenneviaInstallerOwnershipJson {
     }
 }
 
+function Read-FenneviaInstallerOwnershipSide {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Targets,
+
+        [Parameter(Mandatory)]
+        [ValidateSet("program", "profile")]
+        [string] $Scope
+    )
+
+    $root = Get-FenneviaInstallerScopeRoot -Targets $Targets -Scope $Scope
+    $metadataPath = Join-Path $root $script:MetadataDirectoryName
+    $ownershipPath = Get-FenneviaInstallerOwnershipPath -Root $root
+    $metadataExists = Test-Path -LiteralPath $metadataPath
+    $ownershipExists = Test-Path -LiteralPath $ownershipPath -PathType Leaf
+
+    if (-not $ownershipExists) {
+        if (Test-Path -LiteralPath $ownershipPath) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_METADATA_CONFLICT" -Message "A Fennevia ownership path exists but is not a regular file."
+        }
+        return [pscustomobject]@{
+            Scope = $Scope
+            Exists = $false
+            MetadataExists = $metadataExists
+            Data = $null
+            Content = ""
+            Path = $ownershipPath
+        }
+    }
+
+    Assert-FenneviaInstallerNoReparseAncestor -Path $ownershipPath
+    $content = Get-Content -Raw -LiteralPath $ownershipPath
+    return [pscustomobject]@{
+        Scope = $Scope
+        Exists = $true
+        MetadataExists = $true
+        Data = ConvertFrom-FenneviaInstallerOwnershipJson -Content $content
+        Content = $content
+        Path = $ownershipPath
+    }
+}
+
+function Read-FenneviaInstallerOwnershipState {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Targets
+    )
+
+    $program = Read-FenneviaInstallerOwnershipSide -Targets $Targets -Scope program
+    $profile = Read-FenneviaInstallerOwnershipSide -Targets $Targets -Scope profile
+
+    if (-not $program.Exists -and -not $profile.Exists) {
+        if ($program.MetadataExists -or $profile.MetadataExists) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_METADATA_CONFLICT" -Message "A Fennevia metadata path exists without an ownership manifest."
+        }
+        return [pscustomobject]@{
+            Kind = "absent"
+            Program = $program
+            Profile = $profile
+            Pair = $null
+            Survivor = $null
+            MissingScope = ""
+        }
+    }
+
+    if ($program.Exists -and $profile.Exists) {
+        if ($program.Content -cne $profile.Content) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_OWNERSHIP_MISMATCH" -Message "The program and profile ownership manifests do not match."
+        }
+        $pair = [pscustomobject]@{
+            Data = $program.Data
+            Content = $program.Content
+            ProgramPath = $program.Path
+            ProfilePath = $profile.Path
+        }
+        return [pscustomobject]@{
+            Kind = "complete"
+            Program = $program
+            Profile = $profile
+            Pair = $pair
+            Survivor = $null
+            MissingScope = ""
+        }
+    }
+
+    $survivor = if ($program.Exists) { $program } else { $profile }
+    $missingScope = if ($program.Exists) { "profile" } else { "program" }
+    return [pscustomobject]@{
+        Kind = "incomplete-$missingScope"
+        Program = $program
+        Profile = $profile
+        Pair = $null
+        Survivor = [pscustomobject]@{
+            Data = $survivor.Data
+            Content = $survivor.Content
+            ProgramPath = if ($program.Exists) { $program.Path } else { "" }
+            ProfilePath = if ($profile.Exists) { $profile.Path } else { "" }
+        }
+        MissingScope = $missingScope
+    }
+}
+
 function Read-FenneviaInstallerOwnershipPair {
     [CmdletBinding()]
     param(
@@ -957,40 +1061,14 @@ function Read-FenneviaInstallerOwnershipPair {
         [object] $Targets
     )
 
-    $programOwnershipPath = Get-FenneviaInstallerOwnershipPath -Root $Targets.ProgramRoot
-    $profileOwnershipPath = Get-FenneviaInstallerOwnershipPath -Root $Targets.ProfileRoot
-    $programExists = Test-Path -LiteralPath $programOwnershipPath -PathType Leaf
-    $profileExists = Test-Path -LiteralPath $profileOwnershipPath -PathType Leaf
-
-    if (-not $programExists -and -not $profileExists) {
-        foreach ($root in @($Targets.ProgramRoot, $Targets.ProfileRoot)) {
-            $metadataRoot = Join-Path $root $script:MetadataDirectoryName
-            if (Test-Path -LiteralPath $metadataRoot) {
-                Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_METADATA_CONFLICT" -Message "A Fennevia metadata path exists without a complete ownership pair."
-            }
-        }
+    $state = Read-FenneviaInstallerOwnershipState -Targets $Targets
+    if ($state.Kind -eq "absent") {
         return $null
     }
-
-    if (-not $programExists -or -not $profileExists) {
-        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_OWNERSHIP_INCOMPLETE" -Message "The program and profile ownership manifests are incomplete."
+    if ($state.Kind -ne "complete") {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_OWNERSHIP_INCOMPLETE" -Message "The program and profile ownership manifests are incomplete. Preview the explicit Repair action before any further package mutation."
     }
-
-    Assert-FenneviaInstallerNoReparseAncestor -Path $programOwnershipPath
-    Assert-FenneviaInstallerNoReparseAncestor -Path $profileOwnershipPath
-    $programContent = Get-Content -Raw -LiteralPath $programOwnershipPath
-    $profileContent = Get-Content -Raw -LiteralPath $profileOwnershipPath
-    if ($programContent -cne $profileContent) {
-        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_OWNERSHIP_MISMATCH" -Message "The program and profile ownership manifests do not match."
-    }
-
-    $ownership = ConvertFrom-FenneviaInstallerOwnershipJson -Content $programContent
-    return [pscustomobject]@{
-        Data = $ownership
-        Content = $programContent
-        ProgramPath = $programOwnershipPath
-        ProfilePath = $profileOwnershipPath
-    }
+    return $state.Pair
 }
 
 function Assert-FenneviaInstallerProfileProof {
@@ -1073,6 +1151,29 @@ function Assert-FenneviaInstallerOwnedFiles {
         $existence[$key] = Test-FenneviaInstallerOwnedFileExists -Targets $Targets -File $file -AllowMissing:$AllowMissing
     }
     return $existence
+}
+
+function Assert-FenneviaInstallerOwnedFilesForScope {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Targets,
+
+        [Parameter(Mandatory)]
+        [object] $Ownership,
+
+        [Parameter(Mandatory)]
+        [ValidateSet("program", "profile")]
+        [string] $Scope
+    )
+
+    $files = @($Ownership.Files | Where-Object { $_.Scope -eq $Scope })
+    if ($files.Count -eq 0) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_OWNERSHIP_INVALID" -Message "The surviving ownership manifest has no files for one required scope."
+    }
+    foreach ($file in $files) {
+        [void] (Test-FenneviaInstallerOwnedFileExists -Targets $Targets -File $file)
+    }
 }
 
 function Assert-FenneviaInstallerNoForeignAutoConfig {
@@ -1296,6 +1397,7 @@ function Add-FenneviaInstallerMetadataDirectoryOperations {
         [object] $Targets,
 
         [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
         [Collections.Generic.List[object]] $Operations
     )
 
@@ -1309,6 +1411,29 @@ function Add-FenneviaInstallerMetadataDirectoryOperations {
             Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_METADATA_CONFLICT" -Message "A Fennevia metadata directory path is occupied by a file."
         }
     }
+}
+
+function Add-FenneviaInstallerMetadataDirectoryOperation {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Targets,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [Collections.Generic.List[object]] $Operations,
+
+        [Parameter(Mandatory)]
+        [ValidateSet("program", "profile")]
+        [string] $Scope
+    )
+
+    $root = Get-FenneviaInstallerScopeRoot -Targets $Targets -Scope $Scope
+    $metadataRoot = Join-Path $root $script:MetadataDirectoryName
+    if (Test-Path -LiteralPath $metadataRoot) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_METADATA_CONFLICT" -Message "Repair requires the missing ownership side to have no metadata residue."
+    }
+    $Operations.Add((New-FenneviaInstallerOperation -Kind CreateDirectory -Scope $Scope -Path $script:MetadataDirectoryName))
 }
 
 function New-FenneviaInstallerInternalPlan {
@@ -1518,6 +1643,110 @@ function New-FenneviaInstallerUpdatePlan {
     return New-FenneviaInstallerInternalPlan -Action Update -Targets $Targets -Package $Package -OwnershipPair $OwnershipPair -Status $status -State $OwnershipPair.Data.State -Operations $operations.ToArray()
 }
 
+function New-FenneviaInstallerRepairPlan {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Targets,
+
+        [Parameter(Mandatory)]
+        [object] $Package,
+
+        [Parameter(Mandatory)]
+        [object] $OwnershipState
+    )
+
+    if ($OwnershipState.Kind -eq "absent") {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_NOT_INSTALLED" -Message "Repair requires one valid surviving ownership manifest; use Install when both ownership sides are absent."
+    }
+
+    if ($OwnershipState.Kind -eq "complete") {
+        [void] (Assert-FenneviaInstallerOwnedFiles -Targets $Targets -Ownership $OwnershipState.Pair.Data)
+        return New-FenneviaInstallerInternalPlan -Action Repair -Targets $Targets -Package $Package -OwnershipPair $OwnershipState.Pair -Status "already-complete" -State $OwnershipState.Pair.Data.State -Operations @()
+    }
+
+    if (-not $Targets.HasDevelopmentMarker) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_UNMARKED_PROFILE" -Message "Repair is limited to the explicitly marker-owned Fennevia development profile."
+    }
+
+    $survivor = $OwnershipState.Survivor
+    $missingScope = $OwnershipState.MissingScope
+    $survivingScope = if ($missingScope -eq "program") { "profile" } else { "program" }
+    $missingSide = if ($missingScope -eq "program") { $OwnershipState.Program } else { $OwnershipState.Profile }
+    if ($missingSide.MetadataExists) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_METADATA_CONFLICT" -Message "Repair requires the missing ownership side to have no metadata residue."
+    }
+
+    Assert-FenneviaInstallerOwnedFilesForScope -Targets $Targets -Ownership $survivor.Data -Scope $survivingScope
+
+    $desiredFiles = New-FenneviaInstallerDesiredFiles -Package $Package -State $survivor.Data.State
+    $desiredOwnershipContent = ConvertTo-FenneviaInstallerOwnershipJson `
+        -InstallationId $survivor.Data.InstallationId `
+        -PackageVersion $Package.PackageVersion `
+        -State $survivor.Data.State `
+        -SourceManifestSha256 $Package.ManifestSha256 `
+        -Files $desiredFiles `
+        -CreatedDirectories $survivor.Data.CreatedDirectories
+    if ($desiredOwnershipContent -cne $survivor.Content) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REPAIR_SOURCE_MISMATCH" -Message "The current package source does not exactly match the surviving ownership manifest. Restore that exact source or perform a clean reviewed reinstall instead of reconstructing ownership."
+    }
+
+    $missingFiles = @($desiredFiles | Where-Object { $_.Scope -eq $missingScope })
+    if ($missingFiles.Count -eq 0) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_OWNERSHIP_INVALID" -Message "The surviving ownership manifest has no files for the missing required scope."
+    }
+    foreach ($file in $missingFiles) {
+        $root = Get-FenneviaInstallerScopeRoot -Targets $Targets -Scope $missingScope
+        $targetPath = Join-FenneviaInstallerRootPath -Root $root -RelativePath $file.InstalledPath
+        Assert-FenneviaInstallerNoReparseAncestor -Path $targetPath
+        if (Test-Path -LiteralPath $targetPath) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REPAIR_RESIDUE" -Message "Repair refuses a partially retained owned-file set on the missing ownership side."
+        }
+    }
+
+    if ($missingScope -eq "program") {
+        $alternatePreferencePath = if ($survivor.Data.State -eq "disabled") { $script:EnabledPreferencePath } else { $script:DisabledPreferencePath }
+        $alternatePreference = Join-FenneviaInstallerRootPath -Root $Targets.ProgramRoot -RelativePath $alternatePreferencePath
+        Assert-FenneviaInstallerNoReparseAncestor -Path $alternatePreference
+        if (Test-Path -LiteralPath $alternatePreference) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REPAIR_RESIDUE" -Message "Repair refuses an unexplained alternate AutoConfig preference on the missing ownership side."
+        }
+        if ($survivor.Data.State -eq "enabled") {
+            Assert-FenneviaInstallerNoForeignAutoConfig -Targets $Targets -OwnershipPair $null
+        }
+    }
+    else {
+        $profilePackageRoot = Join-FenneviaInstallerRootPath -Root $Targets.ProfileRoot -RelativePath "chrome/fennevia"
+        if (Test-Path -LiteralPath $profilePackageRoot) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REPAIR_RESIDUE" -Message "Repair refuses a partially retained profile package without its ownership side."
+        }
+    }
+
+    $requiredDirectories = @(Get-FenneviaInstallerRequiredDirectories -Targets $Targets -Files $missingFiles)
+    $createdDirectoryKeys = New-Object "Collections.Generic.HashSet[string]" ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($directory in $survivor.Data.CreatedDirectories) {
+        [void] $createdDirectoryKeys.Add("$($directory.Scope):$($directory.Path)")
+    }
+    foreach ($directory in $requiredDirectories) {
+        if (-not $createdDirectoryKeys.Contains("$($directory.Scope):$($directory.Path)")) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REPAIR_DIRECTORY_STATE" -Message "Repair would need to create a directory that the surviving ownership manifest does not prove was project-created."
+        }
+    }
+
+    $operations = New-Object "Collections.Generic.List[object]"
+    foreach ($directory in $requiredDirectories) {
+        $operations.Add((New-FenneviaInstallerOperation -Kind CreateDirectory -Scope $directory.Scope -Path $directory.Path))
+    }
+    Add-FenneviaInstallerMetadataDirectoryOperation -Targets $Targets -Operations $operations -Scope $missingScope
+    foreach ($file in $missingFiles) {
+        $operations.Add((New-FenneviaInstallerOperation -Kind CreateFile -Scope $file.Scope -Path $file.InstalledPath -SourcePath $file.SourcePath -ExpectedHash $file.Sha256))
+    }
+    $ownershipHash = Get-FenneviaInstallerStringSha256 -Content $survivor.Content
+    $operations.Add((New-FenneviaInstallerOperation -Kind CreateFile -Scope $missingScope -Path "$($script:MetadataDirectoryName)/$($script:OwnershipFileName)" -Content $survivor.Content -ExpectedHash $ownershipHash))
+
+    return New-FenneviaInstallerInternalPlan -Action Repair -Targets $Targets -Package $Package -OwnershipPair $survivor -Status "repairable-$missingScope" -State $survivor.Data.State -Operations $operations.ToArray()
+}
+
 function New-FenneviaInstallerDisablePlan {
     [CmdletBinding()]
     param(
@@ -1694,6 +1923,26 @@ function Assert-FenneviaInstallerMetadataClean {
     }
 }
 
+function Assert-FenneviaInstallerMetadataSideClean {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Targets,
+
+        [Parameter(Mandatory)]
+        [ValidateSet("program", "profile")]
+        [string] $Scope
+    )
+
+    $root = Get-FenneviaInstallerScopeRoot -Targets $Targets -Scope $Scope
+    $metadataRoot = Join-Path $root $script:MetadataDirectoryName
+    Assert-FenneviaInstallerTreeHasNoReparsePoints -Path $metadataRoot
+    $entries = @(Get-ChildItem -Force -LiteralPath $metadataRoot)
+    if ($entries.Count -ne 1 -or $entries[0].Name -cne $script:OwnershipFileName -or $entries[0].PSIsContainer) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_METADATA_CONFLICT" -Message "The surviving Fennevia metadata directory contains an unexplained entry or interrupted transaction residue."
+    }
+}
+
 function Assert-FenneviaInstallerNoInterruptedTransactions {
     [CmdletBinding()]
     param(
@@ -1715,7 +1964,7 @@ function New-FenneviaInstallerActionPlan {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet("Install", "Update", "Disable", "Enable", "Uninstall")]
+        [ValidateSet("Install", "Update", "Repair", "Disable", "Enable", "Uninstall")]
         [string] $Action,
 
         [Parameter(Mandatory)]
@@ -1730,7 +1979,23 @@ function New-FenneviaInstallerActionPlan {
 
     $targets = Resolve-FenneviaInstallerTargets -FirefoxPath $FirefoxPath -ProfilePath $ProfilePath
     Assert-FenneviaInstallerNoInterruptedTransactions -Targets $targets
-    $ownershipPair = Read-FenneviaInstallerOwnershipPair -Targets $targets
+    $ownershipState = Read-FenneviaInstallerOwnershipState -Targets $targets
+    if ($Action -eq "Repair") {
+        if ($ownershipState.Kind -eq "complete") {
+            Assert-FenneviaInstallerMetadataClean -Targets $targets -OwnershipPair $ownershipState.Pair
+        }
+        elseif ($ownershipState.Kind -ne "absent") {
+            $survivingScope = if ($ownershipState.MissingScope -eq "program") { "profile" } else { "program" }
+            Assert-FenneviaInstallerMetadataSideClean -Targets $targets -Scope $survivingScope
+        }
+        $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
+        return New-FenneviaInstallerRepairPlan -Targets $targets -Package $package -OwnershipState $ownershipState
+    }
+
+    if ($ownershipState.Kind -notin @("absent", "complete")) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_OWNERSHIP_INCOMPLETE" -Message "The program and profile ownership manifests are incomplete. Preview the explicit Repair action before any further package mutation."
+    }
+    $ownershipPair = $ownershipState.Pair
     Assert-FenneviaInstallerProfileProof -Targets $targets -OwnershipPair $ownershipPair
     Assert-FenneviaInstallerMetadataClean -Targets $targets -OwnershipPair $ownershipPair
 
@@ -2488,7 +2753,7 @@ function Invoke-FenneviaPackageAction {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet("Install", "Update", "Disable", "Enable", "Uninstall")]
+        [ValidateSet("Install", "Update", "Repair", "Disable", "Enable", "Uninstall")]
         [string] $Action,
 
         [Parameter(Mandatory)]

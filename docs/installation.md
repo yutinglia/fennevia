@@ -1,7 +1,7 @@
 # Installation and Package Lifecycle
 
 This document is the normative Windows-first workflow for installing, updating,
-hard-disabling, re-enabling, and removing the current Fennevia development
+repairing, hard-disabling, re-enabling, and removing the current Fennevia development
 package. It is not an end-user release installer. The supported target for the
 current milestone is an explicitly selected stock Firefox program and an
 unregistered, marker-owned Fennevia development profile. The validated workflow
@@ -21,19 +21,26 @@ profile/chrome/fennevia/
   chrome.manifest
   content/
     Bootstrap.sys.mjs
+    firefox/
+      BridgeBoundary.sys.mjs
     runtime/
       HealthState.sys.mjs
       Logger.sys.mjs
+      NativeUi.sys.mjs
       Runtime.sys.mjs
       WindowManager.sys.mjs
       WindowShell.sys.mjs
+    shell/
+      ShellApp.js
+      ShellStyles.sys.mjs
+      THIRD_PARTY_NOTICES.txt
 ```
 
 The installer verifies the manifest schema, package identity, version, exact
 profile artifact inventory, every source SHA-256, and the privileged-artifact
 policy before planning a write. The policy implementation is loaded only from
 `SecurityChecks.psm1` beside the already trusted installer module, never from
-the package source being inspected. Paths outside the three approved program
+the package source being inspected. Paths outside the two approved program
 files and `profile/chrome/fennevia/` are rejected. Generated build output may be
 added only by updating this manifest and the production-artifact gate; `dist/`
 is never edited or adopted by the installer.
@@ -51,12 +58,19 @@ The installed layout is:
     chrome.manifest
     content/
       Bootstrap.sys.mjs
+      firefox/
+        BridgeBoundary.sys.mjs
       runtime/
         HealthState.sys.mjs
         Logger.sys.mjs
+        NativeUi.sys.mjs
         Runtime.sys.mjs
         WindowManager.sys.mjs
         WindowShell.sys.mjs
+      shell/
+        ShellApp.js
+        ShellStyles.sys.mjs
+        THIRD_PARTY_NOTICES.txt
   .fennevia/ownership.json
 ```
 
@@ -78,9 +92,12 @@ applying changes. Every command requires both targets:
 - drive roots, user/home roots, AppData roots, Firefox profile collections,
   registered profiles, missing targets, wildcards, and relative paths are
   rejected;
-- an existing AutoConfig declaration, unknown same-name file, incomplete or
-  differing ownership pair, unexplained hash change, or interrupted transaction
-  stops the action before managed-file mutation.
+- an existing AutoConfig declaration, unknown same-name file, differing
+  ownership pair, unexplained hash change, or interrupted transaction stops the
+  action before managed-file mutation;
+- an incomplete ownership pair blocks every ordinary action. Only the explicit
+  `Repair` action may reconstruct one completely absent side under the strict
+  rules in section 4.
 
 The script proves that the selected executable is Firefox, but it cannot infer
 whether that installation is disposable. During this development stage, do not
@@ -126,6 +143,7 @@ Available actions are:
 | --- | --- |
 | `Install` | Create the exact package and identical ownership pair; repeat is a no-op when source and installed state match |
 | `Update` | Replace or remove only previously owned files, add exact new manifest entries, preserve enabled/disabled state, and update both ownership records |
+| `Repair` | Reconstruct one completely absent ownership side from one verified survivor and the exact recorded package source; never adopt partial residue or infer a new installation |
 | `Disable` | Move only `defaults/pref/fennevia.js` to `fennevia.js.disabled`; it does not need a working manifest or runtime entry |
 | `Enable` | Verify every owned file and conflict check before moving the preference back into Firefox's active preference directory |
 | `Uninstall` | Remove exact existing owned files and metadata, tolerate already-missing owned files, and remove only recorded project-created directories that are empty |
@@ -134,6 +152,9 @@ Examples use the same explicit targets:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Update `
+  -FirefoxPath $firefox -ProfilePath $profile -WhatIf
+
+pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Repair `
   -FirefoxPath $firefox -ProfilePath $profile -WhatIf
 
 pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Disable `
@@ -173,10 +194,33 @@ after a broken or manually removed runtime entry, but it refuses to delete a
 present file whose hash changed. Unknown content is never adopted, overwritten,
 or recursively removed.
 
-If either ownership record is missing, invalid, or differs from the other, stop
-and investigate. Do not copy one manifest over the other merely to make the
-installer proceed; first compare the installed files and determine which state
-is genuine.
+If either ownership record is invalid or the pair differs, stop and investigate.
+Do not copy one manifest over the other merely to make the installer proceed.
+
+`Repair` is the only supported response to a valid one-sided ownership state.
+It is intentionally narrower than install or update:
+
+- exactly one valid ownership record must survive; both absent is
+  `FENNEVIA_INSTALL_NOT_INSTALLED` and requires a reviewed clean install;
+- the selected profile must still carry its valid project development marker;
+- every survivor-side file and hash must match;
+- the supplied package version, manifest hash, logical files, installed paths,
+  enabled/disabled state, installation ID, and created-directory record must
+  regenerate the survivor byte-for-byte;
+- the missing metadata directory and every missing-side owned file must be
+  entirely absent. A partial file set, alternate enabled/disabled preference,
+  foreign AutoConfig declaration, retained profile package, or metadata residue
+  is rejected rather than overwritten;
+- any directory that must be recreated must already be proven as
+  project-created by the survivor;
+- preview operations are confined to the missing scope and report no backup for
+  a clean reconstruction; execution uses the same dual-root transaction,
+  digest confirmation, failure rollback, and residue checks as other actions.
+
+A complete valid pair makes `Repair` an `already-complete` no-op. Use `Update`,
+not `Repair`, for a newer package. If repair rejects source mismatch or residue,
+preserve the state and follow the incident procedure in
+`docs/firefox-update-workflow.md`.
 
 ## 5. Transaction and rollback model
 
@@ -259,6 +303,8 @@ Do not manually delete arbitrary Firefox cache directories.
 
 The isolated filesystem suite exercises unsafe paths, collisions, dry-run,
 idempotency, hard disable with a missing runtime entry, stale-file update,
+one-sided program/profile repair, exact-source enforcement, residue rejection,
+repair dry-run and failure rollback,
 unrelated-file preservation, permission failure, interrupted-transaction
 rejection, preview/execute plan mismatch, rollback, uninstall, and redacted CLI
 output in both supported PowerShell runtimes:
@@ -268,9 +314,12 @@ pwsh -NoProfile -File .\tests\installer.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
 ```
 
-The current package is `0.10.0-dev` and contains eleven exact profile artifacts:
-the manifest, bootstrap, one generated private bridge ESM, five runtime
-modules, and three generated shell files.
+The current package is `0.10.0-dev` and contains 14 source-installed files:
+two program files and 12 exact profile artifacts (the manifest, bootstrap, one
+generated private bridge ESM, six runtime modules, and three generated shell
+files). Each root also receives its byte-identical installer ownership record;
+those metadata files are generated by the installer and are not package source
+entries.
 `.gitattributes` fixes AutoConfig/default/manifest files to CRLF and privileged
 `.mjs`, `.js`, and notice files to LF so the committed SHA-256 values remain
 stable on Windows and non-Windows checkouts. Do not recompute hashes from an
@@ -281,10 +330,7 @@ bridge directories and synchronizes package hashes.
 Before a real install or update, also run the runtime/package gates:
 
 ```powershell
-pwsh -NoProfile -File .\tests\bootstrap-spike.Tests.ps1
-pwsh -NoProfile -File .\tests\window-lifecycle.Tests.ps1
-pwsh -NoProfile -File .\tests\shell-hosts.Tests.ps1
-pwsh -NoProfile -File .\tests\shell-health.Tests.ps1
+npm run test:powershell
 npm run verify
 pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -ArtifactRoot .\profile\chrome\fennevia `

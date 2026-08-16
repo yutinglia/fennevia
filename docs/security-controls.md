@@ -28,7 +28,9 @@ Current validated baseline:
   bookmarks, bottom-edge anonymous download status, and detailed Urlbar
   permission/action coverage with native handoff;
 - four-edge frame/reveal/design foundation complete;
-- exact health-gated content-only activation complete.
+- exact health-gated content-only activation complete;
+- fixed-list PowerShell gates, narrow one-sided ownership repair, and test-only
+  aggregate resource baseline complete.
 
 ## 2. Threat model and ownership
 
@@ -50,7 +52,8 @@ Current validated baseline:
 | Normal diagnostics | URLs, titles, queries, bookmarks, downloads, paths, secrets, or private data can leak | Default-deny schemas, stable codes, redacted stacks, no network sink, hostile-value tests; #12–#14/#32/#37 errors contain fixed phase/code/symbol/build/window-kind only and never address/status/permission/action/bookmark/download source data | Extend the same fixed schema to later features | #3, #5, #9–#14, #32, #37 |
 | Private-window state | State can leak to normal windows, process globals, preferences, or diagnostics | Per-window lifecycle/frame/tabs/navigation/popup/Urlbar/bookmark/download instances, opaque generations, bounded unpersisted state, complete fallback on uncertainty; #12–#14/#32/#37 passed normal/second/private isolation and disposal | Repeat for each later bridge and Firefox update | #5, #9–#14, #31, #32, #37 |
 | Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native DOM retained; #13/#37 summarize fixed state/availability; #15 provides complete navbar/sidebar reveal, popup/focus holds, modal/customize/DOM-fullscreen suspension, exact untargeted notification/titlebar/dialog infrastructure, and emergency fallback | Repeat prompt/retained-access/stacking/reveal matrix on Firefox updates | #7, #13, #15, #31, #37; ADR-032 |
-| Installer/updater/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data | Explicit canonical targets, marker checks, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion | Revalidate for every platform/scope change | #4, #16 |
+| Installer/updater/repair/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data or adopt stale state | Explicit canonical targets, marker checks, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion; Repair accepts only one wholly absent side, one exact survivor/source, and no residue | Revalidate for every platform/scope change | #4, #16; ADR-033 |
+| Test-only performance evidence | Firefox process records can expose origins, window URIs/titles, IDs, and threads | Explicit harness mode immediately reduces raw records to numeric process/memory/CPU aggregates and fixed timings; static test rejects sensitive fields; no production caller or sink | Revalidate API shape on every supported Firefox | #16; ADR-034 |
 | Startup cache/stale installed code | Removed or fixed privileged code may continue to run | Exact inventory and evidence-first cache policy; validated changes took effect without routine clearing | Cache action only after observed stale symptom | #3, #4, #16 |
 | External implementation/design | Unlicensed or copied code/design can create legal and maintenance risk | License/provenance requirement; `my-firefox-custom` no-copy boundary; exact reference commit required | Owner license/attribution decision | #18 |
 | Runtime network/update/telemetry | Remote party can change privileged behavior or receive browsing data | Prohibited; scanner detects common endpoints/APIs | New issue + ADR + security review for any exception | ADR-012 |
@@ -72,6 +75,7 @@ content/Bootstrap.sys.mjs
 content/firefox/BridgeBoundary.sys.mjs
 content/runtime/HealthState.sys.mjs
 content/runtime/Logger.sys.mjs
+content/runtime/NativeUi.sys.mjs
 content/runtime/Runtime.sys.mjs
 content/runtime/WindowManager.sys.mjs
 content/runtime/WindowShell.sys.mjs
@@ -568,6 +572,8 @@ Mutation controls:
 
 Recovery:
 
+- `Repair` reconstructs only one completely absent side from exact survivor and
+  source proof, and rolls back injected partial failure;
 - `Disable` must work with a broken/missing runtime;
 - `Uninstall` removes only owned files/metadata;
 - repeat action is idempotent;
@@ -632,10 +638,11 @@ Static/build baseline:
 ```powershell
 npm ci --ignore-scripts --no-fund
 npm run dependencies:audit
+npm run test:powershell
 npm run verify
 
-pwsh -NoProfile -File .\tests\production-artifacts.Tests.ps1
-pwsh -NoProfile -File .\tests\installer.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\tests\run-static-powershell-tests.ps1
 pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -ArtifactRoot .\profile\chrome\fennevia `
   -InventoryPath .\package-manifest.json
@@ -652,6 +659,11 @@ node .\tests\firefox-window-lifecycle.mjs `
   --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
   --profile '<FENNEVIA_DEV_PROFILE>' `
   --browser-toolbox
+
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --performance-baseline
 ```
 
 Use the feature-specific recovery wrapper documented in
@@ -678,7 +690,9 @@ Current detailed evidence:
 - bookmarks: `docs/research/firefox-153-bookmarks-surface.md`;
 - Downloads: `docs/research/firefox-153-downloads-surface.md`;
 - content-only activation:
-  `docs/research/firefox-153-content-only-activation.md`.
+  `docs/research/firefox-153-content-only-activation.md`;
+- MVP hardening and update rehearsal:
+  `docs/research/firefox-153-mvp-hardening-update-rehearsal.md`.
 
 After every completed milestone:
 

@@ -82,9 +82,24 @@ foreach ($requiredToken in @(
 foreach ($requiredToken in @(
     '\.fennevia-program-spike\.json',
     'firefox-identity-regression',
-    '\.fennevia-dev-profile\.json'
+    '\.fennevia-dev-profile\.json',
+    '--performance-baseline',
+    'PERFORMANCE_IDLE_WINDOW_MS\s*=\s*5_000',
+    'PERFORMANCE_WINDOW_CYCLES\s*=\s*5',
+    'ChromeUtils\.requestProcInfo\(\)',
+    'cpuTimeDeltaNs',
+    'performanceBaseline='
 )) {
-    Assert-True -Condition ($firefoxTestContent -match $requiredToken) -Message "The real-Firefox probe is missing a required target-ownership check."
+    Assert-True -Condition ($firefoxTestContent -match $requiredToken) -Message "The real-Firefox probe is missing a required target-ownership or performance boundary."
+}
+
+$resourceSnapshotMatch = [regex]::Match(
+    $firefoxTestContent,
+    '(?s)async function collectProcessResourceSnapshot\(client\) \{.*?(?=async function measureEdgeRevealLatency)'
+)
+Assert-True -Condition $resourceSnapshotMatch.Success -Message "The real-Firefox probe is missing its aggregate resource collector."
+foreach ($prohibitedField in @('documentURI', 'documentTitle', '\bwindows\b', '\borigin\b')) {
+    Assert-True -Condition ($resourceSnapshotMatch.Value -notmatch $prohibitedField) -Message "The resource baseline must not serialize browsing-derived process data."
 }
 
 $productionRuntime = $loggerContent + "`n" + $windowManagerContent + "`n" + $runtimeContent

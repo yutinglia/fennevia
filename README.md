@@ -91,7 +91,7 @@ useful.
 | Area                                          | Status         | Result                                                                                                                                                        |
 | --------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Safe development and privileged-code baseline | Complete       | Dedicated Windows profile workflow, threat model, redacted diagnostics, and recovery rules                                                                    |
-| Bootstrap and package lifecycle               | Complete       | Minimal AutoConfig/Chrome Registry chain plus path-safe install, update, disable, and uninstall                                                               |
+| Bootstrap and package lifecycle               | Complete       | Minimal AutoConfig/Chrome Registry chain plus path-safe install, update, exact one-sided repair, disable, and uninstall                                      |
 | Window runtime and recovery                   | Complete       | Existing/later normal and private windows, deterministic disposal, health states, safe start, and emergency fallback                                          |
 | Frontend and bridge foundation                | Complete       | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership                                          |
 | Tabs data and UI                              | Complete       | Event-driven immutable tab state plus accessible vertical tab UI in the left surface                                                                          |
@@ -102,7 +102,7 @@ useful.
 | Right bookmarks                               | Complete — #14 | Typed Places bridge, bounded lazy hierarchy, native live updates, and Firefox-owned current/new-tab opening                                                   |
 | Bottom downloads                              | Complete — #32 | Per-window PUBLIC/PRIVATE list views, bounded anonymous state, accessible aggregate progress/status, and native safety/management retained                    |
 | Content-only activation                       | Complete — #15 | Exact active-only native surfaces, compact HTTPS/ETP status, complete native reveal/handoff, customize/fullscreen policy, and per-window fail-open             |
-| Hardening and Firefox-update workflow         | Pending — #16  | Full regression, resource, performance, cleanup, and stable-update matrix                                                                                     |
+| Hardening and Firefox-update workflow         | Complete — #16 | Fixed local/CI gates, aggregate resource baseline, ownership repair, current compatibility inventory, and executable stable-update rehearsal                 |
 | Project license                               | Pending — #18  | Owner-approved license and third-party attribution policy                                                                                                     |
 
 The tracking source of truth is issue #1. Historical research records preserve
@@ -210,6 +210,7 @@ and design.
 - [Development workflow](docs/development-workflow.md)
 - [Windows Firefox development setup](docs/development-setup.md)
 - [Installation and package lifecycle](docs/installation.md)
+- [Firefox stable-update workflow](docs/firefox-update-workflow.md)
 
 ### Architecture, security, and testing
 
@@ -238,6 +239,7 @@ and design.
 - [Firefox 153 right-edge bookmarks](docs/research/firefox-153-bookmarks-surface.md)
 - [Firefox 153 bottom-edge downloads](docs/research/firefox-153-downloads-surface.md)
 - [Firefox 153 content-only activation](docs/research/firefox-153-content-only-activation.md)
+- [Firefox 153 MVP hardening/update rehearsal](docs/research/firefox-153-mvp-hardening-update-rehearsal.md)
 
 Historical research files are immutable evidence of the tested milestone they
 describe. Later decisions supersede their production architecture through ADRs
@@ -253,8 +255,8 @@ npm run verify
 ```
 
 `npm run verify` checks formatting, lint, Svelte/TypeScript diagnostics, tests,
-dependency policy, deterministic builds, package-manifest synchronization, and
-the production artifact gate.
+the fixed-list PowerShell safety suites, dependency policy, deterministic
+builds, package-manifest synchronization, and the production artifact gate.
 
 Real Firefox work additionally requires the copied Firefox program,
 marker-owned development profile, and the issue-specific smoke and recovery
@@ -266,8 +268,9 @@ Implementation is issue-first. Before changing code or documentation, read
 `AGENTS.md`, the complete issue and blockers, relevant plans, current
 implementation, latest relevant commits, decisions, and research records.
 
-Every feature must pass while native Firefox UI remains visible. Do not jump
-directly to #15 or hide native UI to make an incomplete surface appear finished.
+Runtime changes must pass in active content-only mode and prove complete native
+reveal/fallback. The exact ADR-032 hide target set may change only through a
+dedicated current-source coverage and recovery review.
 
 ## License status
 

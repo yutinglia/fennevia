@@ -12,6 +12,10 @@ const STATE_TIMEOUT_MS = 20_000;
 const PROCESS_EXIT_TIMEOUT_MS = 20_000;
 const BROWSER_TOOLBOX_TIMEOUT_MS = 45_000;
 const URLBAR_COVERAGE_MATRIX_TIMEOUT_MS = 120_000;
+const PERFORMANCE_IDLE_WINDOW_MS = 5_000;
+const PERFORMANCE_SETTLE_WINDOW_MS = 1_000;
+const PERFORMANCE_WINDOW_CYCLES = 5;
+const PERFORMANCE_EDGE_SAMPLES_PER_EDGE = 3;
 
 function parseArguments(argv) {
   const result = {
@@ -29,6 +33,7 @@ function parseArguments(argv) {
     expectStock: false,
     inspectDom: false,
     browserToolbox: false,
+    performanceBaseline: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -97,6 +102,10 @@ function parseArguments(argv) {
       result.browserToolbox = true;
       continue;
     }
+    if (argument === "--performance-baseline") {
+      result.performanceBaseline = true;
+      continue;
+    }
     throw new Error("FENNEVIA_FIREFOX_TEST_ARGUMENT_UNKNOWN");
   }
 
@@ -118,6 +127,7 @@ function parseArguments(argv) {
       result.expectTabsBridgeFailOpen,
       result.expectStock,
       result.inspectDom,
+      result.performanceBaseline,
     ].filter(Boolean).length > 1
   ) {
     throw new Error("FENNEVIA_FIREFOX_TEST_MODE_CONFLICT");
@@ -136,7 +146,8 @@ function parseArguments(argv) {
       result.expectShellMissingFailOpen ||
       result.expectTabsBridgeFailOpen ||
       result.expectStock ||
-      result.inspectDom)
+      result.inspectDom ||
+      result.performanceBaseline)
   ) {
     throw new Error("FENNEVIA_FIREFOX_TEST_MODE_CONFLICT");
   }
@@ -523,6 +534,224 @@ async function collectEvidence(client) {
     }
     return { firstPartyScriptErrorCount, records };
   `);
+}
+
+async function collectProcessResourceSnapshot(client) {
+  return client.execute(`
+    return ChromeUtils.requestProcInfo().then(parent => {
+      const processes = [parent, ...(parent.children ?? [])];
+      const numeric = value => {
+        const result = Number(value);
+        return Number.isFinite(result) && result >= 0 ? result : 0;
+      };
+      return {
+        cpuCycleCount: Math.round(
+          processes.reduce(
+            (total, processInfo) => total + numeric(processInfo.cpuCycleCount),
+            0
+          )
+        ),
+        cpuTimeNs: Math.round(
+          processes.reduce(
+            (total, processInfo) => total + numeric(processInfo.cpuTime),
+            0
+          )
+        ),
+        memoryBytes: Math.round(
+          processes.reduce(
+            (total, processInfo) => total + numeric(processInfo.memory),
+            0
+          )
+        ),
+        processCount: processes.length,
+      };
+    });
+  `);
+}
+
+async function measureEdgeRevealLatency(client) {
+  return client.execute(`
+    return (async () => {
+      const edges = ["top", "left", "right", "bottom"];
+      const samplesPerEdge = ${PERFORMANCE_EDGE_SAMPLES_PER_EDGE};
+      const frame = document.getElementById("fennevia-shell-frame-host");
+      if (!frame) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_EDGE_SHELL_MISSING");
+      }
+      const sleep = delay => new Promise(
+        resolve => window.setTimeout(resolve, delay)
+      );
+      const waitFor = async (predicate, code) => {
+        const deadline = performance.now() + 3000;
+        while (performance.now() < deadline) {
+          if (predicate()) {
+            return performance.now();
+          }
+          await sleep(1);
+        }
+        throw new Error(code);
+      };
+      const durations = [];
+      for (const edge of edges) {
+        const root = document.getElementById(
+          "fennevia-shell-" + edge + "-root"
+        );
+        const trigger = root?.querySelector(
+          '[data-fennevia-edge-trigger="' + edge + '"]'
+        );
+        if (!root || !trigger) {
+          throw new Error("FENNEVIA_FIREFOX_TEST_EDGE_SHELL_MISSING");
+        }
+        const rect = frame.getBoundingClientRect();
+        const point = edge === "top"
+          ? { x: rect.left + rect.width / 2, y: rect.top }
+          : edge === "bottom"
+            ? { x: rect.left + rect.width / 2, y: rect.bottom - 1 }
+            : edge === "left"
+              ? { x: rect.left, y: rect.top + rect.height / 2 }
+              : { x: rect.right - 1, y: rect.top + rect.height / 2 };
+        const dispatch = type => trigger.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            clientX: point.x,
+            clientY: point.y,
+            pointerId: 1,
+            pointerType: "mouse",
+          })
+        );
+        for (let sample = 0; sample < samplesPerEdge; sample += 1) {
+          if (root.getAttribute("data-fennevia-visible") === "true") {
+            dispatch("pointerout");
+            await waitFor(
+              () => root.getAttribute("data-fennevia-visible") !== "true",
+              "FENNEVIA_FIREFOX_TEST_EDGE_POINTER_HIDE_TIMEOUT"
+            );
+          }
+          const startedAt = performance.now();
+          dispatch("pointermove");
+          const revealedAt = await waitFor(
+            () => root.getAttribute("data-fennevia-visible") === "true",
+            "FENNEVIA_FIREFOX_TEST_EDGE_POINTER_REVEAL_TIMEOUT"
+          );
+          durations.push(revealedAt - startedAt);
+          dispatch("pointerout");
+          await waitFor(
+            () => root.getAttribute("data-fennevia-visible") !== "true",
+            "FENNEVIA_FIREFOX_TEST_EDGE_POINTER_HIDE_TIMEOUT"
+          );
+        }
+      }
+      durations.sort((left, right) => left - right);
+      const percentile = value => durations[
+        Math.min(
+          durations.length - 1,
+          Math.max(0, Math.ceil(durations.length * value) - 1)
+        )
+      ];
+      const round = value => Math.round(value * 1000) / 1000;
+      return {
+        maxMs: round(durations.at(-1)),
+        p50Ms: round(percentile(0.5)),
+        p95Ms: round(percentile(0.95)),
+        sampleCount: durations.length,
+      };
+    })();
+  `);
+}
+
+async function exercisePerformanceWindowCycles(client, originalHandle) {
+  for (let cycle = 0; cycle < PERFORMANCE_WINDOW_CYCLES; cycle += 1) {
+    const newWindowResult = await client.request("WebDriver:NewWindow", {
+      focus: true,
+      private: false,
+      type: "window",
+    });
+    const newWindow = newWindowResult.value ?? newWindowResult;
+    assert.equal(newWindow.type, "window");
+    await waitForState(
+      client,
+      (state) => state?.managedWindowCount === 2,
+      "FENNEVIA_FIREFOX_TEST_PERFORMANCE_WINDOW_OPEN_TIMEOUT",
+    );
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: newWindow.handle,
+    });
+    await client.request("Marionette:SetContext", { value: "chrome" });
+    assertShellHostState(await collectShellHostState(client), "normal");
+    await client.request("WebDriver:CloseWindow");
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: originalHandle,
+    });
+    await client.request("Marionette:SetContext", { value: "chrome" });
+    await waitForState(
+      client,
+      (state) => state?.managedWindowCount === 1,
+      "FENNEVIA_FIREFOX_TEST_PERFORMANCE_WINDOW_CLOSE_TIMEOUT",
+    );
+  }
+}
+
+async function collectPerformanceBaseline(
+  client,
+  originalHandle,
+  startupToActiveMs,
+) {
+  const idleBefore = await collectProcessResourceSnapshot(client);
+  await new Promise((resolve) =>
+    setTimeout(resolve, PERFORMANCE_IDLE_WINDOW_MS),
+  );
+  const idleAfter = await collectProcessResourceSnapshot(client);
+  const edgeReveal = await measureEdgeRevealLatency(client);
+  const cyclesBefore = await collectProcessResourceSnapshot(client);
+  await exercisePerformanceWindowCycles(client, originalHandle);
+  await new Promise((resolve) =>
+    setTimeout(resolve, PERFORMANCE_SETTLE_WINDOW_MS),
+  );
+  const cyclesAfter = await collectProcessResourceSnapshot(client);
+  const evidence = await collectEvidence(client);
+  assert.equal(
+    evidence.records.filter((record) => record.level === "error").length,
+    0,
+  );
+  assert.equal(evidence.firstPartyScriptErrorCount, 0);
+  assert.equal(
+    countEvent(evidence, "window.disposed", "normal"),
+    PERFORMANCE_WINDOW_CYCLES,
+  );
+  assert.equal(
+    countEvent(evidence, "shell.hosts-disposed", "normal"),
+    PERFORMANCE_WINDOW_CYCLES,
+  );
+  assert.equal(
+    countEvent(evidence, "bridge.boundary-disposed", "normal"),
+    PERFORMANCE_WINDOW_CYCLES,
+  );
+
+  return {
+    schemaVersion: 1,
+    startupToActiveMs,
+    idle: {
+      cpuCycleDelta: idleAfter.cpuCycleCount - idleBefore.cpuCycleCount,
+      cpuTimeDeltaNs: idleAfter.cpuTimeNs - idleBefore.cpuTimeNs,
+      memoryDeltaBytes: idleAfter.memoryBytes - idleBefore.memoryBytes,
+      processCountAfter: idleAfter.processCount,
+      processCountBefore: idleBefore.processCount,
+      windowMs: PERFORMANCE_IDLE_WINDOW_MS,
+    },
+    edgeReveal,
+    windowCycles: {
+      count: PERFORMANCE_WINDOW_CYCLES,
+      cpuCycleDelta: cyclesAfter.cpuCycleCount - cyclesBefore.cpuCycleCount,
+      cpuTimeDeltaNs: cyclesAfter.cpuTimeNs - cyclesBefore.cpuTimeNs,
+      memoryAfterBytes: cyclesAfter.memoryBytes,
+      memoryBeforeBytes: cyclesBefore.memoryBytes,
+      memoryDeltaBytes: cyclesAfter.memoryBytes - cyclesBefore.memoryBytes,
+      processCountAfter: cyclesAfter.processCount,
+      processCountBefore: cyclesBefore.processCount,
+      settleMs: PERFORMANCE_SETTLE_WINDOW_MS,
+    },
+  };
 }
 
 async function collectNativeState(client) {
@@ -5802,6 +6031,7 @@ async function run() {
   );
   await assertPortAvailable(DEFAULT_PORT);
 
+  const launchStartedAt = Date.now();
   const child = spawn(
     options.firefox,
     [
@@ -6204,6 +6434,37 @@ async function run() {
       1,
     );
     assert.equal(startupEvidence.firstPartyScriptErrorCount, 0);
+
+    if (options.performanceBaseline) {
+      assert.deepEqual(
+        await collectNativeState(client),
+        EXPECTED_ACTIVE_NATIVE_STATE,
+      );
+      assertShellHostState(await collectShellHostState(client), "normal");
+      assertFrontendState(await collectFrontendState(client), "normal");
+      const baseline = await collectPerformanceBaseline(
+        client,
+        originalHandle,
+        Date.now() - launchStartedAt,
+      );
+      assertShellHostState(await collectShellHostState(client), "normal");
+      assertFrontendState(await collectFrontendState(client), "normal");
+
+      await client.request("Marionette:AcceptConnections", { value: false });
+      quitRequested = true;
+      try {
+        await client.request("Marionette:Quit", {});
+      } catch {
+        // A clean application quit may close Marionette before its response arrives.
+      }
+      await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
+      console.log(`performanceBaseline=${JSON.stringify(baseline)}`);
+      console.log(
+        "PASS: Firefox startup, five-second idle resources, edge reveal response, " +
+          "and five complete window lifecycle cycles produced a privacy-safe baseline.",
+      );
+      return;
+    }
 
     assert.deepEqual(
       await collectNativeState(client),

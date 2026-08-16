@@ -16,8 +16,8 @@ Validated baseline as of 2026-08-16:
 
 - package `0.10.0-dev`;
 - Firefox 153.0.4 release on Windows;
-- #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #17,
-  #22, #31, #32, and #37 complete;
+- #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16,
+  #17, #22, #31, #32, and #37 complete;
 - functional vertical tabs and a compact address/status launcher in the left
   surface;
 - one centered address/search popup with detailed connection, protection,
@@ -29,9 +29,9 @@ Validated baseline as of 2026-08-16:
 - exact Firefox native DOM and complete reveal/fallback paths retained;
 - production enters `active` only after the complete health gate.
 
-Next feature work:
+Next governance work:
 
-1. #16 hardens the complete MVP and Firefox-update workflow.
+1. #18 selects the project license and attribution policy.
 
 Historical research records remain accurate for the milestone they tested.
 Current production architecture is defined by this roadmap, the master plan,
@@ -571,7 +571,7 @@ corruption, safe-start, and cleanup evidence.
 Evidence: ADR-032 and
 `docs/research/firefox-153-content-only-activation.md`.
 
-## Milestone M: Hardening and Firefox updates — pending (#16)
+## Milestone M: Hardening and Firefox updates — complete (#16)
 
 Validate and document:
 
@@ -588,13 +588,22 @@ Validate and document:
   failures;
 - repeated lifecycle and leak checks;
 - idle/interaction performance baselines;
-- install, update, disable, stale-cache recovery, and uninstall;
+- install, update, exact one-sided repair, disable, stale-cache recovery, and
+  uninstall;
 - complete dependency, resource-exposure, logging, private-window, and
   provenance review;
 - one real Firefox stable transition when available.
 
 Gate: a new contributor can reproduce installation, diagnosis, recovery,
 update, and removal from the repository documentation.
+
+The gate passed with fixed local/CI PowerShell suites, a privacy-safe aggregate
+resource mode, installer repair/rollback coverage, the reconciled Firefox 153
+inventory, and the procedure in `docs/firefox-update-workflow.md`. Firefox
+153.0.4 remained the newest stable on 2026-08-16, so this milestone records a
+same-build rehearsal and leaves the first real stable transition honestly not
+run. See
+`docs/research/firefox-153-mvp-hardening-update-rehearsal.md`.
 
 ## Deferred work
 

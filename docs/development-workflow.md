@@ -42,15 +42,16 @@ Current feature order:
 └─ #11 left tabs (complete)
     └─ #13 compact address/status launcher and popup (complete; depends on #12)
         └─ #37 fuller Urlbar permissions/page-action coverage (complete)
-            └─ #15 content-only activation (next)
-                └─ #16 hardening
+            └─ #15 content-only activation (complete)
+                └─ #16 hardening and Firefox-update workflow (complete)
 ```
 
-#37 completed the fuller fixed Urlbar permission/page-action inventory and
-native-access handoff after #32. #15 is now the next implementation gate. It
-must make #37's handoff reveal/focus the native Urlbar while active and preserve
-every retained panel/prompt. No feature issue may build a second edge
-controller or bypass #31.
+#15 completed the exact reversible content-only gate and retained #37's native
+Urlbar reveal/focus path. #16 completed the regression, resource,
+installer-repair, and Firefox-stable-update procedure work without adding a
+second edge controller or a new product feature. The executable update
+procedure is `docs/firefox-update-workflow.md`. The next governance gate is
+#18's owner-selected project license and attribution policy.
 
 ## 3. Branch and commit conventions
 
@@ -109,11 +110,12 @@ For a privileged bridge or integration change:
 4. Add pure tests for mapping, state, bounds, IDs, errors, and cleanup.
 5. Connect an ordinary application-state adapter.
 6. Integrate the feature into the existing #31 surface contract.
-7. Test while native Firefox UI remains visible.
+7. Test in active content-only mode and with native reveal/fallback available.
 8. Add controlled failure injection and verify fail-open cleanup.
 9. Update current architecture, internals, security, testing, and decision
    documentation.
-10. Only #15 may implement final native-visible-shell hiding.
+10. Any change to the exact native-hide target set requires a dedicated review
+    of ADR-032 and the current compatibility inventory.
 
 For a feature surface, additionally:
 
@@ -134,6 +136,7 @@ Use the exact nvm-managed versions in `.nvmrc` and `package.json`.
 ```powershell
 npm ci --ignore-scripts --no-fund
 npm run dependencies:audit
+npm run test:powershell
 npm run verify
 ```
 
@@ -182,11 +185,13 @@ Every edge feature should also cover:
 - narrow, short, maximized, restored, fullscreen, and high-DPI behavior;
 - reduced motion, forced colors, and solid-surface fallback.
 
-#15 additionally owns the complete native-UI coverage, retained-access, prompt,
-dialog, extension, Library, Downloads, DevTools, customize-mode, DOM-fullscreen,
-and OS-window-control matrix. Its active-state tests must also prove #37's
-native Urlbar handoff temporarily reveals/focuses the retained navbar and that
-return/failure restores the correct presentation.
+The current matrix additionally covers native-UI retained access, prompts,
+dialogs, extension actions, Library, Downloads, DevTools, customize mode,
+DOM fullscreen, and OS window controls. Active-state tests prove #37's native
+Urlbar handoff temporarily reveals/focuses the retained navbar and that
+return/failure restores the correct presentation. Firefox-version changes use
+`docs/firefox-update-workflow.md` and must record unsupported/not-run scenarios
+honestly.
 
 ## 8. Pull-request evidence
 
