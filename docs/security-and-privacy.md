@@ -16,7 +16,7 @@ These rules apply to:
 - tab, navigation, address/Urlbar coverage, Places, and Downloads data flows;
 - resource mappings;
 - diagnostics and shared evidence;
-- install, update, disable, and uninstall;
+- install, update, repair, disable, and uninstall;
 - documentation and copied code.
 
 This document defines policy. It does not claim a formal security audit,
@@ -51,16 +51,18 @@ Implemented controls:
 - hidden-at-rest four-edge state with pointer-transparent center;
 - explicit suspension for native modal state, DOM fullscreen, and customize
   mode;
+- exact active-only native hiding with complete native reveal, safe start, and
+  emergency fallback;
 - default-deny diagnostics and no runtime network sink;
-- path-safe package lifecycle with ownership manifests and rollback.
+- path-safe package lifecycle with ownership manifests, narrow one-sided repair,
+  and rollback.
 
-Not implemented yet:
-
-- final native-visible-shell hiding;
-- public release/security hardening;
-- project license decision.
-
-Native Firefox UI remains visible and is the independent fallback.
+Not completed by this development baseline: a formal independent security
+audit, a public release support promise, a real newer-stable transition when no
+newer stable is available, and a project license decision. Native Firefox DOM
+remains attached and authoritative; active rest hides only ADR-032's exact
+visible descendants, and reveal/suspension/failure immediately restores the
+independent native path.
 
 ## 3. Security objectives
 
@@ -102,8 +104,8 @@ Native Firefox UI remains visible and is the independent fallback.
   includes a threat model, current-source research, failure behavior, fallback,
   and tests.
 - Do not reparent native Firefox DOM into Fennevia surfaces.
-- Do not hide native UI before #15's complete coverage inventory and recovery
-  matrix.
+- Do not expand ADR-032's native-hide target set without a dedicated current-
+  source coverage, recovery, and security review.
 
 ## 5. Four-edge interaction security
 
@@ -131,8 +133,8 @@ Requirements:
 
 The top navigation, left address/status, centered detailed popup, right
 bookmarks, and bottom download-status surfaces are complete for #12–#14, #32,
-and #37. They preserve native access; only #15 may activate hiding after its
-complete retained-access and recovery matrix passes.
+and #37. #15's completed gate activates exact reversible hiding only after
+health; complete native reveal and fail-open cleanup remain available.
 
 ## 6. Data classification and logging
 
@@ -193,6 +195,17 @@ display-URI values never enter logger fields, error messages, or stacks.
 
 Edge-controller records may include only fixed edge/state/hold enums and counts.
 They must never receive browsing data.
+
+### 6.4 Test-only resource evidence
+
+`--performance-baseline` may call Firefox's privileged process-info API only in
+the local real-Firefox harness. The collector immediately returns aggregate
+process count, memory bytes, CPU nanoseconds/cycles, and fixed timing samples.
+It must not serialize the raw record because that record can also contain
+origins, document URIs/titles, process IDs, windows, and threads. This API and
+its results never enter production runtime, Svelte state, persistence,
+telemetry, or a network sink. ADR-034 and static privacy assertions own this
+exception.
 
 ## 7. User-derived frontend data
 
@@ -454,7 +467,7 @@ Current state:
 
 ## 10. Production artifacts and debug policy
 
-The current installed profile inventory is the exact eleven-file
+The current installed profile inventory is the exact 12-file
 `expectedFiles` list in `package-manifest.json`.
 
 Requirements:
@@ -481,7 +494,7 @@ deterministic double-build, exact-inventory, and production-network/debug scans.
 
 ## 11. Installation and file-system safety
 
-Install, update, disable, enable, and uninstall must:
+Install, update, repair, disable, enable, and uninstall must:
 
 - require explicit Firefox program and profile targets;
 - resolve and validate canonical paths;
@@ -495,6 +508,8 @@ Install, update, disable, enable, and uninstall must:
 - use a recovery journal;
 - roll back caught partial failure;
 - block later actions after interrupted transaction until recovery;
+- let repair reconstruct only one wholly absent side from a valid survivor and
+  byte-identical package proof, rejecting partial residue or source mismatch;
 - remove only ownership-proven files/directories;
 - never silently choose a default or daily-use profile;
 - leave unrelated profile content untouched.

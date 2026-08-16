@@ -261,6 +261,57 @@ function Copy-TestPackage {
     return $packageRoot
 }
 
+function Remove-TestInstalledScope {
+    param(
+        [Parameter(Mandatory)]
+        [object] $Target,
+
+        [Parameter(Mandatory)]
+        [ValidateSet("program", "profile")]
+        [string] $Scope
+    )
+
+    $survivingOwnershipPath = if ($Scope -eq "program") {
+        Join-Path $Target.ProfileRoot ".fennevia\ownership.json"
+    }
+    else {
+        Join-Path $Target.ProgramRoot ".fennevia\ownership.json"
+    }
+    $ownership = Get-Content -Raw -LiteralPath $survivingOwnershipPath | ConvertFrom-Json
+    $root = if ($Scope -eq "program") { $Target.ProgramRoot } else { $Target.ProfileRoot }
+    foreach ($file in @($ownership.files | Where-Object { $_.scope -eq $Scope })) {
+        $path = Join-Path $root ([string] $file.installedPath).Replace("/", "\")
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            Remove-Item -LiteralPath $path -Force
+        }
+    }
+
+    $ownershipPath = Join-Path $root ".fennevia\ownership.json"
+    if (Test-Path -LiteralPath $ownershipPath -PathType Leaf) {
+        Remove-Item -LiteralPath $ownershipPath -Force
+    }
+    $metadataPath = Join-Path $root ".fennevia"
+    if (Test-Path -LiteralPath $metadataPath -PathType Container) {
+        $metadataEntries = @(Get-ChildItem -Force -LiteralPath $metadataPath)
+        Assert-Equal -Actual $metadataEntries.Count -Expected 0 -Message "The test may remove only an empty ownership directory."
+        Remove-Item -LiteralPath $metadataPath -Force
+    }
+
+    foreach ($directory in @(
+        $ownership.createdDirectories |
+            Where-Object { $_.scope -eq $Scope } |
+            Sort-Object @{ Expression = { (([string] $_.path) -split "/").Count }; Descending = $true }
+    )) {
+        $path = Join-Path $root ([string] $directory.path).Replace("/", "\")
+        if (Test-Path -LiteralPath $path -PathType Container) {
+            $entries = @(Get-ChildItem -Force -LiteralPath $path)
+            if ($entries.Count -eq 0) {
+                Remove-Item -LiteralPath $path -Force
+            }
+        }
+    }
+}
+
 $script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
 $script:TestRoot = Join-Path ([IO.Path]::GetTempPath()) ("fennevia-installer-tests-" + [guid]::NewGuid().ToString("N"))
 $canonicalTempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd("\", "/")
@@ -457,6 +508,74 @@ try {
     $secondUpdate = Invoke-FenneviaPackageAction -Action Update -FirefoxPath $updateTarget.FirefoxPath -ProfilePath $updateTarget.ProfileRoot -PackageRoot $versionTwoPackage
     Assert-Equal -Actual $secondUpdate.Status -Expected "already-current" -Message "Update must be idempotent."
 
+    $repairAbsentTarget = New-TestFirefoxTarget -Name "repair-absent"
+    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_NOT_INSTALLED" -Message "Repair must not infer ownership when both ownership manifests are absent." -Operation {
+        Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $repairAbsentTarget.FirefoxPath -ProfilePath $repairAbsentTarget.ProfileRoot -PackageRoot $script:RepositoryRoot -DryRun | Out-Null
+    }
+
+    $repairProgramTarget = New-TestFirefoxTarget -Name "repair-program"
+    [void] (Invoke-FenneviaPackageAction -Action Install -FirefoxPath $repairProgramTarget.FirefoxPath -ProfilePath $repairProgramTarget.ProfileRoot -PackageRoot $script:RepositoryRoot)
+    $completeProgramFingerprint = Get-TestTreeFingerprint -Roots @($repairProgramTarget.ProgramRoot, $repairProgramTarget.ProfileRoot)
+    Remove-TestInstalledScope -Target $repairProgramTarget -Scope program
+    $incompleteProgramFingerprint = Get-TestTreeFingerprint -Roots @($repairProgramTarget.ProgramRoot, $repairProgramTarget.ProfileRoot)
+    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_OWNERSHIP_INCOMPLETE" -Message "Update must fail closed when one ownership side is missing." -Operation {
+        Invoke-FenneviaPackageAction -Action Update -FirefoxPath $repairProgramTarget.FirefoxPath -ProfilePath $repairProgramTarget.ProfileRoot -PackageRoot $script:RepositoryRoot -DryRun | Out-Null
+    }
+    $repairProgramPlan = Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $repairProgramTarget.FirefoxPath -ProfilePath $repairProgramTarget.ProfileRoot -PackageRoot $script:RepositoryRoot -DryRun
+    Assert-Equal -Actual $repairProgramPlan.Status -Expected "repairable-program" -Message "Repair preview must identify the missing program ownership side."
+    Assert-Equal -Actual (Get-TestTreeFingerprint -Roots @($repairProgramTarget.ProgramRoot, $repairProgramTarget.ProfileRoot)) -Expected $incompleteProgramFingerprint -Message "Repair dry-run must not mutate either selected root."
+    Assert-Equal -Actual $repairProgramPlan.PlannedBackupCount -Expected 0 -Message "A clean one-sided reconstruction must not claim backups."
+    Assert-True -Condition (@($repairProgramPlan.Operations | Where-Object { $_.Scope -ne "program" }).Count -eq 0) -Message "Program repair must plan mutations only on the missing program side."
+    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_INJECTED_FAILURE" -Message "A partial program repair failure must report the injected failure after rollback." -Operation {
+        Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $repairProgramTarget.FirefoxPath -ProfilePath $repairProgramTarget.ProfileRoot -PackageRoot $script:RepositoryRoot -TestFailureAfterMutation 2 | Out-Null
+    }
+    Assert-Equal -Actual (Get-TestTreeFingerprint -Roots @($repairProgramTarget.ProgramRoot, $repairProgramTarget.ProfileRoot)) -Expected $incompleteProgramFingerprint -Message "A partial repair failure must restore the exact incomplete pre-repair state."
+    Assert-NoTransactionResidue -Target $repairProgramTarget -Message "A rolled-back repair must remove transaction staging."
+    $repairProgramResult = Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $repairProgramTarget.FirefoxPath -ProfilePath $repairProgramTarget.ProfileRoot -PackageRoot $script:RepositoryRoot
+    Assert-Equal -Actual $repairProgramResult.Status -Expected "applied" -Message "Program repair must apply the reviewed reconstruction."
+    Assert-Equal -Actual (Get-TestTreeFingerprint -Roots @($repairProgramTarget.ProgramRoot, $repairProgramTarget.ProfileRoot)) -Expected $completeProgramFingerprint -Message "Program repair must reconstruct the exact prior installation."
+    $repairedProgramOwnership = Get-Content -Raw -LiteralPath (Join-Path $repairProgramTarget.ProgramRoot ".fennevia\ownership.json")
+    $survivingProfileOwnership = Get-Content -Raw -LiteralPath (Join-Path $repairProgramTarget.ProfileRoot ".fennevia\ownership.json")
+    Assert-Equal -Actual $repairedProgramOwnership -Expected $survivingProfileOwnership -Message "Repair must restore a byte-identical ownership pair."
+    $secondRepair = Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $repairProgramTarget.FirefoxPath -ProfilePath $repairProgramTarget.ProfileRoot -PackageRoot $script:RepositoryRoot
+    Assert-Equal -Actual $secondRepair.Status -Expected "already-complete" -Message "Repair must be idempotent after reconstruction."
+    Assert-Equal -Actual $secondRepair.PlannedMutationCount -Expected 0 -Message "A complete ownership pair must require no repair mutation."
+
+    $repairProfileTarget = New-TestFirefoxTarget -Name "repair-profile"
+    [void] (Invoke-FenneviaPackageAction -Action Install -FirefoxPath $repairProfileTarget.FirefoxPath -ProfilePath $repairProfileTarget.ProfileRoot -PackageRoot $script:RepositoryRoot)
+    $completeProfileFingerprint = Get-TestTreeFingerprint -Roots @($repairProfileTarget.ProgramRoot, $repairProfileTarget.ProfileRoot)
+    Remove-TestInstalledScope -Target $repairProfileTarget -Scope profile
+    $incompleteProfileFingerprint = Get-TestTreeFingerprint -Roots @($repairProfileTarget.ProgramRoot, $repairProfileTarget.ProfileRoot)
+    $repairProfilePlan = Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $repairProfileTarget.FirefoxPath -ProfilePath $repairProfileTarget.ProfileRoot -PackageRoot $script:RepositoryRoot -DryRun
+    Assert-Equal -Actual $repairProfilePlan.Status -Expected "repairable-profile" -Message "Repair preview must identify the missing profile ownership side."
+    Assert-Equal -Actual (Get-TestTreeFingerprint -Roots @($repairProfileTarget.ProgramRoot, $repairProfileTarget.ProfileRoot)) -Expected $incompleteProfileFingerprint -Message "Profile repair dry-run must not mutate either selected root."
+    Assert-True -Condition (@($repairProfilePlan.Operations | Where-Object { $_.Scope -ne "profile" }).Count -eq 0) -Message "Profile repair must plan mutations only on the missing profile side."
+    [void] (Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $repairProfileTarget.FirefoxPath -ProfilePath $repairProfileTarget.ProfileRoot -PackageRoot $script:RepositoryRoot)
+    Assert-Equal -Actual (Get-TestTreeFingerprint -Roots @($repairProfileTarget.ProgramRoot, $repairProfileTarget.ProfileRoot)) -Expected $completeProfileFingerprint -Message "Profile repair must reconstruct the exact prior installation."
+
+    $repairMismatchTarget = New-TestFirefoxTarget -Name "repair-source-mismatch"
+    [void] (Invoke-FenneviaPackageAction -Action Install -FirefoxPath $repairMismatchTarget.FirefoxPath -ProfilePath $repairMismatchTarget.ProfileRoot -PackageRoot $versionOnePackage)
+    Remove-TestInstalledScope -Target $repairMismatchTarget -Scope program
+    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_REPAIR_SOURCE_MISMATCH" -Message "Repair must require the exact package source recorded by the survivor." -Operation {
+        Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $repairMismatchTarget.FirefoxPath -ProfilePath $repairMismatchTarget.ProfileRoot -PackageRoot $versionTwoPackage -DryRun | Out-Null
+    }
+
+    $repairResidueTarget = New-TestFirefoxTarget -Name "repair-residue"
+    [void] (Invoke-FenneviaPackageAction -Action Install -FirefoxPath $repairResidueTarget.FirefoxPath -ProfilePath $repairResidueTarget.ProfileRoot -PackageRoot $script:RepositoryRoot)
+    Remove-TestInstalledScope -Target $repairResidueTarget -Scope program
+    Copy-Item -LiteralPath (Join-Path $script:RepositoryRoot "program\fennevia.cfg") -Destination (Join-Path $repairResidueTarget.ProgramRoot "fennevia.cfg")
+    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_REPAIR_RESIDUE" -Message "Repair must reject a partially retained missing-side file set." -Operation {
+        Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $repairResidueTarget.FirefoxPath -ProfilePath $repairResidueTarget.ProfileRoot -PackageRoot $script:RepositoryRoot -DryRun | Out-Null
+    }
+
+    $repairUnmarkedTarget = New-TestFirefoxTarget -Name "repair-unmarked"
+    [void] (Invoke-FenneviaPackageAction -Action Install -FirefoxPath $repairUnmarkedTarget.FirefoxPath -ProfilePath $repairUnmarkedTarget.ProfileRoot -PackageRoot $script:RepositoryRoot)
+    Remove-TestInstalledScope -Target $repairUnmarkedTarget -Scope program
+    Remove-Item -LiteralPath (Join-Path $repairUnmarkedTarget.ProfileRoot ".fennevia-dev-profile.json") -Force
+    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_UNMARKED_PROFILE" -Message "One-sided repair must remain limited to the marker-owned development profile." -Operation {
+        Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $repairUnmarkedTarget.FirefoxPath -ProfilePath $repairUnmarkedTarget.ProfileRoot -PackageRoot $script:RepositoryRoot -DryRun | Out-Null
+    }
+
     $installedConfig = Join-Path $updateTarget.ProgramRoot "fennevia.cfg"
     $originalConfig = [IO.File]::ReadAllText($installedConfig)
     Write-TestFile -Path $installedConfig -Content ($originalConfig + "foreign change")
@@ -497,9 +616,17 @@ try {
     $cliActualDigests = @($cliActualOutput | ForEach-Object { [string] $_ } | Where-Object { $_.StartsWith("planSha256=", [StringComparison]::Ordinal) })
     Assert-Equal -Actual $cliActualDigests.Count -Expected 2 -Message "The CLI must emit one preview and one applied plan digest."
     Assert-Equal -Actual $cliActualDigests[1] -Expected $cliActualDigests[0] -Message "The applied CLI plan digest must match its preview."
+    Remove-TestInstalledScope -Target $cliActualTarget -Scope program
+    $cliRepairOutput = @(& $enginePath -NoProfile -ExecutionPolicy Bypass -File $cliScript -Action Repair -FirefoxPath $cliActualTarget.FirefoxPath -ProfilePath $cliActualTarget.ProfileRoot -WhatIf 2>&1)
+    Assert-Equal -Actual $LASTEXITCODE -Expected 0 -Message "The CLI must preview an explicit one-sided repair."
+    $cliRepairText = $cliRepairOutput -join [Environment]::NewLine
+    Assert-True -Condition (-not $cliRepairText.Contains($script:TestRoot)) -Message "The CLI repair preview must redact local target paths."
+    Assert-True -Condition ($cliRepairText.Contains("status=repairable-program")) -Message "The CLI repair preview must identify the missing program side."
+    Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $cliActualTarget.ProgramRoot ".fennevia"))) -Message "The CLI repair preview must not reconstruct ownership."
+    [void] (Invoke-FenneviaPackageAction -Action Repair -FirefoxPath $cliActualTarget.FirefoxPath -ProfilePath $cliActualTarget.ProfileRoot -PackageRoot $script:RepositoryRoot)
     [void] (Invoke-FenneviaPackageAction -Action Uninstall -FirefoxPath $cliActualTarget.FirefoxPath -ProfilePath $cliActualTarget.ProfileRoot -PackageRoot $script:RepositoryRoot)
 
-    Write-Output "PASS: installer target validation, dry-run, ownership, idempotency, hard disable, update, uninstall, permission failure, and rollback tests."
+    Write-Output "PASS: installer target validation, dry-run, ownership, idempotency, hard disable, update, repair, uninstall, permission failure, and rollback tests."
 }
 finally {
     Remove-Module FenneviaInstaller, FirefoxDevProfile -ErrorAction SilentlyContinue

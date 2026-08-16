@@ -22,7 +22,8 @@ privileged-code constraints below.
 The MVP uses four independent floating surfaces:
 
 - top: primary controls;
-- left: vertical tabs and address input;
+- left: vertical tabs plus compact HTTPS/protection address launcher;
+- center overlay: detailed address/search popup and native Urlbar handoff;
 - right: bookmarks;
 - bottom: download progress/status.
 
@@ -34,8 +35,9 @@ Do not create feature-specific edge triggers, hide timers, z-index systems,
 browser-window observers, native-DOM owners, or window-global coordination
 flags.
 
-Firefox native visible UI remains present until #15. Do not hide it to make an
-incomplete feature appear finished.
+ADR-032's exact active-only descendants are now collapsed at rest, while the
+native DOM and complete reveal/fallback remain. Do not broaden native hiding or
+remove retained Firefox infrastructure to make a feature appear finished.
 
 ## Issue scope
 
@@ -45,7 +47,9 @@ incomplete feature appear finished.
 - Research issues produce reproducible evidence, a decision, or a clear negative
   result.
 - A placeholder is not a completed feature.
-- Do not implement #15 behavior in a feature issue.
+- Changes to the native-hide inventory or Firefox-version support require a
+  dedicated issue, current source evidence, recovery tests, and the workflow in
+  `docs/firefox-update-workflow.md`.
 
 ## Development requirements
 

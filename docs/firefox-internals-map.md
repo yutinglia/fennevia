@@ -1,6 +1,11 @@
 # Firefox Internals Boundary Map
 
-This is an initial ownership and dependency map, not a stable API list. Every symbol, DOM ID, event, URI, preference, and source path must be revalidated against the current Firefox source before implementation.
+This is the current Firefox 153.0.4 ownership and dependency inventory, not a
+stable API list. The supported release tag is `FIREFOX_153_0_4_RELEASE` at
+`c178247e1dfea52241a6b18b18cf3a00f8da935c`, build
+`20260810162159`. Every symbol, DOM ID, event, URI, preference, timing, and
+source path must be revalidated through `docs/firefox-update-workflow.md` when
+the supported stable changes.
 
 ## 1. Project-owned areas
 
@@ -30,7 +35,8 @@ This is an initial ownership and dependency map, not a stable API list. Every sy
 | Notification boxes | Site and browser notifications until a reviewed replacement exists |
 | OS titlebar and window controls | Platform integration until separately validated |
 
-Some native elements may eventually be hidden, but do not remove them or let the frontend framework manage their descendants.
+ADR-032 may collapse only the exact active-rest descendants in section 3. Do
+not remove them or let the frontend framework manage their descendants.
 
 ## 3. Visible native UI under the active gate
 
@@ -110,7 +116,11 @@ Research:
 - URL fixup and search submission;
 - navigation disposition and private-window behavior.
 
-The MVP needs only basic display and submission. Suggestions, autofill, search modes, extension providers, rich results, identity UI, and permission UI require separate research.
+Fennevia intentionally implements only bounded display/submission plus fixed
+connection, protection, permission, and action-availability summaries.
+Suggestions, autofill, search modes, extension providers, rich results, and all
+native identity/permission/action panels stay on the complete native Urlbar
+handoff path.
 
 ### Places
 
@@ -423,6 +433,36 @@ same build without an alias; see `docs/research/fennevia-identity-migration.md`.
 
 The only accepted manifest line is `content fennevia content/`. `contentaccessible=yes` and `override` remain rejected. A future `resource` mapping requires a concrete consumer, exact inventory, current-source review, ordinary-content denial test, and removal test under ADR-016.
 
+## 5. Current compatibility and cleanup index
+
+The detailed tables above and below are normative. This index makes their
+health classification, cleanup, coverage, and likely first break signal
+explicit without duplicating a second symbol inventory.
+
+| Boundary | Current source/build evidence | Owner and deterministic cleanup | Class and fallback | Coverage and likely first break signal |
+| --- | --- | --- | --- | --- |
+| AutoConfig and Chrome Registry | Pinned `nsReadConfig.cpp`, `nsJSConfigTriggers.cpp`, component registrar/parser/registry, and ESM loader rows under **Chrome Registry and AutoConfig** | `fennevia.cfg` plus `Bootstrap.sys.mjs`; process guards only, no discovery. Fatal outer boundary logs a redacted stack | Required; missing/renamed globals, manifest, mapping, or entry leaves stock/native startup | bootstrap static suite, real missing/malformed/entry probes; first diagnostic `manifest-locate`, `entry-resolve`, or `entry-import` |
+| Process/window lifecycle | Pinned window mediator, `browser-delayed-startup-finished`, delayed-startup flag, private-window module, and quit observer under **Window lifecycle** | `Runtime.sys.mjs`/`WindowManager.sys.mjs`; remove observer, abort each context, unload cleanup, idempotent stop | Required per supported browser window; unsupported window type remains native | lifecycle unit/static/real normal-second-private cycles; first signal duplicate/missing `runtime.started`, `window.initialized`, or `window.disposed` |
+| Browser document and XHTML hosts | Pinned `browser.xhtml`, `navigator-toolbox.inc.xhtml`, browser-box/sidebar, and current XHTML runtime evidence under **XHTML shell hosts** | `WindowShell.sys.mjs`; rollback hosts/styles in reverse order and reject pre-existing nodes | Required; insertion/namespace/parent drift removes every partial project node and keeps native UI | host unit/static/Browser Toolbox ownership tests; first signal fixed DOM-path host error |
+| Health, safe start, and emergency fallback | Project lifecycle contract plus Firefox safe-mode state under **Shell health and recovery** | `HealthState.sys.mjs` and window shell; deadline/abort timer cleared, active removed, emergency binding removed on dispose | Required; any illegal transition, timeout, capability, CSS, or mount failure restores native UI | health/safe-start/failure suites; first signal fixed health phase/code and absent `data-fennevia-active` |
+| Svelte/CSS load, mount, unmount, and artifacts | One generated classic IIFE, extracted style ESM, Svelte notice, and exact package hashes under **Svelte frontend execution** | `WindowShell.sys.mjs` owns script/style/registration; generated disposer removes five roots, observers, listeners, subscriptions, timers, and stores | Required; load/mount/health/unmount uncertainty triggers per-window fail-open | double-build, exact inventory, mount/unmount/remount and missing/throwing bundle probes; first signal `shell-frontend-*` |
+| Four-edge geometry/controller | Pinned `#browser`/tabbox host evidence plus project controller contract under **XHTML shell hosts** | `src/app/edge-surfaces.ts`/generated shell; one controller owns pointer, keyboard, focus, popup, corner, hide timer, and disposer state | Required; host/controller failure removes full frame and reveals native UI | pointer/keyboard/focus/popup/corner/jitter/re-entry/disposal matrices; first signal edge-controller fixed state or missing host health capability |
+| Glass/layout/accessibility CSS | Firefox 153 runtime evidence for XHTML styles, `backdrop-filter`, `color-mix`, `light-dark`, reduced motion, forced colors, high contrast, high DPI, and solid fallback | Frame-rooted `ShellStyles.sys.mjs`; style nodes removed with window shell; no native selector outside `NativeUi.sys.mjs` | Visual enhancement is optional; readable opaque/forced-color/reduced-motion layout is required | production CSS scanner, component/real layout matrix; first signal missing parsed project rule, unreadable focus, overflow, or permanent content geometry |
+| Native visible-UI activation | Pinned toolbox/titlebar/sidebar/customize/fullscreen/dialog/popup rows under **Content-only native visibility activation** | `NativeUi.sys.mjs`; exact listeners/observer/style/markers removed; mutation failure suspends before disposal | Required for active mode, never required for native fallback; any stable target/rule mismatch prevents or clears active | native UI unit/static/full real matrix; first signal `FENNEVIA_NATIVE_UI_*` or an exact owner-path mismatch |
+| Tabs bridge/actions | Pinned `gBrowser.openTabs`, tab container events/attributes, and action methods under **Typed tabs bridge** | `src/firefox/tabs.ts`; per-window opaque registry/listeners removed and IDs invalidated | Required; malformed/stale/foreign state or capability loss fails the window open to native tabs | reducer/bridge/component/stress/private tests; first signal `firefox-tabs-capability` or fixed record/action code |
+| Selected navigation | Pinned `BrowserCommands`, selected browser, progress/location listeners, and command updater under **Selected-navigation bridge** | `src/firefox/navigation.ts`; exact progress/application/command listeners removed and selected-browser state discarded | Required; missing command/listener or malformed location fails open, never invents history behavior | state/bridge/real redirect/error/tab-switch/action tests; first signal `firefox-navigation-capability` or progress-listener phase |
+| Address submission and `Ctrl+L` | Pinned current Urlbar input, fixup/search principal behavior, key handler, `gURLBar.handleCommand()`, and `window.openLocation()` under **Address launcher, popup, and Firefox site status** | navigation/address adapters plus generated popup; draft/subscriptions/key listener/closing timer disposed per window | Basic project popup is required; Firefox owns submission and full native focus path; failure restores native controls | draft/isolation/unsafe-scheme/repeated shortcut/focus tests; first signal address capability, submission, focus, or cleanup code |
+| Identity/protection/permission/action coverage | Pinned identity/protections owners, permission/action nodes, observer/event paths, and `openLocation()` under **Urlbar permission and page-action coverage** | `src/firefox/urlbar-coverage.ts`; fixed owner observer/subscriber and native reveal handoff removed on dispose | Required fixed enums/booleans; unknown dynamic item stays generic and complete details remain native | HTTP/HTTPS/internal/error/permission/protection/action matrix; first signal `firefox-urlbar-coverage-capability` or native-handoff failure |
+| Places bookmarks | Pinned modules, records, event WebIDL, observer, and opening helpers under **Places** | `src/firefox/bookmarks.ts`; exact observer removed, query pages/mappings/subscribers cleared | Required for right surface; malformed/query/observer/open failure disposes window to native Library/bookmark paths | bounded state/bridge/tree/events/open/private/real failure tests; first signal `firefox-bookmarks-*` |
+| Downloads | Pinned Downloads/List/Core/Common and indicator rows under **Downloads** | `src/firefox/downloads.ts`; exact PUBLIC/PRIVATE list view removed and bounded registry/subscribers cleared | Required for bottom status; failure leaves Firefox native Downloads/safety UI authoritative | bounded state/list-view/events/private/native panel/failure tests; first signal `firefox-downloads-*` |
+| Retained native infrastructure | Pinned document/toolbox/sidebar/titlebar/Urlbar/Downloads/Places sources plus real prompt/menu/Library/find/DevTools evidence | Firefox owns menus, extension actions/install, Sync/Library, Downloads safety, permissions/auth/certificates, file picker, notifications, find bar, DevTools, Browser Toolbox, popups, content, and OS controls | Never cloned as a required Fennevia capability; complete reveal, suspension, or emergency fallback is the user-visible path | #15 retained-access matrix and every stable-update rehearsal; first signal unreachable native control, hidden prompt, or failed reveal hold |
+| Package/install/update/repair/remove | Exact 14 source-file manifest (2 program + 12 profile), dual generated ownership files, Firefox identity, process, path, and startup-cache rows under **Phase 1 package-lifecycle dependencies** | `FenneviaInstaller.psm1`; two same-volume journals, hash-verified rollback, marker-validated transaction cleanup | Required offline tooling; ordinary actions reject incomplete ownership. Repair accepts only one wholly absent side from exact survivor/source proof | fixed PowerShell suite in 7/5.1 plus real install/update/repair/disable/enable/uninstall/stock; first signal stable `FENNEVIA_INSTALL_*` code |
+| Test-only process resource evidence | [`ChromeUtils.webidl`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/dom/chrome-webidl/ChromeUtils.webidl) defines `requestProcInfo()`, bytes, CPU ns/cycles, and browsing-sensitive fields | `tests/firefox-window-lifecycle.mjs` explicit mode; raw parent/children are immediately reduced to fixed numbers and discarded with the Marionette session | Optional diagnostic, never a production capability; unavailable API blocks only resource evidence and must be recorded | static sensitive-field assertion plus real three-run baseline; first signal remote `requestProcInfo` error or repeatable threshold breach |
+
+Native access-path rows are preservation dependencies even when Fennevia does
+not call their internal API. They must remain reachable and Firefox-owned; a
+new custom replacement requires a separate issue and security decision.
+
 ## 6. Phase 0 development-profile dependencies
 
 These dependencies are development-only. They are owned by `scripts/lib/FirefoxDevProfile.psm1`, do not enter the installed runtime, and were verified on Firefox 153.0.4 release, build ID `20260810162159`, source stamp `54be19de0e08edff0b797e55fd935dd3978b0a6d`, on Windows 11 25H2.
@@ -460,6 +500,7 @@ in `docs/installation.md`.
 | `.fennevia-dev-profile.json` | Prove a new explicit profile is owned by the project helper | A valid existing dual ownership pair is the only accepted proof after installation |
 | Windows process `ExecutablePath` and `CommandLine` | Refuse mutation while the selected executable or profile is active | If Firefox is running but process identity cannot be inspected, fail closed |
 | Same-volume `.fennevia-transaction-<UUID>` roots and .NET file replacement | Stage, hash, journal, back up, atomically replace where available, and roll back exact paths | Any residue blocks future actions; recursive cleanup requires an exact marker-owned, no-reparse transaction tree |
+| One-sided ownership `Repair` | Recreate only one completely absent program/profile side from one valid survivor and the exact byte-equivalent package, preserving installation ID/state/created-directory proof | Both absent, partial residue, source mismatch, modified survivor, foreign AutoConfig, unmarked profile, or unexplained directories fail before mutation; injected partial mutation rolls back exactly |
 | Firefox startup cache | No automatic mutation; Phase 1 observed corrected/removal state on the next cold start | Escalate to Firefox's `about:support` action only after a concrete stale-code symptom |
 
 No new privileged Firefox API or content-accessible mapping is introduced by
@@ -476,7 +517,8 @@ the installer.
 
 ## 9. Dependency inventory fields
 
-Every implemented dependency should eventually record:
+Every implemented dependency records the following fields through the current
+index, detailed tables, linked research records, and tests:
 
 | Field | Meaning |
 | --- | --- |

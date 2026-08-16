@@ -61,18 +61,22 @@ Completed:
   event-driven bottom-edge aggregate progress/status, and native
   safety/management retention;
 - #37: full current Urlbar status/action inventory, fixed permission/action
-  coverage in the detailed popup, and complete Firefox native-Urlbar handoff.
+  coverage in the detailed popup, and complete Firefox native-Urlbar handoff;
+- #15: exact health-gated content-only activation, complete retained native
+  reveal, and reversible per-window fail-open cleanup;
+- #16: fixed local/CI PowerShell gates, aggregate performance/resource mode,
+  exact one-sided ownership repair, reconciled compatibility inventory, and an
+  executable Firefox stable-update rehearsal.
 
-Remaining MVP feature work:
+Remaining project-governance work:
 
-- #15: health-gated content-only activation and narrow native-UI hiding;
-- #16: full hardening and Firefox stable-update workflow;
 - #18: project license and third-party attribution decision.
 
-Firefox native visible UI remains present. All four edge surfaces and the
-centered address overlay now have their planned pre-activation MVP function and
-reviewed native-access path.
-The project is not ready for daily use or a versioned public release.
+At active rest, only ADR-032's exact native toolbar/sidebar descendants are
+collapsed; Firefox DOM, prompts, dialogs, controls, and a complete transient
+native access path remain attached. The four-edge MVP is implementation-
+complete for the tested Windows/Firefox baseline, but it is not a versioned
+public release and has no Linux/macOS support claim.
 
 ## 3. Success criteria
 
@@ -457,7 +461,7 @@ recovery evidence.
 Evidence: ADR-032 and
 `docs/research/firefox-153-content-only-activation.md`.
 
-### Phase 7: Hardening and update workflow — pending (#16)
+### Phase 7: Hardening and update workflow — complete (#16)
 
 Deliverables:
 
@@ -474,6 +478,12 @@ Deliverables:
 
 Gate: an agent unfamiliar with the implementation can install, start, diagnose,
 fail open, update, disable, and uninstall Fennevia from repository documentation.
+
+Gate passed on the Firefox 153.0.4 same-build rehearsal. No newer stable was
+available on 2026-08-16, so the first real stable transition remains explicitly
+not run and must use `docs/firefox-update-workflow.md` when available. Evidence:
+ADR-033/ADR-034 and
+`docs/research/firefox-153-mvp-hardening-update-rehearsal.md`.
 
 ## 7. Target repository layout
 
@@ -522,10 +532,10 @@ and hashes. Generated files are never hand-edited.
 ## 9. Issue execution rules
 
 - Complete shared foundations before feature-specific UI.
-- Do not jump directly to #15.
-- Every feature issue must pass while native Firefox UI remains visible.
-- #15 completed the content-only activation gate; #16 is the next hardening and
-  Firefox-update workflow step.
+- Runtime changes must pass with active mode plus complete native reveal and
+  fail-open recovery.
+- #15 and #16 completed the initial MVP activation and hardening gates; later
+  Firefox updates follow the executable compatibility workflow.
 - Feature issues use the shared #31 edge contract and the #9 bridge boundary.
 - Research work must produce reproducible evidence or a clear negative result,
   not a list of links.

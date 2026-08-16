@@ -76,6 +76,78 @@ $firefox = 'C:\Program Files\Mozilla Firefox\firefox.exe'
 
 Printing that variable is local-only. Shared records must use `<FIREFOX_PROGRAM>\firefox.exe`.
 
+### Create the disposable Firefox program copy
+
+Installer and runtime mutation tests use a copied stock program, not the
+system-managed source tree. Close Firefox first, then create a previously absent
+target below the dedicated Fennevia program-spike root:
+
+```powershell
+$sourceFirefox = $firefox
+$sourceRoot = Split-Path -Parent $sourceFirefox
+$managedProgramRoot = Join-Path $env:LOCALAPPDATA 'fennevia\program-spikes'
+$programRoot = Join-Path $managedProgramRoot 'firefox-stable-copy'
+
+if (Test-Path -LiteralPath $programRoot) {
+  throw 'The disposable Firefox target already exists; verify its owner before reuse.'
+}
+New-Item -ItemType Directory -Path $programRoot | Out-Null
+robocopy $sourceRoot $programRoot /E /COPY:DAT /DCOPY:DAT /R:2 /W:1 /XJ
+if ($LASTEXITCODE -gt 7) {
+  throw "Firefox copy failed with robocopy exit code $LASTEXITCODE."
+}
+
+$copiedFirefox = Join-Path $programRoot 'firefox.exe'
+foreach ($relativePath in @('firefox.exe', 'application.ini')) {
+  $sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $sourceRoot $relativePath)).Hash
+  $copyHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $programRoot $relativePath)).Hash
+  if ($copyHash -cne $sourceHash) {
+    throw "Copied Firefox identity file differs: $relativePath"
+  }
+}
+
+$programMarker = [ordered]@{
+  schemaVersion = 1
+  owner = 'fennevia'
+  purpose = 'firefox-identity-regression'
+  state = 'ready'
+}
+$programMarkerJson = ($programMarker | ConvertTo-Json) + [Environment]::NewLine
+$utf8NoBom = New-Object Text.UTF8Encoding($false)
+[IO.File]::WriteAllText(
+  (Join-Path $programRoot '.fennevia-program-spike.json'),
+  $programMarkerJson,
+  $utf8NoBom
+)
+$firefox = $copiedFirefox
+```
+
+The marker is test-harness proof for this disposable copy; it is not installer
+ownership and never authorizes adopting unknown files. Run `Environment` and
+`Verify` against `$firefox`, compare the copied `application.ini` version/build
+with the source, and keep path values local.
+
+After package `Uninstall`, the `--expect-stock` harness, and residue checks pass,
+the copied tree may be removed only after revalidating its exact managed prefix
+and marker. Never aim recursive deletion at the source program, the
+`program-spikes` parent, a missing variable, or an unmarked target:
+
+```powershell
+$managedPrefix = [IO.Path]::GetFullPath($managedProgramRoot).TrimEnd('\') + '\'
+$resolvedProgram = [IO.Path]::GetFullPath($programRoot).TrimEnd('\')
+$markerPath = Join-Path $resolvedProgram '.fennevia-program-spike.json'
+$marker = Get-Content -Raw -LiteralPath $markerPath | ConvertFrom-Json
+if (
+  -not $resolvedProgram.StartsWith($managedPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+  $marker.owner -cne 'fennevia' -or
+  $marker.purpose -cne 'firefox-identity-regression' -or
+  $marker.state -cne 'ready'
+) {
+  throw 'Refusing to remove an unproven Firefox copy.'
+}
+Remove-Item -LiteralPath $resolvedProgram -Recurse -Force
+```
+
 ## 3. Initialize and verify the profile
 
 From the repository root:

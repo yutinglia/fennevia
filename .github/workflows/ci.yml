@@ -44,6 +44,10 @@ jobs:
       - name: Run unit and lifecycle tests
         run: npm test
 
+      - name: Run fixed-list static PowerShell gates
+        shell: pwsh
+        run: .\tests\run-static-powershell-tests.ps1
+
       - name: Rebuild and validate dependency inventory
         run: npm run dependencies:audit
 
@@ -61,8 +65,6 @@ jobs:
       - name: Scan the exact production inventory
         run: npm run artifacts
 
-      - name: Exercise artifact policy in Windows PowerShell 5.1
+      - name: Exercise static PowerShell gates in Windows PowerShell 5.1
         shell: powershell
-        run: |
-          .\tests\production-artifacts.Tests.ps1
-          exit 0
+        run: .\tests\run-static-powershell-tests.ps1

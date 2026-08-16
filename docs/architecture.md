@@ -50,8 +50,9 @@ path/URL-redacted stack.
 
 Phase 2 keeps that entry singular. `Bootstrap.sys.mjs` directly imports four
 fixed project modules (`Logger`, `WindowManager`, `WindowShell`, and `Runtime`)
-plus Firefox's fixed `PrivateBrowsingUtils` module. `WindowShell` has one fixed
-relative import of `HealthState`; there is still no discovery or dynamic import.
+plus Firefox's fixed `PrivateBrowsingUtils` module. `WindowShell` has fixed
+relative imports of `HealthState` and `NativeUi`; there is still no discovery or
+dynamic import.
 The entry starts one process runtime and returns the same frozen bootstrap
 contract. AutoConfig still knows nothing about windows or features.
 
@@ -562,9 +563,11 @@ tool output must never enter the package inventory accidentally.
 accepts explicit program and profile targets, emits a redacted exact dry run,
 requires paired hash-based ownership records, stages and journals changes on the
 same volumes, rolls back partial failure, hard-disables by moving the AutoConfig
-preference, and uninstalls only exact owned files. The normative contract and
+preference, repairs only one completely absent ownership side from exact
+surviving proof, and uninstalls only exact owned files. Every ordinary action
+still rejects an incomplete pair. The normative contract and
 interrupted-operation recovery procedure are in `docs/installation.md` and
-ADR-018.
+ADR-018/ADR-033.
 
 ## 10. Security and privacy model
 
@@ -581,50 +584,53 @@ The runtime has system-principal capability. Consequently:
 
 The normative policy is in `docs/security-and-privacy.md`. The threat model, logging schema, manifest review, installer preflight, private-window rules, security triggers, and automated artifact gate are in `docs/security-controls.md`.
 
-## 11. Initial module boundaries
+## 11. Current module boundaries
 
 ```text
 src/
-  bootstrap/
-    entry.ts
-  runtime/
-    Runtime.ts
-    WindowManager.ts
-    WindowShell.ts
-    HealthState.ts
-    Logger.ts
   firefox/
-    bridge-boundary.ts       # current context/capability/disposal boundary
-    context.ts               # future split only when real consumers require it
-    capabilities.ts          # future split only when real consumers require it
-    disposables.ts           # future split only when real consumers require it
+    bridge-boundary.ts
+    index.ts
     tabs.ts
     navigation.ts
-    commands.ts
+    urlbar-coverage.ts
     bookmarks.ts
     downloads.ts
   app/
+    address-popup.ts
     bookmark-state.ts
     download-state.ts
     edge-surfaces.ts
+    navigation-state.ts
     tab-state.ts
     tab-strip.ts
-    controllers/
-    state/
+    urlbar-coverage-state.ts
   shell/
+    AddressPopup.svelte
     App.svelte
     BookmarksPanel.svelte
     DownloadsPanel.svelte
+    entry.ts
     index.ts
     styles/
       edge-shell.css
-    components/
-  styles/
-    shell.css
-    native-integration.css
+
+profile/chrome/fennevia/
+  chrome.manifest
+  content/
+    Bootstrap.sys.mjs
+    runtime/                 # authored privileged lifecycle/health/native UI
+    firefox/                 # generated private bridge boundary
+    shell/                   # generated Svelte IIFE, CSS, and notice
+
+program/
+  defaults/pref/fennevia.js
+  fennevia.cfg
 ```
 
-This is a target boundary, not permission to scaffold unused abstractions before the Phase 1 and Phase 2 evidence exists.
+Svelte/application modules consume only ordinary contracts. Unsupported native
+handles and Firefox calls remain inside generated `src/firefox/` output or the
+authored privileged runtime. No speculative SDK/container layer is present.
 
 The current package combines the proven runtime/bridge boundary with the
 generated four-edge frontend:
@@ -637,6 +643,7 @@ profile/chrome/fennevia/content/
   runtime/
     HealthState.sys.mjs
     Logger.sys.mjs
+    NativeUi.sys.mjs
     Runtime.sys.mjs
     WindowManager.sys.mjs
     WindowShell.sys.mjs
@@ -646,7 +653,8 @@ profile/chrome/fennevia/content/
     THIRD_PARTY_NOTICES.txt
 ```
 
-All eleven profile files are exact package artifacts with committed hashes. The
+All 12 profile files (the Chrome manifest plus the 11 files below `content/`)
+are exact package artifacts with committed hashes. The
 bridge ESM and three shell files are reproducible only from `src/` and build
 configuration; the runtime modules remain reviewed source. The source/build
 boundaries and per-window execution decisions are recorded in ADR-022,
