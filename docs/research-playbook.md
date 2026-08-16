@@ -191,6 +191,8 @@ Before adopting a pattern, document which part works through stock-Firefox runti
 
 ## 8. External code and licensing
 
+- Follow `docs/licensing-and-provenance.md`; update the root
+  `THIRD_PARTY_NOTICES.md` before included material changes.
 - Verify the repository and file license before copying implementation code.
 - Copying a concept is not the same as copying a concrete implementation.
 - Preserve required attribution, license headers, and source commit references.

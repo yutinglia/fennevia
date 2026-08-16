@@ -56,7 +56,7 @@ Current validated baseline:
 | Test-only performance evidence | Firefox process records can expose origins, window URIs/titles, IDs, and threads | Explicit harness mode immediately reduces raw records to numeric process/memory/CPU aggregates and fixed timings; static test rejects sensitive fields; no production caller or sink | Revalidate API shape on every supported Firefox | #16; ADR-034 |
 | Test-only persisted-session evidence | Firefox SessionStore can expose complete browsing state, while preference or failure-injection residue can alter later starts | Explicit four-phase harness accepts only fixed local fixtures; default-deny evidence emits fixed IDs/counts/booleans; a stale marker blocks prepare; exact preference state, bundle bytes, one blank tab, and process baseline are restored; no production caller or sink | Revalidate restore timing, lazy pending semantics, and cleanup on every supported Firefox | #46; ADR-035 |
 | Startup cache/stale installed code | Removed or fixed privileged code may continue to run | Exact inventory and evidence-first cache policy; validated changes took effect without routine clearing | Cache action only after observed stale symptom | #3, #4, #16 |
-| External implementation/design | Unlicensed or copied code/design can create legal and maintenance risk | License/provenance requirement; `my-firefox-custom` no-copy boundary; exact reference commit required | Owner license/attribution decision | #18 |
+| External implementation/design | Unlicensed or copied code/design can create legal and maintenance risk | MPL-2.0 project/inbound policy; root third-party inventory; exact source/file/commit/license/modification record; preserved notices; `my-firefox-custom` no-copy boundary | Repeat gate before every included external item or distribution | #18; `docs/licensing-and-provenance.md` |
 | Runtime network/update/telemetry | Remote party can change privileged behavior or receive browsing data | Prohibited; scanner detects common endpoints/APIs | New issue + ADR + security review for any exception | ADR-012 |
 | Native UI hiding | Broad selectors can remove uncovered actions or leave no recovery | Production activates only after health; one exact five-rule per-window controller, titlebar validation, complete native reveal, CSS integrity checks, and suspension-first fail-open implement ADR-032 | Revalidate exact target graph, both tab-layout branches, and failure matrix on every supported Firefox | #15, #16; ADR-032 |
 
@@ -609,8 +609,10 @@ Before direct reuse:
 Every design-reference implementation record states the exact consulted commit,
 concepts retained, independent Fennevia decisions, and no-copy confirmation.
 
-Issue #18 must be resolved before public distribution, substantial external
-contributions under unclear terms, or copying reusable implementation code.
+Issue #18 resolved the project license and inbound contribution terms. The gate
+remains mandatory before every public distribution or inclusion of reusable
+external code/asset: follow `docs/licensing-and-provenance.md` and update
+`THIRD_PARTY_NOTICES.md` before merge.
 
 ## 13. Security review triggers
 

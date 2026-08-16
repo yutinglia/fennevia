@@ -16,6 +16,10 @@ Before changing code or documentation, read:
    decisions.
 6. The current implementation and the most recent relevant commits.
 
+For dependency, copied/adapted code, generated artifact, contribution, or
+distribution work, also read `docs/licensing-and-provenance.md` and
+`THIRD_PARTY_NOTICES.md` before acting.
+
 If an issue conflicts with an older document, follow the newer explicit
 decision and update the stale normative document in the same change. Do not
 rewrite a historical research record to make it describe later implementation.
@@ -149,8 +153,11 @@ Record an upstream commit SHA, source path, or Firefox build when a decision
 depends on unstable internals. Never present an assumption as an established
 Firefox contract.
 
-Before copying external code, verify its license and preserve required
-attribution and provenance. Public visibility is not permission to reuse code.
+Fennevia's original material is MPL-2.0 under the root `LICENSE`. Before copying
+external code, follow `docs/licensing-and-provenance.md`, verify the exact
+source/file/commit and license, preserve required notices, and update
+`THIRD_PARTY_NOTICES.md`. Public visibility alone is not permission to reuse
+code, and unclear or unlicensed material remains prohibited.
 
 ## 6. Implementation rules
 

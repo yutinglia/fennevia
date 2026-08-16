@@ -50,8 +50,10 @@ Current feature order:
 Urlbar reveal/focus path. #16 completed the regression, resource,
 installer-repair, and Firefox-stable-update procedure work without adding a
 second edge controller or a new product feature. The executable update
-procedure is `docs/firefox-update-workflow.md`. The next governance gate is
-#18's owner-selected project license and attribution policy.
+procedure is `docs/firefox-update-workflow.md`. Issue #18 completed the MPL-2.0
+project/inbound license and third-party provenance gate; all copied/adapted or
+distributed material follows `docs/licensing-and-provenance.md` and
+`THIRD_PARTY_NOTICES.md`.
 
 ## 3. Branch and commit conventions
 
@@ -206,6 +208,8 @@ A pull request should include:
 - external design-reference commit and no-copy statement where applicable;
 - architecture, security, privacy, persistence, and resource-exposure effects;
 - dependency-review record when applicable;
+- license/provenance record and root notice update when external material or a
+  distribution artifact changes;
 - exact commands run;
 - `pass`, `fail`, `blocked`, or `not run` results;
 - real Firefox and failure-injection evidence where required;
