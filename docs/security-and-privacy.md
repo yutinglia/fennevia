@@ -345,7 +345,51 @@ Source inventory and real HTTP/HTTPS/internal/error/permission/protection/
 normal/second/private/fail-open evidence are in ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-### 7.4 Bookmarks — implemented #14
+### 7.4 Browser-tool native handoffs — implemented ADR-037
+
+Each managed window owns one `browser-tools` Firefox controller and one ordinary
+application adapter. The controller validates twelve fixed current owners while
+native UI is visible and accepts only nine fixed actions: site information,
+protections, site permissions, native Downloads, Unified Extensions,
+application menu, Settings, native customization mode, and complete
+original-toolbar access. Every action re-resolves its owner; anchored actions
+request the existing reversible native-toolbar reveal before focus and
+delegation.
+
+Only nine availability booleans and the fixed action/result values cross the
+bridge. The following remain privileged and absent from Svelte, DOM attributes,
+persistence, normal logs, and project network requests:
+
+- URL, origin, page-title, address, search, and history data;
+- certificate, HTTPS-only exception, site-data, tracker, breach, and protection
+  details;
+- permission IDs, states, scopes, origins, sharing records, prompts, and native
+  labels;
+- extension IDs, names, icons, widgets, customization state, actions, and
+  commands;
+- download names, paths, source URLs, byte records, errors, and native objects;
+- Firefox nodes, panels, handlers, preferences, principals, windows, and
+  controller objects.
+
+Firefox initializes, populates, and owns each opened panel. The two custom
+security buttons display only the already reviewed bounded connection and
+protection enums and explicitly open the authoritative native Trust/identity or
+protection owner. The native permission and Downloads panels retain their
+mutation, safety, and management behavior. Unified Extensions and the complete
+original-toolbar handoff preserve arbitrary extension access without exposing
+extension identity. Settings uses Firefox's current method rather than a
+project-constructed URL; native customization suspends all Fennevia hiding for
+the current Firefox lifecycle.
+
+The controller has no observer, timer, polling loop, generic widget registry,
+or process-global state. Disposal drops the owner-window reference; malformed
+input/result, missing owner, rejected reveal, or thrown native action uses only
+fixed code/phase/symbol/version/build/window-kind diagnostics and the existing
+per-window fail-open path. Project-authored toolbar SVGs contain no external
+asset, metadata, script, URL, or runtime load. See ADR-037 and
+`docs/research/firefox-153-single-line-toolbar-handoffs.md`.
+
+### 7.5 Bookmarks — implemented #14
 
 The Places controller is per window and holds native modules, records, GUIDs,
 URL objects, observers, node-like opening values, and the owner window only in
@@ -394,7 +438,7 @@ opening capability failure blocks health and leaves those native paths usable.
 Source evidence and real hostile-title/private/fail-open tests are in
 `docs/research/firefox-153-bookmarks-surface.md` and ADR-029.
 
-### 7.5 Downloads — implemented #32
+### 7.6 Downloads — implemented #32
 
 Each managed window owns one typed controller and exact Firefox list view.
 Normal windows select `Downloads.PUBLIC`; private windows select
@@ -588,8 +632,8 @@ Current #31 behavior:
 - all four edges suspend for native modal state, DOM fullscreen, and customize
   mode;
 - native titlebar, toolbox, sidebar, popup sets, tabbox, browser content,
-  notifications, prompts, and OS controls are not moved, resized, or owned by
-  Svelte.
+  notifications, prompts, and OS controls are never owned by Svelte; only the
+  privileged reversible native sheet may alter their reviewed active geometry.
 
 Issue #12's top surface invokes retained Firefox commands. The native navbar,
 Urlbar, identity/permission UI, prompts, and security indicators remain attached
@@ -599,19 +643,25 @@ Issue #37 adds only fixed read-only status/action availability and an explicit
 handoff to `window.openLocation()`. It does not replace native panels, prompts,
 providers, extension actions, or commands.
 
+ADR-037 adds fixed native browser-tool handoffs. It does not inspect or copy
+the sensitive panel data described in section 7.4; Firefox remains the panel,
+command, extension, download, customization, and window-control owner.
+
 Issue #15 implements the narrow active-only boundary in ADR-032. One privileged
 controller validates exact Firefox 153 toolbar/sidebar/titlebar nodes and one
-five-rule project style. It never reads URLs, labels, principals, certificates,
+thirteen-rule project style. It never reads URLs, labels, principals, certificates,
 permissions, extension identity, popup contents, sidebar contents, or browser
 content. Root state stores only fixed reveal/suspension booleans; logs contain
 only fixed error phase/code, Firefox version/build, and per-window opaque ID.
 
-Horizontal tab items/navbar, the bookmarks toolbar, and exact native sidebar
-surfaces collapse only while active and not revealed/suspended. Native vertical
-tab mode retains its navbar titlebar owner. The toolbox, titlebar controls,
-notifications toolbar, popup sets, prompts, dialogs, tabbox, content, and
-DevTools are never targeted. Pointer/focus, anchored popup, open native sidebar,
-and #37 Urlbar handoff reveal the complete native owner. Customize,
+Toolbox/toolbar geometry, exact non-caption content, the bookmarks toolbar, and
+exact native sidebar surfaces collapse only while active and not
+revealed/suspended. Native vertical-tab mode retains its navbar titlebar owner.
+The browser receives only a 7px gutter and the tabbox receives only
+border/radius/clip styling. One selected Firefox-owned caption group is displayed
+and styled in place; Fennevia never operates its commands. Native focus,
+anchored popup, open native sidebar, #37 Urlbar handoff, and ADR-037 original-
+toolbar/panel handoffs reveal the complete native owner. Customize,
 native-dialog, and DOM-fullscreen state suspend project hiding. Any missing,
 invalid, partial, or stably changed required target/style first exposes native
 UI and then requests per-window ADR-021 cleanup.
@@ -648,8 +698,8 @@ Implemented:
   per window;
 - one window's emergency fallback does not mutate another.
 
-Issues #12–#15, #32, and #37 give each window its own navigation, Urlbar
-coverage, bookmarks, and Downloads controllers; selected snapshots;
+Issues #12–#15, #32, #37, and ADR-037 give each window its own navigation,
+Urlbar coverage, browser-tools, bookmarks, and Downloads controllers; selected snapshots;
 navigation, popup, Urlbar, bookmark, and download subscriber sets; popup
 controller/draft; two tab listeners; one tabs progress listener; one command
 observer; one Urlbar owner-state observer; one Places observer; one Downloads
@@ -669,6 +719,11 @@ evidence is in `docs/research/firefox-153-navigation-controls.md`,
 `docs/research/firefox-153-urlbar-coverage.md`,
 `docs/research/firefox-153-bookmarks-surface.md`, and
 `docs/research/firefox-153-downloads-surface.md`.
+
+ADR-037's browser-tools unit/build boundary is per-window by construction, but
+its real second/private-window native-panel matrix was not run in this fast
+pass and remains explicitly pending in
+`docs/research/firefox-153-single-line-toolbar-handoffs.md`.
 
 ## 14. External code, design references, and provenance
 

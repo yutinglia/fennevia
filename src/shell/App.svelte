@@ -3,6 +3,10 @@
 
   import { type AddressPopupController } from "../app/address-popup";
   import type { BrowserBookmarksStateAdapter } from "../app/bookmark-state";
+  import type {
+    BrowserToolAction,
+    BrowserToolsStateAdapter,
+  } from "../app/browser-tools-state";
   import type { BrowserDownloadsStateAdapter } from "../app/download-state";
   import {
     edgeKeyboardBindings,
@@ -37,10 +41,12 @@
   } from "./navigation-labels";
   import BookmarksPanel from "./BookmarksPanel.svelte";
   import DownloadsPanel from "./DownloadsPanel.svelte";
+  import ShellIcon from "./ShellIcon.svelte";
 
   type Props = Readonly<{
     addressPopup?: AddressPopupController;
     bookmarks?: BrowserBookmarksStateAdapter;
+    browserTools?: BrowserToolsStateAdapter;
     downloads?: BrowserDownloadsStateAdapter;
     edge: EdgeName;
     frame: HTMLElement;
@@ -94,8 +100,10 @@
       currentNavigation.snapshot.trackingProtection,
     ),
   );
+  let browserToolsSnapshot = $derived(props.browserTools?.snapshot());
   let delayedFocusTimer: DelayedFocusTimer | undefined;
   let focusReleaseTimer: DelayedFocusTimer | undefined;
+  let panelDragCandidate = false;
   const tabButtons: Array<{
     node: HTMLButtonElement;
     tabId: string;
@@ -193,6 +201,27 @@
   ) => {
     try {
       action(requireNavigation());
+    } catch (error) {
+      props.onFatalError(error);
+    }
+  };
+
+  const runBrowserToolAction = async (action: BrowserToolAction) => {
+    try {
+      const browserTools = props.browserTools;
+      if (!browserTools) {
+        throw new Error("FENNEVIA_TOP_BROWSER_TOOLS_UNAVAILABLE");
+      }
+      props.onDismiss("top");
+      await browserTools.invoke(action);
+    } catch (error) {
+      props.onFatalError(error);
+    }
+  };
+
+  const revealCompanionSurface = (edge: "right" | "bottom") => {
+    try {
+      props.shell.revealProgrammatically(edge);
     } catch (error) {
       props.onFatalError(error);
     }
@@ -374,10 +403,36 @@
     }
   };
 
-  const handlePanelPointerOut = (event: PointerEvent) => {
+  const handleSurfacePointerOut = (event: PointerEvent) => {
     if (crossedPointerBoundary(event)) {
       props.shell.setPointerHeld(props.edge, false);
     }
+  };
+
+  const isInteractivePointerTarget = (
+    target: PointerEvent["target"],
+  ): boolean =>
+    target instanceof Element &&
+    Boolean(
+      target.closest(
+        'a, button, input, select, textarea, [contenteditable="true"], [role="button"], [role="link"], [role="tab"], [tabindex]',
+      ),
+    );
+
+  const handlePanelPointerDown = (event: PointerEvent) => {
+    panelDragCandidate =
+      event.button === 0 && !isInteractivePointerTarget(event.target);
+    if (panelDragCandidate) {
+      props.shell.setPointerHeld(props.edge, false);
+    }
+  };
+
+  const handlePanelPointerRelease = () => {
+    if (!panelDragCandidate) {
+      return;
+    }
+    panelDragCandidate = false;
+    props.shell.setPointerHeld(props.edge, false);
   };
 
   const handleRootFocusOut = (event: FocusEvent) => {
@@ -421,6 +476,7 @@
   onDestroy(() => {
     cancelDelayedFocus();
     cancelFocusRelease();
+    panelDragCandidate = false;
     tabButtons.length = 0;
     if (props.edge === "left") {
       addressPopupVisible = false;
@@ -440,13 +496,14 @@
   data-fennevia-window-kind={props.windowKind}
   onfocusin={handleRootFocusIn}
   onfocusout={handleRootFocusOut}
+  onpointerout={handleSurfacePointerOut}
+  role="presentation"
 >
   <div
     aria-hidden="true"
     class="fennevia-edge-trigger"
     data-fennevia-edge-trigger={props.edge}
     onpointermove={handleTriggerPointer}
-    onpointerout={() => props.shell.setPointerHeld(props.edge, false)}
     onpointerover={handleTriggerPointer}
   ></div>
 
@@ -456,31 +513,36 @@
     class="fennevia-edge-panel"
     data-fennevia-edge-panel={props.edge}
     inert={!surfaceState.visible}
-    onpointerout={handlePanelPointerOut}
+    onpointercancel={handlePanelPointerRelease}
+    onpointerdown={handlePanelPointerDown}
     onpointerover={handlePanelPointerOver}
+    onpointerup={handlePanelPointerRelease}
     role="region"
   >
-    <header class="fennevia-edge-panel__header">
-      <div class="fennevia-edge-panel__identity">
-        <span aria-hidden="true" class="fennevia-edge-panel__mark"></span>
-        <div>
-          <strong>{surfaceLabels[props.edge]}</strong>
-          <span>{props.windowKind === "private" ? "Private" : "Fennevia"}</span>
+    {#if props.edge !== "top"}
+      <header class="fennevia-edge-panel__header">
+        <div class="fennevia-edge-panel__identity">
+          <span aria-hidden="true" class="fennevia-edge-panel__mark"></span>
+          <div>
+            <strong>{surfaceLabels[props.edge]}</strong>
+            <span
+              >{props.windowKind === "private" ? "Private" : "Fennevia"}</span
+            >
+          </div>
         </div>
-      </div>
-      <button
-        aria-label={`Hide ${surfaceLabels[props.edge].toLowerCase()}`}
-        class="fennevia-control fennevia-edge-panel__dismiss"
-        data-fennevia-default-focus={props.edge === "top" ||
-        props.edge === "bottom"
-          ? ""
-          : undefined}
-        data-fennevia-dismiss={props.edge}
-        onclick={dismissPanel}
-        title="Hide surface"
-        type="button">×</button
-      >
-    </header>
+        <button
+          aria-label={`Hide ${surfaceLabels[props.edge].toLowerCase()}`}
+          class="fennevia-control fennevia-edge-panel__dismiss"
+          data-fennevia-default-focus={props.edge === "bottom" ? "" : undefined}
+          data-fennevia-dismiss={props.edge}
+          onclick={dismissPanel}
+          title="Hide surface"
+          type="button"
+        >
+          <ShellIcon name="close" />
+        </button>
+      </header>
+    {/if}
 
     {#if props.edge === "left"}
       <section
@@ -635,7 +697,12 @@
         </button>
       </div>
     {:else if props.edge === "top"}
-      <div class="fennevia-navigation" data-fennevia-navigation="">
+      <div
+        aria-label="Browser toolbar"
+        class="fennevia-navigation"
+        data-fennevia-navigation=""
+        role="toolbar"
+      >
         <div
           aria-label="Primary navigation"
           class="fennevia-navigation__controls"
@@ -651,7 +718,7 @@
             title="Back"
             type="button"
           >
-            <span aria-hidden="true">←</span>
+            <ShellIcon name="back" />
           </button>
           <button
             aria-label="Go forward"
@@ -663,7 +730,7 @@
             title="Forward"
             type="button"
           >
-            <span aria-hidden="true">→</span>
+            <ShellIcon name="forward" />
           </button>
           <button
             aria-busy={currentNavigation.snapshot.loading}
@@ -678,10 +745,94 @@
             title={currentNavigation.snapshot.loading ? "Stop" : "Reload"}
             type="button"
           >
-            <span aria-hidden="true"
-              >{currentNavigation.snapshot.loading ? "■" : "↻"}</span
-            >
+            <ShellIcon
+              name={currentNavigation.snapshot.loading ? "stop" : "reload"}
+            />
           </button>
+        </div>
+
+        <div
+          aria-label="Address and site information"
+          class="fennevia-top-address-cluster"
+          role="group"
+        >
+          <button
+            aria-label="Open address and search"
+            class="fennevia-top-address"
+            data-fennevia-default-focus=""
+            data-fennevia-top-address-launcher=""
+            onclick={() => props.onOpenAddress?.()}
+            title="Search or enter address"
+            type="button"
+          >
+            <ShellIcon name="address" />
+            <output
+              aria-label="Current page"
+              aria-live="off"
+              class="fennevia-navigation__status"
+              data-fennevia-navigation-status=""
+            >
+              <strong dir="auto"
+                >{currentNavigation.snapshot.title || "New tab"}</strong
+              >
+              <span dir="ltr"
+                >{currentNavigation.snapshot.displayUri ||
+                  "Search or enter address"}</span
+              >
+            </output>
+            <span
+              aria-hidden="true"
+              class="fennevia-top-address__loading"
+              data-fennevia-loading={currentNavigation.snapshot.loading}
+            ></span>
+          </button>
+
+          <div class="fennevia-top-address__native-status" role="group">
+            <button
+              aria-label={`Open Firefox site information: ${connectionStatus.label}`}
+              class="fennevia-control fennevia-top-address__status"
+              data-fennevia-browser-tool="site-information"
+              data-fennevia-status-tone={connectionStatus.tone}
+              disabled={!browserToolsSnapshot?.siteInformation}
+              onclick={() => void runBrowserToolAction("site-information")}
+              title={`${connectionStatus.label} — Open Firefox site information`}
+              type="button"
+            >
+              <ShellIcon name="lock" />
+              <span>{connectionStatus.badge}</span>
+            </button>
+            <button
+              aria-label={`Open Firefox protection details: ${protectionStatus.label}`}
+              class="fennevia-control fennevia-top-address__status"
+              data-fennevia-browser-tool="protections"
+              data-fennevia-status-tone={protectionStatus.tone}
+              disabled={!browserToolsSnapshot?.protections}
+              onclick={() => void runBrowserToolAction("protections")}
+              title={`${protectionStatus.label} — Open Firefox protection details`}
+              type="button"
+            >
+              <ShellIcon name="shield" />
+              <span>{protectionStatus.badge}</span>
+            </button>
+            <button
+              aria-label="Open Firefox site permissions"
+              class="fennevia-control fennevia-top-address__status fennevia-top-address__permissions"
+              data-fennevia-browser-tool="site-permissions"
+              disabled={!browserToolsSnapshot?.sitePermissions}
+              onclick={() => void runBrowserToolAction("site-permissions")}
+              title="Site permissions"
+              type="button"
+            >
+              <ShellIcon name="permissions" />
+            </button>
+          </div>
+        </div>
+
+        <div
+          aria-label="Page and shell actions"
+          class="fennevia-navigation__page-actions"
+          role="group"
+        >
           <button
             aria-label="Open new tab"
             class="fennevia-control fennevia-navigation__button fennevia-navigation__new-tab"
@@ -691,24 +842,109 @@
             title="New tab"
             type="button"
           >
-            <span aria-hidden="true">+</span>
+            <ShellIcon name="plus" />
             <span class="fennevia-navigation__new-tab-label">New tab</span>
+          </button>
+          <button
+            aria-label="Show bookmarks"
+            class="fennevia-control fennevia-navigation__button fennevia-navigation__secondary"
+            data-fennevia-action="show-bookmarks"
+            onclick={() => revealCompanionSurface("right")}
+            title="Bookmarks"
+            type="button"
+          >
+            <ShellIcon name="bookmark" />
+          </button>
+          <button
+            aria-label="Open Firefox downloads"
+            class="fennevia-control fennevia-navigation__button fennevia-navigation__secondary"
+            data-fennevia-browser-tool="downloads"
+            disabled={!browserToolsSnapshot?.downloads}
+            onclick={() => void runBrowserToolAction("downloads")}
+            title="Firefox downloads"
+            type="button"
+          >
+            <ShellIcon name="download" />
           </button>
         </div>
 
-        <output
-          aria-label="Current page"
-          aria-live="off"
-          class="fennevia-navigation__status"
-          data-fennevia-navigation-status=""
+        <div
+          aria-label="Firefox tools"
+          class="fennevia-browser-tools"
+          data-fennevia-browser-tools=""
+          role="group"
         >
-          <strong dir="auto"
-            >{currentNavigation.snapshot.title || "Untitled page"}</strong
+          <button
+            aria-label="Open Firefox extensions"
+            class="fennevia-control fennevia-browser-tools__button"
+            data-fennevia-browser-tool="extensions"
+            disabled={!browserToolsSnapshot?.extensions}
+            onclick={() => void runBrowserToolAction("extensions")}
+            title="Extensions"
+            type="button"
           >
-          <span dir="ltr"
-            >{currentNavigation.snapshot.displayUri || "No page address"}</span
+            <ShellIcon name="extensions" />
+          </button>
+          <button
+            aria-label="Open Firefox settings"
+            class="fennevia-control fennevia-browser-tools__button fennevia-browser-tools__secondary"
+            data-fennevia-browser-tool="settings"
+            disabled={!browserToolsSnapshot?.settings}
+            onclick={() => void runBrowserToolAction("settings")}
+            title="Settings"
+            type="button"
           >
-        </output>
+            <ShellIcon name="settings" />
+          </button>
+          <button
+            aria-label="Customize Firefox toolbar"
+            class="fennevia-control fennevia-browser-tools__button fennevia-browser-tools__secondary"
+            data-fennevia-browser-tool="customize"
+            disabled={!browserToolsSnapshot?.customize}
+            onclick={() => void runBrowserToolAction("customize")}
+            title="Customize toolbar"
+            type="button"
+          >
+            <ShellIcon name="customize" />
+          </button>
+          <button
+            aria-label="Show original Firefox toolbar"
+            class="fennevia-control fennevia-browser-tools__button fennevia-browser-tools__native"
+            data-fennevia-browser-tool="native-toolbar"
+            disabled={!browserToolsSnapshot?.nativeToolbar}
+            onclick={() => void runBrowserToolAction("native-toolbar")}
+            title="Original Firefox toolbar"
+            type="button"
+          >
+            <ShellIcon name="toolbar" />
+          </button>
+          <button
+            aria-label="Open Firefox menu"
+            class="fennevia-control fennevia-browser-tools__button"
+            data-fennevia-browser-tool="application-menu"
+            disabled={!browserToolsSnapshot?.applicationMenu}
+            onclick={() => void runBrowserToolAction("application-menu")}
+            title="Firefox menu"
+            type="button"
+          >
+            <ShellIcon name="menu" />
+          </button>
+        </div>
+
+        {#if props.windowKind === "private"}
+          <span class="fennevia-navigation__private">Private</span>
+        {/if}
+
+        <button
+          aria-label="Hide browser toolbar"
+          class="fennevia-control fennevia-navigation__dismiss"
+          data-fennevia-dismiss="top"
+          onclick={dismissPanel}
+          title="Hide toolbar"
+          type="button"
+        >
+          <ShellIcon name="close" />
+        </button>
       </div>
     {:else if props.edge === "right"}
       {#if props.bookmarks}
@@ -724,8 +960,7 @@
       />
     {/if}
 
-    <footer class="fennevia-edge-panel__footer">
-      <span>{surfaceState.phase.replaceAll("-", " ")}</span>
+    <footer aria-label="Keyboard shortcut" class="fennevia-edge-panel__footer">
       <kbd>{edgeKeyboardBindings[props.edge]}</kbd>
     </footer>
 

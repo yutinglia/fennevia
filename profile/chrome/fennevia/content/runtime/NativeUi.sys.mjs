@@ -7,39 +7,182 @@ const REVEALED_ATTRIBUTE = "data-fennevia-native-ui-revealed";
 const SUSPENDED_ATTRIBUTE = "data-fennevia-native-ui-suspended";
 const STYLE_ID = "fennevia-native-ui-style";
 const HIDE_DELAY_MS = 180;
-const EXPECTED_STYLE_RULE_COUNT = 5;
+const CONTENT_GUTTER_PX = 7;
+const TOP_SURFACE_HEIGHT_PX = 56;
+const TOP_SURFACE_GAP_PX = 8;
+const EXPECTED_STYLE_RULE_COUNT = 13;
 
 const LISTENER_OPTIONS = Object.freeze({ capture: true });
 
 const NATIVE_UI_STYLE = `
-:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox:not([tabs-hidden]) > #TabsToolbar > .toolbar-items {
-  visibility: collapse !important;
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-suspended])
+  #browser {
+  box-sizing: border-box !important;
+  padding: ${CONTENT_GUTTER_PX}px !important;
+  background-color: var(--toolbar-background-color) !important;
+}
+
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-suspended])
+  #browser > #tabbrowser-tabbox {
+  border: 1px solid var(--chrome-content-separator-color) !important;
+  border-radius: 10px !important;
+  overflow: clip !important;
 }
 
 :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox:not([tabs-hidden]) > #nav-bar {
-  visibility: collapse !important;
+  #navigator-toolbox {
+  box-sizing: border-box !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  z-index: 6 !important;
 }
 
 :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox[tabs-hidden] > #nav-bar
-  > :is(
-    toolbartabstop,
-    #taskbar-tabs-favicon,
-    #nav-bar-customization-target,
-    #document-pip-return-to-opener-button,
-    #taskbar-tabs-audio,
-    #smartwindow-ask-button,
-    #nav-bar-overflow-button,
-    #PanelUI-button
-  ) {
-  visibility: collapse !important;
+  #navigator-toolbox > :is(#toolbar-menubar, #TabsToolbar, #nav-bar) {
+  box-sizing: border-box !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
 }
 
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
+  #navigator-toolbox
+  > :is(#toolbar-menubar, #TabsToolbar, #nav-bar)
+  > :not(.titlebar-buttonbox-container),
 :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
   #navigator-toolbox > #PersonalToolbar {
   visibility: collapse !important;
+}
+
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
+  #navigator-toolbox:not([tabs-hidden])
+  > #TabsToolbar
+  > .titlebar-buttonbox-container,
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
+  #navigator-toolbox[tabs-hidden]
+  > #nav-bar
+  > .titlebar-buttonbox-container {
+  position: fixed !important;
+  display: flex !important;
+  align-items: center !important;
+  inset-block-start: ${CONTENT_GUTTER_PX}px !important;
+  inset-inline-end: 10px !important;
+  z-index: 6 !important;
+  padding: 3px !important;
+  visibility: visible !important;
+  overflow: visible !important;
+  background: color-mix(
+    in srgb,
+    var(--toolbar-background-color) 92%,
+    transparent
+  ) !important;
+  border: 1px solid var(--chrome-content-separator-color) !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 8px 24px rgb(0 0 0 / 22%),
+    inset 0 1px 0 rgb(255 255 255 / 12%) !important;
+  pointer-events: auto !important;
+  -moz-window-dragging: no-drag !important;
+  transition:
+    inset-block-start 180ms cubic-bezier(0.2, 0.72, 0.2, 1),
+    box-shadow 160ms ease-out !important;
+}
+
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
+  #navigator-toolbox:not([tabs-hidden])
+  > #TabsToolbar
+  > .titlebar-buttonbox-container
+  > .titlebar-buttonbox,
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
+  #navigator-toolbox[tabs-hidden]
+  > #nav-bar
+  > .titlebar-buttonbox-container
+  > .titlebar-buttonbox {
+  display: flex !important;
+  gap: 2px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+  -moz-window-dragging: no-drag !important;
+}
+
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
+  #navigator-toolbox
+  > :is(#TabsToolbar, #nav-bar)
+  > .titlebar-buttonbox-container
+  > .titlebar-buttonbox
+  > .titlebar-button {
+  box-sizing: border-box !important;
+  min-width: 34px !important;
+  width: 34px !important;
+  min-height: 28px !important;
+  height: 28px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out !important;
+}
+
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
+  #navigator-toolbox
+  > :is(#TabsToolbar, #nav-bar)
+  > .titlebar-buttonbox-container
+  > .titlebar-buttonbox
+  > .titlebar-button:not(.titlebar-close):hover {
+  background-color: color-mix(in srgb, currentColor 13%, transparent) !important;
+}
+
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
+  #navigator-toolbox
+  > :is(#TabsToolbar, #nav-bar)
+  > .titlebar-buttonbox-container
+  > .titlebar-buttonbox
+  > .titlebar-button:active {
+  background-color: color-mix(in srgb, currentColor 21%, transparent) !important;
+}
+
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
+  #navigator-toolbox
+  > :is(#TabsToolbar, #nav-bar)
+  > .titlebar-buttonbox-container
+  > .titlebar-buttonbox
+  > .titlebar-close:hover {
+  color: white !important;
+  background-color: rgb(205 45 61) !important;
+}
+
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended]):has(
+    #fennevia-shell-frame-host[data-fennevia-top-visible]
+  )
+  #navigator-toolbox:not([tabs-hidden])
+  > #TabsToolbar
+  > .titlebar-buttonbox-container,
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended]):has(
+    #fennevia-shell-frame-host[data-fennevia-top-visible]
+  )
+  #navigator-toolbox[tabs-hidden]
+  > #nav-bar
+  > .titlebar-buttonbox-container {
+  inset-block-start: ${
+    CONTENT_GUTTER_PX + TOP_SURFACE_HEIGHT_PX + TOP_SURFACE_GAP_PX
+  }px !important;
 }
 
 :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
@@ -550,6 +693,7 @@ const capabilitySnapshots = Object.freeze(
     ["fennevia.native-ui-exact-targets", "browser.xhtml exact native targets"],
     ["fennevia.native-ui-titlebar-retained", "titlebar-buttonbox-container"],
     ["fennevia.native-ui-urlbar-handoff", "nativeUi.revealForUrlbar"],
+    ["fennevia.native-ui-toolbar-handoff", "nativeUi.revealForToolbar"],
     ["fennevia.native-ui-popup-hold", "popupshowing/popuphidden"],
     [
       "fennevia.native-ui-environment-suspension",
@@ -616,7 +760,6 @@ export function createNativeUiController({ window, frame, onError }) {
   let handoffFrame;
   let handoffTimer;
   let handoffPending = false;
-  let pointerHeld = false;
   let focusHeld = false;
   let customizationTransition = root.hasAttribute("customizing");
   let windowTearingDown = false;
@@ -714,7 +857,6 @@ export function createNativeUiController({ window, frame, onError }) {
       root.setAttribute(SUSPENDED_ATTRIBUTE, "");
       root.removeAttribute(REVEALED_ATTRIBUTE);
       handoffPending = false;
-      pointerHeld = false;
       focusHeld = false;
       openPopups.clear();
       clearHideTimer();
@@ -730,9 +872,7 @@ export function createNativeUiController({ window, frame, onError }) {
     prunePopups();
     return Boolean(
       handoffPending ||
-      pointerHeld ||
       focusHeld ||
-      isNativeFocusHeld() ||
       openPopups.size > 0 ||
       isNativeSidebarOpen(),
     );
@@ -888,17 +1028,6 @@ export function createNativeUiController({ window, frame, onError }) {
     listeners.push(() => target.removeEventListener(type, listener, options));
   };
 
-  const onPointerEnter = () => {
-    if (disposed || suspensionReason) {
-      return;
-    }
-    pointerHeld = true;
-    reconcile();
-  };
-  const onPointerLeave = () => {
-    pointerHeld = false;
-    scheduleHide();
-  };
   const onFocusIn = (event) => {
     if (isManagedNode(event.target)) {
       focusHeld = true;
@@ -915,7 +1044,6 @@ export function createNativeUiController({ window, frame, onError }) {
     }
   };
   const onWindowBlur = () => {
-    pointerHeld = false;
     focusHeld = false;
     scheduleHide();
   };
@@ -993,8 +1121,6 @@ export function createNativeUiController({ window, frame, onError }) {
 
   try {
     updateSuspension();
-    register(toolbox, "pointerenter", onPointerEnter);
-    register(toolbox, "pointerleave", onPointerLeave);
     register(document, "focusin", onFocusIn);
     register(document, "focusout", onFocusOut);
     register(window, "blur", onWindowBlur);
@@ -1093,6 +1219,38 @@ export function createNativeUiController({ window, frame, onError }) {
     throw error;
   }
 
+  const revealForNativeHandoff = ({ phase, symbol }) => {
+    if (disposed || failed) {
+      throw createNativeUiError("FENNEVIA_NATIVE_UI_UNAVAILABLE", phase, {
+        firefoxSymbol: symbol,
+      });
+    }
+    updateSuspension();
+    if (suspensionReason === "dom-fullscreen") {
+      return false;
+    }
+    clearHandoffRelease();
+    handoffPending = true;
+    reconcile();
+    const release = () => {
+      handoffFrame = undefined;
+      handoffTimer = undefined;
+      handoffPending = false;
+      if (isNativeFocusHeld()) {
+        focusHeld = true;
+        reconcile();
+      } else {
+        scheduleHide();
+      }
+    };
+    if (typeof window.requestAnimationFrame === "function") {
+      handoffFrame = window.requestAnimationFrame(release);
+    } else {
+      handoffTimer = window.setTimeout(release, 0);
+    }
+    return true;
+  };
+
   return Object.freeze({
     assertRequiredCapabilities() {
       verifyHealth();
@@ -1150,32 +1308,17 @@ export function createNativeUiController({ window, frame, onError }) {
     },
 
     revealForUrlbar() {
-      if (disposed || failed) {
-        throw createNativeUiError(
-          "FENNEVIA_NATIVE_UI_UNAVAILABLE",
-          "native-ui-urlbar-handoff",
-          { firefoxSymbol: "nativeUi.revealForUrlbar" },
-        );
-      }
-      updateSuspension();
-      if (suspensionReason === "dom-fullscreen") {
-        return false;
-      }
-      clearHandoffRelease();
-      handoffPending = true;
-      reconcile();
-      const release = () => {
-        handoffFrame = undefined;
-        handoffTimer = undefined;
-        handoffPending = false;
-        scheduleHide();
-      };
-      if (typeof window.requestAnimationFrame === "function") {
-        handoffFrame = window.requestAnimationFrame(release);
-      } else {
-        handoffTimer = window.setTimeout(release, 0);
-      }
-      return true;
+      return revealForNativeHandoff({
+        phase: "native-ui-urlbar-handoff",
+        symbol: "nativeUi.revealForUrlbar",
+      });
+    },
+
+    revealForToolbar() {
+      return revealForNativeHandoff({
+        phase: "native-ui-toolbar-handoff",
+        symbol: "nativeUi.revealForToolbar",
+      });
     },
 
     snapshot() {

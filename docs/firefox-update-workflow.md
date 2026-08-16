@@ -185,14 +185,16 @@ Repeat all old-build commands on the new build, then cover the matrix in
   the new copied-program/profile pair; zero/one/many/loading/restored tabs;
   second normal window; private window; and five repeated window cycles;
 - all four edges, corners, pointer/focus/keyboard/popup holds, `Ctrl+L`, Escape,
-  native reveal, and disposal during pending state;
+  native Urlbar/original-toolbar reveal, Trust/identity/protections/permission/
+  Downloads/Extensions/menu handoffs, and disposal during pending state;
 - ordinary/narrow/short/maximized/restored/snapped/high-DPI, browser and DOM
   fullscreen, customize mode, light/dark, reduced motion, forced colors, and
   transparency fallback;
 - app menu, extension actions/install prompt, Library/bookmark editing, native
   Downloads and safety flows, permission/auth/certificate/file dialogs,
-  notifications, find bar, DevTools, Browser Toolbox, and OS controls where
-  reproducible;
+  notifications, find bar, native customization, retained caption commands,
+  panel window dragging, DevTools, Browser Toolbox namespace ownership, and OS
+  controls where reproducible;
 - tab/navigation/address/Places/Downloads bursts and malformed-data or missing-
   capability failure injection;
 - safe start, emergency fallback, hard disable, re-enable, stale-cache

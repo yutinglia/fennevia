@@ -67,6 +67,8 @@ Read these before changing code or current documentation:
 - [Bootstrap feasibility plan](../plans/001-bootstrap-spike.md) and
   [security-foundation plan](../plans/003-security-foundation.md) — phase plans
   retained for their decisions and acceptance criteria.
+- [Single-line toolbar plan](../plans/004-single-line-toolbar-ui-ux.md) — ADR-037
+  implementation boundary, focused automation, and pending real-Firefox matrix.
 
 The public `v0.10.0-beta.1` prerelease completed the planned Windows MVP and
 versioned distribution path for Firefox 153.0.4 BuildID `20260810162159`. A real

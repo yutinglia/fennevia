@@ -23,11 +23,16 @@ Validated baseline as of 2026-08-16:
 - one centered address/search popup with detailed connection, protection,
   permission, applicable-action, and native-handoff coverage in a fifth owned
   root;
-- functional primary navigation and bounded page status in the top surface;
+- one-line primary navigation/address/status plus fixed native Firefox handoffs
+  in the top surface;
 - bounded lazy Firefox Places bookmarks in the right surface;
 - event-driven anonymous aggregate Downloads status in the bottom surface;
 - exact Firefox native DOM and complete reveal/fallback paths retained;
 - production enters `active` only after the complete health gate.
+
+ADR-037's single-line toolbar/caption/gutter enhancement has focused automated
+evidence on `codex/fast-edge-debug`; its real Firefox manual matrix remains
+pending and is not included in the earlier validated baseline.
 
 Governance foundation:
 
@@ -78,8 +83,10 @@ ordered independent:
 - one project-owned generated style node.
 
 Each of the four edge hosts and the address-overlay host contains exactly one
-project-owned mount target and one Svelte root. Project ownership stops at the
-frame descendants. Firefox-native nodes are neither moved nor reconciled.
+project-owned XHTML mount target and one Svelte root. Structural descendants
+remain XHTML; only project-authored `svg[data-fennevia-icon]` subtrees use SVG.
+Project ownership stops at the frame descendants. Firefox-native nodes are
+neither moved nor reconciled.
 
 Gate: complete mount or complete fail-open rollback in normal, second-normal,
 and private windows.
@@ -265,7 +272,8 @@ classes, timers, z-index values, or trigger DOM directly.
 Current contents:
 
 - left: functional vertical tabs;
-- top: functional primary navigation and bounded page status;
+- top: one-line primary navigation, address/page status, fixed native-detail
+  and Firefox-tool handoffs;
 - right: functional bounded/lazy bookmarks;
 - bottom: functional bounded download progress/status.
 
@@ -307,7 +315,7 @@ Use #31's top host and shared reveal contract:
 - narrow-window behavior;
 - no editable address field;
 - no fake overflow/menu control;
-- no custom titlebar or caption buttons.
+- no replacement titlebar or caption commands.
 
 Gate:
 
@@ -324,6 +332,23 @@ start, cleanup, rapid tab/navigation changes, and Reload/Stop timing all passed.
 
 Evidence: ADR-027 and
 `docs/research/firefox-153-navigation-controls.md`.
+
+### Current ADR-037 extension
+
+The same top host now renders one non-wrapping row with the existing navigation
+state, a launcher for the existing centered popup, loading feedback, fixed page
+actions, Firefox-owned detail/tool handoffs, and progressive disclosure. The
+new browser-tools boundary delegates Trust/identity, protections, permissions,
+Downloads, Unified Extensions, the application menu, Settings, customization,
+and complete original-toolbar access without exposing their data or arbitrary
+widget identity. Firefox's original caption nodes are retained and styled in
+place; Fennevia still provides no replacement caption command.
+
+Focused automation is complete. Cold-start, native-panel anchoring, caption
+commands, drag release, responsive/fullscreen geometry, second/private windows,
+and fail-open remain post-push manual checks. Evidence: ADR-037,
+`plans/004-single-line-toolbar-ui-ux.md`, and
+`docs/research/firefox-153-single-line-toolbar-handoffs.md`.
 
 ## Milestone H: Compact address launcher and centered popup — complete (#13)
 
@@ -557,19 +582,24 @@ Active-mode contract:
 Gate: every controlled failure leaves or restores a usable native browser shell.
 
 ADR-032 implements the final `healthy -> active` production transition and one
-exact per-window native visibility controller. Horizontal native tab items and
-navbar, the bookmarks toolbar, and exact native sidebar surfaces collapse only
-at active rest. Native vertical-tab titlebar ownership, titlebar controls,
-notifications, popups, dialogs, tabbox/content, and DevTools remain intact.
-Pointer/focus, native popups, open sidebar panels, and #37's Urlbar handoff
-temporarily reveal the complete native owner; customize, native dialogs, and
-DOM fullscreen suspend project hiding. Partial activation CSS fails open only
-the affected window.
+exact per-window native visibility controller. ADR-037 extends its stylesheet
+to thirteen exact rules for reviewed toolbox/toolbar geometry, non-caption
+content, bookmarks/sidebar collapse, a 7px content gutter, tabbox border, and
+the retained native caption island. Native vertical-tab titlebar ownership,
+notifications, popups, dialogs, content, and DevTools remain intact. Native
+focus, native popups, open sidebar panels, #37's Urlbar handoff, and ADR-037's
+native panel/original-toolbar handoffs temporarily reveal the complete native
+owner; customize, native dialogs, and DOM fullscreen suspend project hiding.
+Partial activation CSS fails open only the affected window.
 
 Gate passed on Firefox 153.0.4 with normal/second/private, active rest and
 geometry, all edge paths, complete native Urlbar/Downloads/sidebar paths,
 customize/browser fullscreen, Browser Toolbox, emergency fallback, CSS
 corruption, safe-start, and cleanup evidence.
+
+The gate result above is historical #15 evidence. ADR-037's changed rule set,
+caption presentation, and new handoffs still require the manual matrix and are
+not claimed by that run.
 
 Evidence: ADR-032 and
 `docs/research/firefox-153-content-only-activation.md`.

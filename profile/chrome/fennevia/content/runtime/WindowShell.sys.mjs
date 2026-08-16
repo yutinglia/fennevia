@@ -9,6 +9,7 @@ import {
 import {
   createFirefoxBridgeBoundary,
   createFirefoxBookmarksBridge,
+  createFirefoxBrowserToolsBridge,
   createFirefoxDownloadsBridge,
   createFirefoxNavigationBridge,
   createFirefoxTabsBridge,
@@ -1083,6 +1084,7 @@ const mountProductionShell = ({
 
   let disposeApp;
   let bookmarksBridge;
+  let browserToolsBridge;
   let downloadsBridge;
   let navigationBridge;
   let nativeUi;
@@ -1109,6 +1111,13 @@ const mountProductionShell = ({
           }),
         );
       },
+    });
+    browserToolsBridge = createFirefoxBrowserToolsBridge({
+      boundary: bridge,
+      requestNativeUiReveal() {
+        return nativeUi.revealForToolbar();
+      },
+      window: browserWindow,
     });
     bookmarksBridge = createFirefoxBookmarksBridge({
       boundary: bridge,
@@ -1189,6 +1198,7 @@ const mountProductionShell = ({
     const frontend = loadProductionFrontend(targets.top);
     const candidateDisposeApp = frontend.mountShellApp({
       bookmarks: bookmarksBridge.bookmarks,
+      browserTools: browserToolsBridge.browserTools,
       downloads: downloadsBridge.downloads,
       frame,
       navigation: navigationBridge.navigation,
@@ -1225,6 +1235,7 @@ const mountProductionShell = ({
     productionShellByFrame.set(frame, {
       bookmarksBridge,
       bridge,
+      browserToolsBridge,
       downloadsBridge,
       frontend,
       logger,
@@ -1239,6 +1250,11 @@ const mountProductionShell = ({
     style?.remove();
     try {
       bookmarksBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
+    try {
+      browserToolsBridge?.dispose();
     } catch (cleanupError) {
       reportError(cleanupError);
     }
@@ -1302,6 +1318,11 @@ const mountProductionShell = ({
     }
     try {
       bookmarksBridge?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      browserToolsBridge?.dispose();
     } catch (error) {
       firstError ??= error;
     }
@@ -1382,6 +1403,7 @@ const checkProductionShell = async ({ mountPoints, windowKind }) => {
     );
   }
   record.bookmarksBridge.assertRequiredCapabilities();
+  record.browserToolsBridge.assertRequiredCapabilities();
   await record.downloadsBridge.ready();
   record.downloadsBridge.assertRequiredCapabilities();
   record.navigationBridge.assertRequiredCapabilities();
@@ -1408,6 +1430,8 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   const bridgeCapabilities = record.bridge.assertRequiredCapabilities();
   const bookmarksCapabilities =
     record.bookmarksBridge.assertRequiredCapabilities();
+  const browserToolsCapabilities =
+    record.browserToolsBridge.assertRequiredCapabilities();
   const downloadsCapabilities =
     record.downloadsBridge.assertRequiredCapabilities();
   const navigationCapabilities =
@@ -1436,6 +1460,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   return Object.freeze([
     ...bridgeCapabilities,
     ...bookmarksCapabilities,
+    ...browserToolsCapabilities,
     ...downloadsCapabilities,
     ...navigationCapabilities,
     ...nativeUiCapabilities,

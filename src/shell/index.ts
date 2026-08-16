@@ -21,6 +21,11 @@ import {
   type BrowserBookmarksStateAdapter,
 } from "../app/bookmark-state";
 import {
+  createBrowserToolsStateAdapter,
+  type BrowserToolsBridge,
+  type BrowserToolsStateAdapter,
+} from "../app/browser-tools-state";
+import {
   createBrowserDownloadsStateAdapter,
   type BrowserDownloadsBridge,
   type BrowserDownloadsStateAdapter,
@@ -45,6 +50,7 @@ import AddressPopup from "./AddressPopup.svelte";
 import "./styles/edge-shell.css";
 
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const MOUNT_STATUS_ATTRIBUTE = "data-fennevia-framework-status";
 const FRAME_READY_ATTRIBUTE = "data-fennevia-frontend-ready";
 const FRAME_ENVIRONMENT_ATTRIBUTE = "data-fennevia-environment";
@@ -52,6 +58,17 @@ const ROOT_SELECTOR = "[data-fennevia-surface-root]";
 const KEYBOARD_LISTENER_OPTIONS = Object.freeze({ capture: false });
 const ADDRESS_POPUP_CLOSE_DELAY_MS = 110;
 const OVERLAY_TARGET_ID = "fennevia-shell-address-overlay-mount";
+
+const hasAllowedProjectNamespace = (element: Element): boolean => {
+  if (element.namespaceURI === XHTML_NAMESPACE) {
+    return true;
+  }
+  if (element.namespaceURI !== SVG_NAMESPACE) {
+    return false;
+  }
+  const iconRoot = element.closest("svg[data-fennevia-icon]");
+  return iconRoot?.namespaceURI === SVG_NAMESPACE;
+};
 
 const targetIds: Readonly<Record<EdgeName, string>> = Object.freeze({
   top: "fennevia-shell-top-mount",
@@ -65,6 +82,7 @@ export type EdgeMountTargets = Readonly<Record<EdgeName, Element>>;
 
 type MountOptions = Readonly<{
   bookmarks: BrowserBookmarksBridge;
+  browserTools: BrowserToolsBridge;
   downloads: BrowserDownloadsBridge;
   frame: HTMLElement;
   navigation: BrowserNavigationBridge;
@@ -93,6 +111,7 @@ type MountedComponent = Readonly<{
 type MountedShell = Readonly<{
   addressPopup: AddressPopupController;
   bookmarks: BrowserBookmarksStateAdapter;
+  browserTools: BrowserToolsStateAdapter;
   components: readonly MountedComponent[];
   downloads: BrowserDownloadsStateAdapter;
   navigation: BrowserNavigationStateAdapter;
@@ -185,6 +204,7 @@ function getFocusableOrigin(
 
 export function mountShellApp({
   bookmarks,
+  browserTools,
   downloads,
   frame,
   navigation,
@@ -219,6 +239,7 @@ export function mountShellApp({
   let addressPopupFocusOrigin: FocusableElement | null = null;
   let addressPopupOriginEdge: EdgeName | null = null;
   let bookmarksState: BrowserBookmarksStateAdapter | undefined;
+  let browserToolsState: BrowserToolsStateAdapter | undefined;
   let downloadsState: BrowserDownloadsStateAdapter | undefined;
   let navigationState: BrowserNavigationStateAdapter | undefined;
   let tabsState: BrowserTabsStateAdapter | undefined;
@@ -354,15 +375,22 @@ export function mountShellApp({
       return;
     }
 
-    if (snapshot.invocationSource === "left-launcher") {
-      shell.revealProgrammatically("left");
+    if (
+      snapshot.invocationSource === "left-launcher" ||
+      snapshot.invocationSource === "top-launcher"
+    ) {
+      const launcherEdge =
+        snapshot.invocationSource === "top-launcher" ? "top" : "left";
+      shell.revealProgrammatically(launcherEdge);
       flushSync();
-      const launcher = targets.left.querySelector<FocusableElement>(
-        "[data-fennevia-address-launcher]",
+      const launcher = targets[launcherEdge].querySelector<FocusableElement>(
+        launcherEdge === "top"
+          ? "[data-fennevia-top-address-launcher]"
+          : "[data-fennevia-address-launcher]",
       );
       if (launcher?.isConnected) {
         launcher.focus({ preventScroll: true });
-        if (targets.left.contains(frame.ownerDocument.activeElement)) {
+        if (targets[launcherEdge].contains(frame.ownerDocument.activeElement)) {
           return;
         }
       }
@@ -627,6 +655,11 @@ export function mountShellApp({
       firstError ??= error;
     }
     try {
+      browserToolsState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
       downloadsState?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -670,6 +703,7 @@ export function mountShellApp({
     tabsState = createBrowserTabsStateAdapter(tabs);
     navigationState = createBrowserNavigationStateAdapter(navigation);
     bookmarksState = createBrowserBookmarksStateAdapter(bookmarks);
+    browserToolsState = createBrowserToolsStateAdapter(browserTools);
     downloadsState = createBrowserDownloadsStateAdapter(downloads);
     urlbarCoverageState =
       createBrowserUrlbarCoverageStateAdapter(urlbarCoverage);
@@ -713,6 +747,12 @@ export function mountShellApp({
           frame,
           ...(edge === "top" || edge === "left"
             ? { navigation: navigationState }
+            : {}),
+          ...(edge === "top" ? { browserTools: browserToolsState } : {}),
+          ...(edge === "top"
+            ? {
+                onOpenAddress: () => openAddressPopup("top-launcher"),
+              }
             : {}),
           onDismiss: dismissSurface,
           onFatalError,
@@ -796,6 +836,7 @@ export function mountShellApp({
     const record = Object.freeze({
       addressPopup,
       bookmarks: bookmarksState,
+      browserTools: browserToolsState,
       components: Object.freeze([...components]),
       downloads: downloadsState,
       navigation: navigationState,
@@ -872,6 +913,16 @@ export async function verifyShellAppHealth({
     'button[data-fennevia-action="forward"]',
     'button[data-fennevia-action="reload-stop"]',
     'button[data-fennevia-action="new-tab"]',
+    'button[data-fennevia-browser-tool="extensions"]',
+    'button[data-fennevia-browser-tool="site-information"]',
+    'button[data-fennevia-browser-tool="protections"]',
+    'button[data-fennevia-browser-tool="site-permissions"]',
+    'button[data-fennevia-browser-tool="downloads"]',
+    'button[data-fennevia-browser-tool="application-menu"]',
+    'button[data-fennevia-browser-tool="settings"]',
+    'button[data-fennevia-browser-tool="customize"]',
+    'button[data-fennevia-browser-tool="native-toolbar"]',
+    "button[data-fennevia-top-address-launcher]",
     "output[data-fennevia-navigation-status]",
   ];
   const requiredRightSelectors = [
@@ -907,6 +958,7 @@ export async function verifyShellAppHealth({
     mounted.addressPopup.status().disposed ||
     mounted.bookmarks.status().disposed ||
     mounted.bookmarks.status().phase !== "ready" ||
+    mounted.browserTools.status().disposed ||
     mounted.downloads.status().disposed ||
     mounted.downloads.status().phase !== "ready" ||
     mounted.navigation.status().disposed ||
@@ -926,7 +978,7 @@ export async function verifyShellAppHealth({
         ) === null ||
         root.querySelector(`[data-fennevia-dismiss="${edge}"]`) === null ||
         Array.from(root.querySelectorAll("*")).some(
-          (element) => element.namespaceURI !== XHTML_NAMESPACE,
+          (element) => !hasAllowedProjectNamespace(element),
         )
       );
     }) ||
@@ -1025,6 +1077,30 @@ export function getShellAppCapabilities({
     Object.freeze({
       available: Boolean(mounted && !mounted.navigation.status().disposed),
       name: "frontend.navigation-state",
+    }),
+    Object.freeze({
+      available: Boolean(
+        mounted &&
+        !mounted.browserTools.status().disposed &&
+        targets.top.querySelector("[data-fennevia-browser-tools]") &&
+        targets.top.querySelector(
+          '[data-fennevia-browser-tool="extensions"]',
+        ) &&
+        targets.top.querySelector(
+          '[data-fennevia-browser-tool="site-information"]',
+        ) &&
+        targets.top.querySelector(
+          '[data-fennevia-browser-tool="protections"]',
+        ) &&
+        targets.top.querySelector(
+          '[data-fennevia-browser-tool="site-permissions"]',
+        ) &&
+        targets.top.querySelector('[data-fennevia-browser-tool="downloads"]') &&
+        targets.top.querySelector(
+          '[data-fennevia-browser-tool="native-toolbar"]',
+        ),
+      ),
+      name: "frontend.browser-tools-state",
     }),
     Object.freeze({
       available: Boolean(

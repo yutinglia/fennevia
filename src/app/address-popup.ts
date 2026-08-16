@@ -10,7 +10,8 @@ import {
   type BrowserTabsStateAdapter,
 } from "./tab-state.ts";
 
-export type AddressPopupInvocationSource = "ctrl-l" | "left-launcher";
+export type AddressPopupInvocationSource =
+  "ctrl-l" | "left-launcher" | "top-launcher";
 
 export type AddressPopupError =
   AddressSubmissionRejection | "submission-failed";
@@ -287,7 +288,11 @@ export function createAddressPopupController({
 
     requestOpen(source): AddressPopupOpenResult {
       requireUsable();
-      if (source !== "ctrl-l" && source !== "left-launcher") {
+      if (
+        source !== "ctrl-l" &&
+        source !== "left-launcher" &&
+        source !== "top-launcher"
+      ) {
         throw createAddressPopupError("FENNEVIA_ADDRESS_POPUP_SOURCE_INVALID");
       }
       if (activePhases.has(snapshot.phase)) {

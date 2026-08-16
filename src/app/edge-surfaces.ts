@@ -683,9 +683,9 @@ type EdgePoint = Readonly<{
 }>;
 
 const cornerPriority: Readonly<Record<EdgeName, number>> = Object.freeze({
-  left: 0,
-  right: 1,
-  top: 2,
+  top: 0,
+  left: 1,
+  right: 2,
   bottom: 3,
 });
 
