@@ -237,9 +237,22 @@ every change. See ADR-039.
 ### 8.1 Ordinary development gate
 
 The required gate is the Windows CI job in `.github/workflows/ci.yml`. It
-covers formatting, lint, typecheck, `npm test`, the fixed-list static
-PowerShell suites, dependency audit, deterministic build, committed generated
-artifacts, and the production-artifact scan.
+covers formatting, lint, typecheck, unit tests with coverage floors, the
+fixed-list static PowerShell suites, dependency audit, deterministic build,
+committed generated artifacts, and the production-artifact scan.
+
+`npm run test:coverage` uses Node's built-in test runner against the loaded
+`src/app` and `src/firefox` modules. The CI floors are 80% line coverage and
+80% function coverage. Branch coverage is reported but not a fail threshold
+because several typed error paths are not worth extra padding tests. Svelte
+hosts, privileged Firefox runtime, generated artifacts, and tests themselves
+are outside this gate.
+
+Do not write tests whose only purpose is to satisfy the coverage floor. If
+coverage drops, add or fix tests that prove real mapping, bounds, errors,
+cleanup, or fail-open behavior. Do not add tautological assertions, unused
+helpers, copied branches, or otherwise-dead code that exists only to be
+executed by the reporter.
 
 Locally, run the same commands CI runs when practical (`npm run verify`, and
 the Windows PowerShell 5.1 static suite when that runtime is available). If a
@@ -336,6 +349,7 @@ An ordinary issue is complete when:
 - acceptance criteria are verifiably satisfied or explicitly revised with
   owner approval;
 - CI is able to pass for the change;
+- no tests were added solely to raise coverage;
 - native fallback and recovery design remain intact;
 - new Firefox internal dependencies are isolated and documented with current
   source references;

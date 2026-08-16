@@ -44,8 +44,8 @@ Read these before changing code or current documentation:
 - [Firefox internals map](firefox-internals-map.md) — unsupported Firefox APIs,
   DOM, commands, events, ownership, and compatibility obligations.
 - [Testing and recovery](testing-and-recovery.md) — current automated and real
-  Firefox validation contract, including the rapid-development CI gate and the
-  release mass-test matrices.
+  Firefox validation contract, including the rapid-development CI gate, Node
+  coverage floors, and the release mass-test matrices.
 - [Firefox stable-update workflow](firefox-update-workflow.md) — how to validate,
   disable, repair, or update Fennevia around Firefox changes.
 

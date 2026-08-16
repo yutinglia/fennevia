@@ -654,7 +654,9 @@ triggered review requires explicit project-owner approval.
 During rapid development, the ordinary gate is CI / `npm run verify`. The
 commands below remain the complete security-verification inventory. Real
 Firefox and extra packaging suites are the release mass-test contract unless
-the owner asks for them earlier. See ADR-039.
+the owner asks for them earlier. See ADR-039. `npm run verify` includes Node
+coverage floors (80% lines and 80% functions) on loaded `src/app` and
+`src/firefox` modules; do not add tests solely to raise those numbers.
 
 Static/build baseline:
 

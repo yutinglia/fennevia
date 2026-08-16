@@ -10,9 +10,11 @@ later ADR supersedes their production architecture.
 The project is currently under rapid development. Ordinary implementation,
 review, and documentation work uses the Windows CI job in
 `.github/workflows/ci.yml` as the required gate: formatting, lint, typecheck,
-`npm test`, fixed-list static PowerShell suites, dependency audit, deterministic
-build, committed generated artifacts, and the production-artifact scan. Locally,
-`npm run verify` is the CI-equivalent command.
+unit tests with 80% line and function coverage floors on loaded `src/app` and
+`src/firefox` modules, fixed-list static PowerShell suites, dependency audit,
+deterministic build, committed generated artifacts, and the production-artifact
+scan. Locally, `npm run verify` is the CI-equivalent command. Do not add tests
+whose only purpose is to satisfy the coverage floor.
 
 The matrices in sections 4–7 and 12, plus the real Firefox harnesses, are the
 **release mass-test contract**. They prove a tagged package. They are not a
@@ -119,7 +121,8 @@ npm run verify
 - Prettier check for configured source/build files;
 - ESLint and the Firefox-boundary rules;
 - Svelte/TypeScript checking;
-- pure and component tests;
+- pure and component tests plus Node coverage floors (80% lines and 80%
+  functions on loaded `src/app` and `src/firefox` modules);
 - the fixed-list PowerShell bootstrap/profile/installer/release/artifact/
   identity/health/host/lifecycle suites;
 - resolved dependency audit;

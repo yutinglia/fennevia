@@ -73,7 +73,8 @@ The project is currently under rapid development. Ordinary pull requests must
 make CI able to pass. Do not run the complete real-Firefox or mass-test
 matrices on every change; those run before a release. Design for adjacent
 corners, delayed hide, `Escape`, focus restoration, reduced motion, forced
-colors, and transparency fallback, and prove that matrix at release.
+colors, and transparency fallback, and prove that matrix at release. Do not
+add tests whose only purpose is to satisfy the unit-coverage floor.
 
 Safety, privacy, fail-open, and native-UI ownership rules remain in force.
 Updating or relaxing them requires explicit project-owner approval recorded in

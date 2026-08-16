@@ -41,8 +41,8 @@ jobs:
       - name: Typecheck TypeScript and Svelte
         run: npm run typecheck
 
-      - name: Run unit and lifecycle tests
-        run: npm test
+      - name: Run unit tests with coverage floors
+        run: npm run test:coverage
 
       - name: Run fixed-list static PowerShell gates
         shell: pwsh

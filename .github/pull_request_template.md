@@ -58,7 +58,8 @@ Use `not applicable` only when the change does not depend on Firefox internals.
 ## Validation
 
 During rapid development, the merge gate is CI (format, lint, typecheck,
-`npm test`, static PowerShell, dependency audit, build, and artifact scan).
+unit tests with coverage floors, static PowerShell, dependency audit, build,
+and artifact scan).
 Leave real-Firefox and mass-matrix rows as `not run` unless this change is a
 release or the owner asked for those checks. Do not mark a check `pass` without
 evidence.
@@ -70,6 +71,7 @@ evidence.
 | Format / lint | not run | |
 | Typecheck | not run | |
 | Unit tests | not run | |
+| Coverage floors (80% lines/functions on loaded `src/app` and `src/firefox`) | not run | |
 | Production build | not run | |
 | Exact production artifact inventory / security scan | not run | |
 

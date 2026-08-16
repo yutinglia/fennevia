@@ -1223,9 +1223,9 @@ Agents and contributors must not bypass those rules for speed, convenience, or
 an unapproved issue comment.
 
 **Reasoning:** The complete matrices are expensive relative to iteration speed.
-CI already covers formatting, lint, typecheck, unit tests, static PowerShell
-gates, dependency audit, deterministic builds, and production-artifact
-scanning. Deferring the mass matrices to release keeps the shipped package
+CI already covers formatting, lint, typecheck, unit tests with coverage
+floors, static PowerShell gates, dependency audit, deterministic builds, and
+production-artifact scanning. Deferring the mass matrices to release keeps the shipped package
 proven without blocking every development change. Owner approval is required
 for safety-rule changes so speed cannot silently erode the privileged-code
 baseline.

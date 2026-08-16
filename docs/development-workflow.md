@@ -151,6 +151,10 @@ npm run test:powershell
 npm run verify
 ```
 
+`npm run verify` includes `npm run test:coverage`, which fails when loaded
+`src/app` and `src/firefox` line or function coverage drops below 80%. Do not
+add tests whose only purpose is to satisfy that floor.
+
 Do not run the complete real-Firefox or mass-test matrices on every change.
 Those matrices in `docs/testing-and-recovery.md` run before a release tag or
 publication. If a local CI-equivalent run is skipped, record it as `not run`
