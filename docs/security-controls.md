@@ -19,7 +19,7 @@ formal audit or penetration test.
 
 Current validated baseline:
 
-- package `0.10.0-beta.1` prerelease;
+- public package `0.10.0-beta.1` prerelease;
 - Firefox 153.0.4 BuildID 20260810162159 release, Windows x64;
 - copied Firefox program plus marker-owned development profile;
 - native Firefox DOM and complete transient access retained;

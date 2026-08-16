@@ -12,9 +12,8 @@
   `20260810162159`
 - Profile policy: copied marker-owned development profile for real validation;
   explicit Firefox-registered profile mode for ordinary release installation
-- Status: implementation and isolated validation complete; exact tagged
-  publication evidence is appended only after the merged commit is tagged and
-  the public assets are downloaded and reverified
+- Status: complete; the exact tagged public prerelease, downloaded assets,
+  real-Firefox matrix, and final cleanup evidence are recorded below
 
 This record covers deterministic distribution and installer policy. It adds no
 Firefox runtime symbol, bridge data flow, resource mapping, native-DOM access,
@@ -180,7 +179,7 @@ validates the extracted release and dual ownership pair, verifies the exact
 bundle hash before failure injection, and restores exact bytes/enabled state in
 `finally`.
 
-After merge, append or link a follow-up evidence change containing:
+The final follow-up evidence below contains:
 
 - merged/tagged source commit and annotated tag object proof;
 - clean preflight command/result and deterministic ZIP SHA-256;
@@ -190,7 +189,9 @@ After merge, append or link a follow-up evidence change containing:
 - final real-Firefox cleanup state;
 - any failed draft/retry evidence or `none`.
 
-Until those values exist, they are intentionally not guessed in this record.
+Every value below was collected from the merged tag, successful workflow,
+public release, independently downloaded assets, or retained isolated test
+target; none is inferred.
 
 ### First publication attempt (private draft deleted after inspection)
 
@@ -211,7 +212,7 @@ the new draft by tag, validates its two assets, and publishes only its numeric
 release ID. Draft `371229727` was rechecked, recorded above, and explicitly
 deleted before an authorized manual retry from the unchanged annotated tag.
 
-### Second publication attempt (private draft retained)
+### Second publication attempt (private draft deleted after inspection)
 
 Manual publication run `31926921155`, dispatched after the first correction,
 again passed both independent release preflights for the unchanged annotated
@@ -222,9 +223,54 @@ list did not expose the new draft in the same request sequence immediately after
 workflow therefore stopped before publication, and no public release was
 created.
 
-The next correction uses at most ten release-list reads two seconds apart after
+The merged correction uses at most ten release-list reads two seconds apart after
 creation. It waits only for zero matches or one private match with an incomplete
 asset collection. More than one match, a matching public release, excess assets,
-unexpected names or digests, and the final timeout all fail closed. Draft
-`371232225` remains private for inspection until this correction is merged and
-must then be rechecked and explicitly deleted before another manual retry.
+unexpected names or digests, and the final timeout all fail closed. The
+correction merged through PR #51 as
+`74be32127b7ab50d35dc861cc1e750b61ad6e998`. Draft `371232225` was then
+rechecked, recorded above, and explicitly deleted before the final manual retry.
+
+### Successful public publication
+
+The release source is merge commit
+`a16a99777e1dcac9c8f8e183301ca6fdb460cf2b`. Annotated tag
+`v0.10.0-beta.1` has tag-object ID
+`ff7c71bbf8ec18ebd77d5a428031328209acf823` and resolves exactly to that
+source commit. Before the tag was pushed, the clean release preflight reproduced
+the archive twice, and the complete extracted-package Firefox matrix passed on
+stock Firefox 153.0.4 BuildID `20260810162159` in the retained copied program
+and marker-owned profile.
+
+Manual workflow run
+<https://github.com/yutinglia/fennevia/actions/runs/31927705046> used the merged
+workflow definition at `74be32127b7ab50d35dc861cc1e750b61ad6e998`, while
+both jobs checked out and required the unchanged annotated tag. `Rehearse exact
+release` passed in 2 minutes 29 seconds. `Verify draft assets and publish`
+independently repeated the complete preflight, verified the private draft,
+published its numeric ID, downloaded both assets, and passed in 2 minutes 3
+seconds.
+
+Public prerelease ID `371235143` was published at `2026-08-16T04:58:09Z`:
+<https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1>. It contains
+exactly:
+
+- asset ID `516452155`, `fennevia-0.10.0-beta.1-windows.zip`, 593093 bytes,
+  GitHub and independently downloaded SHA-256
+  `0119fb648cc0f586af38b0dfc901caa0671178a942f1b2ab568d1bae21db2092`;
+- asset ID `516452153`,
+  `fennevia-0.10.0-beta.1-windows.zip.sha256`, 101 bytes, GitHub and
+  independently downloaded SHA-256
+  `5781e486a558ea22c3603fc4c0e36b53a19c029f1d5fe3f94d8bd1f0c9a2d38f`.
+
+The downloaded checksum content named the exact archive and reproduced its
+hash. Extraction beneath a Unicode/space path passed strict release-tree
+verification in PowerShell 7.6.4 and Windows PowerShell 5.1: version
+`0.10.0-beta.1`, tag `v0.10.0-beta.1`, 24 files, source commit equal to the tag
+target, and package-manifest SHA-256
+`bbbb364c5bada66569a00d7552586bf6a279c1906fa430433eaf44f7e5dbff1a`.
+
+The final copied Firefox/profile target retains only its explicit test markers.
+Fennevia installed-file/ownership residue, interrupted-transaction residue, and
+running Firefox test processes are all zero. Both failed private drafts were
+deleted after inspection; no failed draft was reused or published.

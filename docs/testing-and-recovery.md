@@ -9,7 +9,7 @@ later ADR supersedes their production architecture.
 
 As of 2026-08-16:
 
-- package: `0.10.0-beta.1` prerelease;
+- package: public `0.10.0-beta.1` prerelease;
 - Firefox: 153.0.4 release;
 - build ID: `20260810162159`;
 - first platform: Windows 11;
