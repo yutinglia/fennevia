@@ -14,7 +14,7 @@ The tested MVP includes:
 
 | Area | Status | Current result |
 | --- | --- | --- |
-| Bootstrap and package lifecycle | Complete | Fixed AutoConfig/Chrome Registry startup plus ownership-checked install, update, disable, enable, repair, rollback, and uninstall |
+| Bootstrap and package lifecycle | Complete | Fixed AutoConfig/Chrome Registry startup plus ownership-checked install, update, disable, enable, repair, rollback, and uninstall; `scripts/fennevia.ps1` is the recommended interactive console |
 | Window runtime and recovery | Complete | Existing and later normal/private windows, persisted multi-tab Session Restore across separate Firefox processes, health states, safe start, emergency fallback, and deterministic disposal |
 | Frontend and bridge foundation | Complete | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership |
 | Four-edge frame | Complete | Independent top, left, right, and bottom XHTML surfaces, shared reveal/collision/focus policy, and accessibility fallbacks |
@@ -136,7 +136,8 @@ removes the active gate and exposes native Firefox UI.
 - Replacement titlebar or OS window commands; current Firefox caption nodes may
   be styled in place under ADR-037.
 - A complete `browser.xhtml` override.
-- A branded Firefox fork, graphical installer, automatic update channel, or
+- A branded Firefox fork, graphical installer (the PowerShell console in
+  `scripts/fennevia.ps1` is not a GUI installer), automatic update channel, or
   commercial support product.
 - Pixel-for-pixel reproduction of Firefox, `my-firefox-custom`, Arc, Edge, or
   another browser.

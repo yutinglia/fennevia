@@ -22,7 +22,8 @@ Before starting:
 
 For Windows Firefox work, create and verify the marker-owned direct-path profile
 from `docs/development-setup.md` before changing privileged runtime or browser
-chrome.
+chrome. The recommended entry is `pwsh -NoProfile -File .\scripts\fennevia.ps1`
+or `npm run env`.
 
 Do not silently expand scope. Useful but non-required work becomes a follow-up
 issue.

@@ -178,6 +178,57 @@ try {
         Initialize-FenneviaFirefoxDevProfile -ProfilePath $outsideManagedRoot
     }
 
+    $sourceRoot = Join-Path $testRoot "stock-firefox"
+    New-Item -ItemType Directory -Path $sourceRoot -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $sourceRoot "firefox.exe"), "fixture executable")
+    $applicationIni = @(
+        "[App]",
+        "Name=Firefox",
+        "Version=153.0.4",
+        "BuildID=20260810162159"
+    ) -join [Environment]::NewLine
+    [IO.File]::WriteAllText((Join-Path $sourceRoot "application.ini"), $applicationIni)
+    $sourceFirefox = Join-Path $sourceRoot "firefox.exe"
+
+    $copyPath = Get-FenneviaDefaultProgramCopyPath
+    Assert-Throws -Message "A custom program-spike name must be rejected." -Operation {
+        Test-FenneviaFirefoxProgramCopy -ProgramRoot (Join-Path (Split-Path -Parent $copyPath) "other-copy")
+    }
+
+    $preview = New-FenneviaFirefoxProgramCopy -SourceFirefoxPath $sourceFirefox -WhatIf -Confirm:$false
+    Assert-True -Condition (-not $preview.IsValid) -Message "WhatIf must not report a valid program copy."
+    Assert-True -Condition (-not (Test-Path -LiteralPath $copyPath)) -Message "WhatIf must not create the program copy."
+
+    $created = New-FenneviaFirefoxProgramCopy -SourceFirefoxPath $sourceFirefox -Confirm:$false
+    Assert-True -Condition $created.IsValid -Message "A stock Firefox fixture should copy into the managed program-spike."
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $copyPath ".fennevia-program-spike.json")) -Message "The program-spike marker should exist."
+    $reused = New-FenneviaFirefoxProgramCopy -SourceFirefoxPath $sourceFirefox -Confirm:$false
+    Assert-True -Condition $reused.IsValid -Message "A valid program copy should be reused."
+    Assert-True -Condition ($created.FirefoxPath -eq (Get-FenneviaFirefoxExecutable)) -Message "An omitted Firefox path should prefer the valid program copy."
+
+    Assert-Throws -Message "Copying from the managed program-spike must be rejected." -Operation {
+        New-FenneviaFirefoxProgramCopy -SourceFirefoxPath $created.FirefoxPath -Confirm:$false
+    }
+
+    Assert-Throws -Message "Deletion without -Force must be rejected." -Operation {
+        Remove-FenneviaFirefoxProgramCopy -Confirm:$false
+    }
+    Remove-FenneviaFirefoxProgramCopy -Force -WhatIf -Confirm:$false | Out-Null
+    Assert-True -Condition (Test-Path -LiteralPath $copyPath) -Message "WhatIf must preserve the program copy."
+
+    $removedCopy = Remove-FenneviaFirefoxProgramCopy -Force -Confirm:$false
+    Assert-True -Condition $removedCopy -Message "A marker-owned program copy should be removable with -Force."
+    Assert-True -Condition (-not (Test-Path -LiteralPath $copyPath)) -Message "The program copy should be absent after removal."
+
+    New-Item -ItemType Directory -Path $copyPath -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $copyPath "firefox.exe"), "foreign")
+    Assert-Throws -Message "An unmarked program-spike directory must not be adopted." -Operation {
+        New-FenneviaFirefoxProgramCopy -SourceFirefoxPath $sourceFirefox -Confirm:$false
+    }
+    Assert-Throws -Message "An unmarked program-spike directory must not be deleted." -Operation {
+        Remove-FenneviaFirefoxProgramCopy -Force -Confirm:$false
+    }
+
     Write-Output "PASS: Firefox development-profile path, marker, idempotency, and deletion safety tests."
 }
 finally {

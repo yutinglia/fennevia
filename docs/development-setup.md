@@ -2,7 +2,20 @@
 
 This is the normative Phase 0 procedure for creating, launching, inspecting, deleting, and reconstructing the disposable Firefox profile used by this project. It targets Windows and stock Firefox stable only.
 
-The helper in `scripts/firefox-dev.ps1` does not install AutoConfig, modify Firefox's native UI, register a profile, or alter a daily-use profile.
+The recommended interactive entry is:
+
+```powershell
+pwsh -NoProfile -File .\scripts\fennevia.ps1
+```
+
+That console can create the marker-owned Firefox program copy, initialize
+`fennevia-dev`, install or update the package, launch Firefox, and tear the
+environment down. The interactive host redraws in place (alternate screen,
+mouse click, Esc to cancel) and keeps status/plan text in the same frame.
+`scripts/firefox-dev.ps1` remains the non-interactive helper
+for Initialize, Verify, Launch, Environment, Remove, CopyProgram, and
+RemoveProgram. It does not install AutoConfig, modify Firefox's native UI,
+register a profile, or alter a daily-use profile.
 
 ## 1. Safety model
 
@@ -83,8 +96,15 @@ Printing that variable is local-only. Shared records must use `<FIREFOX_PROGRAM>
 ### Create the disposable Firefox program copy
 
 Installer and runtime mutation tests use a copied stock program, not the
-system-managed source tree. Close Firefox first, then create a previously absent
-target below the dedicated Fennevia program-spike root:
+system-managed source tree. Close Firefox first. The console Setup action and
+the helper below create the same marker-owned copy:
+
+```powershell
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 CopyProgram -FirefoxPath $firefox
+```
+
+`CopyProgram` is idempotent for a valid marker-owned copy and refuses an
+unmarked or non-empty unowned target. The equivalent manual procedure is:
 
 ```powershell
 $sourceFirefox = $firefox
@@ -132,7 +152,14 @@ ownership and never authorizes adopting unknown files. Run `Environment` and
 with the source, and keep path values local.
 
 After package `Uninstall`, the `--expect-stock` harness, and residue checks pass,
-the copied tree may be removed only after revalidating its exact managed prefix
+the copied tree may be removed with the helper or the console teardown prompt:
+
+```powershell
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 RemoveProgram -WhatIf
+pwsh -NoProfile -File .\scripts\firefox-dev.ps1 RemoveProgram -Force
+```
+
+Manual deletion is allowed only after revalidating the exact managed prefix
 and marker. Never aim recursive deletion at the source program, the
 `program-spikes` parent, a missing variable, or an unmarked target:
 

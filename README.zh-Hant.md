@@ -65,18 +65,20 @@ if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 
 ### 3. 預覽安裝變更
 
-解壓縮 ZIP，在解壓後的 Fennevia 目錄開啟 PowerShell，並在本機設定兩個路徑：
+解壓縮 ZIP，在解壓後的 Fennevia 目錄開啟 PowerShell。建議使用互動式主控台：
+
+```powershell
+pwsh -NoProfile -File .\scripts\fennevia.ps1
+```
+
+請自行選擇 `firefox.exe` 與一個已註冊的設定檔**名稱**。主控台會在同一畫面重繪，並支援鍵盤與滑鼠，不會在每次按鍵後再印出一組選單。Fennevia 不會預先選取 Firefox 預設設定檔。請先檢查遮罩後的變更計劃，再確認套用。
+
+不要把真實設定檔路徑貼到 issue 或公開紀錄。對應的指令列寫法是：
 
 ```powershell
 $firefox = '<FIREFOX_PROGRAM>\firefox.exe'
 $profile = '<FIREFOX_PROFILE>'
-```
 
-不要把真實設定檔路徑貼到 issue 或公開紀錄。
-
-先預覽所有準備執行的變更：
-
-```powershell
 pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Install `
   -FirefoxPath $firefox -ProfilePath $profile `
   -ProfileMode Registered -WhatIf
@@ -86,7 +88,7 @@ README 的指令使用 PowerShell 7（`pwsh`）。套件亦已使用 Windows Pow
 
 ### 4. 正式安裝
 
-檢查預覽結果後，移除 `-WhatIf` 再執行一次，並確認畫面顯示的變更計劃：
+在主控台檢查預覽後，確認畫面上的變更計劃。對應的指令列寫法是再執行一次不含 `-WhatIf` 的命令：
 
 ```powershell
 pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Install `

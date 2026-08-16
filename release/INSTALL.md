@@ -40,6 +40,18 @@ $profile = '<FIREFOX_PROFILE>'
 
 ## Preview, install, and update
 
+The recommended interactive entry is:
+
+```powershell
+pwsh -NoProfile -File .\scripts\fennevia.ps1
+```
+
+The console lists local Firefox builds and registered profile **names**, never
+preselects Firefox's default profile, shows the redacted plan, and applies
+only after confirmation. The interactive host redraws in place and accepts
+mouse clicks; it does not require Node.js. If stdin is redirected,
+use the scripted commands below.
+
 Always preview the complete relative-path plan first:
 
 ```powershell

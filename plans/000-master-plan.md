@@ -90,6 +90,9 @@ Completed project-governance foundation:
   manifest, registered-profile release mode, strict Firefox build allowlist,
   checksum, annotated-tag rehearsal, verify-before-publish GitHub workflow, and
   independently reverified public `v0.10.0-beta.1` prerelease.
+- #57: PowerShell console for release install/update/recovery and development
+  environment setup, launch, and teardown, without changing the installer
+  transaction contract.
 
 At active rest, ADR-032/ADR-037 collapse only reviewed native toolbar/sidebar
 geometry and descendants, retain the native caption controls, and add a narrow

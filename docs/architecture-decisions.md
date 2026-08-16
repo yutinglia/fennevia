@@ -1229,3 +1229,54 @@ production-artifact scanning. Deferring the mass matrices to release keeps the s
 proven without blocking every development change. Owner approval is required
 for safety-rule changes so speed cannot silently erode the privileged-code
 baseline.
+
+## ADR-040: Use a PowerShell console for release and development install
+
+**Status:** Accepted for issue #57
+
+Add `scripts/fennevia.ps1` as the recommended interactive Windows entry for
+release installation and development-environment setup. The console is
+presentation only: it discovers local Firefox programs, lists registered
+profile **names**, shows redacted plans, and confirms. Every mutation still
+calls `Invoke-FenneviaPackageAction` or the development-profile helpers. The
+existing `fennevia-package.ps1` and `firefox-dev.ps1` commands remain the
+non-interactive API.
+
+A `RELEASE-MANIFEST.json` tree exposes only registered-mode package actions.
+A source tree exposes development setup, update, launch, recovery, and
+teardown. The source-tree console never offers to install the working tree
+into a daily-use registered profile. The release ZIP ships the console
+scripts and does not ship `FirefoxDevProfile.psm1`.
+
+The documented Firefox program-copy procedure becomes
+`New-` / `Test-` / `Remove-FenneviaFirefoxProgramCopy` for the fixed
+`%LOCALAPPDATA%\fennevia\program-spikes\firefox-stable-copy` target. Copy and
+delete require the `.fennevia-program-spike.json` marker, the managed prefix,
+and a no-reparse tree. Unmarked or out-of-prefix directories are refused.
+
+Interactive profile picking may show `profiles.ini` `Name` values locally. It
+must not preselect Firefox's default profile, and a default selection requires
+a second confirmation. Copyable output and installer status lines keep
+`<FIREFOX_PROGRAM>` and `<FENNEVIA_PROFILE>`. Redirected or non-interactive
+hosts fail closed.
+
+This is not a graphical installer, updater, or self-elevating helper. No npm
+TUI dependency is added. The interactive host is a Fennevia-owned native TUI
+in `scripts/lib/FenneviaTui.psm1`: alternate screen, dirty in-place redraw,
+VT SGR mouse (hover highlight, click to select, wheel), a log pane in the
+same frame, and a numbered fallback when stdin or stdout is redirected. Tests
+inject a Reader and do not require a real console.
+
+The TUI interaction model follows the author's profile picker in
+`yutinglia/powershell-profile` `profile.d/00-tui.ps1` at commit
+`e93dd79180468dec079d6340b21e499f6546f667` as a design reference. That
+profile is not a runtime dependency, is not shipped in the release ZIP, and
+is not copied into this repository. The Fennevia module is independently
+authored for Windows PowerShell 5.1 and PowerShell 7, keeps a persistent
+installer session, and still redacts absolute paths.
+
+**Reasoning:** The current CLI is safe but requires memorizing profile mode,
+absolute paths, and a long program-copy snippet. A local console can remove
+that friction without changing ownership, transaction, or deletion contracts.
+Listing profile names is a local interactive exception to "no profile
+enumeration in normal output"; it is not automatic target selection.

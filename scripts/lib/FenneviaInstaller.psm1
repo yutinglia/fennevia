@@ -380,14 +380,46 @@ function Get-FenneviaInstallerBroadRoots {
     return @($roots)
 }
 
-function Get-FenneviaInstallerRegisteredProfilePaths {
+function Get-FenneviaInstallerFirefoxDataRoot {
     [CmdletBinding()]
     param()
 
     $applicationData = if (-not [string]::IsNullOrWhiteSpace($env:APPDATA)) { $env:APPDATA } else { [Environment]::GetFolderPath("ApplicationData") }
-    $firefoxDataRoot = Join-Path $applicationData "Mozilla\Firefox"
-    $paths = New-Object "Collections.Generic.HashSet[string]" ([StringComparer]::OrdinalIgnoreCase)
-    if (-not (Test-Path -LiteralPath $firefoxDataRoot -PathType Container)) {
+    if ([string]::IsNullOrWhiteSpace($applicationData)) {
+        return ""
+    }
+    return Join-Path $applicationData "Mozilla\Firefox"
+}
+
+function ConvertTo-FenneviaInstallerRegisteredProfilePath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $Candidate,
+
+        [Parameter(Mandatory)]
+        [string] $FirefoxDataRoot,
+
+        [string] $IsRelative = ""
+    )
+
+    $resolved = $Candidate
+    if ($IsRelative -eq "1" -or -not [IO.Path]::IsPathRooted($resolved)) {
+        $resolved = Join-Path $FirefoxDataRoot $Candidate
+    }
+    if (-not [IO.Path]::IsPathRooted($resolved)) {
+        return ""
+    }
+    return ConvertTo-FenneviaInstallerCanonicalPath -Path $resolved
+}
+
+function Get-FenneviaInstallerRegisteredProfileEntries {
+    [CmdletBinding()]
+    param()
+
+    $entries = @()
+    $firefoxDataRoot = Get-FenneviaInstallerFirefoxDataRoot
+    if ([string]::IsNullOrWhiteSpace($firefoxDataRoot) -or -not (Test-Path -LiteralPath $firefoxDataRoot -PathType Container)) {
         return @()
     }
 
@@ -398,12 +430,24 @@ function Get-FenneviaInstallerRegisteredProfilePaths {
             $trimmed = $line.Trim()
             if ($trimmed -match "^\[(.+)\]$") {
                 if ($current.ContainsKey("Path")) {
-                    $candidate = [string] $current["Path"]
-                    if ($current["IsRelative"] -eq "1") {
-                        $candidate = Join-Path $firefoxDataRoot $candidate
+                    $isRelative = ""
+                    if ($current.ContainsKey("IsRelative")) {
+                        $isRelative = [string] $current["IsRelative"]
                     }
-                    if ([IO.Path]::IsPathRooted($candidate)) {
-                        [void] $paths.Add((ConvertTo-FenneviaInstallerCanonicalPath -Path $candidate))
+                    $sectionName = ""
+                    if ($current.ContainsKey("Name")) {
+                        $sectionName = [string] $current["Name"]
+                    }
+                    $candidate = ConvertTo-FenneviaInstallerRegisteredProfilePath `
+                        -Candidate ([string] $current["Path"]) `
+                        -FirefoxDataRoot $firefoxDataRoot `
+                        -IsRelative $isRelative
+                    if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+                        $entries += [pscustomobject]@{
+                            Name = $sectionName
+                            Path = $candidate
+                            IsDefault = ($current.ContainsKey("Default") -and $current["Default"] -eq "1")
+                        }
                     }
                 }
                 $current = @{}
@@ -414,12 +458,24 @@ function Get-FenneviaInstallerRegisteredProfilePaths {
             }
         }
         if ($current.ContainsKey("Path")) {
-            $candidate = [string] $current["Path"]
-            if ($current["IsRelative"] -eq "1") {
-                $candidate = Join-Path $firefoxDataRoot $candidate
+            $isRelative = ""
+            if ($current.ContainsKey("IsRelative")) {
+                $isRelative = [string] $current["IsRelative"]
             }
-            if ([IO.Path]::IsPathRooted($candidate)) {
-                [void] $paths.Add((ConvertTo-FenneviaInstallerCanonicalPath -Path $candidate))
+            $sectionName = ""
+            if ($current.ContainsKey("Name")) {
+                $sectionName = [string] $current["Name"]
+            }
+            $candidate = ConvertTo-FenneviaInstallerRegisteredProfilePath `
+                -Candidate ([string] $current["Path"]) `
+                -FirefoxDataRoot $firefoxDataRoot `
+                -IsRelative $isRelative
+            if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+                $entries += [pscustomobject]@{
+                    Name = $sectionName
+                    Path = $candidate
+                    IsDefault = ($current.ContainsKey("Default") -and $current["Default"] -eq "1")
+                }
             }
         }
     }
@@ -431,15 +487,215 @@ function Get-FenneviaInstallerRegisteredProfilePaths {
             if ($trimmed -notmatch "^Default=(.+)$") {
                 continue
             }
-            $candidate = $Matches[1].Trim()
-            if (-not [IO.Path]::IsPathRooted($candidate)) {
-                $candidate = Join-Path $firefoxDataRoot $candidate
+            $candidate = ConvertTo-FenneviaInstallerRegisteredProfilePath `
+                -Candidate $Matches[1].Trim() `
+                -FirefoxDataRoot $firefoxDataRoot
+            if ([string]::IsNullOrWhiteSpace($candidate)) {
+                continue
             }
-            [void] $paths.Add((ConvertTo-FenneviaInstallerCanonicalPath -Path $candidate))
+            $existing = $false
+            $updated = @()
+            foreach ($entry in $entries) {
+                if ([string]::Equals([string] $entry.Path, $candidate, [StringComparison]::OrdinalIgnoreCase)) {
+                    $updated += [pscustomobject]@{
+                        Name = [string] $entry.Name
+                        Path = [string] $entry.Path
+                        IsDefault = $true
+                    }
+                    $existing = $true
+                }
+                else {
+                    $updated += $entry
+                }
+            }
+            if ($existing) {
+                $entries = $updated
+            }
+            else {
+                $entries += [pscustomobject]@{
+                    Name = ""
+                    Path = $candidate
+                    IsDefault = $true
+                }
+            }
         }
     }
 
-    return @($paths)
+    return $entries
+}
+
+function Get-FenneviaInstallerRegisteredProfilePaths {
+    [CmdletBinding()]
+    param()
+
+    $paths = @()
+    foreach ($entry in @(Get-FenneviaInstallerRegisteredProfileEntries)) {
+        $alreadyPresent = $false
+        foreach ($existing in $paths) {
+            if ([string]::Equals($existing, [string] $entry.Path, [StringComparison]::OrdinalIgnoreCase)) {
+                $alreadyPresent = $true
+                break
+            }
+        }
+        if (-not $alreadyPresent) {
+            $paths += [string] $entry.Path
+        }
+    }
+    return $paths
+}
+
+function Get-FenneviaInstallerRegisteredProfileChoices {
+    [CmdletBinding()]
+    param()
+
+    $choices = @()
+    $usedNames = @()
+    $sorted = @(Get-FenneviaInstallerRegisteredProfileEntries | Sort-Object Name, Path)
+    foreach ($entry in $sorted) {
+        $name = [string] $entry.Name
+        if ([string]::IsNullOrWhiteSpace($name)) {
+            $name = Split-Path -Leaf ([string] $entry.Path)
+        }
+        foreach ($used in $usedNames) {
+            if ([string]::Equals($used, $name, [StringComparison]::OrdinalIgnoreCase)) {
+                $name = "$name ($(Split-Path -Leaf ([string] $entry.Path)))"
+                break
+            }
+        }
+        $usedNames += $name
+        $choices += [pscustomobject]@{
+            Name = $name
+            IsDefault = [bool] $entry.IsDefault
+            Path = [string] $entry.Path
+        }
+    }
+    return $choices
+}
+
+function ConvertTo-FenneviaInstallerProfileChoiceLines {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [object[]] $Choices
+    )
+
+    $lines = New-Object "Collections.Generic.List[string]"
+    $index = 0
+    foreach ($choice in @($Choices)) {
+        $label = [string] $choice.Name
+        if ([bool] $choice.IsDefault) {
+            $label += " (Firefox default)"
+        }
+        $lines.Add("profile[$index]=$label")
+        $index++
+    }
+    return $lines.ToArray()
+}
+
+function Get-FenneviaFirefoxProgramCandidates {
+    [CmdletBinding()]
+    param()
+
+    $candidates = New-Object "Collections.Generic.List[string]"
+    $registryKeys = @(
+        "HKLM:\SOFTWARE\Mozilla\Mozilla Firefox",
+        "HKLM:\SOFTWARE\WOW6432Node\Mozilla\Mozilla Firefox",
+        "HKCU:\SOFTWARE\Mozilla\Mozilla Firefox"
+    )
+    foreach ($registryKey in $registryKeys) {
+        if (-not (Test-Path -LiteralPath $registryKey)) {
+            continue
+        }
+        $registryValues = Get-ItemProperty -LiteralPath $registryKey -ErrorAction SilentlyContinue
+        if ($null -eq $registryValues) {
+            continue
+        }
+        $currentVersion = $null
+        $versionProperty = $registryValues.PSObject.Properties["CurrentVersion"]
+        if ($null -ne $versionProperty) {
+            $currentVersion = [string] $versionProperty.Value
+        }
+        if ([string]::IsNullOrWhiteSpace($currentVersion)) {
+            continue
+        }
+        $mainKey = Join-Path $registryKey "$currentVersion\Main"
+        $mainValues = Get-ItemProperty -LiteralPath $mainKey -ErrorAction SilentlyContinue
+        if ($null -eq $mainValues) {
+            continue
+        }
+        $pathProperty = $mainValues.PSObject.Properties["PathToExe"]
+        if ($null -ne $pathProperty -and -not [string]::IsNullOrWhiteSpace([string] $pathProperty.Value)) {
+            $candidates.Add([string] $pathProperty.Value)
+        }
+    }
+
+    $programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+    $candidates.Add((Join-Path $env:ProgramFiles "Mozilla Firefox\firefox.exe"))
+    if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) {
+        $candidates.Add((Join-Path $programFilesX86 "Mozilla Firefox\firefox.exe"))
+    }
+
+    $resolved = New-Object "Collections.Generic.List[object]"
+    $seen = New-Object "Collections.Generic.HashSet[string]" ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($candidate in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($candidate) -or -not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            continue
+        }
+        try {
+            $canonical = ConvertTo-FenneviaInstallerCanonicalPath -Path $candidate -Code "FENNEVIA_INSTALL_INVALID_PROGRAM"
+        }
+        catch {
+            continue
+        }
+        if ([IO.Path]::GetFileName($canonical) -cne "firefox.exe") {
+            continue
+        }
+        if (-not $seen.Add($canonical)) {
+            continue
+        }
+        $programRoot = Split-Path -Parent $canonical
+        $applicationIni = Join-Path $programRoot "application.ini"
+        $version = ""
+        $buildId = ""
+        if (Test-Path -LiteralPath $applicationIni -PathType Leaf) {
+            $values = Get-FenneviaInstallerApplicationValues -ApplicationIni $applicationIni
+            if ($values.ContainsKey("Version")) {
+                $version = [string] $values["Version"]
+            }
+            if ($values.ContainsKey("BuildID")) {
+                $buildId = [string] $values["BuildID"]
+            }
+        }
+        $resolved.Add([pscustomobject]@{
+            FirefoxPath = $canonical
+            Label = if (-not [string]::IsNullOrWhiteSpace($version)) { "Firefox $version" } else { "Firefox" }
+            Version = $version
+            BuildID = $buildId
+        })
+    }
+    return @($resolved)
+}
+
+function ConvertTo-FenneviaInstallerProgramCandidateLines {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [object[]] $Candidates
+    )
+
+    $lines = New-Object "Collections.Generic.List[string]"
+    $index = 0
+    foreach ($candidate in @($Candidates)) {
+        $label = [string] $candidate.Label
+        if (-not [string]::IsNullOrWhiteSpace([string] $candidate.BuildID)) {
+            $label += " BuildID $($candidate.BuildID)"
+        }
+        $lines.Add("firefox[$index]=$label")
+        $index++
+    }
+    return $lines.ToArray()
 }
 
 function Test-FenneviaInstallerDevelopmentMarker {
@@ -1288,7 +1544,7 @@ function Assert-FenneviaInstallerNoForeignAutoConfig {
     }
 }
 
-function Assert-FenneviaInstallerSelectedFirefoxClosed {
+function Test-FenneviaInstallerSelectedFirefoxRunning {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -1297,7 +1553,7 @@ function Assert-FenneviaInstallerSelectedFirefoxClosed {
 
     $processes = @(Get-Process -Name firefox -ErrorAction SilentlyContinue)
     if ($processes.Count -eq 0) {
-        return
+        return $false
     }
 
     try {
@@ -1312,9 +1568,67 @@ function Assert-FenneviaInstallerSelectedFirefoxClosed {
             (-not [string]::IsNullOrWhiteSpace([string] $process.ExecutablePath) -and [string]::Equals([string] $process.ExecutablePath, $Targets.FirefoxPath, [StringComparison]::OrdinalIgnoreCase)) -or
             (-not [string]::IsNullOrWhiteSpace([string] $process.CommandLine) -and ([string] $process.CommandLine).IndexOf($Targets.ProfileRoot, [StringComparison]::OrdinalIgnoreCase) -ge 0)
         ) {
-            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_FIREFOX_RUNNING" -Message "Close the selected Firefox program and profile before applying package changes."
+            return $true
         }
     }
+
+    return $false
+}
+
+function Assert-FenneviaInstallerSelectedFirefoxClosed {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Targets
+    )
+
+    if (Test-FenneviaInstallerSelectedFirefoxRunning -Targets $Targets) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_FIREFOX_RUNNING" -Message "Close the selected Firefox program and profile before applying package changes."
+    }
+}
+
+function Test-FenneviaInstallerProgramWritable {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProgramRoot
+    )
+
+    $probePath = Join-Path $ProgramRoot (".fennevia-write-probe-" + [guid]::NewGuid().ToString("N"))
+    try {
+        $stream = [IO.File]::Open($probePath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        $stream.Dispose()
+        return $true
+    }
+    catch {
+        return $false
+    }
+    finally {
+        if (Test-Path -LiteralPath $probePath) {
+            Remove-Item -LiteralPath $probePath -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Test-FenneviaInstallerInterruptedTransaction {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Targets
+    )
+
+    foreach ($scope in @("program", "profile")) {
+        $root = Get-FenneviaInstallerScopeRoot -Targets $Targets -Scope $scope
+        if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+            continue
+        }
+        foreach ($entry in @(Get-ChildItem -Force -LiteralPath $root)) {
+            if ($entry.Name.StartsWith(".fennevia-transaction-", [StringComparison]::OrdinalIgnoreCase)) {
+                return $true
+            }
+        }
+    }
+    return $false
 }
 
 function New-FenneviaInstallerOperation {
@@ -2045,13 +2359,8 @@ function Assert-FenneviaInstallerNoInterruptedTransactions {
         [object] $Targets
     )
 
-    foreach ($scope in @("program", "profile")) {
-        $root = Get-FenneviaInstallerScopeRoot -Targets $Targets -Scope $scope
-        foreach ($entry in @(Get-ChildItem -Force -LiteralPath $root)) {
-            if ($entry.Name.StartsWith(".fennevia-transaction-", [StringComparison]::OrdinalIgnoreCase)) {
-                Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_INTERRUPTED_TRANSACTION" -Message "A prior Fennevia transaction requires explicit recovery before another package action can run."
-            }
-        }
+    if (Test-FenneviaInstallerInterruptedTransaction -Targets $Targets) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_INTERRUPTED_TRANSACTION" -Message "A prior Fennevia transaction requires explicit recovery before another package action can run."
     }
 }
 
@@ -2869,6 +3178,139 @@ function ConvertTo-FenneviaInstallerResultLines {
     return $lines.ToArray()
 }
 
+function Get-FenneviaInstallerInstallationStatus {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $FirefoxPath,
+
+        [Parameter(Mandatory)]
+        [string] $ProfilePath,
+
+        [ValidateSet("Development", "Registered")]
+        [string] $ProfileMode = "Development",
+
+        [string] $PackageRoot = ""
+    )
+
+    $status = [ordered]@{
+        Program = "<FIREFOX_PROGRAM>"
+        Profile = "<FENNEVIA_PROFILE>"
+        ProfileMode = $ProfileMode
+        Kind = "unavailable"
+        State = "unknown"
+        PackageVersion = ""
+        FirefoxVersion = ""
+        FirefoxBuildID = ""
+        InterruptedTransaction = $false
+        ProgramWritable = $null
+        SelectedFirefoxRunning = $false
+        Compatible = $null
+        ErrorCode = ""
+        Problems = @()
+    }
+
+    try {
+        $targets = Resolve-FenneviaInstallerTargets -FirefoxPath $FirefoxPath -ProfilePath $ProfilePath -ProfileMode $ProfileMode
+        $status.FirefoxVersion = $targets.FirefoxVersion
+        $status.FirefoxBuildID = $targets.FirefoxBuildID
+        $status.InterruptedTransaction = Test-FenneviaInstallerInterruptedTransaction -Targets $targets
+        $status.ProgramWritable = Test-FenneviaInstallerProgramWritable -ProgramRoot $targets.ProgramRoot
+        try {
+            $status.SelectedFirefoxRunning = Test-FenneviaInstallerSelectedFirefoxRunning -Targets $targets
+        }
+        catch {
+            $status.SelectedFirefoxRunning = $true
+            $status.Problems += $_.Exception.Message
+        }
+
+        if ($status.InterruptedTransaction) {
+            $status.Kind = "interrupted"
+            $status.State = "blocked"
+            $status.Problems += "A prior Fennevia transaction requires explicit recovery before another package action can run."
+        }
+        else {
+            $ownership = Read-FenneviaInstallerOwnershipState -Targets $targets
+            $status.Kind = $ownership.Kind
+            if ($ownership.Kind -eq "absent") {
+                $status.State = "not-installed"
+            }
+            elseif ($ownership.Kind -eq "complete") {
+                $status.State = [string] $ownership.Pair.Data.State
+                $status.PackageVersion = [string] $ownership.Pair.Data.PackageVersion
+            }
+            else {
+                $status.State = [string] $ownership.Survivor.Data.State
+                $status.PackageVersion = [string] $ownership.Survivor.Data.PackageVersion
+            }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($PackageRoot) -and (Test-Path -LiteralPath $PackageRoot -PathType Container)) {
+            try {
+                $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
+                if ($null -ne $package.ReleaseManifest) {
+                    $releaseModule = Join-Path $PSScriptRoot "FenneviaRelease.psm1"
+                    $releaseModuleInfo = Import-Module $releaseModule -Force -PassThru
+                    try {
+                        $status.Compatible = [bool] (Test-FenneviaReleaseFirefoxCompatibility `
+                            -ReleaseManifest $package.ReleaseManifest `
+                            -FirefoxVersion $targets.FirefoxVersion `
+                            -FirefoxBuildId $targets.FirefoxBuildID)
+                    }
+                    finally {
+                        Remove-Module $releaseModuleInfo -ErrorAction SilentlyContinue
+                    }
+                }
+            }
+            catch {
+                $status.Problems += "The package or release manifest could not be read for compatibility status."
+            }
+        }
+    }
+    catch {
+        $status.ErrorCode = Get-FenneviaInstallerErrorCode -ErrorRecord $_
+        $status.Problems += $_.Exception.Message
+    }
+
+    return [pscustomobject]$status
+}
+
+function ConvertTo-FenneviaInstallerStatusLines {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Status
+    )
+
+    $compatible = if ($null -eq $Status.Compatible) { "n/a" } elseif ([bool] $Status.Compatible) { "yes" } else { "no" }
+    $writable = if ($null -eq $Status.ProgramWritable) { "unknown" } elseif ([bool] $Status.ProgramWritable) { "yes" } else { "no" }
+    $interrupted = if ([bool] $Status.InterruptedTransaction) { "true" } else { "false" }
+    $running = if ([bool] $Status.SelectedFirefoxRunning) { "true" } else { "false" }
+    $lines = New-Object "Collections.Generic.List[string]"
+    $lines.Add("event=installer.status")
+    $lines.Add("program=$($Status.Program)")
+    $lines.Add("profile=$($Status.Profile)")
+    $lines.Add("profileMode=$($Status.ProfileMode.ToLowerInvariant())")
+    $lines.Add("kind=$($Status.Kind)")
+    $lines.Add("state=$($Status.State)")
+    $lines.Add("packageVersion=$($Status.PackageVersion)")
+    $lines.Add("firefoxVersion=$($Status.FirefoxVersion)")
+    $lines.Add("firefoxBuildId=$($Status.FirefoxBuildID)")
+    $lines.Add("interruptedTransaction=$interrupted")
+    $lines.Add("programWritable=$writable")
+    $lines.Add("selectedFirefoxRunning=$running")
+    $lines.Add("compatible=$compatible")
+    if (-not [string]::IsNullOrWhiteSpace([string] $Status.ErrorCode)) {
+        $lines.Add("errorCode=$($Status.ErrorCode)")
+    }
+    $problemIndex = 0
+    foreach ($problem in @($Status.Problems)) {
+        $lines.Add("problem[$problemIndex]=$problem")
+        $problemIndex++
+    }
+    return $lines.ToArray()
+}
+
 function Invoke-FenneviaPackageAction {
     [CmdletBinding()]
     param(
@@ -2916,7 +3358,13 @@ function Invoke-FenneviaPackageAction {
 }
 
 Export-ModuleMember -Function @(
+    "ConvertTo-FenneviaInstallerProfileChoiceLines",
+    "ConvertTo-FenneviaInstallerProgramCandidateLines",
     "ConvertTo-FenneviaInstallerResultLines",
+    "ConvertTo-FenneviaInstallerStatusLines",
+    "Get-FenneviaFirefoxProgramCandidates",
     "Get-FenneviaInstallerErrorCode",
+    "Get-FenneviaInstallerInstallationStatus",
+    "Get-FenneviaInstallerRegisteredProfileChoices",
     "Invoke-FenneviaPackageAction"
 )

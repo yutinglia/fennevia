@@ -9,7 +9,9 @@ $ErrorActionPreference = "Stop"
 $testFiles = @(
     "bootstrap-spike.Tests.ps1",
     "firefox-dev-profile.Tests.ps1",
+    "fennevia-console.Tests.ps1",
     "installer.Tests.ps1",
+    "installer-discovery.Tests.ps1",
     "production-artifacts.Tests.ps1",
     "project-identity.Tests.ps1",
     "release-packaging.Tests.ps1",
