@@ -126,7 +126,8 @@ claim.
   history, Downloads, or SessionStore replacement.
 - Custom titlebar, window buttons, or OS window controls in the initial roadmap.
 - Overriding the complete `browser.xhtml`.
-- A branded Firefox fork, update channel, public installer, or support product.
+- A branded Firefox fork, automatic update channel, graphical installer, or
+  commercial support product.
 - Pixel-for-pixel copying of Firefox, `my-firefox-custom`, Arc, Edge, or another
   browser.
 - Treating hardening as a container for unrelated product features.
