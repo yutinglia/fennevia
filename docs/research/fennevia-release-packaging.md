@@ -192,7 +192,7 @@ After merge, append or link a follow-up evidence change containing:
 
 Until those values exist, they are intentionally not guessed in this record.
 
-### First publication attempt (private draft retained)
+### First publication attempt (private draft deleted after inspection)
 
 Tag-triggered run `31926297782` on merged commit
 `a16a99777e1dcac9c8f8e183301ca6fdb460cf2b` passed both independent release
@@ -208,6 +208,23 @@ the workflow could not retrieve its asset collection and stopped before
 publication. No public release was created. The corrected workflow enumerates
 authenticated releases, refuses an existing matching draft, uniquely selects
 the new draft by tag, validates its two assets, and publishes only its numeric
-release ID. The retained failed draft must be deleted explicitly after this fix
-is merged and before an authorized manual retry from the unchanged annotated
-tag.
+release ID. Draft `371229727` was rechecked, recorded above, and explicitly
+deleted before an authorized manual retry from the unchanged annotated tag.
+
+### Second publication attempt (private draft retained)
+
+Manual publication run `31926921155`, dispatched after the first correction,
+again passed both independent release preflights for the unchanged annotated
+tag. It created private draft release ID `371232225` with the same exact two
+asset names, sizes, and GitHub digests recorded above. The authenticated release
+list did not expose the new draft in the same request sequence immediately after
+`gh release create`, although it became visible a few seconds later. The
+workflow therefore stopped before publication, and no public release was
+created.
+
+The next correction uses at most ten release-list reads two seconds apart after
+creation. It waits only for zero matches or one private match with an incomplete
+asset collection. More than one match, a matching public release, excess assets,
+unexpected names or digests, and the final timeout all fail closed. Draft
+`371232225` remains private for inspection until this correction is merged and
+must then be rechecked and explicitly deleted before another manual retry.
