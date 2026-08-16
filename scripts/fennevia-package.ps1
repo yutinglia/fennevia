@@ -12,6 +12,9 @@ param(
     [Parameter(Mandatory)]
     [string] $ProfilePath,
 
+    [ValidateSet("Development", "Registered")]
+    [string] $ProfileMode = "Development",
+
     [switch] $AcceptPlan
 )
 
@@ -30,6 +33,7 @@ try {
         -Action $Action `
         -FirefoxPath $FirefoxPath `
         -ProfilePath $ProfilePath `
+        -ProfileMode $ProfileMode `
         -PackageRoot $projectRoot `
         -DryRun
     ConvertTo-FenneviaInstallerResultLines -Result $plan | Write-Output
@@ -47,6 +51,7 @@ try {
         -Action $Action `
         -FirefoxPath $FirefoxPath `
         -ProfilePath $ProfilePath `
+        -ProfileMode $ProfileMode `
         -PackageRoot $projectRoot `
         -ExpectedPlanSha256 $plan.PlanSha256
     ConvertTo-FenneviaInstallerResultLines -Result $result | Write-Output

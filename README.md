@@ -13,9 +13,10 @@ AutoConfig entry registers a project-owned Chrome Registry package, loads fixed
 privileged ES modules, and mounts project-owned Svelte UI through typed Firefox
 bridges.
 
-> **Current status — 2026-08-16:** package `0.10.0-dev` is validated on Firefox
-> 153.0.4 for Windows in an isolated copied Firefox program and marker-owned
-> development profile. Bootstrap, installation lifecycle, multi-window runtime,
+> **Current status — 2026-08-16:** prerelease package `0.10.0-beta.1` is
+> validated on Firefox 153.0.4 for Windows in an isolated copied Firefox program
+> and marker-owned development profile. Bootstrap, installation lifecycle,
+> multi-window runtime,
 > health/recovery, deterministic Svelte production builds, the typed bridge
 > boundary, tab-state bridge, accessible tab UI, and the common four-edge
 > floating frame are implemented. The left edge contains functional vertical
@@ -33,8 +34,11 @@ bridges.
 > sidebar, popup, customization, and fail-open paths remain reversible and
 > source-validated.
 
-There is no daily-driver support, versioned end-user release, cross-platform
-support claim, or completed security audit.
+The first versioned Windows x64 prerelease is distributed through GitHub
+Releases with a deterministic ZIP, separate SHA-256 file, exact source/tag
+record, and strict Firefox compatibility check. There is no daily-driver or
+cross-platform support claim, automatic updater, code signing, or completed
+independent security audit.
 
 ## Product direction
 
@@ -91,7 +95,7 @@ useful.
 | Area                                          | Status         | Result                                                                                                                                                        |
 | --------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Safe development and privileged-code baseline | Complete       | Dedicated Windows profile workflow, threat model, redacted diagnostics, and recovery rules                                                                    |
-| Bootstrap and package lifecycle               | Complete       | Minimal AutoConfig/Chrome Registry chain plus path-safe install, update, exact one-sided repair, disable, and uninstall                                      |
+| Bootstrap and package lifecycle               | Complete       | Minimal AutoConfig/Chrome Registry chain plus path-safe install, update, exact one-sided repair, survivor-safe uninstall, and disable                       |
 | Window runtime and recovery                   | Complete       | Existing/later normal and private windows, deterministic disposal, health states, safe start, and emergency fallback                                          |
 | Frontend and bridge foundation                | Complete       | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership                                          |
 | Tabs data and UI                              | Complete       | Event-driven immutable tab state plus accessible vertical tab UI in the left surface                                                                          |
@@ -104,6 +108,7 @@ useful.
 | Content-only activation                       | Complete — #15 | Exact active-only native surfaces, compact HTTPS/ETP status, complete native reveal/handoff, customize/fullscreen policy, and per-window fail-open             |
 | Hardening and Firefox-update workflow         | Complete — #16 | Fixed local/CI gates, aggregate resource baseline, ownership repair, current compatibility inventory, and executable stable-update rehearsal                 |
 | Project license                               | Complete — #18 | MPL-2.0 for original source/docs/generated project output, explicit inbound contribution terms, and one third-party provenance inventory                      |
+| Windows prerelease distribution               | Complete — #39 | Deterministic versioned ZIP/checksum, exact source and file manifest, explicit registered-profile mode, Firefox-build allowlist, and verified draft publication |
 
 The tracking source of truth is issue #1. Historical research records preserve
 what was true at each earlier milestone; they should not be rewritten to pretend
@@ -248,6 +253,15 @@ describe. Later decisions supersede their production architecture through ADRs
 and current plans rather than retroactively editing old observations.
 
 ## Build and verification
+
+For ordinary installation, download the versioned Windows ZIP and matching
+`.sha256` file from [GitHub Releases](https://github.com/yutinglia/fennevia/releases),
+verify the digest, and follow the archive's `INSTALL.md`. The first prerelease
+accepts only stock Firefox 153.0.4 BuildID 20260810162159 and requires explicit
+program/profile paths plus `-ProfileMode Registered`; it never selects a
+default profile. Keep the exact ZIP for disable, repair, update, enable, and
+uninstall recovery. Source-development installs continue to use the marker-
+owned profile workflow in [Installation and package lifecycle](docs/installation.md).
 
 Use the exact Node.js and npm versions in `.nvmrc` and `package.json`:
 

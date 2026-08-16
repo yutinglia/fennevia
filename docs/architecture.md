@@ -564,10 +564,12 @@ accepts explicit program and profile targets, emits a redacted exact dry run,
 requires paired hash-based ownership records, stages and journals changes on the
 same volumes, rolls back partial failure, hard-disables by moving the AutoConfig
 preference, repairs only one completely absent ownership side from exact
-surviving proof, and uninstalls only exact owned files. Every ordinary action
-still rejects an incomplete pair. The normative contract and
+surviving source proof, and uninstalls only exact owned files. An incomplete
+pair blocks state-changing install/update/disable/enable actions; explicit
+Uninstall may use one valid survivor only after verifying present owned hashes
+and absent peer metadata. The normative contract and
 interrupted-operation recovery procedure are in `docs/installation.md` and
-ADR-018/ADR-033.
+ADR-018/ADR-033/ADR-036.
 
 ## 10. Security and privacy model
 

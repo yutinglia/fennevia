@@ -19,8 +19,8 @@ formal audit or penetration test.
 
 Current validated baseline:
 
-- package `0.10.0-dev`;
-- Firefox 153.0.4 release, Windows;
+- package `0.10.0-beta.1` prerelease;
+- Firefox 153.0.4 BuildID 20260810162159 release, Windows x64;
 - copied Firefox program plus marker-owned development profile;
 - native Firefox DOM and complete transient access retained;
 - functional left-edge vertical tabs and compact address/status launcher,
@@ -52,7 +52,8 @@ Current validated baseline:
 | Normal diagnostics | URLs, titles, queries, bookmarks, downloads, paths, secrets, or private data can leak | Default-deny schemas, stable codes, redacted stacks, no network sink, hostile-value tests; #12–#14/#32/#37 errors contain fixed phase/code/symbol/build/window-kind only and never address/status/permission/action/bookmark/download source data | Extend the same fixed schema to later features | #3, #5, #9–#14, #32, #37 |
 | Private-window state | State can leak to normal windows, process globals, preferences, or diagnostics | Per-window lifecycle/frame/tabs/navigation/popup/Urlbar/bookmark/download instances, opaque generations, bounded unpersisted state, complete fallback on uncertainty; #12–#14/#32/#37 passed normal/second/private isolation and disposal | Repeat for each later bridge and Firefox update | #5, #9–#14, #31, #32, #37 |
 | Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native DOM retained; #13/#37 summarize fixed state/availability; #15 provides complete navbar/sidebar reveal, popup/focus holds, modal/customize/DOM-fullscreen suspension, exact untargeted notification/titlebar/dialog infrastructure, and emergency fallback | Repeat prompt/retained-access/stacking/reveal matrix on Firefox updates | #7, #13, #15, #31, #37; ADR-032 |
-| Installer/updater/repair/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data or adopt stale state | Explicit canonical targets, marker checks, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion; Repair accepts only one wholly absent side, one exact survivor/source, and no residue | Revalidate for every platform/scope change | #4, #16; ADR-033 |
+| Installer/updater/repair/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data or adopt stale state | Explicit canonical targets, mode-specific marker/registration/ownership proof, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion; release mutations require strict package validation and an exact Firefox version/BuildID; Repair accepts only one wholly absent side, one exact survivor/source, and no residue; one-sided Uninstall accepts only a valid survivor, absent peer metadata, and hash-matching present files; Disable/Uninstall remain recovery exits | Revalidate for every platform/scope/compatibility change | #4, #16, #39; ADR-033, ADR-036 |
+| Release publication | Stale, nondeterministic, tampered, secret-bearing, wrong-source, or partially uploaded assets can execute privileged code | Canonical SemVer/tag contract, strict machine manifest, deterministic sorted ZIP with fixed timestamps, separate SHA-256, sensitive-data/path scan, clean-tree double build, annotated-tag-only workflow, draft with exact two-asset and GitHub digest verification before publish, download recheck | Record exact first-publication run and repeat per release | #18, #39; ADR-036 |
 | Test-only performance evidence | Firefox process records can expose origins, window URIs/titles, IDs, and threads | Explicit harness mode immediately reduces raw records to numeric process/memory/CPU aggregates and fixed timings; static test rejects sensitive fields; no production caller or sink | Revalidate API shape on every supported Firefox | #16; ADR-034 |
 | Test-only persisted-session evidence | Firefox SessionStore can expose complete browsing state, while preference or failure-injection residue can alter later starts | Explicit four-phase harness accepts only fixed local fixtures; default-deny evidence emits fixed IDs/counts/booleans; a stale marker blocks prepare; exact preference state, bundle bytes, one blank tab, and process baseline are restored; no production caller or sink | Revalidate restore timing, lazy pending semantics, and cleanup on every supported Firefox | #46; ADR-035 |
 | Startup cache/stale installed code | Removed or fixed privileged code may continue to run | Exact inventory and evidence-first cache policy; validated changes took effect without routine clearing | Cache action only after observed stale symptom | #3, #4, #16 |
@@ -67,7 +68,8 @@ blocker, not an implicit risk acceptance.
 
 ### 3.1 Current inventory
 
-`package-manifest.json` is the only source of truth. Package `0.10.0-dev`
+`package-manifest.json` is the installed-file source of truth. Package
+`0.10.0-beta.1`
 contains the following profile paths:
 
 ```text
@@ -551,13 +553,20 @@ Required preflight:
 - explicit program/profile paths;
 - canonicalization;
 - expected Firefox program identity;
-- marker-owned unregistered profile;
+- default marker-owned unregistered development profile, or explicit
+  registered-profile mode with an exact Firefox registration/ownership proof;
 - no root/home/profile-parent/program-root target;
 - no traversal/reparse ambiguity;
 - permissions;
 - ownership/collision/hash verification;
 - all processes closed where required;
 - redacted plan digest.
+
+Release-only preflight additionally requires a strict `RELEASE-MANIFEST.json`
+inventory and file hashes, package-manifest binding, supported Windows scope,
+and exact Firefox version/BuildID for install/update/repair/enable. Enable binds
+to ownership's source-manifest hash. Disable/uninstall remain available when an
+updated Firefox is not supported.
 
 Mutation controls:
 
@@ -576,7 +585,8 @@ Recovery:
 - `Repair` reconstructs only one completely absent side from exact survivor and
   source proof, and rolls back injected partial failure;
 - `Disable` must work with a broken/missing runtime;
-- `Uninstall` removes only owned files/metadata;
+- complete-pair and one-survivor `Uninstall` remove only verified owned
+  files/metadata, preserve unrelated content, and reject modified survivors;
 - repeat action is idempotent;
 - stock cold start has no project record/error;
 - startup-cache action remains evidence-driven.
@@ -646,6 +656,12 @@ npm run verify
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File .\tests\run-static-powershell-tests.ps1
+pwsh -NoProfile -File .\tests\release-packaging.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\tests\release-packaging.Tests.ps1
+pwsh -NoProfile -File .\tests\release-installer.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\tests\release-installer.Tests.ps1
 pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -ArtifactRoot .\profile\chrome\fennevia `
   -InventoryPath .\package-manifest.json
@@ -679,6 +695,7 @@ Current detailed evidence:
 
 - bootstrap: `docs/research/firefox-153-bootstrap.md`;
 - installer: `docs/research/fennevia-installer-validation.md`;
+- release packaging: `docs/research/fennevia-release-packaging.md`;
 - lifecycle: `docs/research/firefox-153-window-lifecycle.md`;
 - initial hosts: `docs/research/firefox-153-shell-hosts.md`;
 - health/recovery: `docs/research/firefox-153-shell-health-recovery.md`;

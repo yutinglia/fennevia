@@ -50,13 +50,18 @@ Use `Install` when neither ownership side exists. If exactly one valid side
 survives because Firefox replaced or moved one complete root, preview `Repair`
 with the exact source package recorded by that survivor. Repair must reject
 partial residue, a different package, an unmarked profile, or an unproven
-directory. Use `Update` only after a complete identical pair exists:
+directory. If the exact old package is unavailable and removal is intended,
+preview `Uninstall` instead; it may use the survivor only when peer metadata is
+absent and every present owned byte still matches. Use `Update` only after a
+complete identical pair exists:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Repair `
   -FirefoxPath $firefox -ProfilePath $profile -WhatIf
 pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Repair `
   -FirefoxPath $firefox -ProfilePath $profile
+pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Uninstall `
+  -FirefoxPath $firefox -ProfilePath $profile -WhatIf
 pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Update `
   -FirefoxPath $firefox -ProfilePath $profile -WhatIf
 ```

@@ -1,0 +1,166 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated release tag to rehearse or publish
+        required: true
+        type: string
+      publish:
+        description: Create and publish the verified GitHub prerelease
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+
+jobs:
+  verify:
+    name: Rehearse exact release
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the annotated tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Configure Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Verify annotated tag and reproduce package twice
+        shell: pwsh
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP "fennevia-release-rehearsal"
+          .\scripts\release-preflight.ps1 `
+            -OutputDirectory $output `
+            -ExpectedTag $env:RELEASE_TAG `
+            -RequireAnnotatedTag
+
+  publish:
+    name: Verify draft assets and publish
+    if: github.event_name == 'push' || inputs.publish == true
+    needs: verify
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out the annotated tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Configure Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Re-run complete release preflight
+        shell: pwsh
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP "fennevia-release-publication"
+          .\scripts\release-preflight.ps1 `
+            -OutputDirectory $output `
+            -ExpectedTag $env:RELEASE_TAG `
+            -RequireAnnotatedTag
+
+      - name: Create draft, verify remote digests, then publish
+        shell: pwsh
+        run: |
+          $package = Get-Content -Raw -LiteralPath .\package.json | ConvertFrom-Json
+          $version = [string] $package.version
+          $expectedTag = "v$version"
+          if ($env:RELEASE_TAG -cne $expectedTag) {
+            throw "The workflow tag changed after preflight."
+          }
+
+          $output = Join-Path $env:RUNNER_TEMP "fennevia-release-publication\first"
+          $archiveName = "fennevia-$version-windows.zip"
+          $archivePath = Join-Path $output $archiveName
+          $checksumPath = "$archivePath.sha256"
+          $expectedAssets = [ordered]@{
+            $archiveName = (Get-FileHash -Algorithm SHA256 -LiteralPath $archivePath).Hash.ToLowerInvariant()
+            "$archiveName.sha256" = (Get-FileHash -Algorithm SHA256 -LiteralPath $checksumPath).Hash.ToLowerInvariant()
+          }
+
+          gh release view $expectedTag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            throw "A GitHub release already exists for this tag; inspect or delete it explicitly before retrying."
+          }
+
+          $createArguments = @(
+            "release", "create", $expectedTag,
+            $archivePath, $checksumPath,
+            "--repo", $env:GITHUB_REPOSITORY,
+            "--verify-tag",
+            "--draft",
+            "--title", "Fennevia $version",
+            "--notes-file", ".\release\RELEASE_NOTES.md"
+          )
+          if ($version.Contains("-")) {
+            $createArguments += "--prerelease"
+          }
+          & gh @createArguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "Draft release creation failed."
+          }
+
+          $remoteRelease = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$expectedTag" | ConvertFrom-Json
+          if (-not [bool] $remoteRelease.draft -or @($remoteRelease.assets).Count -ne $expectedAssets.Count) {
+            throw "The draft release state or asset count is unexpected."
+          }
+          foreach ($asset in @($remoteRelease.assets)) {
+            $name = [string] $asset.name
+            if (-not $expectedAssets.Contains($name)) {
+              throw "The draft contains an unexpected release asset."
+            }
+            $expectedDigest = "sha256:$($expectedAssets[$name])"
+            if ([string] $asset.digest -cne $expectedDigest) {
+              throw "GitHub's release-asset digest does not match the local staged bytes."
+            }
+          }
+
+          gh release edit $expectedTag --repo $env:GITHUB_REPOSITORY --draft=false
+          if ($LASTEXITCODE -ne 0) {
+            throw "The verified draft could not be published."
+          }
+
+          $downloadRoot = Join-Path $env:RUNNER_TEMP "fennevia-release-download-verification"
+          New-Item -ItemType Directory -Path $downloadRoot | Out-Null
+          gh release download $expectedTag `
+            --repo $env:GITHUB_REPOSITORY `
+            --dir $downloadRoot `
+            --pattern $archiveName `
+            --pattern "$archiveName.sha256"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Published release assets could not be downloaded for final verification."
+          }
+          foreach ($assetName in $expectedAssets.Keys) {
+            $downloadedHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $downloadRoot $assetName)).Hash.ToLowerInvariant()
+            if ($downloadedHash -cne $expectedAssets[$assetName]) {
+              throw "A downloaded published asset differs from the verified draft bytes."
+            }
+          }

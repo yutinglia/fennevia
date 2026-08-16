@@ -1065,3 +1065,68 @@ creating production persistence, force-loading pending tabs, or exposing real
 browsing state. Source pins, interruption recovery, and real Windows evidence
 are recorded in
 `docs/research/firefox-153-session-restore-rehearsal.md`.
+
+## ADR-036: Publish exact prerelease trees and opt in to registered-profile installation
+
+**Status:** Accepted for Fennevia 0.10.0-beta.1 on Windows x64
+
+Use `package.json` as the canonical release version and accept only stable
+`MAJOR.MINOR.PATCH` or numbered `alpha`, `beta`, and `rc` prereleases. The exact
+annotated tag is `v<VERSION>` and must resolve to the complete source commit
+recorded in the release. A release consists of one
+`fennevia-<VERSION>-windows.zip` plus its `.sha256` file; ordinary installation
+does not require Node.js or npm.
+
+Stage only the 14 manifest-owned install bytes, package manifest, installer,
+release validator, privileged-artifact scanner, verification wrapper,
+installation guide, MPL-2.0 license, and third-party notices. Generate a strict
+`RELEASE-MANIFEST.json` with source/tag/archive identity, package-manifest hash,
+platform, exact Firefox compatibility records, known limitations, and every
+other tree file's size and SHA-256. The manifest excludes itself to avoid a
+recursive hash. Reject any extra/missing/changed/reparse/credential-like file
+and high-confidence secret or local-machine-path content.
+
+Create ZIP entries in fixed sorted order beneath one versioned root, with no
+explicit directory entries, no compression, and the fixed 1980-01-01 ZIP
+timestamp. A clean-tree preflight installs exact dependencies without lifecycle
+scripts, runs the complete repository verification, stages twice, compares
+manifest and ZIP bytes, verifies the checksum, and validates a Unicode/space
+extraction. Publication is tag-only or an explicitly authorized manual run. It
+reruns preflight, creates a draft with exactly the ZIP and checksum, compares
+GitHub's reported SHA-256 digests before making the draft public, then
+downloads and compares both assets. Failed drafts are inspected and explicitly
+deleted rather than reused; changed public bytes require a new version/tag.
+
+Keep Development as the installer's default profile mode. Add explicit
+Registered mode that validates only the operator-supplied profile against
+Firefox's registration files; it never chooses a profile. Existing valid
+ownership remains sufficient for cleanup and one-sided repair if registration
+is later lost. When a release manifest is present, Install, Update, Repair, and
+Enable require an exact Firefox version and BuildID allowlist match. Enable also
+requires ownership's exact package-manifest hash. Disable and Uninstall remain
+available without release compatibility so an unsupported Firefox update
+cannot trap privileged startup code in place.
+
+If exactly one valid ownership record survives and its peer metadata is wholly
+absent, Uninstall may use that survivor without the old package. It verifies all
+still-present ownership-listed files across both scopes, rejects changed files
+or path conflicts, removes only proven bytes and the surviving manifest, and
+removes only recorded empty directories. This narrowly supersedes ADR-033's
+complete-pair requirement for deletion; one-sided install, update, disable, and
+enable remain prohibited, while Repair still requires byte-identical source.
+
+**Reasoning:** The installed code executes with system principal, spans Firefox
+program/profile roots, and depends on unsupported internals. A loose source ZIP
+or default-profile heuristic would make provenance, compatibility, and recovery
+ambiguous. One reproducible tree, explicit target mode, exact upstream build,
+and verify-before-publish draft provide a narrow first distribution boundary
+without inventing an updater or trusting mutable assets.
+
+This decision extends ADR-033: Development-mode one-sided repair still requires
+the marker, while Registered mode may use exact registration or its valid
+surviving ownership proof; both modes may use that proof for the narrow
+one-sided Uninstall above. It does not claim stable/daily-driver support,
+Linux/macOS compatibility, ESR/Beta/Nightly compatibility, signing,
+attestations, an SBOM, automatic update, or an independent security audit.
+Implementation and validation evidence are recorded in
+`docs/research/fennevia-release-packaging.md`.

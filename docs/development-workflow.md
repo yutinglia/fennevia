@@ -55,6 +55,11 @@ project/inbound license and third-party provenance gate; all copied/adapted or
 distributed material follows `docs/licensing-and-provenance.md` and
 `THIRD_PARTY_NOTICES.md`.
 
+Issue #39 adds the first versioned distribution gate after #16 and #18. A
+release is never assembled from a developer's arbitrary working directory or
+published before its tag, source commit, generated artifacts, complete file
+inventory, and remote asset digests agree.
+
 ## 3. Branch and commit conventions
 
 Recommended branch names:
@@ -148,6 +153,31 @@ directories, and synchronizes hashes in `package-manifest.json`.
 
 A dirty tree after rebuilding means source, generated artifacts, or the manifest
 is stale. Do not hand-edit generated shell or bridge files.
+
+### Release staging and publication
+
+`package.json` is the canonical release version. Supported release versions are
+plain `MAJOR.MINOR.PATCH` or `-alpha.N`, `-beta.N`, and `-rc.N`; build metadata
+and development suffixes are rejected. The exact tag is `v<VERSION>`, it must
+be annotated, and its target must equal the checked-out full source commit.
+
+Before tagging, run the release packaging and installer suites in both
+PowerShell runtimes and a real staged-package smoke test. After the release
+change is merged, create and push the annotated tag. `.github/workflows/release.yml`
+then repeats exact dependency installation and `npm run verify`, builds twice
+into clean directories, requires byte-identical manifests/ZIPs, validates a
+Unicode/space extraction, and runs a second independent preflight in the
+publication job. The job uploads only the versioned ZIP and `.sha256` file to a
+draft, checks GitHub's reported SHA-256 for both, publishes, downloads both,
+and compares them again. A manual dispatch is rehearsal-only unless its
+`publish` boolean is explicitly set.
+
+Do not move an existing tag, replace an asset in place, publish from a branch,
+or reuse a failed draft. A failed draft remains private for inspection; delete
+it explicitly only after recording the failure, then rerun from the unchanged
+annotated tag. Corrections to published bytes require a new version and tag.
+The first prerelease intentionally has no signing, attestation, SBOM, automatic
+update, stable-support, or non-Windows claim.
 
 Documentation-only changes should still run:
 

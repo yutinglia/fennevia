@@ -14,10 +14,10 @@ collision system, glass token set, or window-global coordination layer.
 
 Validated baseline as of 2026-08-16:
 
-- package `0.10.0-dev`;
-- Firefox 153.0.4 release on Windows;
+- package `0.10.0-beta.1` prerelease;
+- Firefox 153.0.4 BuildID 20260810162159 release on Windows x64;
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16,
-  #17, #22, #31, #32, and #37 complete;
+  #17, #18, #22, #31, #32, #37, and #39 complete;
 - functional vertical tabs and a compact address/status launcher in the left
   surface;
 - one centered address/search popup with detailed connection, protection,
@@ -32,6 +32,9 @@ Validated baseline as of 2026-08-16:
 Governance foundation:
 
 1. #18 selected MPL-2.0 and the third-party attribution/provenance policy.
+2. #39 establishes deterministic, checksum-published Windows prereleases with
+   exact tagged source, a Firefox-build allowlist, and explicit registered-
+   profile installation.
 
 Historical research records remain accurate for the milestone they tested.
 Current production architecture is defined by this roadmap, the master plan,
@@ -620,5 +623,5 @@ The following require separate plans and issues:
 - custom titlebar and OS window controls;
 - arbitrary theme editor or CSS injection;
 - any `browser.xhtml` or internal-component override;
-- public installer/release packaging;
+- stable release support, automatic updates, signing, attestations, and SBOM;
 - Linux, macOS, touch, or tablet support without real evidence.
