@@ -405,7 +405,7 @@ unmount/remount, missing Downloads capability, hard-disable/re-enable, and
 artifact restoration passed. Evidence: ADR-030 and
 `docs/research/firefox-153-downloads-surface.md`.
 
-## 7. Native-UI activation matrix — required only for #15
+## 7. Native-UI activation matrix — validated for #15
 
 No earlier issue may claim this gate.
 
@@ -448,6 +448,18 @@ Validate:
 Do not hide a broad parent when an uncovered descendant or action would become
 unreachable.
 
+ADR-032 and
+`docs/research/firefox-153-content-only-activation.md` contain the completed
+owner/replacement/fallback inventory. The ordinary real-Firefox harness now
+checks exact five-rule CSS, collapsed resting native owners, retained rendered
+caption controls, compact HTTPS/ETP status, full native Urlbar owner reveal and
+release, native Downloads popup hold, native History sidebar hold, real
+customize enter/exit, real browser fullscreen, DOM-fullscreen suspension,
+native modal stacking, narrow/short move/resize, maximize/minimize/restore,
+normal/second/private isolation, emergency fallback, partial activation CSS
+failure in an independent window, and Browser Console cleanliness. The Browser
+Toolbox variant repeats ownership and namespace inspection while active.
+
 ## 8. Recovery design
 
 ### 8.1 Health and activation
@@ -460,7 +472,8 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.10.0-dev` stops at `healthy`. The health phase requires:
+Current package `0.10.0-dev` performs the sole production activation only after
+the health phase requires:
 
 - exact frame identity and placement;
 - ordered top/left/right/bottom hosts plus the final address-overlay host;
@@ -472,10 +485,16 @@ Current package `0.10.0-dev` stops at `healthy`. The health phase requires:
 - a ready PUBLIC/PRIVATE Downloads list view and valid bottom-panel state;
 - a valid Urlbar-coverage snapshot, one owner-state observer, and native
   `openLocation()` handoff capability;
+- exact Firefox native target/titlebar ownership, an attached exact activation
+  style with five parsed rules, and synchronous native Urlbar reveal capability;
 - environment/suspension handling;
 - privileged emergency handler;
 - every declared required capability;
 - a literal successful health result before the finite deadline.
+
+The initializer then calls `lifecycle.activate()` exactly once. Its active
+marker is the only state that enables native hiding. A failed activation enters
+the same fail-open disposal path.
 
 If any step fails:
 
@@ -718,6 +737,7 @@ of the installed package.
 | Urlbar coverage            | `docs/research/firefox-153-urlbar-coverage.md`       |
 | Right-edge bookmarks       | `docs/research/firefox-153-bookmarks-surface.md`     |
 | Bottom-edge downloads      | `docs/research/firefox-153-downloads-surface.md`     |
+| Content-only activation    | `docs/research/firefox-153-content-only-activation.md` |
 
 Those records describe the exact milestone tested. Current production state is
 summarized in README, the master plan, the shell roadmap, architecture, issue

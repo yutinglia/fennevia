@@ -23,22 +23,26 @@ function Assert-True {
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $healthPath = Join-Path $repositoryRoot "profile\chrome\fennevia\content\runtime\HealthState.sys.mjs"
 $shellPath = Join-Path $repositoryRoot "profile\chrome\fennevia\content\runtime\WindowShell.sys.mjs"
+$nativeUiPath = Join-Path $repositoryRoot "profile\chrome\fennevia\content\runtime\NativeUi.sys.mjs"
 $loggerPath = Join-Path $repositoryRoot "profile\chrome\fennevia\content\runtime\Logger.sys.mjs"
 $configPath = Join-Path $repositoryRoot "program\fennevia.cfg"
 $healthTestPath = Join-Path $repositoryRoot "tests\health-state.test.mjs"
 $safeStartTestPath = Join-Path $repositoryRoot "tests\safe-start.test.mjs"
 $shellTestPath = Join-Path $repositoryRoot "tests\shell-hosts.test.mjs"
+$nativeUiTestPath = Join-Path $repositoryRoot "tests\native-ui.test.mjs"
 $firefoxHarnessPath = Join-Path $repositoryRoot "tests\firefox-window-lifecycle.mjs"
 $recoveryTestPath = Join-Path $repositoryRoot "tests\firefox-shell-recovery.Tests.ps1"
 
 foreach ($requiredFile in @(
     $healthPath,
     $shellPath,
+    $nativeUiPath,
     $loggerPath,
     $configPath,
     $healthTestPath,
     $safeStartTestPath,
     $shellTestPath,
+    $nativeUiTestPath,
     $firefoxHarnessPath,
     $recoveryTestPath
 )) {
@@ -47,10 +51,11 @@ foreach ($requiredFile in @(
 
 $healthContent = Get-Content -Raw -LiteralPath $healthPath
 $shellContent = Get-Content -Raw -LiteralPath $shellPath
+$nativeUiContent = Get-Content -Raw -LiteralPath $nativeUiPath
 $loggerContent = Get-Content -Raw -LiteralPath $loggerPath
 $configContent = Get-Content -Raw -LiteralPath $configPath
 $firefoxHarnessContent = Get-Content -Raw -LiteralPath $firefoxHarnessPath
-$runtimeContent = $healthContent + "`n" + $shellContent + "`n" + $loggerContent
+$runtimeContent = $healthContent + "`n" + $shellContent + "`n" + $nativeUiContent + "`n" + $loggerContent
 
 foreach ($requiredToken in @(
     'data-fennevia-state',
@@ -67,7 +72,13 @@ foreach ($requiredToken in @(
     'FENNEVIA_SHELL_HEALTH_TIMEOUT',
     'FENNEVIA_EMERGENCY_FALLBACK_INVOKED',
     'DEFAULT_HEALTH_TIMEOUT_MS\s*=\s*2_000',
-    'shellState'
+    'shellState',
+    'fennevia-native-ui-style',
+    'data-fennevia-native-ui-revealed',
+    'data-fennevia-native-ui-suspended',
+    '#TabsToolbar > \.toolbar-items',
+    'nativeUi\.revealForUrlbar',
+    'lifecycle\.activate\(\)'
 )) {
     Assert-True -Condition ($runtimeContent -match $requiredToken) -Message "The runtime is missing a required health, recovery, or logging boundary."
 }
@@ -97,6 +108,8 @@ foreach ($requiredToken in @(
 foreach ($prohibitedToken in @(
     '#navigator-toolbox\s*\{[^}]*display\s*:\s*none',
     '#browser\s*\{[^}]*display\s*:\s*none',
+    '#navigator-toolbox\s*\{[^}]*visibility\s*:\s*collapse',
+    '#TabsToolbar\s*\{[^}]*visibility\s*:\s*collapse',
     'Services\.prefs[^\r\n]*(?:fail|inject|debug)',
     'globalThis\.__fennevia[^\r\n]*(?:fail|inject|debug)',
     '\bfetch\s*\(',
@@ -109,7 +122,7 @@ foreach ($prohibitedToken in @(
 }
 
 $nodeCommand = Get-Command node -ErrorAction Stop
-& $nodeCommand.Source --test $healthTestPath $safeStartTestPath $shellTestPath
+& $nodeCommand.Source --test $healthTestPath $safeStartTestPath $shellTestPath $nativeUiTestPath
 Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "The Node.js shell-health matrix must pass."
 & $nodeCommand.Source --check $firefoxHarnessPath
 Assert-True -Condition ($LASTEXITCODE -eq 0) -Message "The real-Firefox recovery harness must parse."

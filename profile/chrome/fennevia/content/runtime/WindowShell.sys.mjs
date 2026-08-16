@@ -15,6 +15,7 @@ import {
   createFirefoxUrlbarCoverageBridge,
 } from "../firefox/BridgeBoundary.sys.mjs";
 import { shellAppCss } from "../shell/ShellStyles.sys.mjs";
+import { createNativeUiController, nativeUiStyleId } from "./NativeUi.sys.mjs";
 
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const XUL_NAMESPACE =
@@ -227,6 +228,7 @@ const validateInsertionPoints = (window) => {
     ...Object.values(MOUNT_IDS),
     SHELL_STYLE_ID,
     SHELL_APP_STYLE_ID,
+    nativeUiStyleId,
   ]) {
     if (document.getElementById(id)) {
       throw createShellError("FENNEVIA_SHELL_HOST_ALREADY_EXISTS", `#${id}`);
@@ -1083,6 +1085,7 @@ const mountProductionShell = ({
   let bookmarksBridge;
   let downloadsBridge;
   let navigationBridge;
+  let nativeUi;
   let style;
   let tabsBridge;
   let urlbarCoverageBridge;
@@ -1094,6 +1097,18 @@ const mountProductionShell = ({
       windowKind,
       opaqueId: contextId,
       projectUri: BRIDGE_PROJECT_URI,
+    });
+    nativeUi = createNativeUiController({
+      window: browserWindow,
+      frame,
+      onError(error) {
+        requestFallback(
+          annotateShellLifecycleError(error, {
+            code: error?.fenneviaCode ?? "FENNEVIA_NATIVE_UI_RUNTIME_FAILED",
+            phase: error?.fenneviaPhase ?? "native-ui-runtime",
+          }),
+        );
+      },
     });
     bookmarksBridge = createFirefoxBookmarksBridge({
       boundary: bridge,
@@ -1160,6 +1175,9 @@ const mountProductionShell = ({
           }),
         );
       },
+      requestNativeUiReveal() {
+        return nativeUi.revealForUrlbar();
+      },
       window: browserWindow,
     });
     style = createElement(frame.ownerDocument, "style", {
@@ -1211,6 +1229,7 @@ const mountProductionShell = ({
       frontend,
       logger,
       navigationBridge,
+      nativeUi,
       readyLogged: false,
       tabsBridge,
       urlbarCoverageBridge,
@@ -1230,6 +1249,11 @@ const mountProductionShell = ({
     }
     try {
       urlbarCoverageBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
+    try {
+      nativeUi?.dispose();
     } catch (cleanupError) {
       reportError(cleanupError);
     }
@@ -1288,6 +1312,11 @@ const mountProductionShell = ({
     }
     try {
       urlbarCoverageBridge?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      nativeUi?.dispose();
     } catch (error) {
       firstError ??= error;
     }
@@ -1356,6 +1385,7 @@ const checkProductionShell = async ({ mountPoints, windowKind }) => {
   await record.downloadsBridge.ready();
   record.downloadsBridge.assertRequiredCapabilities();
   record.navigationBridge.assertRequiredCapabilities();
+  record.nativeUi.verifyHealth();
   record.tabsBridge.assertRequiredCapabilities();
   record.urlbarCoverageBridge.assertRequiredCapabilities();
   return record.frontend.verifyShellAppHealth({
@@ -1382,6 +1412,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     record.downloadsBridge.assertRequiredCapabilities();
   const navigationCapabilities =
     record.navigationBridge.assertRequiredCapabilities();
+  const nativeUiCapabilities = record.nativeUi.assertRequiredCapabilities();
   const tabsCapabilities = record.tabsBridge.assertRequiredCapabilities();
   const urlbarCoverageCapabilities =
     record.urlbarCoverageBridge.assertRequiredCapabilities();
@@ -1407,6 +1438,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     ...bookmarksCapabilities,
     ...downloadsCapabilities,
     ...navigationCapabilities,
+    ...nativeUiCapabilities,
     ...tabsCapabilities,
     ...urlbarCoverageCapabilities,
     ...frontendCapabilities,
@@ -1850,15 +1882,15 @@ export async function initializeWindowShell({ context, logger, appInfo }) {
     getRequiredCapabilities: getProductionCapabilities,
   });
   await lifecycle.start();
+  lifecycle.activate();
   return () => lifecycle.dispose();
 }
 
 export const shellHealthTimeoutMs = DEFAULT_HEALTH_TIMEOUT_MS;
 
 /*
- * `active` is intentionally never entered by initializeWindowShell. The
- * explicit controller method exists so issue #15 can consume the validated
- * healthy-only gate after replacement UI and its own full recovery matrix.
+ * Production enters `active` only after every bridge, frontend surface, and
+ * exact native-UI integration target has passed the healthy-only gate.
  */
 
 /*

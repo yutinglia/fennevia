@@ -404,7 +404,7 @@ Evidence: ADR-031 and
 Gate: basic browsing and required access paths work entirely through custom
 surfaces while native UI remains visible for comparison and fallback.
 
-### Phase 6: Content-only activation — pending (#15)
+### Phase 6: Content-only activation — complete (#15)
 
 Preconditions:
 
@@ -433,6 +433,29 @@ Deliverables:
 
 Gate: controlled breakage never leaves Firefox without an operable native
 recovery path.
+
+Delivered by ADR-032:
+
+- the production initializer activates only after the complete health check;
+- one exact five-rule per-window controller collapses horizontal native tab
+  items/navbar, bookmarks toolbar, and exact native sidebar surfaces;
+- native vertical-tab mode retains its navbar titlebar owner;
+- titlebar controls, notifications, popups, dialogs, tabbox/content, and
+  DevTools remain untargeted;
+- toolbox focus/pointer, anchored popups, an open native sidebar, and #37's
+  Urlbar handoff reveal the complete retained native path;
+- customize/native-dialog/DOM-fullscreen policy suspends project hiding;
+- invalid or partial activation CSS and stable native-target drift fail open
+  per window.
+
+Gate passed on Firefox 153.0.4 with active rest/geometry, all four edge paths,
+normal/second/private isolation, complete Urlbar handoff, native Downloads and
+History-sidebar holds, customize/browser-fullscreen transitions, Browser
+Toolbox ownership, emergency fallback, partial CSS failure, safe start, and
+recovery evidence.
+
+Evidence: ADR-032 and
+`docs/research/firefox-153-content-only-activation.md`.
 
 ### Phase 7: Hardening and update workflow — pending (#16)
 
@@ -501,7 +524,8 @@ and hashes. Generated files are never hand-edited.
 - Complete shared foundations before feature-specific UI.
 - Do not jump directly to #15.
 - Every feature issue must pass while native Firefox UI remains visible.
-- #37 completed the Urlbar coverage gate; #15 is the next implementation step.
+- #15 completed the content-only activation gate; #16 is the next hardening and
+  Firefox-update workflow step.
 - Feature issues use the shared #31 edge contract and the #9 bridge boundary.
 - Research work must produce reproducible evidence or a clear negative result,
   not a list of links.

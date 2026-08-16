@@ -642,6 +642,33 @@ async function collectShellHostState(client) {
     const modalDialog = document.getElementById("window-modal-dialog");
     const style = document.getElementById("fennevia-shell-style");
     const appStyle = document.getElementById("fennevia-shell-app-style");
+    const nativeStyle = document.getElementById("fennevia-native-ui-style");
+    const describeNativeLayout = element => {
+      if (!element) {
+        return null;
+      }
+      const computed = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return {
+        collapsed: element.getAttribute("collapsed") ?? null,
+        display: computed.display,
+        height: Math.round(rect.height),
+        hidden: element.getAttribute("hidden") ?? null,
+        visibility: computed.visibility,
+        width: Math.round(rect.width),
+      };
+    };
+    const titlebarCloseButtons = [
+      ...toolbox?.querySelectorAll(
+        '.titlebar-buttonbox-container .titlebar-close[command="cmd_closeWindow"]'
+      ) ?? [],
+    ];
+    let nativeCssRuleCount = 0;
+    try {
+      nativeCssRuleCount = nativeStyle?.sheet?.cssRules?.length ?? 0;
+    } catch {
+      nativeCssRuleCount = 0;
+    }
     const frameRect = frame?.getBoundingClientRect();
     const browserRect = browser?.getBoundingClientRect();
     const browserChildren = Array.from(browser?.children ?? []);
@@ -721,6 +748,61 @@ async function collectShellHostState(client) {
           '.titlebar-buttonbox-container .titlebar-close[command="cmd_closeWindow"]'
         )
       ),
+      nativeUi: {
+        identityBoxOwnedByNavBar:
+          document.getElementById("identity-box")?.closest("#nav-bar") ===
+          document.getElementById("nav-bar"),
+        navBar: describeNativeLayout(document.getElementById("nav-bar")),
+        navBarCustomizationTarget: describeNativeLayout(
+          document.getElementById("nav-bar-customization-target")
+        ),
+        notificationsToolbarPresent: Boolean(
+          document.getElementById("notifications-toolbar")
+        ),
+        personalToolbar: describeNativeLayout(
+          document.getElementById("PersonalToolbar")
+        ),
+        revealed: document.documentElement.hasAttribute(
+          "data-fennevia-native-ui-revealed"
+        ),
+        sidebarBox: describeNativeLayout(
+          document.getElementById("sidebar-box")
+        ),
+        sidebarContainer: describeNativeLayout(
+          document.getElementById("sidebar-container")
+        ),
+        sidebarLauncherSplitter: describeNativeLayout(
+          document.getElementById("sidebar-launcher-splitter")
+        ),
+        sidebarSplitter: describeNativeLayout(
+          document.getElementById("sidebar-splitter")
+        ),
+        styleParentIsFrame: nativeStyle?.parentElement === frame,
+        styleRuleCount: nativeCssRuleCount,
+        suspended: document.documentElement.hasAttribute(
+          "data-fennevia-native-ui-suspended"
+        ),
+        tabsHidden: toolbox?.hasAttribute("tabs-hidden") ?? null,
+        tabsToolbarItems: describeNativeLayout(
+          document.querySelector("#TabsToolbar > .toolbar-items")
+        ),
+        titlebarCloseButtonCount: titlebarCloseButtons.length,
+        visibleTitlebarCloseButtonCount: titlebarCloseButtons.filter(button => {
+          const computed = getComputedStyle(button);
+          const rect = button.getBoundingClientRect();
+          return computed.display !== "none" &&
+            computed.visibility !== "hidden" &&
+            computed.visibility !== "collapse" &&
+            rect.width > 0 && rect.height > 0;
+        }).length,
+        trackingProtectionOwnedByNavBar:
+          document
+            .getElementById("tracking-protection-icon-container")
+            ?.closest("#nav-bar") === document.getElementById("nav-bar"),
+        urlbarOwnedByNavBar:
+          document.getElementById("urlbar")?.closest("#nav-bar") ===
+          document.getElementById("nav-bar"),
+      },
       namespaceComplete: allProjectElements.every(
         element => element.namespaceURI === XHTML_NS
       ),
@@ -1342,7 +1424,7 @@ async function exerciseEdgeShell(client) {
       const bottomRightOwnedByRight = visible("right") && !visible("bottom");
       await releasePointer("right");
 
-      const focusOrigin = document.getElementById("urlbar-input");
+      const focusOrigin = gBrowser.selectedBrowser;
       if (!focusOrigin || typeof focusOrigin.focus !== "function") {
         throw new Error("FENNEVIA_FIREFOX_TEST_FOCUS_ORIGIN_MISSING");
       }
@@ -2014,13 +2096,18 @@ async function exerciseAddressInput(client) {
         const launcherLocation = () =>
           launcher.querySelector(".fennevia-address-launcher__location")
             ?.textContent?.trim() ?? "";
+        const nativeNavBar = document.getElementById("nav-bar");
 
         await loadNative(baseUrl + "/draft");
         const documentRoot = document.documentElement;
         const hadHealthyMarker = documentRoot.hasAttribute(
           "data-fennevia-healthy"
         );
+        const hadActiveMarker = documentRoot.hasAttribute(
+          "data-fennevia-active"
+        );
         documentRoot.removeAttribute("data-fennevia-healthy");
+        documentRoot.removeAttribute("data-fennevia-active");
         gBrowser.selectedBrowser.focus();
         const nativeFallbackDispatchResult = dispatchOpenLocation();
         await waitFor(
@@ -2028,12 +2115,22 @@ async function exerciseAddressInput(client) {
           "FENNEVIA_FIREFOX_TEST_ADDRESS_NATIVE_FALLBACK_TIMEOUT"
         );
         const nativeFallbackWorked =
-          nativeFallbackDispatchResult && nativeUrlbar.focused;
+          nativeFallbackDispatchResult &&
+          nativeUrlbar.focused &&
+          getComputedStyle(nativeNavBar).visibility !== "collapse";
         nativeUrlbar.blur();
         nativeUrlbar.view.close();
+        gBrowser.selectedBrowser.focus();
         if (hadHealthyMarker) {
           documentRoot.setAttribute("data-fennevia-healthy", "");
         }
+        if (hadActiveMarker) {
+          documentRoot.setAttribute("data-fennevia-active", "");
+        }
+        await waitFor(
+          () => getComputedStyle(nativeNavBar).visibility === "collapse",
+          "FENNEVIA_FIREFOX_TEST_ADDRESS_NATIVE_FALLBACK_RELEASE_TIMEOUT"
+        );
 
         const customCommandDispatchResult = dispatchOpenLocation();
         await waitFor(
@@ -2159,17 +2256,42 @@ async function exerciseAddressInput(client) {
         );
         const urlbarItemsUpdated = true;
 
+        const nativeUiHiddenBeforeHandoff =
+          !documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
+          getComputedStyle(nativeNavBar).visibility === "collapse";
         nativeAccess.click();
         await waitFor(
           () =>
             !popupVisible() &&
             popupPhase() === "hidden" &&
-            nativeUrlbar.focused,
+            nativeUrlbar.focused &&
+            documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
+            getComputedStyle(nativeNavBar).visibility !== "collapse",
           "FENNEVIA_FIREFOX_TEST_NATIVE_URLBAR_ACCESS_TIMEOUT"
         );
-        const nativeUrlbarAccessWorked = true;
+        const nativeUrlbarAccessWorked =
+          [
+            "urlbar",
+            "identity-box",
+            "tracking-protection-icon-container",
+            "identity-permission-box",
+            "page-action-buttons",
+            "downloads-button",
+            "PanelUI-button",
+          ].every(id => {
+            const element = document.getElementById(id);
+            return element && nativeNavBar.contains(element);
+          }) && nativeNavBar.getBoundingClientRect().height > 0;
         nativeUrlbar.blur();
         nativeUrlbar.view.close();
+        gBrowser.selectedBrowser.focus();
+        await waitFor(
+          () =>
+            !documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
+            getComputedStyle(nativeNavBar).visibility === "collapse",
+          "FENNEVIA_FIREFOX_TEST_NATIVE_URLBAR_RELEASE_TIMEOUT"
+        );
+        const nativeUrlbarHandoffReleased = true;
         dispatchOpenLocation();
         await waitFor(
           () => popupPhase() === "editing" && document.activeElement === input,
@@ -2449,7 +2571,9 @@ async function exerciseAddressInput(client) {
           launcherCancelRestored,
           longInputBounded,
           nativeFallbackWorked,
+          nativeUiHiddenBeforeHandoff,
           nativeUrlbarAccessWorked,
+          nativeUrlbarHandoffReleased,
           nativeSubmissionSynchronized,
           permissionStatusMatched,
           searchObserved,
@@ -2481,7 +2605,9 @@ function assertAddressInput(result) {
     "launcherCancelRestored",
     "longInputBounded",
     "nativeFallbackWorked",
+    "nativeUiHiddenBeforeHandoff",
     "nativeUrlbarAccessWorked",
+    "nativeUrlbarHandoffReleased",
     "nativeSubmissionSynchronized",
     "permissionStatusMatched",
     "searchObserved",
@@ -2527,7 +2653,8 @@ async function exerciseUrlbarCoverageMatrix(client) {
   const baseUrl = `http://fennevia.test:${address.port}`;
 
   try {
-    return await client.execute(`
+    return await client.execute(
+      `
       return (async () => {
         const baseUrl = ${JSON.stringify(baseUrl)};
         const httpsUrl = "https://example.com/";
@@ -2788,7 +2915,9 @@ async function exerciseUrlbarCoverageMatrix(client) {
           await closePopup();
         }
       })();
-    `, URLBAR_COVERAGE_MATRIX_TIMEOUT_MS);
+    `,
+      URLBAR_COVERAGE_MATRIX_TIMEOUT_MS,
+    );
   } finally {
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
@@ -4011,10 +4140,33 @@ async function exerciseDownloadsMvp(client) {
         if (!nativeButton || !nativePanel) {
           throw new Error("FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_MISSING");
         }
+        const nativeToolbox = document.getElementById("navigator-toolbox");
+        const documentRoot = document.documentElement;
+        nativeToolbox.dispatchEvent(
+          new PointerEvent("pointerenter", { bubbles: false })
+        );
+        await waitFor(
+          () =>
+            documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
+            getComputedStyle(document.getElementById("nav-bar")).visibility !==
+              "collapse",
+          "FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_REVEAL_TIMEOUT"
+        );
+        const nativeUiRevealedForDownloads = true;
         nativeButton.click();
         await waitFor(
           () => nativePanel.state === "open",
           "FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_OPEN_TIMEOUT"
+        );
+        nativeToolbox.dispatchEvent(
+          new PointerEvent("pointerleave", {
+            bubbles: false,
+            relatedTarget: document.getElementById("browser"),
+          })
+        );
+        await new Promise(resolve => window.setTimeout(resolve, 260));
+        const nativePopupHeldReveal = documentRoot.hasAttribute(
+          "data-fennevia-native-ui-revealed"
         );
         const nativeDownloadsRetained =
           bottomRoot.getAttribute("data-fennevia-visible") === "false";
@@ -4023,6 +4175,12 @@ async function exerciseDownloadsMvp(client) {
           () => nativePanel.state === "closed",
           "FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_CLOSE_TIMEOUT"
         );
+        await waitFor(
+          () =>
+            !documentRoot.hasAttribute("data-fennevia-native-ui-revealed"),
+          "FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_HIDE_TIMEOUT"
+        );
+        const nativeUiHidAfterDownloads = true;
 
         result = {
           allUpdatesStayedHidden,
@@ -4033,6 +4191,9 @@ async function exerciseDownloadsMvp(client) {
           knownWeighted,
           mixedUnknownIndeterminate,
           nativeDownloadsRetained,
+          nativePopupHeldReveal,
+          nativeUiHidAfterDownloads,
+          nativeUiRevealedForDownloads,
           noFeatureActions,
           noSensitiveDom,
           pausedExternally,
@@ -4073,6 +4234,9 @@ function assertDownloadsMvp(result, windowKind) {
     knownWeighted: true,
     mixedUnknownIndeterminate: true,
     nativeDownloadsRetained: true,
+    nativePopupHeldReveal: true,
+    nativeUiHidAfterDownloads: true,
+    nativeUiRevealedForDownloads: true,
     noFeatureActions: true,
     noSensitiveDom: true,
     pausedExternally: true,
@@ -4504,7 +4668,7 @@ async function exerciseFrontendUnmountRemount(client) {
   `);
 }
 function assertShellHostState(state, windowKind) {
-  assert.equal(state.active, false);
+  assert.equal(state.active, true);
   assert.equal(state.browserStillPresent, true);
   assert.equal(state.nativeTabboxStillPresent, true);
   assert.equal(state.nativeModalAvailable, true);
@@ -4517,7 +4681,7 @@ function assertShellHostState(state, windowKind) {
     failed: false,
     healthy: true,
     mounted: true,
-    state: "healthy",
+    state: "active",
   });
   assert.equal(state.namespaceComplete, true);
   assert.equal(state.ownershipComplete, true);
@@ -4530,6 +4694,40 @@ function assertShellHostState(state, windowKind) {
     position: "absolute",
     runtimeStyleParent: true,
   });
+  try {
+    assert.equal(state.nativeUi.styleParentIsFrame, true);
+    assert.equal(state.nativeUi.styleRuleCount, 5);
+    assert.equal(state.nativeUi.revealed, false);
+    assert.equal(state.nativeUi.suspended, false);
+    assert.equal(state.nativeUi.identityBoxOwnedByNavBar, true);
+    assert.equal(state.nativeUi.trackingProtectionOwnedByNavBar, true);
+    assert.equal(state.nativeUi.urlbarOwnedByNavBar, true);
+    assert.equal(state.nativeUi.notificationsToolbarPresent, true);
+    assert.ok(state.nativeUi.titlebarCloseButtonCount >= 3);
+    assert.ok(state.nativeUi.visibleTitlebarCloseButtonCount >= 1);
+    assert.equal(state.nativeUi.personalToolbar?.visibility, "collapse");
+    for (const key of [
+      "sidebarBox",
+      "sidebarContainer",
+      "sidebarLauncherSplitter",
+      "sidebarSplitter",
+    ]) {
+      assert.equal(state.nativeUi[key]?.visibility, "collapse", key);
+    }
+    if (state.nativeUi.tabsHidden) {
+      assert.notEqual(state.nativeUi.navBar?.visibility, "collapse");
+      assert.equal(
+        state.nativeUi.navBarCustomizationTarget?.visibility,
+        "collapse",
+      );
+    } else {
+      assert.equal(state.nativeUi.tabsToolbarItems?.visibility, "collapse");
+      assert.equal(state.nativeUi.navBar?.visibility, "collapse");
+    }
+  } catch (error) {
+    console.error(`nativeUiStateDiagnostics=${JSON.stringify(state.nativeUi)}`);
+    throw error;
+  }
   for (const [index, edge] of ["top", "left", "right", "bottom"].entries()) {
     assert.deepEqual(state.edgeHosts[edge], {
       hostParentIsFrame: true,
@@ -4607,6 +4805,402 @@ async function assertNativeModalUnobstructed(client) {
     modalPseudo: true,
     open: true,
   });
+}
+
+async function exerciseNativeUiPolicies(client) {
+  return client.execute(
+    `
+    return (async () => {
+      const root = document.documentElement;
+      const toolbox = document.getElementById("navigator-toolbox");
+      const frame = document.getElementById("fennevia-shell-frame-host");
+      const navBar = document.getElementById("nav-bar");
+      const sidebarBox = document.getElementById("sidebar-box");
+      const nativeStyle = document.getElementById("fennevia-native-ui-style");
+      if (
+        !toolbox ||
+        !frame ||
+        !navBar ||
+        !sidebarBox ||
+        !nativeStyle ||
+        typeof SidebarController?.show !== "function" ||
+        typeof SidebarController?.hide !== "function" ||
+        typeof gCustomizeMode?.enter !== "function" ||
+        typeof gCustomizeMode?.exit !== "function"
+      ) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_NATIVE_UI_POLICY_MISSING");
+      }
+
+      const waitFor = async (predicate, code, timeoutMs = 15000) => {
+        const deadline = Date.now() + timeoutMs;
+        while (Date.now() < deadline) {
+          if (predicate()) {
+            return;
+          }
+          await new Promise(resolve => window.setTimeout(resolve, 20));
+        }
+        throw new Error(code);
+      };
+      const eventAfter = (target, type, action) =>
+        new Promise((resolve, reject) => {
+          const timer = window.setTimeout(() => {
+            target.removeEventListener(type, onEvent);
+            reject(new Error("FENNEVIA_FIREFOX_TEST_NATIVE_UI_EVENT_TIMEOUT"));
+          }, 15000);
+          const onEvent = () => {
+            window.clearTimeout(timer);
+            resolve();
+          };
+          target.addEventListener(type, onEvent, { once: true });
+          try {
+            action();
+          } catch (error) {
+            window.clearTimeout(timer);
+            target.removeEventListener(type, onEvent);
+            reject(error);
+          }
+        });
+
+      const baselineResting =
+        root.hasAttribute("data-fennevia-active") &&
+        !root.hasAttribute("data-fennevia-native-ui-revealed") &&
+        !root.hasAttribute("data-fennevia-native-ui-suspended") &&
+        getComputedStyle(navBar).visibility === "collapse";
+
+      let sidebarReachable = false;
+      let sidebarHeldReveal = false;
+      let sidebarRestored = false;
+      let customizeExposedNative = false;
+      let customizeRestoredActive = false;
+      let browserFullscreenStayedActive = false;
+      let browserFullscreenRestored = false;
+      let nativeVerticalTabsPreservedTitlebar = false;
+      let nativeVerticalTabsRestored = false;
+      const originallyFullscreen = window.fullScreen;
+      const verticalTabsPref = "sidebar.verticalTabs";
+      const hadVerticalTabsUserValue =
+        Services.prefs.prefHasUserValue(verticalTabsPref);
+      const originalVerticalTabs = Services.prefs.getBoolPref(
+        verticalTabsPref,
+        false
+      );
+      try {
+        await SidebarController.show("viewHistorySidebar");
+        await waitFor(
+          () =>
+            !sidebarBox.hasAttribute("hidden") &&
+            root.hasAttribute("data-fennevia-native-ui-revealed") &&
+            getComputedStyle(sidebarBox).visibility !== "collapse",
+          "FENNEVIA_FIREFOX_TEST_NATIVE_SIDEBAR_SHOW_TIMEOUT"
+        );
+        sidebarReachable = SidebarController.currentID === "viewHistorySidebar";
+        await new Promise(resolve => window.setTimeout(resolve, 260));
+        sidebarHeldReveal = root.hasAttribute(
+          "data-fennevia-native-ui-revealed"
+        );
+        SidebarController.hide();
+        await waitFor(
+          () => sidebarBox.hasAttribute("hidden"),
+          "FENNEVIA_FIREFOX_TEST_NATIVE_SIDEBAR_HIDE_TIMEOUT"
+        );
+        await new Promise(resolve => window.setTimeout(resolve, 300));
+        sidebarRestored =
+          !root.hasAttribute("data-fennevia-native-ui-revealed") &&
+          getComputedStyle(sidebarBox).visibility === "collapse";
+
+        Services.prefs.setBoolPref(verticalTabsPref, true);
+        await waitFor(
+          () =>
+            toolbox.hasAttribute("tabs-hidden") &&
+            getComputedStyle(navBar).visibility !== "collapse" &&
+            getComputedStyle(
+              document.getElementById("nav-bar-customization-target")
+            ).visibility === "collapse",
+          "FENNEVIA_FIREFOX_TEST_NATIVE_VERTICAL_TABS_TIMEOUT"
+        );
+        nativeVerticalTabsPreservedTitlebar = [
+          ...navBar.querySelectorAll(
+            '.titlebar-buttonbox-container .titlebar-close[command="cmd_closeWindow"]'
+          ),
+        ].some(button => {
+          const rect = button.getBoundingClientRect();
+          const computed = getComputedStyle(button);
+          return (
+            computed.visibility !== "collapse" &&
+            computed.visibility !== "hidden" &&
+            computed.display !== "none" &&
+            rect.width > 0 &&
+            rect.height > 0
+          );
+        });
+        if (hadVerticalTabsUserValue) {
+          Services.prefs.setBoolPref(verticalTabsPref, originalVerticalTabs);
+        } else {
+          Services.prefs.clearUserPref(verticalTabsPref);
+        }
+        await waitFor(
+          () =>
+            !toolbox.hasAttribute("tabs-hidden") &&
+            getComputedStyle(navBar).visibility === "collapse",
+          "FENNEVIA_FIREFOX_TEST_NATIVE_VERTICAL_TABS_RESTORE_TIMEOUT"
+        );
+        nativeVerticalTabsRestored = true;
+
+        await eventAfter(toolbox, "customizationready", () => {
+          gCustomizeMode.enter();
+        });
+        await waitFor(
+          () =>
+            root.hasAttribute("customizing") &&
+            root.hasAttribute("data-fennevia-native-ui-suspended") &&
+            frame.getAttribute("data-fennevia-environment") === "customize-mode",
+          "FENNEVIA_FIREFOX_TEST_NATIVE_CUSTOMIZE_ENTER_TIMEOUT"
+        );
+        customizeExposedNative =
+          getComputedStyle(frame).visibility === "hidden" &&
+          getComputedStyle(navBar).visibility !== "collapse";
+        await eventAfter(toolbox, "aftercustomization", () => {
+          gCustomizeMode.exit();
+        });
+        await waitFor(
+          () =>
+            !root.hasAttribute("customizing") &&
+            !root.hasAttribute("data-fennevia-native-ui-suspended") &&
+            frame.getAttribute("data-fennevia-environment") === "normal" &&
+            getComputedStyle(navBar).visibility === "collapse",
+          "FENNEVIA_FIREFOX_TEST_NATIVE_CUSTOMIZE_EXIT_TIMEOUT"
+        );
+        customizeRestoredActive =
+          root.hasAttribute("data-fennevia-active") &&
+          nativeStyle.sheet.cssRules.length === 5;
+
+        window.fullScreen = true;
+        await waitFor(
+          () => root.hasAttribute("inFullscreen") && window.fullScreen,
+          "FENNEVIA_FIREFOX_TEST_NATIVE_BROWSER_FULLSCREEN_ENTER_TIMEOUT"
+        );
+        browserFullscreenStayedActive =
+          root.hasAttribute("data-fennevia-active") &&
+          frame.getAttribute("data-fennevia-environment") === "normal";
+        window.fullScreen = false;
+        await waitFor(
+          () => !root.hasAttribute("inFullscreen") && !window.fullScreen,
+          "FENNEVIA_FIREFOX_TEST_NATIVE_BROWSER_FULLSCREEN_EXIT_TIMEOUT"
+        );
+        browserFullscreenRestored =
+          root.hasAttribute("data-fennevia-active") &&
+          getComputedStyle(navBar).visibility === "collapse";
+      } finally {
+        if (root.hasAttribute("customizing")) {
+          try {
+            gCustomizeMode.exit();
+          } catch {}
+        }
+        if (!sidebarBox.hasAttribute("hidden")) {
+          try {
+            SidebarController.hide();
+          } catch {}
+        }
+        if (window.fullScreen !== originallyFullscreen) {
+          window.fullScreen = originallyFullscreen;
+        }
+        if (hadVerticalTabsUserValue) {
+          Services.prefs.setBoolPref(verticalTabsPref, originalVerticalTabs);
+        } else if (Services.prefs.prefHasUserValue(verticalTabsPref)) {
+          Services.prefs.clearUserPref(verticalTabsPref);
+        }
+      }
+
+      return {
+        baselineResting,
+        browserFullscreenRestored,
+        browserFullscreenStayedActive,
+        customizeExposedNative,
+        customizeRestoredActive,
+        nativeVerticalTabsPreservedTitlebar,
+        nativeVerticalTabsRestored,
+        sidebarHeldReveal,
+        sidebarReachable,
+        sidebarRestored,
+      };
+    })();
+  `,
+    45000,
+  );
+}
+
+function assertNativeUiPolicies(result) {
+  const expected = {
+    baselineResting: true,
+    browserFullscreenRestored: true,
+    browserFullscreenStayedActive: true,
+    customizeExposedNative: true,
+    customizeRestoredActive: true,
+    nativeVerticalTabsPreservedTitlebar: true,
+    nativeVerticalTabsRestored: true,
+    sidebarHeldReveal: true,
+    sidebarReachable: true,
+    sidebarRestored: true,
+  };
+  try {
+    assert.deepEqual(result, expected);
+  } catch (error) {
+    console.error(
+      `nativeUiPolicyDiagnostics=${JSON.stringify({ expected, result })}`,
+    );
+    throw error;
+  }
+}
+
+async function exerciseWindowStatePolicy(client) {
+  const initialResult = await client.request("WebDriver:GetWindowRect", {});
+  const initial = initialResult.value ?? initialResult;
+  const target = {
+    height: Math.max(520, Math.min(680, initial.height - 80)),
+    width: Math.max(720, Math.min(920, initial.width - 120)),
+    x: initial.x + 24,
+    y: initial.y + 24,
+  };
+  const inspect = () =>
+    client.execute(`
+      const frame = document.getElementById("fennevia-shell-frame-host");
+      const browser = document.getElementById("browser");
+      const style = document.getElementById("fennevia-native-ui-style");
+      const frameRect = frame?.getBoundingClientRect();
+      const browserRect = browser?.getBoundingClientRect();
+      const visibleClose = [
+        ...document.querySelectorAll(
+          '.titlebar-buttonbox-container .titlebar-close[command="cmd_closeWindow"]'
+        ),
+      ].some(button => {
+        const rect = button.getBoundingClientRect();
+        const computed = getComputedStyle(button);
+        return computed.display !== "none" &&
+          computed.visibility !== "hidden" &&
+          computed.visibility !== "collapse" &&
+          rect.width > 0 && rect.height > 0;
+      });
+      return {
+        active: document.documentElement.hasAttribute("data-fennevia-active"),
+        browserGeometryPreserved:
+          Math.round(frameRect?.width ?? -1) ===
+            Math.round(browserRect?.width ?? -2) &&
+          Math.round(frameRect?.height ?? -1) ===
+            Math.round(browserRect?.height ?? -2),
+        styleRuleCount: style?.sheet?.cssRules?.length ?? 0,
+        visibleClose,
+        windowState: window.windowState,
+        windowStateMaximized: window.STATE_MAXIMIZED,
+        windowStateMinimized: window.STATE_MINIMIZED,
+        windowStateNormal: window.STATE_NORMAL,
+      };
+    `);
+
+  let resized;
+  let maximized;
+  let minimized;
+  let restored;
+  try {
+    const resizeResult = await client.request(
+      "WebDriver:SetWindowRect",
+      target,
+    );
+    const resizeRect = resizeResult.value ?? resizeResult;
+    const resizeState = await inspect();
+    resized =
+      Math.abs(resizeRect.width - target.width) <= 2 &&
+      Math.abs(resizeRect.height - target.height) <= 2 &&
+      resizeState.active &&
+      resizeState.browserGeometryPreserved &&
+      resizeState.styleRuleCount === 5 &&
+      resizeState.visibleClose;
+
+    await client.request("WebDriver:MaximizeWindow", {});
+    const maximizeState = await inspect();
+    maximized =
+      maximizeState.windowState === maximizeState.windowStateMaximized &&
+      maximizeState.active &&
+      maximizeState.browserGeometryPreserved &&
+      maximizeState.styleRuleCount === 5 &&
+      maximizeState.visibleClose;
+
+    await client.request("WebDriver:MinimizeWindow", {});
+    const minimizeState = await inspect();
+    minimized =
+      minimizeState.windowState === minimizeState.windowStateMinimized &&
+      minimizeState.active &&
+      minimizeState.styleRuleCount === 5;
+  } finally {
+    await client.request("WebDriver:SetWindowRect", initial);
+    const restoreState = await inspect();
+    restored =
+      restoreState.windowState === restoreState.windowStateNormal &&
+      restoreState.active &&
+      restoreState.browserGeometryPreserved &&
+      restoreState.styleRuleCount === 5 &&
+      restoreState.visibleClose;
+  }
+  return { maximized, minimized, resized, restored };
+}
+
+async function exercisePartialNativeUiCssFailOpen(client) {
+  return client.execute(`
+    return (async () => {
+      const root = document.documentElement;
+      const style = document.getElementById("fennevia-native-ui-style");
+      const navBar = document.getElementById("nav-bar");
+      const tabsToolbarItems = document.querySelector(
+        "#TabsToolbar > .toolbar-items"
+      );
+      if (
+        !root.hasAttribute("data-fennevia-active") ||
+        !style ||
+        style.sheet.cssRules.length !== 5 ||
+        !navBar ||
+        !tabsToolbarItems
+      ) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_NATIVE_UI_CSS_PRECONDITION");
+      }
+      style.textContent =
+        ":root[data-fennevia-active] #PersonalToolbar { visibility: collapse !important; }";
+      const deadline = Date.now() + 10000;
+      while (Date.now() < deadline) {
+        if (
+          !root.hasAttribute("data-fennevia-active") &&
+          !document.getElementById("fennevia-shell-frame-host") &&
+          !document.getElementById("fennevia-native-ui-style")
+        ) {
+          break;
+        }
+        await new Promise(resolve => window.setTimeout(resolve, 20));
+      }
+      const titlebarButtons = [
+        ...document.querySelectorAll(
+          '.titlebar-buttonbox-container .titlebar-close[command="cmd_closeWindow"]'
+        ),
+      ];
+      return {
+        activeCleared: !root.hasAttribute("data-fennevia-active"),
+        hostRemoved: !document.getElementById("fennevia-shell-frame-host"),
+        nativeNavigationVisible:
+          getComputedStyle(navBar).visibility !== "collapse",
+        nativeTabsVisible:
+          getComputedStyle(tabsToolbarItems).visibility !== "collapse",
+        nativeWindowControlVisible: titlebarButtons.some(button => {
+          const rect = button.getBoundingClientRect();
+          const computed = getComputedStyle(button);
+          return (
+            computed.display !== "none" &&
+            computed.visibility !== "collapse" &&
+            computed.visibility !== "hidden" &&
+            rect.width > 0 &&
+            rect.height > 0
+          );
+        }),
+        styleRemoved: !document.getElementById("fennevia-native-ui-style"),
+      };
+    })();
+  `);
 }
 
 async function exerciseMissingInsertionPointFailOpen(client) {
@@ -5166,6 +5760,11 @@ const EXPECTED_NATIVE_STATE = Object.freeze({
   windowType: "navigator:browser",
 });
 
+const EXPECTED_ACTIVE_NATIVE_STATE = Object.freeze({
+  ...EXPECTED_NATIVE_STATE,
+  active: true,
+});
+
 function countEvent(evidence, event, windowKind) {
   return evidence.records.filter(
     (record) =>
@@ -5451,39 +6050,39 @@ async function run() {
             phase: "firefox-urlbar-coverage-capability",
           }
         : options.expectNavigationBridgeFailOpen
-        ? {
-            code: "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
-            phase: "firefox-navigation-capability",
-          }
-        : options.expectBookmarksBridgeFailOpen
           ? {
-              code: "FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING",
-              phase: "firefox-bookmarks-capability",
+              code: "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
+              phase: "firefox-navigation-capability",
             }
-          : options.expectDownloadsBridgeFailOpen
+          : options.expectBookmarksBridgeFailOpen
             ? {
-                code: "FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING",
-                phase: "firefox-downloads-capability",
+                code: "FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING",
+                phase: "firefox-bookmarks-capability",
               }
-          : options.expectTabsBridgeFailOpen
-            ? {
-                code: "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
-                phase: "firefox-tabs-capability",
-              }
-            : options.expectBridgeFailOpen
+            : options.expectDownloadsBridgeFailOpen
               ? {
-                  code: "FENNEVIA_FIREFOX_CAPABILITY_MISSING",
-                  phase: "firefox-bridge-capability",
+                  code: "FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING",
+                  phase: "firefox-downloads-capability",
                 }
-              : options.expectShellMissingFailOpen
+              : options.expectTabsBridgeFailOpen
                 ? {
-                    code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
-                    phase: "shell-frontend-load",
+                    code: "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
+                    phase: "firefox-tabs-capability",
                   }
-                : {
-                    code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
-                    phase: "shell-frontend-mount",
-                  };
+                : options.expectBridgeFailOpen
+                  ? {
+                      code: "FENNEVIA_FIREFOX_CAPABILITY_MISSING",
+                      phase: "firefox-bridge-capability",
+                    }
+                  : options.expectShellMissingFailOpen
+                    ? {
+                        code: "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
+                        phase: "shell-frontend-load",
+                      }
+                    : {
+                        code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
+                        phase: "shell-frontend-mount",
+                      };
       assert.equal(shellFailures[0].code, expectedShellFailure.code);
       assert.equal(shellFailures[0].phase, expectedShellFailure.phase);
       assert.equal(shellFailures[0].windowKind, "normal");
@@ -5493,15 +6092,15 @@ async function run() {
           ? "window.openLocation"
           : options.expectNavigationBridgeFailOpen
             ? "window.gBrowser.removeTabsProgressListener"
-          : options.expectBookmarksBridgeFailOpen
-            ? "PlacesUtils.bookmarks.fetch"
-            : options.expectDownloadsBridgeFailOpen
-              ? "DownloadList.addView"
-            : options.expectTabsBridgeFailOpen
-              ? "window.gBrowser.openTabs"
-              : options.expectBridgeFailOpen
-                ? "window.gBrowser"
-                : undefined,
+            : options.expectBookmarksBridgeFailOpen
+              ? "PlacesUtils.bookmarks.fetch"
+              : options.expectDownloadsBridgeFailOpen
+                ? "DownloadList.addView"
+                : options.expectTabsBridgeFailOpen
+                  ? "window.gBrowser.openTabs"
+                  : options.expectBridgeFailOpen
+                    ? "window.gBrowser"
+                    : undefined,
       );
       assert.ok(Array.isArray(shellFailures[0].stack));
       assert.ok(
@@ -5606,11 +6205,24 @@ async function run() {
     );
     assert.equal(startupEvidence.firstPartyScriptErrorCount, 0);
 
-    assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
+    assert.deepEqual(
+      await collectNativeState(client),
+      EXPECTED_ACTIVE_NATIVE_STATE,
+    );
     assertShellHostState(await collectShellHostState(client), "normal");
     assertFrontendState(await collectFrontendState(client), "normal");
     assertEdgeShellInteraction(await exerciseEdgeShell(client));
     assertFrontendState(await collectFrontendState(client), "normal");
+    assertNativeUiPolicies(await exerciseNativeUiPolicies(client));
+    assertShellHostState(await collectShellHostState(client), "normal");
+    assertFrontendState(await collectFrontendState(client), "normal");
+    assert.deepEqual(await exerciseWindowStatePolicy(client), {
+      maximized: true,
+      minimized: true,
+      resized: true,
+      restored: true,
+    });
+    assertShellHostState(await collectShellHostState(client), "normal");
     await assertNativeModalUnobstructed(client);
     if (options.browserToolbox) {
       await runBrowserToolboxOwnershipProbe(client);
@@ -5804,6 +6416,66 @@ async function run() {
     assert.equal(countEvent(evidence, "shell.hosts-disposed", "normal"), 1);
     assert.equal(countEvent(evidence, "bridge.boundary-disposed", "normal"), 1);
 
+    const cssFailureWindowResult = await client.request("WebDriver:NewWindow", {
+      focus: true,
+      private: false,
+      type: "window",
+    });
+    const cssFailureWindow =
+      cssFailureWindowResult.value ?? cssFailureWindowResult;
+    assert.equal(cssFailureWindow.type, "window");
+    await waitForState(
+      client,
+      (state) => state?.managedWindowCount === 2,
+      "FENNEVIA_FIREFOX_TEST_NATIVE_UI_CSS_WINDOW_TIMEOUT",
+    );
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: cssFailureWindow.handle,
+    });
+    await client.request("Marionette:SetContext", { value: "chrome" });
+    assertShellHostState(await collectShellHostState(client), "normal");
+    assert.deepEqual(await exercisePartialNativeUiCssFailOpen(client), {
+      activeCleared: true,
+      hostRemoved: true,
+      nativeNavigationVisible: true,
+      nativeTabsVisible: true,
+      nativeWindowControlVisible: true,
+      styleRemoved: true,
+    });
+    await assertNoShellHosts(client);
+    evidence = await collectEvidence(client);
+    const cssFailures = evidence.records.filter(
+      (record) =>
+        record.event === "shell.lifecycle-failed" &&
+        record.code === "FENNEVIA_NATIVE_UI_STYLE_PARTIAL",
+    );
+    assert.equal(cssFailures.length, 1);
+    assert.equal(cssFailures[0].phase, "native-ui-style-validate");
+    assert.equal(cssFailures[0].windowKind, "normal");
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: originalHandle,
+    });
+    await client.request("Marionette:SetContext", { value: "chrome" });
+    assertShellHostState(await collectShellHostState(client), "normal");
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: cssFailureWindow.handle,
+    });
+    await client.request("Marionette:SetContext", { value: "chrome" });
+    await client.request("WebDriver:CloseWindow");
+    await client.request("WebDriver:SwitchToWindow", {
+      handle: originalHandle,
+    });
+    await client.request("Marionette:SetContext", { value: "chrome" });
+    await waitForState(
+      client,
+      (state) => state?.managedWindowCount === 1,
+      "FENNEVIA_FIREFOX_TEST_NATIVE_UI_CSS_WINDOW_CLOSE_TIMEOUT",
+    );
+    evidence = await collectEvidence(client);
+    assert.equal(countEvent(evidence, "window.disposed", "normal"), 2);
+    assert.equal(countEvent(evidence, "shell.hosts-disposed", "normal"), 2);
+    assert.equal(countEvent(evidence, "bridge.boundary-disposed", "normal"), 2);
+
     const privateWindowResult = await client.request("WebDriver:NewWindow", {
       focus: true,
       private: true,
@@ -5919,9 +6591,9 @@ async function run() {
 
     evidence = await collectEvidence(client);
     assert.equal(countEvent(evidence, "runtime.stopped"), 1);
-    assert.equal(countEvent(evidence, "shell.hosts-disposed", "normal"), 2);
+    assert.equal(countEvent(evidence, "shell.hosts-disposed", "normal"), 3);
     assert.equal(countEvent(evidence, "shell.hosts-disposed", "private"), 1);
-    assert.equal(countEvent(evidence, "bridge.boundary-disposed", "normal"), 2);
+    assert.equal(countEvent(evidence, "bridge.boundary-disposed", "normal"), 3);
     assert.equal(
       countEvent(evidence, "bridge.boundary-disposed", "private"),
       1,
@@ -5942,12 +6614,34 @@ async function run() {
     assert.equal(expectedShellFailures[0].buildId, "20260810162159");
     assert.ok(Array.isArray(expectedShellFailures[0].stack));
     assert.ok(expectedShellFailures[0].stack.length > 0);
-    assert.equal(countEvent(evidence, "window.disposed", "normal"), 2);
+    assert.equal(countEvent(evidence, "window.disposed", "normal"), 3);
     assert.equal(countEvent(evidence, "window.disposed", "private"), 1);
     const expectedLifecycleFailures = evidence.records.filter(
       (record) => record.event === "shell.lifecycle-failed",
     );
-    assert.equal(expectedLifecycleFailures.length, 1);
+    if (expectedLifecycleFailures.length !== 2) {
+      console.error(
+        `lifecycleFailureDiagnostics=${JSON.stringify(
+          expectedLifecycleFailures.map((record) => ({
+            code: record.code,
+            domPath: record.domPath,
+            nearby: (() => {
+              const index = evidence.records.indexOf(record);
+              return evidence.records
+                .slice(Math.max(0, index - 3), index + 4)
+                .map((candidate) => ({
+                  code: candidate.code,
+                  event: candidate.event,
+                  windowKind: candidate.windowKind,
+                }));
+            })(),
+            phase: record.phase,
+            windowKind: record.windowKind,
+          })),
+        )}`,
+      );
+    }
+    assert.equal(expectedLifecycleFailures.length, 2);
     assert.equal(
       expectedLifecycleFailures[0].code,
       "FENNEVIA_EMERGENCY_FALLBACK_INVOKED",
@@ -5962,6 +6656,22 @@ async function run() {
     assert.ok(
       expectedLifecycleFailures[0].stack.some((line) =>
         line.includes("WindowShell.sys.mjs"),
+      ),
+    );
+    assert.equal(
+      expectedLifecycleFailures[1].code,
+      "FENNEVIA_NATIVE_UI_STYLE_PARTIAL",
+    );
+    assert.equal(
+      expectedLifecycleFailures[1].phase,
+      "native-ui-style-validate",
+    );
+    assert.equal(expectedLifecycleFailures[1].firefoxVersion, "153.0.4");
+    assert.equal(expectedLifecycleFailures[1].buildId, "20260810162159");
+    assert.ok(Array.isArray(expectedLifecycleFailures[1].stack));
+    assert.ok(
+      expectedLifecycleFailures[1].stack.some((line) =>
+        line.includes("NativeUi.sys.mjs"),
       ),
     );
     const unexpectedErrorRecords = evidence.records.filter(
@@ -6002,8 +6712,9 @@ async function run() {
     console.log(
       "PASS: Firefox lifecycle managed existing, second, and private windows;" +
         browserToolboxEvidence +
-        " excluded a tab; disposed on close/stop; retained native UI; and emitted " +
-        "no unexpected first-party script errors.",
+        " activated content-only UI; retained complete native reveal/fallback; " +
+        "validated resize/maximize/minimize/fullscreen/customize; excluded a tab; " +
+        "disposed on close/stop; and emitted no unexpected first-party script errors.",
     );
   } finally {
     if (child.exitCode === null) {

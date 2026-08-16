@@ -28,8 +28,10 @@ bridges.
 > Places and opaque per-window handles. The bottom edge contains an event-driven
 > anonymous download-status panel with determinate/indeterminate aggregate
 > progress; native Downloads management and safety remain Firefox-owned.
-> Firefox native UI remains visible and unchanged; content-only active mode is
-> not implemented yet.
+> Healthy browser windows now enter content-only active mode: exact replaceable
+> native surfaces collapse at rest, while complete native Urlbar, toolbar,
+> sidebar, popup, customization, and fail-open paths remain reversible and
+> source-validated.
 
 There is no daily-driver support, versioned end-user release, cross-platform
 support claim, or completed security audit.
@@ -49,17 +51,24 @@ protections panels, permissions, page actions, and security prompts. The popup
 shows only fixed Firefox-derived summaries and can hand focus to the complete
 native Urlbar.
 
+The retained Firefox toolbar is transient in active mode. Moving the pointer
+into Firefox's retained titlebar strip reveals the complete native toolbar;
+**Open full Firefox address bar** reveals and focuses the complete Urlbar. F9
+and the revealed native controls remain the path to unsupported native or
+extension sidebars. Returning focus to web content and closing native panels
+restores the content-only resting view.
+
 Each surface is hidden at rest, reserves no permanent layout space, and is
 revealed by its matching window edge or an accessible keyboard/focus path. The
 surfaces share one Fennevia-owned reveal, collision, focus, popup-hold, cleanup,
 and frosted-glass design contract while retaining independent ownership and
 state.
 
-When the shell eventually enters healthy `active` mode, the normal Firefox
-client area should show only the current web page until one of those surfaces is
-revealed. Native OS window controls and Firefox security-sensitive prompts,
-dialogs, notifications, extension-install UI, download-safety UI, DevTools, and
-browser-content infrastructure remain Firefox-owned.
+When the shell enters healthy `active` mode, the normal Firefox client area
+shows only the current web page until one of those surfaces or a retained native
+path is revealed. Native OS window controls and Firefox security-sensitive
+prompts, dialogs, notifications, extension-install UI, download-safety UI,
+DevTools, and browser-content infrastructure remain Firefox-owned.
 
 ## UI and UX philosophy
 
@@ -92,7 +101,7 @@ useful.
 | Urlbar permission/action coverage             | Complete — #37 | Fixed detailed permission/action availability, event-driven per-window bridge, and complete native Urlbar handoff                                           |
 | Right bookmarks                               | Complete — #14 | Typed Places bridge, bounded lazy hierarchy, native live updates, and Firefox-owned current/new-tab opening                                                   |
 | Bottom downloads                              | Complete — #32 | Per-window PUBLIC/PRIVATE list views, bounded anonymous state, accessible aggregate progress/status, and native safety/management retained                    |
-| Content-only activation                       | Pending — #15  | Reversible hiding of only the native surfaces with complete replacements                                                                                      |
+| Content-only activation                       | Complete — #15 | Exact active-only native surfaces, compact HTTPS/ETP status, complete native reveal/handoff, customize/fullscreen policy, and per-window fail-open             |
 | Hardening and Firefox-update workflow         | Pending — #16  | Full regression, resource, performance, cleanup, and stable-update matrix                                                                                     |
 | Project license                               | Pending — #18  | Owner-approved license and third-party attribution policy                                                                                                     |
 
@@ -228,6 +237,7 @@ and design.
 - [Firefox 153 Urlbar trust, permission, and action coverage](docs/research/firefox-153-urlbar-coverage.md)
 - [Firefox 153 right-edge bookmarks](docs/research/firefox-153-bookmarks-surface.md)
 - [Firefox 153 bottom-edge downloads](docs/research/firefox-153-downloads-surface.md)
+- [Firefox 153 content-only activation](docs/research/firefox-153-content-only-activation.md)
 
 Historical research files are immutable evidence of the tested milestone they
 describe. Later decisions supersede their production architecture through ADRs

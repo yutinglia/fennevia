@@ -531,22 +531,38 @@ Current #31 behavior:
 - all four edges suspend for native modal state, DOM fullscreen, and customize
   mode;
 - native titlebar, toolbox, sidebar, popup sets, tabbox, browser content,
-  notifications, prompts, and OS controls are not hidden, moved, resized, or
-  owned by Svelte.
+  notifications, prompts, and OS controls are not moved, resized, or owned by
+  Svelte.
 
 Issue #12's top surface invokes retained Firefox commands. The native navbar,
-Urlbar, identity/permission UI, prompts, and security indicators remain visible
+Urlbar, identity/permission UI, prompts, and security indicators remain attached
 and authoritative; Fennevia's bounded location text is not a security indicator.
 
 Issue #37 adds only fixed read-only status/action availability and an explicit
 handoff to `window.openLocation()`. It does not replace native panels, prompts,
 providers, extension actions, or commands.
 
-Issue #15 must hide only the narrowest surfaces with complete replacement and
-retained access. Its active-state path must make the native navbar/Urlbar
-visible and focused when #37 hands off, keep every native panel/prompt
-reachable, and restore native UI synchronously on failure. Missing evidence
-blocks activation.
+Issue #15 implements the narrow active-only boundary in ADR-032. One privileged
+controller validates exact Firefox 153 toolbar/sidebar/titlebar nodes and one
+five-rule project style. It never reads URLs, labels, principals, certificates,
+permissions, extension identity, popup contents, sidebar contents, or browser
+content. Root state stores only fixed reveal/suspension booleans; logs contain
+only fixed error phase/code, Firefox version/build, and per-window opaque ID.
+
+Horizontal tab items/navbar, the bookmarks toolbar, and exact native sidebar
+surfaces collapse only while active and not revealed/suspended. Native vertical
+tab mode retains its navbar titlebar owner. The toolbox, titlebar controls,
+notifications toolbar, popup sets, prompts, dialogs, tabbox, content, and
+DevTools are never targeted. Pointer/focus, anchored popup, open native sidebar,
+and #37 Urlbar handoff reveal the complete native owner. Customize,
+native-dialog, and DOM-fullscreen state suspend project hiding. Any missing,
+invalid, partial, or stably changed required target/style first exposes native
+UI and then requests per-window ADR-021 cleanup.
+
+This adds no dependency, network request, resource mapping, executable input,
+content-accessible asset, preference, persistence, remote font, or new data
+flow. The detailed threat and coverage evidence is in
+`docs/research/firefox-153-content-only-activation.md`.
 
 ## 13. Private windows
 
@@ -568,14 +584,14 @@ Implemented:
 - base lifecycle, health, frame, edge controller, tabs bridge, vertical tab UI,
   navigation/address bridge, compact launcher, centered popup, top controls,
   Urlbar-coverage bridge/details/native handoff, bookmarks bridge/right panel,
-  and Downloads bridge/bottom panel have isolated normal, second-normal, and
-  private instances;
+  Downloads bridge/bottom panel, and native visibility controller have isolated
+  normal, second-normal, and private instances;
 - opaque IDs include context/registry generation;
 - controllers, roots, holds, timers, listeners, mappings, and state are removed
   per window;
 - one window's emergency fallback does not mutate another.
 
-Issues #12–#14, #32, and #37 give each window its own navigation, Urlbar
+Issues #12–#15, #32, and #37 give each window its own navigation, Urlbar
 coverage, bookmarks, and Downloads controllers; selected snapshots;
 navigation, popup, Urlbar, bookmark, and download subscriber sets; popup
 controller/draft; two tab listeners; one tabs progress listener; one command

@@ -207,6 +207,7 @@ function createNativeWindow({ missingElementId } = {}) {
 function createController(options = {}) {
   const fixture = createNativeWindow(options);
   const errors = [];
+  let nativeUiRevealCount = 0;
   const boundary = createFirefoxBridgeBoundary({
     buildId: "20260810162159",
     contextId: `window-urlbar-coverage-${++nextContextSequence}`,
@@ -217,9 +218,21 @@ function createController(options = {}) {
   const controller = createFirefoxUrlbarCoverageBridge({
     boundary,
     onError: (error) => errors.push(error),
+    requestNativeUiReveal:
+      options.requestNativeUiReveal ??
+      (() => {
+        nativeUiRevealCount += 1;
+        return true;
+      }),
     window: fixture.nativeWindow,
   });
-  return { boundary, controller, errors, fixture };
+  return {
+    boundary,
+    controller,
+    errors,
+    fixture,
+    nativeUiRevealCount: () => nativeUiRevealCount,
+  };
 }
 
 test("Urlbar coverage bridge exposes only current fixed Firefox-owned state", () => {
@@ -252,6 +265,7 @@ test("Urlbar coverage bridge exposes only current fixed Firefox-owned state", ()
       "firefox.urlbar-coverage-blocked-permissions-container",
       "firefox.urlbar-coverage-identity-permission-box",
       "firefox.urlbar-coverage-page-action-buttons",
+      "firefox.urlbar-coverage-native-ui-handoff",
     ],
   );
 
@@ -336,7 +350,9 @@ test("native Urlbar access delegates to Firefox openLocation and remains per-win
   ]);
 
   assert.equal(normal.controller.urlbarCoverage.openNativeUrlbar(), true);
+  assert.equal(normal.nativeUiRevealCount(), 1);
   assert.equal(normal.fixture.nativeOpenCount(), 1);
+  assert.equal(privateWindow.nativeUiRevealCount(), 0);
   assert.equal(privateWindow.fixture.nativeOpenCount(), 0);
 
   normal.controller.dispose();
@@ -349,6 +365,25 @@ test("native Urlbar access delegates to Firefox openLocation and remains per-win
   );
   normal.boundary.dispose();
   privateWindow.boundary.dispose();
+});
+
+test("native Urlbar access refuses to focus a hidden owner when the reveal handoff rejects", () => {
+  const { boundary, controller, fixture } = createController({
+    requestNativeUiReveal: () => false,
+  });
+
+  assert.throws(
+    () => controller.urlbarCoverage.openNativeUrlbar(),
+    (error) =>
+      isFirefoxBridgeError(error) &&
+      error.fenneviaCode ===
+        "FENNEVIA_FIREFOX_URLBAR_NATIVE_UI_HANDOFF_REJECTED" &&
+      error.fenneviaSymbol === "nativeUi.revealForUrlbar",
+  );
+  assert.equal(fixture.nativeOpenCount(), 0);
+
+  controller.dispose();
+  boundary.dispose();
 });
 
 test("missing Urlbar owner capability fails before observers survive", () => {
@@ -368,6 +403,7 @@ test("missing Urlbar owner capability fails before observers survive", () => {
       createFirefoxUrlbarCoverageBridge({
         boundary,
         onError() {},
+        requestNativeUiReveal: () => true,
         window: fixture.nativeWindow,
       }),
     (error) =>

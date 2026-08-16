@@ -32,17 +32,23 @@ This is an initial ownership and dependency map, not a stable API list. Every sy
 
 Some native elements may eventually be hidden, but do not remove them or let the frontend framework manage their descendants.
 
-## 3. Visible native UI that may eventually be hidden
+## 3. Visible native UI under the active gate
 
-| Native UI | Initial strategy |
+| Native UI | Firefox 153 active treatment |
 | --- | --- |
-| `#navigator-toolbox` | Hide behind the active root gate after replacement coverage is verified |
-| `#TabsToolbar` and native tab strip | Hide after the custom tab MVP is complete |
-| Native navbar and Urlbar | Hide only after #15 verifies complete replacement/retained access, including #14, #32, and #37 coverage |
-| Bookmarks toolbar | Hide only after required access has a replacement |
-| Native sidebar launcher, box, and splitter | Hide after the custom sidebar is stable |
-| App menu and toolbar buttons | Replace and validate incrementally |
-| Titlebar and window controls | Handle last in a separate platform-specific issue |
+| `#navigator-toolbox` | Never project-targeted; it retains notifications, titlebar ownership, popup anchors, and mode infrastructure |
+| `#TabsToolbar > .toolbar-items` | Reversibly collapsed only in horizontal native-tab mode; `#TabsToolbar` and its caption controls remain |
+| `#nav-bar` | Reversibly collapsed in horizontal mode and completely revealed for pointer/focus/popup/sidebar/Urlbar access |
+| Direct `#nav-bar` content with toolbox `tabs-hidden` | Exact direct content collapses while the navbar titlebar owner and caption controls remain |
+| `#PersonalToolbar` | Reversibly collapsed; #14 and retained Library/dialog/native-reveal paths provide access |
+| `#notifications-toolbar` | Never project-targeted; Firefox owns visibility and notification behavior |
+| Native sidebar container, box, launcher splitter, and panel splitter | Reversibly collapsed at rest; an open native/extension sidebar holds complete native reveal |
+| App menu, account/sync, extension, page-action, overflow, and Downloads controls | Remain attached inside the transient complete navbar; no partial clone is claimed |
+| Titlebar and window controls | Never project-targeted; current Firefox/Windows controls remain authoritative |
+
+ADR-032 and `docs/research/firefox-153-content-only-activation.md` are the
+reviewed owner/replacement/fallback source of truth. No row authorizes removal,
+reparenting, or frontend ownership of a Firefox node.
 
 ## 4. Primary research entry points
 
@@ -360,13 +366,37 @@ the selected fixed-summary/native-handoff boundary.
 | `BrowserPageActions`, static page-action IDs, and dynamic Urlbar action children | [`browser-pageActions.js`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/base/content/browser-pageActions.js), blob `00da33bc11189db17b6a2e656acb3a778531197c`, owns Urlbar placement, visibility, extension children, overflow, panels, and commands. | Fixed owner-visible actions become fixed availability enums. Extension children become one generic enum; unknown `actionid` children become one generic enum. No ID, extension identity, localized label, icon, action object, or command crosses. |
 | `gURLBar[searchmode]`, `gURLBar[persistsearchterms]`, and document-root `remotecontrol` | Current `UrlbarInput.mjs` and browser owner code set these fixed attributes and own their controls. | The bridge exposes only `search-mode`, `persisted-search`, and `remote-control` enums. Search terms, provider/result data, automation identity, and native command behavior remain Firefox-owned. |
 | Per-window `MutationObserver` over four owner roots | The browser-window global supplies mutation delivery for current browser chrome attributes and children. | One controller observes the document root, `gURLBar`, permission subtree, and page-action subtree with fixed attribute filters. It has no timer or polling fallback, reconciles immutable snapshots, and disconnects exactly once before releasing its window. |
-| `window.openLocation()` | Current [`browser.js`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/base/content/browser.js) calls `UrlbarUtils.getURLBarForFocus(window)`, selects it, and opens the native view according to current focus/customize/fullscreen handling. | The detailed popup closes with no competing focus restoration, then invokes the owning window method. Suggestions, providers, search one-offs, extension actions, native panels, and prompts remain complete. Missing/thrown handoff is typed and follows ADR-021. Issue #15 must make this path reveal the native navbar while active before hiding it. |
+| `window.openLocation()` | Current [`browser.js`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/base/content/browser.js) calls `UrlbarUtils.getURLBarForFocus(window)`, selects it, and opens the native view according to current focus/customize/fullscreen handling. | The detailed popup closes with no competing focus restoration. ADR-032 synchronously applies complete native reveal before this bridge invokes the owning window method. Suggestions, providers, search one-offs, extension actions, native panels, and prompts remain complete; focus/popup holds retain reveal and release restores active rest. Missing/thrown reveal or handoff is typed and follows ADR-021. |
 
 The public contract is fixed enums and booleans only. It contains no URL,
 origin, principal, certificate, permission object/scope, extension identity,
 action ID, localized Firefox label, provider result, browser/window object, or
 native node. Revalidate every row and the complete inventory on the next
 supported Firefox stable.
+
+### Content-only native visibility activation
+
+Issue #15 verified the following unsupported dependencies on Firefox 153.0.4.
+ADR-032 records the selected boundary; the complete native-UI coverage matrix,
+source links, product-reference provenance, and runtime results are in
+`docs/research/firefox-153-content-only-activation.md`.
+
+| Dependency | Firefox 153 source-backed behavior | Project owner and failure behavior |
+| --- | --- | --- |
+| `#toolbar-menubar`, `#TabsToolbar`, direct `.toolbar-items`, `#nav-bar`, `#PersonalToolbar`, and `#notifications-toolbar` | Current `navigator-toolbox.inc.xhtml` owns these direct toolbox children. `.toolbar-items` owns native tab UI; navbar owns Urlbar and toolbar controls; notifications remain a separate toolbar. | `NativeUi.sys.mjs` validates exact namespaces/direct parents. Active CSS targets only tab items, horizontal navbar, or exact direct nav content for `tabs-hidden`, plus bookmarks toolbar. Menubar, notifications, and the toolbox itself are never targeted. Any stable mismatch fails open. |
+| Three `.titlebar-buttonbox-container` groups and min/max/restore/close children | `titlebar-items.inc.xhtml` places current platform controls in menubar, tab-toolbar, and navbar contexts selected by Firefox mode/style. | Creation requires exactly one group in each owner and all four button classes. No activation selector names a titlebar class. Missing/replaced controls prevent health; real active and failure states require a rendered close control. |
+| Toolbox `tabs-hidden` | `TabBarVisibility` collapses native TabsToolbar and makes navbar a browser-titlebar owner when native vertical tabs are active. | The alternate active rule collapses exact direct nav content rather than navbar, preserving caption controls. The attribute remains Firefox-owned and is never changed by Fennevia. |
+| `#sidebar-container`, XHTML `sidebar-main`, `#sidebar-launcher-splitter`, `#sidebar-box`, `#sidebar-splitter`, and `#tabbrowser-tabbox` | `browser-box.inc.xhtml` owns these exact direct browser children. `browser-sidebar.js` shows/hides panel content and extension sidebars and returns focus to the selected browser. | The controller validates and watches exact identity. Resting active CSS collapses only container/box/splitters. A visible sidebar box holds native reveal; closing and content focus release it. Tabbox is validated but never styled. Window-teardown child removal is coalesced one event-loop turn for lifecycle disposal. |
+| Root `customizing`; toolbox `beforecustomization`, `customizationready`, and `aftercustomization` | `CustomizeMode.sys.mjs` dispatches these events around asynchronous native-node customization and owns the root marker. | Before/through customization, native hiding is suspended and the project frame environment is hidden. After Firefox's event, style and exact targets are revalidated before active rest resumes. Failure remains suspended and follows ADR-021. |
+| Root `inDOMFullscreen` and `inFullscreen` | Firefox fullscreen code and `fullscreen-and-pointerlock.css` own page fullscreen, browser fullscreen, toolbox/sidebar autohide, warnings, focus, and popup holds. | DOM fullscreen suspends project native hiding and disables the Fennevia frame; Firefox CSS remains authoritative. Browser fullscreen retains active mode and Firefox autohide. The project never sets these attributes in production. |
+| Root `window-modal-open` and `browser[tabDialogShowing]` | Firefox window/tab dialog infrastructure marks native modal ownership. | Native-dialog state suspends hiding and disables project surfaces. Dialog, popup set, and browser children remain native and untargeted. |
+| `popupshowing`, `popupshown`, `popuphiding`, and `popuphidden` | Firefox XUL panels expose lifecycle events and anchor/trigger ownership. | A non-tooltip popup anchored in managed native UI holds reveal until hidden. Popup nodes/labels/actions never enter project state. Listeners are exact per-window capture listeners and are removed in reverse cleanup. |
+| Project XHTML `#fennevia-native-ui-style` and CSSOM `cssRules` | A chrome-document XHTML style has synchronous parsed-rule access. | Health requires exact identity, frame parent, source text, and five parsed rules. Missing/replaced style is `FENNEVIA_NATIVE_UI_STYLE_INVALID`; a non-five rule parse is `FENNEVIA_NATIVE_UI_STYLE_PARTIAL`. Suspension is set before lifecycle fallback. |
+| `data-fennevia-native-ui-revealed` and `data-fennevia-native-ui-suspended` | Project-only root markers; Firefox does not consume them. | One per-window controller owns both. Dispose removes them and the style even after failure; one window never mutates another. No browsing-derived value is stored. |
+
+The controller exposes only fixed capability records and a boolean synchronous
+`revealForUrlbar()` action to the Firefox boundary. It does not expose native
+elements, focus owners, popup nodes, sidebar state, or style text to Svelte.
 
 ### Chrome Registry and AutoConfig
 
@@ -385,7 +415,7 @@ same build without an alias; see `docs/research/fennevia-identity-migration.md`.
 | `Services.dirsvc.get("UChrm", Ci.nsIFile)` | [`nsAppDirectoryServiceDefs.h`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/xpcom/io/nsAppDirectoryServiceDefs.h) defines `UChrm` as the user Chrome directory | Resolves `<PROFILE>/chrome`; a missing project manifest reports phase `manifest-locate` and fails open. |
 | `Ci.nsIComponentRegistrar`, `autoRegister(manifest)` | [`nsIComponentRegistrar.idl`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/xpcom/components/nsIComponentRegistrar.idl) and [`nsComponentManager.cpp`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/xpcom/components/nsComponentManager.cpp) register a manifest for the current run and do not cache this registration | Registers exactly one profile package. A malformed declaration leads to a deterministic `entry-resolve` failure; no generic directory scan is added. |
 | `content fennevia content/` and `nsIChromeRegistry.convertChromeURL()` | [`ManifestParser.cpp`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/xpcom/components/ManifestParser.cpp) parses the declaration; [`nsChromeRegistry.cpp`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/chrome/nsChromeRegistry.cpp) resolves the URI | Resolves `chrome://fennevia/content/Bootstrap.sys.mjs` before import. A missing mapping reports phase `entry-resolve`; a missing file reports `entry-import`. |
-| `ChromeUtils.importESModule()` | Current Firefox source has many privileged `chrome://` ESM callers; the real spike imported the newly registered entry immediately | AutoConfig imports one fixed entry URI. The entry directly imports only fixed Logger, WindowManager, WindowShell, Runtime, and PrivateBrowsingUtils URIs; WindowShell has one fixed relative HealthState import. The entry validates the frozen result contract. Syntax, missing-module, and import failures retain phase, redacted full stack, version, and build ID; #5 and #7 missing-module probes retained native UI. |
+| `ChromeUtils.importESModule()` | Current Firefox source has many privileged `chrome://` ESM callers; the real spike imported the newly registered entry immediately | AutoConfig imports one fixed entry URI. The entry directly imports only fixed Logger, WindowManager, WindowShell, Runtime, and PrivateBrowsingUtils URIs; WindowShell has fixed relative HealthState and NativeUi imports. The entry validates the frozen result contract. Syntax, missing-module, and import failures retain phase, redacted full stack, version, and build ID; missing-module probes retain native UI. |
 | Loader-defined `Services` global | [`mozJSModuleLoader.cpp`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/js/xpconnect/loader/mozJSModuleLoader.cpp) creates and defines `Services` on loader globals; Firefox 153's `omni.ja` does not contain `Services.sys.mjs` | The entry validates `typeof Services` and `Services.appinfo` before use. The first spike revision imported the removed module and produced the first causal `entry-import` error. |
 | Default `chrome:` and `resource:` access; `contentaccessible=yes` | [`toolkit/docs/internal-urls.md`](https://hg.mozilla.org/releases/mozilla-release/file/54be19de0e08edff0b797e55fd935dd3978b0a6d/toolkit/docs/internal-urls.md) says both schemes are privileged-only by default and the flag opens the complete mapping to web content | The flag is omitted. An ordinary loopback HTTP page could not fetch the entry. `resource`, `style`, `skin`, `locale`, and `override` are all omitted because Phase 1 has no consumer. |
 | Startup-cache and registration lifetime | `nsIComponentRegistrar.idl` states runtime manifest registration is not cached; module state remains process-local | A corrected ESM loaded on the first cold start after a syntax failure, and complete project-file removal restored stock startup, both without clearing startup cache. Cache clearing remains an evidence-driven escalation only. |

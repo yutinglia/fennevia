@@ -1870,7 +1870,7 @@ var vt = Object.freeze([
 		read: (t) => Z(t, e),
 		symbol: `document.elements[${e}]`
 	}))
-]), Ot = (e) => Object.freeze(Dt.map((t) => {
+]), Ot = (e, t) => Object.freeze([...Dt.map((t) => {
 	let n = !1, r;
 	try {
 		n = t.isAvailable(t.read(e));
@@ -1886,7 +1886,12 @@ var vt = Object.freeze([
 			symbol: t.symbol
 		})
 	});
-})), kt = (e) => {
+}), Object.freeze({ snapshot: Object.freeze({
+	available: Y(t),
+	name: "firefox.urlbar-coverage-native-ui-handoff",
+	requirement: "required",
+	symbol: "nativeUi.revealForUrlbar"
+}) })]), kt = (e) => {
 	let t = e.snapshot();
 	return Object.freeze({
 		buildId: t.buildId,
@@ -1913,9 +1918,9 @@ var vt = Object.freeze([
 	let n = e.classList;
 	return Ct(n) && Y(n.contains) && !!Reflect.apply(n.contains, n, [t]);
 }, Pt = (e, t) => e.permissions.available === t.permissions.available && e.permissions.hasPermissions === t.permissions.hasPermissions && e.permissions.blocked.length === t.permissions.blocked.length && e.permissions.blocked.every((e, n) => e === t.permissions.blocked[n]) && e.permissions.sharing.length === t.permissions.sharing.length && e.permissions.sharing.every((e, n) => e === t.permissions.sharing[n]) && e.items.length === t.items.length && e.items.every((e, n) => e === t.items[n]);
-function Ft({ boundary: e, onError: t, window: n }) {
-	if (e.assertOwnsWindow(n), !Ct(n) || typeof t != "function") throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_OPTIONS_INVALID", "firefox-urlbar-coverage-create", "window");
-	let r = n, i = !1, a = null, o = 0, s = null, c = Object.freeze({
+function Ft({ boundary: e, onError: t, requestNativeUiReveal: n, window: r }) {
+	if (e.assertOwnsWindow(r), !Ct(r) || typeof t != "function" || typeof n != "function") throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_OPTIONS_INVALID", "firefox-urlbar-coverage-create", "window");
+	let i = r, a = !1, o = null, s = 0, c = null, l = Object.freeze({
 		items: Object.freeze([]),
 		permissions: Object.freeze({
 			available: !1,
@@ -1923,29 +1928,29 @@ function Ft({ boundary: e, onError: t, window: n }) {
 			hasPermissions: !1,
 			sharing: Object.freeze([])
 		})
-	}), l = new Set(), u = () => {
-		if (i || !r) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSED", "firefox-urlbar-coverage-access", "window.gURLBar");
-		if (a) throw a;
-		return e.assertOwnsWindow(r), r;
-	}, d = (t) => {
-		let n = Z(u(), t);
+	}), u = new Set(), d = () => {
+		if (a || !i) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSED", "firefox-urlbar-coverage-access", "window.gURLBar");
+		if (o) throw o;
+		return e.assertOwnsWindow(i), i;
+	}, f = (t) => {
+		let n = Z(d(), t);
 		if (!X(n)) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-snapshot", `document.elements[${t}]`);
 		return n;
-	}, f = () => {
-		let t = u().gURLBar;
+	}, p = () => {
+		let t = d().gURLBar;
 		if (!X(t)) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-snapshot", "window.gURLBar.hasAttribute");
 		return t;
-	}, p = () => {
-		let t = Et(u());
+	}, m = () => {
+		let t = Et(d());
 		if (!X(t)) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-snapshot", "document.documentElement.hasAttribute");
 		return t;
-	}, m = () => {
-		let t = Ot(u()), n = t.find((e) => !e.snapshot.available);
-		if (n) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-capability", n.snapshot.symbol, n.cause);
-		return Object.freeze(t.map((e) => e.snapshot));
 	}, h = () => {
-		let e = f(), t = d("identity-permission-box"), n = Object.freeze(bt.flatMap(({ id: e, kind: t }) => {
-			let n = Z(u(), e);
+		let t = Ot(d(), n), r = t.find((e) => !e.snapshot.available);
+		if (r) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-capability", r.snapshot.symbol, r.cause);
+		return Object.freeze(t.map((e) => e.snapshot));
+	}, g = () => {
+		let e = p(), t = f("identity-permission-box"), n = Object.freeze(bt.flatMap(({ id: e, kind: t }) => {
+			let n = Z(d(), e);
 			return X(n) && $(n, "sharing") ? [t] : [];
 		}));
 		if (!(At(e, "pageproxystate") === "valid" || $(e, "persistsearchterms") || n.length > 0)) return Object.freeze({
@@ -1954,7 +1959,7 @@ function Ft({ boundary: e, onError: t, window: n }) {
 			hasPermissions: !1,
 			sharing: Object.freeze([])
 		});
-		let r = Object.freeze(Mt(d("blocked-permissions-container")).flatMap((e) => {
+		let r = Object.freeze(Mt(f("blocked-permissions-container")).flatMap((e) => {
 			if (!X(e) || !$(e, "showing")) return [];
 			let t = At(e, "data-permission-id"), n = t ? yt[t] : void 0;
 			return n ? [n] : [];
@@ -1965,80 +1970,81 @@ function Ft({ boundary: e, onError: t, window: n }) {
 			hasPermissions: $(t, "hasPermissions"),
 			sharing: n
 		});
-	}, g = () => {
-		let e = u(), t = f(), n = new Set();
-		$(p(), "remotecontrol") && n.add("remote-control"), $(t, "searchmode") && n.add("search-mode"), $(t, "persistsearchterms") && n.add("persisted-search");
+	}, v = () => {
+		let e = d(), t = p(), n = new Set();
+		$(m(), "remotecontrol") && n.add("remote-control"), $(t, "searchmode") && n.add("search-mode"), $(t, "persistsearchterms") && n.add("persisted-search");
 		for (let { id: t, kind: r } of xt) {
 			let i = Z(e, t);
 			X(i) && jt(i) && n.add(r);
 		}
 		let r = Z(e, "pageActionButton");
 		X(r) && $(r, "multiple-children") && n.add("more-page-actions");
-		for (let e of Mt(d("page-action-buttons"))) {
+		for (let e of Mt(f("page-action-buttons"))) {
 			if (!X(e) || !jt(e) || !Nt(e, "urlbar-page-action")) continue;
 			let t = typeof e.id == "string" ? e.id : "";
 			St.has(t) || (Nt(e, "urlbar-addon-page-action") ? n.add("extension-actions") : $(e, "actionid") && n.add("other-page-actions"));
 		}
 		return Object.freeze(_t.filter((e) => n.has(e)));
-	}, v = () => Object.freeze({
-		items: g(),
-		permissions: h()
-	}), y = () => {
+	}, y = () => Object.freeze({
+		items: v(),
+		permissions: g()
+	}), x = () => {
 		let n = Object.freeze({
-			revision: o,
-			snapshot: c,
+			revision: s,
+			snapshot: l,
 			type: "snapshot"
 		});
-		for (let r of Array.from(l)) try {
+		for (let r of Array.from(u)) try {
 			r(n);
 		} catch (n) {
 			t(Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_SUBSCRIBER_FAILED", "firefox-urlbar-coverage-notify", "urlbarCoverage.subscribe", n));
 		}
-	}, x = (e) => {
-		let t = v();
-		return Pt(c, t) && o > 0 ? !1 : (c = t, o += 1, e && y(), !0);
-	}, S = (n) => {
-		a = _(n) ? n : Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_EVENT_FAILED", "firefox-urlbar-coverage-event", "window.MutationObserver", n), t(a);
-	}, C = Object.freeze({
+	}, S = (e) => {
+		let t = y();
+		return Pt(l, t) && s > 0 ? !1 : (l = t, s += 1, e && x(), !0);
+	}, C = (n) => {
+		o = _(n) ? n : Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_EVENT_FAILED", "firefox-urlbar-coverage-event", "window.MutationObserver", n), t(o);
+	}, w = Object.freeze({
 		openNativeUrlbar() {
-			let t = u(), n = t.openLocation;
-			if (!Y(n)) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-native-access", "window.openLocation");
+			let t = d(), r = t.openLocation;
+			if (!Y(r)) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-native-access", "window.openLocation");
 			try {
-				return Reflect.apply(n, t, []), !0;
+				if (n() !== !0) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_NATIVE_UI_HANDOFF_REJECTED", "firefox-urlbar-native-access", "nativeUi.revealForUrlbar");
+				return Reflect.apply(r, t, []), !0;
 			} catch (t) {
-				throw Q(e, "FENNEVIA_FIREFOX_URLBAR_NATIVE_ACCESS_FAILED", "firefox-urlbar-native-access", "window.openLocation", t);
+				throw _(t) ? t : Q(e, "FENNEVIA_FIREFOX_URLBAR_NATIVE_ACCESS_FAILED", "firefox-urlbar-native-access", "window.openLocation", t);
 			}
 		},
 		snapshot() {
-			return u(), c;
+			return d(), l;
 		},
 		subscribe(t) {
-			if (u(), typeof t != "function") throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_LISTENER_INVALID", "firefox-urlbar-coverage-subscribe", "urlbarCoverage.subscribe");
-			return l.add(t), b(() => {
-				l.delete(t);
+			if (d(), typeof t != "function") throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_LISTENER_INVALID", "firefox-urlbar-coverage-subscribe", "urlbarCoverage.subscribe");
+			return u.add(t), b(() => {
+				u.delete(t);
 			});
 		}
 	});
 	try {
-		e.assertRequiredCapabilities(), m(), x(!1);
-		let t = u().MutationObserver;
-		s = new t(() => {
-			if (!(i || a)) try {
-				x(!0);
+		e.assertRequiredCapabilities(), h(), S(!1);
+		let t = d().MutationObserver;
+		c = new t(() => {
+			if (!(a || o)) try {
+				S(!0);
 			} catch (e) {
-				S(e);
+				C(e);
 			}
-		}), s.observe(p(), {
+		}), c.observe(m(), {
 			attributeFilter: ["remotecontrol"],
 			attributes: !0
-		}), s.observe(f(), {
+		}), c.observe(p(), {
 			attributeFilter: [
 				"pageproxystate",
 				"persistsearchterms",
 				"searchmode"
 			],
 			attributes: !0
-		}), s.observe(d("identity-permission-box"), {
+		}), c.observe(f("identity-permission-box"), {
 			attributeFilter: [
 				"collapsed",
 				"hasPermissions",
@@ -2050,7 +2056,7 @@ function Ft({ boundary: e, onError: t, window: n }) {
 			],
 			attributes: !0,
 			subtree: !0
-		}), s.observe(d("page-action-buttons"), {
+		}), c.observe(f("page-action-buttons"), {
 			attributeFilter: [
 				"actionid",
 				"class",
@@ -2064,37 +2070,37 @@ function Ft({ boundary: e, onError: t, window: n }) {
 			subtree: !0
 		});
 	} catch (n) {
-		i = !0;
+		a = !0;
 		try {
-			s?.disconnect();
+			c?.disconnect();
 		} catch (n) {
 			t(Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSE_FAILED", "firefox-urlbar-coverage-dispose", "window.MutationObserver.disconnect", n));
 		}
-		throw s = null, r = null, n;
+		throw c = null, i = null, n;
 	}
 	return Object.freeze({
-		assertRequiredCapabilities: m,
+		assertRequiredCapabilities: h,
 		dispose() {
-			if (i) return !1;
-			i = !0;
+			if (a) return !1;
+			a = !0;
 			let t;
 			try {
-				s?.disconnect();
+				c?.disconnect();
 			} catch (e) {
 				t = e;
 			}
-			if (s = null, l.clear(), r = null, t !== void 0) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSE_FAILED", "firefox-urlbar-coverage-dispose", "window.MutationObserver.disconnect", t);
+			if (c = null, u.clear(), i = null, t !== void 0) throw Q(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSE_FAILED", "firefox-urlbar-coverage-dispose", "window.MutationObserver.disconnect", t);
 			return !0;
 		},
 		snapshot() {
 			return Object.freeze({
-				disposed: i,
-				failed: a !== null,
-				revision: o,
-				subscriberCount: l.size
+				disposed: a,
+				failed: o !== null,
+				revision: s,
+				subscriberCount: u.size
 			});
 		},
-		urlbarCoverage: C
+		urlbarCoverage: w
 	});
 }
 //#endregion
