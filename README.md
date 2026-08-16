@@ -103,7 +103,7 @@ useful.
 | Bottom downloads                              | Complete — #32 | Per-window PUBLIC/PRIVATE list views, bounded anonymous state, accessible aggregate progress/status, and native safety/management retained                    |
 | Content-only activation                       | Complete — #15 | Exact active-only native surfaces, compact HTTPS/ETP status, complete native reveal/handoff, customize/fullscreen policy, and per-window fail-open             |
 | Hardening and Firefox-update workflow         | Complete — #16 | Fixed local/CI gates, aggregate resource baseline, ownership repair, current compatibility inventory, and executable stable-update rehearsal                 |
-| Project license                               | Pending — #18  | Owner-approved license and third-party attribution policy                                                                                                     |
+| Project license                               | Complete — #18 | MPL-2.0 for original source/docs/generated project output, explicit inbound contribution terms, and one third-party provenance inventory                      |
 
 The tracking source of truth is issue #1. Historical research records preserve
 what was true at each earlier milestone; they should not be rewritten to pretend
@@ -222,6 +222,8 @@ and design.
 - [Security and privacy](docs/security-and-privacy.md)
 - [Operational security controls and threat model](docs/security-controls.md)
 - [Dependency review template](docs/dependency-review-template.md)
+- [Licensing and third-party provenance policy](docs/licensing-and-provenance.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ### Current implementation evidence
 
@@ -272,14 +274,22 @@ Runtime changes must pass in active content-only mode and prove complete native
 reveal/fallback. The exact ADR-032 hide target set may change only through a
 dedicated current-source coverage and recovery review.
 
-## License status
+## License
 
-No repository license has been selected. Public visibility does not grant
-permission to copy, redistribute, or incorporate the code. Issue #18 owns the
-project-license, contribution, and attribution decision.
+Fennevia's original source code, documentation, and project-authored generated
+output are available under [MPL-2.0](LICENSE).
 
-External projects may be researched, but implementation code may not be copied
-without an independently verified license and recorded provenance.
+Copyright 2026 Fennevia contributors.
+
+Third-party material remains under its own license. The current distributed
+runtime inventory and complete notice paths are in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); contribution, generated/
+installed artifact, source-availability, and provenance rules are in the
+[licensing policy](docs/licensing-and-provenance.md).
+
+MPL-2.0 does not grant trademark rights or permission to imply project
+endorsement. External implementation still requires exact license and
+provenance review before inclusion.
 
 ## Safety warning
 

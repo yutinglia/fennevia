@@ -29,9 +29,9 @@ Validated baseline as of 2026-08-16:
 - exact Firefox native DOM and complete reveal/fallback paths retained;
 - production enters `active` only after the complete health gate.
 
-Next governance work:
+Governance foundation:
 
-1. #18 selects the project license and attribution policy.
+1. #18 selected MPL-2.0 and the third-party attribution/provenance policy.
 
 Historical research records remain accurate for the milestone they tested.
 Current production architecture is defined by this roadmap, the master plan,

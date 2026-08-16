@@ -111,7 +111,13 @@ A pull request includes:
 
 Do not infer Firefox integration success from unit tests alone.
 
-## External code and license
+## External code, contribution license, and provenance
+
+Fennevia is licensed under MPL-2.0. By intentionally submitting a contribution
+for inclusion, you represent that you have sufficient rights and agree to
+provide that contribution under MPL-2.0. The project currently requires no CLA
+or DCO sign-off. See `LICENSE` and `docs/licensing-and-provenance.md` for the
+complete policy.
 
 Before copying code:
 
@@ -121,8 +127,17 @@ Before copying code:
 - keep third-party code distinguishable;
 - treat unlicensed or unclear code as unavailable.
 
-The repository currently has no selected project license. Public visibility is
-not permission to reuse implementation.
+Add or update `THIRD_PARTY_NOTICES.md` before submitting copied, adapted,
+generated-from, vendored, or bundled third-party material. Record the source
+repository, exact file or published source unit, commit/tag and integrity,
+license/file notice, classification, project paths, modifications, required
+attribution/source availability, and update/removal strategy.
+
+Project-authored generated and installed files remain MPL-2.0; included
+third-party portions keep their own terms. A distributed generated/minified or
+installed-tree artifact must accompany the corresponding preferred source,
+canonical `LICENSE`, and applicable notices. The software license does not grant
+trademark or endorsement rights.
 
 ## Security-sensitive changes
 

@@ -12,6 +12,7 @@ Complete this record before adding, upgrading, replacing, or newly executing a p
 - Package registry and integrity:
 - Source repository, tag or commit:
 - License and license-file path:
+- Root `THIRD_PARTY_NOTICES.md` entry: not required / pending / section:
 
 ## Purpose and alternatives
 
@@ -43,6 +44,7 @@ List every published lifecycle script, code generator, native executable, WebAss
 - Security advisories and open incidents checked:
 - Provenance/signature/attestation information available:
 - Copied code or required attribution:
+- Source file/published source unit and project artifact paths:
 
 Do not treat package popularity, an SPDX string alone, or a visible repository as proof that the published tarball and source revision correspond.
 

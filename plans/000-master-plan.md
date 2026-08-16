@@ -68,9 +68,10 @@ Completed:
   exact one-sided ownership repair, reconciled compatibility inventory, and an
   executable Firefox stable-update rehearsal.
 
-Remaining project-governance work:
+Completed project-governance foundation:
 
-- #18: project license and third-party attribution decision.
+- #18: MPL-2.0 project/inbound license, generated/installed artifact treatment,
+  third-party provenance source of truth, and distribution checklist.
 
 At active rest, only ADR-032's exact native toolbar/sidebar descendants are
 collapsed; Firefox DOM, prompts, dialogs, controls, and a complete transient
@@ -536,7 +537,7 @@ and hashes. Generated files are never hand-edited.
 | Build or dependency compromise                           | Locked graph, lifecycle scripts disabled, deterministic builds, artifact scanner         |
 | Installer damages another profile                        | Explicit canonical targets, ownership manifests, dry run, rollback, hard refusal         |
 | Logs expose browsing data                                | Default-deny schemas, redaction, hostile-value tests, no network sink                    |
-| External code is copied without permission               | License/provenance gate and #18 owner decision                                           |
+| External code is copied without permission               | MPL-2.0 policy, exact provenance gate, root third-party inventory, prohibited unclear code |
 
 ## 9. Issue execution rules
 

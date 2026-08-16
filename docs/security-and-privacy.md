@@ -58,11 +58,11 @@ Implemented controls:
   and rollback.
 
 Not completed by this development baseline: a formal independent security
-audit, a public release support promise, a real newer-stable transition when no
-newer stable is available, and a project license decision. Native Firefox DOM
-remains attached and authoritative; active rest hides only ADR-032's exact
-visible descendants, and reveal/suspension/failure immediately restores the
-independent native path.
+audit, a public release support promise, and a real newer-stable transition when
+no newer stable is available. Issue #18 selected MPL-2.0 and the provenance
+policy in `docs/licensing-and-provenance.md`. Native Firefox DOM remains attached
+and authoritative; active rest hides only ADR-032's exact visible descendants,
+and reveal/suspension/failure immediately restores the independent native path.
 
 ## 3. Security objectives
 
@@ -669,8 +669,12 @@ The implementation record must name the exact consulted commit, list only the
 concepts retained, describe independent Fennevia decisions, and confirm no
 implementation/layout copying.
 
-Issue #18 owns the project license and third-party attribution policy. Public
-visibility is not permission to reuse code.
+Issue #18 selected MPL-2.0 for original project material, same-license inbound
+contributions, and project-authored generated/installed output. Third-party
+material keeps its own terms. `docs/licensing-and-provenance.md` is the normative
+handling/distribution policy and `THIRD_PARTY_NOTICES.md` is the distributed-
+material source of truth. Unclear or unlicensed material remains prohibited;
+public visibility alone is not permission to copy it.
 
 ## 15. Security review triggers
 
