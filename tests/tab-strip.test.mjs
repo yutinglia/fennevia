@@ -193,7 +193,18 @@ test("the component uses semantic sibling controls and property-safe rendering o
     assert.match(styles, new RegExp(`data-fennevia-edge=["']${edge}["']`, "u"));
   }
   assert.match(styles, /@media \(max-width: 700px\), \(max-height: 520px\)/u);
-  assert.doesNotMatch(styles, /\banimation\s*:|transition\s*:\s*all\b/iu);
+  assert.doesNotMatch(styles, /transition\s*:\s*all\b/iu);
+  assert.deepEqual(
+    [
+      ...styles.matchAll(/^\s*animation:\s*([^;]+);/gmu),
+    ].map((match) => match[1]),
+    [
+      "fennevia-shortcut-tip 2800ms ease-out both",
+      "fennevia-address-loading 1200ms ease-in-out infinite",
+      "none",
+      "none",
+    ],
+  );
   assert.doesNotMatch(
     styles,
     /#(?:navigator-toolbox|browser|tabbrowser-tabbox|main-window)\b/u,
