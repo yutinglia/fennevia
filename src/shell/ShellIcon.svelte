@@ -9,10 +9,13 @@
     | "extensions"
     | "forward"
     | "lock"
+    | "maximize"
     | "menu"
+    | "minimize"
     | "permissions"
     | "plus"
     | "reload"
+    | "restore"
     | "settings"
     | "shield"
     | "stop"
@@ -86,5 +89,12 @@
     <path d="M11 12h9M16 12v3M19 12v2" />
   {:else if name === "close"}
     <path d="m7 7 10 10M17 7 7 17" />
+  {:else if name === "minimize"}
+    <path d="M5 19h14" />
+  {:else if name === "maximize"}
+    <rect height="14" rx="1.5" width="14" x="5" y="5" />
+  {:else if name === "restore"}
+    <rect height="10" rx="1.2" width="10" x="9" y="5" />
+    <path d="M5 9h8v10H5Z" />
   {/if}
 </svg>

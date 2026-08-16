@@ -713,7 +713,9 @@ normal/second/private/Browser-Toolbox evidence are recorded in
 
 ## ADR-029: Use per-window opaque Places views with bounded lazy bookmark pages
 
-**Status:** Accepted and validated on Firefox 153.0.4
+**Status:** Accepted and validated on Firefox 153.0.4. The four-root data,
+bounded pages, and nested-list contract remain; root chrome is a native
+`select` rather than a `tablist`.
 
 Create one bookmarks controller inside each ADR-023 window boundary. Firefox's
 profile Places database remains shared according to native policy, but every
@@ -1133,7 +1135,8 @@ Implementation and validation evidence are recorded in
 
 ## ADR-037: Delegate complete browser details to fixed Firefox-owned handoffs
 
-**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary
+**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary;
+top-row address cluster and native caption island superseded by ADR-038
 
 Render the top edge as one project-owned, non-wrapping toolbar row. Expose only
 nine fixed browser-tool availability booleans and nine fixed actions through a
@@ -1158,11 +1161,9 @@ The complete-toolbar action reveals the navbar and focuses a retained native
 navigation control. Never enumerate or clone arbitrary `CustomizableUI`
 widgets, extension identities, icons, commands, or panel contents.
 
-Keep Firefox's existing minimize, maximize/restore, and close nodes and style
-only their selected native container as a compact caption island. The island is
-fixed at the content edge at rest and below the visible custom top row. Do not
-create, reparent, replace, intercept, or programmatically operate a caption
-button. Empty project panel space may use Firefox's
+Keep Firefox's existing minimize, maximize/restore, and close nodes in place
+for fail-open recovery. The compact native caption island from this decision is
+superseded by ADR-038. Empty project panel space may use Firefox's
 `-moz-window-dragging: drag`; every interactive or focusable descendant is an
 explicit no-drag region.
 
@@ -1183,3 +1184,25 @@ requires a separate decision with complete data/action, privacy, accessibility,
 and parity evidence; the current bounded labels are summaries only. Source pins,
 reference provenance, and the manual-test boundary are recorded in
 `docs/research/firefox-153-single-line-toolbar-handoffs.md`.
+
+## ADR-038: Project-owned window controls with retained native caption nodes
+
+**Status:** Accepted as an explicit owner exception on the Firefox 153.0.4
+Windows prerelease boundary
+
+Replace the ADR-037 native caption island with project-owned minimize,
+maximize/restore, and close buttons on the right side of the custom top row.
+The owner approved this exception because the native caption copies are
+difficult to style and position independently of Firefox toolbar geometry.
+
+Native `.titlebar-buttonbox-container` groups remain in `browser.xhtml`. Active
+rest CSS collapses every copy; Fennevia never deletes, reparents, or clicks
+those nodes. Custom buttons call `window.minimize()`, `window.maximize()` /
+`window.restore()`, and `document.getElementById("cmd_closeWindow").doCommand()`
+through `src/firefox/window-controls.ts`. The top-row address launcher is
+removed; address entry remains on the left launcher and centered popup.
+
+**Reasoning:** Window commands stay Firefox-owned while the visible controls can
+follow the same glass/token contract as the rest of the top row. Fail-open still
+reveals the original caption buttons. This exception does not authorize cloning
+other native security, permission, or toolbar widgets.

@@ -23,6 +23,7 @@
   );
   let localMessage = $state("");
   let rovingBookmarkId: string | null = $state(null);
+  let rootSelect: HTMLSelectElement | undefined = $state();
   let rows: readonly BookmarkVisibleRow[] = $derived(
     getVisibleBookmarkRows(current),
   );
@@ -30,7 +31,6 @@
     bookmarkId: string;
     node: HTMLButtonElement;
   }> = [];
-  const rootButtons: Array<{ node: HTMLButtonElement; rootId: string }> = [];
 
   const itemRows = (
     value: readonly BookmarkVisibleRow[] = rows,
@@ -42,15 +42,13 @@
 
   const restoreFocusAfterLiveRemoval = async (
     bookmarkId: string | null,
-    rootId: string | null,
   ): Promise<void> => {
     await tick();
     const target = bookmarkId
       ? bookmarkButtons.find(
           (registration) => registration.bookmarkId === bookmarkId,
         )?.node
-      : rootButtons.find((registration) => registration.rootId === rootId)
-          ?.node;
+      : rootSelect;
     if (target?.isConnected) {
       target.focus({ preventScroll: true });
       target.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -75,10 +73,7 @@
       );
       rovingBookmarkId = nextFocusId;
       if (focusedBookmarkId && focusedBookmarkId !== nextFocusId) {
-        void restoreFocusAfterLiveRemoval(
-          nextFocusId,
-          nextState.selectedRootId,
-        );
+        void restoreFocusAfterLiveRemoval(nextFocusId);
       }
     });
     return unsubscribe;
@@ -99,22 +94,6 @@
       },
       update(nextBookmarkId: string) {
         registration.bookmarkId = nextBookmarkId;
-      },
-    };
-  };
-
-  const registerRootButton = (node: HTMLButtonElement, rootId: string) => {
-    const registration = { node, rootId };
-    rootButtons.push(registration);
-    return {
-      destroy() {
-        const index = rootButtons.indexOf(registration);
-        if (index >= 0) {
-          rootButtons.splice(index, 1);
-        }
-      },
-      update(nextRootId: string) {
-        registration.rootId = nextRootId;
       },
     };
   };
@@ -163,6 +142,9 @@
   };
 
   const chooseRoot = async (rootId: string): Promise<void> => {
+    if (!rootId || rootId === current.selectedRootId) {
+      return;
+    }
     await runAction(() => props.bookmarks.selectRoot(rootId));
     rovingBookmarkId = resolveBookmarkFocusId(
       getVisibleBookmarkRows(props.bookmarks.snapshot()),
@@ -170,36 +152,12 @@
     );
   };
 
-  const handleRootKeydown = async (
-    event: KeyboardEvent,
-    rootId: string,
-  ): Promise<void> => {
-    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+  const handleRootChange = (event: Event): void => {
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLSelectElement) || !target.value) {
       return;
     }
-    const currentIndex = current.roots.findIndex((root) => root.id === rootId);
-    let nextIndex: number | null = null;
-    if (event.key === "ArrowRight") {
-      nextIndex = (currentIndex + 1) % current.roots.length;
-    } else if (event.key === "ArrowLeft") {
-      nextIndex =
-        (currentIndex - 1 + current.roots.length) % current.roots.length;
-    } else if (event.key === "Home") {
-      nextIndex = 0;
-    } else if (event.key === "End") {
-      nextIndex = current.roots.length - 1;
-    }
-    if (nextIndex === null || !current.roots[nextIndex]) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    const nextRoot = current.roots[nextIndex];
-    await chooseRoot(nextRoot.id);
-    await tick();
-    rootButtons
-      .find((registration) => registration.rootId === nextRoot.id)
-      ?.node.focus({ preventScroll: true });
+    void chooseRoot(target.value);
   };
 
   const toggleFolder = async (folderId: string): Promise<void> => {
@@ -322,7 +280,7 @@
 
   onDestroy(() => {
     bookmarkButtons.length = 0;
-    rootButtons.length = 0;
+    rootSelect = undefined;
   });
 </script>
 
@@ -332,49 +290,32 @@
   class="fennevia-bookmarks"
   data-fennevia-bookmarks=""
 >
-  <div
-    aria-label="Bookmark locations"
-    class="fennevia-bookmarks__roots"
-    data-fennevia-bookmark-roots=""
-    role="tablist"
-  >
-    {#if current.selectedRootId === null}
-      <button
-        aria-disabled="true"
-        aria-label="Loading bookmark locations"
-        aria-selected="false"
-        class="fennevia-bookmarks__root"
-        data-fennevia-bookmark-loading-focus=""
-        data-fennevia-default-focus=""
-        role="tab"
-        tabindex="0"
-        type="button"
-      >
-        <span aria-hidden="true">◌</span>
-        <span>Loading…</span>
-      </button>
-    {/if}
-    {#each current.roots as root (root.id)}
-      <button
-        use:registerRootButton={root.id}
-        aria-controls="fennevia-bookmark-list"
-        aria-selected={current.selectedRootId === root.id}
-        class="fennevia-bookmarks__root"
-        data-fennevia-bookmark-root=""
-        data-fennevia-default-focus={current.selectedRootId === root.id
-          ? ""
-          : undefined}
-        onclick={() => void chooseRoot(root.id)}
-        onkeydown={(event) => void handleRootKeydown(event, root.id)}
-        role="tab"
-        tabindex={current.selectedRootId === root.id ? 0 : -1}
-        title={root.title}
-        type="button"
-      >
-        <span aria-hidden="true">{root.hasChildren ? "◆" : "◇"}</span>
-        <span dir="auto">{root.title}</span>
-      </button>
-    {/each}
+  <div class="fennevia-bookmarks__roots">
+    <label class="fennevia-bookmarks__roots-label" for="fennevia-bookmark-roots">
+      Location
+    </label>
+    <select
+      bind:this={rootSelect}
+      aria-controls="fennevia-bookmark-list"
+      class="fennevia-control fennevia-bookmarks__root-select"
+      data-fennevia-bookmark-roots=""
+      data-fennevia-default-focus=""
+      disabled={current.roots.length === 0}
+      id="fennevia-bookmark-roots"
+      onchange={handleRootChange}
+      title="Bookmark location"
+    >
+      {#if current.roots.length === 0}
+        <option selected value="">Loading…</option>
+      {/if}
+      {#each current.roots as root (root.id)}
+        <option
+          selected={current.selectedRootId === root.id}
+          data-fennevia-bookmark-root=""
+          value={root.id}>{root.title}</option
+        >
+      {/each}
+    </select>
   </div>
 
   <div

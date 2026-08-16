@@ -19,7 +19,9 @@
   );
   --fennevia-glass-blur: 18px;
   --fennevia-glass-saturation: 145%;
-  --fennevia-glass-radius: 16px;
+  --fennevia-glass-radius: var(--chrome-block-radius, 4px);
+  --fennevia-control-radius: var(--fennevia-glass-radius);
+  --fennevia-chip-radius: 999px;
   --fennevia-glass-shadow:
     0 18px 54px rgb(0 12 24 / 28%), inset 0 1px 0 rgb(255 255 255 / 22%);
   --fennevia-edge-trigger-thickness: 7px;
@@ -208,6 +210,7 @@
     var(--fennevia-edge-inset) + var(--fennevia-right-clearance)
   );
   block-size: var(--fennevia-edge-bottom-height);
+  overflow: visible;
   transform: translateY(calc(100% + var(--fennevia-edge-inset)));
 }
 
@@ -222,6 +225,7 @@
   );
   inset-block-end: var(--fennevia-edge-inset);
   inline-size: var(--fennevia-edge-side-width);
+  overflow: visible;
 }
 
 #fennevia-shell-frame-host
@@ -248,7 +252,6 @@
   transition-delay: 0s;
 }
 
-#fennevia-shell-frame-host .fennevia-edge-panel__header,
 #fennevia-shell-frame-host .fennevia-edge-panel__footer,
 #fennevia-shell-frame-host .fennevia-tabs-summary {
   display: flex;
@@ -259,46 +262,9 @@
   padding: var(--fennevia-space-2) var(--fennevia-space-3);
 }
 
-#fennevia-shell-frame-host .fennevia-edge-panel__header {
-  min-block-size: 48px;
-  border-block-end: 1px solid var(--fennevia-glass-separator);
-}
-
-#fennevia-shell-frame-host .fennevia-edge-panel__identity {
-  display: flex;
-  align-items: center;
-  min-inline-size: 0;
-  gap: var(--fennevia-space-2);
-}
-
-#fennevia-shell-frame-host .fennevia-edge-panel__identity > div {
-  display: grid;
-  min-inline-size: 0;
-}
-
-#fennevia-shell-frame-host .fennevia-edge-panel__identity strong,
-#fennevia-shell-frame-host .fennevia-edge-panel__identity span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#fennevia-shell-frame-host .fennevia-edge-panel__identity span,
-#fennevia-shell-frame-host .fennevia-edge-panel__footer,
 #fennevia-shell-frame-host .fennevia-surface-placeholder > span,
 #fennevia-shell-frame-host .fennevia-tabs-summary > span {
   color: var(--fennevia-glass-muted);
-}
-
-#fennevia-shell-frame-host .fennevia-edge-panel__mark {
-  inline-size: 10px;
-  block-size: 10px;
-  flex: none;
-  border: 1px solid color-mix(in srgb, var(--fennevia-focus-color) 60%, white);
-  border-radius: 50%;
-  background: var(--fennevia-focus-color);
-  box-shadow: 0 0 0 4px
-    color-mix(in srgb, var(--fennevia-focus-color) 16%, transparent);
 }
 
 #fennevia-shell-frame-host .fennevia-control {
@@ -308,7 +274,7 @@
   color: inherit;
   background: color-mix(in srgb, currentColor 7%, transparent);
   border: 1px solid var(--fennevia-glass-separator);
-  border-radius: 10px;
+  border-radius: var(--fennevia-control-radius);
   font: inherit;
   cursor: default;
 }
@@ -327,28 +293,17 @@
   outline-offset: 2px;
 }
 
-#fennevia-shell-frame-host .fennevia-edge-panel__dismiss {
-  display: grid;
-  padding: 0;
-  place-items: center;
-}
-
 #fennevia-shell-frame-host .fennevia-edge-panel__footer {
   position: absolute;
-  inset-block-end: var(--fennevia-space-4);
-  inset-inline-start: 50%;
   z-index: 3;
   min-block-size: 0;
-  max-inline-size: calc(
-    100% - var(--fennevia-space-3) - var(--fennevia-space-3)
-  );
-  justify-content: flex-end;
+  max-inline-size: min(100%, 22rem);
+  justify-content: center;
   padding: 0;
   border: 0;
   font-size: 12px;
   opacity: 0;
   pointer-events: none;
-  transform: translateX(-50%);
 }
 
 #fennevia-shell-frame-host
@@ -361,20 +316,43 @@
   .fennevia-edge-root[data-fennevia-edge="top"]
   .fennevia-edge-panel__footer {
   inset-block-start: calc(100% + var(--fennevia-space-2));
-  inset-block-end: auto;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="bottom"]
+  .fennevia-edge-panel__footer {
+  inset-block-end: calc(100% + var(--fennevia-space-2));
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="left"]
+  .fennevia-edge-panel__footer {
+  inset-block-start: 50%;
+  inset-inline-start: calc(100% + var(--fennevia-space-2));
+  transform: translateY(-50%);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="right"]
+  .fennevia-edge-panel__footer {
+  inset-block-start: 50%;
+  inset-inline-end: calc(100% + var(--fennevia-space-2));
+  transform: translateY(-50%);
 }
 
 #fennevia-shell-frame-host .fennevia-edge-panel__footer kbd {
   max-inline-size: 100%;
   overflow: hidden;
   padding: 6px 10px;
-  color: rgb(255 255 255);
-  background: color-mix(in srgb, var(--fennevia-focus-color) 82%, rgb(7 17 27));
-  border: 1px solid color-mix(in srgb, var(--fennevia-focus-color) 58%, white);
-  border-radius: 999px;
-  box-shadow:
-    0 10px 30px rgb(0 12 24 / 38%),
-    0 0 0 3px color-mix(in srgb, var(--fennevia-focus-color) 18%, transparent);
+  color: var(--fennevia-glass-text);
+  background: light-dark(rgb(247 250 252), rgb(20 26 35));
+  border: 1px solid var(--fennevia-glass-border);
+  border-radius: var(--fennevia-chip-radius);
+  box-shadow: 0 8px 24px rgb(0 12 24 / 40%);
   font: inherit;
   font-weight: 650;
   letter-spacing: 0.015em;
@@ -420,7 +398,7 @@
   grid-row: 1 / span 2;
   padding: 5px 8px;
   border: 1px solid var(--fennevia-glass-separator);
-  border-radius: 999px;
+  border-radius: var(--fennevia-chip-radius);
 }
 
 #fennevia-shell-frame-host .fennevia-surface-placeholder__eyebrow {
@@ -440,7 +418,7 @@
   min-block-size: 0;
   min-inline-size: 0;
   gap: var(--fennevia-space-3);
-  padding: 4px var(--fennevia-space-3);
+  padding: var(--fennevia-space-2) var(--fennevia-space-3);
   overflow: hidden;
 }
 
@@ -461,7 +439,7 @@
   background: color-mix(in srgb, var(--fennevia-focus-color) 14%, transparent);
   border: 1px solid
     color-mix(in srgb, var(--fennevia-focus-color) 32%, transparent);
-  border-radius: 8px 8px 8px 3px;
+  border-radius: var(--fennevia-control-radius);
   font-size: 14px;
 }
 
@@ -493,7 +471,7 @@
   overflow: hidden;
   background: color-mix(in srgb, currentColor 10%, transparent);
   border: 1px solid var(--fennevia-glass-separator);
-  border-radius: 999px;
+  border-radius: var(--fennevia-chip-radius);
 }
 
 #fennevia-shell-frame-host .fennevia-downloads__track-value {
@@ -553,7 +531,7 @@
   overflow: hidden;
   background: color-mix(in srgb, currentColor 7%, transparent);
   border: 1px solid var(--fennevia-glass-separator);
-  border-radius: 999px;
+  border-radius: var(--fennevia-chip-radius);
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -581,13 +559,17 @@
 #fennevia-shell-frame-host .fennevia-bookmarks__roots {
   display: grid;
   flex: 0 0 auto;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
   padding: var(--fennevia-space-2) var(--fennevia-space-3);
   border-block-end: 1px solid var(--fennevia-glass-separator);
 }
 
-#fennevia-shell-frame-host .fennevia-bookmarks__root,
+#fennevia-shell-frame-host .fennevia-bookmarks__roots-label {
+  color: var(--fennevia-glass-muted);
+  font-size: 11px;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__root-select,
 #fennevia-shell-frame-host .fennevia-bookmarks__item-button,
 #fennevia-shell-frame-host .fennevia-bookmarks__new-tab,
 #fennevia-shell-frame-host .fennevia-bookmarks__branch button {
@@ -599,36 +581,20 @@
   cursor: default;
 }
 
-#fennevia-shell-frame-host .fennevia-bookmarks__root {
-  display: flex;
-  min-block-size: 32px;
-  align-items: center;
-  gap: 6px;
+#fennevia-shell-frame-host .fennevia-bookmarks__root-select {
+  inline-size: 100%;
+  min-block-size: var(--fennevia-control-height);
   padding: 5px 8px;
   overflow: hidden;
-  color: var(--fennevia-glass-muted);
-  border-radius: 10px;
-  text-align: start;
-}
-
-#fennevia-shell-frame-host .fennevia-bookmarks__root > span:last-child {
-  overflow: hidden;
+  color: var(--fennevia-glass-text);
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border-color: var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
   text-overflow: ellipsis;
-  unicode-bidi: plaintext;
   white-space: nowrap;
 }
 
-#fennevia-shell-frame-host .fennevia-bookmarks__root[aria-selected="true"] {
-  color: var(--fennevia-glass-text);
-  background: var(--fennevia-selected-surface);
-  border-color: color-mix(
-    in srgb,
-    var(--fennevia-focus-color) 32%,
-    transparent
-  );
-}
-
-#fennevia-shell-frame-host .fennevia-bookmarks__root:hover,
+#fennevia-shell-frame-host .fennevia-bookmarks__root-select:hover,
 #fennevia-shell-frame-host .fennevia-bookmarks__item:hover,
 #fennevia-shell-frame-host .fennevia-bookmarks__item:focus-within {
   background: color-mix(in srgb, currentColor 9%, transparent);
@@ -650,7 +616,7 @@
   align-items: center;
   margin-block: 1px;
   margin-inline-start: var(--fennevia-bookmark-indent);
-  border-radius: 10px;
+  border-radius: var(--fennevia-control-radius);
 }
 
 #fennevia-shell-frame-host .fennevia-bookmarks__item-button {
@@ -661,7 +627,7 @@
   gap: 7px;
   padding: 4px 7px;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: var(--fennevia-control-radius);
   text-align: start;
 }
 
@@ -673,7 +639,7 @@
   place-items: center;
   color: var(--fennevia-focus-color);
   background: color-mix(in srgb, var(--fennevia-focus-color) 12%, transparent);
-  border-radius: 6px;
+  border-radius: var(--fennevia-control-radius);
   font-size: 11px;
 }
 
@@ -699,7 +665,7 @@
   flex: 0 0 28px;
   padding: 0;
   color: var(--fennevia-glass-muted);
-  border-radius: 8px;
+  border-radius: var(--fennevia-control-radius);
   opacity: 0;
 }
 
@@ -747,7 +713,7 @@
   min-block-size: 26px;
   padding: 3px 7px;
   border-color: var(--fennevia-glass-separator);
-  border-radius: 8px;
+  border-radius: var(--fennevia-control-radius);
 }
 
 #fennevia-shell-frame-host .fennevia-bookmarks__pager {
@@ -787,9 +753,7 @@
   text-overflow: ellipsis;
 }
 
-#fennevia-shell-frame-host
-  .fennevia-bookmarks
-  button:disabled:not(.fennevia-bookmarks__root) {
+#fennevia-shell-frame-host .fennevia-bookmarks button:disabled {
   opacity: 0.52;
 }
 
@@ -826,7 +790,7 @@
       var(--fennevia-focus-color) 24%,
       var(--fennevia-glass-separator)
     );
-  border-radius: 12px 12px 12px 5px;
+  border-radius: var(--fennevia-control-radius);
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 20%, transparent);
   font: inherit;
   text-align: start;
@@ -877,7 +841,7 @@
   color: var(--fennevia-glass-muted);
   background: color-mix(in srgb, currentColor 7%, transparent);
   border: 1px solid var(--fennevia-glass-separator);
-  border-radius: 999px;
+  border-radius: var(--fennevia-chip-radius);
   font-size: 9px;
   font-weight: 650;
   line-height: 1.25;
@@ -932,7 +896,7 @@
   color: var(--fennevia-glass-text);
   background: var(--fennevia-glass-surface);
   border: 1px solid var(--fennevia-glass-border);
-  border-radius: calc(var(--fennevia-glass-radius) + 3px);
+  border-radius: var(--fennevia-glass-radius);
   box-shadow: 0 24px 74px rgb(0 8 18 / 42%);
   opacity: 1;
   pointer-events: auto;
@@ -999,7 +963,7 @@
     transparent
   );
   border: 1px solid var(--fennevia-glass-separator);
-  border-radius: 15px 15px 15px 6px;
+  border-radius: var(--fennevia-control-radius);
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
 }
 
@@ -1080,7 +1044,7 @@
   padding: 10px;
   background: color-mix(in srgb, currentColor 5%, transparent);
   border: 1px solid var(--fennevia-glass-separator);
-  border-radius: 11px;
+  border-radius: var(--fennevia-control-radius);
 }
 
 #fennevia-shell-frame-host .fennevia-address-popup__detail-mark {
@@ -1088,7 +1052,7 @@
   padding: 4px 7px;
   text-align: center;
   background: color-mix(in srgb, currentColor 9%, transparent);
-  border-radius: 999px;
+  border-radius: var(--fennevia-chip-radius);
   font-size: 10px;
   font-weight: 700;
 }
@@ -1145,7 +1109,7 @@
   color: var(--fennevia-glass-muted);
   background: color-mix(in srgb, currentColor 7%, transparent);
   border: 1px solid var(--fennevia-glass-separator);
-  border-radius: 999px;
+  border-radius: var(--fennevia-chip-radius);
   font-size: 10px;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -1198,7 +1162,7 @@
   padding: 2px 7px;
   text-align: center;
   background: color-mix(in srgb, var(--fennevia-focus-color) 14%, transparent);
-  border-radius: 999px;
+  border-radius: var(--fennevia-chip-radius);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
@@ -1234,7 +1198,7 @@
   overflow: hidden;
   background: color-mix(in srgb, currentColor 5%, transparent);
   border: 1px solid transparent;
-  border-radius: 11px;
+  border-radius: var(--fennevia-control-radius);
 }
 
 #fennevia-shell-frame-host
@@ -1262,7 +1226,7 @@
   color: inherit;
   background: transparent;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--fennevia-control-radius);
   font: inherit;
   text-align: start;
   cursor: default;
@@ -1357,10 +1321,23 @@
   align-items: center;
   min-block-size: 0;
   min-inline-size: 0;
-  gap: 6px;
-  padding: 7px 8px;
+  gap: 10px;
+  padding: 6px 8px 6px 10px;
   overflow: hidden;
   white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__leading,
+#fennevia-shell-frame-host .fennevia-navigation__trailing {
+  display: flex;
+  min-inline-size: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__trailing {
+  margin-inline-start: auto;
 }
 
 #fennevia-shell-frame-host
@@ -1377,26 +1354,26 @@
   padding: 2px;
   background: color-mix(in srgb, currentColor 5%, transparent);
   border: 1px solid var(--fennevia-glass-separator);
-  border-radius: 11px;
+  border-radius: var(--fennevia-control-radius);
 }
 
 #fennevia-shell-frame-host
   :is(
     .fennevia-navigation__button,
     .fennevia-browser-tools__button,
-    .fennevia-navigation__dismiss
+    .fennevia-window-controls__button
   ) {
   display: inline-flex;
-  min-inline-size: 30px;
-  min-block-size: 30px;
-  block-size: 30px;
+  min-inline-size: 32px;
+  min-block-size: 32px;
+  block-size: 32px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   padding: 0;
   background: transparent;
   border-color: transparent;
-  border-radius: 8px;
+  border-radius: var(--fennevia-control-radius);
   line-height: 1;
 }
 
@@ -1404,8 +1381,7 @@
   :is(
     .fennevia-navigation__button,
     .fennevia-browser-tools__button,
-    .fennevia-navigation__dismiss,
-    .fennevia-top-address__status
+    .fennevia-window-controls__button
   ):disabled {
   color: var(--fennevia-glass-muted);
   background: transparent;
@@ -1418,174 +1394,21 @@
   background: color-mix(in srgb, var(--fennevia-focus-color) 16%, transparent);
 }
 
-#fennevia-shell-frame-host .fennevia-navigation__new-tab {
-  min-inline-size: auto;
-  gap: 6px;
-  padding-inline: 9px;
-  font-size: inherit;
-}
-
-#fennevia-shell-frame-host .fennevia-navigation__dismiss {
-  color: var(--fennevia-glass-muted);
-}
-
-#fennevia-shell-frame-host .fennevia-navigation__dismiss:hover {
-  color: var(--fennevia-glass-text);
-}
-
-#fennevia-shell-frame-host .fennevia-top-address-cluster {
-  display: flex;
-  block-size: 36px;
-  min-inline-size: 132px;
-  flex: 1 1 420px;
-  align-items: stretch;
-  overflow: hidden;
-  background: color-mix(
-    in srgb,
-    var(--fennevia-glass-surface) 72%,
-    transparent
-  );
-  border: 1px solid
-    color-mix(
-      in srgb,
-      var(--fennevia-focus-color) 26%,
-      var(--fennevia-glass-separator)
-    );
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
-  -moz-window-dragging: no-drag;
-}
-
-#fennevia-shell-frame-host .fennevia-top-address-cluster:focus-within {
-  border-color: color-mix(
-    in srgb,
-    var(--fennevia-focus-color) 68%,
-    transparent
-  );
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 10%),
-    0 0 0 2px color-mix(in srgb, var(--fennevia-focus-color) 17%, transparent);
-}
-
-#fennevia-shell-frame-host .fennevia-top-address {
-  position: relative;
-  display: flex;
-  min-inline-size: 0;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  overflow: hidden;
-  color: inherit;
-  background: transparent;
-  border: 0;
-  font: inherit;
-  text-align: start;
-  cursor: default;
-}
-
-#fennevia-shell-frame-host .fennevia-top-address:hover {
-  background: color-mix(in srgb, currentColor 6%, transparent);
-}
-
-#fennevia-shell-frame-host .fennevia-top-address:focus-visible {
-  outline: 0;
-}
-
-#fennevia-shell-frame-host .fennevia-navigation__status {
-  display: flex;
-  min-inline-size: 0;
-  flex: 1 1 auto;
-  align-items: baseline;
-  gap: 8px;
-  overflow: hidden;
-  color: inherit;
-}
-
-#fennevia-shell-frame-host .fennevia-navigation__status strong,
-#fennevia-shell-frame-host .fennevia-navigation__status span {
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  unicode-bidi: plaintext;
-  white-space: nowrap;
-}
-
-#fennevia-shell-frame-host .fennevia-navigation__status strong {
-  flex: 0 1 auto;
-}
-
-#fennevia-shell-frame-host .fennevia-navigation__status span {
-  flex: 1 1 auto;
-  color: var(--fennevia-glass-muted);
-  font-size: 11px;
-}
-
-#fennevia-shell-frame-host .fennevia-top-address__loading {
-  position: absolute;
-  inset-block-end: 0;
-  inset-inline: 0;
-  block-size: 2px;
-  background: var(--fennevia-focus-color);
-  opacity: 0;
-  transform: scaleX(0.28) translateX(-170%);
-  transform-origin: left center;
-  pointer-events: none;
-}
-
-#fennevia-shell-frame-host
-  .fennevia-top-address__loading[data-fennevia-loading="true"] {
-  opacity: 1;
-  animation: fennevia-address-loading 1200ms ease-in-out infinite;
-}
-
-#fennevia-shell-frame-host .fennevia-top-address__native-status {
+#fennevia-shell-frame-host .fennevia-window-controls {
   display: flex;
   min-inline-size: 0;
   flex: 0 0 auto;
   align-items: center;
   gap: 2px;
-  padding: 2px 3px;
+  margin-inline-start: 2px;
+  padding: 2px 2px 2px 8px;
   border-inline-start: 1px solid var(--fennevia-glass-separator);
+  -moz-window-dragging: no-drag;
 }
 
-#fennevia-shell-frame-host .fennevia-top-address__status {
-  display: inline-flex;
-  min-inline-size: 30px;
-  min-block-size: 28px;
-  block-size: 28px;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 0 7px;
-  color: var(--fennevia-glass-muted);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 10px;
-  font-weight: 650;
-  cursor: default;
-}
-
-#fennevia-shell-frame-host
-  .fennevia-top-address__status[data-fennevia-status-tone="positive"] {
-  color: light-dark(rgb(18 112 74), rgb(103 219 167));
-}
-
-#fennevia-shell-frame-host
-  .fennevia-top-address__status[data-fennevia-status-tone="warning"] {
-  color: light-dark(rgb(143 83 0), rgb(255 190 82));
-}
-
-#fennevia-shell-frame-host
-  .fennevia-top-address__status[data-fennevia-status-tone="danger"] {
-  color: var(--fennevia-danger-color);
-}
-
-#fennevia-shell-frame-host .fennevia-top-address__status:hover {
-  background: color-mix(in srgb, currentColor 13%, transparent);
-  border-color: color-mix(in srgb, currentColor 24%, transparent);
+#fennevia-shell-frame-host .fennevia-window-controls__close:hover {
+  color: white;
+  background: rgb(205 45 61);
 }
 
 #fennevia-shell-frame-host .fennevia-navigation__private {
@@ -1594,23 +1417,9 @@
   color: light-dark(rgb(91 49 134), rgb(214 170 255));
   background: color-mix(in srgb, currentColor 10%, transparent);
   border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
-  border-radius: 999px;
+  border-radius: var(--fennevia-chip-radius);
   font-size: 10px;
   font-weight: 650;
-}
-
-@keyframes fennevia-address-loading {
-  0% {
-    transform: scaleX(0.28) translateX(-170%);
-  }
-
-  55% {
-    transform: scaleX(0.52) translateX(62%);
-  }
-
-  100% {
-    transform: scaleX(0.28) translateX(350%);
-  }
 }
 
 #fennevia-shell-frame-host template {
@@ -1623,7 +1432,6 @@
     --fennevia-edge-side-width: min(240px, 42%);
     --fennevia-edge-top-height: 56px;
     --fennevia-edge-bottom-height: 78px;
-    --fennevia-glass-radius: 14px;
   }
 
   #fennevia-shell-frame-host .fennevia-address-launcher {
@@ -1668,6 +1476,11 @@
     padding-inline: 6px;
   }
 
+  #fennevia-shell-frame-host .fennevia-navigation__leading,
+  #fennevia-shell-frame-host .fennevia-navigation__trailing {
+    gap: 4px;
+  }
+
   #fennevia-shell-frame-host .fennevia-downloads {
     grid-template-columns: minmax(126px, 0.9fr) minmax(88px, 1.2fr) auto;
     gap: var(--fennevia-space-2);
@@ -1690,23 +1503,13 @@
 }
 
 @media (max-width: 1180px) {
-  #fennevia-shell-frame-host .fennevia-navigation__new-tab-label,
-  #fennevia-shell-frame-host .fennevia-top-address__status > span,
   #fennevia-shell-frame-host .fennevia-browser-tools__secondary {
     display: none;
-  }
-
-  #fennevia-shell-frame-host .fennevia-navigation__new-tab,
-  #fennevia-shell-frame-host .fennevia-top-address__status {
-    min-inline-size: 30px;
-    padding: 0;
   }
 }
 
 @media (max-width: 900px) {
   #fennevia-shell-frame-host .fennevia-navigation__secondary,
-  #fennevia-shell-frame-host .fennevia-top-address__permissions,
-  #fennevia-shell-frame-host .fennevia-navigation__status span,
   #fennevia-shell-frame-host .fennevia-navigation__private {
     display: none;
   }
@@ -1718,15 +1521,8 @@
       [data-fennevia-browser-tool="extensions"],
       [data-fennevia-browser-tool="native-toolbar"],
       [data-fennevia-browser-tool="application-menu"]
-    ),
-  #fennevia-shell-frame-host
-    .fennevia-top-address__status[data-fennevia-browser-tool="protections"] {
+    ) {
     display: none;
-  }
-
-  #fennevia-shell-frame-host .fennevia-top-address {
-    gap: 5px;
-    padding-inline: 7px;
   }
 }
 
@@ -1742,14 +1538,6 @@
   #fennevia-shell-frame-host .fennevia-navigation {
     gap: 3px;
     padding-inline: 4px;
-  }
-
-  #fennevia-shell-frame-host .fennevia-top-address-cluster {
-    min-inline-size: 76px;
-  }
-
-  #fennevia-shell-frame-host .fennevia-top-address > .fennevia-icon {
-    display: none;
   }
 }
 
@@ -1781,12 +1569,6 @@
     .fennevia-edge-panel__footer {
     animation: none;
     opacity: 1;
-  }
-
-  #fennevia-shell-frame-host
-    .fennevia-top-address__loading[data-fennevia-loading="true"] {
-    animation: none;
-    transform: none;
   }
 }
 
@@ -1854,10 +1636,10 @@
     border-color: Highlight;
   }
 
-  #fennevia-shell-frame-host .fennevia-bookmarks__root[aria-selected="true"] {
-    color: HighlightText;
-    background: Highlight;
-    border-color: Highlight;
+  #fennevia-shell-frame-host .fennevia-bookmarks__root-select {
+    color: CanvasText;
+    background: Canvas;
+    border-color: CanvasText;
   }
 
   #fennevia-shell-frame-host .fennevia-bookmarks__item-icon,
@@ -1889,12 +1671,6 @@
     background: Highlight;
   }
 
-  #fennevia-shell-frame-host .fennevia-edge-panel__mark {
-    background: Highlight;
-    border-color: Highlight;
-    box-shadow: none;
-  }
-
   #fennevia-shell-frame-host .fennevia-edge-panel__footer kbd {
     color: ButtonText;
     background: ButtonFace;
@@ -1909,8 +1685,7 @@
     border-color: Highlight;
   }
 
-  #fennevia-shell-frame-host .fennevia-top-address-cluster,
-  #fennevia-shell-frame-host .fennevia-top-address__status,
+  #fennevia-shell-frame-host .fennevia-window-controls,
   #fennevia-shell-frame-host
     :is(
       .fennevia-navigation__controls,

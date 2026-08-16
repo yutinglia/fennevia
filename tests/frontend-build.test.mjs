@@ -82,7 +82,26 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
     /position: absolute;[\s\S]*@keyframes fennevia-shortcut-tip/u,
   );
   assert.match(css, /animation: fennevia-shortcut-tip 2800ms/u);
-  assert.match(css, /var\(--fennevia-focus-color\) 82%/u);
+  assert.match(
+    css,
+    /data-fennevia-edge="top"\]\s*\.fennevia-edge-panel__footer \{\s*inset-block-start: calc\(100% \+ var\(--fennevia-space-2\)\);/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-edge="bottom"\]\s*\.fennevia-edge-panel__footer \{\s*inset-block-end: calc\(100% \+ var\(--fennevia-space-2\)\);/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-edge="left"\]\s*\.fennevia-edge-panel__footer \{\s*inset-block-start: 50%;\s*inset-inline-start: calc\(100% \+ var\(--fennevia-space-2\)\);/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-edge="right"\]\s*\.fennevia-edge-panel__footer \{\s*inset-block-start: 50%;\s*inset-inline-end: calc\(100% \+ var\(--fennevia-space-2\)\);/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-edge-panel__footer kbd \{[\s\S]*?background: light-dark\(rgb\(247 250 252\), rgb\(20 26 35\)\);/u,
+  );
 
   const component = await readProjectFile("src/shell/App.svelte");
   assert.match(
@@ -112,14 +131,14 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /^\(function\(\)\{/u);
   assert.match(bundle, /__fenneviaRegisterShellFrontend/u);
   assert.match(bundle, /FENNEVIA_SVELTE_RUNTIME_/u);
-  assert.match(bundle, /data-fennevia-navigation-status/u);
+  assert.match(bundle, /data-fennevia-window-controls/u);
   assert.match(bundle, /data-fennevia-bookmark-roots/u);
   assert.match(bundle, /data-fennevia-bookmark-list/u);
   assert.match(bundle, /data-fennevia-bookmark-status/u);
   assert.match(bundle, /data-fennevia-download-summary/u);
   assert.match(bundle, /data-fennevia-download-progress/u);
   assert.match(bundle, /data-fennevia-download-state/u);
-  assert.match(bundle, /data-fennevia-top-address-launcher/u);
+  assert.match(bundle, /data-fennevia-window-control/u);
   assert.match(bundle, /data-fennevia-browser-tools/u);
   assert.match(bundle, /data-fennevia-browser-tool/u);
   assert.match(bundle, /site-information/u);
@@ -152,11 +171,10 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(css, /#fennevia-shell-frame-host \.fennevia-bookmarks/u);
   assert.match(css, /#fennevia-shell-frame-host \.fennevia-downloads/u);
   assert.match(css, /data-fennevia-download-progress="indeterminate"/u);
-  assert.match(css, /\.fennevia-top-address-cluster/u);
+  assert.match(css, /\.fennevia-window-controls/u);
   assert.match(css, /\.fennevia-browser-tools__button/u);
   assert.match(css, /\):disabled/u);
   assert.match(css, /data-fennevia-loading="true"/u);
-  assert.match(css, /@keyframes fennevia-address-loading/u);
   assert.match(css, /-moz-window-dragging: drag/u);
   assert.match(css, /@keyframes fennevia-shortcut-tip/u);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/u);
@@ -203,7 +221,7 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
   );
   assert.match(
     runtime,
-    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxBookmarksBridge,[\s\S]*createFirefoxBrowserToolsBridge,[\s\S]*createFirefoxDownloadsBridge,[\s\S]*createFirefoxNavigationBridge,[\s\S]*createFirefoxTabsBridge,[\s\S]*createFirefoxUrlbarCoverageBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
+    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxBookmarksBridge,[\s\S]*createFirefoxBrowserToolsBridge,[\s\S]*createFirefoxDownloadsBridge,[\s\S]*createFirefoxNavigationBridge,[\s\S]*createFirefoxTabsBridge,[\s\S]*createFirefoxUrlbarCoverageBridge,[\s\S]*createFirefoxWindowControlsBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
   );
   assert.match(runtime, /Reflect\.deleteProperty\(/u);
   assert.doesNotMatch(runtime, /ShellApp\.sys\.mjs|import\s*\(/u);
@@ -235,11 +253,13 @@ test("the generated Firefox boundary is one deterministic private ESM artifact",
   assert.match(bridge, /createFirefoxNavigationBridge/u);
   assert.match(bridge, /createFirefoxTabsBridge/u);
   assert.match(bridge, /createFirefoxUrlbarCoverageBridge/u);
+  assert.match(bridge, /createFirefoxWindowControlsBridge/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING/u);
+  assert.match(bridge, /FENNEVIA_FIREFOX_WINDOW_CONTROLS_CAPABILITY_MISSING/u);
   assert.match(bridge, /export \{/u);
   assert.doesNotMatch(
     bridge,

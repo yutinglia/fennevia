@@ -8,9 +8,8 @@ const SUSPENDED_ATTRIBUTE = "data-fennevia-native-ui-suspended";
 const STYLE_ID = "fennevia-native-ui-style";
 const HIDE_DELAY_MS = 180;
 const CONTENT_GUTTER_PX = 7;
-const TOP_SURFACE_HEIGHT_PX = 56;
-const TOP_SURFACE_GAP_PX = 8;
-const EXPECTED_STYLE_RULE_COUNT = 13;
+const CONTENT_CORNER_RADIUS_PX = 4;
+const EXPECTED_STYLE_RULE_COUNT = 7;
 
 const LISTENER_OPTIONS = Object.freeze({ capture: true });
 
@@ -25,7 +24,7 @@ const NATIVE_UI_STYLE = `
 :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-suspended])
   #browser > #tabbrowser-tabbox {
   border: 1px solid var(--chrome-content-separator-color) !important;
-  border-radius: 10px !important;
+  border-radius: var(--chrome-block-radius, ${CONTENT_CORNER_RADIUS_PX}px) !important;
   overflow: clip !important;
 }
 
@@ -65,124 +64,11 @@ const NATIVE_UI_STYLE = `
 }
 
 :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox:not([tabs-hidden])
-  > #TabsToolbar
-  > .titlebar-buttonbox-container,
-:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox[tabs-hidden]
-  > #nav-bar
+  #navigator-toolbox
+  > :is(#toolbar-menubar, #TabsToolbar, #nav-bar)
   > .titlebar-buttonbox-container {
-  position: fixed !important;
-  display: flex !important;
-  align-items: center !important;
-  inset-block-start: ${CONTENT_GUTTER_PX}px !important;
-  inset-inline-end: 10px !important;
-  z-index: 6 !important;
-  padding: 3px !important;
-  visibility: visible !important;
-  overflow: visible !important;
-  background: color-mix(
-    in srgb,
-    var(--toolbar-background-color) 92%,
-    transparent
-  ) !important;
-  border: 1px solid var(--chrome-content-separator-color) !important;
-  border-radius: 12px !important;
-  box-shadow:
-    0 8px 24px rgb(0 0 0 / 22%),
-    inset 0 1px 0 rgb(255 255 255 / 12%) !important;
-  pointer-events: auto !important;
-  -moz-window-dragging: no-drag !important;
-  transition:
-    inset-block-start 180ms cubic-bezier(0.2, 0.72, 0.2, 1),
-    box-shadow 160ms ease-out !important;
-}
-
-:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox:not([tabs-hidden])
-  > #TabsToolbar
-  > .titlebar-buttonbox-container
-  > .titlebar-buttonbox,
-:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox[tabs-hidden]
-  > #nav-bar
-  > .titlebar-buttonbox-container
-  > .titlebar-buttonbox {
-  display: flex !important;
-  gap: 2px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  background: transparent !important;
-  pointer-events: auto !important;
-  -moz-window-dragging: no-drag !important;
-}
-
-:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox
-  > :is(#TabsToolbar, #nav-bar)
-  > .titlebar-buttonbox-container
-  > .titlebar-buttonbox
-  > .titlebar-button {
-  box-sizing: border-box !important;
-  min-width: 34px !important;
-  width: 34px !important;
-  min-height: 28px !important;
-  height: 28px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background-color: transparent !important;
-  border: 0 !important;
-  border-radius: 8px !important;
-  transition:
-    background-color 120ms ease-out,
-    color 120ms ease-out !important;
-}
-
-:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox
-  > :is(#TabsToolbar, #nav-bar)
-  > .titlebar-buttonbox-container
-  > .titlebar-buttonbox
-  > .titlebar-button:not(.titlebar-close):hover {
-  background-color: color-mix(in srgb, currentColor 13%, transparent) !important;
-}
-
-:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox
-  > :is(#TabsToolbar, #nav-bar)
-  > .titlebar-buttonbox-container
-  > .titlebar-buttonbox
-  > .titlebar-button:active {
-  background-color: color-mix(in srgb, currentColor 21%, transparent) !important;
-}
-
-:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox
-  > :is(#TabsToolbar, #nav-bar)
-  > .titlebar-buttonbox-container
-  > .titlebar-buttonbox
-  > .titlebar-close:hover {
-  color: white !important;
-  background-color: rgb(205 45 61) !important;
-}
-
-:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended]):has(
-    #fennevia-shell-frame-host[data-fennevia-top-visible]
-  )
-  #navigator-toolbox:not([tabs-hidden])
-  > #TabsToolbar
-  > .titlebar-buttonbox-container,
-:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended]):has(
-    #fennevia-shell-frame-host[data-fennevia-top-visible]
-  )
-  #navigator-toolbox[tabs-hidden]
-  > #nav-bar
-  > .titlebar-buttonbox-container {
-  inset-block-start: ${
-    CONTENT_GUTTER_PX + TOP_SURFACE_HEIGHT_PX + TOP_SURFACE_GAP_PX
-  }px !important;
+  visibility: collapse !important;
+  pointer-events: none !important;
 }
 
 :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])

@@ -456,8 +456,8 @@ ADR-037 adds focused unit/static/build coverage for:
 - one-row top-surface selectors, project-authored SVG namespace containment,
   progressive disclosure, loading/focus/disabled states, reduced motion,
   forced colors, and deterministic generated artifacts;
-- thirteen-rule native activation CSS, retained native caption nodes, compact
-  caption-island styling, content gutter, and exact rule-count failure;
+- seven-rule native activation CSS, retained native caption nodes, project-owned
+  top-row window controls, content gutter, and exact rule-count failure;
 - panel drag/no-drag declarations, edge-to-panel contact, transient shortcut
   overlay, and `top > sides > bottom` collision policy.
 
@@ -525,7 +525,7 @@ native modal stacking, narrow/short move/resize, maximize/minimize/restore,
 normal/second/private isolation, emergency fallback, partial activation CSS
 failure in an independent window, and Browser Console cleanliness. The Browser
 Toolbox variant repeated ownership and namespace inspection while active. The
-current ADR-037 extension has thirteen rules and the pending manual matrix in
+current ADR-038 extension has seven rules and the pending manual matrix in
 section 6.7; the earlier result must not be treated as evidence for the changed
 toolbar/caption implementation.
 
@@ -557,8 +557,10 @@ the health phase requires:
   `openLocation()` handoff capability;
 - a valid browser-tools snapshot, all fixed native-panel/tool actions, and
   synchronous original-toolbar reveal capability;
+- a valid window-controls snapshot and project-owned top-row min/max/close
+  buttons;
 - exact Firefox native target/titlebar ownership, an attached exact activation
-  style with thirteen parsed rules, and synchronous native Urlbar reveal capability;
+  style with seven parsed rules, and synchronous native Urlbar reveal capability;
 - environment/suspension handling;
 - privileged emergency handler;
 - every declared required capability;

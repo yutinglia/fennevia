@@ -174,6 +174,8 @@ test("the component uses semantic sibling controls and property-safe rendering o
     "glass-blur",
     "glass-saturation",
     "glass-radius",
+    "control-radius",
+    "chip-radius",
     "glass-shadow",
     "edge-inset",
     "edge-trigger-thickness",
@@ -198,12 +200,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
     [...styles.matchAll(/^\s*animation:\s*([^;]+);/gmu)].map(
       (match) => match[1],
     ),
-    [
-      "fennevia-shortcut-tip 2800ms ease-out both",
-      "fennevia-address-loading 1200ms ease-in-out infinite",
-      "none",
-      "none",
-    ],
+    ["fennevia-shortcut-tip 2800ms ease-out both", "none"],
   );
   assert.doesNotMatch(
     styles,

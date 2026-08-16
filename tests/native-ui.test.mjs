@@ -557,20 +557,19 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
 
   const style = fixture.document.getElementById(nativeUiStyleId);
   assert.equal(style.parentElement, fixture.frame);
-  assert.equal(style.sheet.cssRules.length, 13);
+  assert.equal(style.sheet.cssRules.length, 7);
   assert.match(style.textContent, /#browser > #tabbrowser-tabbox/u);
+  assert.match(
+    style.textContent,
+    /:is\(#toolbar-menubar, #TabsToolbar, #nav-bar\)\s+>\s+\.titlebar-buttonbox-container/u,
+  );
   assert.match(style.textContent, /padding: 7px !important/u);
+  assert.match(style.textContent, /border-radius: var\(--chrome-block-radius, 4px\) !important/u);
   assert.match(style.textContent, /height: 0 !important/u);
   assert.match(style.textContent, /\.titlebar-buttonbox-container/u);
-  assert.match(style.textContent, /data-fennevia-top-visible/u);
-  assert.match(style.textContent, /:has\(/u);
-  assert.match(style.textContent, /0 8px 24px rgb\(0 0 0 \/ 22%\)/u);
-  assert.match(style.textContent, /display: flex !important/u);
+  assert.doesNotMatch(style.textContent, /data-fennevia-top-visible/u);
   assert.match(style.textContent, /z-index: 6 !important/u);
   assert.doesNotMatch(style.textContent, /#notifications-toolbar/u);
-  assert.match(style.textContent, /> \.titlebar-button \{/u);
-  assert.match(style.textContent, /> \.titlebar-close:hover \{/u);
-  assert.match(style.textContent, /width: 34px !important/u);
   assert.ok(
     controller
       .assertRequiredCapabilities()

@@ -493,13 +493,14 @@ recovery path.
 Delivered by ADR-032 and extended by ADR-037:
 
 - the production initializer activates only after the complete health check;
-- one exact thirteen-rule per-window controller collapses reviewed toolbox and
+- one exact seven-rule per-window controller collapses reviewed toolbox and
   toolbar geometry, exact non-caption content, bookmarks toolbar, and exact
   native sidebar surfaces, and applies the 7px content gutter;
 - native vertical-tab mode retains its navbar titlebar owner;
-- Firefox-owned titlebar controls remain attached and are styled in place as a
-  compact caption island; notifications, popups, dialogs, and content remain
-  Firefox-owned;
+- Firefox-owned titlebar controls remain attached for fail-open; ADR-038
+  collapses every native caption copy at rest and shows project-owned
+  window buttons on the visible top row; notifications, popups, dialogs, and
+  content remain Firefox-owned;
 - native focus, anchored popups, an open native sidebar, #37's Urlbar handoff,
   and ADR-037's panel/original-toolbar handoffs reveal the complete retained
   native path;
@@ -513,8 +514,8 @@ History-sidebar holds, customize/browser-fullscreen transitions, Browser
 Toolbox ownership, emergency fallback, partial CSS failure, safe start, and
 recovery evidence.
 
-That gate result predates ADR-037's changed geometry and handoffs. The new
-manual matrix remains pending and must not be reported as covered by the
+That gate result predates ADR-037/ADR-038's changed geometry and handoffs. The
+new manual matrix remains pending and must not be reported as covered by the
 historical #15 run.
 
 Evidence: ADR-032 and

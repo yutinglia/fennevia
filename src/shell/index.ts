@@ -45,6 +45,11 @@ import {
   type BrowserUrlbarCoverageBridge,
   type BrowserUrlbarCoverageStateAdapter,
 } from "../app/urlbar-coverage-state";
+import {
+  createBrowserWindowControlsStateAdapter,
+  type BrowserWindowControlsBridge,
+  type BrowserWindowControlsStateAdapter,
+} from "../app/window-controls-state";
 import App from "./App.svelte";
 import AddressPopup from "./AddressPopup.svelte";
 import "./styles/edge-shell.css";
@@ -92,6 +97,7 @@ type MountOptions = Readonly<{
   tabs: BrowserTabsBridge;
   targets: EdgeMountTargets;
   urlbarCoverage: BrowserUrlbarCoverageBridge;
+  windowControls: BrowserWindowControlsBridge;
   windowKind: ShellWindowKind;
 }>;
 
@@ -118,6 +124,7 @@ type MountedShell = Readonly<{
   shell: EdgeShellController;
   tabs: BrowserTabsStateAdapter;
   urlbarCoverage: BrowserUrlbarCoverageStateAdapter;
+  windowControls: BrowserWindowControlsStateAdapter;
 }>;
 
 type FocusableElement = Element &
@@ -214,6 +221,7 @@ export function mountShellApp({
   tabs,
   targets,
   urlbarCoverage,
+  windowControls,
   windowKind,
 }: MountOptions): () => boolean {
   if (
@@ -244,6 +252,7 @@ export function mountShellApp({
   let navigationState: BrowserNavigationStateAdapter | undefined;
   let tabsState: BrowserTabsStateAdapter | undefined;
   let urlbarCoverageState: BrowserUrlbarCoverageStateAdapter | undefined;
+  let windowControlsState: BrowserWindowControlsStateAdapter | undefined;
   const components: MountedComponent[] = [];
   const controllerSubscriptions: Array<() => boolean> = [];
   const focusOrigins = new Map<EdgeName, FocusableElement>();
@@ -379,18 +388,14 @@ export function mountShellApp({
       snapshot.invocationSource === "left-launcher" ||
       snapshot.invocationSource === "top-launcher"
     ) {
-      const launcherEdge =
-        snapshot.invocationSource === "top-launcher" ? "top" : "left";
-      shell.revealProgrammatically(launcherEdge);
+      shell.revealProgrammatically("left");
       flushSync();
-      const launcher = targets[launcherEdge].querySelector<FocusableElement>(
-        launcherEdge === "top"
-          ? "[data-fennevia-top-address-launcher]"
-          : "[data-fennevia-address-launcher]",
+      const launcher = targets.left.querySelector<FocusableElement>(
+        "[data-fennevia-address-launcher]",
       );
       if (launcher?.isConnected) {
         launcher.focus({ preventScroll: true });
-        if (targets[launcherEdge].contains(frame.ownerDocument.activeElement)) {
+        if (targets.left.contains(frame.ownerDocument.activeElement)) {
           return;
         }
       }
@@ -670,6 +675,11 @@ export function mountShellApp({
       firstError ??= error;
     }
     try {
+      windowControlsState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
       navigationState?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -707,6 +717,8 @@ export function mountShellApp({
     downloadsState = createBrowserDownloadsStateAdapter(downloads);
     urlbarCoverageState =
       createBrowserUrlbarCoverageStateAdapter(urlbarCoverage);
+    windowControlsState =
+      createBrowserWindowControlsStateAdapter(windowControls);
     addressPopup = createAddressPopupController({
       navigation: navigationState,
       tabs: tabsState,
@@ -748,10 +760,10 @@ export function mountShellApp({
           ...(edge === "top" || edge === "left"
             ? { navigation: navigationState }
             : {}),
-          ...(edge === "top" ? { browserTools: browserToolsState } : {}),
           ...(edge === "top"
             ? {
-                onOpenAddress: () => openAddressPopup("top-launcher"),
+                browserTools: browserToolsState,
+                windowControls: windowControlsState,
               }
             : {}),
           onDismiss: dismissSurface,
@@ -843,6 +855,7 @@ export function mountShellApp({
       shell,
       tabs: tabsState,
       urlbarCoverage: urlbarCoverageState,
+      windowControls: windowControlsState,
     });
     mountedFrames.set(frame, record);
 
@@ -912,22 +925,19 @@ export async function verifyShellAppHealth({
     'button[data-fennevia-action="back"]',
     'button[data-fennevia-action="forward"]',
     'button[data-fennevia-action="reload-stop"]',
-    'button[data-fennevia-action="new-tab"]',
     'button[data-fennevia-browser-tool="extensions"]',
-    'button[data-fennevia-browser-tool="site-information"]',
-    'button[data-fennevia-browser-tool="protections"]',
-    'button[data-fennevia-browser-tool="site-permissions"]',
     'button[data-fennevia-browser-tool="downloads"]',
     'button[data-fennevia-browser-tool="application-menu"]',
     'button[data-fennevia-browser-tool="settings"]',
     'button[data-fennevia-browser-tool="customize"]',
     'button[data-fennevia-browser-tool="native-toolbar"]',
-    "button[data-fennevia-top-address-launcher]",
-    "output[data-fennevia-navigation-status]",
+    'button[data-fennevia-window-control="minimize"]',
+    'button[data-fennevia-window-control="toggle-maximize"]',
+    'button[data-fennevia-window-control="close"]',
   ];
   const requiredRightSelectors = [
-    '[role="tablist"][data-fennevia-bookmark-roots]',
-    'button[role="tab"][data-fennevia-bookmark-root]',
+    "select[data-fennevia-bookmark-roots]",
+    "option[data-fennevia-bookmark-root]",
     '[role="list"][data-fennevia-bookmark-list]',
     "[data-fennevia-bookmark-status]",
   ];
@@ -964,6 +974,7 @@ export async function verifyShellAppHealth({
     mounted.navigation.status().disposed ||
     mounted.tabs.status().disposed ||
     mounted.urlbarCoverage.status().disposed ||
+    mounted.windowControls.status().disposed ||
     roots.some((root, index) => {
       const edge = edgeNames[index];
       return (
@@ -976,7 +987,6 @@ export async function verifyShellAppHealth({
         root.querySelector(
           `[role="region"][data-fennevia-edge-panel="${edge}"]`,
         ) === null ||
-        root.querySelector(`[data-fennevia-dismiss="${edge}"]`) === null ||
         Array.from(root.querySelectorAll("*")).some(
           (element) => !hasAllowedProjectNamespace(element),
         )
@@ -1086,21 +1096,26 @@ export function getShellAppCapabilities({
         targets.top.querySelector(
           '[data-fennevia-browser-tool="extensions"]',
         ) &&
-        targets.top.querySelector(
-          '[data-fennevia-browser-tool="site-information"]',
-        ) &&
-        targets.top.querySelector(
-          '[data-fennevia-browser-tool="protections"]',
-        ) &&
-        targets.top.querySelector(
-          '[data-fennevia-browser-tool="site-permissions"]',
-        ) &&
         targets.top.querySelector('[data-fennevia-browser-tool="downloads"]') &&
         targets.top.querySelector(
           '[data-fennevia-browser-tool="native-toolbar"]',
         ),
       ),
       name: "frontend.browser-tools-state",
+    }),
+    Object.freeze({
+      available: Boolean(
+        mounted &&
+        !mounted.windowControls.status().disposed &&
+        targets.top.querySelector(
+          '[data-fennevia-window-control="minimize"]',
+        ) &&
+        targets.top.querySelector(
+          '[data-fennevia-window-control="toggle-maximize"]',
+        ) &&
+        targets.top.querySelector('[data-fennevia-window-control="close"]'),
+      ),
+      name: "frontend.window-controls-state",
     }),
     Object.freeze({
       available: Boolean(
