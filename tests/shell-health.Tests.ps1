@@ -78,15 +78,16 @@ foreach ($requiredToken in @(
     'data-fennevia-native-ui-suspended',
     '#browser > #tabbrowser-tabbox',
     'CONTENT_GUTTER_PX\s*=\s*7',
+    'CONTENT_CORNER_RADIUS_PX\s*=\s*4',
     'padding:\s*\$\{CONTENT_GUTTER_PX\}px\s*!important',
+    'border-radius:\s*var\(--chrome-block-radius, \$\{CONTENT_CORNER_RADIUS_PX\}px\)\s*!important',
     'titlebar-buttonbox-container',
-    'data-fennevia-top-visible',
-    '0 8px 24px rgb\(0 0 0 / 22%\)',
-    'display:\s*flex\s*!important',
+    'pointer-events:\s*none\s*!important',
     'z-index:\s*6\s*!important',
     'nativeUi\.revealForUrlbar',
     'nativeUi\.revealForToolbar',
     'createFirefoxBrowserToolsBridge',
+    'createFirefoxWindowControlsBridge',
     'lifecycle\.activate\(\)'
 )) {
     Assert-True -Condition ($runtimeContent -match $requiredToken) -Message "The runtime is missing a required health, recovery, or logging boundary."

@@ -17,7 +17,8 @@ floating edge panels that stay hidden until you need them.
 At rest, Firefox mostly shows the current page. Move the pointer to an edge, or
 use the keyboard, to reveal:
 
-- **Top:** Back, Forward, Reload/Stop, New Tab, and page status.
+- **Top:** Back, Forward, Reload/Stop, Firefox tools, and
+  project-owned window controls.
 - **Left:** vertical tabs and a compact address/status launcher.
 - **Right:** bookmarks.
 - **Bottom:** download progress and status.
@@ -25,9 +26,10 @@ use the keyboard, to reveal:
   <kbd>Ctrl</kbd>+<kbd>L</kbd>.
 
 Firefox still owns security prompts, permissions, certificates, extension
-installation, download safety, DevTools, the full native address bar, and the OS
-window controls. Fennevia can reveal the complete native Firefox interface when
-a feature is unsupported or recovery is needed.
+installation, download safety, DevTools, the full native address bar, and the
+window commands behind the custom caption buttons. Native caption nodes stay in
+place for fail-open recovery. Fennevia can reveal the complete native Firefox
+interface when a feature is unsupported or recovery is needed.
 
 ## Current release
 

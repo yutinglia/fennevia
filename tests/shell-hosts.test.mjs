@@ -503,6 +503,44 @@ test("attaches four XHTML edge boundaries and one overlay without moving native 
   );
 });
 
+test("verifyHealth allows project SVG icons and rejects other namespaces", () => {
+  const svgNamespace = "http://www.w3.org/2000/svg";
+  const window = createBrowserWindow();
+  const controller = createShellHosts({
+    window,
+    windowKind: "normal",
+    firefoxVersion: appInfo.version,
+    buildId: appInfo.appBuildID,
+  });
+  controller.attach();
+  assert.equal(controller.verifyHealth(), true);
+
+  const target = controller.getMountPoints().surfaces.top.target;
+  const icon = window.document.createElementNS(svgNamespace, "svg");
+  icon.setAttribute("data-fennevia-icon", "back");
+  const path = window.document.createElementNS(svgNamespace, "path");
+  icon.append(path);
+  target.append(icon);
+  assert.equal(controller.verifyHealth(), true);
+
+  const stray = window.document.createElementNS(svgNamespace, "svg");
+  target.append(stray);
+  assert.throws(
+    () => controller.verifyHealth(),
+    (error) => error.fenneviaCode === "FENNEVIA_SHELL_HOST_NAMESPACE_INVALID",
+  );
+  stray.remove();
+  assert.equal(controller.verifyHealth(), true);
+
+  const xul = window.document.createElementNS(XUL_NAMESPACE, "box");
+  target.append(xul);
+  assert.throws(
+    () => controller.verifyHealth(),
+    (error) => error.fenneviaCode === "FENNEVIA_SHELL_HOST_NAMESPACE_INVALID",
+  );
+  controller.dispose();
+});
+
 test("normal and private windows receive independent edge hosts and environment state", () => {
   const normalWindow = createBrowserWindow();
   const privateWindow = createBrowserWindow();

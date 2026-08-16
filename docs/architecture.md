@@ -363,13 +363,16 @@ each root retains independent component ownership. Mount, health, official
 unmount, and fresh-state remount are explicit frontend API operations.
 
 Issue #12 originally replaced the top placeholder with four accessible
-navigation controls and bounded status. ADR-037 keeps that state and turns the
-surface into one non-wrapping row: navigation, an address/page launcher with
-loading accent, native site-detail handoffs, new-tab/bookmark/download actions,
-Firefox tools, private state, and dismiss. Responsive rules progressively hide
-secondary controls while retaining accessible names, Unified Extensions,
-complete original-toolbar access, and the application menu. The row consumes
-only ordinary adapters and the existing top-edge focus/reveal contract; it does
+navigation controls and bounded status. ADR-037 keeps that navigation/tool
+state in one non-wrapping row. ADR-038 removes the top address cluster and
+places project-owned minimize, maximize/restore, and close buttons on the
+right of that row. New-tab remains on the left tab strip, not the top row.
+Shortcut hints float outside each revealed panel. Edge panels have no title chrome or hide buttons; they close
+through `Escape`, pointer leave, and the documented keyboard shortcut.
+Responsive rules progressively hide secondary controls
+while retaining accessible names, Unified Extensions, complete
+original-toolbar access, and the application menu. The row consumes only
+ordinary adapters and the existing top-edge focus/reveal contract; it does
 not inspect native DOM or create another trigger, timer, controller, or widget
 registry.
 
@@ -382,20 +385,20 @@ popup-priority edge suppression. It never moves native Urlbar/identity/
 protections DOM or renders inferred security state.
 
 Issue #37 extends that same popup with a full-width site-permission card, fixed
-applicable Firefox-control labels, and one native Urlbar handoff button. ADR-037
-adds the same centered-popup launcher to the top row and separate fixed buttons
-that open Firefox's native Trust/identity, protections, and permission owners.
-All complete security/permission/action panels and commands stay
+applicable Firefox-control labels, and one native Urlbar handoff button.
+ADR-037's Trust/identity, protections, and permission handoffs remain available
+from the centered popup and original-toolbar path rather than a second top-row
+launcher. All complete security/permission/action panels and commands stay
 Firefox-owned, and no second popup, input, edge controller, timer, or provider
 stack is added.
 
 Issue #14 replaces the right placeholder with `BookmarksPanel.svelte`. It uses
 the existing right host, trigger, controller, focus restoration, collision
-rules, glass tokens, and disposer. A compact four-root tablist fronts one
-ordinary nested list. Folder children load only on expansion; fixed Previous
-and Next controls replace rather than accumulate pages. Arrow keys, Home/End,
-Enter/Space, Ctrl/Command+Enter, middle click, and an explicit new-tab control
-cover traversal and opening. Separators are non-focusable, stable opaque IDs
+rules, glass tokens, and disposer. A compact native four-root `select` fronts
+one ordinary nested list. Folder children load only on expansion; fixed Previous
+and Next controls replace rather than accumulate pages. The location dropdown
+switches roots; Arrow keys, Home/End, Enter/Space, Ctrl/Command+Enter, middle
+click, and an explicit new-tab control cover list traversal and opening. Separators are non-focusable, stable opaque IDs
 preserve focus across rename/reorder, and deletion moves focus to the nearest
 surviving item or selected root. No second trigger, timer, popup stack, URL,
 favicon request, bookmark-management action, or native Places DOM is added.
@@ -456,13 +459,13 @@ reclassify those browser-owned XUL widgets as authored shell DOM. No selector
 in the component stylesheet targets the native tab strip. ADR-032's separate
 active-only sheet collapses only its `.toolbar-items` owner.
 
-The ADR-037 top row uses the same frame-rooted token and control classes.
-Top-specific selectors cover one-line flex zoning, progressive disclosure,
-native-disabled state, loading emphasis, text ellipsis/bidi isolation,
-project-authored SVG glyphs, reduced motion, and forced colors. Hover, active,
-and focus-visible behavior remains the common owned-control policy. No selector
-targets the native navbar, Urlbar, command set, or toolbox from component CSS;
-ADR-032 owns the separate reversible native sheet.
+The ADR-037/ADR-038 top row uses the same frame-rooted token and control
+classes. Top-specific selectors cover one-line flex zoning, progressive
+disclosure, native-disabled state, loading emphasis, project-authored SVG
+glyphs, window-control grouping, reduced motion, and forced colors. Hover,
+active, and focus-visible behavior remains the common owned-control policy. No
+selector targets the native navbar, Urlbar, command set, or toolbox from
+component CSS; ADR-032 owns the separate reversible native sheet.
 
 The issue #14 right panel likewise uses only frame-rooted project classes and
 the existing responsive right-edge bounds. It renders type glyphs rather than
@@ -505,7 +508,7 @@ DOM marker: disposal removes every project state attribute. Safe start exits in
 AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute.
 
-ADR-032, as extended by ADR-037, implements the gate with a thirteen-rule
+ADR-032, as extended by ADR-037 and ADR-038, implements the gate with a seven-rule
 project-owned style and two temporary root markers:
 
 ```text
@@ -517,16 +520,21 @@ At active rest, the toolbox and horizontal toolbar geometry collapse together
 with exact non-caption content, the bookmarks toolbar, and exact native sidebar
 surfaces. Native vertical-tab mode keeps the navbar/titlebar owner and
 collapses only exact direct content. The retained `#browser` receives a 7px
-gutter and the tabbox receives only border/radius/clip styling. Notifications,
+gutter and the tabbox receives only border/radius/clip styling using Firefox's
+`--chrome-block-radius` when present, otherwise 4px, so project panels stay
+concentric with the 8px window corners.
+Notifications,
 popups, dialogs, and content infrastructure remain untargeted. Firefox's
-selected native titlebar button box is retained and styled as a fixed caption
-island; no caption node is moved or replaced.
+selected native titlebar button box remains in Firefox DOM for fail-open
+recovery; ADR-038 collapses every native caption copy at rest and shows
+project-owned window controls on the right of the visible top row. No caption
+node is moved or replaced.
 
 Native focus, anchored native popups, an open native sidebar, and explicit
 Urlbar or original-toolbar handoffs set temporary reveal. Customize and
 native-dialog state set suspension. DOM fullscreen also suspends project hiding
 while Firefox's own fullscreen CSS remains authoritative; browser fullscreen
-retains active mode. The controller validates exact nodes and thirteen parsed
+retains active mode. The controller validates exact nodes and seven parsed
 rules before health, then watches integrity. Invalid or partial CSS and stable
 target drift suspend first and request per-window fail-open disposal. Clearing
 active restores Firefox immediately without Svelte or restart. Retaining all

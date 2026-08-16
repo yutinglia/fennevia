@@ -132,7 +132,8 @@ Requirements:
 - `Escape` respects higher-priority native/project popup handling;
 - native modal/window-modal state suspends all custom edge interaction;
 - DOM fullscreen and customize mode follow explicit suspension policies;
-- OS window controls remain outside project ownership;
+- OS window commands remain Firefox-owned; ADR-038 project buttons call them
+  without deleting or clicking native caption nodes;
 - failure in a required host/controller/feature prevents or clears active mode;
 - disposal clears all holds, timers, observers, delegated listeners, roots, and
   focus-origin records.
@@ -649,7 +650,7 @@ command, extension, download, customization, and window-control owner.
 
 Issue #15 implements the narrow active-only boundary in ADR-032. One privileged
 controller validates exact Firefox 153 toolbar/sidebar/titlebar nodes and one
-thirteen-rule project style. It never reads URLs, labels, principals, certificates,
+seven-rule project style. It never reads URLs, labels, principals, certificates,
 permissions, extension identity, popup contents, sidebar contents, or browser
 content. Root state stores only fixed reveal/suspension booleans; logs contain
 only fixed error phase/code, Firefox version/build, and per-window opaque ID.
@@ -658,10 +659,11 @@ Toolbox/toolbar geometry, exact non-caption content, the bookmarks toolbar, and
 exact native sidebar surfaces collapse only while active and not
 revealed/suspended. Native vertical-tab mode retains its navbar titlebar owner.
 The browser receives only a 7px gutter and the tabbox receives only
-border/radius/clip styling. One selected Firefox-owned caption group is displayed
-and styled in place; Fennevia never operates its commands. Native focus,
-anchored popup, open native sidebar, #37 Urlbar handoff, and ADR-037 original-
-toolbar/panel handoffs reveal the complete native owner. Customize,
+border/radius/clip styling. Every native caption copy is collapsed at rest;
+ADR-038 project-owned top-row buttons call Firefox window commands without
+clicking those nodes. Native focus, anchored popup, open native sidebar, #37
+Urlbar handoff, and ADR-037 original-toolbar/panel handoffs reveal the complete
+native owner. Customize,
 native-dialog, and DOM-fullscreen state suspend project hiding. Any missing,
 invalid, partial, or stably changed required target/style first exposes native
 UI and then requests per-window ADR-021 cleanup.
@@ -770,7 +772,8 @@ A dedicated review is required before:
 - installer deletion-scope change;
 - telemetry, analytics, crash upload, or remote update;
 - hiding a native parent with uncovered descendants;
-- custom titlebar or OS window controls.
+- custom titlebar replacement beyond ADR-038's retained-native caption
+  exception.
 
 Use `docs/security-controls.md` for required evidence. An ordinary “no impact”
 checkbox is not a waiver.

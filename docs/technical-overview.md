@@ -20,7 +20,7 @@ The tested MVP includes:
 | Four-edge frame | Complete | Independent top, left, right, and bottom XHTML surfaces, shared reveal/collision/focus policy, and accessibility fallbacks |
 | Tabs and address launcher | Complete | Event-driven vertical tabs, compact committed address/status launcher, and centred address/search popup |
 | Top controls | Complete | Native-synchronised Back, Forward, Reload/Stop, New Tab, and bounded page status |
-| Single-line toolbar and native handoffs | Focused implementation; real-Firefox matrix pending | One non-wrapping top row, fixed native detail/tool/original-toolbar actions, retained caption island, 7px gutter, drag regions, and transient shortcut hint |
+| Single-line toolbar and native handoffs | Focused implementation; real-Firefox matrix pending | One non-wrapping top row, fixed native tool/original-toolbar actions, project-owned window controls, 7px gutter, drag regions, and transient shortcut hint |
 | Urlbar coverage | Complete | Firefox-derived connection/protection/permission/action summaries and complete native Urlbar handoff |
 | Bookmarks | Complete | Bounded lazy Places hierarchy with live updates and Firefox-owned opening behavior |
 | Downloads | Complete | Anonymous event-driven aggregate progress/status while Firefox retains safety and file management |

@@ -583,9 +583,10 @@ Gate: every controlled failure leaves or restores a usable native browser shell.
 
 ADR-032 implements the final `healthy -> active` production transition and one
 exact per-window native visibility controller. ADR-037 extends its stylesheet
-to thirteen exact rules for reviewed toolbox/toolbar geometry, non-caption
-content, bookmarks/sidebar collapse, a 7px content gutter, tabbox border, and
-the retained native caption island. Native vertical-tab titlebar ownership,
+to seven exact rules for reviewed toolbox/toolbar geometry, non-caption
+content, bookmarks/sidebar collapse, a 7px content gutter, and tabbox border.
+ADR-038 collapses every native caption copy at rest and places project-owned
+window controls on the top row. Native vertical-tab titlebar ownership,
 notifications, popups, dialogs, content, and DevTools remain intact. Native
 focus, native popups, open sidebar panels, #37's Urlbar handoff, and ADR-037's
 native panel/original-toolbar handoffs temporarily reveal the complete native
@@ -597,9 +598,9 @@ geometry, all edge paths, complete native Urlbar/Downloads/sidebar paths,
 customize/browser fullscreen, Browser Toolbox, emergency fallback, CSS
 corruption, safe-start, and cleanup evidence.
 
-The gate result above is historical #15 evidence. ADR-037's changed rule set,
-caption presentation, and new handoffs still require the manual matrix and are
-not claimed by that run.
+The gate result above is historical #15 evidence. ADR-037/ADR-038's changed
+rule set, caption presentation, and new handoffs still require the manual
+matrix and are not claimed by that run.
 
 Evidence: ADR-032 and
 `docs/research/firefox-153-content-only-activation.md`.

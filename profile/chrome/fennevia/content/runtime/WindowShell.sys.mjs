@@ -14,11 +14,13 @@ import {
   createFirefoxNavigationBridge,
   createFirefoxTabsBridge,
   createFirefoxUrlbarCoverageBridge,
+  createFirefoxWindowControlsBridge,
 } from "../firefox/BridgeBoundary.sys.mjs";
 import { shellAppCss } from "../shell/ShellStyles.sys.mjs";
 import { createNativeUiController, nativeUiStyleId } from "./NativeUi.sys.mjs";
 
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const XUL_NAMESPACE =
   "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 const BROWSER_DOCUMENT_URI = "chrome://browser/content/browser.xhtml";
@@ -582,6 +584,29 @@ const descendantsOf = (element) => [
   ...Array.from(element.children ?? []).flatMap(descendantsOf),
 ];
 
+const hasAllowedProjectNamespace = (element) => {
+  if (element.namespaceURI === XHTML_NAMESPACE) {
+    return true;
+  }
+  if (element.namespaceURI !== SVG_NAMESPACE) {
+    return false;
+  }
+  for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+    if (
+      ancestor.namespaceURI === SVG_NAMESPACE &&
+      ancestor.localName === "svg" &&
+      typeof ancestor.hasAttribute === "function" &&
+      ancestor.hasAttribute("data-fennevia-icon")
+    ) {
+      return true;
+    }
+    if (ancestor.namespaceURI === XHTML_NAMESPACE) {
+      return false;
+    }
+  }
+  return false;
+};
+
 export function createShellHosts({
   window,
   windowKind,
@@ -779,7 +804,7 @@ export function createShellHosts({
       hosts.overlay.verify();
       if (
         descendantsOf(hosts.frame).some(
-          (element) => element.namespaceURI !== XHTML_NAMESPACE,
+          (element) => !hasAllowedProjectNamespace(element),
         )
       ) {
         throw createShellError(
@@ -1091,6 +1116,7 @@ const mountProductionShell = ({
   let style;
   let tabsBridge;
   let urlbarCoverageBridge;
+  let windowControlsBridge;
   try {
     logger.info({
       event: "bridge.boundary-created",
@@ -1189,6 +1215,20 @@ const mountProductionShell = ({
       },
       window: browserWindow,
     });
+    windowControlsBridge = createFirefoxWindowControlsBridge({
+      boundary: bridge,
+      onError(error) {
+        requestFallback(
+          annotateShellLifecycleError(error, {
+            code:
+              error?.fenneviaCode ??
+              "FENNEVIA_FIREFOX_WINDOW_CONTROLS_RUNTIME_FAILED",
+            phase: error?.fenneviaPhase ?? "firefox-window-controls-event",
+          }),
+        );
+      },
+      window: browserWindow,
+    });
     style = createElement(frame.ownerDocument, "style", {
       id: SHELL_APP_STYLE_ID,
       textContent: shellAppCss,
@@ -1206,6 +1246,7 @@ const mountProductionShell = ({
       targets,
       tabs: tabsBridge.tabs,
       urlbarCoverage: urlbarCoverageBridge.urlbarCoverage,
+      windowControls: windowControlsBridge.windowControls,
       windowKind,
       onFatalError(error) {
         requestFallback(
@@ -1244,6 +1285,7 @@ const mountProductionShell = ({
       readyLogged: false,
       tabsBridge,
       urlbarCoverageBridge,
+      windowControlsBridge,
     });
   } catch (error) {
     productionShellByFrame.delete(frame);
@@ -1265,6 +1307,11 @@ const mountProductionShell = ({
     }
     try {
       urlbarCoverageBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
+    try {
+      windowControlsBridge?.dispose();
     } catch (cleanupError) {
       reportError(cleanupError);
     }
@@ -1333,6 +1380,11 @@ const mountProductionShell = ({
     }
     try {
       urlbarCoverageBridge?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      windowControlsBridge?.dispose();
     } catch (error) {
       firstError ??= error;
     }
@@ -1410,6 +1462,7 @@ const checkProductionShell = async ({ mountPoints, windowKind }) => {
   record.nativeUi.verifyHealth();
   record.tabsBridge.assertRequiredCapabilities();
   record.urlbarCoverageBridge.assertRequiredCapabilities();
+  record.windowControlsBridge.assertRequiredCapabilities();
   return record.frontend.verifyShellAppHealth({
     frame,
     overlayTarget,
@@ -1440,6 +1493,8 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   const tabsCapabilities = record.tabsBridge.assertRequiredCapabilities();
   const urlbarCoverageCapabilities =
     record.urlbarCoverageBridge.assertRequiredCapabilities();
+  const windowControlsCapabilities =
+    record.windowControlsBridge.assertRequiredCapabilities();
   const frontendCapabilities = record.frontend.getShellAppCapabilities({
     frame,
     overlayTarget,
@@ -1466,6 +1521,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     ...nativeUiCapabilities,
     ...tabsCapabilities,
     ...urlbarCoverageCapabilities,
+    ...windowControlsCapabilities,
     ...frontendCapabilities,
   ]);
 };
