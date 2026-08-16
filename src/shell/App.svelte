@@ -273,9 +273,9 @@
     try {
       const browserTools = props.browserTools;
       if (!browserTools) {
-        throw new Error("FENNEVIA_TOP_BROWSER_TOOLS_UNAVAILABLE");
+        throw new Error("FENNEVIA_BROWSER_TOOLS_UNAVAILABLE");
       }
-      props.onDismiss("top");
+      props.onDismiss(props.edge);
       await browserTools.invoke(action);
     } catch (error) {
       props.onFatalError(error);
@@ -643,42 +643,55 @@
         class="fennevia-address-launcher"
         data-fennevia-address-launcher-region=""
       >
-        <button
-          aria-controls="fennevia-address-popup"
-          aria-expanded={addressPopupVisible}
-          aria-haspopup="dialog"
-          aria-label="Open address and search"
-          class="fennevia-address-launcher__button"
-          data-fennevia-address-launcher=""
-          data-fennevia-default-focus=""
-          onclick={() => props.onOpenAddress?.()}
-          title="Open address and search"
-          type="button"
+        <div
+          class="fennevia-address-launcher__cluster"
+          data-fennevia-address-launcher-cluster=""
         >
-          <span aria-hidden="true" class="fennevia-address-launcher__glyph"
-            >⌁</span
+          <button
+            aria-controls="fennevia-address-popup"
+            aria-expanded={addressPopupVisible}
+            aria-haspopup="dialog"
+            aria-label="Open address and search"
+            class="fennevia-address-launcher__button"
+            data-fennevia-address-launcher=""
+            data-fennevia-default-focus=""
+            onclick={() => props.onOpenAddress?.()}
+            title="Open address and search"
+            type="button"
           >
-          <span class="fennevia-address-launcher__location" dir="auto">
-            {currentNavigation.snapshot.addressValue ||
-              "Search or enter address"}
-          </span>
-          <span class="fennevia-address-launcher__indicators">
-            <span
-              aria-label={connectionStatus.label}
+            <span aria-hidden="true" class="fennevia-address-launcher__glyph"
+              >⌁</span
+            >
+            <span class="fennevia-address-launcher__location" dir="auto">
+              {currentNavigation.snapshot.addressValue ||
+                "Search or enter address"}
+            </span>
+          </button>
+          <div class="fennevia-address-launcher__indicators">
+            <button
+              aria-label={`Open Firefox site information. ${connectionStatus.label}`}
               class="fennevia-address-launcher__indicator"
+              data-fennevia-browser-tool="site-information"
               data-fennevia-connection-status=""
               data-fennevia-status-tone={connectionStatus.tone}
-              title={connectionStatus.label}>{connectionStatus.badge}</span
+              disabled={!browserToolsSnapshot?.siteInformation}
+              onclick={() => void runBrowserToolAction("site-information")}
+              title={`Open Firefox site information. ${connectionStatus.label}`}
+              type="button">{connectionStatus.badge}</button
             >
-            <span
-              aria-label={protectionStatus.label}
+            <button
+              aria-label={`Open Firefox tracking protection. ${protectionStatus.label}`}
               class="fennevia-address-launcher__indicator"
+              data-fennevia-browser-tool="protections"
               data-fennevia-protection-status=""
               data-fennevia-status-tone={protectionStatus.tone}
-              title={protectionStatus.label}>{protectionStatus.badge}</span
+              disabled={!browserToolsSnapshot?.protections}
+              onclick={() => void runBrowserToolAction("protections")}
+              title={`Open Firefox tracking protection. ${protectionStatus.label}`}
+              type="button">{protectionStatus.badge}</button
             >
-          </span>
-        </button>
+          </div>
+        </div>
       </section>
 
       <div class="fennevia-tabs-summary">

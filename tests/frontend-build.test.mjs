@@ -144,6 +144,9 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /site-information/u);
   assert.match(bundle, /site-permissions/u);
   assert.match(bundle, /native-toolbar/u);
+  assert.match(bundle, /Open Firefox site information/u);
+  assert.match(bundle, /Open Firefox tracking protection/u);
+  assert.match(bundle, /Open Firefox site permissions/u);
   assert.match(bundle, /data-fennevia-icon/u);
   assert.match(bundle, /data-fennevia-action/u);
   assert.doesNotMatch(bundle, /[\r\n]/u);
