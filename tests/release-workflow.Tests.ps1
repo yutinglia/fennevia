@@ -44,10 +44,15 @@ Assert-True -Condition ($workflow -notmatch '(?i)uses:\s+[^\s]+@(?![0-9a-f]{40}\
 
 $draftIndex = $workflow.IndexOf('"--draft"', [StringComparison]::Ordinal)
 $digestIndex = $workflow.IndexOf('$asset.digest', [StringComparison]::Ordinal)
-$publishIndex = $workflow.IndexOf('gh release edit', [StringComparison]::Ordinal)
+$publishIndex = $workflow.IndexOf('--method PATCH', [StringComparison]::Ordinal)
 $downloadIndex = $workflow.IndexOf('gh release download', [StringComparison]::Ordinal)
 Assert-True -Condition ($draftIndex -ge 0 -and $digestIndex -gt $draftIndex -and $publishIndex -gt $digestIndex -and $downloadIndex -gt $publishIndex) -Message "The workflow must create a draft, verify remote digests, publish, then download and reverify."
 Assert-True -Condition ($workflow.Contains('gh release view')) -Message "Publication must refuse to overwrite or reuse an existing release."
+Assert-True -Condition ($workflow.Contains('releases?per_page=100')) -Message "Publication must list releases because GitHub's tag lookup does not expose a draft reliably."
+Assert-True -Condition ($workflow.Contains('Get-ReleaseDraftByTag')) -Message "Publication must detect and uniquely identify a private draft before retry or publication."
+Assert-True -Condition ($workflow.Contains('$remoteRelease.id')) -Message "The verified private draft must be published by its immutable numeric release ID."
+Assert-True -Condition ($workflow.Contains('-F draft=false')) -Message "Publication must update only the verified draft ID after digest checks."
+Assert-True -Condition ($workflow -notmatch 'releases/tags/\$expectedTag') -Message "Draft validation must not use the tag endpoint that returned 404 for the first real draft."
 Assert-True -Condition ($workflow.Contains('"--verify-tag"')) -Message "GitHub release creation must independently verify the remote tag."
 Assert-True -Condition ($workflow.Contains('Count -ne $expectedAssets.Count')) -Message "The draft must contain exactly the reviewed asset count."
 Assert-True -Condition ($workflow -notmatch '(?i)secrets\.') -Message "The release workflow must not depend on repository secrets."

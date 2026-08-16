@@ -168,8 +168,11 @@ then repeats exact dependency installation and `npm run verify`, builds twice
 into clean directories, requires byte-identical manifests/ZIPs, validates a
 Unicode/space extraction, and runs a second independent preflight in the
 publication job. The job uploads only the versioned ZIP and `.sha256` file to a
-draft, checks GitHub's reported SHA-256 for both, publishes, downloads both,
-and compares them again. A manual dispatch is rehearsal-only unless its
+draft, lists private drafts to identify the exact numeric release ID, checks
+GitHub's reported SHA-256 for both, publishes that verified ID, downloads both,
+and compares them again. It does not rely on GitHub's get-by-tag endpoint for a
+draft because the first real publication returned 404 there. A manual dispatch
+is rehearsal-only unless its
 `publish` boolean is explicitly set.
 
 Do not move an existing tag, replace an asset in place, publish from a branch,

@@ -36,8 +36,8 @@ Retrieved 2026-08-16:
 - GitHub CLI `gh release create`, including draft, prerelease, notes-file, and
   `--verify-tag` behavior:
   <https://cli.github.com/manual/gh_release_create>
-- GitHub CLI `gh release edit` draft publication:
-  <https://cli.github.com/manual/gh_release_edit>
+- GitHub REST release listing and update-by-ID behavior:
+  <https://docs.github.com/rest/releases/releases>
 - Microsoft `System.IO.Compression.ZipArchive` documentation:
   <https://learn.microsoft.com/dotnet/api/system.io.compression.ziparchive>
 
@@ -114,8 +114,10 @@ ESR, Beta, Nightly, and other builds are rejected rather than inferred.
 - The GitHub workflow defaults to repository read permission. Only the gated
   publication job receives `contents: write`.
 - Publication first creates a draft with exactly two assets, compares both
-  GitHub-reported `sha256:` digests to local staged bytes, then publishes and
-  downloads them for a final hash comparison.
+  GitHub-reported `sha256:` digests to local staged bytes, then publishes the
+  verified numeric release ID and downloads both assets for a final hash
+  comparison. Draft discovery uses the authenticated release list rather than
+  get-by-tag.
 - The archive carries MPL-2.0 and the complete root third-party notice. No
   external implementation, script, template, or release action was copied or
   added; no notice or dependency graph change was required.
@@ -189,3 +191,23 @@ After merge, append or link a follow-up evidence change containing:
 - any failed draft/retry evidence or `none`.
 
 Until those values exist, they are intentionally not guessed in this record.
+
+### First publication attempt (private draft retained)
+
+Tag-triggered run `31926297782` on merged commit
+`a16a99777e1dcac9c8f8e183301ca6fdb460cf2b` passed both independent release
+preflights. It then created private draft release ID `371229727` with exactly:
+
+- `fennevia-0.10.0-beta.1-windows.zip`, 593093 bytes, GitHub digest
+  `sha256:0119fb648cc0f586af38b0dfc901caa0671178a942f1b2ab568d1bae21db2092`;
+- `fennevia-0.10.0-beta.1-windows.zip.sha256`, 101 bytes, GitHub digest
+  `sha256:5781e486a558ea22c3603fc4c0e36b53a19c029f1d5fe3f94d8bd1f0c9a2d38f`.
+
+GitHub's get-a-release-by-tag endpoint returned 404 for that private draft, so
+the workflow could not retrieve its asset collection and stopped before
+publication. No public release was created. The corrected workflow enumerates
+authenticated releases, refuses an existing matching draft, uniquely selects
+the new draft by tag, validates its two assets, and publishes only its numeric
+release ID. The retained failed draft must be deleted explicitly after this fix
+is merged and before an authorized manual retry from the unchanged annotated
+tag.

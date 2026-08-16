@@ -106,9 +106,21 @@ jobs:
             "$archiveName.sha256" = (Get-FileHash -Algorithm SHA256 -LiteralPath $checksumPath).Hash.ToLowerInvariant()
           }
 
+          function Get-ReleaseDraftByTag {
+            $releaseJson = gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100"
+            if ($LASTEXITCODE -ne 0) {
+              throw "GitHub releases could not be inspected for an existing draft."
+            }
+            $releases = @($releaseJson | ConvertFrom-Json)
+            return @($releases | Where-Object { [string] $_.tag_name -ceq $expectedTag })
+          }
+
           gh release view $expectedTag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             throw "A GitHub release already exists for this tag; inspect or delete it explicitly before retrying."
+          }
+          if (@(Get-ReleaseDraftByTag).Count -ne 0) {
+            throw "A draft GitHub release already exists for this tag; inspect or delete it explicitly before retrying."
           }
 
           $createArguments = @(
@@ -128,7 +140,11 @@ jobs:
             throw "Draft release creation failed."
           }
 
-          $remoteRelease = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$expectedTag" | ConvertFrom-Json
+          $matchingReleases = @(Get-ReleaseDraftByTag)
+          if ($matchingReleases.Count -ne 1) {
+            throw "The newly created draft release could not be identified uniquely."
+          }
+          $remoteRelease = $matchingReleases[0]
           if (-not [bool] $remoteRelease.draft -or @($remoteRelease.assets).Count -ne $expectedAssets.Count) {
             throw "The draft release state or asset count is unexpected."
           }
@@ -143,8 +159,20 @@ jobs:
             }
           }
 
-          gh release edit $expectedTag --repo $env:GITHUB_REPOSITORY --draft=false
-          if ($LASTEXITCODE -ne 0) {
+          $releaseId = [long] $remoteRelease.id
+          if ($releaseId -le 0) {
+            throw "The verified draft release has no valid numeric ID."
+          }
+          $publishedRelease = gh api `
+            --method PATCH `
+            "repos/$env:GITHUB_REPOSITORY/releases/$releaseId" `
+            -F draft=false | ConvertFrom-Json
+          if (
+            $LASTEXITCODE -ne 0 -or
+            $null -eq $publishedRelease -or
+            [bool] $publishedRelease.draft -or
+            [string] $publishedRelease.tag_name -cne $expectedTag
+          ) {
             throw "The verified draft could not be published."
           }
 
