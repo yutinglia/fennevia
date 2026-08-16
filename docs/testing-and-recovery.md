@@ -279,6 +279,8 @@ Validate:
 - exact native order;
 - selected, title, safe favicon/fallback, pinned, and loading state;
 - native and custom select/new/close/pin/unpin used alternately;
+- after the left surface's initial snapshot, a newly opened tab briefly
+  reveals the left edge and highlights only the new tab IDs;
 - selected/background/last-tab close behavior;
 - rapid event/action bursts;
 - long, empty, emoji, markup-like, Unicode, and bidirectional titles;
@@ -306,7 +308,11 @@ Validate:
 
 - Back/Forward state against native controls;
 - Reload/Stop transitions;
+- Home through `BrowserCommands.home()` without reading the homepage URL;
+- middle-click Back/Forward/Home/Reload opening through Firefox
+  `whereToOpenLink` / `reloadOrDuplicate`;
 - New Tab;
+- left-edge programmatic reveal and a short new-tab highlight after `TabOpen`;
 - selected-browser handoff;
 - redirects, same-document navigation, error pages, and tab close;
 - rapid command/tab-switch sequences;
@@ -320,7 +326,10 @@ Validate:
 - normal, second-normal, and private-window isolation;
 - navigation capability, frontend, and safe-start failure recovery.
 
-Evidence: `docs/research/firefox-153-navigation-controls.md`.
+Evidence: `docs/research/firefox-153-navigation-controls.md` and
+`docs/research/firefox-153-home-and-new-tab-reveal.md`. Home click, Alt+Home
+comparison, Ctrl+T left reveal, and highlight timing are `not run` for this
+addition.
 
 ### 6.3 Compact address launcher and popup — implemented (#13)
 

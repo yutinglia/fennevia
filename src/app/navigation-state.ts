@@ -80,12 +80,21 @@ export type NavigationStateEvent = Readonly<{
   type: "snapshot";
 }>;
 
+export type NavigationPointerGesture = Readonly<{
+  altKey: boolean;
+  button: number;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+}>;
+
 export type BrowserNavigationBridge = Readonly<{
-  back: () => boolean;
+  back: (gesture?: NavigationPointerGesture) => boolean;
   focusContent: () => boolean;
-  forward: () => boolean;
+  forward: (gesture?: NavigationPointerGesture) => boolean;
+  home: (gesture?: NavigationPointerGesture) => boolean;
   newTab: () => boolean;
-  reload: () => boolean;
+  reload: (gesture?: NavigationPointerGesture) => boolean;
   reloadOrStop: () => "reload" | "stop";
   snapshot: () => NavigationSnapshot;
   stop: () => boolean;
@@ -102,12 +111,13 @@ export type BrowserNavigationState = Readonly<{
 }>;
 
 export type BrowserNavigationStateAdapter = Readonly<{
-  back: () => boolean;
+  back: (gesture?: NavigationPointerGesture) => boolean;
   dispose: () => boolean;
   focusContent: () => boolean;
-  forward: () => boolean;
+  forward: (gesture?: NavigationPointerGesture) => boolean;
+  home: (gesture?: NavigationPointerGesture) => boolean;
   newTab: () => boolean;
-  reload: () => boolean;
+  reload: (gesture?: NavigationPointerGesture) => boolean;
   reloadOrStop: () => "reload" | "stop";
   snapshot: () => BrowserNavigationState;
   status: () => Readonly<{
@@ -135,6 +145,38 @@ const createStateError = (code: string): Error => {
   });
   return error;
 };
+
+export function copyNavigationPointerGesture(
+  candidate: unknown,
+): NavigationPointerGesture {
+  if (!candidate || typeof candidate !== "object") {
+    throw createStateError("FENNEVIA_NAVIGATION_POINTER_GESTURE_INVALID");
+  }
+  const gesture = candidate as NavigationPointerGesture;
+  if (
+    typeof gesture.altKey !== "boolean" ||
+    typeof gesture.ctrlKey !== "boolean" ||
+    typeof gesture.metaKey !== "boolean" ||
+    typeof gesture.shiftKey !== "boolean" ||
+    !Number.isInteger(gesture.button) ||
+    gesture.button < 0 ||
+    gesture.button > 2
+  ) {
+    throw createStateError("FENNEVIA_NAVIGATION_POINTER_GESTURE_INVALID");
+  }
+  return Object.freeze({
+    altKey: gesture.altKey,
+    button: gesture.button,
+    ctrlKey: gesture.ctrlKey,
+    metaKey: gesture.metaKey,
+    shiftKey: gesture.shiftKey,
+  });
+}
+
+const copyOptionalNavigationPointerGesture = (
+  candidate: NavigationPointerGesture | undefined,
+): NavigationPointerGesture | undefined =>
+  candidate === undefined ? undefined : copyNavigationPointerGesture(candidate);
 
 const copyBoundedString = (value: unknown, maximumLength: number): string => {
   if (typeof value !== "string") {
@@ -215,6 +257,7 @@ export function createBrowserNavigationStateAdapter(
     typeof bridge.back !== "function" ||
     typeof bridge.focusContent !== "function" ||
     typeof bridge.forward !== "function" ||
+    typeof bridge.home !== "function" ||
     typeof bridge.newTab !== "function" ||
     typeof bridge.reload !== "function" ||
     typeof bridge.reloadOrStop !== "function" ||
@@ -258,7 +301,8 @@ export function createBrowserNavigationStateAdapter(
   };
 
   return Object.freeze({
-    back: () => requireBridge().back(),
+    back: (gesture?: NavigationPointerGesture) =>
+      requireBridge().back(copyOptionalNavigationPointerGesture(gesture)),
 
     dispose(): boolean {
       if (disposed) {
@@ -276,9 +320,13 @@ export function createBrowserNavigationStateAdapter(
     },
 
     focusContent: () => requireBridge().focusContent(),
-    forward: () => requireBridge().forward(),
+    forward: (gesture?: NavigationPointerGesture) =>
+      requireBridge().forward(copyOptionalNavigationPointerGesture(gesture)),
+    home: (gesture?: NavigationPointerGesture) =>
+      requireBridge().home(copyOptionalNavigationPointerGesture(gesture)),
     newTab: () => requireBridge().newTab(),
-    reload: () => requireBridge().reload(),
+    reload: (gesture?: NavigationPointerGesture) =>
+      requireBridge().reload(copyOptionalNavigationPointerGesture(gesture)),
     reloadOrStop: () => requireBridge().reloadOrStop(),
 
     snapshot(): BrowserNavigationState {

@@ -17,9 +17,11 @@
     type EdgeSurfaceController,
   } from "../app/edge-surfaces";
   import {
+    copyNavigationPointerGesture,
     createBrowserNavigationState,
     type BrowserNavigationState,
     type BrowserNavigationStateAdapter,
+    type NavigationPointerGesture,
   } from "../app/navigation-state";
   import {
     createBrowserTabsState,
@@ -34,10 +36,12 @@
   } from "../app/window-controls-state";
   import {
     findCloseFocusTarget,
+    findOpenedTabIds,
     getDisplayTabTitle,
     getTabAccessibleName,
     getTabActionAccessibleName,
     getTabStripKeyAction,
+    newTabHighlightDurationMs,
     resolveRovingTabId,
   } from "../app/tab-strip";
   import {
@@ -112,6 +116,8 @@
   });
   let delayedFocusTimer: DelayedFocusTimer | undefined;
   let focusReleaseTimer: DelayedFocusTimer | undefined;
+  let highlightTimer: DelayedFocusTimer | undefined;
+  let highlightedTabIds: readonly string[] = $state([]);
   let panelDragCandidate = false;
   const tabButtons: Array<{
     node: HTMLButtonElement;
@@ -169,8 +175,12 @@
       untrack(() => rovingTabId),
     );
     const unsubscribe = tabs.subscribe((nextState) => {
+      const openedTabIds = findOpenedTabIds(currentTabs.tabs, nextState.tabs);
       currentTabs = nextState;
       rovingTabId = resolveRovingTabId(nextState.tabs, rovingTabId);
+      if (openedTabIds.length > 0) {
+        void revealOpenedTabs(openedTabIds);
+      }
     });
     return unsubscribe;
   });
@@ -224,6 +234,39 @@
     } catch (error) {
       props.onFatalError(error);
     }
+  };
+
+  const pointerGestureFromMouseEvent = (
+    event: MouseEvent,
+  ): NavigationPointerGesture =>
+    copyNavigationPointerGesture({
+      altKey: event.altKey,
+      button: event.button,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+    });
+
+  const preventMiddleAutoscroll = (event: MouseEvent) => {
+    if (event.button === 1) {
+      event.preventDefault();
+    }
+  };
+
+  const handleNavigationAuxClick = (
+    event: MouseEvent,
+    action: (
+      navigation: BrowserNavigationStateAdapter,
+      gesture: NavigationPointerGesture,
+    ) => unknown,
+  ) => {
+    if (event.button !== 1) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const gesture = pointerGestureFromMouseEvent(event);
+    runNavigationAction((navigation) => action(navigation, gesture));
   };
 
   const runBrowserToolAction = async (action: BrowserToolAction) => {
@@ -291,6 +334,51 @@
     focusReleaseTimer = undefined;
     timer.view.clearTimeout(timer.id);
   };
+
+  const cancelHighlight = () => {
+    const timer = highlightTimer;
+    if (!timer) {
+      return;
+    }
+    highlightTimer = undefined;
+    timer.view.clearTimeout(timer.id);
+  };
+
+  async function revealOpenedTabs(tabIds: readonly string[]) {
+    cancelHighlight();
+    highlightedTabIds = tabIds;
+    try {
+      props.shell.revealProgrammatically("left", newTabHighlightDurationMs);
+    } catch (error) {
+      props.onFatalError(error);
+      return;
+    }
+    await tick();
+    const preferredTabId =
+      tabIds.find((tabId) =>
+        currentTabs.tabs.some((tab) => tab.id === tabId && tab.selected),
+      ) ?? tabIds.at(-1);
+    const button = tabButtons.find(
+      (registration) => registration.tabId === preferredTabId,
+    )?.node;
+    if (button?.isConnected) {
+      button.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    const view = rootElement?.ownerDocument.defaultView;
+    if (!view) {
+      highlightedTabIds = [];
+      return;
+    }
+    const timer: DelayedFocusTimer = { id: 0, view };
+    timer.id = view.setTimeout(() => {
+      if (highlightTimer !== timer) {
+        return;
+      }
+      highlightTimer = undefined;
+      highlightedTabIds = [];
+    }, newTabHighlightDurationMs);
+    highlightTimer = timer;
+  }
 
   const releaseSurfaceFocus = () => {
     if (delayedFocusTimer) {
@@ -504,6 +592,8 @@
   onDestroy(() => {
     cancelDelayedFocus();
     cancelFocusRelease();
+    cancelHighlight();
+    highlightedTabIds = [];
     panelDragCandidate = false;
     tabButtons.length = 0;
     if (props.edge === "left") {
@@ -610,6 +700,7 @@
           {#each currentTabs.tabs as tab, index (tab.id)}
             <div
               class="fennevia-tab-strip__item"
+              data-fennevia-just-opened={highlightedTabIds.includes(tab.id)}
               data-fennevia-loading={tab.loading}
               data-fennevia-pinned={tab.pinned}
               data-fennevia-selected={tab.selected}
@@ -718,8 +809,15 @@
               data-fennevia-action="back"
               data-fennevia-default-focus=""
               disabled={!currentNavigation.snapshot.canGoBack}
-              onclick={() =>
-                runNavigationAction((navigation) => navigation.back())}
+              onauxclick={(event) =>
+                handleNavigationAuxClick(event, (navigation, gesture) =>
+                  navigation.back(gesture),
+                )}
+              onclick={(event) =>
+                runNavigationAction((navigation) =>
+                  navigation.back(pointerGestureFromMouseEvent(event)),
+                )}
+              onmousedown={preventMiddleAutoscroll}
               title="Back"
               type="button"
             >
@@ -730,8 +828,15 @@
               class="fennevia-control fennevia-navigation__button"
               data-fennevia-action="forward"
               disabled={!currentNavigation.snapshot.canGoForward}
-              onclick={() =>
-                runNavigationAction((navigation) => navigation.forward())}
+              onauxclick={(event) =>
+                handleNavigationAuxClick(event, (navigation, gesture) =>
+                  navigation.forward(gesture),
+                )}
+              onclick={(event) =>
+                runNavigationAction((navigation) =>
+                  navigation.forward(pointerGestureFromMouseEvent(event)),
+                )}
+              onmousedown={preventMiddleAutoscroll}
               title="Forward"
               type="button"
             >
@@ -745,14 +850,37 @@
               class="fennevia-control fennevia-navigation__button"
               data-fennevia-action="reload-stop"
               data-fennevia-loading={currentNavigation.snapshot.loading}
+              onauxclick={(event) =>
+                handleNavigationAuxClick(event, (navigation, gesture) =>
+                  navigation.reload(gesture),
+                )}
               onclick={() =>
                 runNavigationAction((navigation) => navigation.reloadOrStop())}
+              onmousedown={preventMiddleAutoscroll}
               title={currentNavigation.snapshot.loading ? "Stop" : "Reload"}
               type="button"
             >
               <ShellIcon
                 name={currentNavigation.snapshot.loading ? "stop" : "reload"}
               />
+            </button>
+            <button
+              aria-label="Go to home page"
+              class="fennevia-control fennevia-navigation__button"
+              data-fennevia-action="home"
+              onauxclick={(event) =>
+                handleNavigationAuxClick(event, (navigation, gesture) =>
+                  navigation.home(gesture),
+                )}
+              onclick={(event) =>
+                runNavigationAction((navigation) =>
+                  navigation.home(pointerGestureFromMouseEvent(event)),
+                )}
+              onmousedown={preventMiddleAutoscroll}
+              title="Home"
+              type="button"
+            >
+              <ShellIcon name="home" />
             </button>
           </div>
         </div>

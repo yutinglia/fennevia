@@ -147,6 +147,7 @@ export function createFirefoxNavigationBridge() {
     back() { return false; },
     focusContent() { return true; },
     forward() { return false; },
+    home() { return true; },
     newTab() { return true; },
     reload() { return true; },
     reloadOrStop() { return "reload"; },

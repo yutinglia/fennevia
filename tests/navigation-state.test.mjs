@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { createAddressPopupController } from "../src/app/address-popup.ts";
 import {
+  copyNavigationPointerGesture,
   createBrowserNavigationState,
   createBrowserNavigationStateAdapter,
   maximumNavigationAddressLength,
@@ -24,29 +25,46 @@ const initialSnapshot = Object.freeze({
 
 function createBridge() {
   const calls = [];
+  const gestures = [];
   const listeners = new Set();
   const addressPopupListeners = new Set();
   let snapshot = initialSnapshot;
   return {
     bridge: Object.freeze({
-      back() {
+      back(gesture) {
         calls.push("back");
+        if (gesture !== undefined) {
+          gestures.push(["back", gesture]);
+        }
         return true;
       },
       focusContent() {
         calls.push("focus-content");
         return true;
       },
-      forward() {
+      forward(gesture) {
         calls.push("forward");
+        if (gesture !== undefined) {
+          gestures.push(["forward", gesture]);
+        }
+        return true;
+      },
+      home(gesture) {
+        calls.push("home");
+        if (gesture !== undefined) {
+          gestures.push(["home", gesture]);
+        }
         return true;
       },
       newTab() {
         calls.push("new-tab");
         return true;
       },
-      reload() {
+      reload(gesture) {
         calls.push("reload");
+        if (gesture !== undefined) {
+          gestures.push(["reload", gesture]);
+        }
         return true;
       },
       reloadOrStop() {
@@ -97,6 +115,7 @@ function createBridge() {
       },
     }),
     calls,
+    gestures,
     emit(nextSnapshot, revision) {
       snapshot = Object.freeze(nextSnapshot);
       for (const listener of Array.from(listeners)) {
@@ -232,6 +251,7 @@ test("navigation adapter forwards actions, popup requests, and revisions", () =>
   assert.equal(adapter.back(), true);
   assert.equal(adapter.focusContent(), true);
   assert.equal(adapter.forward(), true);
+  assert.equal(adapter.home(), true);
   assert.equal(adapter.reload(), true);
   assert.equal(adapter.stop(), true);
   assert.equal(adapter.newTab(), true);
@@ -257,6 +277,7 @@ test("navigation adapter forwards actions, popup requests, and revisions", () =>
     "back",
     "focus-content",
     "forward",
+    "home",
     "reload",
     "stop",
     "new-tab",
@@ -278,12 +299,46 @@ test("navigation adapter forwards actions, popup requests, and revisions", () =>
   assert.equal(adapter.reloadOrStop(), "stop");
 });
 
+test("navigation adapter copies pointer gestures and rejects malformed ones", () => {
+  const fixture = createBridge();
+  const adapter = createBrowserNavigationStateAdapter(fixture.bridge);
+  const middleClick = Object.freeze({
+    altKey: false,
+    button: 1,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+  });
+
+  assert.deepEqual(copyNavigationPointerGesture(middleClick), middleClick);
+  assert.ok(Object.isFrozen(copyNavigationPointerGesture(middleClick)));
+  assert.equal(adapter.back(middleClick), true);
+  assert.equal(adapter.forward(middleClick), true);
+  assert.equal(adapter.home(middleClick), true);
+  assert.equal(adapter.reload(middleClick), true);
+  assert.deepEqual(fixture.gestures, [
+    ["back", middleClick],
+    ["forward", middleClick],
+    ["home", middleClick],
+    ["reload", middleClick],
+  ]);
+  assert.throws(
+    () => adapter.back({ ...middleClick, button: 3 }),
+    /FENNEVIA_NAVIGATION_POINTER_GESTURE_INVALID/u,
+  );
+  assert.throws(
+    () => copyNavigationPointerGesture(null),
+    /FENNEVIA_NAVIGATION_POINTER_GESTURE_INVALID/u,
+  );
+});
+
 test("navigation adapter validates and disposes its complete public contract", () => {
   const fixture = createBridge();
   for (const member of [
     "back",
     "focusContent",
     "forward",
+    "home",
     "newTab",
     "reload",
     "reloadOrStop",

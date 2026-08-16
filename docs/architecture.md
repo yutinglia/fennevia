@@ -366,7 +366,14 @@ Issue #12 originally replaced the top placeholder with four accessible
 navigation controls and bounded status. ADR-037 keeps that navigation/tool
 state in one non-wrapping row. ADR-038 removes the top address cluster and
 places project-owned minimize, maximize/restore, and close buttons on the
-right of that row. New-tab remains on the left tab strip, not the top row.
+right of that row. The primary cluster is Back, Forward, Reload/Stop, and
+Home. Home calls the current window's `BrowserCommands.home()` and does not
+read the configured homepage URL. Middle-click on Back, Forward, Home, and
+Reload copies only pointer modifiers and lets Firefox open the result in a
+new tab. New-tab remains on the left tab strip, not
+the top row. Opening a tab after the left surface has its initial snapshot
+uses the shared programmatic reveal to show the left edge briefly and
+highlights only the newly added tab IDs.
 Shortcut hints float outside each revealed panel. Edge panels have no title chrome or hide buttons; they close
 through `Escape`, pointer leave, and the documented keyboard shortcut.
 Responsive rules progressively hide secondary controls
