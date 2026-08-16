@@ -447,10 +447,11 @@ The output directory must be empty and the Git tree must be clean. The tag must
 be an annotated tag resolving to `HEAD`. The tag-triggered GitHub workflow
 repeats this preflight, creates a draft with only the ZIP and checksum, compares
 GitHub's reported `sha256:` digests, then publishes and downloads the assets for
-one final comparison. A manually dispatched rehearsal defaults to
-`publish=false`. If draft creation or remote verification fails, inspect the
-still-draft release and explicitly delete it before retrying; never silently
-reuse unknown assets.
+one final comparison. Draft discovery tolerates only a bounded release-list
+visibility delay and still fails on duplicate matches or unexpected assets. A
+manually dispatched rehearsal defaults to `publish=false`. If draft creation or
+remote verification fails, inspect the still-draft release and explicitly
+delete it before retrying; never silently reuse unknown assets.
 
 Real-Firefox evidence must use the marker-owned profile and copied program,
 include cold start after install and uninstall, and finish with no Fennevia files,

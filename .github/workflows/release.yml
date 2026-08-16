@@ -140,12 +140,39 @@ jobs:
             throw "Draft release creation failed."
           }
 
-          $matchingReleases = @(Get-ReleaseDraftByTag)
-          if ($matchingReleases.Count -ne 1) {
-            throw "The newly created draft release could not be identified uniquely."
+          $matchingReleases = @()
+          $remoteRelease = $null
+          for ($attempt = 1; $attempt -le 10; $attempt++) {
+            $matchingReleases = @(Get-ReleaseDraftByTag)
+            if ($matchingReleases.Count -gt 1) {
+              throw "More than one draft release exists for the expected tag."
+            }
+            if ($matchingReleases.Count -eq 1) {
+              $candidateRelease = $matchingReleases[0]
+              if (-not [bool] $candidateRelease.draft) {
+                throw "The matching release became public before verification."
+              }
+              $candidateAssetCount = @($candidateRelease.assets).Count
+              if ($candidateAssetCount -gt $expectedAssets.Count) {
+                throw "The draft contains more assets than expected."
+              }
+              if ($candidateAssetCount -eq $expectedAssets.Count) {
+                $remoteRelease = $candidateRelease
+                break
+              }
+            }
+            if ($attempt -lt 10) {
+              Start-Sleep -Seconds 2
+            }
           }
-          $remoteRelease = $matchingReleases[0]
-          if (-not [bool] $remoteRelease.draft -or @($remoteRelease.assets).Count -ne $expectedAssets.Count) {
+
+          if ($null -eq $remoteRelease) {
+            if ($matchingReleases.Count -eq 0) {
+              throw "The newly created draft release did not become visible within the bounded retry window."
+            }
+            throw "The draft release did not expose exactly the expected asset count within the bounded retry window."
+          }
+          if (@($remoteRelease.assets).Count -ne $expectedAssets.Count) {
             throw "The draft release state or asset count is unexpected."
           }
           foreach ($asset in @($remoteRelease.assets)) {
