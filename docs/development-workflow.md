@@ -55,10 +55,11 @@ project/inbound license and third-party provenance gate; all copied/adapted or
 distributed material follows `docs/licensing-and-provenance.md` and
 `THIRD_PARTY_NOTICES.md`.
 
-Issue #39 adds the first versioned distribution gate after #16 and #18. A
-release is never assembled from a developer's arbitrary working directory or
-published before its tag, source commit, generated artifacts, complete file
-inventory, and remote asset digests agree.
+Issue #39 established the first versioned distribution gate after #16 and #18
+and produced the verified public `v0.10.0-beta.1` prerelease. A release is never
+assembled from a developer's arbitrary working directory or published before
+its tag, source commit, generated artifacts, complete file inventory, and remote
+asset digests agree.
 
 ## 3. Branch and commit conventions
 
