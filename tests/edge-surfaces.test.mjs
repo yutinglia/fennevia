@@ -252,10 +252,10 @@ test("natural hide clears the active edge so an unrelated Escape remains availab
   assert.equal(shell.dismissActive(), null);
 });
 
-test("corner arbitration is deterministic and side edges own exact corners", () => {
+test("corner arbitration follows top, sides, then bottom priority", () => {
   const frame = { height: 600, thickness: 6, width: 1000 };
-  assert.equal(resolveEdgeAtPoint({ ...frame, x: 0, y: 0 }), "left");
-  assert.equal(resolveEdgeAtPoint({ ...frame, x: 1000, y: 0 }), "right");
+  assert.equal(resolveEdgeAtPoint({ ...frame, x: 0, y: 0 }), "top");
+  assert.equal(resolveEdgeAtPoint({ ...frame, x: 1000, y: 0 }), "top");
   assert.equal(resolveEdgeAtPoint({ ...frame, x: 0, y: 600 }), "left");
   assert.equal(resolveEdgeAtPoint({ ...frame, x: 1000, y: 600 }), "right");
   assert.equal(resolveEdgeAtPoint({ ...frame, x: 500, y: 2 }), "top");

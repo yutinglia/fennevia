@@ -10,7 +10,7 @@ and project-owned Svelte UI.
 
 The target interface has four independent floating edge surfaces:
 
-- **Top:** primary browser controls.
+- **Top:** one-line primary browser controls and fixed native Firefox handoffs.
 - **Left:** vertical tabs and a compact address/status launcher.
 - **Right:** bookmarks.
 - **Bottom:** download progress and status.
@@ -18,7 +18,7 @@ The target interface has four independent floating edge surfaces:
 The launcher opens a centered project-owned address/search popup. Compact and
 detailed connection/HTTPS and tracking-protection status comes from current
 Firefox state; native identity, protections, permission, and page-action panels
-remain Firefox-owned.
+remain Firefox-owned and open from explicit native-detail actions.
 
 All four surfaces are hidden at rest and reserve no permanent layout space.
 They reveal through their matching pointer edge or an accessible keyboard/focus
@@ -68,6 +68,20 @@ Completed:
   exact one-sided ownership repair, reconciled compatibility inventory, and an
   executable Firefox stable-update rehearsal.
 
+Current fast branch enhancement under ADR-037:
+
+- one non-wrapping top row with navigation, address/page status, loading,
+  page actions, Firefox tools, and progressive disclosure;
+- fixed native Trust/identity, protections, permission, Downloads, Unified
+  Extensions, application-menu, Settings, customization, and original-toolbar
+  handoffs without exporting their sensitive data;
+- retained Firefox caption controls styled in place as a compact island;
+- a 7px browser-content gutter, gap-free edge contact, transient shortcut hint,
+  panel drag regions, and `top > sides > bottom` collision priority.
+
+Focused type/build/unit/static checks cover this enhancement. Its real Firefox
+manual matrix remains pending and is not part of the earlier #15 validation.
+
 Completed project-governance foundation:
 
 - #18: MPL-2.0 project/inbound license, generated/installed artifact treatment,
@@ -77,9 +91,10 @@ Completed project-governance foundation:
   checksum, annotated-tag rehearsal, verify-before-publish GitHub workflow, and
   independently reverified public `v0.10.0-beta.1` prerelease.
 
-At active rest, only ADR-032's exact native toolbar/sidebar descendants are
-collapsed; Firefox DOM, prompts, dialogs, controls, and a complete transient
-native access path remain attached. The four-edge MVP is implementation-
+At active rest, ADR-032/ADR-037 collapse only reviewed native toolbar/sidebar
+geometry and descendants, retain the native caption controls, and add a narrow
+content gutter; Firefox DOM, prompts, dialogs, controls, and complete transient
+native access paths remain attached. The four-edge MVP is implementation-
 complete for the tested Windows/Firefox baseline and has a first versioned
 public prerelease path. It has no stable/daily-driver, Linux, or macOS support
 claim.
@@ -107,6 +122,9 @@ claim.
 - A usable top navigation surface, combined left tabs/address-launcher surface,
   centered address popup, right bookmarks surface, and bottom download-status
   surface.
+- Fixed actions that open Firefox's authoritative native detail panels, menu,
+  Settings, customization, Unified Extensions, Downloads, and original toolbar
+  without copying their private or dynamic data.
 - A fail-open recovery path that immediately restores native Firefox UI without
   depending on Svelte.
 - A reviewed native-UI coverage inventory before any native surface is hidden.
@@ -124,7 +142,8 @@ claim.
 - A complete Urlbar suggestion/provider ecosystem.
 - Complete Firefox View, identity, permission, extension-action, bookmarks,
   history, Downloads, or SessionStore replacement.
-- Custom titlebar, window buttons, or OS window controls in the initial roadmap.
+- Replacement titlebar/window buttons or custom OS window commands; styling the
+  retained Firefox-owned caption group in place is allowed by ADR-037.
 - Overriding the complete `browser.xhtml`.
 - A branded Firefox fork, update channel, public installer, or support product.
 - Pixel-for-pixel copying of Firefox, `my-firefox-custom`, Arc, Edge, or another
@@ -411,6 +430,32 @@ Evidence: ADR-030 and
 Evidence: ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
+#### Single-line toolbar and native detail handoffs — focused implementation complete, manual Firefox pending (ADR-037)
+
+- one compact non-wrapping top row with navigation, top address/popup launcher,
+  existing bounded status, loading accent, page actions, Firefox tools, and
+  responsive progressive disclosure;
+- fixed native handoffs for Trust/identity, protections, site permissions,
+  Downloads, Unified Extensions, application menu, Settings, native
+  customization, and the complete original toolbar;
+- nine fixed booleans/actions only; no certificate, permission, tracker,
+  extension, download, widget, preference, URL, or native object crosses;
+- Firefox remains the complete data/action/popup owner and the custom HTTPS/ETP
+  labels remain summaries;
+- Firefox-owned caption buttons retained and styled in place, with empty panel
+  chrome draggable and every interactive descendant excluded from dragging;
+- independently authored SVG glyphs and no copied code/design/assets from
+  `my-firefox-custom`.
+
+Focused source, adapter/controller, type, build, static CSS/native-UI, artifact,
+and privacy checks are required before push. Real cold start, native panels,
+caption commands, drag, responsive layouts, second/private windows,
+fullscreen, and fallback remain the user's post-push manual matrix.
+
+Evidence: ADR-037,
+`plans/004-single-line-toolbar-ui-ux.md`, and
+`docs/research/firefox-153-single-line-toolbar-handoffs.md`.
+
 Gate: basic browsing and required access paths work entirely through custom
 surfaces while native UI remains visible for comparison and fallback.
 
@@ -444,16 +489,19 @@ Deliverables:
 Gate: controlled breakage never leaves Firefox without an operable native
 recovery path.
 
-Delivered by ADR-032:
+Delivered by ADR-032 and extended by ADR-037:
 
 - the production initializer activates only after the complete health check;
-- one exact five-rule per-window controller collapses horizontal native tab
-  items/navbar, bookmarks toolbar, and exact native sidebar surfaces;
+- one exact thirteen-rule per-window controller collapses reviewed toolbox and
+  toolbar geometry, exact non-caption content, bookmarks toolbar, and exact
+  native sidebar surfaces, and applies the 7px content gutter;
 - native vertical-tab mode retains its navbar titlebar owner;
-- titlebar controls, notifications, popups, dialogs, tabbox/content, and
-  DevTools remain untargeted;
-- toolbox focus/pointer, anchored popups, an open native sidebar, and #37's
-  Urlbar handoff reveal the complete retained native path;
+- Firefox-owned titlebar controls remain attached and are styled in place as a
+  compact caption island; notifications, popups, dialogs, and content remain
+  Firefox-owned;
+- native focus, anchored popups, an open native sidebar, #37's Urlbar handoff,
+  and ADR-037's panel/original-toolbar handoffs reveal the complete retained
+  native path;
 - customize/native-dialog/DOM-fullscreen policy suspends project hiding;
 - invalid or partial activation CSS and stable native-target drift fail open
   per window.
@@ -463,6 +511,10 @@ normal/second/private isolation, complete Urlbar handoff, native Downloads and
 History-sidebar holds, customize/browser-fullscreen transitions, Browser
 Toolbox ownership, emergency fallback, partial CSS failure, safe start, and
 recovery evidence.
+
+That gate result predates ADR-037's changed geometry and handoffs. The new
+manual matrix remains pending and must not be reported as covered by the
+historical #15 run.
 
 Evidence: ADR-032 and
 `docs/research/firefox-153-content-only-activation.md`.

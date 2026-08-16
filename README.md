@@ -24,8 +24,9 @@ bridges.
 > tabs plus a compact address launcher with real Firefox connection and
 > tracking-protection status. A centered popup provides address/search editing
 > plus fuller connection, protection, permission, applicable-action, and native
-> Urlbar-access detail. The top edge contains native-synchronized Back,
-> Forward, Reload/Stop, and New Tab controls plus bounded page status. The right
+> Urlbar-access detail. The top edge contains one line of native-synchronized
+> navigation, address/page status, native Firefox detail/tool handoffs, and
+> responsive overflow access. The right
 > edge contains a bounded, lazy, event-driven bookmarks panel backed by Firefox
 > Places and opaque per-window handles. The bottom edge contains an event-driven
 > anonymous download-status panel with determinate/indeterminate aggregate
@@ -34,6 +35,14 @@ bridges.
 > native surfaces collapse at rest, while complete native Urlbar, toolbar,
 > sidebar, popup, customization, and fail-open paths remain reversible and
 > source-validated.
+
+> **Fast UI/UX branch note:** ADR-037 adds the single-line toolbar, native
+> Trust/identity/protections/permission/Downloads/Extensions/menu/settings/
+> customization/original-toolbar handoffs, retained caption-control island,
+> content gutter, drag regions, and transient shortcut hint. Focused automated
+> checks are complete; the changed real-Firefox visual/interaction matrix is
+> intentionally pending the user's post-push manual test and is not included in
+> the prerelease validation claim above.
 
 The first versioned Windows x64 prerelease is distributed through
 [GitHub Releases](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1)
@@ -57,12 +66,13 @@ protections panels, permissions, page actions, and security prompts. The popup
 shows only fixed Firefox-derived summaries and can hand focus to the complete
 native Urlbar.
 
-The retained Firefox toolbar is transient in active mode. Moving the pointer
-into Firefox's retained titlebar strip reveals the complete native toolbar;
-**Open full Firefox address bar** reveals and focuses the complete Urlbar. F9
-and the revealed native controls remain the path to unsupported native or
-extension sidebars. Returning focus to web content and closing native panels
-restores the content-only resting view.
+The retained Firefox toolbar is transient in active mode. **Original Firefox
+toolbar** in the custom top row reveals it for pinned extension widgets and any
+unmodeled control; **Open full Firefox address bar** reveals and focuses the
+complete Urlbar. Fixed top-row detail buttons open Firefox's authoritative
+native panels. F9 and revealed native controls remain the path to unsupported
+native or extension sidebars. Returning focus to web content and closing native
+panels restores the content-only resting view.
 
 Each surface is hidden at rest, reserves no permanent layout space, and is
 revealed by its matching window edge or an accessible keyboard/focus path. The
@@ -103,6 +113,7 @@ useful.
 | Tabs data and UI                              | Complete       | Event-driven immutable tab state plus accessible vertical tab UI in the left surface                                                                          |
 | Four-edge frame                               | Complete       | Independent top/left/right/bottom XHTML surfaces, edge reveal controller, collision rules, glass tokens, and accessibility fallbacks                          |
 | Top primary controls                          | Complete — #12 | Event-driven navigation bridge and Back/Forward/Reload/Stop/New Tab UI with bounded text-only page status                                                     |
+| Single-line toolbar and native handoffs       | Focused implementation — ADR-037; manual pending | One-row responsive controls, native detail/tool/original-toolbar actions, retained caption island, gutter, drag, and transient hint |
 | Address launcher and popup                    | Complete — #13 | Compact committed location plus real Firefox connection/protection badges, centered address/search popup, native Urlbar submission, and healthy-only `Ctrl+L` |
 | Urlbar permission/action coverage             | Complete — #37 | Fixed detailed permission/action availability, event-driven per-window bridge, and complete native Urlbar handoff                                           |
 | Right bookmarks                               | Complete — #14 | Typed Places bridge, bounded lazy hierarchy, native live updates, and Firefox-owned current/new-tab opening                                                   |
@@ -130,10 +141,11 @@ Stock Firefox
               │   ├─ navigation (implemented)
               │   ├─ address/status popup (implemented)
               │   ├─ Urlbar permission/action coverage (implemented)
+              │   ├─ Fixed native browser-tool handoffs (implemented; manual pending)
               │   ├─ Places/bookmarks (implemented)
               │   └─ Downloads (implemented)
               └─ Svelte frame with five owned roots
-                  ├─ top: primary controls
+                  ├─ top: one-line controls + native Firefox handoffs
                   ├─ left: vertical tabs + compact address/status launcher
                   ├─ right: bookmarks
                   ├─ bottom: download progress/status
@@ -167,7 +179,8 @@ startup.
 - A complete replacement for Urlbar suggestions/providers, Firefox View,
   identity/permission UI, bookmark management, Downloads management,
   SessionStore, or extension actions.
-- Custom titlebar or OS window controls.
+- Replacement titlebar or OS window controls; current Firefox caption nodes may
+  be styled in place under ADR-037.
 - Overriding the complete `browser.xhtml`.
 - A branded Firefox fork, updater, public installer, or support product.
 - Pixel-for-pixel reproduction of Firefox, `my-firefox-custom`, Arc, Edge, or
@@ -183,7 +196,8 @@ startup.
 - **Runtime:** privileged `.sys.mjs` modules with one process runtime and
   per-window deterministic disposal.
 - **UI:** Svelte 5 with TypeScript, compiled as a fixed tree-fragment IIFE into
-  four edge roots and one address-overlay root, all project-owned XHTML.
+  four edge roots and one address-overlay root. Hosts and structural nodes are
+  project-owned XHTML; only explicit project icon subtrees use SVG.
 - **Build:** Vite with byte-reproduced production artifacts and no CDN, HMR,
   source map, extra chunk, or runtime network dependency.
 - **Styling:** frame-scoped component CSS and Fennevia-owned glass tokens with
@@ -245,6 +259,7 @@ and design.
 - [Firefox 153 top navigation](docs/research/firefox-153-navigation-controls.md)
 - [Firefox 153 compact address launcher and popup](docs/research/firefox-153-address-popup.md)
 - [Firefox 153 Urlbar trust, permission, and action coverage](docs/research/firefox-153-urlbar-coverage.md)
+- [Firefox 153 single-line toolbar and native handoffs](docs/research/firefox-153-single-line-toolbar-handoffs.md)
 - [Firefox 153 right-edge bookmarks](docs/research/firefox-153-bookmarks-surface.md)
 - [Firefox 153 bottom-edge downloads](docs/research/firefox-153-downloads-surface.md)
 - [Firefox 153 content-only activation](docs/research/firefox-153-content-only-activation.md)

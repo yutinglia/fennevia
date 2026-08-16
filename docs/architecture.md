@@ -107,9 +107,10 @@ one empty mount target and one Svelte root. One address-overlay XHTML host is
 ordered last and owns the centered popup's fifth target/root. A generated style
 node is a separate frame child and does not participate in edge-host ordering.
 Normal and private windows receive the same complete frame. Project code owns
-only this frame and its descendants; it never moves a native node or resizes
-browser content. ADR-032 adds one separate privileged controller that changes
-only the reversible visibility of exact source-validated native surfaces.
+only this frame and its descendants; the frame itself never moves a native node
+or participates in browser-content layout. ADR-032 adds one separate privileged
+controller that changes only source-validated native surfaces; ADR-037 extends
+that sheet with the explicitly selected 7px decorative browser gutter.
 
 Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
 owns the only root-state transition table: `created -> mounted -> healthy ->
@@ -188,9 +189,9 @@ is not source of truth. `WindowShell.sys.mjs` creates exactly one boundary from
 the existing `WindowManager` context for each managed window and retains it in
 the same frame-keyed private record as the frontend API. It passes no bridge
 implementation object, native handle, or capability object to Svelte. Issues
-#10, #12, #13, #14, and #32 pass only frozen ordinary-data tabs,
-navigation/address, bookmarks, and anonymous download-status contracts through
-separate application adapters.
+#10, #12, #13, #14, #32, #37, and ADR-037 pass only frozen ordinary-data tabs,
+navigation/address, bookmarks, anonymous download-status, Urlbar coverage, and
+fixed browser-tool contracts through separate application adapters.
 
 The boundary validates `window.document.defaultView`, the browser document URI,
 the process-local window ID, and normal/private kind before claiming a context.
@@ -208,9 +209,9 @@ registry IDs produce distinct typed errors. Registry snapshots contain counts
 and fixed state only. Event subscriptions and cleanup callbacks return
 idempotent disposers, and boundary disposal continues through all owned
 subscriptions and registries before reporting a typed cleanup error. These are
-the only shared utilities consumed by the tabs, navigation, bookmarks, and
-downloads bridges; no service locator, dependency-injection framework, or
-generic Firefox SDK exists.
+the only shared utilities consumed by the tabs, navigation, bookmarks,
+downloads, Urlbar-coverage, and browser-tools bridges; no service locator,
+dependency-injection framework, or generic Firefox SDK exists.
 
 ESLint applies a static boundary to `src/shell/` and ordinary `src/app/` code:
 Firefox implementation imports, privileged globals, and direct Firefox-owned
@@ -322,11 +323,34 @@ suggestions, one-offs, extension actions, prompts, and native panels. One
 observer is disconnected exactly once with the window. See ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
+ADR-037 adds `src/firefox/browser-tools.ts` to the same generated private ESM.
+One controller per window validates the twelve fixed Firefox owners needed for
+nine actions: site information, protections, site permissions, native
+Downloads, Unified Extensions, application menu, Settings, native
+customization, and complete original-toolbar access. It re-resolves every
+owner at action time. Anchored actions first request the existing reversible
+native-toolbar reveal, then focus and delegate to the original owner; Firefox
+continues to populate and operate every resulting panel.
+
+The public contract contains only nine fixed availability booleans and nine
+fixed action strings. It contains no URL, certificate, tracker, permission,
+extension, download, widget, preference, native node, handler, panel, or
+window. The complete-toolbar action reveals the current navbar and focuses an
+original navigation control instead of enumerating `CustomizableUI`. The
+unprivileged adapter validates results and releases its per-window reference on
+unmount. See ADR-037 and
+`docs/research/firefox-153-single-line-toolbar-handoffs.md`.
+
 ## 5. Application and frontend layers
 
 The application layer coordinates ordinary typed state, controllers, and feature policy. It must be usable without importing Firefox implementation modules directly.
 
-Svelte mounts only into project-created XHTML elements. It must not reconcile `navigator-toolbox`, `tabbrowser-tabbox`, the native sidebar, popup sets, or any other Firefox-owned children.
+Svelte mounts only into project-created XHTML elements. Structural frontend
+nodes stay XHTML; the sole namespace exception is a project-authored inline
+glyph subtree rooted at `svg[data-fennevia-icon]`. Health rejects every other
+mixed project namespace. Svelte must not reconcile `navigator-toolbox`,
+`tabbrowser-tabbox`, the native sidebar, popup sets, or any other Firefox-owned
+children.
 
 Issue #8 validated the original single Svelte 5 root. Issue #31 keeps the same
 fixed tree-fragment IIFE and one-shot API but mounts four independent roots in
@@ -338,10 +362,16 @@ shared framework-independent controller coordinates edge visibility, while
 each root retains independent component ownership. Mount, health, official
 unmount, and fresh-state remount are explicit frontend API operations.
 
-Issue #12 replaces only the top placeholder with four accessible controls and
-a secondary bounded text status. It consumes the application navigation
-adapter and the existing top-edge focus/reveal contract; it does not import a
-Firefox module, inspect command DOM, or create another trigger/timer/controller.
+Issue #12 originally replaced the top placeholder with four accessible
+navigation controls and bounded status. ADR-037 keeps that state and turns the
+surface into one non-wrapping row: navigation, an address/page launcher with
+loading accent, native site-detail handoffs, new-tab/bookmark/download actions,
+Firefox tools, private state, and dismiss. Responsive rules progressively hide
+secondary controls while retaining accessible names, Unified Extensions,
+complete original-toolbar access, and the application menu. The row consumes
+only ordinary adapters and the existing top-edge focus/reveal contract; it does
+not inspect native DOM or create another trigger, timer, controller, or widget
+registry.
 
 Issue #13 replaces the old left address placeholder with a non-editable compact
 launcher above tabs and mounts `AddressPopup.svelte` in the fifth root. The
@@ -352,10 +382,12 @@ popup-priority edge suppression. It never moves native Urlbar/identity/
 protections DOM or renders inferred security state.
 
 Issue #37 extends that same popup with a full-width site-permission card, fixed
-applicable Firefox-control labels, and one native Urlbar handoff button. The
-short launcher remains unchanged. All native security/permission/action panels
-and commands stay Firefox-owned, and no second popup, input, edge controller,
-timer, or provider stack is added.
+applicable Firefox-control labels, and one native Urlbar handoff button. ADR-037
+adds the same centered-popup launcher to the top row and separate fixed buttons
+that open Firefox's native Trust/identity, protections, and permission owners.
+All complete security/permission/action panels and commands stay
+Firefox-owned, and no second popup, input, edge controller, timer, or provider
+stack is added.
 
 Issue #14 replaces the right placeholder with `BookmarksPanel.svelte`. It uses
 the existing right host, trigger, controller, focus restoration, collision
@@ -424,12 +456,13 @@ reclassify those browser-owned XUL widgets as authored shell DOM. No selector
 in the component stylesheet targets the native tab strip. ADR-032's separate
 active-only sheet collapses only its `.toolbar-items` owner.
 
-The issue #12 top controls use the same frame-rooted token and control classes.
-Navigation-specific selectors cover compact/narrow layout, native-disabled
-state, loading emphasis, text ellipsis/bidi isolation, and forced-color
-fallbacks. Hover, active, and focus-visible behavior remains the common owned
-control policy. No selector targets the native navbar, Urlbar, command set, or
-toolbox from component CSS; ADR-032 owns the separate reversible navbar rule.
+The ADR-037 top row uses the same frame-rooted token and control classes.
+Top-specific selectors cover one-line flex zoning, progressive disclosure,
+native-disabled state, loading emphasis, text ellipsis/bidi isolation,
+project-authored SVG glyphs, reduced motion, and forced colors. Hover, active,
+and focus-visible behavior remains the common owned-control policy. No selector
+targets the native navbar, Urlbar, command set, or toolbox from component CSS;
+ADR-032 owns the separate reversible native sheet.
 
 The issue #14 right panel likewise uses only frame-rooted project classes and
 the existing responsive right-edge bounds. It renders type glyphs rather than
@@ -472,29 +505,33 @@ DOM marker: disposal removes every project state attribute. Safe start exits in
 AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute.
 
-ADR-032 implements the gate with a five-rule project-owned style and two
-temporary root markers:
+ADR-032, as extended by ADR-037, implements the gate with a thirteen-rule
+project-owned style and two temporary root markers:
 
 ```text
 [data-fennevia-native-ui-revealed]
 [data-fennevia-native-ui-suspended]
 ```
 
-At active rest, horizontal native tab items, the horizontal navbar, bookmarks
-toolbar, and exact native sidebar surfaces collapse. Native vertical-tab mode
-keeps the navbar/titlebar owner and collapses only exact direct content. The
-entire toolbox, notifications toolbar, titlebar controls, popups, dialogs,
-tabbox, and content infrastructure are never project-targeted.
+At active rest, the toolbox and horizontal toolbar geometry collapse together
+with exact non-caption content, the bookmarks toolbar, and exact native sidebar
+surfaces. Native vertical-tab mode keeps the navbar/titlebar owner and
+collapses only exact direct content. The retained `#browser` receives a 7px
+gutter and the tabbox receives only border/radius/clip styling. Notifications,
+popups, dialogs, and content infrastructure remain untargeted. Firefox's
+selected native titlebar button box is retained and styled as a fixed caption
+island; no caption node is moved or replaced.
 
-Toolbox pointer/focus, anchored native popups, an open native sidebar, and the
-explicit Urlbar handoff set temporary reveal. Customize and native-dialog state
-set suspension. DOM fullscreen also suspends project hiding while Firefox's own
-fullscreen CSS remains authoritative; browser fullscreen retains active mode.
-The controller validates exact nodes and five parsed rules before health, then
-watches integrity. Invalid or partial CSS and stable target drift suspend first
-and request per-window fail-open disposal. Clearing active restores Firefox
-immediately without Svelte or restart. Retaining all native DOM preserves
-implicit command, popup, customization, titlebar, and platform integration.
+Native focus, anchored native popups, an open native sidebar, and explicit
+Urlbar or original-toolbar handoffs set temporary reveal. Customize and
+native-dialog state set suspension. DOM fullscreen also suspends project hiding
+while Firefox's own fullscreen CSS remains authoritative; browser fullscreen
+retains active mode. The controller validates exact nodes and thirteen parsed
+rules before health, then watches integrity. Invalid or partial CSS and stable
+target drift suspend first and request per-window fail-open disposal. Clearing
+active restores Firefox immediately without Svelte or restart. Retaining all
+native DOM preserves implicit command, popup, customization, titlebar, and
+platform integration.
 
 The complete owner/replacement/fallback inventory and Firefox 153 evidence are
 in `docs/research/firefox-153-content-only-activation.md`.
@@ -595,11 +632,13 @@ src/
     index.ts
     tabs.ts
     navigation.ts
+    browser-tools.ts
     urlbar-coverage.ts
     bookmarks.ts
     downloads.ts
   app/
     address-popup.ts
+    browser-tools-state.ts
     bookmark-state.ts
     download-state.ts
     edge-surfaces.ts
@@ -612,6 +651,7 @@ src/
     App.svelte
     BookmarksPanel.svelte
     DownloadsPanel.svelte
+    ShellIcon.svelte
     entry.ts
     index.ts
     styles/

@@ -263,7 +263,8 @@ Validate:
 - bridge-capability failure;
 - no title, URL, or favicon value in normal diagnostics;
 - native tab strip remains attached and unchanged; active rest may collapse its
-  exact item owner, while pointer/focus/popup/Urlbar reveal restores it.
+  exact item owner, while native focus/popup/Urlbar/original-toolbar reveal
+  restores it.
 
 Evidence:
 
@@ -437,6 +438,39 @@ unmount/remount, missing Downloads capability, hard-disable/re-enable, and
 artifact restoration passed. Evidence: ADR-030 and
 `docs/research/firefox-153-downloads-surface.md`.
 
+### 6.7 Single-line toolbar and native handoffs — focused automation complete, real Firefox pending
+
+ADR-037 adds focused unit/static/build coverage for:
+
+- exact validation of the nine fixed browser-tool action names and nine fixed
+  availability booleans;
+- twelve required per-window Firefox capabilities;
+- current Trust-owner selection with separate legacy identity/protection
+  fallback;
+- original permission and Downloads anchor activation;
+- Unified Extensions, application-menu, Settings, customization, and complete
+  original-toolbar delegation;
+- owner re-resolution at action time, reveal rejection/failure, malformed
+  input/result, privacy-safe error symbols, pending-action accounting, and
+  idempotent disposal;
+- one-row top-surface selectors, project-authored SVG namespace containment,
+  progressive disclosure, loading/focus/disabled states, reduced motion,
+  forced colors, and deterministic generated artifacts;
+- thirteen-rule native activation CSS, retained native caption nodes, compact
+  caption-island styling, content gutter, and exact rule-count failure;
+- panel drag/no-drag declarations, edge-to-panel contact, transient shortcut
+  overlay, and `top > sides > bottom` collision policy.
+
+The user requested a fast handoff and will test the browser manually. Therefore
+the following are `not run`, not passed: cold-start flash, real Trust/identity/
+protections/permission/Downloads/extension/menu popup placement and lifetime,
+collapsed permission-anchor behavior, original-toolbar pinned widgets,
+customization enter/exit, caption commands/placement, window drag release,
+corner twitch, narrow/short/maximized/fullscreen/high-DPI layout, second/private
+windows, and emergency fallback. The complete checklist is in
+`plans/004-single-line-toolbar-ui-ux.md`; implementation/source evidence is in
+`docs/research/firefox-153-single-line-toolbar-handoffs.md`.
+
 ## 7. Native-UI activation matrix — validated for #15
 
 No earlier issue may claim this gate.
@@ -482,15 +516,18 @@ unreachable.
 
 ADR-032 and
 `docs/research/firefox-153-content-only-activation.md` contain the completed
-owner/replacement/fallback inventory. The ordinary real-Firefox harness now
-checks exact five-rule CSS, collapsed resting native owners, retained rendered
+owner/replacement/fallback inventory for #15. The ordinary real-Firefox harness
+for that historical validation checked exact five-rule CSS, collapsed resting native owners, retained rendered
 caption controls, compact HTTPS/ETP status, full native Urlbar owner reveal and
 release, native Downloads popup hold, native History sidebar hold, real
 customize enter/exit, real browser fullscreen, DOM-fullscreen suspension,
 native modal stacking, narrow/short move/resize, maximize/minimize/restore,
 normal/second/private isolation, emergency fallback, partial activation CSS
 failure in an independent window, and Browser Console cleanliness. The Browser
-Toolbox variant repeats ownership and namespace inspection while active.
+Toolbox variant repeated ownership and namespace inspection while active. The
+current ADR-037 extension has thirteen rules and the pending manual matrix in
+section 6.7; the earlier result must not be treated as evidence for the changed
+toolbar/caption implementation.
 
 ## 8. Recovery design
 
@@ -509,7 +546,8 @@ the health phase requires:
 
 - exact frame identity and placement;
 - ordered top/left/right/bottom hosts plus the final address-overlay host;
-- five XHTML mount targets;
+- five XHTML mount targets, XHTML structural frontend nodes, and only explicit
+  project-authored `svg[data-fennevia-icon]` SVG subtrees;
 - five frontend roots;
 - attached parsed project CSS;
 - edge reveal controller;
@@ -517,8 +555,10 @@ the health phase requires:
 - a ready PUBLIC/PRIVATE Downloads list view and valid bottom-panel state;
 - a valid Urlbar-coverage snapshot, one owner-state observer, and native
   `openLocation()` handoff capability;
+- a valid browser-tools snapshot, all fixed native-panel/tool actions, and
+  synchronous original-toolbar reveal capability;
 - exact Firefox native target/titlebar ownership, an attached exact activation
-  style with five parsed rules, and synchronous native Urlbar reveal capability;
+  style with thirteen parsed rules, and synchronous native Urlbar reveal capability;
 - environment/suspension handling;
 - privileged emergency handler;
 - every declared required capability;
@@ -638,7 +678,7 @@ download filenames/URLs/paths, profile paths, or private browsing data.
 Use it to verify:
 
 - exact frame, edge-host, and address-overlay placement;
-- XHTML namespace;
+- XHTML structural namespaces and SVG only below explicit project icon roots;
 - project/native ownership boundary;
 - root state attributes;
 - hidden-at-rest geometry;

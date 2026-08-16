@@ -1000,10 +1000,7 @@ async function executeSessionRestoreMode(client, mode, stateContext) {
     assert.equal(countEvent(records, "window.initialized"), 0);
     assert.equal(countEvent(records, "window.initialization-failed"), 1);
     assert.equal(shellFailures.length, 1);
-    assert.equal(
-      shellFailures[0].code,
-      "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
-    );
+    assert.equal(shellFailures[0].code, "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED");
     assert.equal(shellFailures[0].phase, "shell-frontend-load");
     assert.equal(records.firstPartyScriptErrorCount, 0);
     return assertPrivacySafeSessionRestoreEvidence({
@@ -1036,7 +1033,10 @@ async function executeSessionRestoreMode(client, mode, stateContext) {
     "FENNEVIA_SESSION_RESTORE_RUNTIME_TIMEOUT",
   );
   assert.equal(runtimeState.initializingWindowCount, 0);
-  assert.deepEqual(await collectNativeState(client), EXPECTED_ACTIVE_NATIVE_STATE);
+  assert.deepEqual(
+    await collectNativeState(client),
+    EXPECTED_ACTIVE_NATIVE_STATE,
+  );
   assertShellHostState(await collectShellHostState(client), "normal");
   assertFrontendState(await collectFrontendState(client), "normal");
 
@@ -1140,11 +1140,7 @@ async function executeSessionRestoreMode(client, mode, stateContext) {
     runtimeStartCount: countEvent(records, "runtime.started"),
     schemaVersion: 1,
     selectedId: fixture.selectedId,
-    windowInitializedCount: countEvent(
-      records,
-      "window.initialized",
-      "normal",
-    ),
+    windowInitializedCount: countEvent(records, "window.initialized", "normal"),
   });
 }
 
@@ -1458,6 +1454,7 @@ async function collectBrowserDomSnapshot(client) {
 async function collectShellHostState(client) {
   return client.execute(`
     const XHTML_NS = "http://www.w3.org/1999/xhtml";
+    const SVG_NS = "http://www.w3.org/2000/svg";
     const hostIds = [
       "fennevia-shell-frame-host",
       "fennevia-shell-top-host",
@@ -1514,6 +1511,10 @@ async function collectShellHostState(client) {
     const browserRect = browser?.getBoundingClientRect();
     const browserChildren = Array.from(browser?.children ?? []);
     const allProjectElements = frame ? [frame, ...frame.querySelectorAll("*")] : [];
+    const hasAllowedProjectNamespace = element =>
+      element.namespaceURI === XHTML_NS ||
+      (element.namespaceURI === SVG_NS &&
+        element.closest('svg[data-fennevia-icon]')?.namespaceURI === SVG_NS);
     const contentHit = browserRect
       ? document.elementFromPoint(
           Math.round(browserRect.left + browserRect.width / 2),
@@ -1645,7 +1646,7 @@ async function collectShellHostState(client) {
           document.getElementById("nav-bar"),
       },
       namespaceComplete: allProjectElements.every(
-        element => element.namespaceURI === XHTML_NS
+        hasAllowedProjectNamespace
       ),
       ownershipComplete: allProjectElements.every(
         element => element === frame || frame?.contains(element)
@@ -2239,16 +2240,16 @@ async function exerciseEdgeShell(client) {
 
       const frameRect = frame.getBoundingClientRect();
       const topLeft = { x: frameRect.left, y: frameRect.top };
-      dispatchPointer("top", "pointermove", topLeft);
-      await sleep(30);
-      const topIgnoredOwnedCorner = !visible("top") && !visible("left");
       dispatchPointer("left", "pointermove", topLeft);
+      await sleep(30);
+      const leftIgnoredTopCorner = !visible("top") && !visible("left");
+      dispatchPointer("top", "pointermove", topLeft);
       await waitFor(
-        () => visible("left"),
+        () => visible("top"),
         "FENNEVIA_FIREFOX_TEST_TOP_LEFT_CORNER_TIMEOUT"
       );
-      const topLeftOwnedByLeft = visible("left") && !visible("top");
-      await releasePointer("left");
+      const topLeftOwnedByTop = visible("top") && !visible("left");
+      await releasePointer("top");
 
       const bottomRight = {
         x: frameRect.right - 1,
@@ -2386,11 +2387,11 @@ async function exerciseEdgeShell(client) {
         focusRestoration,
         initialHidden,
         keyboardReveal,
+        leftIgnoredTopCorner,
         pendingHidePhases,
         pointerReveal,
         reentryCancelledHide,
-        topIgnoredOwnedCorner,
-        topLeftOwnedByLeft,
+        topLeftOwnedByTop,
         twoHeldWithoutOverlap,
         windowPointerLeaveHides,
       };
@@ -2415,13 +2416,13 @@ function assertEdgeShellInteraction(result) {
     focusRestoration: allTrue,
     initialHidden: true,
     keyboardReveal: allTrue,
+    leftIgnoredTopCorner: true,
     pendingHidePhases: Object.fromEntries(
       ["top", "left", "right", "bottom"].map((edge) => [edge, "pending-hide"]),
     ),
     pointerReveal: allTrue,
     reentryCancelledHide: true,
-    topIgnoredOwnedCorner: true,
-    topLeftOwnedByLeft: true,
+    topLeftOwnedByTop: true,
     twoHeldWithoutOverlap: true,
     windowPointerLeaveHides: true,
   };
@@ -5310,6 +5311,22 @@ async function exerciseFrontendUnmountRemount(client) {
           };
         },
       });
+      const browserTools = Object.freeze({
+        async invoke() { return true; },
+        snapshot() {
+          return Object.freeze({
+            applicationMenu: true,
+            customize: true,
+            downloads: true,
+            extensions: true,
+            nativeToolbar: true,
+            protections: true,
+            settings: true,
+            siteInformation: true,
+            sitePermissions: true,
+          });
+        },
+      });
       const navigation = Object.freeze({
         back() { return false; },
         focusContent() { return true; },
@@ -5384,6 +5401,7 @@ async function exerciseFrontendUnmountRemount(client) {
       });
       const options = {
         bookmarks,
+        browserTools,
         downloads,
         frame,
         navigation,
@@ -5537,7 +5555,7 @@ function assertShellHostState(state, windowKind) {
   });
   try {
     assert.equal(state.nativeUi.styleParentIsFrame, true);
-    assert.equal(state.nativeUi.styleRuleCount, 5);
+    assert.equal(state.nativeUi.styleRuleCount, 13);
     assert.equal(state.nativeUi.revealed, false);
     assert.equal(state.nativeUi.suspended, false);
     assert.equal(state.nativeUi.identityBoxOwnedByNavBar, true);
@@ -5813,7 +5831,7 @@ async function exerciseNativeUiPolicies(client) {
         );
         customizeRestoredActive =
           root.hasAttribute("data-fennevia-active") &&
-          nativeStyle.sheet.cssRules.length === 5;
+            nativeStyle.sheet.cssRules.length === 13;
 
         window.fullScreen = true;
         await waitFor(
@@ -5953,7 +5971,7 @@ async function exerciseWindowStatePolicy(client) {
       Math.abs(resizeRect.height - target.height) <= 2 &&
       resizeState.active &&
       resizeState.browserGeometryPreserved &&
-      resizeState.styleRuleCount === 5 &&
+      resizeState.styleRuleCount === 13 &&
       resizeState.visibleClose;
 
     await client.request("WebDriver:MaximizeWindow", {});
@@ -5962,7 +5980,7 @@ async function exerciseWindowStatePolicy(client) {
       maximizeState.windowState === maximizeState.windowStateMaximized &&
       maximizeState.active &&
       maximizeState.browserGeometryPreserved &&
-      maximizeState.styleRuleCount === 5 &&
+      maximizeState.styleRuleCount === 13 &&
       maximizeState.visibleClose;
 
     await client.request("WebDriver:MinimizeWindow", {});
@@ -5970,7 +5988,7 @@ async function exerciseWindowStatePolicy(client) {
     minimized =
       minimizeState.windowState === minimizeState.windowStateMinimized &&
       minimizeState.active &&
-      minimizeState.styleRuleCount === 5;
+      minimizeState.styleRuleCount === 13;
   } finally {
     await client.request("WebDriver:SetWindowRect", initial);
     const restoreState = await inspect();
@@ -5978,7 +5996,7 @@ async function exerciseWindowStatePolicy(client) {
       restoreState.windowState === restoreState.windowStateNormal &&
       restoreState.active &&
       restoreState.browserGeometryPreserved &&
-      restoreState.styleRuleCount === 5 &&
+      restoreState.styleRuleCount === 13 &&
       restoreState.visibleClose;
   }
   return { maximized, minimized, resized, restored };
@@ -5996,7 +6014,7 @@ async function exercisePartialNativeUiCssFailOpen(client) {
       if (
         !root.hasAttribute("data-fennevia-active") ||
         !style ||
-        style.sheet.cssRules.length !== 5 ||
+        style.sheet.cssRules.length !== 13 ||
         !navBar ||
         !tabsToolbarItems
       ) {
@@ -6400,6 +6418,7 @@ async function runBrowserToolboxOwnershipProbe(client) {
 
     const inspectorExpression = `(async () => {
       const XHTML_NS = "http://www.w3.org/1999/xhtml";
+      const SVG_NS = "http://www.w3.org/2000/svg";
       const inspector = await gToolbox.selectTool("inspector");
       const walker = inspector.walker;
       const rootNode = await walker.getRootNode();
@@ -6449,6 +6468,27 @@ async function runBrowserToolboxOwnershipProbe(client) {
         }
         return true;
       });
+      const hasAllowedProjectNamespace = node => {
+        if (node.namespaceURI === XHTML_NS) {
+          return true;
+        }
+        if (node.namespaceURI !== SVG_NS) {
+          return false;
+        }
+        for (let ancestor = node; ancestor; ancestor = ancestor.parentNode()) {
+          if (
+            ancestor.namespaceURI === SVG_NS &&
+            ancestor.nodeName.toLowerCase() === "svg" &&
+            ancestor.getAttribute("data-fennevia-icon") != null
+          ) {
+            return true;
+          }
+          if (ancestor.namespaceURI === XHTML_NS) {
+            return false;
+          }
+        }
+        return false;
+      };
 
       inspector.selection.setNodeFront(frame, {
         reason: "fennevia-ownership-probe",
@@ -6457,10 +6497,10 @@ async function runBrowserToolboxOwnershipProbe(client) {
       return JSON.stringify({
         hostCount: hosts.length,
         namespaceComplete: projectElements.every(
-          node => node.namespaceURI === XHTML_NS
+          hasAllowedProjectNamespace
         ),
         namespaceMismatches: projectElements
-          .filter(node => node.namespaceURI !== XHTML_NS)
+          .filter(node => !hasAllowedProjectNamespace(node))
           .map(node => ({
             isAnonymous: Boolean(node.isAnonymous),
             isNativeAnonymous: Boolean(node.isNativeAnonymous),
@@ -6665,15 +6705,11 @@ async function run() {
   ) {
     launchArguments.push("--new-window", "about:blank");
   }
-  const child = spawn(
-    options.firefox,
-    launchArguments,
-    {
-      env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
-      windowsHide: false,
-    },
-  );
+  const child = spawn(options.firefox, launchArguments, {
+    env: process.env,
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: false,
+  });
   for (const stream of [child.stdout, child.stderr]) {
     stream.resume();
   }
@@ -6716,9 +6752,7 @@ async function run() {
           stateRemoved: true,
         });
       }
-      console.log(
-        `sessionRestoreEvidence=${JSON.stringify(sessionEvidence)}`,
-      );
+      console.log(`sessionRestoreEvidence=${JSON.stringify(sessionEvidence)}`);
       console.log(
         options.sessionRestore === "prepare"
           ? "PASS: fixed synthetic tabs were prepared and persisted through a clean Firefox shutdown."

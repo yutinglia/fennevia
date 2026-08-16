@@ -82,9 +82,7 @@ class FakeElement {
     this._children = [];
     this._textContent = String(value);
     if (this.sheet) {
-      const matches = this._textContent.match(
-        /visibility:\s*collapse\s*!important/gu,
-      );
+      const matches = this._textContent.match(/\}/gu);
       this.sheet.cssRules = Array.from({ length: matches?.length ?? 0 }, () =>
         Object.freeze({}),
       );
@@ -547,9 +545,10 @@ function createFixture() {
 
 const waitForNativeHide = () => delay(nativeUiHideDelayMs + 30);
 
-test("native UI activation owns exact CSS targets while retaining titlebar and notification nodes", () => {
+test("native UI activation reserves an edge gutter and hides native toolbox content without hover reveal", () => {
   const fixture = createFixture();
   const errors = [];
+  fixture.window.gURLBar.focused = true;
   const controller = createNativeUiController({
     window: fixture.window,
     frame: fixture.frame,
@@ -558,11 +557,20 @@ test("native UI activation owns exact CSS targets while retaining titlebar and n
 
   const style = fixture.document.getElementById(nativeUiStyleId);
   assert.equal(style.parentElement, fixture.frame);
-  assert.equal(style.sheet.cssRules.length, 5);
-  assert.match(style.textContent, /#TabsToolbar > \.toolbar-items/u);
+  assert.equal(style.sheet.cssRules.length, 13);
+  assert.match(style.textContent, /#browser > #tabbrowser-tabbox/u);
+  assert.match(style.textContent, /padding: 7px !important/u);
+  assert.match(style.textContent, /height: 0 !important/u);
+  assert.match(style.textContent, /\.titlebar-buttonbox-container/u);
+  assert.match(style.textContent, /data-fennevia-top-visible/u);
+  assert.match(style.textContent, /:has\(/u);
+  assert.match(style.textContent, /0 8px 24px rgb\(0 0 0 \/ 22%\)/u);
+  assert.match(style.textContent, /display: flex !important/u);
+  assert.match(style.textContent, /z-index: 6 !important/u);
   assert.doesNotMatch(style.textContent, /#notifications-toolbar/u);
-  assert.doesNotMatch(style.textContent, /#navigator-toolbox\s*\{/u);
-  assert.doesNotMatch(style.textContent, /titlebar-button/u);
+  assert.match(style.textContent, /> \.titlebar-button \{/u);
+  assert.match(style.textContent, /> \.titlebar-close:hover \{/u);
+  assert.match(style.textContent, /width: 34px !important/u);
   assert.ok(
     controller
       .assertRequiredCapabilities()
@@ -571,11 +579,13 @@ test("native UI activation owns exact CSS targets while retaining titlebar and n
   assert.deepEqual(errors, []);
 
   fixture.document.documentElement.setAttribute("data-fennevia-active", "");
+  assert.equal(controller.snapshot().revealed, false);
   fixture.toolbox.dispatch("pointerenter");
+  assert.equal(controller.snapshot().revealed, false);
   fixture.window.dispatch("keydown", { key: "Escape" });
-  assert.equal(fixture.window.pendingTimerCount(), 1);
+  assert.equal(fixture.window.pendingTimerCount(), 0);
   assert.equal(controller.revealForUrlbar(), true);
-  assert.equal(controller.revealForUrlbar(), true);
+  assert.equal(controller.revealForToolbar(), true);
   assert.equal(fixture.window.pendingAnimationFrameCount(), 1);
 
   assert.equal(controller.dispose(), true);
@@ -681,6 +691,7 @@ test("customize, DOM fullscreen, and native dialogs suspend hiding fail-open", (
   root.setAttribute("inDOMFullscreen", "");
   assert.equal(controller.snapshot().suspensionReason, "dom-fullscreen");
   assert.equal(controller.revealForUrlbar(), false);
+  assert.equal(controller.revealForToolbar(), false);
   root.removeAttribute("inDOMFullscreen");
   assert.equal(controller.snapshot().suspended, false);
 

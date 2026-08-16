@@ -1130,3 +1130,56 @@ Linux/macOS compatibility, ESR/Beta/Nightly compatibility, signing,
 attestations, an SBOM, automatic update, or an independent security audit.
 Implementation and validation evidence are recorded in
 `docs/research/fennevia-release-packaging.md`.
+
+## ADR-037: Delegate complete browser details to fixed Firefox-owned handoffs
+
+**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary
+
+Render the top edge as one project-owned, non-wrapping toolbar row. Expose only
+nine fixed browser-tool availability booleans and nine fixed actions through a
+new per-window `src/firefox/` controller: site information, protections, site
+permissions, native Downloads, Unified Extensions, application menu, Settings,
+native customization mode, and complete original-toolbar access. Re-resolve
+every Firefox owner at action time and request ADR-032's reversible native
+toolbar reveal before operating an anchored native control.
+
+Keep the requested 7px browser-content frame as a fixed decorative gutter, not
+surface-dependent collision clearance. Edge panels remain overlays: they meet
+that gutter without a dead pointer gap, top owns both top corners, side rails
+own the remaining side corners, and bottom yields to both rails.
+
+For Firefox 153's enabled Trust Panel, site-information and protection entries
+both delegate through the visible original Trust anchor; when that owner is not
+visible, use the separate original identity and protections anchors. Permission
+and Downloads entries activate their original Firefox anchors. Extension and
+application-menu entries invoke their current Firefox owner after focusing the
+original anchor; Settings and customization invoke the current window owners.
+The complete-toolbar action reveals the navbar and focuses a retained native
+navigation control. Never enumerate or clone arbitrary `CustomizableUI`
+widgets, extension identities, icons, commands, or panel contents.
+
+Keep Firefox's existing minimize, maximize/restore, and close nodes and style
+only their selected native container as a compact caption island. The island is
+fixed at the content edge at rest and below the visible custom top row. Do not
+create, reparent, replace, intercept, or programmatically operate a caption
+button. Empty project panel space may use Firefox's
+`-moz-window-dragging: drag`; every interactive or focusable descendant is an
+explicit no-drag region.
+
+Project hosts and structural frontend nodes remain XHTML. Project-authored
+inline glyphs may use the SVG namespace only inside an explicit
+`svg[data-fennevia-icon]` subtree; health and Browser Toolbox ownership checks
+reject every other project namespace. No external asset or runtime endpoint is
+added.
+
+**Reasoning:** Firefox already owns complete, current, security-sensitive
+identity, HTTPS-only, tracking, permission, extension, download, menu,
+customization, and platform-window behavior. A fixed action boundary preserves
+that fidelity and native recovery without exporting browsing data or creating
+an unstable generic toolbar SDK. The original-toolbar handoff retains access to
+pinned extension widgets and unmodeled controls while responsive disclosure
+keeps the custom row single-line. A future project-owned identity/protection UI
+requires a separate decision with complete data/action, privacy, accessibility,
+and parity evidence; the current bounded labels are summaries only. Source pins,
+reference provenance, and the manual-test boundary are recorded in
+`docs/research/firefox-153-single-line-toolbar-handoffs.md`.

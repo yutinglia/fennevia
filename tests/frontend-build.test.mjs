@@ -32,6 +32,68 @@ test("the exact frontend toolchain is development-only and lockfile-pinned", asy
   assert.equal(packageLock.packages[""].version, packageJson.version);
 });
 
+test("visible edge transforms override every directional off-screen transform", async () => {
+  const css = await readProjectFile("src/shell/styles/edge-shell.css");
+  const visibleRule = css.indexOf(
+    '.fennevia-edge-root[data-fennevia-visible="true"]',
+  );
+  const lastDirectionalRule = Math.max(
+    css.lastIndexOf(
+      "transform: translateY(calc(-100% - var(--fennevia-edge-inset)));",
+    ),
+    css.lastIndexOf(
+      "transform: translateY(calc(100% + var(--fennevia-edge-inset)));",
+    ),
+    css.lastIndexOf(
+      "transform: translateX(calc(-100% - var(--fennevia-edge-inset)));",
+    ),
+    css.lastIndexOf(
+      "transform: translateX(calc(100% + var(--fennevia-edge-inset)));",
+    ),
+  );
+
+  assert.ok(lastDirectionalRule >= 0);
+  assert.ok(visibleRule > lastDirectionalRule);
+});
+
+test("edge panels touch the trigger gutter, release native drags, and float visible transient shortcuts", async () => {
+  const css = await readProjectFile("src/shell/styles/edge-shell.css");
+
+  assert.match(
+    css,
+    /--fennevia-edge-inset: var\(--fennevia-edge-trigger-thickness\)/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-edge="top"\][\s\S]*?\.fennevia-edge-trigger \{\s*inset-inline: 0;/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-edge="bottom"\][\s\S]*?\.fennevia-edge-trigger \{\s*inset-inline: var\(--fennevia-edge-trigger-thickness\);/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-edge="right"\][\s\S]*?\.fennevia-edge-trigger \{\s*inset-block-start: var\(--fennevia-edge-trigger-thickness\);/u,
+  );
+  assert.match(css, /-moz-window-dragging: drag/u);
+  assert.match(css, /-moz-window-dragging: no-drag/u);
+  assert.match(
+    css,
+    /position: absolute;[\s\S]*@keyframes fennevia-shortcut-tip/u,
+  );
+  assert.match(css, /animation: fennevia-shortcut-tip 2800ms/u);
+  assert.match(css, /var\(--fennevia-focus-color\) 82%/u);
+
+  const component = await readProjectFile("src/shell/App.svelte");
+  assert.match(
+    component,
+    /handlePanelPointerDown[\s\S]*?setPointerHeld\(props\.edge, false\)/u,
+  );
+  assert.match(component, /handlePanelPointerRelease/u);
+  assert.match(component, /onpointercancel=\{handlePanelPointerRelease\}/u);
+  assert.match(component, /onpointerup=\{handlePanelPointerRelease\}/u);
+});
+
 test("the installed frontend is one IIFE, one style module, and one notice", async () => {
   const [bundle, styleModule, notices, manifest] = await Promise.all([
     readProjectFile("profile/chrome/fennevia/content/shell/ShellApp.js"),
@@ -57,6 +119,13 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /data-fennevia-download-summary/u);
   assert.match(bundle, /data-fennevia-download-progress/u);
   assert.match(bundle, /data-fennevia-download-state/u);
+  assert.match(bundle, /data-fennevia-top-address-launcher/u);
+  assert.match(bundle, /data-fennevia-browser-tools/u);
+  assert.match(bundle, /data-fennevia-browser-tool/u);
+  assert.match(bundle, /site-information/u);
+  assert.match(bundle, /site-permissions/u);
+  assert.match(bundle, /native-toolbar/u);
+  assert.match(bundle, /data-fennevia-icon/u);
   assert.match(bundle, /data-fennevia-action/u);
   assert.doesNotMatch(bundle, /[\r\n]/u);
   assert.doesNotMatch(bundle, /[ \t]+$/u);
@@ -83,8 +152,13 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(css, /#fennevia-shell-frame-host \.fennevia-bookmarks/u);
   assert.match(css, /#fennevia-shell-frame-host \.fennevia-downloads/u);
   assert.match(css, /data-fennevia-download-progress="indeterminate"/u);
-  assert.match(css, /\.fennevia-navigation__button:disabled/u);
+  assert.match(css, /\.fennevia-top-address-cluster/u);
+  assert.match(css, /\.fennevia-browser-tools__button/u);
+  assert.match(css, /\):disabled/u);
   assert.match(css, /data-fennevia-loading="true"/u);
+  assert.match(css, /@keyframes fennevia-address-loading/u);
+  assert.match(css, /-moz-window-dragging: drag/u);
+  assert.match(css, /@keyframes fennevia-shortcut-tip/u);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(css, /@media \(forced-colors: active\)/u);
   assert.doesNotMatch(
@@ -129,7 +203,7 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
   );
   assert.match(
     runtime,
-    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxBookmarksBridge,[\s\S]*createFirefoxDownloadsBridge,[\s\S]*createFirefoxNavigationBridge,[\s\S]*createFirefoxTabsBridge,[\s\S]*createFirefoxUrlbarCoverageBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
+    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxBookmarksBridge,[\s\S]*createFirefoxBrowserToolsBridge,[\s\S]*createFirefoxDownloadsBridge,[\s\S]*createFirefoxNavigationBridge,[\s\S]*createFirefoxTabsBridge,[\s\S]*createFirefoxUrlbarCoverageBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
   );
   assert.match(runtime, /Reflect\.deleteProperty\(/u);
   assert.doesNotMatch(runtime, /ShellApp\.sys\.mjs|import\s*\(/u);
@@ -156,12 +230,14 @@ test("the generated Firefox boundary is one deterministic private ESM artifact",
 
   assert.match(bridge, /createFirefoxBridgeBoundary/u);
   assert.match(bridge, /createFirefoxBookmarksBridge/u);
+  assert.match(bridge, /createFirefoxBrowserToolsBridge/u);
   assert.match(bridge, /createFirefoxDownloadsBridge/u);
   assert.match(bridge, /createFirefoxNavigationBridge/u);
   assert.match(bridge, /createFirefoxTabsBridge/u);
   assert.match(bridge, /createFirefoxUrlbarCoverageBridge/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING/u);
+  assert.match(bridge, /FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING/u);
   assert.match(bridge, /export \{/u);
