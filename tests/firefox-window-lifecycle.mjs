@@ -1,10 +1,20 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
+
+import {
+  assertFreshSessionRestoreState,
+  assertPrivacySafeSessionRestoreEvidence,
+  createSessionRestoreState,
+  parseSessionRestoreState,
+  sessionRestoreModes,
+  sessionRestorePreferenceSpecifications,
+  sessionRestoreStateFileName,
+} from "./session-restore-contract.mjs";
 
 const DEFAULT_PORT = 2828;
 const CONNECT_TIMEOUT_MS = 30_000;
@@ -16,6 +26,40 @@ const PERFORMANCE_IDLE_WINDOW_MS = 5_000;
 const PERFORMANCE_SETTLE_WINDOW_MS = 1_000;
 const PERFORMANCE_WINDOW_CYCLES = 5;
 const PERFORMANCE_EDGE_SAMPLES_PER_EDGE = 3;
+const SESSION_RESTORE_FIXTURES = Object.freeze([
+  Object.freeze({
+    id: "pinned",
+    pinned: true,
+    title: "Fennevia restore fixture pinned",
+    url: "data:text/html;charset=utf-8,<title>Fennevia%20restore%20fixture%20pinned</title><p>pinned</p>",
+  }),
+  Object.freeze({
+    id: "selected",
+    pinned: false,
+    title: "Fennevia restore fixture selected",
+    url: "data:text/html;charset=utf-8,<title>Fennevia%20restore%20fixture%20selected</title><p>selected</p>",
+  }),
+  Object.freeze({
+    id: "lazy-a",
+    pinned: false,
+    title: "Fennevia restore fixture lazy A",
+    url: "data:text/html;charset=utf-8,<title>Fennevia%20restore%20fixture%20lazy%20A</title><p>lazy-a</p>",
+  }),
+  Object.freeze({
+    id: "lazy-b",
+    pinned: false,
+    title: "Fennevia restore fixture lazy B",
+    url: "data:text/html;charset=utf-8,<title>Fennevia%20restore%20fixture%20lazy%20B</title><p>lazy-b</p>",
+  }),
+]);
+const SESSION_RESTORE_EXPECTED_ORDER = Object.freeze(
+  SESSION_RESTORE_FIXTURES.map((fixture) => fixture.id),
+);
+const SESSION_RESTORE_EXPECTED_PENDING = Object.freeze([
+  "pinned",
+  "lazy-a",
+  "lazy-b",
+]);
 
 function parseArguments(argv) {
   const result = {
@@ -34,6 +78,7 @@ function parseArguments(argv) {
     inspectDom: false,
     browserToolbox: false,
     performanceBaseline: false,
+    sessionRestore: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -106,6 +151,15 @@ function parseArguments(argv) {
       result.performanceBaseline = true;
       continue;
     }
+    if (argument === "--session-restore") {
+      const value = argv[index + 1];
+      if (!sessionRestoreModes.includes(value)) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_ARGUMENT_INVALID");
+      }
+      result.sessionRestore = value;
+      index += 1;
+      continue;
+    }
     throw new Error("FENNEVIA_FIREFOX_TEST_ARGUMENT_UNKNOWN");
   }
 
@@ -128,6 +182,7 @@ function parseArguments(argv) {
       result.expectStock,
       result.inspectDom,
       result.performanceBaseline,
+      result.sessionRestore !== null,
     ].filter(Boolean).length > 1
   ) {
     throw new Error("FENNEVIA_FIREFOX_TEST_MODE_CONFLICT");
@@ -147,7 +202,8 @@ function parseArguments(argv) {
       result.expectTabsBridgeFailOpen ||
       result.expectStock ||
       result.inspectDom ||
-      result.performanceBaseline)
+      result.performanceBaseline ||
+      result.sessionRestore !== null)
   ) {
     throw new Error("FENNEVIA_FIREFOX_TEST_MODE_CONFLICT");
   }
@@ -161,6 +217,41 @@ async function pathExists(targetPath) {
   } catch (error) {
     if (error?.code === "ENOENT") {
       return false;
+    }
+    throw error;
+  }
+}
+
+async function readSessionRestoreState(profilePath, required) {
+  const statePath = path.join(profilePath, sessionRestoreStateFileName);
+  let serialized = null;
+  try {
+    serialized = await readFile(statePath, "utf8");
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+  }
+  if (!required) {
+    assertFreshSessionRestoreState(serialized);
+    return { state: null, statePath };
+  }
+  if (serialized === null) {
+    throw new Error("FENNEVIA_SESSION_RESTORE_STATE_MISSING");
+  }
+  return { state: parseSessionRestoreState(serialized), statePath };
+}
+
+async function writeSessionRestoreState(statePath, preferences) {
+  const state = createSessionRestoreState(preferences);
+  try {
+    await writeFile(statePath, `${JSON.stringify(state)}\n`, {
+      encoding: "utf8",
+      flag: "wx",
+    });
+  } catch (error) {
+    if (error?.code === "EEXIST") {
+      throw new Error("FENNEVIA_SESSION_RESTORE_STATE_STALE");
     }
     throw error;
   }
@@ -534,6 +625,527 @@ async function collectEvidence(client) {
     }
     return { firstPartyScriptErrorCount, records };
   `);
+}
+
+async function collectSessionRestorePreferenceSnapshot(client) {
+  return client.execute(`
+    const specifications = ${JSON.stringify(
+      sessionRestorePreferenceSpecifications,
+    )};
+    return specifications.map(specification => ({
+      hadUserValue: Services.prefs.prefHasUserValue(specification.name),
+      name: specification.name,
+      type: specification.type,
+      value: specification.type === "integer"
+        ? Services.prefs.getIntPref(specification.name, 1)
+        : Services.prefs.getBoolPref(specification.name, false),
+    }));
+  `);
+}
+
+async function waitForSessionStoreStartup(client) {
+  assert.equal(
+    await client.execute(`
+      const { SessionStore } = ChromeUtils.importESModule(
+        "resource:///modules/sessionstore/SessionStore.sys.mjs"
+      );
+      return SessionStore.promiseAllWindowsRestored.then(() => true);
+    `),
+    true,
+  );
+}
+
+async function prepareSessionRestoreFixture(client) {
+  assert.equal(
+    await client.execute(
+      `
+      return (async () => {
+        const { SessionStore } = ChromeUtils.importESModule(
+          "resource:///modules/sessionstore/SessionStore.sys.mjs"
+        );
+        const { TabStateFlusher } = ChromeUtils.importESModule(
+          "resource:///modules/sessionstore/TabStateFlusher.sys.mjs"
+        );
+        const fixtures = ${JSON.stringify(SESSION_RESTORE_FIXTURES)};
+        const preferenceValues = new Map([
+          ["browser.startup.page", 3],
+          ["browser.sessionstore.newTabOnRestore", false],
+          ["browser.sessionstore.newTabOnRestore.showSetting", false],
+          ["browser.sessionstore.restore_on_demand", true],
+          ["browser.sessionstore.restore_pinned_tabs_on_demand", true],
+          ["browser.sessionstore.restore_tabs_lazily", true],
+          ["browser.sessionstore.resume_session_once", false],
+        ]);
+        for (const [name, value] of preferenceValues) {
+          if (typeof value === "boolean") {
+            Services.prefs.setBoolPref(name, value);
+          } else {
+            Services.prefs.setIntPref(name, value);
+          }
+        }
+
+        const topic = "sessionstore-browser-state-restored";
+        const restored = new Promise((resolve, reject) => {
+          const timer = window.setTimeout(() => {
+            Services.obs.removeObserver(observer, topic);
+            reject(new Error("FENNEVIA_SESSION_RESTORE_PREPARE_TIMEOUT"));
+          }, 20000);
+          const observer = {
+            observe() {
+              window.clearTimeout(timer);
+              Services.obs.removeObserver(observer, topic);
+              resolve();
+            },
+          };
+          Services.obs.addObserver(observer, topic);
+        });
+        SessionStore.setBrowserState(JSON.stringify({
+          selectedWindow: 1,
+          windows: [{
+            selected: 2,
+            tabs: fixtures.map(fixture => ({
+              entries: [{ title: fixture.title, url: fixture.url }],
+              index: 1,
+              pinned: fixture.pinned,
+            })),
+          }],
+        }));
+        await restored;
+        await TabStateFlusher.flushWindow(window);
+        return true;
+      })();
+    `,
+      STATE_TIMEOUT_MS,
+    ),
+    true,
+  );
+}
+
+async function collectSessionRestoreFixtureState(client) {
+  return client.execute(`
+    const { SessionStore } = ChromeUtils.importESModule(
+      "resource:///modules/sessionstore/SessionStore.sys.mjs"
+    );
+    const fixtures = ${JSON.stringify(SESSION_RESTORE_FIXTURES)};
+    const idByUrl = new Map(fixtures.map(fixture => [fixture.url, fixture.id]));
+    const idByTitle = new Map(
+      fixtures.map(fixture => [fixture.title, fixture.id])
+    );
+    const fixtureIdForTab = tab => {
+      const state = JSON.parse(SessionStore.getTabState(tab));
+      const activeIndex = Math.max(
+        0,
+        Math.min((state.index || state.entries.length) - 1, state.entries.length - 1)
+      );
+      return idByUrl.get(state.entries[activeIndex]?.url) ?? "unexpected";
+    };
+    const nativeTabs = [...gBrowser.openTabs];
+    const nativeOrder = nativeTabs.map(fixtureIdForTab);
+    const frontendItems = [
+      ...document.querySelectorAll(".fennevia-tab-strip__item"),
+    ];
+    const frontendOrder = frontendItems.map(item =>
+      idByTitle.get(
+        item.querySelector('[data-fennevia-tab]')?.getAttribute("title")
+      ) ?? "unexpected"
+    );
+    return {
+      frontendOrder,
+      frontendPinnedIds: frontendItems
+        .filter(item => item.getAttribute("data-fennevia-pinned") === "true")
+        .map(item =>
+          idByTitle.get(
+            item.querySelector('[data-fennevia-tab]')?.getAttribute("title")
+          ) ?? "unexpected"
+        ),
+      frontendSelectedId:
+        frontendItems
+          .filter(item => item.getAttribute("data-fennevia-selected") === "true")
+          .map(item =>
+            idByTitle.get(
+              item.querySelector('[data-fennevia-tab]')?.getAttribute("title")
+            ) ?? "unexpected"
+          )[0] ?? null,
+      nativeOrder,
+      pendingIds: nativeTabs
+        .filter(tab => tab.hasAttribute("pending"))
+        .map(fixtureIdForTab),
+      pinnedIds: nativeTabs
+        .filter(tab => tab.hasAttribute("pinned"))
+        .map(fixtureIdForTab),
+      selectedId: fixtureIdForTab(gBrowser.selectedTab),
+    };
+  `);
+}
+
+async function waitForSessionRestoreFixture(client, frontendExpected) {
+  const deadline = Date.now() + STATE_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const state = await collectSessionRestoreFixtureState(client);
+    const nativeReady =
+      JSON.stringify(state.nativeOrder) ===
+        JSON.stringify(SESSION_RESTORE_EXPECTED_ORDER) &&
+      JSON.stringify(state.pinnedIds) === JSON.stringify(["pinned"]) &&
+      state.selectedId === "selected";
+    const frontendReady = frontendExpected
+      ? JSON.stringify(state.frontendOrder) ===
+          JSON.stringify(SESSION_RESTORE_EXPECTED_ORDER) &&
+        JSON.stringify(state.frontendPinnedIds) ===
+          JSON.stringify(["pinned"]) &&
+        state.frontendSelectedId === "selected"
+      : state.frontendOrder.length === 0 &&
+        state.frontendPinnedIds.length === 0 &&
+        state.frontendSelectedId === null;
+    if (nativeReady && frontendReady) {
+      return state;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("FENNEVIA_SESSION_RESTORE_FIXTURE_TIMEOUT");
+}
+
+async function exerciseSessionRestoreNativeReveal(client) {
+  return client.execute(`
+    return (async () => {
+      const root = document.documentElement;
+      const toolbox = document.getElementById("navigator-toolbox");
+      const navBar = document.getElementById("nav-bar");
+      if (!toolbox || !navBar || !gBrowser.selectedBrowser) {
+        throw new Error("FENNEVIA_SESSION_RESTORE_NATIVE_REVEAL_MISSING");
+      }
+      const waitFor = async (predicate, code) => {
+        const deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+          if (predicate()) {
+            return;
+          }
+          await new Promise(resolve => window.setTimeout(resolve, 20));
+        }
+        throw new Error(code);
+      };
+      gBrowser.selectedBrowser.focus();
+      await waitFor(
+        () => !root.hasAttribute("data-fennevia-native-ui-revealed"),
+        "FENNEVIA_SESSION_RESTORE_NATIVE_REVEAL_BASELINE_TIMEOUT"
+      );
+      toolbox.dispatchEvent(new PointerEvent("pointerenter"));
+      await waitFor(
+        () =>
+          root.hasAttribute("data-fennevia-native-ui-revealed") &&
+          getComputedStyle(navBar).visibility !== "collapse",
+        "FENNEVIA_SESSION_RESTORE_NATIVE_REVEAL_TIMEOUT"
+      );
+      const revealObserved = true;
+      toolbox.dispatchEvent(new PointerEvent("pointerleave"));
+      gBrowser.selectedBrowser.focus();
+      await waitFor(
+        () =>
+          !root.hasAttribute("data-fennevia-native-ui-revealed") &&
+          getComputedStyle(navBar).visibility === "collapse",
+        "FENNEVIA_SESSION_RESTORE_NATIVE_RELEASE_TIMEOUT"
+      );
+      return { revealObserved, revealReleased: true };
+    })();
+  `);
+}
+
+async function exerciseFailOpenRestoredTab(client) {
+  return client.execute(`
+    return (async () => {
+      const { SessionStore } = ChromeUtils.importESModule(
+        "resource:///modules/sessionstore/SessionStore.sys.mjs"
+      );
+      const fixtures = ${JSON.stringify(SESSION_RESTORE_FIXTURES)};
+      const idByUrl = new Map(fixtures.map(fixture => [fixture.url, fixture.id]));
+      const fixtureIdForTab = tab => {
+        const state = JSON.parse(SessionStore.getTabState(tab));
+        const index = Math.max(
+          0,
+          Math.min((state.index || state.entries.length) - 1, state.entries.length - 1)
+        );
+        return idByUrl.get(state.entries[index]?.url) ?? "unexpected";
+      };
+      const original = gBrowser.selectedTab;
+      const pending = gBrowser.openTabs.find(
+        tab => fixtureIdForTab(tab) === "lazy-a" && tab.hasAttribute("pending")
+      );
+      if (!pending) {
+        throw new Error("FENNEVIA_SESSION_RESTORE_PENDING_TAB_MISSING");
+      }
+      gBrowser.selectedTab = pending;
+      const deadline = Date.now() + 10000;
+      while (Date.now() < deadline && pending.hasAttribute("pending")) {
+        await new Promise(resolve => window.setTimeout(resolve, 20));
+      }
+      const pendingActivated =
+        gBrowser.selectedTab === pending && !pending.hasAttribute("pending");
+      gBrowser.selectedTab = original;
+      return {
+        pendingActivated,
+        selectionRestored: gBrowser.selectedTab === original,
+      };
+    })();
+  `);
+}
+
+async function cleanupSessionRestoreFixture(client, state) {
+  return client.execute(
+    `
+    return (async () => {
+      const { SessionStore } = ChromeUtils.importESModule(
+        "resource:///modules/sessionstore/SessionStore.sys.mjs"
+      );
+      const { TabStateFlusher } = ChromeUtils.importESModule(
+        "resource:///modules/sessionstore/TabStateFlusher.sys.mjs"
+      );
+      const savedPreferences = ${JSON.stringify(state.preferences)};
+      const topic = "sessionstore-browser-state-restored";
+      const restored = new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+          Services.obs.removeObserver(observer, topic);
+          reject(new Error("FENNEVIA_SESSION_RESTORE_CLEANUP_TIMEOUT"));
+        }, 20000);
+        const observer = {
+          observe() {
+            window.clearTimeout(timer);
+            Services.obs.removeObserver(observer, topic);
+            resolve();
+          },
+        };
+        Services.obs.addObserver(observer, topic);
+      });
+      SessionStore.setBrowserState(JSON.stringify({
+        selectedWindow: 1,
+        windows: [{
+          selected: 1,
+          tabs: [{ entries: [{ url: "about:blank" }], index: 1 }],
+        }],
+      }));
+      await restored;
+      await TabStateFlusher.flushWindow(window);
+
+      for (const preference of savedPreferences) {
+        if (!preference.hadUserValue) {
+          if (Services.prefs.prefHasUserValue(preference.name)) {
+            Services.prefs.clearUserPref(preference.name);
+          }
+        } else if (preference.type === "integer") {
+          Services.prefs.setIntPref(preference.name, preference.value);
+        } else {
+          Services.prefs.setBoolPref(preference.name, preference.value);
+        }
+      }
+      const preferencesRestored = savedPreferences.every(preference => {
+        if (
+          Services.prefs.prefHasUserValue(preference.name) !==
+          preference.hadUserValue
+        ) {
+          return false;
+        }
+        if (!preference.hadUserValue) {
+          return true;
+        }
+        return preference.type === "integer"
+          ? Services.prefs.getIntPref(preference.name) === preference.value
+          : Services.prefs.getBoolPref(preference.name) === preference.value;
+      });
+      const baseline =
+        gBrowser.openTabs.length === 1 &&
+        gBrowser.selectedTab === gBrowser.openTabs[0] &&
+        JSON.parse(SessionStore.getTabState(gBrowser.openTabs[0])).entries[0]
+          ?.url === "about:blank";
+      return { baseline, preferencesRestored };
+    })();
+  `,
+    STATE_TIMEOUT_MS,
+  );
+}
+
+async function executeSessionRestoreMode(client, mode, stateContext) {
+  await waitForSessionStoreStartup(client);
+
+  if (mode === "fail-open") {
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
+    await assertNoShellHosts(client);
+    const fixture = await waitForSessionRestoreFixture(client, false);
+    assert.deepEqual(fixture.pendingIds, SESSION_RESTORE_EXPECTED_PENDING);
+    const runtimeState = await client.execute(`
+      const { startProcessRuntime } = ChromeUtils.importESModule(
+        "chrome://fennevia/content/runtime/Runtime.sys.mjs"
+      );
+      return startProcessRuntime({
+        createWindowManager() {
+          throw new Error("FENNEVIA_RUNTIME_STATE_MISSING");
+        },
+      }).runtime.snapshot();
+    `);
+    assert.deepEqual(runtimeState, {
+      initializationCount: 1,
+      initializingWindowCount: 0,
+      managedWindowCount: 0,
+      state: "started",
+    });
+    const nativeInteraction = await exerciseFailOpenRestoredTab(client);
+    assert.deepEqual(nativeInteraction, {
+      pendingActivated: true,
+      selectionRestored: true,
+    });
+    const records = await collectEvidence(client);
+    const shellFailures = records.records.filter(
+      (record) => record.event === "shell.lifecycle-failed",
+    );
+    assert.equal(countEvent(records, "bootstrap.success"), 1);
+    assert.equal(countEvent(records, "runtime.started"), 1);
+    assert.equal(countEvent(records, "window.initialized"), 0);
+    assert.equal(countEvent(records, "window.initialization-failed"), 1);
+    assert.equal(shellFailures.length, 1);
+    assert.equal(
+      shellFailures[0].code,
+      "FENNEVIA_FRONTEND_SCRIPT_LOAD_FAILED",
+    );
+    assert.equal(shellFailures[0].phase, "shell-frontend-load");
+    assert.equal(records.firstPartyScriptErrorCount, 0);
+    return assertPrivacySafeSessionRestoreEvidence({
+      active: false,
+      firstPartyScriptErrorCount: records.firstPartyScriptErrorCount,
+      fixtureCount: fixture.nativeOrder.length,
+      frontendOrder: fixture.frontendOrder,
+      hostCount: 0,
+      managedWindowCount: runtimeState.managedWindowCount,
+      nativeOrder: fixture.nativeOrder,
+      pendingActivated: nativeInteraction.pendingActivated,
+      pendingIds: fixture.pendingIds,
+      phase: "fail-open",
+      pinnedIds: fixture.pinnedIds,
+      runtimeStartCount: countEvent(records, "runtime.started"),
+      schemaVersion: 1,
+      selectedId: fixture.selectedId,
+      selectionRestored: nativeInteraction.selectionRestored,
+      shellFailureCount: shellFailures.length,
+      windowInitializedCount: countEvent(records, "window.initialized"),
+    });
+  }
+
+  const runtimeState = await waitForState(
+    client,
+    (state) =>
+      state?.state === "started" &&
+      state.initializationCount === 1 &&
+      state.managedWindowCount === 1,
+    "FENNEVIA_SESSION_RESTORE_RUNTIME_TIMEOUT",
+  );
+  assert.equal(runtimeState.initializingWindowCount, 0);
+  assert.deepEqual(await collectNativeState(client), EXPECTED_ACTIVE_NATIVE_STATE);
+  assertShellHostState(await collectShellHostState(client), "normal");
+  assertFrontendState(await collectFrontendState(client), "normal");
+
+  if (mode === "cleanup") {
+    const cleanup = await cleanupSessionRestoreFixture(
+      client,
+      stateContext.state,
+    );
+    assert.deepEqual(cleanup, {
+      baseline: true,
+      preferencesRestored: true,
+    });
+    await waitForFrontendTabCount(client, 1);
+    const records = await collectEvidence(client);
+    assert.equal(
+      records.records.filter((record) => record.level === "error").length,
+      0,
+    );
+    assert.equal(records.firstPartyScriptErrorCount, 0);
+    return {
+      active: true,
+      firstPartyScriptErrorCount: records.firstPartyScriptErrorCount,
+      fixtureCount: 0,
+      hostCount: 6,
+      managedWindowCount: runtimeState.managedWindowCount,
+      phase: "clean",
+      preferencesRestored: cleanup.preferencesRestored,
+      runtimeStartCount: countEvent(records, "runtime.started"),
+      schemaVersion: 1,
+      windowInitializedCount: countEvent(records, "window.initialized"),
+    };
+  }
+
+  if (mode === "prepare") {
+    const preferences = await collectSessionRestorePreferenceSnapshot(client);
+    await writeSessionRestoreState(stateContext.statePath, preferences);
+    await prepareSessionRestoreFixture(client);
+  }
+
+  const fixture = await waitForSessionRestoreFixture(client, true);
+  assert.deepEqual(fixture.nativeOrder, SESSION_RESTORE_EXPECTED_ORDER);
+  assert.deepEqual(fixture.frontendOrder, SESSION_RESTORE_EXPECTED_ORDER);
+  assert.deepEqual(fixture.pinnedIds, ["pinned"]);
+  assert.deepEqual(fixture.frontendPinnedIds, ["pinned"]);
+  assert.equal(fixture.selectedId, "selected");
+  assert.equal(fixture.frontendSelectedId, "selected");
+  if (mode === "verify") {
+    assert.deepEqual(fixture.pendingIds, SESSION_RESTORE_EXPECTED_PENDING);
+  }
+
+  const records = await collectEvidence(client);
+  assert.equal(countEvent(records, "bootstrap.success"), 1);
+  assert.equal(countEvent(records, "runtime.started"), 1);
+  assert.equal(countEvent(records, "window.initialized", "normal"), 1);
+  assert.equal(
+    records.records.filter((record) => record.level === "error").length,
+    0,
+  );
+  assert.equal(records.firstPartyScriptErrorCount, 0);
+
+  if (mode === "prepare") {
+    return assertPrivacySafeSessionRestoreEvidence({
+      active: true,
+      firstPartyScriptErrorCount: records.firstPartyScriptErrorCount,
+      fixtureCount: fixture.nativeOrder.length,
+      frontendOrder: fixture.frontendOrder,
+      hostCount: 6,
+      managedWindowCount: runtimeState.managedWindowCount,
+      nativeOrder: fixture.nativeOrder,
+      phase: "prepared",
+      pinnedIds: fixture.pinnedIds,
+      runtimeStartCount: countEvent(records, "runtime.started"),
+      schemaVersion: 1,
+      selectedId: fixture.selectedId,
+      windowInitializedCount: countEvent(
+        records,
+        "window.initialized",
+        "normal",
+      ),
+    });
+  }
+
+  const reveal = await exerciseSessionRestoreNativeReveal(client);
+  assert.deepEqual(reveal, {
+    revealObserved: true,
+    revealReleased: true,
+  });
+  return assertPrivacySafeSessionRestoreEvidence({
+    active: true,
+    firstPartyScriptErrorCount: records.firstPartyScriptErrorCount,
+    fixtureCount: fixture.nativeOrder.length,
+    frontendOrder: fixture.frontendOrder,
+    hostCount: 6,
+    managedWindowCount: runtimeState.managedWindowCount,
+    nativeOrder: fixture.nativeOrder,
+    pendingIds: fixture.pendingIds,
+    phase: "restored",
+    pinnedIds: fixture.pinnedIds,
+    revealObserved: reveal.revealObserved,
+    revealReleased: reveal.revealReleased,
+    runtimeStartCount: countEvent(records, "runtime.started"),
+    schemaVersion: 1,
+    selectedId: fixture.selectedId,
+    windowInitializedCount: countEvent(
+      records,
+      "window.initialized",
+      "normal",
+    ),
+  });
 }
 
 async function collectProcessResourceSnapshot(client) {
@@ -6019,6 +6631,7 @@ async function waitForProcessExit(child, timeoutMs) {
 
 async function run() {
   const options = parseArguments(process.argv.slice(2));
+  const sessionRestoreFailOpen = options.sessionRestore === "fail-open";
   await validateTarget(
     options.firefox,
     options.profile,
@@ -6027,23 +6640,34 @@ async function run() {
     options.expectDisabled,
     options.expectSafeStart,
     options.expectShellFailOpen,
-    options.expectShellMissingFailOpen,
+    options.expectShellMissingFailOpen || sessionRestoreFailOpen,
   );
+  const sessionRestoreState = options.sessionRestore
+    ? await readSessionRestoreState(
+        options.profile,
+        options.sessionRestore !== "prepare",
+      )
+    : null;
   await assertPortAvailable(DEFAULT_PORT);
 
   const launchStartedAt = Date.now();
+  const launchArguments = [
+    "--marionette",
+    "--remote-allow-system-access",
+    "--no-remote",
+    "--new-instance",
+    "--profile",
+    options.profile,
+  ];
+  if (
+    options.sessionRestore !== "verify" &&
+    options.sessionRestore !== "fail-open"
+  ) {
+    launchArguments.push("--new-window", "about:blank");
+  }
   const child = spawn(
     options.firefox,
-    [
-      "--marionette",
-      "--remote-allow-system-access",
-      "--no-remote",
-      "--new-instance",
-      "--profile",
-      options.profile,
-      "--new-window",
-      "about:blank",
-    ],
+    launchArguments,
     {
       env: process.env,
       stdio: ["ignore", "pipe", "pipe"],
@@ -6070,6 +6694,42 @@ async function run() {
     const originalHandle = (await client.request("WebDriver:GetWindowHandle"))
       .value;
     assert.equal(typeof originalHandle, "string");
+
+    if (options.sessionRestore) {
+      let sessionEvidence = await executeSessionRestoreMode(
+        client,
+        options.sessionRestore,
+        sessionRestoreState,
+      );
+      await client.request("Marionette:AcceptConnections", { value: false });
+      quitRequested = true;
+      try {
+        await client.request("Marionette:Quit", {});
+      } catch {
+        // A clean application quit may close Marionette before its response arrives.
+      }
+      await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
+      if (options.sessionRestore === "cleanup") {
+        await unlink(sessionRestoreState.statePath);
+        sessionEvidence = assertPrivacySafeSessionRestoreEvidence({
+          ...sessionEvidence,
+          stateRemoved: true,
+        });
+      }
+      console.log(
+        `sessionRestoreEvidence=${JSON.stringify(sessionEvidence)}`,
+      );
+      console.log(
+        options.sessionRestore === "prepare"
+          ? "PASS: fixed synthetic tabs were prepared and persisted through a clean Firefox shutdown."
+          : options.sessionRestore === "verify"
+            ? "PASS: a new Firefox process restored native and Fennevia tab state while leaving background tabs pending."
+            : options.sessionRestore === "fail-open"
+              ? "PASS: restored native tabs remained usable while a missing frontend removed every project host."
+              : "PASS: the session rehearsal restored preferences, one blank tab, and removed its test state.",
+      );
+      return;
+    }
 
     if (options.inspectDom) {
       await new Promise((resolve) => setTimeout(resolve, 750));

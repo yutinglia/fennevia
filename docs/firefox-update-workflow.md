@@ -89,6 +89,8 @@ node .\tests\firefox-window-lifecycle.mjs `
   --firefox $firefox --profile $profile --browser-toolbox
 node .\tests\firefox-window-lifecycle.mjs `
   --firefox $firefox --profile $profile --performance-baseline
+pwsh -NoProfile -File .\tests\firefox-session-restore.ps1 `
+  -FirefoxPath $firefox -ProfilePath $profile
 ```
 
 Record the three `performanceBaseline=` objects. They contain numeric aggregates
@@ -96,6 +98,12 @@ only: harness-observed spawn-to-active time, total Firefox-process CPU time and
 memory, edge-reveal latency, process count, and five normal-window lifecycle
 cycles. The harness deliberately discards process URIs, titles, origins, IDs,
 and thread/window records returned by Firefox.
+
+Run the SessionStore wrapper once on the isolated old-build pair and preserve
+only its fixed-ID/count/boolean evidence. It performs prepare, cross-process
+verify, missing-frontend fail-open, and cleanup, then returns the profile to one
+blank tab and its prior preference user-value states. A stale rehearsal marker
+or uncertain bundle restoration is a blocker, not permission to delete state.
 
 ## 4. Review compatibility canaries
 
@@ -133,6 +141,8 @@ Minimum source areas are:
 - `gBrowser`, `BrowserCommands`, progress listeners, `openLocation`, Urlbar
   identity/protections/permission/action owners;
 - Places APIs/observers/opening helpers and Downloads lists/views/state;
+- SessionStartup/SessionStore lazy pending state, final SessionFile/SessionSaver
+  shutdown writes, and relevant current tests;
 - CSS features and accessibility media queries used by project styles;
 - `ChromeUtils.requestProcInfo()` for test-only aggregate resource evidence.
 
@@ -166,8 +176,9 @@ UI. Optional capabilities may degrade only through an explicit fixed state.
 Repeat all old-build commands on the new build, then cover the matrix in
 `docs/testing-and-recovery.md`. At minimum record:
 
-- three cold starts, restart/session restore, zero/one/many/loading/restored
-  tabs, second normal window, private window, and five repeated window cycles;
+- three cold starts; the complete `firefox-session-restore.ps1` rehearsal on
+  the new copied-program/profile pair; zero/one/many/loading/restored tabs;
+  second normal window; private window; and five repeated window cycles;
 - all four edges, corners, pointer/focus/keyboard/popup holds, `Ctrl+L`, Escape,
   native reveal, and disposal during pending state;
 - ordinary/narrow/short/maximized/restored/snapped/high-DPI, browser and DOM
@@ -217,6 +228,12 @@ Preview hard disable and uninstall, apply them, cold-start stock Firefox, and
 verify no Fennevia-owned file, startup record, transaction, process, or host
 remains. Startup-cache clearing is allowed only after an observed stale-code
 symptom and must have before/after evidence.
+
+The persisted-session fixture must already be cleaned before disable,
+uninstall, or copied-program disposal. Verify the marker is absent, the profile
+contains one blank native tab on the next normal start, and all seven fixed
+preference user-value states match their pre-rehearsal values. Never include
+the profile path or Firefox session files in shared evidence.
 
 ## 10. Publish the compatibility result
 

@@ -207,6 +207,27 @@ its results never enter production runtime, Svelte state, persistence,
 telemetry, or a network sink. ADR-034 and static privacy assertions own this
 exception.
 
+### 6.5 Test-only persisted-session evidence
+
+`--session-restore` may inspect Firefox-owned tab/session state only inside the
+local real-Firefox harness and only for four fixed data-URL fixtures. Shared
+output is a default-deny schema containing fixed fixture IDs, phase enums,
+booleans, and bounded counts. It must not include fixture or user URLs, tab
+titles, queries, raw SessionStore JSON, preferences outside the exact allowlist,
+profile/program paths, native objects, or private-window state.
+
+The transaction marker stores only its schema version and each allowlisted
+preference's prior user-value presence/value. It contains no tab or browsing
+state. Prepare refuses a stale marker. The wrapper verifies the installed
+frontend hash before temporarily moving it, restores exact bytes in `finally`,
+and, after its own prepare phase creates state, attempts the fixed cleanup phase
+from `finally`. A marker left by an earlier interrupted invocation blocks before
+mutation and requires the documented manual cleanup command. Cleanup returns
+Firefox to one blank tab, restores preference ownership/value state, performs a
+normal shutdown, and removes the marker after process exit. SessionStore APIs
+and evidence have no production caller, persistence sink, telemetry, or network
+path. ADR-035 and contract/static tests own this exception.
+
 ## 7. User-derived frontend data
 
 ### 7.1 Tabs — implemented

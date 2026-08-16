@@ -1031,3 +1031,37 @@ time in nanoseconds, but the same dictionaries can contain browsing-derived
 origins and window URI/title data. Immediate fixed-field aggregation detects
 obvious regressions without expanding Fennevia's runtime data surface or shared
 logs. The method and thresholds are in `docs/firefox-update-workflow.md`.
+
+## ADR-035: Rehearse SessionStore persistence only with fixed test-owned state
+
+**Status:** Accepted for test-only Firefox 153.0.4 evidence
+
+Fennevia does not add a production session store, workspace schema, or restore
+hook. The explicit `--session-restore` harness mode may use Firefox's test-only
+`SessionStore.setBrowserState()` entry point to create four fixed local data-URL
+tabs, then must cross the real persistence boundary through a normal Firefox
+shutdown. A later process verifies native tab order, selected and pinned state,
+and the exact lazy pending set before any pending tab is selected. The frontend
+must report the same fixed tab identities through its ordinary tabs bridge.
+
+The rehearsal is a four-phase transaction: prepare, verify, fail-open, and
+cleanup. A profile-local marker stores only a schema version and the prior
+user-value state of seven fixed SessionStore preferences. An existing marker
+blocks a new prepare run. Failure injection removes exactly the installed
+frontend bundle after validating its package hash, verifies that the restored
+native session remains usable, and restores the exact bytes in `finally`.
+Cleanup replaces the fixture with one `about:blank` tab, restores each prior
+preference state, performs another normal shutdown, and removes the marker only
+after that process exits.
+
+Shared evidence is restricted to fixed fixture IDs, enums, booleans, and
+counts. It must never contain a URL, title, query, raw SessionStore object,
+profile/program path, native tab/browser object, or private-window state.
+
+**Reasoning:** Re-mounting the shell in one process proves lifecycle behavior
+but not Firefox's disk-backed session boundary or lazy restore semantics. A
+fixed, marker-owned rehearsal exercises the stock implementation without
+creating production persistence, force-loading pending tabs, or exposing real
+browsing state. Source pins, interruption recovery, and real Windows evidence
+are recorded in
+`docs/research/firefox-153-session-restore-rehearsal.md`.

@@ -184,10 +184,13 @@ Hardware/account-dependent prompts were not artificially claimed as newly
 reproduced by #16: real extension-install, authentication, certificate-error
 exception, OS file-picker, and Sync-account dialogs were not triggered. Their
 native owner DOM and access paths were retained, and #15's recorded native UI
-matrix remains the relevant implementation evidence. A separate persisted
-multi-tab session-restore fixture was also not created; repeated starts used the
-same profile and retained Firefox-owned `SessionStore` infrastructure. A real
-newer-stable transition was not run because none existed.
+matrix remains the relevant implementation evidence. At the time of #16, a
+separate persisted multi-tab session-restore fixture was not created; repeated
+starts used the same profile and retained Firefox-owned `SessionStore`
+infrastructure. Issue #46 subsequently closed that evidence gap through the
+fixed, cross-process rehearsal in
+`docs/research/firefox-153-session-restore-rehearsal.md`. A real newer-stable
+transition was not run because none existed.
 
 ## Performance baseline
 

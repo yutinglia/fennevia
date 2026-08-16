@@ -485,6 +485,15 @@ not run and must use `docs/firefox-update-workflow.md` when available. Evidence:
 ADR-033/ADR-034 and
 `docs/research/firefox-153-mvp-hardening-update-rehearsal.md`.
 
+Post-gate issue #46 additionally passed a real clean-shutdown SessionStore
+rehearsal across separate Firefox processes. One fixed selected tab, one pinned
+tab, and two lazy background tabs restored in identical native/Fennevia order;
+the exact pending set remained lazy before interaction; missing-frontend
+failure left the native session usable; and cleanup restored one blank tab,
+prior preference state, exact package bytes, and no transaction marker.
+Evidence: ADR-035 and
+`docs/research/firefox-153-session-restore-rehearsal.md`.
+
 ## 7. Target repository layout
 
 ```text
