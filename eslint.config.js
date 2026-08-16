@@ -15,6 +15,7 @@ const browserGlobals = {
   HTMLElement: "readonly",
   HTMLImageElement: "readonly",
   HTMLInputElement: "readonly",
+  HTMLSelectElement: "readonly",
   HTMLTemplateElement: "readonly",
   KeyboardEvent: "readonly",
   MouseEvent: "readonly",
