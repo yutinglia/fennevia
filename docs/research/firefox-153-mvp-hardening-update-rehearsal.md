@@ -17,6 +17,8 @@
 - Processor: 13th Gen Intel Core i7-13700K; the test environment exposed 8
   logical processors
 - Memory: 24.0 GiB
+- Display scale: 250% (`AppliedDPI=240`)
+- Windows power plan: Balanced
 - Node.js: 24.18.0
 - npm: 11.16.0
 - PowerShell: 7.6.4 and Windows PowerShell 5.1
@@ -182,8 +184,10 @@ Hardware/account-dependent prompts were not artificially claimed as newly
 reproduced by #16: real extension-install, authentication, certificate-error
 exception, OS file-picker, and Sync-account dialogs were not triggered. Their
 native owner DOM and access paths were retained, and #15's recorded native UI
-matrix remains the relevant implementation evidence. A real newer-stable
-transition was not run because none existed.
+matrix remains the relevant implementation evidence. A separate persisted
+multi-tab session-restore fixture was also not created; repeated starts used the
+same profile and retained Firefox-owned `SessionStore` infrastructure. A real
+newer-stable transition was not run because none existed.
 
 ## Performance baseline
 
@@ -237,6 +241,11 @@ Firefox and its child processes and do not attribute all movement to Fennevia.
   output is never hand-edited.
 - Canary repositories and Firefox source were evidence only; no external code
   was copied or adapted.
+- The existing product direction remains traceable to the broad floating-edge
+  and content-only concepts recorded for
+  `yutinglia/my-firefox-custom@7a02f60bb23abe9c191c7fd8cd2a7096bb63aee5`.
+  Issue #16 copied no code, selectors, event/timer structure, numeric values,
+  DOM strategy, module layout, or visual layout from that project.
 - The fixed test runner reduces CI execution ambiguity but does not turn local
   PowerShell success into a substitute for GitHub-hosted checks.
 
