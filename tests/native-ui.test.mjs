@@ -564,7 +564,10 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
     /:is\(#toolbar-menubar, #TabsToolbar, #nav-bar\)\s+>\s+\.titlebar-buttonbox-container/u,
   );
   assert.match(style.textContent, /padding: 7px !important/u);
-  assert.match(style.textContent, /border-radius: var\(--chrome-block-radius, 4px\) !important/u);
+  assert.match(
+    style.textContent,
+    /border-radius: var\(--chrome-block-radius, 4px\) !important/u,
+  );
   assert.match(style.textContent, /height: 0 !important/u);
   assert.match(style.textContent, /\.titlebar-buttonbox-container/u);
   assert.doesNotMatch(style.textContent, /data-fennevia-top-visible/u);
