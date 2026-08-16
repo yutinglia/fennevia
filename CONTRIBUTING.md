@@ -61,8 +61,6 @@ remove retained Firefox infrastructure to make a feature appear finished.
 - Add deterministic cleanup for every listener, observer, timer, mapping,
   native view/query, stylesheet, framework root, hold, and pending operation.
 - Provide a keyboard/focus path for every surface.
-- Verify both adjacent corners, delayed hide, `Escape`, focus restoration,
-  reduced motion, forced colors, and transparency fallback.
 - Keep hidden surfaces at zero permanent content size.
 - Do not add runtime remote code, CSS, fonts, configuration, analytics,
   telemetry, or update checks.
@@ -70,6 +68,16 @@ remove retained Firefox infrastructure to make a feature appear finished.
   metadata/paths, profile paths, or private-window browsing state.
 - Do not add a Chrome Registry override without a dedicated issue and ADR.
 - Do not hand-edit generated artifacts.
+
+The project is currently under rapid development. Ordinary pull requests must
+make CI able to pass. Do not run the complete real-Firefox or mass-test
+matrices on every change; those run before a release. Design for adjacent
+corners, delayed hide, `Escape`, focus restoration, reduced motion, forced
+colors, and transparency fallback, and prove that matrix at release.
+
+Safety, privacy, fail-open, and native-UI ownership rules remain in force.
+Updating or relaxing them requires explicit project-owner approval recorded in
+the same change.
 
 ## Research requirements
 
@@ -102,14 +110,17 @@ A pull request includes:
   integration claims;
 - source/design references consulted;
 - commands run and `pass`, `fail`, `blocked`, or `not run` results;
-- real Firefox evidence where required;
-- failure-injection and recovery evidence where applicable;
+- CI as the ordinary-development gate;
+- real Firefox evidence for release work; ordinary rapid-development pull
+  requests may record those rows as `not run`;
+- failure-injection and recovery evidence for release work;
 - security, privacy, dependency, resource, persistence, native-UI, and installer
   effects;
 - documentation changes;
 - known limitations and follow-up issues.
 
-Do not infer Firefox integration success from unit tests alone.
+Do not infer Firefox integration success from unit tests alone, and do not
+claim unrun checks passed.
 
 ## External code, contribution license, and provenance
 
@@ -153,3 +164,7 @@ or custom titlebar/window controls.
 Use `docs/dependency-review-template.md` for every dependency addition or
 upgrade. Production changes must retain the exact artifact inventory and pass
 `scripts/check-production-artifacts.ps1`; findings cannot be silently waived.
+
+These security requirements remain in force during rapid development. Updating
+or relaxing them requires explicit project-owner approval recorded in the same
+change.

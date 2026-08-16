@@ -1,8 +1,14 @@
 # AGENTS.md
 
 This file applies to every coding, research, review, and documentation agent
-working in this repository. Do not bypass these rules unless an issue explicitly
-changes them.
+working in this repository.
+
+Do not silently bypass these rules. An issue may change a non-safety rule
+explicitly. Safety, privacy, fail-open, native-UI ownership, and related
+privileged-code rules may be updated or relaxed only with explicit project-owner
+approval, recorded in the current normative documents in the same change.
+Agents must not infer a relaxation from development speed, convenience, a
+previous exception, or an unapproved issue comment.
 
 ## 1. Required reading order
 
@@ -21,10 +27,11 @@ distribution work, also read `docs/licensing-and-provenance.md` and
 `THIRD_PARTY_NOTICES.md` before acting.
 
 If an issue conflicts with an older document, follow the newer explicit
-decision and update the stale normative document in the same change. Do not
-rewrite a historical research record to make it describe later implementation.
-If a conflict cannot be resolved from existing evidence, record the blocker
-instead of inventing a new architecture.
+decision and update the stale normative document in the same change. A
+safety-rule conflict still requires project-owner approval. Do not rewrite a
+historical research record to make it describe later implementation. If a
+conflict cannot be resolved from existing evidence, record the blocker instead
+of inventing a new architecture.
 
 ## 2. Project identity and support scope
 
@@ -217,9 +224,40 @@ handles URLs or user-derived data.
 - Security-sensitive prompts and permission flows remain Firefox-owned unless a
   separately reviewed issue replaces them.
 
-## 8. Minimum testing requirements
+These rules remain in force during rapid development. Updating or relaxing them
+requires explicit project-owner approval.
 
-Every runtime or UI issue must verify, as applicable:
+## 8. Testing cadence
+
+The project is currently under rapid development. Ordinary coding, review, and
+documentation work should optimize for speed and developer experience: make CI
+able to pass, and do not run the full real-Firefox or mass-test matrices on
+every change. See ADR-039.
+
+### 8.1 Ordinary development gate
+
+The required gate is the Windows CI job in `.github/workflows/ci.yml`. It
+covers formatting, lint, typecheck, `npm test`, the fixed-list static
+PowerShell suites, dependency audit, deterministic build, committed generated
+artifacts, and the production-artifact scan.
+
+Locally, run the same commands CI runs when practical (`npm run verify`, and
+the Windows PowerShell 5.1 static suite when that runtime is available). If a
+local run is skipped, record it as `not run` and rely on CI. Do not claim a
+check passed without evidence.
+
+### 8.2 Release mass tests
+
+Before a release tag or publication, run the complete matrices in
+`docs/testing-and-recovery.md`, including real Firefox checks that CI cannot
+run. Those matrices exist to prove the shipped package, not to slow every
+development iteration.
+
+The lists below are the release and mass-test contract. During rapid
+development they are not a per-issue Definition of Done. Record unrun rows
+honestly as `not run`.
+
+Every runtime or UI release check should verify, as applicable:
 
 - clean cold start and restart;
 - successful shell initialization;
@@ -231,9 +269,9 @@ Every runtime or UI issue must verify, as applicable:
 - no new unhandled Browser Console exception;
 - no duplicated hosts, roots, listeners, timers, observers, native views, or
   process-global initialization;
-- exact commands, environment, and observed results in the pull request.
+- exact commands, environment, and observed results in the release record.
 
-Every edge-surface issue must additionally verify:
+Every edge-surface release check should additionally verify:
 
 - its matching pointer and keyboard reveal paths;
 - focus and popup holds, delayed hide, `Escape`, and focus restoration;
@@ -244,7 +282,7 @@ Every edge-surface issue must additionally verify:
 - zero permanent content margin while hidden;
 - disposal during a pending hold or hide delay.
 
-Any issue that hides native UI must additionally test Browser fullscreen, DOM
+Any release that hides native UI must additionally test Browser fullscreen, DOM
 fullscreen, customize mode, Browser Toolbox, DevTools, native prompt and dialog
 surfaces, emergency fallback, safe start, missing activation CSS, retained
 native access paths, and OS window controls.
@@ -280,8 +318,10 @@ Do not mark a test as passed without evidence. If a test cannot be run, mark it
 - Reference the issue in commits and the pull request when one exists.
 - Keep commits reviewable and avoid unrelated formatting churn.
 - Pull requests must include environment details, research sources, commands
-  run, results, failure-injection evidence where applicable, documentation
-  changes, and known remaining risks.
+  run, results, documentation changes, and known remaining risks. During rapid
+  development, CI is the required validation gate. Real Firefox,
+  failure-injection, and mass-matrix evidence is required for release work,
+  not every ordinary pull request. Record unrun checks as `not run`.
 - Generated artifacts may be committed only when the installation model
   requires them and the source-to-artifact command is documented.
 - Do not rewrite or silently remove an accepted architecture decision. Mark it
@@ -291,18 +331,21 @@ Do not mark a test as passed without evidence. If a test cannot be run, mark it
 
 ## 11. Definition of Done
 
-An issue is complete only when:
+An ordinary issue is complete when:
 
-- all acceptance criteria are verifiably satisfied;
-- relevant static, unit, component, and real Firefox checks were run and
-  recorded;
-- native fallback and recovery remain intact;
+- acceptance criteria are verifiably satisfied or explicitly revised with
+  owner approval;
+- CI is able to pass for the change;
+- native fallback and recovery design remain intact;
 - new Firefox internal dependencies are isolated and documented with current
   source references;
-- security and privacy effects were reviewed;
+- security and privacy effects were reviewed; any safety-rule change has
+  explicit project-owner approval;
 - README, plans, current documentation, issue #1, and decision records are
   synchronized where affected;
-- cleanup was verified;
 - no high-risk workaround is disguised as a normal abstraction;
 - no test result, compatibility claim, completion state, or platform-support
   claim is overstated.
+
+A release is complete only when the mass-test and real Firefox matrices in
+`docs/testing-and-recovery.md` have also been run and recorded.

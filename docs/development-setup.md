@@ -63,6 +63,10 @@ npm run dependencies:audit
 npm run verify
 ```
 
+`npm run verify` is the CI-equivalent ordinary development gate. The complete
+real-Firefox matrices in `docs/testing-and-recovery.md` are a release check,
+not a per-change requirement during rapid development.
+
 Do not install a separate standalone Node.js. `.npmrc` enforces the engine,
 exact lockfile, and scripts-disabled policy. The accepted graph and build-host
 binary inventory are in

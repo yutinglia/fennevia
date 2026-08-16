@@ -90,6 +90,6 @@ body:
     id: validation
     attributes:
       label: Required validation
-      description: Include unit, build, real Firefox smoke, cleanup, and failure-injection requirements.
+      description: During rapid development, CI is the ordinary gate. Include the full real-Firefox and mass-test matrices only for release work, or when the owner asks for them.
     validations:
       required: true

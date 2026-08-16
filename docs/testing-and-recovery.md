@@ -5,6 +5,25 @@ Exact historical command output, first causal failures, and milestone-specific
 Firefox evidence remain in `docs/research/`. Do not rewrite those records when a
 later ADR supersedes their production architecture.
 
+## Rapid-development vs release testing
+
+The project is currently under rapid development. Ordinary implementation,
+review, and documentation work uses the Windows CI job in
+`.github/workflows/ci.yml` as the required gate: formatting, lint, typecheck,
+`npm test`, fixed-list static PowerShell suites, dependency audit, deterministic
+build, committed generated artifacts, and the production-artifact scan. Locally,
+`npm run verify` is the CI-equivalent command.
+
+The matrices in sections 4–7 and 12, plus the real Firefox harnesses, are the
+**release mass-test contract**. They prove a tagged package. They are not a
+per-pull-request Definition of Done during rapid development unless the project
+owner asks for them or the change is a release. Record unrun mass-matrix rows as
+`not run`. Do not imply they passed because CI passed.
+
+Safety, privacy, fail-open, and native-UI ownership rules remain in force.
+Updating or relaxing them requires explicit project-owner approval. See
+ADR-039.
+
 ## 1. Current validated baseline
 
 As of 2026-08-16:
@@ -108,6 +127,10 @@ npm run verify
 - package-manifest synchronization;
 - exact production artifact scanning.
 
+This command set is the ordinary development gate. During rapid development,
+making CI pass is sufficient. Do not expand it into the real Firefox matrices
+below unless the change is a release.
+
 Run the artifact gate directly when diagnosing package output:
 
 ```powershell
@@ -175,11 +198,13 @@ pwsh -NoProfile -File .\tests\firefox-release-recovery.ps1 `
 | Cleanup/reinstall                | No owned residue, stale process, or unexplained cache action                                               |
 
 Every expected result requires evidence. A check mark without environment,
-command, and observation is insufficient.
+command, and observation is insufficient. During rapid development, this matrix
+is a release check, not a per-change requirement.
 
 ## 5. Current shell-frame and edge-controller matrix
 
-Every shell or feature change that can affect #31 must verify:
+The release mass-test contract for shell or feature changes that can affect #31
+is:
 
 ### Ownership and mount
 
@@ -895,6 +920,10 @@ Include:
 - privacy-safe log or screenshot reference;
 - cleanup/restoration result;
 - known limitation.
+
+During rapid development, `not run` is the expected status for mass-matrix and
+real Firefox rows on ordinary pull requests. Convert those rows to `pass` or
+`fail` before a release tag.
 
 Do not:
 

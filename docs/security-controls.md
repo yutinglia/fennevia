@@ -646,9 +646,15 @@ external code/asset: follow `docs/licensing-and-provenance.md` and update
 | Installer deletion-scope change | Canonical path/ownership/rollback/adversarial tests |
 | Custom titlebar/window controls | Platform-specific source/UX/security/recovery matrix |
 
-A normal PR checkbox does not waive a triggered review.
+A normal PR checkbox does not waive a triggered review. Waiving or relaxing a
+triggered review requires explicit project-owner approval.
 
 ## 14. Required verification commands
+
+During rapid development, the ordinary gate is CI / `npm run verify`. The
+commands below remain the complete security-verification inventory. Real
+Firefox and extra packaging suites are the release mass-test contract unless
+the owner asks for them earlier. See ADR-039.
 
 Static/build baseline:
 
@@ -671,7 +677,7 @@ pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -InventoryPath .\package-manifest.json
 ```
 
-Real Firefox baseline, where applicable:
+Real Firefox baseline, required before a tagged release:
 
 ```powershell
 node .\tests\firefox-window-lifecycle.mjs `

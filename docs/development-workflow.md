@@ -141,12 +141,20 @@ For a feature surface, additionally:
 
 Use the exact nvm-managed versions in `.nvmrc` and `package.json`.
 
+The project is currently under rapid development. The ordinary verification
+gate is CI. Locally, run the CI-equivalent commands when practical:
+
 ```powershell
 npm ci --ignore-scripts --no-fund
 npm run dependencies:audit
 npm run test:powershell
 npm run verify
 ```
+
+Do not run the complete real-Firefox or mass-test matrices on every change.
+Those matrices in `docs/testing-and-recovery.md` run before a release tag or
+publication. If a local CI-equivalent run is skipped, record it as `not run`
+and rely on CI. Do not claim a check passed without evidence.
 
 `npm run build` performs isolated reproducibility builds for the frontend and
 Firefox bridge, compares exact bytes, replaces only owned generated
@@ -162,9 +170,10 @@ plain `MAJOR.MINOR.PATCH` or `-alpha.N`, `-beta.N`, and `-rc.N`; build metadata
 and development suffixes are rejected. The exact tag is `v<VERSION>`, it must
 be annotated, and its target must equal the checked-out full source commit.
 
-Before tagging, run the release packaging and installer suites in both
-PowerShell runtimes and a real staged-package smoke test. After the release
-change is merged, create and push the annotated tag. `.github/workflows/release.yml`
+Before tagging, run the complete mass-test and real Firefox matrices in
+`docs/testing-and-recovery.md`, plus the release packaging and installer suites
+in both PowerShell runtimes and a real staged-package smoke test. After the
+release change is merged, create and push the annotated tag. `.github/workflows/release.yml`
 then repeats exact dependency installation and `npm run verify`, builds twice
 into clean directories, requires byte-identical manifests/ZIPs, validates a
 Unicode/space extraction, and runs a second independent preflight in the
@@ -199,10 +208,14 @@ not available. Record unrun commands honestly.
 
 ## 7. Real Firefox validation
 
+This section is the release and mass-test contract. During rapid development,
+do not treat it as a per-pull-request requirement unless the owner asks for
+those checks or the change is a release.
+
 Use the copied Firefox program and marker-owned profile described in
 `docs/development-setup.md`.
 
-Every relevant runtime/UI feature should cover:
+Every relevant runtime/UI release check should cover:
 
 - initial normal window;
 - second normal window;
@@ -213,7 +226,7 @@ Every relevant runtime/UI feature should cover:
 - feature-specific native and custom actions used alternately;
 - capability/component/surface failure and exact restoration.
 
-Every edge feature should also cover:
+Every edge-feature release check should also cover:
 
 - pointer and keyboard reveal;
 - focus and popup holds;
@@ -249,7 +262,9 @@ A pull request should include:
   distribution artifact changes;
 - exact commands run;
 - `pass`, `fail`, `blocked`, or `not run` results;
-- real Firefox and failure-injection evidence where required;
+- CI as the required ordinary-development gate;
+- real Firefox and failure-injection evidence for release work, recorded as
+  `not run` on ordinary rapid-development pull requests;
 - generated artifact and package-manifest effects;
 - documentation changed;
 - known limitations and follow-up issues.
@@ -291,8 +306,9 @@ A change is ready when:
 - current README, plans, issue #1, architecture, security, testing, and internals
   documentation agree;
 - historical research records remain historically accurate;
-- CI passes where available;
-- real Firefox smoke tests are recorded where required;
+- CI passes;
+- real Firefox smoke tests are recorded for release work; ordinary
+  rapid-development changes may leave those rows as `not run`;
 - recovery remains available;
 - dependencies, resources, artifacts, private-window behavior, and native
   security-UI effects are reviewed;

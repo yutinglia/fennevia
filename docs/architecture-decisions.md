@@ -1206,3 +1206,26 @@ removed; address entry remains on the left launcher and centered popup.
 follow the same glass/token contract as the rest of the top row. Fail-open still
 reveals the original caption buttons. This exception does not authorize cloning
 other native security, permission, or toolbar widgets.
+
+## ADR-039: Rapid-development CI gate and owner-approved rule updates
+
+**Status:** Accepted
+
+While Fennevia is under rapid development, ordinary implementation,
+documentation, and review work is complete when CI passes. The full
+real-Firefox, edge-surface, native-UI, installer, and recovery matrices remain
+the release contract and are required before a tagged publication.
+
+Safety, privacy, fail-open, and native-UI ownership rules remain in force by
+default. They may be updated or relaxed only with explicit project-owner
+approval, recorded in the current normative documents in the same change.
+Agents and contributors must not bypass those rules for speed, convenience, or
+an unapproved issue comment.
+
+**Reasoning:** The complete matrices are expensive relative to iteration speed.
+CI already covers formatting, lint, typecheck, unit tests, static PowerShell
+gates, dependency audit, deterministic builds, and production-artifact
+scanning. Deferring the mass matrices to release keeps the shipped package
+proven without blocking every development change. Owner approval is required
+for safety-rule changes so speed cannot silently erode the privileged-code
+baseline.

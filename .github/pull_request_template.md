@@ -57,6 +57,14 @@ Use `not applicable` only when the change does not depend on Firefox internals.
 
 ## Validation
 
+During rapid development, the merge gate is CI (format, lint, typecheck,
+`npm test`, static PowerShell, dependency audit, build, and artifact scan).
+Leave real-Firefox and mass-matrix rows as `not run` unless this change is a
+release or the owner asked for those checks. Do not mark a check `pass` without
+evidence.
+
+### CI-equivalent (required for ordinary pull requests)
+
 | Check | Status | Evidence |
 |---|---|---|
 | Format / lint | not run | |
@@ -64,6 +72,11 @@ Use `not applicable` only when the change does not depend on Firefox internals.
 | Unit tests | not run | |
 | Production build | not run | |
 | Exact production artifact inventory / security scan | not run | |
+
+### Release / mass-test matrix (required before a tagged release)
+
+| Check | Status | Evidence |
+|---|---|---|
 | Chrome/resource ordinary-content access | not run | |
 | Clean cold start | not run | |
 | Second normal window | not run | |

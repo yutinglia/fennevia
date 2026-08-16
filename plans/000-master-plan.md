@@ -602,8 +602,9 @@ and hashes. Generated files are never hand-edited.
 ## 9. Issue execution rules
 
 - Complete shared foundations before feature-specific UI.
-- Runtime changes must pass with active mode plus complete native reveal and
-  fail-open recovery.
+- Runtime changes must preserve active-mode plus complete native reveal and
+  fail-open recovery design. During rapid development, CI is the ordinary
+  proof gate; the complete real-Firefox matrices run at release.
 - #15 and #16 completed the initial MVP activation and hardening gates; later
   Firefox updates follow the executable compatibility workflow.
 - Feature issues use the shared #31 edge contract and the #9 bridge boundary.
@@ -616,3 +617,7 @@ and hashes. Generated files are never hand-edited.
   and security review.
 - Current normative documents must be synchronized when an issue closes.
   Historical research records remain unchanged.
+- The project is currently under rapid development. Ordinary issues use CI as
+  the required proof gate. The complete real-Firefox and mass-test matrices
+  run at release. Safety, privacy, and fail-open rules may be updated or
+  relaxed only with explicit project-owner approval.

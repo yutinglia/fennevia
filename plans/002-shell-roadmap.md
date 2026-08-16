@@ -34,6 +34,10 @@ ADR-037's single-line toolbar/caption/gutter enhancement has focused automated
 evidence on `codex/fast-edge-debug`; its real Firefox manual matrix remains
 pending and is not included in the earlier validated baseline.
 
+The project is currently under rapid development. Ordinary shell work uses CI
+as the required gate; the complete real-Firefox matrices run at release. See
+ADR-039 and `AGENTS.md` section 8.
+
 Governance foundation:
 
 1. #18 selected MPL-2.0 and the third-party attribution/provenance policy.
