@@ -164,7 +164,7 @@
 }
 
 #fennevia-shell-frame-host
-  .fennevia-edge-panel
+  :is(.fennevia-edge-panel, .fennevia-address-popup)
   :is(
     a,
     button,
@@ -768,9 +768,16 @@
   border-block-end: 1px solid var(--fennevia-glass-separator);
 }
 
+#fennevia-shell-frame-host .fennevia-address-launcher__cluster {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
 #fennevia-shell-frame-host .fennevia-address-launcher__button {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+  grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   inline-size: 100%;
   min-block-size: 38px;
@@ -835,18 +842,32 @@
 }
 
 #fennevia-shell-frame-host .fennevia-address-launcher__indicator {
+  appearance: none;
   max-inline-size: 58px;
+  min-block-size: 22px;
+  min-inline-size: 0;
   padding: 2px 5px;
   overflow: hidden;
   color: var(--fennevia-glass-muted);
   background: color-mix(in srgb, currentColor 7%, transparent);
   border: 1px solid var(--fennevia-glass-separator);
   border-radius: var(--fennevia-chip-radius);
+  font: inherit;
   font-size: 9px;
   font-weight: 650;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: default;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-address-launcher__indicator:hover:not(:disabled) {
+  background: color-mix(in srgb, currentColor 13%, transparent);
+}
+
+#fennevia-shell-frame-host .fennevia-address-launcher__indicator:disabled {
+  opacity: 0.38;
 }
 
 #fennevia-shell-frame-host [data-fennevia-status-tone="positive"] {
@@ -1042,9 +1063,32 @@
   min-inline-size: 0;
   gap: var(--fennevia-space-2);
   padding: 10px;
+  color: inherit;
   background: color-mix(in srgb, currentColor 5%, transparent);
   border: 1px solid var(--fennevia-glass-separator);
   border-radius: var(--fennevia-control-radius);
+  font: inherit;
+  text-align: start;
+}
+
+#fennevia-shell-frame-host button.fennevia-address-popup__detail {
+  appearance: none;
+  inline-size: 100%;
+  cursor: default;
+}
+
+#fennevia-shell-frame-host
+  button.fennevia-address-popup__detail:hover:not(:disabled),
+#fennevia-shell-frame-host
+  .fennevia-address-popup__detail:has(
+    .fennevia-address-popup__detail-action:hover:not(:disabled)
+  ) {
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+#fennevia-shell-frame-host button.fennevia-address-popup__detail:disabled,
+#fennevia-shell-frame-host .fennevia-address-popup__detail-action:disabled {
+  opacity: 0.38;
 }
 
 #fennevia-shell-frame-host .fennevia-address-popup__detail-mark {
@@ -1057,7 +1101,7 @@
   font-weight: 700;
 }
 
-#fennevia-shell-frame-host .fennevia-address-popup__detail > span:last-child {
+#fennevia-shell-frame-host .fennevia-address-popup__detail-copy {
   display: grid;
   min-inline-size: 0;
 }
@@ -1068,7 +1112,7 @@
   text-overflow: ellipsis;
 }
 
-#fennevia-shell-frame-host .fennevia-address-popup__detail span span {
+#fennevia-shell-frame-host .fennevia-address-popup__detail-copy span {
   color: var(--fennevia-glass-muted);
   font-size: 11px;
 }
@@ -1076,6 +1120,23 @@
 #fennevia-shell-frame-host .fennevia-address-popup__detail--permissions {
   grid-column: 1 / -1;
   align-items: start;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__detail-action {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-column: 1 / -1;
+  align-items: center;
+  min-inline-size: 0;
+  gap: var(--fennevia-space-2);
+  padding: 0;
+  appearance: none;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-align: start;
+  cursor: default;
 }
 
 #fennevia-shell-frame-host
@@ -1632,6 +1693,8 @@
   }
 
   #fennevia-shell-frame-host .fennevia-address-launcher__button,
+  #fennevia-shell-frame-host .fennevia-address-launcher__indicator,
+  #fennevia-shell-frame-host .fennevia-address-popup__detail,
   #fennevia-shell-frame-host .fennevia-address-popup__field-shell,
   #fennevia-shell-frame-host .fennevia-address-popup__field-shell:focus-within,
   #fennevia-shell-frame-host .fennevia-address-popup__native-access,

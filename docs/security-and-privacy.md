@@ -379,9 +379,10 @@ persistence, normal logs, and project network requests:
   controller objects.
 
 Firefox initializes, populates, and owns each opened panel. The two custom
-security buttons display only the already reviewed bounded connection and
-protection enums and explicitly open the authoritative native Trust/identity or
-protection owner. The native permission and Downloads panels retain their
+security buttons and the popup permission row display only the already reviewed
+bounded connection, protection, and permission enums and explicitly open the
+authoritative native Trust/identity, protection, or permission owner. The native
+permission and Downloads panels retain their
 mutation, safety, and management behavior. Unified Extensions and the complete
 original-toolbar handoff preserve arbitrary extension access without exposing
 extension identity. Settings uses Firefox's current method rather than a

@@ -386,7 +386,11 @@ registry.
 Issue #13 replaces the old left address placeholder with a non-editable compact
 launcher above tabs and mounts `AddressPopup.svelte` in the fifth root. The
 launcher displays bounded committed location plus compact labels derived from
-real Firefox connection/protection enums. The popup owns the sole custom input,
+real Firefox connection/protection enums. Those compact HTTPS and protection
+badges, and the matching popup connection, protection, and permission cards,
+are explicit native handoff buttons: they close the custom UI, reveal the
+original toolbar, and open Firefox's current Trust/identity, protections, or
+permission panel. The popup owns the sole custom input,
 an independent per-window draft, fuller labels, focus restoration, and
 popup-priority edge suppression. It never moves native Urlbar/identity/
 protections DOM or renders inferred security state.
@@ -394,8 +398,9 @@ protections DOM or renders inferred security state.
 Issue #37 extends that same popup with a full-width site-permission card, fixed
 applicable Firefox-control labels, and one native Urlbar handoff button.
 ADR-037's Trust/identity, protections, and permission handoffs remain available
-from the centered popup and original-toolbar path rather than a second top-row
-launcher. All complete security/permission/action panels and commands stay
+from the left launcher badges, the centered popup cards, and the
+original-toolbar path rather than a second top-row launcher. All complete
+security/permission/action panels and commands stay
 Firefox-owned, and no second popup, input, edge controller, timer, or provider
 stack is added.
 

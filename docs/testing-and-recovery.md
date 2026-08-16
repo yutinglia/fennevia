@@ -341,6 +341,9 @@ Validate:
 - short non-editable launcher with bounded committed location;
 - compact Firefox connection/HTTPS and tracking-protection badges in the
   launcher, with fuller matching text in the popup;
+- clicking those badges or the popup connection/protection/permission cards
+  closes the custom UI and opens Firefox's current native Trust/identity,
+  protections, or permission panel;
 - secure, insecure, internal, error, protection blocking/detected/exception,
   non-handleable, transient, and unknown status mapping without URL inference;
 - ordinary URLs, host-like input, and ordinary searches;
@@ -377,9 +380,12 @@ Evidence: `docs/research/firefox-153-address-popup.md`.
 Validate:
 
 - the short left launcher continues to show only committed location plus real
-  Firefox connection/HTTPS and ETP status;
+  Firefox connection/HTTPS and ETP status, and those badges open the current
+  native Trust/identity or protections panel;
 - the centered popup shows matching detailed connection/protection rows, a
   site-permission card, and current applicable Firefox-control labels;
+- clicking a popup connection, protection, or permission card closes the custom
+  popup and opens Firefox's current native panel for that owner;
 - ordinary HTTP, valid HTTPS, secure internal, and real network-error
   classifications are derived from `gIdentityHandler`, never from URL text;
 - ETP unavailable, clear/detected/blocking, exception, and restored states
