@@ -145,7 +145,8 @@ claim.
 - Replacement titlebar/window buttons or custom OS window commands; styling the
   retained Firefox-owned caption group in place is allowed by ADR-037.
 - Overriding the complete `browser.xhtml`.
-- A branded Firefox fork, update channel, public installer, or support product.
+- A branded Firefox fork, automatic update channel, graphical installer, or
+  commercial support product.
 - Pixel-for-pixel copying of Firefox, `my-firefox-custom`, Arc, Edge, or another
   browser.
 - Treating hardening as a container for unrelated product features.
