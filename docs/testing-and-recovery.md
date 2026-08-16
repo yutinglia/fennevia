@@ -9,13 +9,14 @@ later ADR supersedes their production architecture.
 
 As of 2026-08-16:
 
-- package: `0.10.0-dev`;
+- package: `0.10.0-beta.1` prerelease;
 - Firefox: 153.0.4 release;
 - build ID: `20260810162159`;
 - first platform: Windows 11;
 - environment: copied stock Firefox program plus marker-owned direct-path
   development profile;
-- completed runtime/UI milestones: #3–#16, #31, #32, and #37;
+- completed runtime/UI/distribution milestones: #3–#18, #31, #32, #37, #39,
+  and #46;
 - current shell: one zero-layout frame with independent top, left, right, and
   bottom surfaces plus one centered address-overlay root;
 - current functional features: vertical tabs and compact address/status
@@ -100,8 +101,8 @@ npm run verify
 - ESLint and the Firefox-boundary rules;
 - Svelte/TypeScript checking;
 - pure and component tests;
-- the fixed-list PowerShell bootstrap/profile/installer/artifact/identity/
-  health/host/lifecycle suites;
+- the fixed-list PowerShell bootstrap/profile/installer/release/artifact/
+  identity/health/host/lifecycle suites;
 - resolved dependency audit;
 - deterministic frontend and bridge builds;
 - package-manifest synchronization;
@@ -123,7 +124,31 @@ paths.
 
 A build must not leave a dirty generated-artifact or manifest diff unless that
 change is intentional and reviewed. Never hand-edit generated bridge or shell
-artifacts.
+files.
+
+Release packaging has additional fixed-list coverage in
+`release-packaging.Tests.ps1` and `release-installer.Tests.ps1`. Both run under
+PowerShell 7 and Windows PowerShell 5.1. They require two byte-identical ZIPs,
+fixed/sorted entries, a strict extracted tree from a Unicode/space path,
+checksum and source records, tamper rejection, explicit registered-profile
+mode, exact supported Firefox version/BuildID, pre-mutation rejection, and
+disable/uninstall recovery after an unsupported Firefox update. Before a tag,
+also run the clean-tree preflight and a real Firefox install/no-op/disable/
+repair-or-update/enable/uninstall smoke test from the extracted ZIP.
+
+The release-specific real recovery wrapper injects a missing ownership-proven
+frontend bundle only below the marker-owned test profile, hard-disables the
+package, restores the exact file through release Update while preserving
+disabled state, verifies a native-only cold start, enables, and reruns the full
+lifecycle matrix. Its `finally` restores exact bytes/enabled state and removes
+its bounded temporary backup:
+
+```powershell
+pwsh -NoProfile -File .\tests\firefox-release-recovery.ps1 `
+  -FirefoxPath '<COPIED_FIREFOX_PROGRAM>\firefox.exe' `
+  -ProfilePath '<FENNEVIA_DEV_PROFILE>' `
+  -PackageRoot '<EXTRACTED_RELEASE_ROOT>'
+```
 
 ## 4. Minimum runtime matrix
 
@@ -479,7 +504,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.10.0-dev` performs the sole production activation only after
+Current package `0.10.0-beta.1` performs the sole production activation only after
 the health phase requires:
 
 - exact frame identity and placement;
@@ -800,6 +825,7 @@ of the installed package.
 | Content-only activation    | `docs/research/firefox-153-content-only-activation.md` |
 | MVP hardening/update rehearsal | `docs/research/firefox-153-mvp-hardening-update-rehearsal.md` |
 | Persisted session restore  | `docs/research/firefox-153-session-restore-rehearsal.md` |
+| Release packaging/distribution | `docs/research/fennevia-release-packaging.md`       |
 
 Those records describe the exact milestone tested. Current production state is
 summarized in README, the master plan, the shell roadmap, architecture, issue

@@ -34,9 +34,9 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-16, package `0.10.0-dev` is validated on Firefox 153.0.4 for
-Windows in an isolated copied Firefox program and marker-owned development
-profile.
+As of 2026-08-16, prerelease package `0.10.0-beta.1` is validated on Firefox
+153.0.4 BuildID 20260810162159 for Windows x64 in an isolated copied Firefox
+program and marker-owned development profile.
 
 Completed:
 
@@ -72,12 +72,16 @@ Completed project-governance foundation:
 
 - #18: MPL-2.0 project/inbound license, generated/installed artifact treatment,
   third-party provenance source of truth, and distribution checklist.
+- #39: deterministic versioned Windows release staging, exact source and file
+  manifest, registered-profile release mode, strict Firefox build allowlist,
+  checksum, annotated-tag rehearsal, and verify-before-publish GitHub workflow.
 
 At active rest, only ADR-032's exact native toolbar/sidebar descendants are
 collapsed; Firefox DOM, prompts, dialogs, controls, and a complete transient
 native access path remain attached. The four-edge MVP is implementation-
-complete for the tested Windows/Firefox baseline, but it is not a versioned
-public release and has no Linux/macOS support claim.
+complete for the tested Windows/Firefox baseline and has a first versioned
+public prerelease path. It has no stable/daily-driver, Linux, or macOS support
+claim.
 
 ## 3. Success criteria
 
@@ -536,6 +540,7 @@ and hashes. Generated files are never hand-edited.
 | Multi-window/private state leaks                         | Per-window contexts, opaque IDs, no browsing-derived persistence, cleanup                |
 | Build or dependency compromise                           | Locked graph, lifecycle scripts disabled, deterministic builds, artifact scanner         |
 | Installer damages another profile                        | Explicit canonical targets, ownership manifests, dry run, rollback, hard refusal         |
+| Release bytes are stale, altered, or partially published | Clean-tree double build, exact manifest, SHA-256, annotated tag, verified draft assets    |
 | Logs expose browsing data                                | Default-deny schemas, redaction, hostile-value tests, no network sink                    |
 | External code is copied without permission               | MPL-2.0 policy, exact provenance gate, root third-party inventory, prohibited unclear code |
 

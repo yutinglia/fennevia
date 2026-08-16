@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "packageId": "fennevia",
+  "sourceRepository": "https://github.com/yutinglia/fennevia",
+  "supportedOperatingSystems": ["windows"],
+  "testedArchitecture": "x64",
+  "firefoxCompatibility": [
+    {
+      "version": "153.0.4",
+      "buildId": "20260810162159",
+      "channel": "release"
+    }
+  ],
+  "compatibilityRecord": "docs/research/firefox-153-mvp-hardening-update-rehearsal.md",
+  "knownLimitations": [
+    "This prerelease is validated only on Windows with stock Firefox 153.0.4 build 20260810162159.",
+    "A dedicated Firefox profile is strongly recommended; Linux, macOS, ESR, Beta, and Nightly are not supported by this release.",
+    "Fennevia uses unsupported Firefox internals and has not completed an independent security audit.",
+    "Firefox updates may remove program-directory files; keep the exact release ZIP for verified repair, update, disable, and uninstall operations."
+  ]
+}

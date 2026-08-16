@@ -28,7 +28,8 @@ controls, private-window rules, and review triggers.
 
 ## 2. Current security baseline
 
-Current validated package: `0.10.0-dev` on Firefox 153.0.4 for Windows.
+Current validated prerelease package: `0.10.0-beta.1` on Firefox 153.0.4
+BuildID 20260810162159 for Windows x64.
 
 Implemented controls:
 
@@ -55,11 +56,16 @@ Implemented controls:
   emergency fallback;
 - default-deny diagnostics and no runtime network sink;
 - path-safe package lifecycle with ownership manifests, narrow one-sided repair,
-  and rollback.
+  and rollback;
+- deterministic versioned release staging with an exact file/digest manifest,
+  separate ZIP checksum, sensitive-data/local-path scan, annotated-tag gate,
+  draft-asset digest verification, and explicit Firefox compatibility
+  enforcement.
 
 Not completed by this development baseline: a formal independent security
-audit, a public release support promise, and a real newer-stable transition when
-no newer stable is available. Issue #18 selected MPL-2.0 and the provenance
+audit, a stable/daily-driver support promise, signing, attestations, an SBOM,
+and a real newer-stable transition when no newer stable is available. Issue #18
+selected MPL-2.0 and the provenance
 policy in `docs/licensing-and-provenance.md`. Native Firefox DOM remains attached
 and authoritative; active rest hides only ADR-032's exact visible descendants,
 and reveal/suspension/failure immediately restores the independent native path.
@@ -519,9 +525,9 @@ Install, update, repair, disable, enable, and uninstall must:
 
 - require explicit Firefox program and profile targets;
 - resolve and validate canonical paths;
-- require marker/ownership evidence;
-- reject root, home, broad, registered-profile, reparse-point, traversal, and
-  ambiguous targets;
+- require mode-specific marker/registration/ownership evidence;
+- reject root, home, broad, profile-collection, mode-inappropriate,
+  reparse-point, traversal, and ambiguous targets;
 - show a redacted dry run before mutation;
 - write only project-owned paths;
 - stage and hash new files before replacement;
@@ -531,9 +537,19 @@ Install, update, repair, disable, enable, and uninstall must:
 - block later actions after interrupted transaction until recovery;
 - let repair reconstruct only one wholly absent side from a valid survivor and
   byte-identical package proof, rejecting partial residue or source mismatch;
+- validate a release's strict whole-tree inventory/digests before planning,
+  require exact Firefox version/BuildID compatibility for install, update,
+  repair, and enable, and require enable to use ownership's exact source
+  manifest;
 - remove only ownership-proven files/directories;
 - never silently choose a default or daily-use profile;
 - leave unrelated profile content untouched.
+
+`Disable` and `Uninstall` intentionally do not require release compatibility or
+a readable release manifest. They remain ownership-limited recovery actions
+after Firefox updates. Registered mode is opt-in and proves only the explicitly
+passed path against Firefox registration; it never enumerates a profile into
+normal output or chooses one for the operator.
 
 The current implementation is in `scripts/fennevia-package.ps1` and
 `scripts/lib/FenneviaInstaller.psm1`. Operator behavior and recovery are in

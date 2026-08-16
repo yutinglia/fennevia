@@ -13,6 +13,7 @@ $script:EnabledPreferencePath = "defaults/pref/fennevia.js"
 $script:DisabledPreferencePath = "defaults/pref/fennevia.js.disabled"
 $script:ProgramConfigPath = "fennevia.cfg"
 $script:ProfilePackagePrefix = "chrome/fennevia/"
+$script:ReleaseManifestName = "RELEASE-MANIFEST.json"
 
 function New-FenneviaInstallerException {
     [CmdletBinding()]
@@ -427,10 +428,10 @@ function Get-FenneviaInstallerRegisteredProfilePaths {
     if (Test-Path -LiteralPath $installsIni -PathType Leaf) {
         foreach ($line in Get-Content -LiteralPath $installsIni) {
             $trimmed = $line.Trim()
-            if ($trimmed -notmatch "^(Default|Locked)=(.+)$") {
+            if ($trimmed -notmatch "^Default=(.+)$") {
                 continue
             }
-            $candidate = $Matches[2].Trim()
+            $candidate = $Matches[1].Trim()
             if (-not [IO.Path]::IsPathRooted($candidate)) {
                 $candidate = Join-Path $firefoxDataRoot $candidate
             }
@@ -499,7 +500,11 @@ function Resolve-FenneviaInstallerTargets {
         [string] $FirefoxPath,
 
         [Parameter(Mandatory)]
-        [string] $ProfilePath
+        [string] $ProfilePath,
+
+        [Parameter(Mandatory)]
+        [ValidateSet("Development", "Registered")]
+        [string] $ProfileMode
     )
 
     $canonicalFirefox = ConvertTo-FenneviaInstallerCanonicalPath -Path $FirefoxPath -Code "FENNEVIA_INSTALL_INVALID_PROGRAM"
@@ -552,6 +557,8 @@ function Resolve-FenneviaInstallerTargets {
     if (
         -not $applicationValues.ContainsKey("Name") -or
         [string] $applicationValues["Name"] -cne "Firefox" -or
+        -not $applicationValues.ContainsKey("Version") -or
+        [string]::IsNullOrWhiteSpace([string] $applicationValues["Version"]) -or
         -not $applicationValues.ContainsKey("BuildID") -or
         [string]::IsNullOrWhiteSpace([string] $applicationValues["BuildID"])
     ) {
@@ -573,24 +580,37 @@ function Resolve-FenneviaInstallerTargets {
         $profilesRoot = ConvertTo-FenneviaInstallerCanonicalPath -Path (Join-Path $dataRoot "Profiles")
         if (
             [string]::Equals($profileRoot, $dataRoot, [StringComparison]::OrdinalIgnoreCase) -or
-            [string]::Equals($profileRoot, $profilesRoot, [StringComparison]::OrdinalIgnoreCase) -or
+            [string]::Equals($profileRoot, $profilesRoot, [StringComparison]::OrdinalIgnoreCase)
+        ) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REGISTERED_PROFILE" -Message "A Firefox profile collection is never an accepted installation target."
+        }
+        if (
+            $ProfileMode -eq "Development" -and
             (Test-FenneviaInstallerPathWithin -ChildPath $profileRoot -ParentPath $profilesRoot)
         ) {
-            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REGISTERED_PROFILE" -Message "Firefox profile collections and their registered-style children are not supported installation targets."
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REGISTERED_PROFILE" -Message "Registered-style profile children require the explicit Registered profile mode."
         }
     }
 
+    $isRegisteredProfile = $false
     foreach ($registeredProfile in @(Get-FenneviaInstallerRegisteredProfilePaths)) {
         if ([string]::Equals($profileRoot, $registeredProfile, [StringComparison]::OrdinalIgnoreCase)) {
-            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REGISTERED_PROFILE" -Message "The selected path is registered as a Firefox profile and is not accepted by the development-stage installer."
+            $isRegisteredProfile = $true
+            break
         }
+    }
+    if ($ProfileMode -eq "Development" -and $isRegisteredProfile) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REGISTERED_PROFILE" -Message "The selected path is registered as a Firefox profile and requires the explicit Registered profile mode."
     }
 
     return [pscustomobject]@{
         FirefoxPath = $canonicalFirefox
         ProgramRoot = $programRoot
         ProfileRoot = $profileRoot
+        FirefoxVersion = [string] $applicationValues["Version"]
         FirefoxBuildID = [string] $applicationValues["BuildID"]
+        ProfileMode = $ProfileMode
+        IsRegisteredProfile = $isRegisteredProfile
         HasDevelopmentMarker = Test-FenneviaInstallerDevelopmentMarker -ProfileRoot $profileRoot
     }
 }
@@ -761,6 +781,30 @@ function Read-FenneviaInstallerPackageManifest {
         Remove-Module $scannerModuleInfo -ErrorAction SilentlyContinue
     }
 
+    $releaseManifest = $null
+    $releaseManifestPath = Join-Path $canonicalPackageRoot $script:ReleaseManifestName
+    if (Test-Path -LiteralPath $releaseManifestPath -PathType Leaf) {
+        Assert-FenneviaInstallerNoReparseAncestor -Path $releaseManifestPath -Code "FENNEVIA_INSTALL_RELEASE_INVALID"
+        $releaseModule = Join-Path $PSScriptRoot "FenneviaRelease.psm1"
+        if (-not (Test-Path -LiteralPath $releaseModule -PathType Leaf)) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_RELEASE_INVALID" -Message "The trusted release validator is missing beside the installer module."
+        }
+        Assert-FenneviaInstallerNoReparseAncestor -Path $releaseModule -Code "FENNEVIA_INSTALL_RELEASE_INVALID"
+        $releaseModuleInfo = Import-Module $releaseModule -Force -PassThru
+        try {
+            try {
+                $releaseValidation = Test-FenneviaReleaseTree -PackageRoot $canonicalPackageRoot
+            }
+            catch {
+                Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_RELEASE_INVALID" -Message "The release tree failed its strict inventory, digest, or sensitive-data policy."
+            }
+            $releaseManifest = $releaseValidation.Manifest
+        }
+        finally {
+            Remove-Module $releaseModuleInfo -ErrorAction SilentlyContinue
+        }
+    }
+
     return [pscustomobject]@{
         Root = $canonicalPackageRoot
         ManifestPath = $manifestPath
@@ -768,6 +812,37 @@ function Read-FenneviaInstallerPackageManifest {
         PackageVersion = $packageVersion
         ExpectedFiles = $sortedExpected
         Files = @($files | Sort-Object Scope, Path)
+        ReleaseManifest = $releaseManifest
+    }
+}
+
+function Assert-FenneviaInstallerPackageCompatibility {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Targets,
+
+        [Parameter(Mandatory)]
+        [object] $Package
+    )
+
+    if ($null -eq $Package.ReleaseManifest) {
+        return
+    }
+
+    $releaseModule = Join-Path $PSScriptRoot "FenneviaRelease.psm1"
+    $releaseModuleInfo = Import-Module $releaseModule -Force -PassThru
+    try {
+        $supported = Test-FenneviaReleaseFirefoxCompatibility `
+            -ReleaseManifest $Package.ReleaseManifest `
+            -FirefoxVersion $Targets.FirefoxVersion `
+            -FirefoxBuildId $Targets.FirefoxBuildID
+    }
+    finally {
+        Remove-Module $releaseModuleInfo -ErrorAction SilentlyContinue
+    }
+    if (-not $supported) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_FIREFOX_UNSUPPORTED" -Message "This release does not support the selected stock Firefox version and BuildID. Disable or uninstall remains available for recovery."
     }
 }
 
@@ -1081,8 +1156,15 @@ function Assert-FenneviaInstallerProfileProof {
         [object] $OwnershipPair
     )
 
-    if (-not $Targets.HasDevelopmentMarker -and $null -eq $OwnershipPair) {
-        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_UNMARKED_PROFILE" -Message "The selected profile is not a marker-owned Fennevia development profile and has no valid installed ownership pair."
+    if ($Targets.ProfileMode -eq "Development") {
+        if (-not $Targets.HasDevelopmentMarker -and $null -eq $OwnershipPair) {
+            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_UNMARKED_PROFILE" -Message "The selected profile is not a marker-owned Fennevia development profile and has no valid installed ownership pair."
+        }
+        return
+    }
+
+    if (-not $Targets.IsRegisteredProfile -and $null -eq $OwnershipPair) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_UNREGISTERED_PROFILE" -Message "Registered mode requires the explicit profile path to match Firefox registration or an existing valid Fennevia ownership pair."
     }
 }
 
@@ -1665,7 +1747,7 @@ function New-FenneviaInstallerRepairPlan {
         return New-FenneviaInstallerInternalPlan -Action Repair -Targets $Targets -Package $Package -OwnershipPair $OwnershipState.Pair -Status "already-complete" -State $OwnershipState.Pair.Data.State -Operations @()
     }
 
-    if (-not $Targets.HasDevelopmentMarker) {
+    if ($Targets.ProfileMode -eq "Development" -and -not $Targets.HasDevelopmentMarker) {
         Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_UNMARKED_PROFILE" -Message "Repair is limited to the explicitly marker-owned Fennevia development profile."
     }
 
@@ -1807,11 +1889,14 @@ function New-FenneviaInstallerEnablePlan {
         [object] $Targets,
 
         [Parameter(Mandatory)]
-        [object] $OwnershipPair
+        [object] $OwnershipPair,
+
+        [Parameter(Mandatory)]
+        [object] $Package
     )
 
     if ($OwnershipPair.Data.State -eq "enabled") {
-        return New-FenneviaInstallerInternalPlan -Action Enable -Targets $Targets -Package $null -OwnershipPair $OwnershipPair -Status "already-enabled" -State enabled -Operations @()
+        return New-FenneviaInstallerInternalPlan -Action Enable -Targets $Targets -Package $Package -OwnershipPair $OwnershipPair -Status "already-enabled" -State enabled -Operations @()
     }
 
     [void] (Assert-FenneviaInstallerOwnedFiles -Targets $Targets -Ownership $OwnershipPair.Data)
@@ -1845,7 +1930,7 @@ function New-FenneviaInstallerEnablePlan {
         $operations.Add((New-FenneviaInstallerOperation -Kind ReplaceFile -Scope $scope -Path "$($script:MetadataDirectoryName)/$($script:OwnershipFileName)" -Content $ownershipContent -ExpectedHash $ownershipHash -ExistingHash $existingOwnershipHash -ExistingOwned))
     }
 
-    return New-FenneviaInstallerInternalPlan -Action Enable -Targets $Targets -Package $null -OwnershipPair $OwnershipPair -Status "ready" -State enabled -Operations $operations.ToArray()
+    return New-FenneviaInstallerInternalPlan -Action Enable -Targets $Targets -Package $Package -OwnershipPair $OwnershipPair -Status "ready" -State enabled -Operations $operations.ToArray()
 }
 
 function New-FenneviaInstallerUninstallPlan {
@@ -1974,10 +2059,13 @@ function New-FenneviaInstallerActionPlan {
         [string] $ProfilePath,
 
         [Parameter(Mandatory)]
-        [string] $PackageRoot
+        [string] $PackageRoot,
+
+        [ValidateSet("Development", "Registered")]
+        [string] $ProfileMode = "Development"
     )
 
-    $targets = Resolve-FenneviaInstallerTargets -FirefoxPath $FirefoxPath -ProfilePath $ProfilePath
+    $targets = Resolve-FenneviaInstallerTargets -FirefoxPath $FirefoxPath -ProfilePath $ProfilePath -ProfileMode $ProfileMode
     Assert-FenneviaInstallerNoInterruptedTransactions -Targets $targets
     $ownershipState = Read-FenneviaInstallerOwnershipState -Targets $targets
     if ($Action -eq "Repair") {
@@ -1989,6 +2077,7 @@ function New-FenneviaInstallerActionPlan {
             Assert-FenneviaInstallerMetadataSideClean -Targets $targets -Scope $survivingScope
         }
         $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
+        Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
         return New-FenneviaInstallerRepairPlan -Targets $targets -Package $package -OwnershipState $ownershipState
     }
 
@@ -2002,6 +2091,7 @@ function New-FenneviaInstallerActionPlan {
     switch ($Action) {
         "Install" {
             $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
+            Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
             return New-FenneviaInstallerInstallPlan -Targets $targets -Package $package -OwnershipPair $ownershipPair
         }
         "Update" {
@@ -2009,6 +2099,7 @@ function New-FenneviaInstallerActionPlan {
                 Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_NOT_INSTALLED" -Message "Update requires a valid existing ownership pair; use Install first."
             }
             $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
+            Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
             return New-FenneviaInstallerUpdatePlan -Targets $targets -Package $package -OwnershipPair $ownershipPair
         }
         "Disable" {
@@ -2021,7 +2112,12 @@ function New-FenneviaInstallerActionPlan {
             if ($null -eq $ownershipPair) {
                 Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_NOT_INSTALLED" -Message "Enable requires a valid existing ownership pair."
             }
-            return New-FenneviaInstallerEnablePlan -Targets $targets -OwnershipPair $ownershipPair
+            $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
+            Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
+            if ($package.ManifestSha256 -cne $ownershipPair.Data.SourceManifestSha256) {
+                Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_ENABLE_SOURCE_MISMATCH" -Message "Enable requires the exact package manifest recorded by the installed ownership pair."
+            }
+            return New-FenneviaInstallerEnablePlan -Targets $targets -OwnershipPair $ownershipPair -Package $package
         }
         "Uninstall" {
             return New-FenneviaInstallerUninstallPlan -Targets $targets -OwnershipPair $ownershipPair
@@ -2056,6 +2152,7 @@ function Get-FenneviaInstallerPlanSha256 {
         schemaVersion = 1
         action = $Plan.Action
         status = $Plan.Status
+        profileMode = $Plan.Targets.ProfileMode
         packageVersion = $Plan.PackageVersion
         state = $Plan.State
         packageManifestSha256 = $packageManifestSha256
@@ -2701,6 +2798,7 @@ function ConvertTo-FenneviaInstallerPublicResult {
         State = $Plan.State
         Program = "<FIREFOX_PROGRAM>"
         Profile = "<FENNEVIA_PROFILE>"
+        ProfileMode = $Plan.Targets.ProfileMode
         PlannedMutationCount = $publicOperations.Count
         AppliedMutationCount = $AppliedMutationCount
         PlannedBackupCount = $publicBackups.Count
@@ -2725,6 +2823,7 @@ function ConvertTo-FenneviaInstallerResultLines {
     $lines.Add("status=$($Result.Status)")
     $lines.Add("program=$($Result.Program)")
     $lines.Add("profile=$($Result.Profile)")
+    $lines.Add("profileMode=$($Result.ProfileMode.ToLowerInvariant())")
     $lines.Add("packageVersion=$($Result.PackageVersion)")
     $lines.Add("state=$($Result.State)")
     $lines.Add("plannedMutationCount=$($Result.PlannedMutationCount)")
@@ -2765,6 +2864,9 @@ function Invoke-FenneviaPackageAction {
         [Parameter(Mandatory)]
         [string] $PackageRoot,
 
+        [ValidateSet("Development", "Registered")]
+        [string] $ProfileMode = "Development",
+
         [switch] $DryRun,
 
         [string] $ExpectedPlanSha256 = "",
@@ -2774,7 +2876,7 @@ function Invoke-FenneviaPackageAction {
         [string] $TestDenyTransactionScope = ""
     )
 
-    $plan = New-FenneviaInstallerActionPlan -Action $Action -FirefoxPath $FirefoxPath -ProfilePath $ProfilePath -PackageRoot $PackageRoot
+    $plan = New-FenneviaInstallerActionPlan -Action $Action -FirefoxPath $FirefoxPath -ProfilePath $ProfilePath -PackageRoot $PackageRoot -ProfileMode $ProfileMode
     $planSha256 = Get-FenneviaInstallerPlanSha256 -Plan $plan
     if (-not [string]::IsNullOrWhiteSpace($ExpectedPlanSha256)) {
         if ($ExpectedPlanSha256 -cnotmatch "^[0-9a-f]{64}$") {

@@ -29,6 +29,9 @@ firefox-profile/
 .fennevia-local/
 .local-artifacts/
 local-artifacts/
+.release/
+.release-preflight/
+.release-real/
 
 # Editor and OS files
 .DS_Store
