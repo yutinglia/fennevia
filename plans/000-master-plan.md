@@ -34,9 +34,9 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-16, prerelease package `0.10.0-beta.1` is validated on Firefox
-153.0.4 BuildID 20260810162159 for Windows x64 in an isolated copied Firefox
-program and marker-owned development profile.
+As of 2026-08-16, public prerelease package `0.10.0-beta.1` is published and
+validated on Firefox 153.0.4 BuildID 20260810162159 for Windows x64 in an
+isolated copied Firefox program and marker-owned development profile.
 
 Completed:
 
@@ -74,7 +74,8 @@ Completed project-governance foundation:
   third-party provenance source of truth, and distribution checklist.
 - #39: deterministic versioned Windows release staging, exact source and file
   manifest, registered-profile release mode, strict Firefox build allowlist,
-  checksum, annotated-tag rehearsal, and verify-before-publish GitHub workflow.
+  checksum, annotated-tag rehearsal, verify-before-publish GitHub workflow, and
+  independently reverified public `v0.10.0-beta.1` prerelease.
 
 At active rest, only ADR-032's exact native toolbar/sidebar descendants are
 collapsed; Firefox DOM, prompts, dialogs, controls, and a complete transient

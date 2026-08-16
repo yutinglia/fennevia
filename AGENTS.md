@@ -35,8 +35,9 @@ instead of inventing a new architecture.
   behavior.
 - Initial support targets the latest Firefox stable available during
   implementation and a Windows-first development environment.
-- Current validated evidence is package `0.8.0-dev` on Firefox 153.0.4 for
-  Windows. This is an implementation baseline, not a versioned support promise.
+- Current validated evidence is public prerelease package `0.10.0-beta.1` on
+  Firefox 153.0.4 BuildID `20260810162159` for Windows x64. This is a narrow
+  prerelease support boundary, not a stable or cross-platform support promise.
 - Do not add branches, polyfills, or compatibility hacks for old Firefox
   versions unless an issue explicitly requires them.
 - Firefox internal APIs are intentionally used, but those dependencies must be

@@ -13,9 +13,10 @@ AutoConfig entry registers a project-owned Chrome Registry package, loads fixed
 privileged ES modules, and mounts project-owned Svelte UI through typed Firefox
 bridges.
 
-> **Current status — 2026-08-16:** prerelease package `0.10.0-beta.1` is
-> validated on Firefox 153.0.4 for Windows in an isolated copied Firefox program
-> and marker-owned development profile. Bootstrap, installation lifecycle,
+> **Current status — 2026-08-16:** public prerelease package `0.10.0-beta.1` is
+> published and validated on Firefox 153.0.4 BuildID `20260810162159` for
+> Windows x64 in an isolated copied Firefox program and marker-owned development
+> profile. Bootstrap, installation lifecycle,
 > multi-window runtime,
 > health/recovery, deterministic Svelte production builds, the typed bridge
 > boundary, tab-state bridge, accessible tab UI, and the common four-edge
@@ -34,11 +35,12 @@ bridges.
 > sidebar, popup, customization, and fail-open paths remain reversible and
 > source-validated.
 
-The first versioned Windows x64 prerelease is distributed through GitHub
-Releases with a deterministic ZIP, separate SHA-256 file, exact source/tag
-record, and strict Firefox compatibility check. There is no daily-driver or
-cross-platform support claim, automatic updater, code signing, or completed
-independent security audit.
+The first versioned Windows x64 prerelease is distributed through
+[GitHub Releases](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1)
+with a deterministic ZIP, separate SHA-256 file, exact source/tag record, and
+strict Firefox compatibility check. There is no daily-driver or cross-platform
+support claim, automatic updater, code signing, or completed independent
+security audit.
 
 ## Product direction
 
