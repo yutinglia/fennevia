@@ -15,7 +15,7 @@ The tested MVP includes:
 | Area | Status | Current result |
 | --- | --- | --- |
 | Bootstrap and package lifecycle | Complete | Fixed AutoConfig/Chrome Registry startup plus ownership-checked install, update, disable, enable, repair, rollback, and uninstall |
-| Window runtime and recovery | Complete | Existing and later normal/private windows, health states, safe start, emergency fallback, and deterministic disposal |
+| Window runtime and recovery | Complete | Existing and later normal/private windows, persisted multi-tab Session Restore across separate Firefox processes, health states, safe start, emergency fallback, and deterministic disposal |
 | Frontend and bridge foundation | Complete | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership |
 | Four-edge frame | Complete | Independent top, left, right, and bottom XHTML surfaces, shared reveal/collision/focus policy, and accessibility fallbacks |
 | Tabs and address launcher | Complete | Event-driven vertical tabs, compact committed address/status launcher, and centred address/search popup |
@@ -28,9 +28,12 @@ The tested MVP includes:
 | Licensing and distribution | Complete | MPL-2.0 policy, third-party provenance, deterministic ZIP/checksum, exact source/file manifest, and verified prerelease publication |
 | Later stable transition | Pending availability/evidence | A real transition to a newer Firefox stable still requires the complete update workflow and cannot be claimed from the Firefox 153 rehearsal |
 
-Issue #1 remains the tracking source of truth. Historical research files record
-what was actually true at each milestone and are not rewritten when later work
-supersedes their production shape.
+The planned Windows MVP and first public prerelease are complete. [Issue
+#1](https://github.com/yutinglia/fennevia/issues/1) remains open because a real
+transition to a later Firefox stable has not yet produced the required
+compatibility record. Historical research files record what was actually true
+at each milestone and are not rewritten when later work supersedes their
+production shape.
 
 ## Product model
 
@@ -43,7 +46,7 @@ Fennevia uses four independently owned floating surfaces:
 
 A fifth centred overlay contains the only custom editable address/search input.
 All edge surfaces remain hidden at rest, reserve no permanent browser-content
-space, and share one reveal, collision, focus, popup-hold, cleanup, and glass-
+space, and share one reveal, collision, focus, popup-hold, cleanup, and glass
 design contract.
 
 The retained Firefox toolbar is transient in active mode. Pointer/focus paths and

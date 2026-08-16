@@ -14,8 +14,8 @@ floating edge panels that stay hidden until you need them.
 
 ## What Fennevia changes
 
-At rest, the browser window shows the current page with almost no persistent
-browser chrome. Move the pointer to an edge, or use the keyboard, to reveal:
+At rest, Firefox mostly shows the current page. Move the pointer to an edge, or
+use the keyboard, to reveal:
 
 - **Top:** Back, Forward, Reload/Stop, New Tab, and page status.
 - **Left:** vertical tabs and a compact address/status launcher.
@@ -25,9 +25,9 @@ browser chrome. Move the pointer to an edge, or use the keyboard, to reveal:
   <kbd>Ctrl</kbd>+<kbd>L</kbd>.
 
 Firefox still owns security prompts, permissions, certificates, extension
-installation, download safety, DevTools, the native address bar, and the OS
-window controls. Fennevia can reveal the full native Firefox interface when a
-feature is unsupported or recovery is needed.
+installation, download safety, DevTools, the full native address bar, and the OS
+window controls. Fennevia can reveal the complete native Firefox interface when
+a feature is unsupported or recovery is needed.
 
 ## Current release
 
@@ -42,9 +42,13 @@ Its supported environment is intentionally narrow:
 | Firefox Build ID | `20260810162159` |
 | Package | `fennevia-0.10.0-beta.1-windows.zip` |
 
-The installer refuses an unsupported Firefox version or Build ID before making
-managed-file changes. Linux, macOS, Firefox ESR, Beta, Nightly, and newer or
+Install, update, repair, and re-enable are blocked when the Firefox version or
+Build ID does not match. Disable and uninstall remain available for recovery
+after a Firefox update. Linux, macOS, Firefox ESR, Beta, Nightly, and newer or
 older Firefox builds are not supported by this release.
+
+Installing the prebuilt release does **not** require Node.js, npm, or building
+Firefox from source.
 
 ## Install
 
@@ -99,9 +103,9 @@ pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Install `
   -ProfileMode Registered -WhatIf
 ```
 
-The commands in this README use PowerShell 7 (`pwsh`). The package is also
-validated with Windows PowerShell 5.1; the release's `INSTALL.md` contains the
-normative lifecycle and recovery guidance.
+The examples in this README use PowerShell 7 (`pwsh`). The package is also
+validated with Windows PowerShell 5.1. The release's `INSTALL.md` contains the
+full update, recovery, and removal instructions.
 
 ### 4. Install
 
@@ -126,15 +130,16 @@ For update, disable, repair, enable, and uninstall commands, read:
 ## Everyday use and recovery
 
 Move the pointer to the corresponding window edge to reveal a panel.
-<kbd>Ctrl</kbd>+<kbd>L</kbd> opens Fennevia's centred address/search window when
+<kbd>Ctrl</kbd>+<kbd>L</kbd> opens Fennevia's centred address/search popup when
 the shell is healthy. Use **Open full Firefox address bar** when you need the
-complete native Firefox address bar, providers, extension actions, or panels.
+complete native address bar, search providers, extension actions, or Firefox
+panels.
 
 If the custom interface becomes unusable while Firefox is running, press
 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F12</kbd> to request the
-Svelte-independent native Firefox fallback. If that does not work, close
-Firefox and use the package's `Disable` action from the same release archive.
-Do not manually delete random files from the Firefox program or profile.
+built-in native Firefox fallback. If that does not work, close Firefox and use
+the package's `Disable` action from the same release archive. Do not manually
+delete unknown files from the Firefox program or profile.
 
 ## Important limitations
 
@@ -142,12 +147,13 @@ Do not manually delete random files from the Firefox program or profile.
 - A normal Firefox update can move your installation outside the supported
   build. Leave Fennevia disabled or uninstall it until a compatible release is
   available.
-- There is no automatic updater, code signing, attestation, or completed
+- There is no automatic updater, code signing, build attestation, or completed
   independent security audit.
 - The current release is Windows-only and is not presented as a stable support
   promise.
-- Bookmark management, complete Downloads management, and the full Firefox
-  address-bar provider ecosystem remain native Firefox features.
+- Bookmark editing, complete Downloads management, advanced native address-bar
+  features, and extension integrations remain available through Firefox's full
+  native interface.
 
 ## An intentionally opinionated interface
 

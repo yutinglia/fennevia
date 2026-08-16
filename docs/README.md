@@ -2,7 +2,9 @@
 
 This index separates end-user guidance, contributor instructions, current
 technical documentation, and historical evidence. The root READMEs intentionally
-avoid implementation-level detail.
+avoid implementation-level detail. Only the public README is translated into
+Traditional Chinese for now; technical and contributor documentation remains in
+English.
 
 ## For users
 

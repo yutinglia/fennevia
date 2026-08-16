@@ -9,15 +9,15 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 ## Fennevia 會改變甚麼
 
-在靜止狀態下，瀏覽器視窗主要只顯示目前網頁，不會長期佔用畫面空間。把滑鼠移到視窗邊緣，或使用鍵盤，即可顯示：
+在靜止狀態下，Firefox 主要只顯示目前網頁。把滑鼠移到視窗邊緣，或使用鍵盤，即可顯示：
 
 - **上方：**上一頁、下一頁、重新載入／停止、新分頁及頁面狀態。
 - **左方：**垂直分頁，以及精簡的網址／狀態啟動器。
 - **右方：**書籤。
 - **下方：**下載進度及狀態。
-- **中央：**從左方啟動器或按 <kbd>Ctrl</kbd>+<kbd>L</kbd> 開啟的網址／搜尋視窗。
+- **中央：**從左方啟動器或按 <kbd>Ctrl</kbd>+<kbd>L</kbd> 開啟的網址／搜尋彈出面板。
 
-安全提示、權限、憑證、擴充套件安裝、下載安全、DevTools、原生網址列及作業系統視窗控制項仍由 Firefox 負責。遇到不支援的功能或需要復原時，Fennevia 可以重新顯示完整的 Firefox 原生介面。
+安全提示、權限、憑證、擴充套件安裝、下載安全、DevTools、完整原生網址列及作業系統視窗控制項仍由 Firefox 負責。遇到不支援的功能或需要復原時，Fennevia 可以重新顯示完整的 Firefox 原生介面。
 
 ## 目前版本
 
@@ -30,7 +30,9 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 | Firefox Build ID | `20260810162159` |
 | 套件 | `fennevia-0.10.0-beta.1-windows.zip` |
 
-安裝程式會在修改受管理檔案前，拒絕不相符的 Firefox 版本或 Build ID。此版本不支援 Linux、macOS、Firefox ESR、Beta、Nightly，以及較新或較舊的 Firefox 組建。
+若 Firefox 版本或 Build ID 不相符，安裝、更新、修復及重新啟用都會被拒絕；Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta、Nightly，以及較新或較舊的 Firefox 組建。
+
+安裝預先建置的發行版**不需要** Node.js、npm，也不需要自行編譯 Firefox。
 
 ## 安裝
 
@@ -59,7 +61,7 @@ $actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.10.0-beta.1-windows.zip).
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 
-若校驗值不相符，請不要繼續。
+若 SHA-256 校驗值不相符，請不要繼續。
 
 ### 3. 預覽安裝變更
 
@@ -80,7 +82,7 @@ pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Install `
   -ProfileMode Registered -WhatIf
 ```
 
-README 的指令使用 PowerShell 7（`pwsh`）。套件亦已使用 Windows PowerShell 5.1 驗證；發行檔內的 `INSTALL.md` 是安裝生命週期及復原流程的正式說明。
+README 的指令使用 PowerShell 7（`pwsh`）。套件亦已使用 Windows PowerShell 5.1 驗證；發行檔內的 `INSTALL.md` 包含完整的更新、復原及移除說明。
 
 ### 4. 正式安裝
 
@@ -101,17 +103,17 @@ pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Install `
 
 ## 日常操作與復原
 
-把滑鼠移到對應的視窗邊緣即可顯示面板。當介面健康運作時，<kbd>Ctrl</kbd>+<kbd>L</kbd> 會開啟 Fennevia 的中央網址／搜尋視窗。需要完整 Firefox 網址列、搜尋供應器、擴充套件操作或原生面板時，請選擇 **Open full Firefox address bar**。
+把滑鼠移到對應的視窗邊緣即可顯示面板。當介面健康運作時，<kbd>Ctrl</kbd>+<kbd>L</kbd> 會開啟 Fennevia 的中央網址／搜尋彈出面板。需要完整 Firefox 網址列、搜尋供應器、擴充套件操作或原生面板時，請選擇 **Open full Firefox address bar**。
 
-若 Firefox 仍在執行，但自訂介面無法正常使用，請按 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F12</kbd>，要求切換到不依賴 Svelte 的 Firefox 原生介面。若快捷鍵也失效，請關閉 Firefox，並使用同一個發行套件執行 `Disable`。不要手動刪除 Firefox 程式或設定檔內不確定用途的檔案。
+若 Firefox 仍在執行，但自訂介面無法正常使用，請按 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F12</kbd>，啟用內建的 Firefox 原生介面復原功能。若快捷鍵也失效，請關閉 Firefox，並使用同一個發行套件執行 `Disable`。不要手動刪除 Firefox 程式或設定檔內不確定用途的檔案。
 
 ## 重要限制
 
 - Fennevia 使用 Mozilla 不保證穩定的 Firefox 內部介面。
 - Firefox 正常更新後，版本可能超出目前支援範圍。此時應保持停用或移除 Fennevia，直到有相容版本。
-- 目前沒有自動更新、程式碼簽署或可驗證發行證明（attestation），亦未完成獨立安全審計。
+- 目前沒有自動更新、程式碼簽署或可驗證建置／發行證明（attestation），亦未完成獨立安全審計。
 - 目前發行版只支援 Windows，並不代表穩定或長期支援承諾。
-- 書籤管理、完整下載管理及完整 Firefox 網址列搜尋供應器生態仍由原生 Firefox 提供。
+- 書籤編輯、完整下載管理、進階原生網址列功能及擴充套件整合仍可透過 Firefox 完整原生介面使用。
 
 ## 刻意保留主觀取向的介面
 
