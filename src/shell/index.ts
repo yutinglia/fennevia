@@ -45,7 +45,9 @@ import {
 import {
   createBrowserToolbarWidgetsStateAdapter,
   type BrowserToolbarWidgetsBridge,
+  type BrowserToolbarWidgetsState,
   type BrowserToolbarWidgetsStateAdapter,
+  type ToolbarStyleSnapshot,
 } from "../app/toolbar-widgets-state";
 import {
   createBrowserUrlbarCoverageStateAdapter,
@@ -216,6 +218,87 @@ function getFocusableOrigin(
     typeof (value as Partial<FocusableElement>).focus === "function"
     ? (value as FocusableElement)
     : null;
+}
+
+const CUSTOMIZE_STYLE_PROPERTIES = Object.freeze([
+  "color-scheme",
+  "font-size",
+  "--fennevia-control-height",
+  "--fennevia-edge-top-height",
+  "--fennevia-focus-color",
+  "--fennevia-glass-blur",
+  "--fennevia-glass-radius",
+  "--fennevia-glass-surface",
+  "--fennevia-glass-tint",
+  "--fennevia-selected-surface",
+]);
+
+const HEX_COLOR_PATTERN = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/u;
+
+function hexToRgbComponents(hex: string): string | null {
+  const match = HEX_COLOR_PATTERN.exec(hex);
+  if (!match) {
+    return null;
+  }
+  return [match[1], match[2], match[3]]
+    .map((component) => String(parseInt(component, 16)))
+    .join(" ");
+}
+
+function clearCustomizeStyle(frame: HTMLElement): void {
+  for (const property of CUSTOMIZE_STYLE_PROPERTIES) {
+    frame.style.removeProperty(property);
+  }
+}
+
+function applyCustomizeStyle(
+  frame: HTMLElement,
+  style: ToolbarStyleSnapshot,
+  forcedColors: boolean,
+): void {
+  clearCustomizeStyle(frame);
+  if (style.blur !== 18) {
+    frame.style.setProperty("--fennevia-glass-blur", `${style.blur}px`);
+  }
+  if (style.radius !== 4) {
+    frame.style.setProperty("--fennevia-glass-radius", `${style.radius}px`);
+  }
+  if (style.fontSize !== 12) {
+    frame.style.setProperty("font-size", `${style.fontSize}px`);
+  }
+  if (style.density === "compact") {
+    frame.style.setProperty("--fennevia-control-height", "28px");
+    frame.style.setProperty("--fennevia-edge-top-height", "48px");
+  } else if (style.density === "comfortable") {
+    frame.style.setProperty("--fennevia-control-height", "36px");
+    frame.style.setProperty("--fennevia-edge-top-height", "64px");
+  }
+  if (forcedColors) {
+    // Forced-colors mode keeps the system palette authoritative.
+    return;
+  }
+  if (style.theme !== "auto") {
+    frame.style.setProperty("color-scheme", style.theme);
+  }
+  const accent = hexToRgbComponents(style.accent);
+  if (accent) {
+    frame.style.setProperty("--fennevia-focus-color", `rgb(${accent})`);
+    frame.style.setProperty(
+      "--fennevia-selected-surface",
+      `rgb(${accent} / 20%)`,
+    );
+  }
+  if (style.surfaceOpacity !== 94) {
+    const tintOpacity = Math.max(50, style.surfaceOpacity - 10);
+    frame.style.setProperty(
+      "--fennevia-glass-surface",
+      `light-dark(rgb(247 250 252 / ${style.surfaceOpacity}%), rgb(20 26 35 / ${style.surfaceOpacity}%))`,
+    );
+    frame.style.setProperty(
+      "--fennevia-glass-tint",
+      `light-dark(rgb(246 250 255 / ${tintOpacity}%), rgb(17 24 34 / ${tintOpacity}%))`,
+    );
+  }
 }
 
 export function mountShellApp({
@@ -651,6 +734,7 @@ export function mountShellApp({
     environmentObserver?.disconnect();
     environmentObserver = undefined;
     removeDomListeners();
+    clearCustomizeStyle(frame);
     frame.removeAttribute(FRAME_READY_ATTRIBUTE);
     for (const unsubscribe of controllerSubscriptions.splice(0).reverse()) {
       try {
@@ -781,13 +865,41 @@ export function mountShellApp({
       }),
     );
     if (toolbarWidgetsState) {
+      const widgetsState = toolbarWidgetsState;
+      const forcedColorsQuery =
+        typeof view.matchMedia === "function"
+          ? view.matchMedia("(forced-colors: active)")
+          : null;
+      const applyStyleFromState = (state: BrowserToolbarWidgetsState): void => {
+        applyCustomizeStyle(
+          frame,
+          state.snapshot.style,
+          forcedColorsQuery?.matches === true,
+        );
+      };
+      applyStyleFromState(widgetsState.snapshot());
       controllerSubscriptions.push(
-        toolbarWidgetsState.subscribePopup((open) => {
+        widgetsState.subscribePopup((open) => {
           if (!open) {
             shell.setPopupHeld("top", false);
           }
         }),
+        widgetsState.subscribe(applyStyleFromState),
       );
+      if (forcedColorsQuery) {
+        const onForcedColorsChange = (): void => {
+          try {
+            applyStyleFromState(widgetsState.snapshot());
+          } catch (error) {
+            onFatalError(error);
+          }
+        };
+        forcedColorsQuery.addEventListener("change", onForcedColorsChange);
+        controllerSubscriptions.push(() => {
+          forcedColorsQuery.removeEventListener("change", onForcedColorsChange);
+          return true;
+        });
+      }
     }
     for (const edge of edgeNames) {
       const surface = shell.getSurface(edge);
@@ -819,7 +931,6 @@ export function mountShellApp({
             : {}),
           ...(edge === "top"
             ? {
-                toolbarWidgets: toolbarWidgetsState,
                 windowControls: windowControlsState,
               }
             : {}),
@@ -833,6 +944,7 @@ export function mountShellApp({
           },
           shell,
           surface: shell.getSurface(edge),
+          toolbarWidgets: toolbarWidgetsState,
           ...(edge === "left"
             ? {
                 addressPopup,

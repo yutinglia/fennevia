@@ -22,6 +22,7 @@
     | "menu"
     | "minimize"
     | "new-window"
+    | "palette"
     | "permissions"
     | "plus"
     | "print"
@@ -139,6 +140,11 @@
   {:else if name === "new-window"}
     <rect height="14" rx="2" width="14" x="4" y="6" />
     <path d="M11 13h4M13 11v4M20 10V4h-6" />
+  {:else if name === "palette"}
+    <path d="M12 3a9 9 0 1 0 0 18h1.5a2.5 2.5 0 0 0 0-5H12a2 2 0 0 1 0-4h9" />
+    <circle cx="7.5" cy="11" r="1.2" fill="currentColor" />
+    <circle cx="10.5" cy="7" r="1.2" fill="currentColor" />
+    <circle cx="15.5" cy="7" r="1.2" fill="currentColor" />
   {:else if name === "print"}
     <path d="M7 8V4h10v4" />
     <rect height="8" rx="2" width="16" x="4" y="8" />
