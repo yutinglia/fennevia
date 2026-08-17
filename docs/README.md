@@ -74,7 +74,10 @@ Read these before changing code or current documentation:
   implementation boundary, focused automation, and pending real-Firefox matrix.
 - [Topbar widget mirror plan](../plans/005-topbar-widget-mirror.md) — ADR-044
   read-only nav-bar mirror, owner-approved privacy relaxation, and pending
-  real-Firefox matrix.
+  real-Firefox matrix. ADR-045 later supersedes the mirror-as-sole-model.
+- [Customize mode plan](../plans/006-customize-mode.md) — ADR-045 Fennevia-owned
+  four-edge widget editor, bounded style tokens, and owner-approved
+  CustomizableUI adopt/restore writes.
 
 The public `v0.10.0-beta.1` prerelease completed the planned Windows MVP and
 versioned distribution path for Firefox 153.0.4 BuildID `20260810162159`. A real

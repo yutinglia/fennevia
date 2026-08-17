@@ -38,6 +38,7 @@
     type BrowserToolbarWidgetsState,
     type BrowserToolbarWidgetsStateAdapter,
     type ToolbarWidgetSnapshot,
+    type ToolbarZoneName,
   } from "../app/toolbar-widgets-state";
   import type {
     BrowserWindowControlsStateAdapter,
@@ -67,9 +68,11 @@
   } from "./navigation-labels";
   import BookmarksPanel from "./BookmarksPanel.svelte";
   import { resolveBrowserToolHost } from "./browser-tool-host";
+  import CustomizePanel from "./CustomizePanel.svelte";
   import DownloadsPanel from "./DownloadsPanel.svelte";
   import ProgressLight from "./ProgressLight.svelte";
-  import ShellIcon, { type ShellIconName } from "./ShellIcon.svelte";
+  import ShellIcon from "./ShellIcon.svelte";
+  import { resolveToolbarWidgetIcon } from "./toolbar-widget-icons";
 
   type Props = Readonly<{
     addressPopup?: AddressPopupController;
@@ -233,7 +236,7 @@
 
   $effect(() => {
     const toolbarWidgets = props.toolbarWidgets;
-    if (props.edge !== "top" || !toolbarWidgets) {
+    if (!toolbarWidgets) {
       currentToolbarWidgets = null;
       return;
     }
@@ -349,33 +352,14 @@
     }
   };
 
-  const toolbarWidgetIconNames: ReadonlyMap<string, ShellIconName> = new Map([
-    ["account", "account"],
-    ["bookmark", "bookmark"],
-    ["developer", "developer"],
-    ["edit", "edit"],
-    ["extension", "extensions"],
-    ["firefox-view", "firefox-view"],
-    ["fullscreen", "fullscreen"],
-    ["history", "history"],
-    ["library", "library"],
-    ["new-window", "new-window"],
-    ["print", "print"],
-    ["private", "private"],
-    ["screenshot", "screenshot"],
-    ["shield", "shield"],
-    ["sidebar", "sidebar"],
-    ["zoom", "zoom"],
-  ]);
-
-  const resolveToolbarWidgetIcon = (
-    widget: ToolbarWidgetSnapshot,
-  ): ShellIconName => toolbarWidgetIconNames.get(widget.icon) ?? "generic";
-
   const runToolbarWidgetAction = async (
     widget: ToolbarWidgetSnapshot,
     event: MouseEvent,
   ) => {
+    if (widget.fenneviaAction !== "") {
+      runFenneviaWidgetAction(widget.fenneviaAction);
+      return;
+    }
     const toolbarWidgets = props.toolbarWidgets;
     if (!toolbarWidgets || !isInteractiveToolbarWidget(widget)) {
       return;
@@ -390,10 +374,64 @@
         props.shell.setPopupHeld(props.edge, false);
       }
     } catch {
-      // Widget mirroring is an optional capability; a failed invoke keeps the
+      // Widget placement is an optional capability; a failed invoke keeps the
       // native path (customize mode, unified extensions panel) fully usable.
       props.shell.setPopupHeld(props.edge, false);
     }
+  };
+
+  const runFenneviaWidgetAction = (action: string) => {
+    try {
+      if (action === "show-bookmarks") {
+        props.shell.revealProgrammatically("right");
+        return;
+      }
+      if (action === "show-downloads") {
+        props.shell.revealProgrammatically("bottom");
+      }
+    } catch (error) {
+      props.onFatalError(error);
+    }
+  };
+
+  let customizeOpen = $state(false);
+
+  // A forced dismissal of the top surface must not leave a floating editor.
+  $effect(() => {
+    if (!surfaceState.visible && customizeOpen) {
+      customizeOpen = false;
+      try {
+        props.shell.setPopupHeld(props.edge, false);
+      } catch (error) {
+        props.onFatalError(error);
+      }
+    }
+  });
+
+  const setCustomizeOpen = (open: boolean) => {
+    if (customizeOpen === open) {
+      return;
+    }
+    customizeOpen = open;
+    try {
+      props.shell.setPopupHeld(props.edge, open);
+    } catch (error) {
+      props.onFatalError(error);
+      return;
+    }
+    if (open) {
+      void tick().then(() => {
+        const closeButton = rootElement?.querySelector<HTMLButtonElement>(
+          "button[data-fennevia-customize-close]",
+        );
+        closeButton?.focus();
+      });
+      return;
+    }
+    const toggle = rootElement?.querySelector<HTMLButtonElement>(
+      'button[data-fennevia-action="customize-shell"]',
+    );
+    toggle?.focus();
   };
 
   const runWindowControlAction = (action: WindowControlAction) => {
@@ -840,12 +878,80 @@
       props.shell.setPointerHeld("left", false);
     }
     draggingTabId = null;
+    if (customizeOpen) {
+      customizeOpen = false;
+      try {
+        props.shell.setPopupHeld(props.edge, false);
+      } catch {
+        // Shell disposal releases the remaining holds.
+      }
+    }
     if (props.edge === "left") {
       addressPopupVisible = false;
     }
     props.onDisposed(props.edge);
   });
 </script>
+
+{#snippet widgetZone(zone: ToolbarZoneName)}
+  {@const zoneWidgets = (currentToolbarWidgets?.snapshot.zones[zone] ?? []).filter(
+    (widget) => !widget.missing,
+  )}
+  {#if currentToolbarWidgets?.snapshot.available && zoneWidgets.length > 0}
+    <div
+      aria-label="Toolbar shortcuts"
+      class="fennevia-toolbar-widgets"
+      class:fennevia-toolbar-widgets--stacked={zone !== "top"}
+      data-fennevia-toolbar-widgets={zone}
+      role="group"
+    >
+      {#each zoneWidgets as widget, index (`${zone}-${index}-${widget.handle}-${widget.fenneviaAction}`)}
+        {#if widget.kind === "separator"}
+          <span
+            aria-hidden="true"
+            class="fennevia-toolbar-widgets__separator"
+          ></span>
+        {:else if widget.kind === "spacer"}
+          <span aria-hidden="true" class="fennevia-toolbar-widgets__spacer"
+          ></span>
+        {:else if widget.kind === "spring"}
+          <span aria-hidden="true" class="fennevia-toolbar-widgets__spring"
+          ></span>
+        {:else}
+          <button
+            aria-label={widget.label}
+            class="fennevia-control fennevia-toolbar-widgets__button"
+            data-fennevia-browser-tool="toolbar-widget"
+            data-fennevia-toolbar-widget-kind={widget.kind}
+            disabled={widget.disabled}
+            onclick={(event) => void runToolbarWidgetAction(widget, event)}
+            title={widget.tooltip || widget.label}
+            type="button"
+          >
+            {#if widget.kind === "extension-action" && widget.iconUrl}
+              <img
+                alt=""
+                class="fennevia-toolbar-widgets__icon"
+                src={widget.iconUrl}
+              />
+            {:else}
+              <ShellIcon name={resolveToolbarWidgetIcon(widget)} />
+            {/if}
+            {#if widget.badgeText}
+              <span
+                aria-hidden="true"
+                class="fennevia-toolbar-widgets__badge"
+                style:background-color={widget.badgeBackground || undefined}
+                style:color={widget.badgeTextColor || undefined}
+                >{widget.badgeText}</span
+              >
+            {/if}
+          </button>
+        {/if}
+      {/each}
+    </div>
+  {/if}
+{/snippet}
 
 <div
   id={`fennevia-shell-${props.edge}-root`}
@@ -1093,6 +1199,8 @@
           <span>New tab</span>
         </button>
       </div>
+
+      {@render widgetZone("left")}
     {:else if props.edge === "top"}
       <div
         aria-label="Browser toolbar"
@@ -1217,65 +1325,7 @@
             </button>
           </div>
 
-          {#if currentToolbarWidgets?.snapshot.available && currentToolbarWidgets.snapshot.widgets.length > 0}
-            <div
-              aria-label="Toolbar shortcuts"
-              class="fennevia-toolbar-widgets"
-              data-fennevia-toolbar-widgets=""
-              role="group"
-            >
-              {#each currentToolbarWidgets.snapshot.widgets as widget, index (`${index}-${widget.handle}`)}
-                {#if widget.kind === "separator"}
-                  <span
-                    aria-hidden="true"
-                    class="fennevia-toolbar-widgets__separator"
-                  ></span>
-                {:else if widget.kind === "spacer"}
-                  <span
-                    aria-hidden="true"
-                    class="fennevia-toolbar-widgets__spacer"
-                  ></span>
-                {:else if widget.kind === "spring"}
-                  <span
-                    aria-hidden="true"
-                    class="fennevia-toolbar-widgets__spring"
-                  ></span>
-                {:else}
-                  <button
-                    aria-label={widget.label}
-                    class="fennevia-control fennevia-toolbar-widgets__button"
-                    data-fennevia-browser-tool="toolbar-widget"
-                    data-fennevia-toolbar-widget-kind={widget.kind}
-                    disabled={widget.disabled}
-                    onclick={(event) =>
-                      void runToolbarWidgetAction(widget, event)}
-                    title={widget.tooltip || widget.label}
-                    type="button"
-                  >
-                    {#if widget.kind === "extension-action" && widget.iconUrl}
-                      <img
-                        alt=""
-                        class="fennevia-toolbar-widgets__icon"
-                        src={widget.iconUrl}
-                      />
-                    {:else}
-                      <ShellIcon name={resolveToolbarWidgetIcon(widget)} />
-                    {/if}
-                    {#if widget.badgeText}
-                      <span
-                        aria-hidden="true"
-                        class="fennevia-toolbar-widgets__badge"
-                        style:background-color={widget.badgeBackground ||
-                          undefined}
-                        style:color={widget.badgeTextColor || undefined}
-                        >{widget.badgeText}</span
-                      >
-                    {/if}
-                  </button>
-                {/if}
-              {/each}
-            </div>
-          {/if}
+          {@render widgetZone("top")}
 
           <div
             aria-label="Firefox tools"
@@ -1317,6 +1367,19 @@
             >
               <ShellIcon name="customize" />
             </button>
+            {#if currentToolbarWidgets?.snapshot.canEdit}
+              <button
+                aria-expanded={customizeOpen}
+                aria-label="Customize Fennevia shell"
+                class="fennevia-control fennevia-browser-tools__button"
+                data-fennevia-action="customize-shell"
+                onclick={() => setCustomizeOpen(!customizeOpen)}
+                title="Customize Fennevia"
+                type="button"
+              >
+                <ShellIcon name="palette" />
+              </button>
+            {/if}
             <button
               aria-label="Open Firefox menu"
               class="fennevia-control fennevia-browser-tools__button"
@@ -1385,11 +1448,15 @@
           onFatalError={props.onFatalError}
         />
       {/if}
+
+      {@render widgetZone("right")}
     {:else if props.downloads}
       <DownloadsPanel
         downloads={props.downloads}
         onFatalError={props.onFatalError}
       />
+
+      {@render widgetZone("bottom")}
     {/if}
 
     <footer aria-label="Keyboard shortcut" class="fennevia-edge-panel__footer">
@@ -1404,4 +1471,12 @@
       </template>
     {/if}
   </div>
+
+  {#if props.edge === "top" && customizeOpen && props.toolbarWidgets}
+    <CustomizePanel
+      onClose={() => setCustomizeOpen(false)}
+      state={currentToolbarWidgets}
+      toolbarWidgets={props.toolbarWidgets}
+    />
+  {/if}
 </div>

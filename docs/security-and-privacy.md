@@ -367,7 +367,7 @@ Source inventory and real HTTP/HTTPS/internal/error/permission/protection/
 normal/second/private/fail-open evidence are in ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-### 7.4 Browser-tool native handoffs — implemented ADR-037, popup placement ADR-042, widget mirror ADR-044
+### 7.4 Browser-tool native handoffs — implemented ADR-037, popup placement ADR-042, widget zones and customize mode ADR-044/ADR-045
 
 Each managed window owns one `browser-tools` Firefox controller and one ordinary
 application adapter. The controller validates twenty-one required current
@@ -394,7 +394,8 @@ persistence, normal logs, and project network requests:
 - permission IDs, states, scopes, origins, sharing records, prompts, and native
   labels;
 - extension IDs, names, icons, widgets, customization state, actions, and
-  commands, except the bounded owner-approved ADR-044 rendering flow below;
+  commands, except the bounded owner-approved ADR-044/ADR-045 rendering and
+  customize flows below;
 - download names, paths, source URLs, byte records, errors, and native objects;
 - Firefox nodes, panels, handlers, preferences, principals, windows, and
   controller objects.
@@ -421,26 +422,54 @@ per-window fail-open path. Project-authored toolbar SVGs contain no external
 asset, metadata, script, URL, or runtime load. See ADR-037, ADR-042, and
 `docs/research/firefox-153-native-popup-anchoring.md`.
 
-Owner-approved ADR-044 widget-mirror flow: each managed window may own one
-optional `toolbar-widgets` controller that enumerates the current
-`CustomizableUI` nav-bar placements read-only and sends the frontend an
-immutable snapshot per widget of opaque handle, fixed kind, bounded label and
-tooltip text, a `moz-extension://`-only icon URL, bounded rgba-only badge
-text/colors, a fixed curated icon token, and a disabled flag. Extension name,
-icon, and badge are extension identity and may exist only in that window's
-in-memory frontend state and rendered DOM (`img src`, button label/tooltip,
-badge chip). Widget ids and native nodes stay in the privileged handle
-registry. Extension identity never enters logs, persistence, diagnostics,
-serialized state, CSS custom properties on shared roots, root datasets,
-clipboard, or network requests; diagnostics stay at widget counts, revisions,
-and fixed codes. Activation resolves only registry handles, validates the
-project host, opens `PanelUI.showSubView` view panels or dispatches the native
-node command, and re-anchors resulting Firefox-owned panels on the host with
-the existing ADR-042 hold/release path. The capability is optional: a missing
-`CustomizableUI`/`PanelUI` hides the zone without joining activation health,
-and disposal detaches the CustomizableUI listener, the attribute
-`MutationObserver`, popup listeners, pending waiters, handles, and any held
-panel exactly once.
+Owner-approved ADR-044/ADR-045 widget-zone and customize flow: each managed
+window may own one optional `toolbar-widgets` controller. It renders the
+Fennevia-owned four-zone widget layout (default: a read-only mirror of the
+current `CustomizableUI` nav-bar placements in the top zone) and sends the
+frontend an immutable snapshot per placed widget of opaque handle, fixed kind,
+bounded label and tooltip text, a `moz-extension://`-only icon URL, bounded
+rgba-only badge text/colors, a fixed curated icon token, and disabled/missing
+flags, plus a widget palette of every remaining current `CustomizableUI` widget
+(placed areas and the unused palette), Fennevia-owned optional widgets, and the
+fixed specials, each behind an opaque palette token. Extension name, icon, and
+badge are extension identity and may exist only in that window's in-memory
+frontend state and rendered DOM (`img src`, button label/tooltip, badge chip).
+Widget ids and native nodes stay in the privileged handle/token registries.
+Extension identity never enters logs, diagnostics, serialized frontend state,
+CSS custom properties on shared roots, root datasets, clipboard, or network
+requests; diagnostics stay at widget counts, revisions, and fixed codes.
+
+ADR-045 adds two owner-approved bounded exceptions. First, profile-local
+persistence: the privileged controller stores the Fennevia layout and style as
+bounded versioned JSON in the `fennevia.customize.layout` and
+`fennevia.customize.style` string preferences (16 KiB cap, strict schema,
+invalid values fail safe to the default mirror layout and default style). The
+layout pref contains Firefox widget ids — including extension widget ids — and
+the fixed Fennevia widget/special tokens; the style pref contains only the
+fixed style token set (theme, accent hex, blur, radius, density, surface
+opacity, font size). Neither pref may ever contain URLs, titles, text input,
+browsing data, or private-window state. Second, bounded `CustomizableUI`
+writes: placing a widget that has no live node calls
+`addWidgetToArea(id, "nav-bar")` on the collapsed native nav-bar and records
+the id in the persisted `adopted` list; removing the last Fennevia placement of
+an adopted id restores it (`addWidgetToArea(id, AREA_ADDONS)` for extension
+widgets, `removeWidgetFromArea(id)` otherwise), and layout reset restores every
+adopted id and clears the pref. Fennevia never writes any other CustomizableUI
+state and never edits placements the user made natively.
+
+Activation resolves only registry handles, validates the project host, opens
+`PanelUI.showSubView` view panels or dispatches the native node command, and
+re-anchors resulting Firefox-owned panels on the host with the existing
+ADR-042 hold/release path; Fennevia-owned widgets run fixed frontend actions
+(reveal bookmarks/downloads panels) without touching the bridge. Edit
+operations accept only the validated fixed operation set with a revision guard.
+The capability is optional: a missing `CustomizableUI`/`PanelUI` hides the
+zones and a missing `Services.prefs` disables editing, in both cases without
+joining activation health. Disposal detaches the CustomizableUI listener, the
+preference observer, the attribute `MutationObserver`, popup listeners, pending
+waiters, handles, palette tokens, and any held panel exactly once. Style tokens
+are applied only as the fixed CSS custom-property set on the project frame
+root, skip color overrides under forced colors, and are cleared on dispose.
 
 ### 7.5 Bookmarks — implemented #14
 

@@ -6,7 +6,9 @@
 
 Status: implementation and documentation complete on
 `feat/issue-64-topbar-widget-mirror` (issue #64); the manual real-Firefox
-checklist in section 5 is still `not run`.
+checklist in section 5 is still `not run`. ADR-045 later deprecates the
+mirror-as-sole-model and "native customize mode is the only editor" clauses;
+this file remains the #64 historical plan and is not rewritten.
 
 This pass starts the deferred `extension toolbar/action replacement` item in
 `plans/002-shell-roadmap.md`. The Fennevia top row gains a widget zone that

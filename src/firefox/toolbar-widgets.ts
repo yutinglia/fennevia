@@ -1,11 +1,41 @@
 import {
+  copyToolbarStyleSnapshot,
+  copyToolbarWidgetsEditOperation,
+  createDefaultToolbarStyle,
+  createUnavailableToolbarWidgetsSnapshot,
+  fenneviaToolbarActions,
+  toolbarZoneNames,
   type BrowserToolbarWidgetsBridge,
+  type FenneviaToolbarAction,
+  type ToolbarPaletteEntrySnapshot,
   type ToolbarWidgetKind,
   type ToolbarWidgetSnapshot,
+  type ToolbarWidgetZones,
+  type ToolbarWidgetsEditOperation,
   type ToolbarWidgetsPopupEvent,
   type ToolbarWidgetsSnapshot,
   type ToolbarWidgetsStateEvent,
+  type ToolbarZoneName,
 } from "../app/toolbar-widgets-state.ts";
+import {
+  addCustomizeLayoutEntry,
+  createCustomizeLayout,
+  customizeLayoutContainsWidget,
+  getCustomizeLayoutEntry,
+  isCustomizeWidgetId,
+  moveCustomizeLayoutEntry,
+  parseCustomizeLayout,
+  parseCustomizeStyle,
+  removeCustomizeLayoutEntry,
+  serializeCustomizeLayout,
+  serializeCustomizeStyle,
+  withCustomizeAdopted,
+  withoutCustomizeAdopted,
+  type CustomizeLayout,
+  type CustomizeLayoutEntry,
+  type CustomizeSpecialKind,
+  type CustomizeStyle,
+} from "./customize-model.ts";
 import {
   FirefoxBridgeError,
   isFirefoxBridgeError,
@@ -45,6 +75,12 @@ type PendingPanelWaiter = {
 };
 
 const NAVBAR_AREA = "nav-bar";
+const FALLBACK_ADDONS_AREA = "unified-extensions-area";
+const LAYOUT_PREF = "fennevia.customize.layout";
+const STYLE_PREF = "fennevia.customize.style";
+const CUSTOMIZE_PREF_DOMAIN = "fennevia.customize.";
+const PREF_VALUE_MAX_LENGTH = 16384;
+const PALETTE_MAX_ENTRIES = 256;
 const WIDGET_VIEW_PANEL_ID = "customizationui-widget-panel";
 const PANEL_SHOWN_TIMEOUT_MS = 800;
 const ADOPTED_PANEL_POSITION = "after_start";
@@ -56,6 +92,7 @@ const LISTENER_OPTIONS = Object.freeze({ capture: true });
 const COLOR_PATTERN = /^rgba?\([0-9\s.,%]{1,48}\)$/u;
 const CSS_URL_PATTERN = /url\("((?:[^"\\]|\\.){1,512})"\)/u;
 const MOZ_EXTENSION_URL_PREFIX = "moz-extension://";
+const EXTENSION_WIDGET_SUFFIX = "-browser-action";
 
 // Placements already represented by fixed Fennevia controls, plus container
 // items that cannot be mirrored as buttons.
@@ -67,6 +104,8 @@ const SKIPPED_WIDGET_IDS = Object.freeze([
   "urlbar-container",
   "search-container",
   "downloads-button",
+  "unified-extensions-button",
+  "PanelUI-menu-button",
   "personal-bookmarks",
   "menubar-items",
   "tabbrowser-tabs",
@@ -93,6 +132,33 @@ const builtinIconTokenByWidgetId: ReadonlyMap<string, string> = new Map([
   ["screenshot-button", "screenshot"],
   ["sidebar-button", "sidebar"],
   ["zoom-controls", "zoom"],
+]);
+
+// Fixed presentation for Fennevia-owned placeable widgets. The frontend
+// executes these actions itself; no Firefox owner is involved.
+const fenneviaWidgetPresentation: ReadonlyMap<
+  FenneviaToolbarAction,
+  Readonly<{ icon: string; label: string; tooltip: string }>
+> = new Map<
+  FenneviaToolbarAction,
+  Readonly<{ icon: string; label: string; tooltip: string }>
+>([
+  [
+    "show-bookmarks",
+    Object.freeze({
+      icon: "bookmark",
+      label: "Show bookmarks panel",
+      tooltip: "Reveal the Fennevia bookmarks panel",
+    }),
+  ],
+  [
+    "show-downloads",
+    Object.freeze({
+      icon: "download",
+      label: "Show downloads panel",
+      tooltip: "Reveal the Fennevia downloads panel",
+    }),
+  ],
 ]);
 
 const isNativeRecord = (value: unknown): value is NativeRecord =>
@@ -131,6 +197,73 @@ const readCustomizableUi = (window: NativeRecord): NativeRecord | null => {
   return candidate;
 };
 
+type NativePrefs = NativeRecord & {
+  addObserver: (...args: unknown[]) => unknown;
+  clearUserPref: (...args: unknown[]) => unknown;
+  getStringPref: (...args: unknown[]) => unknown;
+  removeObserver: (...args: unknown[]) => unknown;
+  setStringPref: (...args: unknown[]) => unknown;
+};
+
+const readPrefs = (window: NativeRecord): NativePrefs | null => {
+  const services = window.Services;
+  if (!isNativeRecord(services)) {
+    return null;
+  }
+  const prefs = services.prefs;
+  if (
+    !isNativeRecord(prefs) ||
+    !isFunction(prefs.addObserver) ||
+    !isFunction(prefs.clearUserPref) ||
+    !isFunction(prefs.getStringPref) ||
+    !isFunction(prefs.removeObserver) ||
+    !isFunction(prefs.setStringPref)
+  ) {
+    return null;
+  }
+  return prefs as NativePrefs;
+};
+
+const readStringPref = (prefs: NativePrefs, name: string): string => {
+  try {
+    const value = Reflect.apply(prefs.getStringPref, prefs, [name, ""]);
+    return typeof value === "string" && value.length <= PREF_VALUE_MAX_LENGTH
+      ? value
+      : "";
+  } catch {
+    return "";
+  }
+};
+
+const readAddonsArea = (customizableUi: NativeRecord): string => {
+  try {
+    const value = customizableUi.AREA_ADDONS;
+    return typeof value === "string" && value !== ""
+      ? value
+      : FALLBACK_ADDONS_AREA;
+  } catch {
+    return FALLBACK_ADDONS_AREA;
+  }
+};
+
+const isExtensionWidgetId = (
+  customizableUi: NativeRecord,
+  widgetId: string,
+): boolean => {
+  if (isFunction(customizableUi.isWebExtensionWidget)) {
+    try {
+      return (
+        Reflect.apply(customizableUi.isWebExtensionWidget, customizableUi, [
+          widgetId,
+        ]) === true
+      );
+    } catch {
+      // Fall through to the suffix check below.
+    }
+  }
+  return widgetId.endsWith(EXTENSION_WIDGET_SUFFIX);
+};
+
 const readShowSubView = (
   window: NativeRecord,
 ): ((...args: unknown[]) => unknown) | null => {
@@ -157,6 +290,14 @@ const toolbarWidgetCapabilitySpecifications: ReadonlyArray<ToolbarWidgetCapabili
       read: (window: NativeRecord) => readShowSubView(window),
       requirement: "optional" as const,
       symbol: "window.PanelUI.showSubView",
+    }),
+    Object.freeze({
+      isAvailable: (value: unknown) => value !== null,
+      name: "toolbar-widgets.prefs",
+      read: (window: NativeRecord) => readPrefs(window),
+      requirement: "optional" as const,
+      symbol:
+        "window.Services.prefs.getStringPref.setStringPref.clearUserPref.addObserver.removeObserver",
     }),
     Object.freeze({
       isAvailable: (value: unknown) =>
@@ -221,12 +362,12 @@ const createToolbarWidgetsError = (
     symbol,
   });
 
-const readSpecialKind = (widgetId: string): ToolbarWidgetKind | null => {
+const readSpecialKind = (widgetId: string): CustomizeSpecialKind | null => {
   if (widgetId.startsWith("customizableui-special-")) {
     const match = /^customizableui-special-(spring|spacer|separator)/u.exec(
       widgetId,
     );
-    return match ? (match[1] as ToolbarWidgetKind) : null;
+    return match ? (match[1] as CustomizeSpecialKind) : null;
   }
   if (
     widgetId === "spring" ||
@@ -404,11 +545,15 @@ export function createFirefoxToolbarWidgetsBridge({
   let revision = 0;
   let refreshScheduled = false;
   let customizableUiListenerAttached = false;
+  let prefObserverAttached = false;
   let lastSerializedWidgets = "";
-  let lastSnapshot: ToolbarWidgetsSnapshot = Object.freeze({
-    available: false,
-    widgets: Object.freeze([]),
-  });
+  let lastSnapshot: ToolbarWidgetsSnapshot =
+    createUnavailableToolbarWidgetsSnapshot();
+  let persistedLayout: CustomizeLayout | null = null;
+  let persistedStyle: CustomizeStyle = createDefaultToolbarStyle();
+  let nextPaletteTokenSequence = 0;
+  const paletteTokenByKey = new Map<string, string>();
+  const paletteTargetByToken = new Map<string, CustomizeLayoutEntry>();
   let mutationObserver: NativeRecord | null = null;
   let heldPanel: NativePanel | null = null;
   let heldPanelHandle = "";
@@ -481,14 +626,193 @@ export function createFirefoxToolbarWidgetsBridge({
     return host;
   };
 
-  const readWidgetEntries = (): ReadonlyArray<
-    Readonly<{ node: NativeRecord | null; widget: ToolbarWidgetSnapshot }>
-  > | null => {
-    const ownerWindow = requireWindow();
-    const customizableUi = readCustomizableUi(ownerWindow);
-    if (!customizableUi) {
+  const windowKindIsPrivate = boundary.snapshot().windowKind === "private";
+
+  const readWrapper = (
+    customizableUi: NativeRecord,
+    widgetId: string,
+  ): NativeRecord | null => {
+    try {
+      const candidate = Reflect.apply(
+        customizableUi.getWidget as (...args: unknown[]) => unknown,
+        customizableUi,
+        [widgetId],
+      );
+      return isNativeRecord(candidate) ? candidate : null;
+    } catch {
       return null;
     }
+  };
+
+  const widgetSnapshotForSpecial = (
+    kind: ToolbarWidgetKind,
+  ): ToolbarWidgetSnapshot =>
+    Object.freeze({
+      badgeBackground: "",
+      badgeText: "",
+      badgeTextColor: "",
+      disabled: false,
+      fenneviaAction: "",
+      handle: "",
+      icon: "",
+      iconUrl: "",
+      kind,
+      label: "",
+      missing: false,
+      tooltip: "",
+    });
+
+  const widgetSnapshotForFennevia = (
+    id: FenneviaToolbarAction,
+  ): ToolbarWidgetSnapshot => {
+    const presentation = fenneviaWidgetPresentation.get(id);
+    return Object.freeze({
+      badgeBackground: "",
+      badgeText: "",
+      badgeTextColor: "",
+      disabled: false,
+      fenneviaAction: id,
+      handle: "",
+      icon: presentation?.icon ?? "generic",
+      iconUrl: "",
+      kind: "fennevia" as const,
+      label: presentation?.label ?? "Fennevia control",
+      missing: false,
+      tooltip: presentation?.tooltip ?? presentation?.label ?? "",
+    });
+  };
+
+  const widgetSnapshotForMissing = (
+    customizableUi: NativeRecord,
+    widgetId: string,
+  ): ToolbarWidgetSnapshot => {
+    const wrapper = readWrapper(customizableUi, widgetId);
+    const isExtension =
+      wrapper?.webExtension === true ||
+      isExtensionWidgetId(customizableUi, widgetId);
+    const label =
+      boundString(readRecordString(wrapper, "label"), LABEL_MAX_LENGTH) ||
+      (isExtension ? "Extension" : "Toolbar item");
+    return Object.freeze({
+      badgeBackground: "",
+      badgeText: "",
+      badgeTextColor: "",
+      disabled: true,
+      fenneviaAction: "",
+      handle: "",
+      icon: isExtension
+        ? "extension"
+        : (builtinIconTokenByWidgetId.get(widgetId) ?? "generic"),
+      iconUrl: "",
+      kind: isExtension ? ("extension-action" as const) : ("built-in" as const),
+      label,
+      missing: true,
+      tooltip: label,
+    });
+  };
+
+  const readWidgetEntryForId = (
+    customizableUi: NativeRecord,
+    widgetId: string,
+  ): Readonly<{ node: NativeRecord | null; widget: ToolbarWidgetSnapshot }> => {
+    const ownerWindow = requireWindow();
+    const node = getDocumentElementById(ownerWindow, widgetId);
+    if (!isNativeNode(node) || !isNodeConnected(node)) {
+      return Object.freeze({
+        node: null,
+        widget: widgetSnapshotForMissing(customizableUi, widgetId),
+      });
+    }
+    const wrapper = readWrapper(customizableUi, widgetId);
+    const isExtension =
+      wrapper?.webExtension === true ||
+      isExtensionWidgetId(customizableUi, widgetId);
+    const handle = registry.register(node);
+    const nodeLabel = readAttribute(node, "label");
+    const wrapperLabel = readRecordString(wrapper, "label");
+    const nodeTooltip = readAttribute(node, "tooltiptext");
+    const wrapperTooltip = readRecordString(wrapper, "tooltiptext");
+
+    if (isExtension) {
+      const actionButton = readExtensionActionButton(node);
+      const badge = actionButton
+        ? readExtensionBadge(actionButton)
+        : Object.freeze({ background: "", text: "", textColor: "" });
+      const label =
+        readExtensionLabel(node) ||
+        boundString(wrapperLabel || nodeLabel, LABEL_MAX_LENGTH) ||
+        "Extension";
+      return Object.freeze({
+        node,
+        widget: Object.freeze({
+          badgeBackground: badge.background,
+          badgeText: badge.text,
+          badgeTextColor: badge.textColor,
+          disabled: actionButton
+            ? readNodeDisabled(actionButton)
+            : readNodeDisabled(node),
+          fenneviaAction: "",
+          handle,
+          icon: "extension",
+          iconUrl: actionButton ? readExtensionIconUrl(actionButton) : "",
+          kind: "extension-action" as const,
+          label,
+          missing: false,
+          tooltip:
+            boundString(wrapperTooltip || nodeTooltip, TOOLTIP_MAX_LENGTH) ||
+            label,
+        }),
+      });
+    }
+
+    const label =
+      boundString(nodeLabel || wrapperLabel, LABEL_MAX_LENGTH) ||
+      boundString(nodeTooltip || wrapperTooltip, LABEL_MAX_LENGTH) ||
+      "Toolbar item";
+    return Object.freeze({
+      node,
+      widget: Object.freeze({
+        badgeBackground: "",
+        badgeText: "",
+        badgeTextColor: "",
+        disabled: readNodeDisabled(node),
+        fenneviaAction: "",
+        handle,
+        icon: builtinIconTokenByWidgetId.get(widgetId) ?? "generic",
+        iconUrl: "",
+        kind: "built-in" as const,
+        label,
+        missing: false,
+        tooltip: boundString(
+          nodeTooltip || wrapperTooltip || label,
+          TOOLTIP_MAX_LENGTH,
+        ),
+      }),
+    });
+  };
+
+  const readLayoutEntrySnapshot = (
+    customizableUi: NativeRecord,
+    entry: CustomizeLayoutEntry,
+  ): Readonly<{ node: NativeRecord | null; widget: ToolbarWidgetSnapshot }> => {
+    if (entry.type === "special") {
+      return Object.freeze({
+        node: null,
+        widget: widgetSnapshotForSpecial(entry.kind),
+      });
+    }
+    if (entry.type === "fennevia") {
+      return Object.freeze({
+        node: null,
+        widget: widgetSnapshotForFennevia(entry.id),
+      });
+    }
+    return readWidgetEntryForId(customizableUi, entry.id);
+  };
+
+  const createDefaultLayoutFromNavbar = (
+    customizableUi: NativeRecord,
+  ): CustomizeLayout => {
     let widgetIds: unknown;
     try {
       widgetIds = Reflect.apply(
@@ -497,122 +821,250 @@ export function createFirefoxToolbarWidgetsBridge({
         [NAVBAR_AREA],
       );
     } catch {
-      return null;
+      widgetIds = null;
     }
-    if (!Array.isArray(widgetIds)) {
-      return null;
+    const entries: CustomizeLayoutEntry[] = [];
+    if (Array.isArray(widgetIds)) {
+      for (const widgetId of widgetIds) {
+        if (typeof widgetId !== "string" || skippedWidgetIdSet.has(widgetId)) {
+          continue;
+        }
+        const specialKind = readSpecialKind(widgetId);
+        if (specialKind) {
+          entries.push(
+            Object.freeze({ kind: specialKind, type: "special" as const }),
+          );
+          continue;
+        }
+        if (!isCustomizeWidgetId(widgetId)) {
+          continue;
+        }
+        entries.push(Object.freeze({ id: widgetId, type: "widget" as const }));
+      }
     }
+    return createCustomizeLayout({ top: entries });
+  };
 
-    const entries: Array<
-      Readonly<{ node: NativeRecord | null; widget: ToolbarWidgetSnapshot }>
-    > = [];
-    for (const widgetId of widgetIds) {
-      if (typeof widgetId !== "string" || skippedWidgetIdSet.has(widgetId)) {
+  const paletteTokenFor = (key: string): string => {
+    const existing = paletteTokenByKey.get(key);
+    if (existing) {
+      return existing;
+    }
+    const token = `palette-${++nextPaletteTokenSequence}`;
+    paletteTokenByKey.set(key, token);
+    return token;
+  };
+
+  const readPlacedWidgetIds = (
+    customizableUi: NativeRecord,
+  ): readonly string[] => {
+    let areas: unknown;
+    try {
+      areas = customizableUi.areas;
+    } catch {
+      areas = undefined;
+    }
+    const areaList = Array.isArray(areas) ? areas : [NAVBAR_AREA];
+    const ids: string[] = [];
+    const seen = new Set<string>();
+    for (const area of areaList) {
+      if (typeof area !== "string") {
         continue;
       }
-      const specialKind = readSpecialKind(widgetId);
-      if (specialKind) {
-        entries.push(
-          Object.freeze({
-            node: null,
-            widget: Object.freeze({
-              badgeBackground: "",
-              badgeText: "",
-              badgeTextColor: "",
-              disabled: false,
-              handle: "",
-              icon: "",
-              iconUrl: "",
-              kind: specialKind,
-              label: "",
-              tooltip: "",
-            }),
-          }),
-        );
-        continue;
-      }
-
-      const node = getDocumentElementById(ownerWindow, widgetId);
-      if (!isNativeNode(node) || !isNodeConnected(node)) {
-        continue;
-      }
-
-      let wrapper: NativeRecord | null;
+      let widgetIds: unknown;
       try {
-        const candidate = Reflect.apply(
-          customizableUi.getWidget as (...args: unknown[]) => unknown,
+        widgetIds = Reflect.apply(
+          customizableUi.getWidgetIdsInArea as (...args: unknown[]) => unknown,
           customizableUi,
-          [widgetId],
+          [area],
         );
-        wrapper = isNativeRecord(candidate) ? candidate : null;
       } catch {
-        wrapper = null;
-      }
-
-      const isExtension = wrapper?.webExtension === true;
-      const handle = registry.register(node);
-      const nodeLabel = readAttribute(node, "label");
-      const wrapperLabel = readRecordString(wrapper, "label");
-      const nodeTooltip = readAttribute(node, "tooltiptext");
-      const wrapperTooltip = readRecordString(wrapper, "tooltiptext");
-
-      if (isExtension) {
-        const actionButton = readExtensionActionButton(node);
-        const badge = actionButton
-          ? readExtensionBadge(actionButton)
-          : Object.freeze({ background: "", text: "", textColor: "" });
-        const label =
-          readExtensionLabel(node) ||
-          boundString(wrapperLabel || nodeLabel, LABEL_MAX_LENGTH) ||
-          "Extension";
-        entries.push(
-          Object.freeze({
-            node,
-            widget: Object.freeze({
-              badgeBackground: badge.background,
-              badgeText: badge.text,
-              badgeTextColor: badge.textColor,
-              disabled: actionButton
-                ? readNodeDisabled(actionButton)
-                : readNodeDisabled(node),
-              handle,
-              icon: "extension",
-              iconUrl: actionButton ? readExtensionIconUrl(actionButton) : "",
-              kind: "extension-action" as const,
-              label,
-              tooltip:
-                boundString(
-                  wrapperTooltip || nodeTooltip,
-                  TOOLTIP_MAX_LENGTH,
-                ) || label,
-            }),
-          }),
-        );
         continue;
       }
+      if (!Array.isArray(widgetIds)) {
+        continue;
+      }
+      for (const widgetId of widgetIds) {
+        if (typeof widgetId === "string" && !seen.has(widgetId)) {
+          seen.add(widgetId);
+          ids.push(widgetId);
+        }
+      }
+    }
+    return ids;
+  };
 
-      const label =
-        boundString(nodeLabel || wrapperLabel, LABEL_MAX_LENGTH) ||
-        boundString(nodeTooltip || wrapperTooltip, LABEL_MAX_LENGTH) ||
+  const readUnusedWidgetIds = (
+    customizableUi: NativeRecord,
+  ): readonly string[] => {
+    if (!isFunction(customizableUi.getUnusedWidgets)) {
+      return [];
+    }
+    const ownerWindow = nativeWindow;
+    const navToolbox = ownerWindow?.gNavToolbox;
+    const palette = isNativeRecord(navToolbox) ? navToolbox.palette : undefined;
+    if (!isNativeRecord(palette)) {
+      return [];
+    }
+    try {
+      const wrappers = Reflect.apply(
+        customizableUi.getUnusedWidgets,
+        customizableUi,
+        [palette],
+      );
+      if (!Array.isArray(wrappers)) {
+        return [];
+      }
+      const ids: string[] = [];
+      for (const wrapper of wrappers) {
+        if (isNativeRecord(wrapper) && typeof wrapper.id === "string") {
+          ids.push(wrapper.id);
+        }
+      }
+      return ids;
+    } catch {
+      return [];
+    }
+  };
+
+  const paletteEntryForWidgetId = (
+    customizableUi: NativeRecord,
+    widgetId: string,
+  ): ToolbarPaletteEntrySnapshot | null => {
+    if (
+      skippedWidgetIdSet.has(widgetId) ||
+      readSpecialKind(widgetId) !== null ||
+      !isCustomizeWidgetId(widgetId)
+    ) {
+      return null;
+    }
+    const wrapper = readWrapper(customizableUi, widgetId);
+    if (windowKindIsPrivate && wrapper?.showInPrivateBrowsing === false) {
+      return null;
+    }
+    const isExtension =
+      wrapper?.webExtension === true ||
+      isExtensionWidgetId(customizableUi, widgetId);
+    const ownerWindow = requireWindow();
+    const node = getDocumentElementById(ownerWindow, widgetId);
+    const liveNode = isNativeNode(node) && isNodeConnected(node) ? node : null;
+    let label: string;
+    let iconUrl = "";
+    if (isExtension) {
+      const actionButton = liveNode
+        ? readExtensionActionButton(liveNode)
+        : null;
+      iconUrl = actionButton ? readExtensionIconUrl(actionButton) : "";
+      label =
+        (liveNode ? readExtensionLabel(liveNode) : "") ||
+        boundString(readRecordString(wrapper, "label"), LABEL_MAX_LENGTH) ||
+        "Extension";
+    } else {
+      label =
+        boundString(
+          (liveNode ? readAttribute(liveNode, "label") : "") ||
+            readRecordString(wrapper, "label"),
+          LABEL_MAX_LENGTH,
+        ) ||
+        boundString(
+          (liveNode ? readAttribute(liveNode, "tooltiptext") : "") ||
+            readRecordString(wrapper, "tooltiptext"),
+          LABEL_MAX_LENGTH,
+        ) ||
         "Toolbar item";
+    }
+    const token = paletteTokenFor(`w:${widgetId}`);
+    paletteTargetByToken.set(
+      token,
+      Object.freeze({ id: widgetId, type: "widget" as const }),
+    );
+    return Object.freeze({
+      icon: isExtension
+        ? "extension"
+        : (builtinIconTokenByWidgetId.get(widgetId) ?? "generic"),
+      iconUrl,
+      kind: isExtension ? ("extension-action" as const) : ("built-in" as const),
+      label,
+      token,
+    });
+  };
+
+  const buildPalette = (
+    customizableUi: NativeRecord,
+    layout: CustomizeLayout,
+  ): readonly ToolbarPaletteEntrySnapshot[] => {
+    paletteTargetByToken.clear();
+    const entries: ToolbarPaletteEntrySnapshot[] = [];
+    const placedInLayout = new Set<string>();
+    const fenneviaPlaced = new Set<string>();
+    for (const zone of toolbarZoneNames) {
+      for (const entry of layout.zones[zone]) {
+        if (entry.type === "widget") {
+          placedInLayout.add(entry.id);
+        } else if (entry.type === "fennevia") {
+          fenneviaPlaced.add(entry.id);
+        }
+      }
+    }
+    for (const id of fenneviaToolbarActions) {
+      if (fenneviaPlaced.has(id)) {
+        continue;
+      }
+      const presentation = fenneviaWidgetPresentation.get(id);
+      const token = paletteTokenFor(`f:${id}`);
+      paletteTargetByToken.set(
+        token,
+        Object.freeze({ id, type: "fennevia" as const }),
+      );
       entries.push(
         Object.freeze({
-          node,
-          widget: Object.freeze({
-            badgeBackground: "",
-            badgeText: "",
-            badgeTextColor: "",
-            disabled: readNodeDisabled(node),
-            handle,
-            icon: builtinIconTokenByWidgetId.get(widgetId) ?? "generic",
-            iconUrl: "",
-            kind: "built-in" as const,
-            label,
-            tooltip: boundString(
-              nodeTooltip || wrapperTooltip || label,
-              TOOLTIP_MAX_LENGTH,
-            ),
-          }),
+          icon: presentation?.icon ?? "generic",
+          iconUrl: "",
+          kind: "fennevia" as const,
+          label: presentation?.label ?? "Fennevia control",
+          token,
+        }),
+      );
+    }
+    const candidateIds = [
+      ...readPlacedWidgetIds(customizableUi),
+      ...readUnusedWidgetIds(customizableUi),
+    ];
+    const seen = new Set<string>();
+    for (const widgetId of candidateIds) {
+      if (
+        seen.has(widgetId) ||
+        placedInLayout.has(widgetId) ||
+        entries.length >= PALETTE_MAX_ENTRIES
+      ) {
+        continue;
+      }
+      seen.add(widgetId);
+      const entry = paletteEntryForWidgetId(customizableUi, widgetId);
+      if (entry) {
+        entries.push(entry);
+      }
+    }
+    const specialLabels: ReadonlyArray<
+      readonly ["separator" | "spacer" | "spring", string]
+    > = [
+      ["separator", "Separator"],
+      ["spacer", "Space"],
+      ["spring", "Flexible space"],
+    ];
+    for (const [kind, label] of specialLabels) {
+      const token = paletteTokenFor(`s:${kind}`);
+      paletteTargetByToken.set(
+        token,
+        Object.freeze({ kind, type: "special" as const }),
+      );
+      entries.push(
+        Object.freeze({
+          icon: "",
+          iconUrl: "",
+          kind: "special" as const,
+          label,
+          token,
         }),
       );
     }
@@ -680,22 +1132,34 @@ export function createFirefoxToolbarWidgetsBridge({
     serialized: string;
     snapshot: ToolbarWidgetsSnapshot;
   }> => {
-    const entries = readWidgetEntries();
-    if (entries === null) {
+    const ownerWindow = requireWindow();
+    const customizableUi = readCustomizableUi(ownerWindow);
+    if (!customizableUi) {
+      paletteTargetByToken.clear();
+      observeWidgetNodes([]);
       return Object.freeze({
         serialized: "unavailable",
-        snapshot: Object.freeze({
-          available: false,
-          widgets: Object.freeze([]),
-        }),
+        snapshot: createUnavailableToolbarWidgetsSnapshot(),
       });
     }
-    const widgets = Object.freeze(entries.map((entry) => entry.widget));
+    const layout =
+      persistedLayout ?? createDefaultLayoutFromNavbar(customizableUi);
+    const zoneEntries: Array<
+      readonly [ToolbarZoneName, readonly ToolbarWidgetSnapshot[]]
+    > = [];
+    const nodes: Array<NativeRecord | null> = [];
     const nextHandleIds = new Set<string>();
-    for (const widget of widgets) {
-      if (widget.handle !== "") {
-        nextHandleIds.add(widget.handle);
+    for (const zone of toolbarZoneNames) {
+      const widgets: ToolbarWidgetSnapshot[] = [];
+      for (const entry of layout.zones[zone]) {
+        const built = readLayoutEntrySnapshot(customizableUi, entry);
+        widgets.push(built.widget);
+        nodes.push(built.node);
+        if (built.widget.handle !== "") {
+          nextHandleIds.add(built.widget.handle);
+        }
       }
+      zoneEntries.push([zone, Object.freeze(widgets)]);
     }
     for (const staleId of currentHandleIds) {
       if (!nextHandleIds.has(staleId)) {
@@ -710,10 +1174,21 @@ export function createFirefoxToolbarWidgetsBridge({
     for (const id of nextHandleIds) {
       currentHandleIds.add(id);
     }
-    observeWidgetNodes(entries.map((entry) => entry.node));
+    observeWidgetNodes(nodes);
+    const prefs = readPrefs(ownerWindow);
+    const snapshot: ToolbarWidgetsSnapshot = Object.freeze({
+      available: true,
+      canEdit: prefs !== null,
+      layoutCustomized: persistedLayout !== null,
+      palette: buildPalette(customizableUi, layout),
+      style: copyToolbarStyleSnapshot(persistedStyle),
+      zones: Object.freeze(
+        Object.fromEntries(zoneEntries),
+      ) as ToolbarWidgetZones,
+    });
     return Object.freeze({
-      serialized: JSON.stringify(widgets),
-      snapshot: Object.freeze({ available: true, widgets }),
+      serialized: JSON.stringify(snapshot),
+      snapshot,
     });
   };
 
@@ -795,6 +1270,313 @@ export function createFirefoxToolbarWidgetsBridge({
       );
     } catch {
       // Disposal continues; the listener object is inert once disposed.
+    }
+  };
+
+  const loadPersistedState = (): void => {
+    const ownerWindow = nativeWindow;
+    if (!ownerWindow) {
+      return;
+    }
+    const prefs = readPrefs(ownerWindow);
+    if (!prefs) {
+      persistedLayout = null;
+      persistedStyle = createDefaultToolbarStyle();
+      return;
+    }
+    persistedLayout = parseCustomizeLayout(readStringPref(prefs, LAYOUT_PREF));
+    persistedStyle =
+      parseCustomizeStyle(readStringPref(prefs, STYLE_PREF)) ??
+      createDefaultToolbarStyle();
+  };
+
+  const prefObserver = Object.freeze({
+    observe: () => {
+      if (disposed) {
+        return;
+      }
+      loadPersistedState();
+      scheduleRefresh();
+    },
+  });
+
+  const detachPrefObserver = (): void => {
+    if (!prefObserverAttached) {
+      return;
+    }
+    prefObserverAttached = false;
+    const ownerWindow = nativeWindow;
+    const prefs = ownerWindow ? readPrefs(ownerWindow) : null;
+    if (!prefs) {
+      return;
+    }
+    try {
+      Reflect.apply(prefs.removeObserver, prefs, [
+        CUSTOMIZE_PREF_DOMAIN,
+        prefObserver,
+      ]);
+    } catch {
+      // Disposal continues; the observer object is inert once disposed.
+    }
+  };
+
+  const requirePrefsForEdit = (): NativePrefs => {
+    const prefs = readPrefs(requireWindow());
+    if (!prefs) {
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_UNAVAILABLE",
+        "firefox-toolbar-widgets-edit",
+        "window.Services.prefs",
+      );
+    }
+    return prefs;
+  };
+
+  const persistLayout = (layout: CustomizeLayout): void => {
+    const prefs = requirePrefsForEdit();
+    Reflect.apply(prefs.setStringPref, prefs, [
+      LAYOUT_PREF,
+      serializeCustomizeLayout(layout),
+    ]);
+    persistedLayout = layout;
+  };
+
+  const persistStyle = (style: CustomizeStyle): void => {
+    const prefs = requirePrefsForEdit();
+    Reflect.apply(prefs.setStringPref, prefs, [
+      STYLE_PREF,
+      serializeCustomizeStyle(style),
+    ]);
+    persistedStyle = style;
+  };
+
+  const adoptWidgetForPlacement = (
+    customizableUi: NativeRecord,
+    layout: CustomizeLayout,
+    widgetId: string,
+  ): CustomizeLayout => {
+    let placementArea = "";
+    if (isFunction(customizableUi.getPlacementOfWidget)) {
+      try {
+        const placement = Reflect.apply(
+          customizableUi.getPlacementOfWidget,
+          customizableUi,
+          [widgetId],
+        );
+        if (isNativeRecord(placement) && typeof placement.area === "string") {
+          placementArea = placement.area;
+        }
+      } catch {
+        placementArea = "";
+      }
+    }
+    const needsAdoption =
+      placementArea === "" || placementArea === readAddonsArea(customizableUi);
+    if (!needsAdoption) {
+      return layout;
+    }
+    if (!isFunction(customizableUi.addWidgetToArea)) {
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_UNAVAILABLE",
+        "firefox-toolbar-widgets-edit",
+        "window.CustomizableUI.addWidgetToArea",
+      );
+    }
+    Reflect.apply(customizableUi.addWidgetToArea, customizableUi, [
+      widgetId,
+      NAVBAR_AREA,
+    ]);
+    return withCustomizeAdopted(layout, widgetId);
+  };
+
+  const restoreAdoptedWidget = (
+    customizableUi: NativeRecord,
+    layout: CustomizeLayout,
+    widgetId: string,
+  ): CustomizeLayout => {
+    if (!layout.adopted.includes(widgetId)) {
+      return layout;
+    }
+    if (isExtensionWidgetId(customizableUi, widgetId)) {
+      // Extension widgets return to the unified extensions area instead of
+      // the palette so the Firefox extensions panel keeps listing them.
+      if (isFunction(customizableUi.addWidgetToArea)) {
+        try {
+          Reflect.apply(customizableUi.addWidgetToArea, customizableUi, [
+            widgetId,
+            readAddonsArea(customizableUi),
+          ]);
+        } catch {
+          // The widget keeps its current native placement.
+        }
+      }
+    } else if (isFunction(customizableUi.removeWidgetFromArea)) {
+      try {
+        Reflect.apply(customizableUi.removeWidgetFromArea, customizableUi, [
+          widgetId,
+        ]);
+      } catch {
+        // The widget keeps its current native placement.
+      }
+    }
+    return withoutCustomizeAdopted(layout, widgetId);
+  };
+
+  const requireCustomizableUiForEdit = (): NativeRecord => {
+    const customizableUi = readCustomizableUi(requireWindow());
+    if (!customizableUi) {
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_UNAVAILABLE",
+        "firefox-toolbar-widgets-edit",
+        "window.CustomizableUI",
+      );
+    }
+    return customizableUi;
+  };
+
+  const edit = async (
+    operation: ToolbarWidgetsEditOperation,
+  ): Promise<boolean> => {
+    requireWindow();
+    let validated: ToolbarWidgetsEditOperation;
+    try {
+      validated = copyToolbarWidgetsEditOperation(operation);
+    } catch (error) {
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID",
+        "firefox-toolbar-widgets-edit",
+        "toolbar-widgets.edit",
+        error,
+      );
+    }
+    pendingActionCount += 1;
+    try {
+      if (validated.type === "set-style") {
+        persistStyle(
+          copyToolbarStyleSnapshot({ ...persistedStyle, ...validated.style }),
+        );
+        publishSnapshotIfChanged();
+        return true;
+      }
+      if (validated.type === "reset-style") {
+        const prefs = requirePrefsForEdit();
+        try {
+          Reflect.apply(prefs.clearUserPref, prefs, [STYLE_PREF]);
+        } catch {
+          // The pref may already be at its default value.
+        }
+        persistedStyle = createDefaultToolbarStyle();
+        publishSnapshotIfChanged();
+        return true;
+      }
+      const customizableUi = requireCustomizableUiForEdit();
+      requirePrefsForEdit();
+      if (validated.revision !== revision) {
+        throw createToolbarWidgetsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_STALE",
+          "firefox-toolbar-widgets-edit",
+          "toolbar-widgets.edit-revision",
+        );
+      }
+      const base =
+        persistedLayout ?? createDefaultLayoutFromNavbar(customizableUi);
+      try {
+        switch (validated.type) {
+          case "add": {
+            const target = paletteTargetByToken.get(validated.token);
+            if (!target) {
+              throw createToolbarWidgetsError(
+                boundary,
+                "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID",
+                "firefox-toolbar-widgets-edit",
+                "toolbar-widgets.palette-token",
+              );
+            }
+            let layout = base;
+            if (target.type === "widget") {
+              layout = adoptWidgetForPlacement(
+                customizableUi,
+                layout,
+                target.id,
+              );
+            }
+            layout = addCustomizeLayoutEntry(
+              layout,
+              target,
+              validated.zone,
+              validated.index,
+            );
+            persistLayout(layout);
+            break;
+          }
+          case "move": {
+            persistLayout(
+              moveCustomizeLayoutEntry(
+                base,
+                validated.fromZone,
+                validated.fromIndex,
+                validated.toZone,
+                validated.toIndex,
+              ),
+            );
+            break;
+          }
+          case "remove": {
+            const entry = getCustomizeLayoutEntry(
+              base,
+              validated.zone,
+              validated.index,
+            );
+            let layout = removeCustomizeLayoutEntry(
+              base,
+              validated.zone,
+              validated.index,
+            );
+            if (
+              entry.type === "widget" &&
+              !customizeLayoutContainsWidget(layout, entry.id)
+            ) {
+              layout = restoreAdoptedWidget(customizableUi, layout, entry.id);
+            }
+            persistLayout(layout);
+            break;
+          }
+          case "reset-layout": {
+            let layout = base;
+            for (const adoptedId of [...base.adopted]) {
+              layout = restoreAdoptedWidget(customizableUi, layout, adoptedId);
+            }
+            const prefs = requirePrefsForEdit();
+            try {
+              Reflect.apply(prefs.clearUserPref, prefs, [LAYOUT_PREF]);
+            } catch {
+              // The pref may already be at its default value.
+            }
+            persistedLayout = null;
+            break;
+          }
+        }
+      } catch (error) {
+        if (isFirefoxBridgeError(error)) {
+          throw error;
+        }
+        throw createToolbarWidgetsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_FAILED",
+          "firefox-toolbar-widgets-edit",
+          "toolbar-widgets.edit",
+          error,
+        );
+      }
+      publishSnapshotIfChanged();
+      return true;
+    } finally {
+      pendingActionCount -= 1;
     }
   };
 
@@ -1162,6 +1944,8 @@ export function createFirefoxToolbarWidgetsBridge({
   };
 
   const publicBridge: BrowserToolbarWidgetsBridge = Object.freeze({
+    edit,
+
     invoke,
 
     snapshot(): ToolbarWidgetsSnapshot {
@@ -1247,11 +2031,21 @@ export function createFirefoxToolbarWidgetsBridge({
       );
       customizableUiListenerAttached = true;
     }
+    const prefs = readPrefs(requireWindow());
+    if (prefs) {
+      Reflect.apply(prefs.addObserver, prefs, [
+        CUSTOMIZE_PREF_DOMAIN,
+        prefObserver,
+      ]);
+      prefObserverAttached = true;
+    }
+    loadPersistedState();
     const built = buildSnapshot();
     lastSerializedWidgets = built.serialized;
     lastSnapshot = built.snapshot;
   } catch (error) {
     disposed = true;
+    detachPrefObserver();
     nativeWindow = null;
     for (const disposeListener of listenerDisposers.reverse()) {
       try {
@@ -1277,6 +2071,7 @@ export function createFirefoxToolbarWidgetsBridge({
       pendingViewHandle = "";
       clearPendingNodeInvoke(false);
       detachCustomizableUiListener();
+      detachPrefObserver();
       if (
         isNativeRecord(mutationObserver) &&
         isFunction(mutationObserver.disconnect)
@@ -1300,6 +2095,8 @@ export function createFirefoxToolbarWidgetsBridge({
       snapshotListeners.clear();
       popupListeners.clear();
       currentHandleIds.clear();
+      paletteTokenByKey.clear();
+      paletteTargetByToken.clear();
       registry.dispose();
       nativeWindow = null;
       for (const disposeListener of listenerDisposers.reverse()) {
@@ -1326,7 +2123,10 @@ export function createFirefoxToolbarWidgetsBridge({
         disposed,
         pendingActionCount,
         revision,
-        widgetCount: lastSnapshot.widgets.length,
+        widgetCount: toolbarZoneNames.reduce(
+          (count, zone) => count + lastSnapshot.zones[zone].length,
+          0,
+        ),
       });
     },
 

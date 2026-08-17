@@ -588,6 +588,39 @@ narrow layouts. Implementation/source evidence is in
 `docs/research/firefox-153-toolbar-widget-mirror.md` and
 `plans/005-topbar-widget-mirror.md`.
 
+### 6.9 Fennevia-owned customize mode — focused automation complete, real Firefox pending
+
+ADR-045 adds focused unit/static/build coverage for:
+
+- layout-driven four-zone snapshots with the ADR-044 nav-bar mirror as the
+  default top zone until the first edit;
+- opaque palette tokens for unused/placed CustomizableUI widgets, Fennevia
+  `show-bookmarks` / `show-downloads` widgets, and spacer/spring/separator
+  specials, with the fixed skip list (including Unified Extensions and app-menu
+  buttons already represented by fixed Fennevia controls);
+- versioned `fennevia.customize.layout` / `fennevia.customize.style` JSON
+  bounded to 16 KiB, fail-safe parse, and preference-observer republish;
+- validated `add` / `move` / `remove` / `reset-layout` / `set-style` /
+  `reset-style` operations with a revision guard;
+- bounded adopt/restore writes: `addWidgetToArea(id, "nav-bar")` for widgets
+  with no live node, restore to `AREA_ADDONS` for extensions and
+  `removeWidgetFromArea` otherwise;
+- missing `CustomizableUI` hiding zones and missing `Services.prefs` disabling
+  editing, neither joining activation health;
+- privacy assertions that widget ids never enter the serialized frontend
+  snapshot and that style tokens apply only as a fixed CSS custom-property set;
+- deterministic disposal of the CustomizableUI listener, preference observer,
+  MutationObserver, popup listeners, pending waiters, handle/token registries,
+  and frame style properties.
+
+The following are `not run`, not passed: live Fennevia customize drawer against
+a collapsed navbar, four-edge placement round-trips, adopt/restore of an
+installed extension, style tokens under forced colors and reduced motion,
+multi-window pref observation, layout reset restoring native placements, and
+Escape/focus restoration while a widget popup is also held. Implementation/
+source evidence is in `docs/research/firefox-153-customize-mode.md` and
+`plans/006-customize-mode.md`.
+
 ## 7. Native-UI activation matrix — validated for #15
 
 No earlier issue may claim this gate.

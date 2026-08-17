@@ -1174,8 +1174,9 @@ control. Never enumerate or clone arbitrary `CustomizableUI` widgets,
 extension identities, icons, commands, or panel contents. (Partially
 superseded: ADR-044, with explicit owner approval, allows read-only nav-bar
 placement enumeration and in-memory rendering of extension name, icon, and
-badge; panel contents, commands, and every logging/persistence prohibition
-remain in force.)
+badge; ADR-045 additionally allows full widget-inventory enumeration, bounded
+adoption writes, and layout/style preference persistence; panel contents,
+commands, and the remaining logging prohibitions stay in force.)
 
 Keep Firefox's existing minimize, maximize/restore, and close nodes in place
 for fail-open recovery. The compact native caption island from this decision is
@@ -1423,7 +1424,10 @@ generated-artifact checks are in
 ## ADR-044: Read-only nav-bar widget mirror rendered with project components
 
 **Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary, with
-explicit project-owner approval for the bounded ADR-037 privacy relaxation
+explicit project-owner approval for the bounded ADR-037 privacy relaxation;
+the mirror-as-sole-model is deprecated and partially superseded by ADR-045 —
+the nav-bar mirror remains only as the default top-zone layout until the user
+customizes, and "native customize mode is the only editor" no longer holds
 
 Mirror Firefox's own `CustomizableUI` nav-bar placement list as a read-only
 data source and render it in the Fennevia top row with project-owned glass
@@ -1432,11 +1436,12 @@ text/colors, extension name as label/tooltip), user-pinned built-in buttons
 (curated `ShellIcon` tokens for a known id set, a generic glyph otherwise), and
 special placements (spring, spacer, separator) as gaps. Placements already
 represented by fixed Fennevia controls (back/forward, urlbar-container,
-search-container, downloads, personal-bookmarks, and similar) stay on a fixed
-skip list. Native customize mode remains the only editor; `CustomizableUI`
-listeners plus a bounded attribute `MutationObserver` republish an immutable
-revision snapshot after customize exit, pin/unpin, install/removal, badge, and
-icon changes.
+search-container, downloads, Unified Extensions, application menu,
+personal-bookmarks, and similar) stay on a fixed
+skip list. Until the user customizes in Fennevia, this list remains the default
+top-zone layout. `CustomizableUI` listeners plus a bounded attribute
+`MutationObserver` republish an immutable revision snapshot after customize
+exit, pin/unpin, install/removal, badge, and icon changes.
 
 The per-window `src/firefox/toolbar-widgets.ts` controller keeps widget ids and
 native nodes in a privileged opaque-handle registry; the frontend receives only
@@ -1457,9 +1462,9 @@ diagnostics, CSS custom properties on shared roots, and root datasets must not
 carry widget identity; diagnostics stay at widget counts and fixed codes. The
 feature is an optional capability: a missing `CustomizableUI` or `PanelUI`
 leaves the zone hidden, never joins activation health requirements, and keeps
-fixed handoffs and fail-open recovery untouched. CustomizableUI writes,
-drag-and-drop editing, panel-content cloning, and overflow-panel mirroring
-remain out of scope.
+fixed handoffs and fail-open recovery untouched. Panel-content cloning and
+overflow-panel mirroring remain out of scope. Bounded CustomizableUI writes and
+project-owned layout editing are recorded in ADR-045.
 
 **Reasoning:** Firefox already maintains the user's customized nav-bar layout,
 extension action state, and popup ownership; mirroring that list read-only
@@ -1469,3 +1474,66 @@ privileged-side, and the ADR-042 host-anchoring path keeps extension popup
 contents Firefox-owned. Live Firefox mirroring and popup anchoring are recorded
 per-row in `docs/testing-and-recovery.md`; source pins and the selected minimum
 sequence are in `docs/research/firefox-153-toolbar-widget-mirror.md`.
+
+## ADR-045: Fennevia-owned customize mode with four-panel widget zones and bounded style tokens
+
+**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary, with
+explicit project-owner approval (2026-08-18, planning conversation) for the two
+bounded rule relaxations below; partially supersedes ADR-044's
+mirror-as-sole-model and "native customize mode is the only editor" clauses
+
+Deprecate the ADR-044 read-only nav-bar mirror as the only widget source and
+replace it with a Fennevia-owned customize mode. The `toolbar-widgets`
+controller becomes the per-window customize engine: it renders one Fennevia
+widget zone in each of the four edge panels from a project-owned layout,
+exposes the complete current `CustomizableUI` widget inventory (every placed
+area plus `getUnusedWidgets` over `gNavToolbox.palette`, extensions included)
+as an opaque-token palette, adds Fennevia-owned placeable widgets
+(`show-bookmarks`, `show-downloads`) and the spacer/spring/separator specials,
+and accepts a fixed validated edit-operation set (`add`, `move`, `remove`,
+`reset-layout`, `set-style`, `reset-style`) with a revision guard. A
+project-owned editor drawer under the top panel — toggled by a dedicated
+top-row control, held open through the #31 popup hold, closed by `Escape` with
+focus restoration — performs all editing. The fixed health-gated Fennevia
+controls remain fixed and non-removable; zones add to them.
+
+When no layout preference exists, the top zone falls back to the ADR-044
+nav-bar mirror, so the deprecated behavior survives only as the default. The
+first edit materializes that layout into the `fennevia.customize.layout`
+string preference; `fennevia.customize.style` persists the bounded style
+tokens (theme, accent, blur, radius, density, surface opacity, font size).
+Both prefs are strict versioned JSON with a 16 KiB cap, fail safe to defaults
+when invalid, are shared across windows through one preference observer per
+controller, and contain widget ids and fixed tokens only — never URLs, titles,
+input text, browsing data, or private-window state. Style is applied only as a
+fixed CSS custom-property set on the project frame root, skips color
+overrides under forced colors, and is removed on dispose.
+
+Owner-approved relaxations recorded here: (a) the layout preference may
+persist Firefox widget ids, including extension widget ids, on the privileged
+side; extension identity remains banned from logs, diagnostics, serialized
+frontend state, CSS variables, and root datasets; (b) the controller may
+perform bounded `CustomizableUI` writes — `addWidgetToArea(id, "nav-bar")`
+onto the collapsed native nav-bar when placing a widget that has no live node,
+recording it in the persisted `adopted` list, and the inverse restore
+(extensions return to `AREA_ADDONS`, others to the palette) when the last
+Fennevia placement is removed or the layout is reset. Fennevia never mutates
+placements the user made natively and never writes any other CustomizableUI
+state. Editing is an optional capability on top of the optional zone
+capability: missing `Services.prefs` disables editing, and neither joins
+activation health. Native customize mode stays available as a fixed handoff.
+
+**Reasoning:** The mirror restored pinned-extension access but left Firefox as
+the only layout owner and covered only the top row. A Fennevia-owned layout
+with the full CustomizableUI inventory delivers per-panel widget placement and
+style customization while reusing the proven ADR-042/ADR-044 node, icon,
+badge, invoke, and popup-anchoring machinery instead of inventing a second
+widget system. Collapsed-nav-bar adoption keeps Firefox the owner of widget
+nodes, popups, and extension lifecycle, so no panel contents are cloned and
+removal restores the native state. Bounded, versioned, profile-local prefs are
+the smallest persistence surface that survives restarts and syncs windows
+without new storage machinery. Source pins are in
+`docs/research/firefox-153-customize-mode.md`; validation lives in
+`tests/customize-model.test.mjs`, `tests/firefox-toolbar-widgets.test.mjs`,
+and `tests/toolbar-widgets-state.test.mjs`, with the real-Firefox matrix
+recorded in `docs/testing-and-recovery.md`.
