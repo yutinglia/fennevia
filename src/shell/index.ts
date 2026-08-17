@@ -10,6 +10,7 @@ import {
   createEdgeShellController,
   edgeNames,
   edgeSurfaceTiming,
+  edgeInsetCssPixels,
   edgeTriggerThicknessCssPixels,
   getKeyboardRevealEdge,
   type EdgeName,
@@ -461,11 +462,12 @@ export function mountShellApp({
 
   const openNativeBrowserTool = async (
     action: BrowserToolAction,
+    host?: unknown,
   ): Promise<boolean> => {
-    if (!browserToolsState || !closeAddressPopupForNativeHandoff()) {
+    if (!browserToolsState) {
       return false;
     }
-    return browserToolsState.invoke(action);
+    return browserToolsState.invoke(action, host);
   };
 
   const scheduleAddressPopupClose = (snapshot: AddressPopupSnapshot): void => {
@@ -754,6 +756,12 @@ export function mountShellApp({
       tabsState.subscribeContextMenu((open) => {
         shell.setPopupHeld("left", open);
       }),
+      browserToolsState.subscribePopup((open) => {
+        if (!open) {
+          shell.setPopupHeld("top", false);
+          shell.setPopupHeld("left", false);
+        }
+      }),
     );
     for (const edge of edgeNames) {
       const surface = shell.getSurface(edge);
@@ -867,6 +875,7 @@ export function mountShellApp({
       "--fennevia-edge-trigger-thickness",
       `${edgeTriggerThicknessCssPixels}px`,
     );
+    frame.style.setProperty("--fennevia-edge-inset", `${edgeInsetCssPixels}px`);
     frame.setAttribute(FRAME_READY_ATTRIBUTE, "");
 
     const record = Object.freeze({
@@ -955,10 +964,10 @@ export async function verifyShellAppHealth({
     'button[data-fennevia-browser-tool="application-menu"]',
     'button[data-fennevia-browser-tool="settings"]',
     'button[data-fennevia-browser-tool="customize"]',
-    'button[data-fennevia-browser-tool="native-toolbar"]',
     'button[data-fennevia-window-control="minimize"]',
     'button[data-fennevia-window-control="toggle-maximize"]',
     'button[data-fennevia-window-control="close"]',
+    '[data-fennevia-progress-light="load"]',
   ];
   const requiredRightSelectors = [
     "select[data-fennevia-bookmark-roots]",
@@ -970,6 +979,7 @@ export async function verifyShellAppHealth({
     "section[data-fennevia-downloads]",
     "[data-fennevia-download-summary]",
     "[data-fennevia-download-progress]",
+    '[data-fennevia-progress-light="download"]',
   ];
   const requiredAddressPopupSelectors = [
     "button[data-fennevia-address-popup-backdrop]",
@@ -1123,7 +1133,7 @@ export function getShellAppCapabilities({
         ) &&
         targets.top.querySelector('[data-fennevia-browser-tool="downloads"]') &&
         targets.top.querySelector(
-          '[data-fennevia-browser-tool="native-toolbar"]',
+          '[data-fennevia-browser-tool="application-menu"]',
         ),
       ),
       name: "frontend.browser-tools-state",
@@ -1201,6 +1211,15 @@ export function getShellAppCapabilities({
         targets.bottom.querySelector("[data-fennevia-download-progress]"),
       ),
       name: "frontend.downloads-state",
+    }),
+    Object.freeze({
+      available: Boolean(
+        targets.top.querySelector('[data-fennevia-progress-light="load"]') &&
+        targets.bottom.querySelector(
+          '[data-fennevia-progress-light="download"]',
+        ),
+      ),
+      name: "frontend.progress-lights",
     }),
     Object.freeze({
       available: edgeNames.every((edge) =>

@@ -94,8 +94,10 @@ Independently selected Fennevia direction:
 - [x] Expose only fixed booleans and named actions; expose no native node,
       extension ID/name/icon, arbitrary widget ID, preference value, or URL.
 - [x] Re-resolve the owning native target at action time.
-- [x] Request the existing native-UI reveal before opening an anchored native
-      panel or the complete original toolbar.
+- [x] Request the existing native-UI reveal before opening the complete
+      original toolbar. ADR-042 later superseded reveal-before-click for the
+      six popup-opening actions; those now re-anchor Firefox-owned panels to
+      the clicked project host without revealing native chrome.
 - [x] Delegate site identity, protections, site permissions, native Downloads,
       extensions, app menu, settings, and customization to Firefox's current
       implementation.

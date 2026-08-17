@@ -86,6 +86,7 @@ foreach ($requiredToken in @(
     'z-index:\s*6\s*!important',
     'nativeUi\.revealForUrlbar',
     'nativeUi\.revealForToolbar',
+    'nativeUi\.beginPopupHandoff',
     'createFirefoxBrowserToolsBridge',
     'createFirefoxWindowControlsBridge',
     'lifecycle\.activate\(\)'

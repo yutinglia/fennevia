@@ -21,6 +21,7 @@
     type BrowserUrlbarCoverageState,
     type BrowserUrlbarCoverageStateAdapter,
   } from "../app/urlbar-coverage-state";
+  import { resolveBrowserToolHost } from "./browser-tool-host";
   import {
     getConnectionSecurityPresentation,
     getTrackingProtectionPresentation,
@@ -37,7 +38,10 @@
     browserTools: BrowserToolsStateAdapter;
     coverage: BrowserUrlbarCoverageStateAdapter;
     navigation: BrowserNavigationStateAdapter;
-    onOpenBrowserTool: (action: BrowserToolAction) => Promise<boolean>;
+    onOpenBrowserTool: (
+      action: BrowserToolAction,
+      host?: unknown,
+    ) => Promise<boolean>;
     onOpenNativeUrlbar: () => boolean;
     onDisposed: () => void;
     onFatalError: (error: unknown) => void;
@@ -163,13 +167,14 @@
     }
   };
 
-  const handleBrowserTool = async (action: BrowserToolAction) => {
+  const handleBrowserTool = async (
+    action: BrowserToolAction,
+    event: MouseEvent,
+  ) => {
     try {
-      if ((await props.onOpenBrowserTool(action)) !== true) {
-        throw new Error("FENNEVIA_NATIVE_BROWSER_TOOL_ACCESS_REJECTED");
-      }
-    } catch (error) {
-      props.onFatalError(error);
+      await props.onOpenBrowserTool(action, resolveBrowserToolHost(event));
+    } catch {
+      // A single native-panel handoff failure must not fail-open the window.
     }
   };
 
@@ -321,7 +326,7 @@
         data-fennevia-connection-detail=""
         data-fennevia-status-tone={connection.tone}
         disabled={handoffDisabled || !browserToolsSnapshot.siteInformation}
-        onclick={() => void handleBrowserTool("site-information")}
+        onclick={(event) => void handleBrowserTool("site-information", event)}
         title={`Open Firefox site information. ${connection.label}`}
         type="button"
       >
@@ -340,7 +345,7 @@
         data-fennevia-protection-detail=""
         data-fennevia-status-tone={protection.tone}
         disabled={handoffDisabled || !browserToolsSnapshot.protections}
-        onclick={() => void handleBrowserTool("protections")}
+        onclick={(event) => void handleBrowserTool("protections", event)}
         title={`Open Firefox tracking protection. ${protection.label}`}
         type="button"
       >
@@ -362,7 +367,7 @@
           data-fennevia-browser-tool="site-permissions"
           data-fennevia-permission-detail=""
           disabled={handoffDisabled || !browserToolsSnapshot.sitePermissions}
-          onclick={() => void handleBrowserTool("site-permissions")}
+          onclick={(event) => void handleBrowserTool("site-permissions", event)}
           title={`Open Firefox site permissions. ${permissions.label}`}
           type="button"
         >

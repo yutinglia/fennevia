@@ -59,10 +59,8 @@ test("visible edge transforms override every directional off-screen transform", 
 test("edge panels touch the trigger gutter, release native drags, and float visible transient shortcuts", async () => {
   const css = await readProjectFile("src/shell/styles/edge-shell.css");
 
-  assert.match(
-    css,
-    /--fennevia-edge-inset: var\(--fennevia-edge-trigger-thickness\)/u,
-  );
+  assert.match(css, /--fennevia-edge-trigger-thickness: 12px;/u);
+  assert.match(css, /--fennevia-edge-inset: 7px;/u);
   assert.match(
     css,
     /data-fennevia-edge="top"\][\s\S]*?\.fennevia-edge-trigger \{\s*inset-inline: 0;/u,
@@ -111,6 +109,8 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(component, /handlePanelPointerRelease/u);
   assert.match(component, /onpointercancel=\{handlePanelPointerRelease\}/u);
   assert.match(component, /onpointerup=\{handlePanelPointerRelease\}/u);
+  assert.match(component, /<ProgressLight presentation=\{loadLight\} \/>/u);
+  assert.match(component, /<ProgressLight presentation=\{downloadLight\} \/>/u);
 });
 
 test("the installed frontend is one IIFE, one style module, and one notice", async () => {
@@ -137,13 +137,16 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /data-fennevia-bookmark-status/u);
   assert.match(bundle, /data-fennevia-download-summary/u);
   assert.match(bundle, /data-fennevia-download-progress/u);
+  assert.match(bundle, /data-fennevia-progress-light/u);
+  assert.match(bundle, /data-fennevia-progress-mode/u);
   assert.match(bundle, /data-fennevia-download-state/u);
   assert.match(bundle, /data-fennevia-window-control/u);
   assert.match(bundle, /data-fennevia-browser-tools/u);
   assert.match(bundle, /data-fennevia-browser-tool/u);
   assert.match(bundle, /site-information/u);
   assert.match(bundle, /site-permissions/u);
-  assert.match(bundle, /native-toolbar/u);
+  assert.match(bundle, /application-menu/u);
+  assert.doesNotMatch(bundle, /Show original toolbar/u);
   assert.match(bundle, /Open Firefox site information/u);
   assert.match(bundle, /Open Firefox tracking protection/u);
   assert.match(bundle, /Open Firefox site permissions/u);
@@ -174,6 +177,20 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(css, /#fennevia-shell-frame-host \.fennevia-bookmarks/u);
   assert.match(css, /#fennevia-shell-frame-host \.fennevia-downloads/u);
   assert.match(css, /data-fennevia-download-progress="indeterminate"/u);
+  assert.match(css, /--fennevia-progress-light-thickness: 2px;/u);
+  assert.match(css, /@keyframes fennevia-progress-light-pulse/u);
+  assert.match(
+    css,
+    /data-fennevia-progress-mode="indeterminate"\][\s\S]*?inline-size: 100%;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-progress-light \{[\s\S]*?pointer-events: none;/u,
+  );
+  assert.doesNotMatch(css, /#(?:00f5ff|00ffaa|80ff00|00ff64)\b/iu);
+  assert.doesNotMatch(css, /hue-rotate/u);
+  assert.doesNotMatch(css, /z-index:\s*2000[01]/u);
+  assert.doesNotMatch(css, /#(?:top-loading-bar|download-progress-bar)\b/u);
   assert.match(css, /\.fennevia-window-controls/u);
   assert.match(css, /\.fennevia-browser-tools__button/u);
   assert.match(css, /\):disabled/u);

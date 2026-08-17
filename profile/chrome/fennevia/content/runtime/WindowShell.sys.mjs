@@ -1139,7 +1139,14 @@ const mountProductionShell = ({
       },
     });
     browserToolsBridge = createFirefoxBrowserToolsBridge({
+      beginNativePopupHandoff(panelId) {
+        return nativeUi.beginPopupHandoff(panelId);
+      },
       boundary: bridge,
+      endNativePopupHandoff(panelId) {
+        nativeUi.endPopupHandoff(panelId);
+      },
+      frame,
       requestNativeUiReveal() {
         return nativeUi.revealForToolbar();
       },

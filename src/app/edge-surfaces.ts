@@ -90,7 +90,9 @@ export const edgeSurfaceTiming = Object.freeze({
   maximumProgrammaticRevealMs: 10_000,
 });
 
-export const edgeTriggerThicknessCssPixels = 7;
+export const edgeInsetCssPixels = 7;
+export const edgeTriggerThicknessCssPixels = 12;
+export const progressLightThicknessCssPixels = 2;
 
 const holdNames = [
   "focus",

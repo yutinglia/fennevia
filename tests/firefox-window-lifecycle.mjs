@@ -1841,6 +1841,39 @@ async function collectFrontendState(client) {
             ?.querySelector("[data-fennevia-download-summary]")
             ?.textContent?.trim() ?? null,
       },
+      progressLights: {
+        downloadAriaHidden:
+          bottomRoot
+            ?.querySelector('[data-fennevia-progress-light="download"]')
+            ?.getAttribute("aria-hidden") ?? null,
+        downloadCount:
+          bottomRoot?.querySelectorAll(
+            '[data-fennevia-progress-light="download"]'
+          ).length ?? 0,
+        downloadMode:
+          bottomRoot
+            ?.querySelector('[data-fennevia-progress-light="download"]')
+            ?.getAttribute("data-fennevia-progress-mode") ?? null,
+        downloadVisible:
+          bottomRoot
+            ?.querySelector('[data-fennevia-progress-light="download"]')
+            ?.getAttribute("data-fennevia-progress-visible") ?? null,
+        loadAriaHidden:
+          topRoot
+            ?.querySelector('[data-fennevia-progress-light="load"]')
+            ?.getAttribute("aria-hidden") ?? null,
+        loadCount:
+          topRoot?.querySelectorAll('[data-fennevia-progress-light="load"]')
+            .length ?? 0,
+        loadMode:
+          topRoot
+            ?.querySelector('[data-fennevia-progress-light="load"]')
+            ?.getAttribute("data-fennevia-progress-mode") ?? null,
+        loadVisible:
+          topRoot
+            ?.querySelector('[data-fennevia-progress-light="load"]')
+            ?.getAttribute("data-fennevia-progress-visible") ?? null,
+      },
       allElementsUseXhtml: elements.every(
         element => element.namespaceURI === XHTML_NS
       ),
@@ -2027,6 +2060,16 @@ function assertFrontendState(state, windowKind) {
   assert.equal(state.downloads.progressCount, 1);
   assert.equal(state.downloads.summaryCount, 1);
   assert.equal(typeof state.downloads.summaryText, "string");
+  assert.deepEqual(state.progressLights, {
+    downloadAriaHidden: "true",
+    downloadCount: 1,
+    downloadMode: "idle",
+    downloadVisible: "false",
+    loadAriaHidden: "true",
+    loadCount: 1,
+    loadMode: "idle",
+    loadVisible: "false",
+  });
   assert.equal(state.allElementsUseXhtml, true);
   assert.equal(state.actionControlsNamed, true);
   assert.equal(state.customTabCount, state.nativeTabCount);
@@ -2518,6 +2561,8 @@ async function exerciseNavigationControls(client) {
         const status = root?.querySelector(
           "[data-fennevia-navigation-status]"
         );
+        const loadLight = () =>
+          root?.querySelector('[data-fennevia-progress-light="load"]');
         if (
           !root ||
           !leftRoot ||
@@ -2690,15 +2735,22 @@ async function exerciseNavigationControls(client) {
         await waitFor(
           () =>
             controls.reloadStop.title === "Stop" &&
-            controls.reloadStop.getAttribute("data-fennevia-loading") === "true",
+            controls.reloadStop.getAttribute("data-fennevia-loading") === "true" &&
+            loadLight()?.getAttribute("data-fennevia-progress-visible") ===
+              "true" &&
+            loadLight()?.getAttribute("data-fennevia-progress-mode") ===
+              "indeterminate",
           "FENNEVIA_FIREFOX_TEST_NAVIGATION_STOP_MODE_TIMEOUT"
         );
         const stopModeObserved = true;
+        const loadLightVisibleDuringStop = true;
         controls.reloadStop.click();
         await waitFor(
           () =>
             controls.reloadStop.title === "Reload" &&
-            !gBrowser.selectedTab.hasAttribute("busy"),
+            !gBrowser.selectedTab.hasAttribute("busy") &&
+            loadLight()?.getAttribute("data-fennevia-progress-visible") ===
+              "false",
           "FENNEVIA_FIREFOX_TEST_NAVIGATION_STOP_TIMEOUT"
         );
         const stopWorked = true;
@@ -2764,6 +2816,7 @@ async function exerciseNavigationControls(client) {
               .getElementById("Browser:Forward")
               .hasAttribute("disabled"),
           keyboardRevealFocused,
+          loadLightVisibleDuringStop,
           newTabSelected,
           pendingCloseHandoffWorked,
           reloadStarted,
@@ -2793,6 +2846,7 @@ function assertNavigationControls(result) {
   assert.equal(result.escapedHidden, true);
   assert.equal(result.forwardMatchesNative, true);
   assert.equal(result.keyboardRevealFocused, true);
+  assert.equal(result.loadLightVisibleDuringStop, true);
   assert.equal(result.newTabSelected, true);
   assert.equal(result.pendingCloseHandoffWorked, true);
   assert.equal(result.reloadStarted, true);
@@ -4754,6 +4808,8 @@ async function exerciseDownloadsMvp(client) {
           ?.textContent?.trim() ?? "";
       const progress = () =>
         bottomRoot.querySelector("[data-fennevia-download-progress]");
+      const downloadLight = () =>
+        bottomRoot.querySelector('[data-fennevia-progress-light="download"]');
       const states = () => [
         ...bottomRoot.querySelectorAll("[data-fennevia-download-state]"),
       ].map(item => item.getAttribute("data-fennevia-download-state"));
@@ -4827,12 +4883,20 @@ async function exerciseDownloadsMvp(client) {
             progress()?.getAttribute("data-fennevia-download-progress") ===
               "determinate" &&
             progress()?.querySelector('[role="progressbar"]')
-              ?.getAttribute("aria-valuenow") === "41",
+              ?.getAttribute("aria-valuenow") === "41" &&
+            downloadLight()?.getAttribute("data-fennevia-progress-mode") ===
+              "determinate" &&
+            downloadLight()?.getAttribute("data-fennevia-progress-visible") ===
+              "true",
           "FENNEVIA_FIREFOX_TEST_DOWNLOAD_KNOWN_TIMEOUT"
         );
         const knownWeighted = true;
         const hiddenKnownActivity =
           bottomRoot.getAttribute("data-fennevia-visible") === "false";
+        const lightVisibleWhilePanelHidden =
+          hiddenKnownActivity &&
+          downloadLight()?.getAttribute("data-fennevia-progress-visible") ===
+            "true";
 
         const unknown = await createDownload(3, {
           canceled: false,
@@ -4850,7 +4914,9 @@ async function exerciseDownloadsMvp(client) {
             progress()?.getAttribute("data-fennevia-download-progress") ===
               "indeterminate" &&
             !progress()?.querySelector('[role="progressbar"]')
-              ?.hasAttribute("aria-valuenow"),
+              ?.hasAttribute("aria-valuenow") &&
+            downloadLight()?.getAttribute("data-fennevia-progress-mode") ===
+              "indeterminate",
           "FENNEVIA_FIREFOX_TEST_DOWNLOAD_UNKNOWN_TIMEOUT"
         );
         const mixedUnknownIndeterminate = true;
@@ -5052,6 +5118,7 @@ async function exerciseDownloadsMvp(client) {
           hiddenUnknownActivity,
           keyboardRevealWorked,
           knownWeighted,
+          lightVisibleWhilePanelHidden,
           mixedUnknownIndeterminate,
           nativeDownloadsRetained,
           nativePopupHeldReveal,
@@ -5077,7 +5144,9 @@ async function exerciseDownloadsMvp(client) {
         await waitFor(
           () =>
             summary() === "No active downloads" &&
-            states().length === 0,
+            states().length === 0 &&
+            downloadLight()?.getAttribute("data-fennevia-progress-visible") ===
+              "false",
           "FENNEVIA_FIREFOX_TEST_DOWNLOAD_CLEANUP_TIMEOUT"
         );
       }
@@ -5095,6 +5164,7 @@ function assertDownloadsMvp(result, windowKind) {
     hiddenUnknownActivity: true,
     keyboardRevealWorked: true,
     knownWeighted: true,
+    lightVisibleWhilePanelHidden: true,
     mixedUnknownIndeterminate: true,
     nativeDownloadsRetained: true,
     nativePopupHeldReveal: true,
@@ -5349,6 +5419,16 @@ async function exerciseFrontendUnmountRemount(client) {
             siteInformation: true,
             sitePermissions: true,
           });
+        },
+        subscribe() {
+          let active = true;
+          return () => {
+            if (!active) {
+              return false;
+            }
+            active = false;
+            return true;
+          };
         },
       });
       const navigation = Object.freeze({

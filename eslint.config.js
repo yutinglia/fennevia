@@ -78,6 +78,7 @@ export default defineConfig(
       "tests/firefox-tabs.test.mjs",
       "tests/frontend-smoke.test.mjs",
       "tests/navigation-state.test.mjs",
+      "tests/progress-light.test.mjs",
       "tests/tab-state.test.mjs",
       "tests/tab-strip.test.mjs",
       "vite*.config.ts",

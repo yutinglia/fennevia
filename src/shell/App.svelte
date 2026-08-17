@@ -3,11 +3,15 @@
 
   import { type AddressPopupController } from "../app/address-popup";
   import type { BrowserBookmarksStateAdapter } from "../app/bookmark-state";
-  import type {
-    BrowserToolAction,
-    BrowserToolsStateAdapter,
+  import {
+    isPopupBrowserToolAction,
+    type BrowserToolAction,
+    type BrowserToolsStateAdapter,
   } from "../app/browser-tools-state";
-  import type { BrowserDownloadsStateAdapter } from "../app/download-state";
+  import type {
+    BrowserDownloadsState,
+    BrowserDownloadsStateAdapter,
+  } from "../app/download-state";
   import {
     edgeKeyboardBindings,
     edgeTriggerThicknessCssPixels,
@@ -48,11 +52,17 @@
     resolveTabDropIndex,
   } from "../app/tab-strip";
   import {
+    resolveDownloadProgressLight,
+    resolveLoadProgressLight,
+  } from "../app/progress-light";
+  import {
     getConnectionSecurityPresentation,
     getTrackingProtectionPresentation,
   } from "./navigation-labels";
   import BookmarksPanel from "./BookmarksPanel.svelte";
+  import { resolveBrowserToolHost } from "./browser-tool-host";
   import DownloadsPanel from "./DownloadsPanel.svelte";
+  import ProgressLight from "./ProgressLight.svelte";
   import ShellIcon from "./ShellIcon.svelte";
 
   type Props = Readonly<{
@@ -114,6 +124,7 @@
     ),
   );
   let browserToolsSnapshot = $derived(props.browserTools?.snapshot());
+  let currentDownloads: BrowserDownloadsState | null = $state(null);
   let windowControlsSnapshot: WindowControlsSnapshot = $state({
     maximized: false,
   });
@@ -200,6 +211,23 @@
     });
   });
 
+  $effect(() => {
+    const downloads = props.downloads;
+    if (props.edge !== "bottom" || !downloads) {
+      currentDownloads = null;
+      return;
+    }
+    currentDownloads = downloads.snapshot();
+    return downloads.subscribe((nextState) => {
+      currentDownloads = nextState;
+    });
+  });
+
+  let loadLight = $derived(
+    resolveLoadProgressLight(currentNavigation.snapshot.loading),
+  );
+  let downloadLight = $derived(resolveDownloadProgressLight(currentDownloads));
+
   const registerTabButton = (node: HTMLButtonElement, tabId: string) => {
     const registration = { node, tabId };
     tabButtons.push(registration);
@@ -273,15 +301,30 @@
     runNavigationAction((navigation) => action(navigation, gesture));
   };
 
-  const runBrowserToolAction = async (action: BrowserToolAction) => {
+  const runBrowserToolAction = async (
+    action: BrowserToolAction,
+    event?: MouseEvent,
+  ) => {
     try {
       const browserTools = props.browserTools;
       if (!browserTools) {
         throw new Error("FENNEVIA_BROWSER_TOOLS_UNAVAILABLE");
       }
+      if (isPopupBrowserToolAction(action)) {
+        props.shell.setPopupHeld(props.edge, true);
+        await browserTools.invoke(action, resolveBrowserToolHost(event));
+        return;
+      }
       props.onDismiss(props.edge);
       await browserTools.invoke(action);
     } catch (error) {
+      if (isPopupBrowserToolAction(action)) {
+        props.shell.setPopupHeld(props.edge, false);
+        if (!props.browserTools) {
+          props.onFatalError(error);
+        }
+        return;
+      }
       props.onFatalError(error);
     }
   };
@@ -759,6 +802,12 @@
     onpointerover={handleTriggerPointer}
   ></div>
 
+  {#if props.edge === "top"}
+    <ProgressLight presentation={loadLight} />
+  {:else if props.edge === "bottom"}
+    <ProgressLight presentation={downloadLight} />
+  {/if}
+
   <div
     aria-hidden={!surfaceState.visible}
     aria-label={surfaceLabels[props.edge]}
@@ -809,7 +858,8 @@
               data-fennevia-connection-status=""
               data-fennevia-status-tone={connectionStatus.tone}
               disabled={!browserToolsSnapshot?.siteInformation}
-              onclick={() => void runBrowserToolAction("site-information")}
+              onclick={(event) =>
+                void runBrowserToolAction("site-information", event)}
               title={`Open Firefox site information. ${connectionStatus.label}`}
               type="button">{connectionStatus.badge}</button
             >
@@ -820,7 +870,8 @@
               data-fennevia-protection-status=""
               data-fennevia-status-tone={protectionStatus.tone}
               disabled={!browserToolsSnapshot?.protections}
-              onclick={() => void runBrowserToolAction("protections")}
+              onclick={(event) =>
+                void runBrowserToolAction("protections", event)}
               title={`Open Firefox tracking protection. ${protectionStatus.label}`}
               type="button">{protectionStatus.badge}</button
             >
@@ -1091,7 +1142,7 @@
               class="fennevia-control fennevia-navigation__button fennevia-navigation__secondary"
               data-fennevia-browser-tool="downloads"
               disabled={!browserToolsSnapshot?.downloads}
-              onclick={() => void runBrowserToolAction("downloads")}
+              onclick={(event) => void runBrowserToolAction("downloads", event)}
               title="Firefox downloads"
               type="button"
             >
@@ -1110,7 +1161,8 @@
               class="fennevia-control fennevia-browser-tools__button"
               data-fennevia-browser-tool="extensions"
               disabled={!browserToolsSnapshot?.extensions}
-              onclick={() => void runBrowserToolAction("extensions")}
+              onclick={(event) =>
+                void runBrowserToolAction("extensions", event)}
               title="Extensions"
               type="button"
             >
@@ -1139,22 +1191,12 @@
               <ShellIcon name="customize" />
             </button>
             <button
-              aria-label="Show original Firefox toolbar"
-              class="fennevia-control fennevia-browser-tools__button fennevia-browser-tools__native"
-              data-fennevia-browser-tool="native-toolbar"
-              disabled={!browserToolsSnapshot?.nativeToolbar}
-              onclick={() => void runBrowserToolAction("native-toolbar")}
-              title="Original Firefox toolbar"
-              type="button"
-            >
-              <ShellIcon name="toolbar" />
-            </button>
-            <button
               aria-label="Open Firefox menu"
               class="fennevia-control fennevia-browser-tools__button"
               data-fennevia-browser-tool="application-menu"
               disabled={!browserToolsSnapshot?.applicationMenu}
-              onclick={() => void runBrowserToolAction("application-menu")}
+              onclick={(event) =>
+                void runBrowserToolAction("application-menu", event)}
               title="Firefox menu"
               type="button"
             >

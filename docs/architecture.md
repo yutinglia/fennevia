@@ -110,7 +110,9 @@ Normal and private windows receive the same complete frame. Project code owns
 only this frame and its descendants; the frame itself never moves a native node
 or participates in browser-content layout. ADR-032 adds one separate privileged
 controller that changes only source-validated native surfaces; ADR-037 extends
-that sheet with the explicitly selected 7px decorative browser gutter.
+that sheet with the explicitly selected 7px decorative browser gutter. Edge
+pointer strips stay on the #31 trigger contract and are independently 12px so
+the hit target is larger than the visible gutter.
 
 Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
 owns the only root-state transition table: `created -> mounted -> healthy ->
@@ -328,22 +330,38 @@ observer is disconnected exactly once with the window. See ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
 ADR-037 adds `src/firefox/browser-tools.ts` to the same generated private ESM.
-One controller per window validates the twelve fixed Firefox owners needed for
-nine actions: site information, protections, site permissions, native
-Downloads, Unified Extensions, application menu, Settings, native
-customization, and complete original-toolbar access. It re-resolves every
-owner at action time. Anchored actions first request the existing reversible
-native-toolbar reveal, then focus and delegate to the original owner; Firefox
-continues to populate and operate every resulting panel.
-
-The public contract contains only nine fixed availability booleans and nine
-fixed action strings. It contains no URL, certificate, tracker, permission,
+One controller per window validates the current Firefox owners needed for nine
+actions: site information, protections, site permissions, native Downloads,
+Unified Extensions, application menu, Settings, native customization, and
+complete original-toolbar access. It re-resolves every owner at action time.
+ADR-042's six popup actions pass a project-owned XHTML host, keep native
+chrome hidden, and re-anchor the Firefox panel beside that host. If the
+current owner throws after initializing a lazy panel, the bridge still
+opens the existing panel on that host. Popup position follows the host
+surface: address overlay `after_end`, left rail `end_before`, otherwise
+the action default. Application menu awaits `PanelUI.ensureReady()`, then
+opens `#appMenu-popup` with Firefox's `bottomcenter topright` placement
+through `PanelMultiView.openPopup` so the main view exists before
+`popupshown`. If HTML anchoring fails, that call routes `panel.openPopup` to
+`openPopupAtScreenRect` for the duration of `#showMainView` then restores
+Firefox's method. A raw `openPopupAtScreenRect` is not used: it leaves
+`openViews` empty and Firefox throws `panelView is undefined` on `isOpenIn`.
+Failed opens that fire `popuphidden` without showing the panel keep the
+NativeUi token so `PanelUI.show()` cannot reveal the collapsed navbar. If the
+panel still stays closed, it calls `PanelUI.show()` with the token already set
+and `moveTo`s the host screen rectangle on `popupshown`. The dedicated
+original-toolbar button is not shown; Customize and fail-open remain the
+complete native-chrome access paths. Settings, customization, and the
+complete-toolbar action keep their previous owners; the complete-toolbar
+action still reveals the current navbar and focuses an original navigation
+control instead of enumerating `CustomizableUI`. The
+public contract contains only nine fixed availability booleans, nine fixed
+action strings, an optional host for popup actions, and a privacy-safe
+open/closed popup hold. It contains no URL, certificate, tracker, permission,
 extension, download, widget, preference, native node, handler, panel, or
-window. The complete-toolbar action reveals the current navbar and focuses an
-original navigation control instead of enumerating `CustomizableUI`. The
-unprivileged adapter validates results and releases its per-window reference on
-unmount. See ADR-037 and
-`docs/research/firefox-153-single-line-toolbar-handoffs.md`.
+window. The unprivileged adapter validates results and releases its
+per-window reference on unmount. See ADR-037, ADR-042, and
+`docs/research/firefox-153-native-popup-anchoring.md`.
 
 ## 5. Application and frontend layers
 
@@ -381,32 +399,36 @@ highlights only the newly added tab IDs.
 Shortcut hints float outside each revealed panel. Edge panels have no title chrome or hide buttons; they close
 through `Escape`, pointer leave, and the documented keyboard shortcut.
 Responsive rules progressively hide secondary controls
-while retaining accessible names, Unified Extensions, complete
-original-toolbar access, and the application menu. The row consumes only
+while retaining accessible names, Unified Extensions, Settings, Customize,
+and the application menu. The dedicated original-toolbar button is not shown;
+Customize and fail-open remain the complete native-chrome access paths. The row consumes only
 ordinary adapters and the existing top-edge focus/reveal contract; it does
 not inspect native DOM or create another trigger, timer, controller, or widget
-registry.
+registry. ADR-043 overlays a decorative 2px load light in that same top root
+from the existing `loading` boolean; it is not a second chrome surface.
 
 Issue #13 replaces the old left address placeholder with a non-editable compact
 launcher above tabs and mounts `AddressPopup.svelte` in the fifth root. The
 launcher displays bounded committed location plus compact labels derived from
 real Firefox connection/protection enums. Those compact HTTPS and protection
 badges, and the matching popup connection, protection, and permission cards,
-are explicit native handoff buttons: they close the custom UI, reveal the
-original toolbar, and open Firefox's current Trust/identity, protections, or
-permission panel. The popup owns the sole custom input,
+are explicit native handoff buttons: they keep the matching edge or address
+overlay open, leave native chrome hidden, and open Firefox's current
+Trust/identity, protections, or permission panel beside the clicked project
+host. The popup owns the sole custom input,
 an independent per-window draft, fuller labels, focus restoration, and
 popup-priority edge suppression. It never moves native Urlbar/identity/
 protections DOM or renders inferred security state.
 
 Issue #37 extends that same popup with a full-width site-permission card, fixed
 applicable Firefox-control labels, and one native Urlbar handoff button.
-ADR-037's Trust/identity, protections, and permission handoffs remain available
-from the left launcher badges, the centered popup cards, and the
-original-toolbar path rather than a second top-row launcher. All complete
-security/permission/action panels and commands stay
-Firefox-owned, and no second popup, input, edge controller, timer, or provider
-stack is added.
+ADR-037/ADR-042's Trust/identity, protections, and permission handoffs remain
+available from the left launcher badges and the centered popup cards rather
+than a second top-row launcher. The complete original-toolbar action remains
+in the Firefox bridge for tests and recovery; the top row no longer shows a
+dedicated button. All complete security/permission/action panels and
+commands stay Firefox-owned, and no second popup, input, edge controller,
+timer, or provider stack is added.
 
 Issue #14 replaces the right placeholder with `BookmarksPanel.svelte`. It uses
 the existing right host, trigger, controller, focus restoration, collision
@@ -427,6 +449,13 @@ at most six state pills. Updates while hidden never change reveal state; there
 is no feature timer, action, filename, path, remote asset, native-panel
 mutation, or permanent content padding. Firefox's native Downloads panel,
 notifications, safety, reputation, and management remain authoritative.
+
+ADR-043 adds two decorative gutter lights in those same roots: a top load beam
+driven by the existing navigation `loading` boolean, and a bottom download beam
+driven by the existing anonymous aggregate. They overlay the 7px content gutter,
+use `pointer-events: none`, stay `aria-hidden`, and do not add a trigger,
+timer, z-index system, or content margin. Accessible loading and download
+status remain Reload/Stop, tab busy, and the bottom panel.
 
 The frontend owns:
 
@@ -498,6 +527,15 @@ animation. Responsive and forced-colors rules remain inside the existing bottom
 surface. No selector targets Firefox's Downloads button, panel, notifications,
 or browser content.
 
+ADR-043's gutter lights are also frame-rooted. Thickness is the independently
+selected 2px token. Determinate download width uses a scoped custom property
+from the validated integer percentage. Unknown-size load/download activity is a
+full-width pulse, not a fake fill, so it cannot stall at an invented percent.
+Reduced motion keeps a static full-width beam; forced-colors maps to `Highlight`
+without glow. The lights are `pointer-events: none` and sit at `z-index: 0`
+under the #31 trigger. No selector targets `#main-window`, `#browser`, or
+native progress UI.
+
 The issue #37 popup additions remain frame-rooted and reuse the existing
 responsive overlay. Permission/action chips render only fixed project labels;
 no selector targets Firefox's Urlbar, identity, permission, page-action, panel,
@@ -524,7 +562,7 @@ DOM marker: disposal removes every project state attribute. Safe start exits in
 AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute.
 
-ADR-032, as extended by ADR-037 and ADR-038, implements the gate with a seven-rule
+ADR-032, as extended by ADR-037, ADR-038, and ADR-042, implements the gate with a seven-rule
 project-owned style and two temporary root markers:
 
 ```text
@@ -546,9 +584,11 @@ recovery; ADR-038 collapses every native caption copy at rest and shows
 project-owned window controls on the right of the visible top row. No caption
 node is moved or replaced.
 
-Native focus, anchored native popups, an open native sidebar, and explicit
-Urlbar or original-toolbar handoffs set temporary reveal. Customize and
-native-dialog state set suspension. DOM fullscreen also suspends project hiding
+Native focus, toolbox-anchored Firefox doorhangers, an open native sidebar, and
+explicit Urlbar or original-toolbar handoffs set temporary reveal. Fennevia-
+initiated Trust/permission/Downloads/extensions/application-menu panels that
+are token-listed or re-anchored to a project host do not reveal the navbar.
+Customize and native-dialog state set suspension. DOM fullscreen also suspends project hiding
 while Firefox's own fullscreen CSS remains authoritative; browser fullscreen
 retains active mode. The controller validates exact nodes and seven parsed
 rules before health, then watches integrity. Invalid or partial CSS and stable
