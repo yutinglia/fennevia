@@ -367,7 +367,7 @@ Source inventory and real HTTP/HTTPS/internal/error/permission/protection/
 normal/second/private/fail-open evidence are in ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-### 7.4 Browser-tool native handoffs — implemented ADR-037, popup placement ADR-042
+### 7.4 Browser-tool native handoffs — implemented ADR-037, popup placement ADR-042, widget mirror ADR-044
 
 Each managed window owns one `browser-tools` Firefox controller and one ordinary
 application adapter. The controller validates twenty-one required current
@@ -394,7 +394,7 @@ persistence, normal logs, and project network requests:
 - permission IDs, states, scopes, origins, sharing records, prompts, and native
   labels;
 - extension IDs, names, icons, widgets, customization state, actions, and
-  commands;
+  commands, except the bounded owner-approved ADR-044 rendering flow below;
 - download names, paths, source URLs, byte records, errors, and native objects;
 - Firefox nodes, panels, handlers, preferences, principals, windows, and
   controller objects.
@@ -420,6 +420,27 @@ code/phase/symbol/version/build/window-kind diagnostics and the existing
 per-window fail-open path. Project-authored toolbar SVGs contain no external
 asset, metadata, script, URL, or runtime load. See ADR-037, ADR-042, and
 `docs/research/firefox-153-native-popup-anchoring.md`.
+
+Owner-approved ADR-044 widget-mirror flow: each managed window may own one
+optional `toolbar-widgets` controller that enumerates the current
+`CustomizableUI` nav-bar placements read-only and sends the frontend an
+immutable snapshot per widget of opaque handle, fixed kind, bounded label and
+tooltip text, a `moz-extension://`-only icon URL, bounded rgba-only badge
+text/colors, a fixed curated icon token, and a disabled flag. Extension name,
+icon, and badge are extension identity and may exist only in that window's
+in-memory frontend state and rendered DOM (`img src`, button label/tooltip,
+badge chip). Widget ids and native nodes stay in the privileged handle
+registry. Extension identity never enters logs, persistence, diagnostics,
+serialized state, CSS custom properties on shared roots, root datasets,
+clipboard, or network requests; diagnostics stay at widget counts, revisions,
+and fixed codes. Activation resolves only registry handles, validates the
+project host, opens `PanelUI.showSubView` view panels or dispatches the native
+node command, and re-anchors resulting Firefox-owned panels on the host with
+the existing ADR-042 hold/release path. The capability is optional: a missing
+`CustomizableUI`/`PanelUI` hides the zone without joining activation health,
+and disposal detaches the CustomizableUI listener, the attribute
+`MutationObserver`, popup listeners, pending waiters, handles, and any held
+panel exactly once.
 
 ### 7.5 Bookmarks — implemented #14
 

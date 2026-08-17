@@ -17,8 +17,9 @@ floating edge panels that stay hidden until you need them.
 At rest, Firefox mostly shows the current page. Move the pointer to an edge, or
 use the keyboard, to reveal:
 
-- **Top:** Back, Forward, Reload/Stop, Firefox tools, and
-  project-owned window controls.
+- **Top:** Back, Forward, Reload/Stop, Firefox tools, a read-only mirror of
+  your pinned toolbar buttons and extension actions, and project-owned window
+  controls. Rearranging still happens in Firefox's native customize mode.
 - **Left:** vertical tabs and a compact address/status launcher.
 - **Right:** bookmarks.
 - **Bottom:** download progress and status.

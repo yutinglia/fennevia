@@ -70,7 +70,7 @@ Completed:
   exact one-sided ownership repair, reconciled compatibility inventory, and an
   executable Firefox stable-update rehearsal.
 
-Current fast branch enhancement under ADR-037 and ADR-042:
+Current fast branch enhancement under ADR-037, ADR-042, and ADR-044:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   page actions, Firefox tools, and progressive disclosure;
@@ -83,7 +83,11 @@ Current fast branch enhancement under ADR-037 and ADR-042:
 - a 7px browser-content gutter, gap-free edge contact, transient shortcut hint,
   panel drag regions, and `top > sides > bottom` collision priority;
 - 2px decorative gutter lights for selected-tab loading and active download
-  aggregate, without a second trigger or filename text.
+  aggregate, without a second trigger or filename text;
+- an ADR-044 read-only mirror of the user's nav-bar `CustomizableUI`
+  placements — extension actions with real icon/badge, pinned built-ins, and
+  spacers — rendered with project components, activated through host-anchored
+  Firefox-owned popups, and edited only through native customize mode.
 
 Focused type/build/unit/static checks cover this enhancement. Its real Firefox
 manual matrix remains pending and is not part of the earlier #15 validation.
@@ -470,6 +474,28 @@ Evidence: ADR-037, ADR-042,
 `plans/004-single-line-toolbar-ui-ux.md`,
 `docs/research/firefox-153-single-line-toolbar-handoffs.md`, and
 `docs/research/firefox-153-native-popup-anchoring.md`.
+
+#### Nav-bar widget mirror — focused implementation complete, manual Firefox pending (ADR-044, #64)
+
+- read-only mirror of the user's `CustomizableUI` nav-bar placements in the
+  top row with project-owned components: extension actions with real
+  icon/badge/name, pinned built-ins with curated or generic project glyphs,
+  and spacers as gaps;
+- native customize mode stays the only editor; listener events and a bounded
+  attribute observer republish revision snapshots without polling;
+- extension popups open through `PanelUI.showSubView` anchored on the clicked
+  project button; built-ins activate their native node with panel re-anchor;
+- owner-approved ADR-044 relaxation: extension identity (label, tooltip,
+  `moz-extension://` icon URL, badge) enters frontend memory for rendering
+  only and stays banned from logs, persistence, diagnostics, CSS variables,
+  and root datasets;
+- optional capability: a missing `CustomizableUI` leaves the fixed controls
+  and activation health untouched.
+
+Evidence: ADR-044, `plans/005-topbar-widget-mirror.md`, and
+`docs/research/firefox-153-toolbar-widget-mirror.md`. The real-Firefox
+mirror/popup/customize matrix is recorded as pending in
+`docs/testing-and-recovery.md` §6.8.
 
 Gate: basic browsing and required access paths work entirely through custom
 surfaces while native UI remains visible for comparison and fallback.

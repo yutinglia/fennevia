@@ -1,26 +1,40 @@
 <script lang="ts">
   export type ShellIconName =
+    | "account"
     | "address"
     | "back"
     | "bookmark"
     | "close"
     | "customize"
+    | "developer"
     | "download"
+    | "edit"
     | "extensions"
+    | "firefox-view"
     | "forward"
+    | "fullscreen"
+    | "generic"
+    | "history"
     | "home"
+    | "library"
     | "lock"
     | "maximize"
     | "menu"
     | "minimize"
+    | "new-window"
     | "permissions"
     | "plus"
+    | "print"
+    | "private"
     | "reload"
     | "restore"
+    | "screenshot"
     | "settings"
     | "shield"
+    | "sidebar"
     | "stop"
-    | "toolbar";
+    | "toolbar"
+    | "zoom";
 
   type Props = Readonly<{
     name: ShellIconName;
@@ -101,5 +115,47 @@
   {:else if name === "restore"}
     <rect height="10" rx="1.2" width="10" x="9" y="5" />
     <path d="M5 9h8v10H5Z" />
+  {:else if name === "account"}
+    <circle cx="12" cy="8.5" r="3.5" />
+    <path d="M5 20a7 7 0 0 1 14 0" />
+  {:else if name === "developer"}
+    <path d="m9 8-4 4 4 4M15 8l4 4-4 4" />
+  {:else if name === "edit"}
+    <path d="m14.5 5 4.5 4.5L9 19.5H4.5V15Z" />
+    <path d="m12.5 7 4.5 4.5" />
+  {:else if name === "firefox-view"}
+    <rect height="14" rx="3" width="18" x="3" y="5" />
+    <circle cx="12" cy="12" r="3" />
+  {:else if name === "fullscreen"}
+    <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
+  {:else if name === "generic"}
+    <rect height="14" rx="3" width="14" x="5" y="5" />
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+  {:else if name === "history"}
+    <circle cx="12" cy="12" r="8" />
+    <path d="M12 7v5l3.5 2" />
+  {:else if name === "library"}
+    <path d="M5 4v16M9.5 4v16M14 5l4.5 15" />
+  {:else if name === "new-window"}
+    <rect height="14" rx="2" width="14" x="4" y="6" />
+    <path d="M11 13h4M13 11v4M20 10V4h-6" />
+  {:else if name === "print"}
+    <path d="M7 8V4h10v4" />
+    <rect height="8" rx="2" width="16" x="4" y="8" />
+    <path d="M7 13h10v7H7Z" />
+  {:else if name === "private"}
+    <path d="M4 11h16M7 11l1.5-6h7L17 11" />
+    <circle cx="8.5" cy="16" r="2.5" />
+    <circle cx="15.5" cy="16" r="2.5" />
+    <path d="M11 15.5h2" />
+  {:else if name === "screenshot"}
+    <path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4" />
+    <circle cx="12" cy="12" r="3" />
+  {:else if name === "sidebar"}
+    <rect height="16" rx="3" width="18" x="3" y="4" />
+    <path d="M9.5 4v16" />
+  {:else if name === "zoom"}
+    <circle cx="11" cy="11" r="6" />
+    <path d="m15.5 15.5 4 4M9 11h4M11 9v4" />
   {/if}
 </svg>

@@ -33,6 +33,12 @@
     type BrowserTabsStateAdapter,
     type TabSnapshot,
   } from "../app/tab-state";
+  import {
+    isInteractiveToolbarWidget,
+    type BrowserToolbarWidgetsState,
+    type BrowserToolbarWidgetsStateAdapter,
+    type ToolbarWidgetSnapshot,
+  } from "../app/toolbar-widgets-state";
   import type {
     BrowserWindowControlsStateAdapter,
     WindowControlAction,
@@ -63,7 +69,7 @@
   import { resolveBrowserToolHost } from "./browser-tool-host";
   import DownloadsPanel from "./DownloadsPanel.svelte";
   import ProgressLight from "./ProgressLight.svelte";
-  import ShellIcon from "./ShellIcon.svelte";
+  import ShellIcon, { type ShellIconName } from "./ShellIcon.svelte";
 
   type Props = Readonly<{
     addressPopup?: AddressPopupController;
@@ -80,6 +86,7 @@
     shell: EdgeShellController;
     surface: EdgeSurfaceController;
     tabs?: BrowserTabsStateAdapter;
+    toolbarWidgets?: BrowserToolbarWidgetsStateAdapter;
     windowControls?: BrowserWindowControlsStateAdapter;
     windowKind: "normal" | "private";
   }>;
@@ -124,6 +131,7 @@
     ),
   );
   let browserToolsSnapshot = $derived(props.browserTools?.snapshot());
+  let currentToolbarWidgets: BrowserToolbarWidgetsState | null = $state(null);
   let currentDownloads: BrowserDownloadsState | null = $state(null);
   let windowControlsSnapshot: WindowControlsSnapshot = $state({
     maximized: false,
@@ -220,6 +228,18 @@
     currentDownloads = downloads.snapshot();
     return downloads.subscribe((nextState) => {
       currentDownloads = nextState;
+    });
+  });
+
+  $effect(() => {
+    const toolbarWidgets = props.toolbarWidgets;
+    if (props.edge !== "top" || !toolbarWidgets) {
+      currentToolbarWidgets = null;
+      return;
+    }
+    currentToolbarWidgets = toolbarWidgets.snapshot();
+    return toolbarWidgets.subscribe((nextState) => {
+      currentToolbarWidgets = nextState;
     });
   });
 
@@ -326,6 +346,53 @@
         return;
       }
       props.onFatalError(error);
+    }
+  };
+
+  const toolbarWidgetIconNames: ReadonlyMap<string, ShellIconName> = new Map([
+    ["account", "account"],
+    ["bookmark", "bookmark"],
+    ["developer", "developer"],
+    ["edit", "edit"],
+    ["extension", "extensions"],
+    ["firefox-view", "firefox-view"],
+    ["fullscreen", "fullscreen"],
+    ["history", "history"],
+    ["library", "library"],
+    ["new-window", "new-window"],
+    ["print", "print"],
+    ["private", "private"],
+    ["screenshot", "screenshot"],
+    ["shield", "shield"],
+    ["sidebar", "sidebar"],
+    ["zoom", "zoom"],
+  ]);
+
+  const resolveToolbarWidgetIcon = (
+    widget: ToolbarWidgetSnapshot,
+  ): ShellIconName => toolbarWidgetIconNames.get(widget.icon) ?? "generic";
+
+  const runToolbarWidgetAction = async (
+    widget: ToolbarWidgetSnapshot,
+    event: MouseEvent,
+  ) => {
+    const toolbarWidgets = props.toolbarWidgets;
+    if (!toolbarWidgets || !isInteractiveToolbarWidget(widget)) {
+      return;
+    }
+    props.shell.setPopupHeld(props.edge, true);
+    try {
+      const opened = await toolbarWidgets.invoke(
+        widget.handle,
+        resolveBrowserToolHost(event),
+      );
+      if (!opened) {
+        props.shell.setPopupHeld(props.edge, false);
+      }
+    } catch {
+      // Widget mirroring is an optional capability; a failed invoke keeps the
+      // native path (customize mode, unified extensions panel) fully usable.
+      props.shell.setPopupHeld(props.edge, false);
     }
   };
 
@@ -1149,6 +1216,66 @@
               <ShellIcon name="download" />
             </button>
           </div>
+
+          {#if currentToolbarWidgets?.snapshot.available && currentToolbarWidgets.snapshot.widgets.length > 0}
+            <div
+              aria-label="Toolbar shortcuts"
+              class="fennevia-toolbar-widgets"
+              data-fennevia-toolbar-widgets=""
+              role="group"
+            >
+              {#each currentToolbarWidgets.snapshot.widgets as widget, index (`${index}-${widget.handle}`)}
+                {#if widget.kind === "separator"}
+                  <span
+                    aria-hidden="true"
+                    class="fennevia-toolbar-widgets__separator"
+                  ></span>
+                {:else if widget.kind === "spacer"}
+                  <span
+                    aria-hidden="true"
+                    class="fennevia-toolbar-widgets__spacer"
+                  ></span>
+                {:else if widget.kind === "spring"}
+                  <span
+                    aria-hidden="true"
+                    class="fennevia-toolbar-widgets__spring"
+                  ></span>
+                {:else}
+                  <button
+                    aria-label={widget.label}
+                    class="fennevia-control fennevia-toolbar-widgets__button"
+                    data-fennevia-browser-tool="toolbar-widget"
+                    data-fennevia-toolbar-widget-kind={widget.kind}
+                    disabled={widget.disabled}
+                    onclick={(event) =>
+                      void runToolbarWidgetAction(widget, event)}
+                    title={widget.tooltip || widget.label}
+                    type="button"
+                  >
+                    {#if widget.kind === "extension-action" && widget.iconUrl}
+                      <img
+                        alt=""
+                        class="fennevia-toolbar-widgets__icon"
+                        src={widget.iconUrl}
+                      />
+                    {:else}
+                      <ShellIcon name={resolveToolbarWidgetIcon(widget)} />
+                    {/if}
+                    {#if widget.badgeText}
+                      <span
+                        aria-hidden="true"
+                        class="fennevia-toolbar-widgets__badge"
+                        style:background-color={widget.badgeBackground ||
+                          undefined}
+                        style:color={widget.badgeTextColor || undefined}
+                        >{widget.badgeText}</span
+                      >
+                    {/if}
+                  </button>
+                {/if}
+              {/each}
+            </div>
+          {/if}
 
           <div
             aria-label="Firefox tools"

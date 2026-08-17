@@ -43,6 +43,11 @@ import {
   type BrowserTabsStateAdapter,
 } from "../app/tab-state";
 import {
+  createBrowserToolbarWidgetsStateAdapter,
+  type BrowserToolbarWidgetsBridge,
+  type BrowserToolbarWidgetsStateAdapter,
+} from "../app/toolbar-widgets-state";
+import {
   createBrowserUrlbarCoverageStateAdapter,
   type BrowserUrlbarCoverageBridge,
   type BrowserUrlbarCoverageStateAdapter,
@@ -98,6 +103,7 @@ type MountOptions = Readonly<{
   overlayTarget: Element;
   tabs: BrowserTabsBridge;
   targets: EdgeMountTargets;
+  toolbarWidgets?: BrowserToolbarWidgetsBridge;
   urlbarCoverage: BrowserUrlbarCoverageBridge;
   windowControls: BrowserWindowControlsBridge;
   windowKind: ShellWindowKind;
@@ -125,6 +131,7 @@ type MountedShell = Readonly<{
   navigation: BrowserNavigationStateAdapter;
   shell: EdgeShellController;
   tabs: BrowserTabsStateAdapter;
+  toolbarWidgets: BrowserToolbarWidgetsStateAdapter | undefined;
   urlbarCoverage: BrowserUrlbarCoverageStateAdapter;
   windowControls: BrowserWindowControlsStateAdapter;
 }>;
@@ -222,6 +229,7 @@ export function mountShellApp({
   overlayTarget,
   tabs,
   targets,
+  toolbarWidgets,
   urlbarCoverage,
   windowControls,
   windowKind,
@@ -253,6 +261,7 @@ export function mountShellApp({
   let downloadsState: BrowserDownloadsStateAdapter | undefined;
   let navigationState: BrowserNavigationStateAdapter | undefined;
   let tabsState: BrowserTabsStateAdapter | undefined;
+  let toolbarWidgetsState: BrowserToolbarWidgetsStateAdapter | undefined;
   let urlbarCoverageState: BrowserUrlbarCoverageStateAdapter | undefined;
   let windowControlsState: BrowserWindowControlsStateAdapter | undefined;
   const components: MountedComponent[] = [];
@@ -689,6 +698,11 @@ export function mountShellApp({
       firstError ??= error;
     }
     try {
+      toolbarWidgetsState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
       urlbarCoverageState?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -734,6 +748,9 @@ export function mountShellApp({
     bookmarksState = createBrowserBookmarksStateAdapter(bookmarks);
     browserToolsState = createBrowserToolsStateAdapter(browserTools);
     downloadsState = createBrowserDownloadsStateAdapter(downloads);
+    toolbarWidgetsState = toolbarWidgets
+      ? createBrowserToolbarWidgetsStateAdapter(toolbarWidgets)
+      : undefined;
     urlbarCoverageState =
       createBrowserUrlbarCoverageStateAdapter(urlbarCoverage);
     windowControlsState =
@@ -763,6 +780,15 @@ export function mountShellApp({
         }
       }),
     );
+    if (toolbarWidgetsState) {
+      controllerSubscriptions.push(
+        toolbarWidgetsState.subscribePopup((open) => {
+          if (!open) {
+            shell.setPopupHeld("top", false);
+          }
+        }),
+      );
+    }
     for (const edge of edgeNames) {
       const surface = shell.getSurface(edge);
       controllerSubscriptions.push(
@@ -793,6 +819,7 @@ export function mountShellApp({
             : {}),
           ...(edge === "top"
             ? {
+                toolbarWidgets: toolbarWidgetsState,
                 windowControls: windowControlsState,
               }
             : {}),
@@ -887,6 +914,7 @@ export function mountShellApp({
       navigation: navigationState,
       shell,
       tabs: tabsState,
+      toolbarWidgets: toolbarWidgetsState,
       urlbarCoverage: urlbarCoverageState,
       windowControls: windowControlsState,
     });

@@ -550,6 +550,44 @@ and active downloads. The complete checklist is in
 `docs/research/firefox-153-native-popup-anchoring.md`, and
 `docs/research/firefox-153-gutter-progress-lights.md`.
 
+### 6.8 Nav-bar widget mirror — focused automation complete, real Firefox pending
+
+ADR-044 (#64) adds focused unit/static/build coverage for:
+
+- read-only `CustomizableUI` nav-bar enumeration mapped to ordered widget
+  snapshots with opaque handles, the fixed skip list, and special placements
+  (spring/spacer/separator) as non-interactive gaps;
+- extension widget mapping: name label, bounded tooltip, `moz-extension://`
+  icon URL parsing from `--webextension-toolbar-image`, rgba-only badge
+  text/colors, disabled state, and privacy assertions that widget/extension
+  ids never enter the serialized snapshot;
+- curated built-in icon tokens with generic fallback;
+- coalesced revision snapshots from CustomizableUI listener events and the
+  bounded attribute `MutationObserver`, including customize-exit re-read and
+  no-change suppression;
+- missing `CustomizableUI` degrading to an unavailable **optional** capability
+  (`available: false`, empty widgets) without failing creation or health;
+- extension activation through `PanelUI.showSubView(viewId, host)` anchored on
+  the project host, popup hold publication, and same-widget toggle-close;
+- built-in activation through the native node command with `moveToAnchor`
+  re-anchoring of node panels and bounded-timeout `false` settlement when no
+  panel appears;
+- stale-handle, foreign-host, and empty-handle rejection with privacy-safe
+  typed diagnostics;
+- deterministic disposal of the CustomizableUI listener, MutationObserver,
+  popup listeners, pending waiters, handle registry, and any held panel;
+- adapter validation, revision reduction, popup forwarding, listener/dispose
+  idempotence, and invoke result checks.
+
+The following are `not run`, not passed: real mirroring of an installed
+extension (icon, badge, popup), customize-mode pin/unpin round-trips,
+extension install/removal/disable while a window is open, private-window
+presentation of non-private-allowed extensions, second-window independence,
+badge updates from live extensions, and widget-zone overflow scrolling on
+narrow layouts. Implementation/source evidence is in
+`docs/research/firefox-153-toolbar-widget-mirror.md` and
+`plans/005-topbar-widget-mirror.md`.
+
 ## 7. Native-UI activation matrix — validated for #15
 
 No earlier issue may claim this gate.

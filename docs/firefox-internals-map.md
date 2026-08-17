@@ -441,6 +441,24 @@ handoff panel and drops the window reference. Required owner, host, action,
 and malformed-result failures retain fixed privacy-safe diagnostics and follow
 ADR-021 fail-open.
 
+### Read-only nav-bar widget mirror (ADR-044)
+
+Issue #64 verified these source dependencies against Firefox 153.0.4
+release/build `20260810162159` on the Windows prerelease target. ADR-044
+records the owner-approved read-only mirror; source pins and the selected
+minimum sequence are in
+`docs/research/firefox-153-toolbar-widget-mirror.md`.
+
+| Dependency | Firefox 153 source-backed behavior | Project owner and failure behavior |
+| --- | --- | --- |
+| `window.CustomizableUI` — `getWidgetIdsInArea("nav-bar")`, `getWidget(id)`, `addListener`/`removeListener` | [`CustomizableUI.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/FIREFOX_153_0_4_RELEASE/browser/components/customizableui/CustomizableUI.sys.mjs) exposes the per-window global, ordered area placements, wrapper lookup, and listener registration. Special placement ids start with `customizableui-special-` (`spring`/`spacer`/`separator`); legacy bare ids and `vertical-spacer` also classify as special. | `src/firefox/toolbar-widgets.ts` reads placements read-only as an **optional** capability. Missing/renamed symbols leave `available: false` without joining activation health. The listener object is detached once on dispose. Fennevia never calls a CustomizableUI write API. |
+| CustomizableUI listener events (`onWidgetAdded/Moved/Removed/Created/Destroyed/InstanceRemoved/Overflow/Underflow/Reset/UndoMove`, `onAreaReset`, `onCustomizeEnd`) | The same module notifies each listener method after placement, customization, install, and removal changes. | Every event coalesces into one zero-delay refresh that republishes an immutable revision snapshot only when mapped content changed. Customize exit (`onCustomizeEnd`) forces the same re-read. |
+| Widget wrapper fields `webExtension`, `viewId`, `label`, `tooltiptext` | `CustomizableUI.sys.mjs` wrapper getters expose the extension flag, the `PanelUI-webext-…-view` subview id for popup-mode actions, and lazily resolved label/tooltip strings. | Wrapper reads are defensive (throwing getters yield empty strings). `webExtension === true` classifies extension actions; `viewId` selects the `showSubView` activation path. Widget ids stay in the privileged handle registry. |
+| Extension node shape: `.unified-extensions-item-action-button`, `.unified-extensions-item-name`, `badge`/`badgeStyle` attributes, `--webextension-toolbar-image` inline style | [`ext-browserAction.js`](https://github.com/mozilla-firefox/firefox/blob/FIREFOX_153_0_4_RELEASE/browser/components/extensions/ext-browserAction.js) `updateButton()` writes the badge text attribute, a `badgeStyle` string of `background-color`/`color` rgba values, and an `image-set(url("moz-extension://…"))` custom property on the action button. | The bridge parses only bounded values: rgba-only badge colors, `moz-extension://`-only icon URLs, bounded text. A subtree attribute `MutationObserver` (badge, badgeStyle, disabled, label, style, tooltiptext) republishes snapshots and is disconnected on every rebuild and on dispose. |
+| `PanelUI.showSubView(viewId, anchor)` and `#customizationui-widget-panel` | [`panelUI.js`](https://github.com/mozilla-firefox/firefox/blob/FIREFOX_153_0_4_RELEASE/browser/components/customizableui/content/panelUI.js) accepts an arbitrary element anchor, creates the transient `customizationui-widget-panel`, and removes it on hide. A truthy `anchor.open` expando makes `showSubView` return without opening. | Extension activation passes the clicked project host directly; the transient panel therefore anchors on Fennevia's button without `moveToAnchor`. A stale `open` expando is cleared before the call. Open failures settle through `popuphidden` or a bounded timeout and fail open to the native path. |
+| Native widget node `doCommand()` / synthetic `command` dispatch | Built-in toolbar widgets handle XUL `command` activation; panel-opening widgets anchor on their own node. | Non-`viewId` widgets activate through the native node; any panel that appears anchored inside that node is re-anchored to the project host with `moveToAnchor`. Commands that open no panel settle `false` after a bounded timeout. |
+| `moz-extension://` icon URLs in a system-principal XHTML host `<img>` | Extension icons resolve through the extension's own protocol handler. | The URL enters only the in-memory DOM `img src` of the owning window (ADR-044 owner approval). It never enters logs, persistence, diagnostics, or serialized state. A missing icon falls back to the project `extensions` glyph. |
+
 ### Content-only native visibility activation
 
 Issue #15 verified the following unsupported dependencies on Firefox 153.0.4.

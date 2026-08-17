@@ -36,6 +36,11 @@ progress lights have focused automated evidence; the real Firefox popup-
 placement and live light-painting matrices remain pending and are not included
 in the earlier validated baseline.
 
+ADR-044 (#64) adds the read-only nav-bar widget mirror in the top surface with
+owner-approved rendering of extension identity data; it likewise has focused
+automated evidence while the real Firefox mirror/popup/customize matrix in
+`docs/testing-and-recovery.md` §6.8 remains pending.
+
 The project is currently under rapid development. Ordinary shell work uses CI
 as the required gate; the complete real-Firefox matrices run at release. See
 ADR-039 and `AGENTS.md` section 8.
@@ -662,6 +667,25 @@ same-build rehearsal and leaves the first real stable transition honestly not
 run. See
 `docs/research/firefox-153-mvp-hardening-update-rehearsal.md`.
 
+## Milestone N: Nav-bar widget mirror — implementation complete, real Firefox smoke pending (#64, ADR-044)
+
+Started from the Deferred "extension toolbar/action replacement" item with
+owner approval for the bounded ADR-037 privacy relaxation. Mirror the user's
+`CustomizableUI` nav-bar layout read-only in the Fennevia top row with
+project-owned components: extension action buttons (real icon, badge, name),
+pinned built-in buttons (curated `ShellIcon` tokens, generic fallback), and
+spacers as gaps. Native customize mode remains the only editor; listeners plus
+a bounded attribute observer republish revision snapshots. Extension popups
+anchor on the clicked project button through `PanelUI.showSubView` and the
+ADR-042 hold path. The capability is optional and never joins activation
+health. CustomizableUI writes, drag editing, panel-content cloning, and
+overflow mirroring stay deferred.
+
+Gate: CI passes with focused bridge/adapter coverage; the real Firefox rows in
+`docs/testing-and-recovery.md` §6.8 are recorded honestly (currently
+`not run`). Plan: `plans/005-topbar-widget-mirror.md`; evidence:
+`docs/research/firefox-153-toolbar-widget-mirror.md`.
+
 ## Deferred work
 
 The following require separate plans and issues:
@@ -669,7 +693,9 @@ The following require separate plans and issues:
 - complete Urlbar suggestions/providers and search modes;
 - Firefox View replacement;
 - identity and permission panel replacement;
-- extension toolbar/action replacement;
+- extension toolbar/action replacement beyond the ADR-044 read-only mirror
+  (CustomizableUI writes, drag editing, panel-content cloning, overflow
+  mirroring);
 - complete bookmarks/history manager;
 - complete Downloads manager and file actions;
 - bookmark drag-and-drop/editing;

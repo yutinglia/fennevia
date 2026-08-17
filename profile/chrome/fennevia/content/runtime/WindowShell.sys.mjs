@@ -13,6 +13,7 @@ import {
   createFirefoxDownloadsBridge,
   createFirefoxNavigationBridge,
   createFirefoxTabsBridge,
+  createFirefoxToolbarWidgetsBridge,
   createFirefoxUrlbarCoverageBridge,
   createFirefoxWindowControlsBridge,
 } from "../firefox/BridgeBoundary.sys.mjs";
@@ -1115,6 +1116,7 @@ const mountProductionShell = ({
   let nativeUi;
   let style;
   let tabsBridge;
+  let toolbarWidgetsBridge;
   let urlbarCoverageBridge;
   let windowControlsBridge;
   try {
@@ -1239,6 +1241,25 @@ const mountProductionShell = ({
       },
       window: browserWindow,
     });
+    try {
+      // Toolbar widget mirroring is an optional capability (ADR-044): a
+      // creation failure must not block shell activation or native fallback.
+      toolbarWidgetsBridge = createFirefoxToolbarWidgetsBridge({
+        boundary: bridge,
+        frame,
+        window: browserWindow,
+      });
+    } catch (error) {
+      toolbarWidgetsBridge = undefined;
+      reportError(
+        annotateShellLifecycleError(error, {
+          code:
+            error?.fenneviaCode ??
+            "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_UNAVAILABLE",
+          phase: error?.fenneviaPhase ?? "firefox-toolbar-widgets-create",
+        }),
+      );
+    }
     style = createElement(frame.ownerDocument, "style", {
       id: SHELL_APP_STYLE_ID,
       textContent: shellAppCss,
@@ -1255,6 +1276,7 @@ const mountProductionShell = ({
       overlayTarget,
       targets,
       tabs: tabsBridge.tabs,
+      toolbarWidgets: toolbarWidgetsBridge?.toolbarWidgets,
       urlbarCoverage: urlbarCoverageBridge.urlbarCoverage,
       windowControls: windowControlsBridge.windowControls,
       windowKind,
@@ -1294,6 +1316,7 @@ const mountProductionShell = ({
       nativeUi,
       readyLogged: false,
       tabsBridge,
+      toolbarWidgetsBridge,
       urlbarCoverageBridge,
       windowControlsBridge,
     });
@@ -1337,6 +1360,11 @@ const mountProductionShell = ({
     }
     try {
       tabsBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
+    try {
+      toolbarWidgetsBridge?.dispose();
     } catch (cleanupError) {
       reportError(cleanupError);
     }
@@ -1410,6 +1438,11 @@ const mountProductionShell = ({
     }
     try {
       tabsBridge?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      toolbarWidgetsBridge?.dispose();
     } catch (error) {
       firstError ??= error;
     }
@@ -1505,6 +1538,8 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     record.urlbarCoverageBridge.assertRequiredCapabilities();
   const windowControlsCapabilities =
     record.windowControlsBridge.assertRequiredCapabilities();
+  const toolbarWidgetsCapabilities =
+    record.toolbarWidgetsBridge?.assertRequiredCapabilities() ?? [];
   const frontendCapabilities = record.frontend.getShellAppCapabilities({
     frame,
     overlayTarget,
@@ -1530,6 +1565,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     ...navigationCapabilities,
     ...nativeUiCapabilities,
     ...tabsCapabilities,
+    ...toolbarWidgetsCapabilities,
     ...urlbarCoverageCapabilities,
     ...windowControlsCapabilities,
     ...frontendCapabilities,

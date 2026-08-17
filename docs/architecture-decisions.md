@@ -1142,7 +1142,8 @@ Implementation and validation evidence are recorded in
 
 **Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary;
 top-row address cluster and native caption island superseded by ADR-038;
-popup-action toolbar reveal superseded by ADR-042
+popup-action toolbar reveal superseded by ADR-042; the widget/identity
+enumeration prohibition partially superseded by ADR-044
 
 Render the top edge as one project-owned, non-wrapping toolbar row. Expose only
 nine fixed browser-tool availability booleans and nine fixed actions through a
@@ -1170,7 +1171,11 @@ toggle or ensure-ready then `moveToAnchor`/`openPopup`. Settings and
 customization still invoke the current window owners. The complete-toolbar
 action still reveals the navbar and focuses a retained native navigation
 control. Never enumerate or clone arbitrary `CustomizableUI` widgets,
-extension identities, icons, commands, or panel contents.
+extension identities, icons, commands, or panel contents. (Partially
+superseded: ADR-044, with explicit owner approval, allows read-only nav-bar
+placement enumeration and in-memory rendering of extension name, icon, and
+badge; panel contents, commands, and every logging/persistence prohibition
+remain in force.)
 
 Keep Firefox's existing minimize, maximize/restore, and close nodes in place
 for fail-open recovery. The compact native caption island from this decision is
@@ -1414,3 +1419,53 @@ or a filename-bearing download widget. Live Firefox load/download light
 painting is recorded as `not run`; mapping, rejected alternatives, health, and
 generated-artifact checks are in
 `docs/research/firefox-153-gutter-progress-lights.md`.
+
+## ADR-044: Read-only nav-bar widget mirror rendered with project components
+
+**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary, with
+explicit project-owner approval for the bounded ADR-037 privacy relaxation
+
+Mirror Firefox's own `CustomizableUI` nav-bar placement list as a read-only
+data source and render it in the Fennevia top row with project-owned glass
+buttons: WebExtension action buttons (real `moz-extension://` icon, badge
+text/colors, extension name as label/tooltip), user-pinned built-in buttons
+(curated `ShellIcon` tokens for a known id set, a generic glyph otherwise), and
+special placements (spring, spacer, separator) as gaps. Placements already
+represented by fixed Fennevia controls (back/forward, urlbar-container,
+search-container, downloads, personal-bookmarks, and similar) stay on a fixed
+skip list. Native customize mode remains the only editor; `CustomizableUI`
+listeners plus a bounded attribute `MutationObserver` republish an immutable
+revision snapshot after customize exit, pin/unpin, install/removal, badge, and
+icon changes.
+
+The per-window `src/firefox/toolbar-widgets.ts` controller keeps widget ids and
+native nodes in a privileged opaque-handle registry; the frontend receives only
+`{ handle, kind, label, tooltip, iconUrl, badge, icon, disabled }` with
+validated bounds (`moz-extension://`-only icon URLs, rgba-only badge colors,
+fixed icon tokens, bounded text). Activation passes the clicked project host
+back through the handle: widgets with a `viewId` open through
+`PanelUI.showSubView(viewId, host)` (the transient
+`customizationui-widget-panel` anchors on the host directly); other widgets
+dispatch the native node command and re-anchor any panel that appears with
+`moveToAnchor(host)`. Panel holds, toggle-close, popup release, and disposal
+reuse the ADR-042 pattern.
+
+This owner-approved decision partially supersedes ADR-037's prohibition:
+read-only nav-bar placement enumeration and extension identity (name, icon,
+badge) may enter frontend memory for rendering only. Logging, persistence,
+diagnostics, CSS custom properties on shared roots, and root datasets must not
+carry widget identity; diagnostics stay at widget counts and fixed codes. The
+feature is an optional capability: a missing `CustomizableUI` or `PanelUI`
+leaves the zone hidden, never joins activation health requirements, and keeps
+fixed handoffs and fail-open recovery untouched. CustomizableUI writes,
+drag-and-drop editing, panel-content cloning, and overflow-panel mirroring
+remain out of scope.
+
+**Reasoning:** Firefox already maintains the user's customized nav-bar layout,
+extension action state, and popup ownership; mirroring that list read-only
+avoids inventing a second widget system while restoring pinned-extension access
+that the collapsed navbar removed. Curated icon tokens keep widget ids
+privileged-side, and the ADR-042 host-anchoring path keeps extension popup
+contents Firefox-owned. Live Firefox mirroring and popup anchoring are recorded
+per-row in `docs/testing-and-recovery.md`; source pins and the selected minimum
+sequence are in `docs/research/firefox-153-toolbar-widget-mirror.md`.

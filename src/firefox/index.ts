@@ -4,5 +4,6 @@ export * from "./browser-tools";
 export * from "./downloads";
 export * from "./navigation";
 export * from "./tabs";
+export * from "./toolbar-widgets";
 export * from "./urlbar-coverage";
 export * from "./window-controls";
