@@ -21,7 +21,8 @@ The tested MVP includes:
 | Tabs and address launcher | Complete | Event-driven vertical tabs with audio/container/attention state, drag/keyboard reorder, native tab context-menu handoff, compact committed address/status launcher, and centred address/search popup |
 | Top controls | Complete | Native-synchronised Back, Forward, Reload/Stop, New Tab, and bounded page status |
 | Single-line toolbar and native handoffs | Focused implementation; real-Firefox matrix pending | One non-wrapping top row, fixed native tool/original-toolbar actions, project-owned window controls, 7px gutter, drag regions, and transient shortcut hint |
-| Nav-bar widget mirror (ADR-044) | Focused implementation; real-Firefox matrix pending | Read-only mirror of `CustomizableUI` nav-bar placements as project-styled buttons — extension actions with real icon/badge, pinned built-ins, spacers — with popups anchored on the project button and native customize mode as the only editor |
+| Nav-bar widget mirror (ADR-044) | Focused implementation; superseded as sole model by ADR-045; real-Firefox matrix pending | Default top-zone layout from `CustomizableUI` nav-bar placements as project-styled buttons — extension actions with real icon/badge, pinned built-ins, spacers — with popups anchored on the project button |
+| Fennevia customize mode (ADR-045) | Focused implementation; real-Firefox matrix pending | Four-edge widget zones, full CustomizableUI inventory palette, project-owned editor drawer, bounded style tokens, profile-local prefs, and owner-approved adopt/restore writes; native customize mode remains a fixed handoff |
 | Urlbar coverage | Complete | Firefox-derived connection/protection/permission/action summaries and complete native Urlbar handoff |
 | Bookmarks | Complete | Bounded lazy Places hierarchy with live updates and Firefox-owned opening behavior |
 | Downloads | Complete | Anonymous event-driven aggregate progress/status while Firefox retains safety and file management |
@@ -31,10 +32,10 @@ The tested MVP includes:
 | Later stable transition | Pending availability/evidence | A real transition to a newer Firefox stable still requires the complete update workflow and cannot be claimed from the Firefox 153 rehearsal |
 
 The planned Windows MVP and first public prerelease are complete. ADR-037's
-single-line toolbar and native handoffs and ADR-044's nav-bar widget mirror
-have focused automated coverage; the changed real-Firefox visual and
-interaction matrices remain pending and are not part of the published
-`v0.10.0-beta.1` validation claim. [Issue
+single-line toolbar and native handoffs, ADR-044's nav-bar widget mirror, and
+ADR-045's Fennevia-owned customize mode have focused automated coverage; the
+changed real-Firefox visual and interaction matrices remain pending and are
+not part of the published `v0.10.0-beta.1` validation claim. [Issue
 #1](https://github.com/yutinglia/fennevia/issues/1) remains open because a real
 transition to a later Firefox stable has not yet produced the required
 compatibility record. Historical research files record what was actually true

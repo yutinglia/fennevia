@@ -70,7 +70,7 @@ Completed:
   exact one-sided ownership repair, reconciled compatibility inventory, and an
   executable Firefox stable-update rehearsal.
 
-Current fast branch enhancement under ADR-037, ADR-042, and ADR-044:
+Current fast branch enhancement under ADR-037, ADR-042, ADR-044, and ADR-045:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   page actions, Firefox tools, and progressive disclosure;
@@ -85,9 +85,12 @@ Current fast branch enhancement under ADR-037, ADR-042, and ADR-044:
 - 2px decorative gutter lights for selected-tab loading and active download
   aggregate, without a second trigger or filename text;
 - an ADR-044 read-only mirror of the user's nav-bar `CustomizableUI`
-  placements — extension actions with real icon/badge, pinned built-ins, and
-  spacers — rendered with project components, activated through host-anchored
-  Firefox-owned popups, and edited only through native customize mode.
+  placements as the default top-zone layout, superseded as the only widget
+  source by ADR-045: a Fennevia-owned customize mode with four-edge widget
+  zones, the full current CustomizableUI inventory as an opaque-token palette,
+  bounded style tokens, profile-local prefs, and owner-approved adopt/restore
+  writes onto the collapsed nav-bar. Native customize mode stays a fixed
+  handoff.
 
 Focused type/build/unit/static checks cover this enhancement. Its real Firefox
 manual matrix remains pending and is not part of the earlier #15 validation.
@@ -481,8 +484,8 @@ Evidence: ADR-037, ADR-042,
   top row with project-owned components: extension actions with real
   icon/badge/name, pinned built-ins with curated or generic project glyphs,
   and spacers as gaps;
-- native customize mode stays the only editor; listener events and a bounded
-  attribute observer republish revision snapshots without polling;
+- listener events and a bounded attribute observer republish revision
+  snapshots without polling;
 - extension popups open through `PanelUI.showSubView` anchored on the clicked
   project button; built-ins activate their native node with panel re-anchor;
 - owner-approved ADR-044 relaxation: extension identity (label, tooltip,
@@ -492,10 +495,30 @@ Evidence: ADR-037, ADR-042,
 - optional capability: a missing `CustomizableUI` leaves the fixed controls
   and activation health untouched.
 
-Evidence: ADR-044, `plans/005-topbar-widget-mirror.md`, and
-`docs/research/firefox-153-toolbar-widget-mirror.md`. The real-Firefox
-mirror/popup/customize matrix is recorded as pending in
-`docs/testing-and-recovery.md` §6.8.
+The mirror-as-sole-model and "native customize mode is the only editor"
+clauses are superseded by ADR-045 below. Evidence: ADR-044,
+`plans/005-topbar-widget-mirror.md`, and
+`docs/research/firefox-153-toolbar-widget-mirror.md`.
+
+#### Fennevia-owned customize mode — focused implementation complete, manual Firefox pending (ADR-045)
+
+- four-edge widget zones driven by `fennevia.customize.layout`, falling back
+  to the ADR-044 nav-bar mirror until the first edit;
+- opaque-token palette of every current CustomizableUI widget plus Fennevia
+  `show-bookmarks` / `show-downloads` widgets and spacer/spring/separator
+  specials;
+- project-owned editor drawer under the top panel, held through the #31 popup
+  hold, with add/move/remove/reset and bounded style tokens;
+- owner-approved persistence of widget ids in the layout pref and bounded
+  `addWidgetToArea` / restore writes; extension identity still banned from
+  logs, diagnostics, serialized frontend state, CSS variables, and root
+  datasets;
+- optional editing: missing `Services.prefs` disables the editor without
+  joining activation health. Native customize mode remains a fixed handoff.
+
+Evidence: ADR-045, `plans/006-customize-mode.md`, and
+`docs/research/firefox-153-customize-mode.md`. The real-Firefox customize
+matrix is recorded as pending in `docs/testing-and-recovery.md` §6.9.
 
 Gate: basic browsing and required access paths work entirely through custom
 surfaces while native UI remains visible for comparison and fallback.
@@ -625,21 +648,21 @@ and hashes. Generated files are never hand-edited.
 
 ## 8. Major risks and mitigations
 
-| Risk                                                     | Mitigation                                                                               |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Firefox changes AutoConfig or manifest registration      | Current-source research, compatibility canaries, minimal bootstrap tests                 |
-| Firefox changes internal APIs/events/DOM                 | Small bridge modules, capability checks, internals map, latest-stable-only policy        |
-| Svelte or CSS affects native chrome                      | Project-owned roots, frame-scoped selectors, no global reset, Browser Toolbox comparison |
-| Edge triggers block web content                          | Narrow measured trigger regions, deterministic corners, pointer-transparent frame        |
-| A surface becomes stuck or retains focus                 | Explicit hold state, tracked timers, `Escape`, focus restoration, disposal tests         |
-| Native UI is hidden before feature coverage              | #15 blockers, native-UI coverage inventory, active-only rules                            |
-| Custom shell fails after activation                      | Safe start, privileged emergency fallback, immediate active clearing                     |
-| Native prompts or extension surfaces become inaccessible | Firefox ownership, modal suspension, narrowest possible native hiding                    |
-| Multi-window/private state leaks                         | Per-window contexts, opaque IDs, no browsing-derived persistence, cleanup                |
-| Build or dependency compromise                           | Locked graph, lifecycle scripts disabled, deterministic builds, artifact scanner         |
-| Installer damages another profile                        | Explicit canonical targets, ownership manifests, dry run, rollback, hard refusal         |
-| Release bytes are stale, altered, or partially published | Clean-tree double build, exact manifest, SHA-256, annotated tag, verified draft assets    |
-| Logs expose browsing data                                | Default-deny schemas, redaction, hostile-value tests, no network sink                    |
+| Risk                                                     | Mitigation                                                                                 |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Firefox changes AutoConfig or manifest registration      | Current-source research, compatibility canaries, minimal bootstrap tests                   |
+| Firefox changes internal APIs/events/DOM                 | Small bridge modules, capability checks, internals map, latest-stable-only policy          |
+| Svelte or CSS affects native chrome                      | Project-owned roots, frame-scoped selectors, no global reset, Browser Toolbox comparison   |
+| Edge triggers block web content                          | Narrow measured trigger regions, deterministic corners, pointer-transparent frame          |
+| A surface becomes stuck or retains focus                 | Explicit hold state, tracked timers, `Escape`, focus restoration, disposal tests           |
+| Native UI is hidden before feature coverage              | #15 blockers, native-UI coverage inventory, active-only rules                              |
+| Custom shell fails after activation                      | Safe start, privileged emergency fallback, immediate active clearing                       |
+| Native prompts or extension surfaces become inaccessible | Firefox ownership, modal suspension, narrowest possible native hiding                      |
+| Multi-window/private state leaks                         | Per-window contexts, opaque IDs, no browsing-derived persistence, cleanup                  |
+| Build or dependency compromise                           | Locked graph, lifecycle scripts disabled, deterministic builds, artifact scanner           |
+| Installer damages another profile                        | Explicit canonical targets, ownership manifests, dry run, rollback, hard refusal           |
+| Release bytes are stale, altered, or partially published | Clean-tree double build, exact manifest, SHA-256, annotated tag, verified draft assets     |
+| Logs expose browsing data                                | Default-deny schemas, redaction, hostile-value tests, no network sink                      |
 | External code is copied without permission               | MPL-2.0 policy, exact provenance gate, root third-party inventory, prohibited unclear code |
 
 ## 9. Issue execution rules

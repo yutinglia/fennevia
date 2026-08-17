@@ -40,7 +40,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs",
-      "sha256": "335b6b722a3fc73e2364d43b4269f8484e2b387ed33382afd7d724741eda6d99"
+      "sha256": "24fb431408b192ac6297d01526cf94362ff112cf6c56d31f75c809bae51819ac"
     },
     {
       "scope": "profile",
@@ -75,12 +75,12 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/shell/ShellApp.js",
-      "sha256": "65098d3b7b6eb2aa2b8d2047ab89cfe4275e9fb7355c19e3a35e024732b52166"
+      "sha256": "e4959b77024f7882ec9bc5235215950aa0a0fb2fbf192629e2294309321523f6"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/shell/ShellStyles.sys.mjs",
-      "sha256": "ce02a6e70ced8199239d4ca4a766c639c9c06e92833e5d52da040d83de1aa7b3"
+      "sha256": "40198e47deb07e4fc8312ed99034aa661d7f24d33d2329618bc5a87f132a2f5f"
     },
     {
       "scope": "profile",

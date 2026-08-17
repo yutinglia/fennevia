@@ -37,9 +37,12 @@ placement and live light-painting matrices remain pending and are not included
 in the earlier validated baseline.
 
 ADR-044 (#64) adds the read-only nav-bar widget mirror in the top surface with
-owner-approved rendering of extension identity data; it likewise has focused
-automated evidence while the real Firefox mirror/popup/customize matrix in
-`docs/testing-and-recovery.md` §6.8 remains pending.
+owner-approved rendering of extension identity data. ADR-045 deprecates that
+mirror as the only widget source and adds a Fennevia-owned customize mode with
+four-edge zones, the full CustomizableUI inventory, bounded style tokens, and
+owner-approved adopt/restore writes. Both have focused automated evidence;
+the real Firefox matrices in `docs/testing-and-recovery.md` §6.8 and §6.9
+remain pending.
 
 The project is currently under rapid development. Ordinary shell work uses CI
 as the required gate; the complete real-Firefox matrices run at release. See
@@ -674,17 +677,34 @@ owner approval for the bounded ADR-037 privacy relaxation. Mirror the user's
 `CustomizableUI` nav-bar layout read-only in the Fennevia top row with
 project-owned components: extension action buttons (real icon, badge, name),
 pinned built-in buttons (curated `ShellIcon` tokens, generic fallback), and
-spacers as gaps. Native customize mode remains the only editor; listeners plus
-a bounded attribute observer republish revision snapshots. Extension popups
-anchor on the clicked project button through `PanelUI.showSubView` and the
-ADR-042 hold path. The capability is optional and never joins activation
-health. CustomizableUI writes, drag editing, panel-content cloning, and
-overflow mirroring stay deferred.
+spacers as gaps. Native customize mode was the only editor in this milestone;
+listeners plus a bounded attribute observer republish revision snapshots.
+Extension popups anchor on the clicked project button through
+`PanelUI.showSubView` and the ADR-042 hold path. The capability is optional
+and never joins activation health. CustomizableUI writes, drag editing,
+panel-content cloning, and overflow mirroring stay deferred to ADR-045.
 
 Gate: CI passes with focused bridge/adapter coverage; the real Firefox rows in
 `docs/testing-and-recovery.md` §6.8 are recorded honestly (currently
 `not run`). Plan: `plans/005-topbar-widget-mirror.md`; evidence:
 `docs/research/firefox-153-toolbar-widget-mirror.md`.
+
+## Milestone O: Fennevia-owned customize mode — implementation complete, real Firefox smoke pending (ADR-045)
+
+Deprecate the ADR-044 mirror as the only widget source. The toolbar-widgets
+controller becomes layout-driven across all four edges, exposes the complete
+current CustomizableUI inventory as an opaque-token palette, adds Fennevia
+`show-bookmarks` / `show-downloads` widgets, and accepts a fixed edit set with
+a revision guard. A project-owned editor drawer under the top panel performs
+all editing. Profile-local `fennevia.customize.layout` / `.style` prefs persist
+versioned JSON. Owner-approved bounded writes adopt widgets onto the collapsed
+nav-bar and restore them on removal or reset. Native customize mode remains a
+fixed handoff. Editing is optional and never joins activation health.
+
+Gate: CI passes with focused model/bridge/adapter coverage; the real Firefox
+rows in `docs/testing-and-recovery.md` §6.9 are recorded honestly (currently
+`not run`). Plan: `plans/006-customize-mode.md`; evidence:
+`docs/research/firefox-153-customize-mode.md`.
 
 ## Deferred work
 
@@ -693,9 +713,8 @@ The following require separate plans and issues:
 - complete Urlbar suggestions/providers and search modes;
 - Firefox View replacement;
 - identity and permission panel replacement;
-- extension toolbar/action replacement beyond the ADR-044 read-only mirror
-  (CustomizableUI writes, drag editing, panel-content cloning, overflow
-  mirroring);
+- extension toolbar/action replacement beyond the ADR-045 Fennevia customize
+  mode (native-area drag-and-drop, panel-content cloning, overflow mirroring);
 - complete bookmarks/history manager;
 - complete Downloads manager and file actions;
 - bookmark drag-and-drop/editing;

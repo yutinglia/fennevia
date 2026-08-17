@@ -363,6 +363,26 @@ window. The unprivileged adapter validates results and releases its
 per-window reference on unmount. See ADR-037, ADR-042, and
 `docs/research/firefox-153-native-popup-anchoring.md`.
 
+ADR-044 and ADR-045 add `src/firefox/toolbar-widgets.ts` and
+`src/firefox/customize-model.ts` to the same generated private ESM. One
+optional controller per window reads the current `CustomizableUI` inventory,
+keeps widget ids and native nodes in a privileged handle/token registry, and
+renders project-owned widget zones on all four edges. With no layout
+preference the top zone falls back to the live nav-bar placement list. The
+first edit materializes a Fennevia layout into `fennevia.customize.layout`;
+`fennevia.customize.style` stores bounded style tokens. Both prefs are
+versioned JSON with a 16 KiB cap and fail safe to defaults. Placing a widget
+with no live node performs the owner-approved `addWidgetToArea(id, "nav-bar")`
+adoption; removing the last Fennevia placement restores extensions to
+`AREA_ADDONS` and other widgets to the palette. The frontend receives frozen
+ordinary snapshots only. Extension identity may exist in that window's
+in-memory DOM for rendering; it never enters logs, diagnostics, serialized
+frontend state, CSS variables, or root datasets. Missing `CustomizableUI`
+hides the zones and missing `Services.prefs` disables editing; neither joins
+activation health. See ADR-044, ADR-045,
+`docs/research/firefox-153-toolbar-widget-mirror.md`, and
+`docs/research/firefox-153-customize-mode.md`.
+
 ## 5. Application and frontend layers
 
 The application layer coordinates ordinary typed state, controllers, and feature policy. It must be usable without importing Firefox implementation modules directly.
@@ -698,9 +718,12 @@ src/
     tabs.ts
     navigation.ts
     browser-tools.ts
+    customize-model.ts
     urlbar-coverage.ts
     bookmarks.ts
     downloads.ts
+    toolbar-widgets.ts
+    window-controls.ts
   app/
     address-popup.ts
     browser-tools-state.ts
@@ -710,13 +733,17 @@ src/
     navigation-state.ts
     tab-state.ts
     tab-strip.ts
+    toolbar-widgets-state.ts
     urlbar-coverage-state.ts
+    window-controls-state.ts
   shell/
     AddressPopup.svelte
     App.svelte
     BookmarksPanel.svelte
+    CustomizePanel.svelte
     DownloadsPanel.svelte
     ShellIcon.svelte
+    toolbar-widget-icons.ts
     entry.ts
     index.ts
     styles/

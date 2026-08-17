@@ -104,6 +104,8 @@ const SKIPPED_WIDGET_IDS = Object.freeze([
   "urlbar-container",
   "search-container",
   "downloads-button",
+  "unified-extensions-button",
+  "PanelUI-menu-button",
   "personal-bookmarks",
   "menubar-items",
   "tabbrowser-tabs",

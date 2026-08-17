@@ -211,6 +211,8 @@ function createNativeWindow({
   let areaWidgetIds = [
     "back-button",
     "urlbar-container",
+    "unified-extensions-button",
+    "PanelUI-menu-button",
     "customizableui-special-spring3",
     "sidebar-button",
     "extension-widget_example_com-browser-action",

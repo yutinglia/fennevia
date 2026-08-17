@@ -11,10 +11,10 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 在靜止狀態下，Firefox 主要只顯示目前網頁。把滑鼠移到視窗邊緣，或使用鍵盤，即可顯示：
 
-- **上方：**上一頁、下一頁、重新載入／停止、Firefox 工具、唯讀鏡射的釘選工具列按鈕與擴充套件動作，以及專案自有的視窗控制項。重新排列仍透過 Firefox 原生自訂模式完成。
-- **左方：**垂直分頁，以及精簡的網址／狀態啟動器。
-- **右方：**書籤。
-- **下方：**下載進度及狀態。
+- **上方：**上一頁、下一頁、重新載入／停止、Firefox 工具、會跟隨 Firefox 工具列直到你在 Fennevia 自訂的 widget 區，以及專案自有的視窗控制項。Fennevia 自訂模式可以把 widget 放到四個邊緣；Firefox 原生自訂模式仍然可用。
+- **左方：**垂直分頁、精簡的網址／狀態啟動器，以及放在此處的 widget。
+- **右方：**書籤，以及放在此處的 widget。
+- **下方：**下載進度及狀態，以及放在此處的 widget。
 - **中央：**從左方啟動器或按 <kbd>Ctrl</kbd>+<kbd>L</kbd> 開啟的網址／搜尋彈出面板。
 
 安全提示、權限、憑證、擴充套件安裝、下載安全、DevTools、完整原生網址列，以及自訂視窗按鈕背後的視窗指令仍由 Firefox 負責。原生標題列按鈕節點會保留，以便失敗時立刻復原。遇到不支援的功能或需要復原時，Fennevia 可以重新顯示完整的 Firefox 原生介面。
@@ -23,12 +23,12 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 首個公開預發行版本是 [`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1)，支援範圍刻意限制得很窄：
 
-| 要求 | 支援值 |
-| --- | --- |
-| 作業系統 | Windows x64 |
-| Firefox | 原版 Firefox 153.0.4，Release channel |
-| Firefox Build ID | `20260810162159` |
-| 套件 | `fennevia-0.10.0-beta.1-windows.zip` |
+| 要求             | 支援值                                |
+| ---------------- | ------------------------------------- |
+| 作業系統         | Windows x64                           |
+| Firefox          | 原版 Firefox 153.0.4，Release channel |
+| Firefox Build ID | `20260810162159`                      |
+| 套件             | `fennevia-0.10.0-beta.1-windows.zip`  |
 
 若 Firefox 版本或 Build ID 不相符，安裝、更新、修復及重新啟用都會被拒絕；Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta、Nightly，以及較新或較舊的 Firefox 組建。
 

@@ -110,6 +110,16 @@
       type: "move",
     });
 
+  const moveToZone = (fromIndex: number, toZone: ToolbarZoneName) =>
+    void runEdit({
+      fromIndex,
+      fromZone: selectedZone,
+      revision,
+      toIndex: snapshot?.zones[toZone].length ?? 0,
+      toZone,
+      type: "move",
+    });
+
   const removeAt = (index: number) =>
     void runEdit({ index, revision, type: "remove", zone: selectedZone });
 
@@ -234,6 +244,20 @@
                   title="Move later"
                   type="button">↓</button
                 >
+                {#each toolbarZoneNames as zone (zone)}
+                  {#if zone !== selectedZone}
+                    <button
+                      aria-label={`Move ${widgetDisplayLabel(
+                        widget,
+                      )} to the ${zoneLabels[zone].toLowerCase()} panel`}
+                      class="fennevia-control fennevia-customize__action"
+                      data-fennevia-customize-move-zone={zone}
+                      onclick={() => moveToZone(index, zone)}
+                      title={`Move to ${zoneLabels[zone].toLowerCase()}`}
+                      type="button">{zoneLabels[zone].slice(0, 1)}</button
+                    >
+                  {/if}
+                {/each}
                 <button
                   aria-label={`Remove ${widgetDisplayLabel(widget)}`}
                   class="fennevia-control fennevia-customize__action"
@@ -294,7 +318,11 @@
     <section aria-label="Style" class="fennevia-customize__section">
       <h3 class="fennevia-customize__heading">Style</h3>
 
-      <div class="fennevia-customize__style-row" role="group" aria-label="Theme">
+      <div
+        class="fennevia-customize__style-row"
+        role="group"
+        aria-label="Theme"
+      >
         <span class="fennevia-customize__style-label">Theme</span>
         {#each toolbarStyleThemes as theme (theme)}
           <button

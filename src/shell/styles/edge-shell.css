@@ -1818,6 +1818,13 @@
   gap: 2px;
 }
 
+#fennevia-shell-frame-host
+  .fennevia-customize__action[data-fennevia-customize-move-zone] {
+  min-inline-size: 1.6em;
+  font-size: 10px;
+  font-weight: 650;
+}
+
 #fennevia-shell-frame-host .fennevia-customize__action {
   display: inline-flex;
   min-inline-size: 24px;

@@ -1436,11 +1436,12 @@ text/colors, extension name as label/tooltip), user-pinned built-in buttons
 (curated `ShellIcon` tokens for a known id set, a generic glyph otherwise), and
 special placements (spring, spacer, separator) as gaps. Placements already
 represented by fixed Fennevia controls (back/forward, urlbar-container,
-search-container, downloads, personal-bookmarks, and similar) stay on a fixed
-skip list. Native customize mode remains the only editor; `CustomizableUI`
-listeners plus a bounded attribute `MutationObserver` republish an immutable
-revision snapshot after customize exit, pin/unpin, install/removal, badge, and
-icon changes.
+search-container, downloads, Unified Extensions, application menu,
+personal-bookmarks, and similar) stay on a fixed
+skip list. Until the user customizes in Fennevia, this list remains the default
+top-zone layout. `CustomizableUI` listeners plus a bounded attribute
+`MutationObserver` republish an immutable revision snapshot after customize
+exit, pin/unpin, install/removal, badge, and icon changes.
 
 The per-window `src/firefox/toolbar-widgets.ts` controller keeps widget ids and
 native nodes in a privileged opaque-handle registry; the frontend receives only
@@ -1461,9 +1462,9 @@ diagnostics, CSS custom properties on shared roots, and root datasets must not
 carry widget identity; diagnostics stay at widget counts and fixed codes. The
 feature is an optional capability: a missing `CustomizableUI` or `PanelUI`
 leaves the zone hidden, never joins activation health requirements, and keeps
-fixed handoffs and fail-open recovery untouched. CustomizableUI writes,
-drag-and-drop editing, panel-content cloning, and overflow-panel mirroring
-remain out of scope.
+fixed handoffs and fail-open recovery untouched. Panel-content cloning and
+overflow-panel mirroring remain out of scope. Bounded CustomizableUI writes and
+project-owned layout editing are recorded in ADR-045.
 
 **Reasoning:** Firefox already maintains the user's customized nav-bar layout,
 extension action state, and popup ownership; mirroring that list read-only

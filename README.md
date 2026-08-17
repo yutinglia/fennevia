@@ -17,12 +17,14 @@ floating edge panels that stay hidden until you need them.
 At rest, Firefox mostly shows the current page. Move the pointer to an edge, or
 use the keyboard, to reveal:
 
-- **Top:** Back, Forward, Reload/Stop, Firefox tools, a read-only mirror of
-  your pinned toolbar buttons and extension actions, and project-owned window
-  controls. Rearranging still happens in Firefox's native customize mode.
-- **Left:** vertical tabs and a compact address/status launcher.
-- **Right:** bookmarks.
-- **Bottom:** download progress and status.
+- **Top:** Back, Forward, Reload/Stop, Firefox tools, a widget zone that
+  follows your Firefox toolbar until you customize it in Fennevia, and
+  project-owned window controls. Fennevia customize mode can place widgets on
+  all four edges; Firefox's native customize mode remains available.
+- **Left:** vertical tabs, a compact address/status launcher, and any widgets
+  placed there.
+- **Right:** bookmarks, plus any widgets placed there.
+- **Bottom:** download progress and status, plus any widgets placed there.
 - **Centre:** an address/search popup opened from the launcher or with
   <kbd>Ctrl</kbd>+<kbd>L</kbd>.
 
@@ -38,12 +40,12 @@ The first public prerelease is
 [`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1).
 Its supported environment is intentionally narrow:
 
-| Requirement | Supported value |
-| --- | --- |
-| Operating system | Windows x64 |
-| Firefox | Stock Firefox 153.0.4, release channel |
-| Firefox Build ID | `20260810162159` |
-| Package | `fennevia-0.10.0-beta.1-windows.zip` |
+| Requirement      | Supported value                        |
+| ---------------- | -------------------------------------- |
+| Operating system | Windows x64                            |
+| Firefox          | Stock Firefox 153.0.4, release channel |
+| Firefox Build ID | `20260810162159`                       |
+| Package          | `fennevia-0.10.0-beta.1-windows.zip`   |
 
 Install, update, repair, and re-enable are blocked when the Firefox version or
 Build ID does not match. Disable and uninstall remain available for recovery
