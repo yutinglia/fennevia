@@ -927,7 +927,8 @@ proof are recorded in
 
 ## ADR-032: Activate exact reversible native surfaces with retained native reveal
 
-**Status:** Accepted and validated on Firefox 153.0.4
+**Status:** Accepted and validated on Firefox 153.0.4;
+Fennevia-initiated host-anchored popup reveal carved by ADR-042
 
 After every ADR-021 health and required-capability check succeeds, the fixed
 production initializer performs the explicit `healthy -> active` transition.
@@ -946,11 +947,15 @@ popup sets, tabbox/content infrastructure, find UI, prompts, dialogs, or
 DevTools.
 
 Every hiding selector requires `data-fennevia-active` and the absence of both
-native reveal and suspension markers. Native toolbox pointer/focus, an anchored
-popup, an open unsupported native sidebar, or ADR-031's Urlbar handoff reveals
-the complete retained native surface. The Urlbar bridge must request reveal
-synchronously before `window.openLocation()`. Returning focus to content and
-closing native popups releases the reveal after one short owned delay.
+native reveal and suspension markers. Native toolbox pointer/focus, a
+toolbox-anchored Firefox doorhanger, an open unsupported native sidebar, or
+ADR-031's Urlbar handoff reveals the complete retained native surface. The
+Urlbar bridge must request reveal synchronously before `window.openLocation()`.
+Returning focus to content and closing native popups releases the reveal after
+one short owned delay. ADR-042 carves Fennevia-initiated Trust, permission,
+Downloads, Unified Extensions, and application-menu panels whose `anchorNode`
+is inside the project frame or whose id is listed by a short-lived NativeUi
+handoff token; those panels do not set `data-fennevia-native-ui-revealed`.
 
 Customize mode suspends through Firefox's `aftercustomization` event and hides
 the project frame. Native dialogs also suspend. DOM fullscreen suspends project
@@ -1136,15 +1141,19 @@ Implementation and validation evidence are recorded in
 ## ADR-037: Delegate complete browser details to fixed Firefox-owned handoffs
 
 **Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary;
-top-row address cluster and native caption island superseded by ADR-038
+top-row address cluster and native caption island superseded by ADR-038;
+popup-action toolbar reveal superseded by ADR-042
 
 Render the top edge as one project-owned, non-wrapping toolbar row. Expose only
 nine fixed browser-tool availability booleans and nine fixed actions through a
 new per-window `src/firefox/` controller: site information, protections, site
 permissions, native Downloads, Unified Extensions, application menu, Settings,
 native customization mode, and complete original-toolbar access. Re-resolve
-every Firefox owner at action time and request ADR-032's reversible native
-toolbar reveal before operating an anchored native control.
+every Firefox owner at action time. ADR-042 supersedes toolbar reveal before
+popup-opening actions; Settings, customization, and complete original-toolbar
+access still use their previous owners. The dedicated original-toolbar top-row
+button was later removed by owner request; the action remains in the bridge,
+and Customize plus fail-open remain the native-chrome access paths.
 
 Keep the requested 7px browser-content frame as a fixed decorative gutter, not
 surface-dependent collision clearance. Edge panels remain overlays: they meet
@@ -1152,14 +1161,16 @@ that gutter without a dead pointer gap, top owns both top corners, side rails
 own the remaining side corners, and bottom yields to both rails.
 
 For Firefox 153's enabled Trust Panel, site-information and protection entries
-both delegate through the visible original Trust anchor; when that owner is not
-visible, use the separate original identity and protections anchors. Permission
-and Downloads entries activate their original Firefox anchors. Extension and
-application-menu entries invoke their current Firefox owner after focusing the
-original anchor; Settings and customization invoke the current window owners.
-The complete-toolbar action reveals the navbar and focuses a retained native
-navigation control. Never enumerate or clone arbitrary `CustomizableUI`
-widgets, extension identities, icons, commands, or panel contents.
+call `gTrustPanelHandler.showPopup()` when that owner exists; collapsed-navbar
+`checkVisibility()` is not the feature-gate. ADR-042 then re-anchors the
+Firefox-owned panel to the clicked project host without revealing native
+chrome. Permission uses `gPermissionPanel.setAnchor`; Downloads initializes
+then opens `#downloadsPanel` on the host; extensions and the application menu
+toggle or ensure-ready then `moveToAnchor`/`openPopup`. Settings and
+customization still invoke the current window owners. The complete-toolbar
+action still reveals the navbar and focuses a retained native navigation
+control. Never enumerate or clone arbitrary `CustomizableUI` widgets,
+extension identities, icons, commands, or panel contents.
 
 Keep Firefox's existing minimize, maximize/restore, and close nodes in place
 for fail-open recovery. The compact native caption island from this decision is
@@ -1310,3 +1321,96 @@ against a collapsed native tab strip was not run on this change; the
 source-selected sequence is recorded in
 `docs/research/firefox-153-tab-strip-parity.md`, with a bridge-owned `.tab`
 trigger node as the fallback if positioning fails on the supported build.
+
+## ADR-042: Anchor Firefox-owned panels beside Fennevia buttons without revealing native chrome
+
+**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary
+
+Keep Firefox as the sole owner of Trust, identity, protections, permission,
+Downloads, Unified Extensions, and application-menu panel contents. For the
+six popup-opening browser-tool actions, stop revealing the original navbar and
+stop focusing native toolbox anchors. Pass the clicked project-owned XHTML
+host into `src/firefox/browser-tools.ts`, initialize or open the current
+Firefox owner, then `openPopup`/`moveToAnchor` that host.
+
+Site permissions use Firefox 153's public `gPermissionPanel.setAnchor`. Trust
+and protections call `gTrustPanelHandler.showPopup()` when that owner exists
+and do not treat Fennevia's collapsed navbar `checkVisibility()` as a Trust
+feature-gate. Downloads call `DownloadsPanel.initialize()` then open
+`#downloadsPanel` on the host, because `DownloadsButton.getAnchor()` returns
+null while the navbar is collapsed. Application menu uses `PanelUI.ensureReady`
+then `#appMenu-popup` using Firefox's `bottomcenter topright` placement through
+`PanelMultiView.openPopup` (so `#showMainView` fills `openViews` before
+`popupshown`). If HTML anchoring fails, that call routes `panel.openPopup` to
+`openPopupAtScreenRect` for the duration of the open, then restores Firefox's
+method. Do not open a `panelmultiview` panel with a raw `openPopupAtScreenRect`;
+Firefox 153 throws `panelView is undefined` on `isOpenIn`. Failed opens
+that fire `popuphidden` without showing the panel keep the NativeUi token.
+If that still leaves the panel closed, `PanelUI.show()` with the NativeUi handoff token
+already set and `moveTo` the host screen rectangle on `popupshown`. Unified Extensions still toggle the current owner, then
+re-anchor `#unified-extensions-panel`.
+
+`NativeUi.sys.mjs` ignores toolbox reveal for a short-lived panel-id handoff
+token and for popups whose `anchorNode` is inside the Fennevia frame.
+Firefox-initiated doorhangers that stay anchored in the toolbox still reveal
+native chrome. Settings, customization, original-toolbar access, and native
+Urlbar handoff are unchanged. Do not reparent native anchors or clone panel
+contents.
+
+Hold the matching top or left edge with the existing `#31` `setPopupHeld` path
+while a Fennevia-initiated panel is open. Keep the centered address overlay
+open when the host is one of its detail cards. `popuphidden` releases the hold,
+clears `setAnchor`, and drops the NativeUi token. Disposal hides any still-open
+handoff panel.
+
+**Reasoning:** Revealing the complete navbar made the original chrome appear
+and left panels at collapsed native-button geometry. ADR-041 already proved
+that Firefox can own popup contents while Fennevia supplies only screen
+placement. A project-owned host as the visual anchor keeps security-sensitive
+UI native without a second chrome. Live Browser Toolbox placement against a
+collapsed navbar is recorded as `not run`; the source-selected sequence is in
+`docs/research/firefox-153-native-popup-anchoring.md`.
+
+## ADR-043: Decorative gutter progress lights without a second surface
+
+**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary
+
+Keep ADR-026's hidden-at-rest four-edge contract and ADR-030's anonymous
+Downloads panel. Add two project-owned decorative strips inside the existing
+Fennevia frame, in the 7px content gutter that ADR-037 already reserves:
+
+- top: selected-tab loading, from the existing navigation `loading` boolean;
+- bottom: active download aggregate, from the existing Downloads snapshot.
+
+The strips are `pointer-events: none`, `aria-hidden`, 2px thick, and do not
+create a host, edge trigger, reveal timer, z-index system, collision rule, or
+content margin. Accessible loading remains Reload/Stop and tab busy state;
+accessible download status remains the bottom panel and its keyboard path.
+Filenames, URLs, titles, and byte counts never enter the lights.
+
+Loading is an activity light, not a percent bar. Firefox 153 desktop chrome
+itself uses selected-tab `busy` plus `Browser:Stop`, not `onProgressChange`
+width. `nsIWebProgressListener` replaces unknown or overflowing totals with
+`-1`, and `nsBrowserStatusFilter` throttles, drops `cur > max`, and truncates
+64-bit progress to 32-bit. Fake timeout fills (the old SPA 3s/8s complete)
+hide while a page is still loading. Fennevia therefore keys the top light off
+the existing Stop-enabled `loading` boolean and paints a full-width pulse.
+Downloads reuse determinate `aggregatePercent` from the list-view aggregate, or
+the same pulse when size is unknown. Updates may paint while the matching edge
+panel stays hidden and must not change reveal, holds, or collision.
+
+`yutinglia/my-firefox-custom@7a02f60bb23abe9c191c7fd8cd2a7096bb63aee5` was
+consulted only for the capability of a top load indicator and a bottom download
+indicator. No `.uc.js` implementation, selector, ID, class, timer, numeric
+value, native-DOM insertion, filename text, expandable hover bar, cyan/lime
+gradient, hue-rotate shimmer, or `browserStack` mutation was copied or adapted.
+The gutter overlay, glass/focus tokens, 2px thickness, Stop/list-view sources,
+and activity pulse were independently selected for Fennevia.
+
+**Reasoning:** A thin overlay in an already-reserved gutter gives rest-state
+progress without revealing chrome or stealing pointer hits from the 12px #31
+triggers. Reusing current bridges avoids a second progress listener, polling,
+or a filename-bearing download widget. Live Firefox load/download light
+painting is recorded as `not run`; mapping, rejected alternatives, health, and
+generated-artifact checks are in
+`docs/research/firefox-153-gutter-progress-lights.md`.

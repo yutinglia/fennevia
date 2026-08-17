@@ -580,6 +580,7 @@ const capabilitySnapshots = Object.freeze(
     ["fennevia.native-ui-titlebar-retained", "titlebar-buttonbox-container"],
     ["fennevia.native-ui-urlbar-handoff", "nativeUi.revealForUrlbar"],
     ["fennevia.native-ui-toolbar-handoff", "nativeUi.revealForToolbar"],
+    ["fennevia.native-ui-popup-handoff", "nativeUi.beginPopupHandoff"],
     ["fennevia.native-ui-popup-hold", "popupshowing/popuphidden"],
     [
       "fennevia.native-ui-environment-suspension",
@@ -652,6 +653,7 @@ export function createNativeUiController({ window, frame, onError }) {
   let suspensionReason = null;
   const listeners = [];
   const openPopups = new Set();
+  const popupHandoffIds = new Set();
 
   const clearHideTimer = () => {
     if (hideTimer !== undefined) {
@@ -960,6 +962,13 @@ export function createNativeUiController({ window, frame, onError }) {
       isManagedNode,
     );
 
+  const isFenneviaPopupAnchor = (popup) =>
+    isDescendantOrSelf(frame, popup?.anchorNode);
+
+  const isIgnoredHandoffPopup = (popup) =>
+    (typeof popup?.id === "string" && popupHandoffIds.has(popup.id)) ||
+    isFenneviaPopupAnchor(popup);
+
   const onPopupEvent = (event) => {
     const popup = isElement(event.originalTarget)
       ? event.originalTarget
@@ -976,6 +985,9 @@ export function createNativeUiController({ window, frame, onError }) {
     }
 
     if (event.type === "popupshowing" || event.type === "popupshown") {
+      if (isIgnoredHandoffPopup(popup)) {
+        return;
+      }
       if (
         root.hasAttribute(REVEALED_ATTRIBUTE) ||
         popupAnchorIsManaged(popup)
@@ -1172,6 +1184,7 @@ export function createNativeUiController({ window, frame, onError }) {
       }
       listeners.length = 0;
       openPopups.clear();
+      popupHandoffIds.clear();
       try {
         root.removeAttribute(REVEALED_ATTRIBUTE);
         root.removeAttribute(SUSPENDED_ATTRIBUTE);
@@ -1207,11 +1220,41 @@ export function createNativeUiController({ window, frame, onError }) {
       });
     },
 
+    beginPopupHandoff(panelId) {
+      if (disposed || failed) {
+        throw createNativeUiError(
+          "FENNEVIA_NATIVE_UI_UNAVAILABLE",
+          "native-ui-popup-handoff",
+          { firefoxSymbol: "nativeUi.beginPopupHandoff" },
+        );
+      }
+      if (
+        typeof panelId !== "string" ||
+        !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/u.test(panelId)
+      ) {
+        throw createNativeUiError(
+          "FENNEVIA_NATIVE_UI_POPUP_HANDOFF_INVALID",
+          "native-ui-popup-handoff",
+          { firefoxSymbol: "nativeUi.beginPopupHandoff" },
+        );
+      }
+      popupHandoffIds.add(panelId);
+      return true;
+    },
+
+    endPopupHandoff(panelId) {
+      if (typeof panelId === "string") {
+        popupHandoffIds.delete(panelId);
+      }
+      return true;
+    },
+
     snapshot() {
       return Object.freeze({
         disposed,
         failed,
         openPopupCount: openPopups.size,
+        popupHandoffCount: popupHandoffIds.size,
         revealed: root.hasAttribute(REVEALED_ATTRIBUTE),
         styleRuleCount: style.sheet?.cssRules?.length ?? 0,
         suspended: root.hasAttribute(SUSPENDED_ATTRIBUTE),

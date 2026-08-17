@@ -497,36 +497,58 @@ artifact restoration passed. Evidence: ADR-030 and
 
 ### 6.7 Single-line toolbar and native handoffs — focused automation complete, real Firefox pending
 
-ADR-037 adds focused unit/static/build coverage for:
+ADR-037 and ADR-042 add focused unit/static/build coverage for:
 
 - exact validation of the nine fixed browser-tool action names and nine fixed
   availability booleans;
-- twelve required per-window Firefox capabilities;
-- current Trust-owner selection with separate legacy identity/protection
-  fallback;
-- original permission and Downloads anchor activation;
-- Unified Extensions, application-menu, Settings, customization, and complete
-  original-toolbar delegation;
-- owner re-resolution at action time, reveal rejection/failure, malformed
-  input/result, privacy-safe error symbols, pending-action accounting, and
-  idempotent disposal;
+- twenty-one required per-window Firefox capabilities;
+- popup actions requiring a project-owned host and refusing native-toolbar
+  reveal;
+- Trust `showPopup()` without using collapsed-navbar `checkVisibility()` as a
+  feature-gate, and host-open of `#trustpanel-popup` when `showPopup` throws
+  after initialize;
+- permission `setAnchor` plus owner `openPopup`, with host-open of
+  `#permission-popup` when the owner throws; Downloads `initialize` plus
+  `#downloadsPanel` `openPopup`; Unified Extensions toggle plus re-anchor; and
+  application-menu `ensureReady` plus `PanelMultiView.openPopup` (screen-rect
+  routed through `panel.openPopup` after `#showMainView`), ignored `popuphidden`
+  during that open, then `PanelUI.show()` and `popupshown` `moveTo`;
+- host-surface popup positions (`after_end` in the address overlay,
+  `end_before` on the left rail, otherwise the action default) and preferred
+  `PanelMultiView.openPopup` when present;
+- NativeUi token-listed and Fennevia-anchored panels that do not set
+  `data-fennevia-native-ui-revealed`, while toolbox-anchored doorhangers still
+  reveal;
+- edge `setPopupHeld` plus address-overlay keep-open for popup actions;
+  Settings, customization, and complete original-toolbar still dismiss then
+  delegate;
+- owner re-resolution at action time, host rejection, malformed input/result,
+  privacy-safe error symbols, pending-action accounting, popuphidden cleanup,
+  and idempotent disposal;
 - one-row top-surface selectors, project-authored SVG namespace containment,
   progressive disclosure, loading/focus/disabled states, reduced motion,
   forced colors, and deterministic generated artifacts;
 - seven-rule native activation CSS, retained native caption nodes, project-owned
   top-row window controls, content gutter, and exact rule-count failure;
 - panel drag/no-drag declarations, edge-to-panel contact, transient shortcut
-  overlay, and `top > sides > bottom` collision policy.
+  overlay, and `top > sides > bottom` collision policy;
+- ADR-043 2px gutter load/download lights, idle health nodes, anonymous
+  download-width mapping, full-width activity pulse (not a fake load percent),
+  reduced-motion static beam, and provenance checks that reject the
+  old-project neon IDs/hex/hue-rotate/z-index.
 
 The user requested a fast handoff and will test the browser manually. Therefore
 the following are `not run`, not passed: cold-start flash, real Trust/identity/
-protections/permission/Downloads/extension/menu popup placement and lifetime,
-collapsed permission-anchor behavior, original-toolbar pinned widgets,
-customization enter/exit, caption commands/placement, window drag release,
-corner twitch, narrow/short/maximized/fullscreen/high-DPI layout, second/private
-windows, and emergency fallback. The complete checklist is in
+protections/permission/Downloads/extension/menu popup placement and lifetime
+against a collapsed navbar, original-toolbar pinned widgets, customization
+enter/exit, caption commands/placement, window drag release, corner twitch,
+narrow/short/maximized/fullscreen/high-DPI layout, second/private windows,
+emergency fallback, and live gutter-light painting during selected-tab load
+and active downloads. The complete checklist is in
 `plans/004-single-line-toolbar-ui-ux.md`; implementation/source evidence is in
-`docs/research/firefox-153-single-line-toolbar-handoffs.md`.
+`docs/research/firefox-153-single-line-toolbar-handoffs.md`,
+`docs/research/firefox-153-native-popup-anchoring.md`, and
+`docs/research/firefox-153-gutter-progress-lights.md`.
 
 ## 7. Native-UI activation matrix — validated for #15
 
@@ -613,7 +635,8 @@ the health phase requires:
 - a valid Urlbar-coverage snapshot, one owner-state observer, and native
   `openLocation()` handoff capability;
 - a valid browser-tools snapshot, all fixed native-panel/tool actions, and
-  synchronous original-toolbar reveal capability;
+  host-anchored popup placement plus synchronous original-toolbar reveal
+  capability;
 - a valid window-controls snapshot and project-owned top-row min/max/close
   buttons;
 - exact Firefox native target/titlebar ownership, an attached exact activation

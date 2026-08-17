@@ -11,15 +11,30 @@ const BROWSER_URI = "chrome://browser/content/browser.xhtml";
 let nextContextSequence = 0;
 
 function createEventTarget() {
+  const listeners = new Map();
   return {
-    addEventListener() {},
-    removeEventListener() {},
+    addEventListener(type, listener) {
+      const set = listeners.get(type) ?? new Set();
+      set.add(listener);
+      listeners.set(type, set);
+    },
+    dispatch(type, target) {
+      const event = { originalTarget: target, target, type };
+      for (const listener of [...(listeners.get(type) ?? [])]) {
+        listener(event);
+      }
+    },
+    removeEventListener(type, listener) {
+      listeners.get(type)?.delete(listener);
+    },
   };
 }
 
 function createNativeWindow() {
   const calls = [];
   const targets = new Map();
+  const frameHosts = new Set();
+  const documentEvents = createEventTarget();
 
   function addTarget(id, { visible = true } = {}) {
     const target = {
@@ -42,6 +57,36 @@ function createNativeWindow() {
     return target;
   }
 
+  function addPanel(id) {
+    const panel = {
+      hidePopup() {
+        calls.push(["hidePopup", id]);
+        this.state = "closed";
+        documentEvents.dispatch("popuphidden", panel);
+      },
+      id,
+      moveToAnchor(anchor, position) {
+        calls.push(["moveToAnchor", id, anchor, position]);
+        this.anchorNode = anchor;
+      },
+      openPopup(anchor, position) {
+        calls.push(["openPopup", id, anchor, position]);
+        this.anchorNode = anchor;
+        this.state = "open";
+        documentEvents.dispatch("popupshown", panel);
+      },
+      querySelector(selector) {
+        if (id === "appMenu-popup" && selector === "panelmultiview") {
+          return { id: "appMenu-multiView" };
+        }
+        return null;
+      },
+      state: "closed",
+    };
+    targets.set(id, panel);
+    return panel;
+  }
+
   for (const id of [
     "trust-icon-container",
     "identity-icon-box",
@@ -55,21 +100,56 @@ function createNativeWindow() {
     addTarget(id);
   }
 
+  for (const id of [
+    "appMenu-popup",
+    "downloadsPanel",
+    "identity-popup",
+    "permission-popup",
+    "protections-popup",
+    "trustpanel-popup",
+    "unified-extensions-panel",
+  ]) {
+    addPanel(id);
+  }
+
   const tabContainer = createEventTarget();
   const selectedBrowser = { webNavigation: {} };
+  const document = {
+    ...documentEvents,
+    defaultView: null,
+    documentURI: BROWSER_URI,
+    getElementById(id) {
+      return targets.get(id) ?? null;
+    },
+  };
+  const frame = {
+    hosts: frameHosts,
+    contains(node) {
+      return this.hosts.has(node);
+    },
+  };
   const window = {
+    DownloadsPanel: {
+      initialize() {
+        calls.push([
+          "method",
+          "DownloadsPanel.initialize",
+          this === window.DownloadsPanel,
+        ]);
+      },
+      get panel() {
+        return targets.get("downloadsPanel");
+      },
+    },
     PanelUI: {
+      async ensureReady() {
+        calls.push(["method", "PanelUI.ensureReady", this === window.PanelUI]);
+      },
       async show() {
         calls.push(["method", "PanelUI.show", this === window.PanelUI]);
       },
     },
-    document: {
-      defaultView: null,
-      documentURI: BROWSER_URI,
-      getElementById(id) {
-        return targets.get(id) ?? null;
-      },
-    },
+    document,
     gBrowser: {
       selectedBrowser,
       tabContainer,
@@ -84,6 +164,34 @@ function createNativeWindow() {
         ]);
       },
     },
+    gPermissionPanel: {
+      async openPopup() {
+        calls.push([
+          "method",
+          "gPermissionPanel.openPopup",
+          this === window.gPermissionPanel,
+        ]);
+        const panel = targets.get("permission-popup");
+        panel.openPopup(this._anchor, this._position);
+      },
+      setAnchor(node, position) {
+        calls.push(["setAnchor", node, position]);
+        this._anchor = node;
+        this._position = position;
+      },
+    },
+    gTrustPanelHandler: {
+      async showPopup() {
+        calls.push([
+          "method",
+          "gTrustPanelHandler.showPopup",
+          this === window.gTrustPanelHandler,
+        ]);
+        targets
+          .get("trustpanel-popup")
+          .openPopup(undefined, "bottomleft topleft");
+      },
+    },
     gUnifiedExtensions: {
       async togglePanel() {
         calls.push([
@@ -91,6 +199,8 @@ function createNativeWindow() {
           "gUnifiedExtensions.togglePanel",
           this === window.gUnifiedExtensions,
         ]);
+        const panel = targets.get("unified-extensions-panel");
+        panel.openPopup(targets.get("unified-extensions-button"), "after_end");
       },
     },
     async openPreferences() {
@@ -100,8 +210,36 @@ function createNativeWindow() {
   window.document.defaultView = window;
 
   return {
+    addHost(options = {}) {
+      const host = {
+        getBoundingClientRect() {
+          return {
+            bottom: 56,
+            height: 32,
+            left: 12,
+            right: 44,
+            top: 24,
+            width: 32,
+            x: 12,
+            y: 24,
+          };
+        },
+        ownerDocument: document,
+      };
+      if (options.surface === "address-popup") {
+        host.closest = (selector) =>
+          selector === "[data-fennevia-address-popup]" ? host : null;
+      } else if (options.surface === "left") {
+        host.closest = (selector) =>
+          selector === '[data-fennevia-edge="left"]' ? host : null;
+      }
+      frameHosts.add(host);
+      return host;
+    },
+    addPanel,
     addTarget,
     calls,
+    frame,
     setTrustVisible(value) {
       targets.get("trust-icon-container").setVisible(value);
     },
@@ -122,7 +260,15 @@ function createController(native, reveal = () => true) {
     windowKind: "normal",
   });
   const controller = createFirefoxBrowserToolsBridge({
+    beginNativePopupHandoff(panelId) {
+      native.calls.push(["handoff-begin", panelId]);
+      return true;
+    },
     boundary,
+    endNativePopupHandoff(panelId) {
+      native.calls.push(["handoff-end", panelId]);
+    },
+    frame: native.frame,
     requestNativeUiReveal: reveal,
     window: native.window,
   });
@@ -152,7 +298,7 @@ test("browser tools expose only fixed capabilities and native handoff booleans",
     });
     assert.ok(Object.isFrozen(snapshot));
     const capabilities = pair.controller.assertRequiredCapabilities();
-    assert.equal(capabilities.length, 12);
+    assert.equal(capabilities.length, 21);
     assert.ok(capabilities.every((capability) => capability.available));
     assert.doesNotMatch(
       JSON.stringify(snapshot),
@@ -163,12 +309,17 @@ test("browser tools expose only fixed capabilities and native handoff booleans",
   }
 });
 
-test("fixed actions focus native anchors and delegate to Firefox owners", async () => {
+test("popup actions open Firefox panels beside the project host without toolbar reveal", async () => {
   const native = createNativeWindow();
   let revealCount = 0;
   const pair = createController(native, () => {
     revealCount += 1;
     return true;
+  });
+  const host = native.addHost();
+  const events = [];
+  const unsubscribe = pair.controller.browserTools.subscribe((event) => {
+    events.push(event);
   });
   try {
     for (const action of [
@@ -178,46 +329,93 @@ test("fixed actions focus native anchors and delegate to Firefox owners", async 
       "downloads",
       "extensions",
       "application-menu",
-      "settings",
-      "customize",
-      "native-toolbar",
     ]) {
-      assert.equal(await pair.controller.browserTools.invoke(action), true);
+      assert.equal(
+        await pair.controller.browserTools.invoke(action, host),
+        true,
+      );
     }
 
-    assert.equal(revealCount, 7);
+    assert.equal(revealCount, 0);
+    assert.equal(native.calls.filter((call) => call[0] === "focus").length, 0);
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "method" &&
+          call[1] === "gTrustPanelHandler.showPopup" &&
+          call[2] === true,
+      ),
+    );
+    assert.ok(
+      native.calls.some((call) => call[0] === "setAnchor" && call[1] === host),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "method" &&
+          call[1] === "DownloadsPanel.initialize" &&
+          call[2] === true,
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "openPopup" &&
+          call[1] === "downloadsPanel" &&
+          call[2] === host,
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "method" &&
+          call[1] === "PanelUI.ensureReady" &&
+          call[2] === true,
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "openPopup" &&
+          call[1] === "appMenu-popup" &&
+          call[2] === host &&
+          call[3] === "bottomcenter topright",
+      ),
+    );
     assert.equal(
       native.calls.filter(
-        (call) => call[0] === "click" && call[1] === "trust-icon-container",
+        (call) => call[0] === "method" && call[1] === "PanelUI.show",
       ).length,
-      2,
+      0,
     );
     assert.ok(
       native.calls.some(
-        (call) => call[0] === "click" && call[1] === "identity-permission-box",
+        (call) => call[0] === "handoff-begin" && call[1] === "downloadsPanel",
       ),
     );
-    assert.ok(
-      native.calls.some(
-        (call) => call[0] === "click" && call[1] === "downloads-button",
-      ),
+    assert.ok(events.some((event) => event.open === true));
+    assert.equal(pair.controller.snapshot().pendingActionCount, 0);
+  } finally {
+    unsubscribe();
+    disposePair(pair);
+  }
+});
+
+test("settings, customize, and original toolbar keep their non-popup paths", async () => {
+  const native = createNativeWindow();
+  let revealCount = 0;
+  const pair = createController(native, () => {
+    revealCount += 1;
+    return true;
+  });
+  try {
+    assert.equal(await pair.controller.browserTools.invoke("settings"), true);
+    assert.equal(await pair.controller.browserTools.invoke("customize"), true);
+    assert.equal(
+      await pair.controller.browserTools.invoke("native-toolbar"),
+      true,
     );
-    assert.ok(
-      native.calls.some(
-        (call) =>
-          call[0] === "method" &&
-          call[1] === "gUnifiedExtensions.togglePanel" &&
-          call[2] === true,
-      ),
-    );
-    assert.ok(
-      native.calls.some(
-        (call) =>
-          call[0] === "method" &&
-          call[1] === "PanelUI.show" &&
-          call[2] === true,
-      ),
-    );
+    assert.equal(revealCount, 1);
     assert.ok(
       native.calls.some(
         (call) =>
@@ -239,61 +437,577 @@ test("fixed actions focus native anchors and delegate to Firefox owners", async 
         (call) => call[0] === "focus" && call[1] === "back-button",
       ),
     );
-    assert.equal(pair.controller.snapshot().pendingActionCount, 0);
   } finally {
     disposePair(pair);
   }
 });
 
-test("identity and protections use legacy native anchors when Trust Panel is hidden", async () => {
+test("popup actions require a project-owned host in this window", async () => {
   const native = createNativeWindow();
-  native.setTrustVisible(false);
   const pair = createController(native);
   try {
-    await pair.controller.browserTools.invoke("site-information");
-    await pair.controller.browserTools.invoke("protections");
+    await assert.rejects(
+      pair.controller.browserTools.invoke("downloads"),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_BROWSER_TOOLS_HOST_INVALID",
+    );
+    const foreign = {
+      getBoundingClientRect() {
+        return {};
+      },
+      ownerDocument: native.window.document,
+    };
+    await assert.rejects(
+      pair.controller.browserTools.invoke("downloads", foreign),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_BROWSER_TOOLS_HOST_INVALID",
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("popup host containment requires contains to run with the frame as this", async () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.throws(() => {
+      const unbound = native.frame.contains;
+      unbound(host);
+    });
+    assert.equal(
+      await pair.controller.browserTools.invoke("downloads", host),
+      true,
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("Trust still opens on the host when showPopup throws after initialize", async () => {
+  const native = createNativeWindow();
+  native.window.gTrustPanelHandler.showPopup = async function showPopup() {
+    native.calls.push([
+      "method",
+      "gTrustPanelHandler.showPopup",
+      this === native.window.gTrustPanelHandler,
+    ]);
+    throw new Error("native Trust anchor was not visible");
+  };
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke("site-information", host),
+      true,
+    );
     assert.ok(
       native.calls.some(
-        (call) => call[0] === "click" && call[1] === "identity-icon-box",
+        (call) =>
+          call[0] === "openPopup" &&
+          call[1] === "trustpanel-popup" &&
+          call[2] === host,
+      ),
+    );
+    assert.equal(native.targets.get("trustpanel-popup").state, "open");
+    assert.equal(native.targets.get("trustpanel-popup").anchorNode, host);
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("permission panel still opens on the host when owner openPopup throws", async () => {
+  const native = createNativeWindow();
+  native.window.gPermissionPanel.openPopup = async function openPopup() {
+    native.calls.push([
+      "method",
+      "gPermissionPanel.openPopup",
+      this === native.window.gPermissionPanel,
+    ]);
+    throw new Error("permission owner openPopup failed");
+  };
+  const pair = createController(native);
+  const host = native.addHost({ surface: "address-popup" });
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke("site-permissions", host),
+      true,
+    );
+    assert.ok(
+      native.calls.some((call) => call[0] === "setAnchor" && call[1] === host),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "openPopup" &&
+          call[1] === "permission-popup" &&
+          call[2] === host &&
+          call[3] === "after_end",
+      ),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("popup position follows the host surface and action default without closest", async () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  const leftHost = native.addHost({ surface: "left" });
+  const addressHost = native.addHost({ surface: "address-popup" });
+  const defaultHost = native.addHost();
+  try {
+    await pair.controller.browserTools.invoke("site-information", leftHost);
+    await pair.controller.browserTools.invoke("site-information", addressHost);
+    await pair.controller.browserTools.invoke("downloads", defaultHost);
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "moveToAnchor" &&
+          call[1] === "trustpanel-popup" &&
+          call[2] === leftHost &&
+          call[3] === "end_before",
       ),
     );
     assert.ok(
       native.calls.some(
         (call) =>
-          call[0] === "click" &&
-          call[1] === "tracking-protection-icon-container",
+          call[0] === "moveToAnchor" &&
+          call[1] === "trustpanel-popup" &&
+          call[2] === addressHost &&
+          call[3] === "after_end",
       ),
     );
-    assert.equal(
-      native.calls.filter(
-        (call) => call[0] === "click" && call[1] === "trust-icon-container",
-      ).length,
-      0,
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "openPopup" &&
+          call[1] === "downloadsPanel" &&
+          call[2] === defaultHost &&
+          call[3] === "after_start",
+      ),
     );
   } finally {
     disposePair(pair);
   }
 });
 
-test("actions re-resolve native targets at invocation time", async () => {
+test("PanelMultiView.openPopup is preferred when present and unused handoff tokens are dropped", async () => {
   const native = createNativeWindow();
+  native.window.PanelMultiView = {
+    async openPopup(panel, anchor, options) {
+      native.calls.push([
+        "PanelMultiView.openPopup",
+        panel.id,
+        anchor,
+        options.position,
+      ]);
+      panel.openPopup(anchor, options.position);
+    },
+  };
   const pair = createController(native);
+  const host = native.addHost();
   try {
-    const staleTarget = native.targets.get("downloads-button");
-    staleTarget.click = () => {
-      throw new Error("stale native target was cached");
-    };
-    const replacement = native.addTarget("downloads-button");
-    await pair.controller.browserTools.invoke("downloads");
+    await pair.controller.browserTools.invoke("downloads", host);
     assert.ok(
       native.calls.some(
-        (call) => call[0] === "focus" && call[1] === replacement.id,
+        (call) =>
+          call[0] === "PanelMultiView.openPopup" &&
+          call[1] === "downloadsPanel" &&
+          call[2] === host &&
+          call[3] === "after_start",
+      ),
+    );
+    await pair.controller.browserTools.invoke("site-information", host);
+    assert.ok(
+      native.calls.some(
+        (call) => call[0] === "handoff-begin" && call[1] === "identity-popup",
       ),
     );
     assert.ok(
       native.calls.some(
-        (call) => call[0] === "click" && call[1] === replacement.id,
+        (call) => call[0] === "handoff-end" && call[1] === "identity-popup",
       ),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("application menu opens at the host screen rectangle when element anchoring fails", async () => {
+  const native = createNativeWindow();
+  native.window.mozInnerScreenX = 10;
+  native.window.mozInnerScreenY = 20;
+  native.targets.get("appMenu-popup").openPopup = () => {
+    throw new Error("html anchor rejected");
+  };
+  native.targets.get("appMenu-popup").openPopupAtScreenRect =
+    function openAtRect(position, x, y, width, height) {
+      native.calls.push([
+        "openPopupAtScreenRect",
+        this.id,
+        position,
+        x,
+        y,
+        width,
+        height,
+      ]);
+      this.state = "open";
+      native.window.document.dispatch("popupshown", this);
+    };
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke("application-menu", host),
+      true,
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "openPopupAtScreenRect" &&
+          call[1] === "appMenu-popup" &&
+          call[2] === "bottomcenter topright" &&
+          call[3] === 22 &&
+          call[4] === 44 &&
+          call[5] === 32 &&
+          call[6] === 32,
+      ),
+    );
+    assert.equal(
+      native.calls.filter(
+        (call) => call[0] === "method" && call[1] === "PanelUI.show",
+      ).length,
+      0,
+    );
+    assert.equal(native.targets.get("appMenu-popup").state, "open");
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("application menu falls back to PanelUI.show and re-anchors the host", async () => {
+  const native = createNativeWindow();
+  native.targets.get("appMenu-popup").openPopup = () => {
+    throw new Error("host-anchored appMenu-popup openPopup failed");
+  };
+  native.window.PanelUI.show = function show() {
+    native.calls.push([
+      "method",
+      "PanelUI.show",
+      this === native.window.PanelUI,
+    ]);
+    const panel = native.targets.get("appMenu-popup");
+    panel.anchorNode = native.targets.get("PanelUI-menu-button");
+    panel.state = "open";
+    native.window.document.dispatch("popupshown", panel);
+  };
+  native.window.PanelUI._ensureShortcutsShown = function ensureShortcuts() {
+    native.calls.push([
+      "method",
+      "PanelUI._ensureShortcutsShown",
+      this === native.window.PanelUI,
+    ]);
+  };
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke("application-menu", host),
+      true,
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "method" &&
+          call[1] === "PanelUI._ensureShortcutsShown" &&
+          call[2] === true,
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "method" &&
+          call[1] === "PanelUI.show" &&
+          call[2] === true,
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "moveToAnchor" &&
+          call[1] === "appMenu-popup" &&
+          call[2] === host &&
+          call[3] === "bottomcenter topright",
+      ),
+    );
+    assert.equal(native.targets.get("appMenu-popup").state, "open");
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("application menu keeps the NativeUi token when a failed open fires popuphidden", async () => {
+  const native = createNativeWindow();
+  native.window.mozInnerScreenX = 10;
+  native.window.mozInnerScreenY = 20;
+  let multiViewCalls = 0;
+  native.window.PanelMultiView = {
+    async openPopup(panel, anchor, options) {
+      multiViewCalls += 1;
+      native.calls.push([
+        "PanelMultiView.openPopup",
+        panel.id,
+        anchor,
+        options && typeof options === "object"
+          ? (options.position ?? options.x)
+          : options,
+      ]);
+      if (multiViewCalls === 1) {
+        native.window.document.dispatch("popuphidden", panel);
+        return false;
+      }
+      panel.openPopup(anchor, options);
+      return true;
+    },
+  };
+  native.targets.get("appMenu-popup").openPopupAtScreenRect =
+    function openAtRect() {
+      native.calls.push(["openPopupAtScreenRect", this.id]);
+      this.state = "open";
+      native.window.document.dispatch("popupshown", this);
+    };
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke("application-menu", host),
+      true,
+    );
+    assert.equal(
+      native.calls.filter(
+        (call) => call[0] === "handoff-end" && call[1] === "appMenu-popup",
+      ).length,
+      0,
+    );
+    assert.equal(
+      native.calls.filter((call) => call[0] === "openPopupAtScreenRect").length,
+      0,
+    );
+    assert.ok(multiViewCalls >= 2);
+    assert.equal(
+      native.calls.filter(
+        (call) => call[0] === "method" && call[1] === "PanelUI.show",
+      ).length,
+      0,
+    );
+    assert.equal(native.targets.get("appMenu-popup").state, "open");
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("application menu treats PanelMultiView as a class owner", async () => {
+  const native = createNativeWindow();
+  native.window.mozInnerScreenX = 10;
+  native.window.mozInnerScreenY = 20;
+  class PanelMultiView {
+    static async openPopup(panel, anchor, options) {
+      native.calls.push([
+        "PanelMultiView.openPopup",
+        panel.id,
+        typeof PanelMultiView,
+        this === PanelMultiView,
+        options && typeof options === "object" ? options.position : options,
+      ]);
+      panel.openPopup(anchor, options);
+    }
+  }
+  native.window.PanelMultiView = PanelMultiView;
+  native.targets.get("appMenu-popup").openPopup = () => {
+    throw new Error("html anchor rejected");
+  };
+  native.targets.get("appMenu-popup").openPopupAtScreenRect =
+    function openAtRect(position, x, y, width, height) {
+      native.calls.push([
+        "openPopupAtScreenRect",
+        this.id,
+        position,
+        x,
+        y,
+        width,
+        height,
+      ]);
+      this.state = "open";
+      native.window.document.dispatch("popupshown", this);
+    };
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke("application-menu", host),
+      true,
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "PanelMultiView.openPopup" &&
+          call[1] === "appMenu-popup" &&
+          call[2] === "function" &&
+          call[3] === true &&
+          call[4] === "bottomcenter topright",
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "openPopupAtScreenRect" &&
+          call[1] === "appMenu-popup" &&
+          call[2] === "bottomcenter topright",
+      ),
+    );
+    assert.equal(
+      native.calls.filter(
+        (call) => call[0] === "method" && call[1] === "PanelUI.show",
+      ).length,
+      0,
+    );
+    assert.equal(native.targets.get("appMenu-popup").state, "open");
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("application menu routes PanelMultiView.openPopup through openPopupAtScreenRect", async () => {
+  const native = createNativeWindow();
+  native.window.mozInnerScreenX = 10;
+  native.window.mozInnerScreenY = 20;
+  native.window.PanelMultiView = {
+    async openPopup(panel, anchor, options) {
+      native.calls.push([
+        "PanelMultiView.openPopup",
+        panel.id,
+        anchor,
+        options && typeof options === "object" ? options.position : options,
+      ]);
+      panel.openPopup(anchor, options);
+    },
+  };
+  native.targets.get("appMenu-popup").openPopup = () => {
+    throw new Error("html anchor rejected");
+  };
+  native.targets.get("appMenu-popup").openPopupAtScreenRect =
+    function openAtRect(position, x, y, width, height) {
+      native.calls.push([
+        "openPopupAtScreenRect",
+        this.id,
+        position,
+        x,
+        y,
+        width,
+        height,
+      ]);
+      this.state = "open";
+      native.window.document.dispatch("popupshown", this);
+    };
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke("application-menu", host),
+      true,
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "PanelMultiView.openPopup" &&
+          call[1] === "appMenu-popup" &&
+          call[3] === "bottomcenter topright",
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "openPopupAtScreenRect" &&
+          call[1] === "appMenu-popup" &&
+          call[2] === "bottomcenter topright" &&
+          call[3] === 22 &&
+          call[4] === 44 &&
+          call[5] === 32 &&
+          call[6] === 32,
+      ),
+    );
+    assert.equal(
+      native.calls.filter(
+        (call) => call[0] === "method" && call[1] === "PanelUI.show",
+      ).length,
+      0,
+    );
+    assert.equal(native.targets.get("appMenu-popup").state, "open");
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("Trust panel opens without using collapsed-chrome checkVisibility", async () => {
+  const native = createNativeWindow();
+  native.setTrustVisible(false);
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    await pair.controller.browserTools.invoke("site-information", host);
+    await pair.controller.browserTools.invoke("protections", host);
+    assert.equal(
+      native.calls.filter((call) => call[0] === "check-visibility").length,
+      0,
+    );
+    assert.equal(
+      native.calls.filter(
+        (call) =>
+          call[0] === "method" && call[1] === "gTrustPanelHandler.showPopup",
+      ).length,
+      2,
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "moveToAnchor" &&
+          call[1] === "trustpanel-popup" &&
+          call[2] === host,
+      ),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("Downloads initialize and open beside the host when the native button is collapsed", async () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    const stalePanel = native.targets.get("downloadsPanel");
+    stalePanel.openPopup = () => {
+      throw new Error("stale native panel was cached");
+    };
+    const replacement = native.addPanel("downloadsPanel");
+    await pair.controller.browserTools.invoke("downloads", host);
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "openPopup" &&
+          call[1] === replacement.id &&
+          call[2] === host,
+      ),
+    );
+    assert.equal(
+      native.calls.filter(
+        (call) => call[0] === "click" && call[1] === "downloads-button",
+      ).length,
+      0,
     );
   } finally {
     disposePair(pair);
@@ -314,7 +1028,10 @@ test("missing required native targets fail before activation", () => {
     assert.throws(
       () =>
         createFirefoxBrowserToolsBridge({
+          beginNativePopupHandoff: () => true,
           boundary,
+          endNativePopupHandoff() {},
+          frame: native.frame,
           requestNativeUiReveal: () => true,
           window: native.window,
         }),
@@ -329,12 +1046,12 @@ test("missing required native targets fail before activation", () => {
   }
 });
 
-test("rejected reveal and native action failures stay typed and privacy safe", async () => {
+test("rejected original-toolbar reveal and native action failures stay typed and privacy safe", async () => {
   const rejectedNative = createNativeWindow();
   const rejectedPair = createController(rejectedNative, () => false);
   try {
     await assert.rejects(
-      rejectedPair.controller.browserTools.invoke("downloads"),
+      rejectedPair.controller.browserTools.invoke("native-toolbar"),
       (error) =>
         isFirefoxBridgeError(error) &&
         error.fenneviaCode === "FENNEVIA_FIREFOX_BROWSER_TOOLS_REVEAL_REJECTED",
@@ -344,7 +1061,7 @@ test("rejected reveal and native action failures stay typed and privacy safe", a
   }
 
   const failingNative = createNativeWindow();
-  failingNative.targets.get("downloads-button").click = () => {
+  failingNative.targets.get("downloadsPanel").openPopup = () => {
     throw new Error(
       "https://private.example.invalid C:\\Users\\person\\secret",
     );
@@ -352,11 +1069,14 @@ test("rejected reveal and native action failures stay typed and privacy safe", a
   const failingPair = createController(failingNative);
   try {
     await assert.rejects(
-      failingPair.controller.browserTools.invoke("downloads"),
+      failingPair.controller.browserTools.invoke(
+        "downloads",
+        failingNative.addHost(),
+      ),
       (error) =>
         isFirefoxBridgeError(error) &&
         error.fenneviaCode === "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED" &&
-        error.fenneviaSymbol === "document.downloads-button.click" &&
+        error.fenneviaSymbol === "document.downloadsPanel.openPopup" &&
         !error.message.includes("private.example") &&
         !JSON.stringify(error).includes("private.example"),
     );
@@ -365,15 +1085,19 @@ test("rejected reveal and native action failures stay typed and privacy safe", a
   }
 });
 
-test("browser tools disposal is idempotent and rejects later access", async () => {
+test("browser tools disposal hides open panels and rejects later access", async () => {
   const native = createNativeWindow();
   const pair = createController(native);
+  const host = native.addHost();
+  await pair.controller.browserTools.invoke("downloads", host);
+  assert.equal(native.targets.get("downloadsPanel").state, "open");
   assert.equal(pair.controller.dispose(), true);
   assert.equal(pair.controller.dispose(), false);
   assert.deepEqual(pair.controller.snapshot(), {
     disposed: true,
     pendingActionCount: 0,
   });
+  assert.equal(native.targets.get("downloadsPanel").state, "closed");
   assert.throws(
     () => pair.controller.browserTools.snapshot(),
     /FENNEVIA_FIREFOX_BROWSER_TOOLS_DISPOSED/u,

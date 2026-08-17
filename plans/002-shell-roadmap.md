@@ -30,9 +30,11 @@ Validated baseline as of 2026-08-16:
 - exact Firefox native DOM and complete reveal/fallback paths retained;
 - production enters `active` only after the complete health gate.
 
-ADR-037's single-line toolbar/caption/gutter enhancement has focused automated
-evidence on `codex/fast-edge-debug`; its real Firefox manual matrix remains
-pending and is not included in the earlier validated baseline.
+ADR-037's single-line toolbar/caption/gutter enhancement, ADR-042's
+host-anchored Firefox panel placement, and ADR-043's decorative gutter
+progress lights have focused automated evidence; the real Firefox popup-
+placement and live light-painting matrices remain pending and are not included
+in the earlier validated baseline.
 
 The project is currently under rapid development. Ordinary shell work uses CI
 as the required gate; the complete real-Firefox matrices run at release. See
@@ -348,22 +350,26 @@ start, cleanup, rapid tab/navigation changes, and Reload/Stop timing all passed.
 Evidence: ADR-027 and
 `docs/research/firefox-153-navigation-controls.md`.
 
-### Current ADR-037 extension
+### Current ADR-037/ADR-042 extension
 
 The same top host now renders one non-wrapping row with the existing navigation
 state, a launcher for the existing centered popup, loading feedback, fixed page
 actions, Firefox-owned detail/tool handoffs, and progressive disclosure. The
-new browser-tools boundary delegates Trust/identity, protections, permissions,
+browser-tools boundary delegates Trust/identity, protections, permissions,
 Downloads, Unified Extensions, the application menu, Settings, customization,
 and complete original-toolbar access without exposing their data or arbitrary
-widget identity. Firefox's original caption nodes are retained and styled in
-place; Fennevia still provides no replacement caption command.
+widget identity. ADR-042 keeps native chrome hidden for the six popup actions
+and re-anchors each Firefox-owned panel to the clicked project host. Settings,
+customization, and the complete original-toolbar path keep their previous
+owners.
 
-Focused automation is complete. Cold-start, native-panel anchoring, caption
-commands, drag release, responsive/fullscreen geometry, second/private windows,
-and fail-open remain post-push manual checks. Evidence: ADR-037,
-`plans/004-single-line-toolbar-ui-ux.md`, and
-`docs/research/firefox-153-single-line-toolbar-handoffs.md`.
+Focused automation is complete. Cold-start, real native-panel placement against
+collapsed chrome, caption commands, drag release, responsive/fullscreen
+geometry, second/private windows, and fail-open remain post-push manual checks.
+Evidence: ADR-037, ADR-042,
+`plans/004-single-line-toolbar-ui-ux.md`,
+`docs/research/firefox-153-single-line-toolbar-handoffs.md`, and
+`docs/research/firefox-153-native-popup-anchoring.md`.
 
 ## Milestone H: Compact address launcher and centered popup — complete (#13)
 
@@ -603,9 +609,11 @@ content, bookmarks/sidebar collapse, a 7px content gutter, and tabbox border.
 ADR-038 collapses every native caption copy at rest and places project-owned
 window controls on the top row. Native vertical-tab titlebar ownership,
 notifications, popups, dialogs, content, and DevTools remain intact. Native
-focus, native popups, open sidebar panels, #37's Urlbar handoff, and ADR-037's
-native panel/original-toolbar handoffs temporarily reveal the complete native
-owner; customize, native dialogs, and DOM fullscreen suspend project hiding.
+focus, toolbox-anchored Firefox doorhangers, open sidebar panels, #37's Urlbar
+handoff, and ADR-037's original-toolbar handoff temporarily reveal the complete
+native owner. Fennevia-initiated host-anchored or token-listed panels do not
+reveal the navbar. Customize, native dialogs, and DOM fullscreen suspend
+project hiding.
 Partial activation CSS fails open only the affected window.
 
 Gate passed on Firefox 153.0.4 with normal/second/private, active rest and
@@ -613,9 +621,9 @@ geometry, all edge paths, complete native Urlbar/Downloads/sidebar paths,
 customize/browser fullscreen, Browser Toolbox, emergency fallback, CSS
 corruption, safe-start, and cleanup evidence.
 
-The gate result above is historical #15 evidence. ADR-037/ADR-038's changed
-rule set, caption presentation, and new handoffs still require the manual
-matrix and are not claimed by that run.
+The gate result above is historical #15 evidence. ADR-037/ADR-038/ADR-042's
+changed rule set, caption presentation, and host-anchored handoffs still
+require the manual matrix and are not claimed by that run.
 
 Evidence: ADR-032 and
 `docs/research/firefox-153-content-only-activation.md`.

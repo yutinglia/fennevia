@@ -672,6 +672,55 @@ test("native popup anchors and an open unsupported sidebar hold the reversible r
   controller.dispose();
 });
 
+test("Fennevia-anchored and token-listed panels do not reveal native chrome", async () => {
+  const fixture = createFixture();
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  fixture.document.documentElement.setAttribute("data-fennevia-active", "");
+
+  const host = append(
+    fixture.document,
+    fixture.frame,
+    XHTML_NAMESPACE,
+    "button",
+    "fennevia-extensions-button",
+  );
+  const panel = append(
+    fixture.document,
+    fixture.document.body,
+    XUL_NAMESPACE,
+    "panel",
+    "appMenu-popup",
+  );
+  panel.anchorNode = host;
+  panel.setAttribute("state", "showing");
+  fixture.document.dispatch("popupshowing", panel);
+  assert.equal(controller.snapshot().revealed, false);
+  assert.equal(controller.snapshot().openPopupCount, 0);
+
+  const nativeAnchored = append(
+    fixture.document,
+    fixture.document.body,
+    XUL_NAMESPACE,
+    "panel",
+    "downloadsPanel",
+  );
+  nativeAnchored.anchorNode = fixture.navTarget;
+  assert.equal(controller.beginPopupHandoff("downloadsPanel"), true);
+  assert.equal(controller.snapshot().popupHandoffCount, 1);
+  nativeAnchored.setAttribute("state", "showing");
+  fixture.document.dispatch("popupshowing", nativeAnchored);
+  assert.equal(controller.snapshot().revealed, false);
+  assert.equal(controller.snapshot().openPopupCount, 0);
+  assert.equal(controller.endPopupHandoff("downloadsPanel"), true);
+  assert.equal(controller.snapshot().popupHandoffCount, 0);
+
+  controller.dispose();
+});
+
 test("customize, DOM fullscreen, and native dialogs suspend hiding fail-open", () => {
   const fixture = createFixture();
   const controller = createNativeUiController({

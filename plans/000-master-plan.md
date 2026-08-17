@@ -70,16 +70,20 @@ Completed:
   exact one-sided ownership repair, reconciled compatibility inventory, and an
   executable Firefox stable-update rehearsal.
 
-Current fast branch enhancement under ADR-037:
+Current fast branch enhancement under ADR-037 and ADR-042:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   page actions, Firefox tools, and progressive disclosure;
 - fixed native Trust/identity, protections, permission, Downloads, Unified
   Extensions, application-menu, Settings, customization, and original-toolbar
   handoffs without exporting their sensitive data;
+- popup-opening handoffs re-anchor Firefox-owned panels beside the clicked
+  Fennevia host without revealing native chrome;
 - retained Firefox caption controls styled in place as a compact island;
 - a 7px browser-content gutter, gap-free edge contact, transient shortcut hint,
-  panel drag regions, and `top > sides > bottom` collision priority.
+  panel drag regions, and `top > sides > bottom` collision priority;
+- 2px decorative gutter lights for selected-tab loading and active download
+  aggregate, without a second trigger or filename text.
 
 Focused type/build/unit/static checks cover this enhancement. Its real Firefox
 manual matrix remains pending and is not part of the earlier #15 validation.
@@ -437,7 +441,7 @@ Evidence: ADR-030 and
 Evidence: ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-#### Single-line toolbar and native detail handoffs — focused implementation complete, manual Firefox pending (ADR-037)
+#### Single-line toolbar and native detail handoffs — focused implementation complete, manual Firefox pending (ADR-037, ADR-042)
 
 - one compact non-wrapping top row with navigation, top address/popup launcher,
   existing bounded status, loading accent, page actions, Firefox tools, and
@@ -445,6 +449,8 @@ Evidence: ADR-031 and
 - fixed native handoffs for Trust/identity, protections, site permissions,
   Downloads, Unified Extensions, application menu, Settings, native
   customization, and the complete original toolbar;
+- six popup actions pass a project-owned host, keep native chrome hidden, and
+  re-anchor the Firefox panel beside that host;
 - nine fixed booleans/actions only; no certificate, permission, tracker,
   extension, download, widget, preference, URL, or native object crosses;
 - Firefox remains the complete data/action/popup owner and the custom HTTPS/ETP
@@ -455,13 +461,15 @@ Evidence: ADR-031 and
   `my-firefox-custom`.
 
 Focused source, adapter/controller, type, build, static CSS/native-UI, artifact,
-and privacy checks are required before push. Real cold start, native panels,
-caption commands, drag, responsive layouts, second/private windows,
-fullscreen, and fallback remain the user's post-push manual matrix.
+and privacy checks are required before push. Real cold start, native panel
+placement against collapsed chrome, caption commands, drag, responsive layouts,
+second/private windows, fullscreen, and fallback remain the user's post-push
+manual matrix.
 
-Evidence: ADR-037,
-`plans/004-single-line-toolbar-ui-ux.md`, and
-`docs/research/firefox-153-single-line-toolbar-handoffs.md`.
+Evidence: ADR-037, ADR-042,
+`plans/004-single-line-toolbar-ui-ux.md`,
+`docs/research/firefox-153-single-line-toolbar-handoffs.md`, and
+`docs/research/firefox-153-native-popup-anchoring.md`.
 
 Gate: basic browsing and required access paths work entirely through custom
 surfaces while native UI remains visible for comparison and fallback.
@@ -507,9 +515,12 @@ Delivered by ADR-032 and extended by ADR-037:
   collapses every native caption copy at rest and shows project-owned
   window buttons on the visible top row; notifications, popups, dialogs, and
   content remain Firefox-owned;
-- native focus, anchored popups, an open native sidebar, #37's Urlbar handoff,
-  and ADR-037's panel/original-toolbar handoffs reveal the complete retained
-  native path;
+- native focus, toolbox-anchored Firefox doorhangers, an open native sidebar,
+  #37's Urlbar handoff, and ADR-037's original-toolbar handoff reveal the
+  complete retained native path;
+- Fennevia-initiated Trust/permission/Downloads/extensions/application-menu
+  panels that are token-listed or re-anchored to a project host do not reveal
+  the navbar;
 - customize/native-dialog/DOM-fullscreen policy suspends project hiding;
 - invalid or partial activation CSS and stable native-target drift fail open
   per window.
@@ -520,9 +531,9 @@ History-sidebar holds, customize/browser-fullscreen transitions, Browser
 Toolbox ownership, emergency fallback, partial CSS failure, safe start, and
 recovery evidence.
 
-That gate result predates ADR-037/ADR-038's changed geometry and handoffs. The
-new manual matrix remains pending and must not be reported as covered by the
-historical #15 run.
+That gate result predates ADR-037/ADR-038/ADR-042's changed geometry and
+handoffs. The new manual matrix remains pending and must not be reported as
+covered by the historical #15 run.
 
 Evidence: ADR-032 and
 `docs/research/firefox-153-content-only-activation.md`.

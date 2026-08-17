@@ -24,8 +24,9 @@
   --fennevia-chip-radius: 999px;
   --fennevia-glass-shadow:
     0 18px 54px rgb(0 12 24 / 28%), inset 0 1px 0 rgb(255 255 255 / 22%);
-  --fennevia-edge-trigger-thickness: 7px;
-  --fennevia-edge-inset: var(--fennevia-edge-trigger-thickness);
+  --fennevia-edge-trigger-thickness: 12px;
+  --fennevia-edge-inset: 7px;
+  --fennevia-progress-light-thickness: 2px;
   --fennevia-edge-gap: 8px;
   --fennevia-edge-side-width: min(clamp(220px, 24vw, 330px), 43%);
   --fennevia-edge-top-height: 56px;
@@ -38,6 +39,7 @@
   --fennevia-motion-duration: 180ms;
   --fennevia-motion-easing: cubic-bezier(0.2, 0.72, 0.2, 1);
   --fennevia-focus-color: light-dark(rgb(0 92 184), rgb(114 190 255));
+  --fennevia-progress-light: var(--fennevia-focus-color);
   --fennevia-danger-color: light-dark(rgb(166 38 56), rgb(255 153 164));
   --fennevia-selected-surface: light-dark(
     rgb(30 115 190 / 16%),
@@ -138,6 +140,78 @@
   .fennevia-edge-root[data-fennevia-edge="right"]
   .fennevia-edge-trigger {
   inset-inline-end: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-progress-light {
+  position: absolute;
+  z-index: 0;
+  overflow: visible;
+  visibility: hidden;
+  block-size: var(--fennevia-progress-light-thickness);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--fennevia-motion-duration) var(--fennevia-motion-easing),
+    visibility 0s linear var(--fennevia-motion-duration);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="top"]
+  .fennevia-progress-light {
+  inset-block-start: 0;
+  inset-inline: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="bottom"]
+  .fennevia-progress-light {
+  inset-block-end: 0;
+  inset-inline: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-progress-light[data-fennevia-progress-visible="true"] {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity var(--fennevia-motion-duration) var(--fennevia-motion-easing),
+    visibility 0s linear 0s;
+}
+
+#fennevia-shell-frame-host .fennevia-progress-light__beam {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--fennevia-progress-light-percent, 0%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--fennevia-progress-light) 68%, white),
+    var(--fennevia-progress-light)
+  );
+  border-end-end-radius: 1px;
+  border-start-end-radius: 1px;
+  box-shadow:
+    0 0 7px color-mix(in srgb, var(--fennevia-progress-light) 58%, transparent),
+    0 0 14px color-mix(in srgb, var(--fennevia-progress-light) 22%, transparent);
+  transition: inline-size 160ms var(--fennevia-motion-easing);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-progress-light[data-fennevia-progress-mode="indeterminate"]
+  .fennevia-progress-light__beam {
+  inline-size: 100%;
+  border-radius: 0;
+  animation: fennevia-progress-light-pulse 1.4s ease-in-out infinite alternate;
+  transition: none;
+}
+
+@keyframes fennevia-progress-light-pulse {
+  from {
+    opacity: 0.38;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 #fennevia-shell-frame-host .fennevia-edge-panel {
@@ -1677,7 +1751,6 @@
   #fennevia-shell-frame-host
     .fennevia-browser-tools__button:not(
       [data-fennevia-browser-tool="extensions"],
-      [data-fennevia-browser-tool="native-toolbar"],
       [data-fennevia-browser-tool="application-menu"]
     ) {
     display: none;
@@ -1735,6 +1808,13 @@
     .fennevia-tab-strip__item[data-fennevia-just-opened="true"] {
     animation: none;
   }
+
+  #fennevia-shell-frame-host
+    .fennevia-progress-light[data-fennevia-progress-mode="indeterminate"]
+    .fennevia-progress-light__beam {
+    animation: none;
+    opacity: 0.85;
+  }
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -1754,6 +1834,7 @@
     --fennevia-glass-border: CanvasText;
     --fennevia-glass-separator: CanvasText;
     --fennevia-focus-color: Highlight;
+    --fennevia-progress-light: Highlight;
     --fennevia-danger-color: Mark;
     --fennevia-selected-surface: Highlight;
     --fennevia-glass-shadow: none;
@@ -1855,6 +1936,11 @@
     color: HighlightText;
     background: Highlight;
     border-color: Highlight;
+  }
+
+  #fennevia-shell-frame-host .fennevia-progress-light__beam {
+    background: Highlight;
+    box-shadow: none;
   }
 
   #fennevia-shell-frame-host .fennevia-window-controls,

@@ -2,6 +2,10 @@
 
 # Firefox 153 single-line toolbar and native handoff research
 
+Later ADR-042 superseded toolbar reveal before popup-opening actions. This
+record remains the source inventory for the original ADR-037 handoffs. See
+`docs/research/firefox-153-native-popup-anchoring.md`.
+
 ## Environment and scope
 
 - Date: 2026-08-16

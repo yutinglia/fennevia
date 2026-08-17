@@ -267,3 +267,18 @@ delayed hiding, inset rounded glass, and common visual rhythm.
 - Real native permission, authentication, certificate, extension-install, and
   download-safety prompts remain Firefox-owned and require feature-specific
   tests before any overlapping native surface is hidden.
+
+## Later trigger-hit adjustment
+
+`yutinglia/my-firefox-custom@7a02f60bb23abe9c191c7fd8cd2a7096bb63aee5` was
+consulted only as a capability/visual reference: a transparent edge strip can
+be larger than the visible chrome inset so the pointer target is easier to
+hit. No `.uc.js` selector, ID, class, timer, global flag, numeric value, or
+native-DOM mutation strategy was copied.
+
+Independently selected Fennevia design: keep the ADR-037 7px decorative
+content gutter (`--fennevia-edge-inset`) and enlarge the shared #31 pointer
+strip to 12px (`--fennevia-edge-trigger-thickness`) on all four edges. The
+hit strip may overlap page content; it still reserves no permanent layout
+space. Top still owns the top corners; sides own the remaining side corners;
+bottom yields to both rails.
