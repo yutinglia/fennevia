@@ -214,12 +214,6 @@ const browserToolCapabilitySpecifications: ReadonlyArray<BrowserToolCapabilitySp
       symbol: "document.identity-permission-box.click.focus",
     }),
     defineBrowserToolCapability({
-      isAvailable: isNativeActionTarget,
-      name: "browser-tools.downloads-anchor",
-      read: (window) => getDocumentElementById(window, "downloads-button"),
-      symbol: "document.downloads-button.click.focus",
-    }),
-    defineBrowserToolCapability({
       isAvailable: isFunction,
       name: "browser-tools.unified-extensions",
       read: (window) =>
@@ -416,7 +410,9 @@ const createSnapshot = (
   return Object.freeze({
     applicationMenu: available("browser-tools.application-menu"),
     customize: available("browser-tools.customize"),
-    downloads: available("browser-tools.downloads-anchor"),
+    downloads:
+      available("browser-tools.downloads-initialize") &&
+      available("browser-tools.downloads-panel"),
     extensions: available("browser-tools.unified-extensions"),
     nativeToolbar: available("browser-tools.native-toolbar-focus"),
     protections:

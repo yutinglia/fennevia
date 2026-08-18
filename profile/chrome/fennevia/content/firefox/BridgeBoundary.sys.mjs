@@ -745,12 +745,6 @@ var me = Object.freeze({ capture: !0 }), he = Object.freeze([
 		symbol: "document.identity-permission-box.click.focus"
 	}),
 	H({
-		isAvailable: Se,
-		name: "browser-tools.downloads-anchor",
-		read: (e) => V(e, "downloads-button"),
-		symbol: "document.downloads-button.click.focus"
-	}),
-	H({
 		isAvailable: R,
 		name: "browser-tools.unified-extensions",
 		read: (e) => L(e.gUnifiedExtensions) ? e.gUnifiedExtensions.togglePanel : void 0,
@@ -889,7 +883,7 @@ var me = Object.freeze({ capture: !0 }), he = Object.freeze([
 	return Object.freeze({
 		applicationMenu: t("browser-tools.application-menu"),
 		customize: t("browser-tools.customize"),
-		downloads: t("browser-tools.downloads-anchor"),
+		downloads: t("browser-tools.downloads-initialize") && t("browser-tools.downloads-panel"),
 		extensions: t("browser-tools.unified-extensions"),
 		nativeToolbar: t("browser-tools.native-toolbar-focus"),
 		protections: t("browser-tools.trust-panel") && t("browser-tools.protections-anchor"),

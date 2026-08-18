@@ -298,7 +298,7 @@ test("browser tools expose only fixed capabilities and native handoff booleans",
     });
     assert.ok(Object.isFrozen(snapshot));
     const capabilities = pair.controller.assertRequiredCapabilities();
-    assert.equal(capabilities.length, 21);
+    assert.equal(capabilities.length, 20);
     assert.ok(capabilities.every((capability) => capability.available));
     assert.doesNotMatch(
       JSON.stringify(snapshot),
@@ -1001,6 +1001,31 @@ test("Downloads initialize and open beside the host when the native button is co
           call[0] === "openPopup" &&
           call[1] === replacement.id &&
           call[2] === host,
+      ),
+    );
+    assert.equal(
+      native.calls.filter(
+        (call) => call[0] === "click" && call[1] === "downloads-button",
+      ).length,
+      0,
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("Downloads health does not require the native toolbar button in the document", async () => {
+  const native = createNativeWindow();
+  native.targets.delete("downloads-button");
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.equal(pair.controller.browserTools.snapshot().downloads, true);
+    await pair.controller.browserTools.invoke("downloads", host);
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "method" && call[1] === "DownloadsPanel.initialize",
       ),
     );
     assert.equal(
