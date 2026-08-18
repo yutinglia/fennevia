@@ -1353,6 +1353,36 @@ export function createFirefoxBrowserToolsBridge({
               "window.gUnifiedExtensions.togglePanel",
             );
           }
+          const PanelMultiView = readPanelMultiViewOwner(ownerWindow);
+          const originalMultiViewOpenPopup =
+            PanelMultiView && isFunction(PanelMultiView.openPopup)
+              ? PanelMultiView.openPopup
+              : undefined;
+          // togglePanel fire-and-forgets PanelMultiView.openPopup on the native
+          // button. That in-flight open races the host-anchored open and
+          // popuphides the panel before popupshown.
+          if (PanelMultiView && originalMultiViewOpenPopup) {
+            try {
+              PanelMultiView.openPopup = (
+                candidatePanel: unknown,
+                ...rest: unknown[]
+              ) => {
+                if (
+                  isNativeRecord(candidatePanel) &&
+                  candidatePanel.id === "unified-extensions-panel"
+                ) {
+                  return undefined;
+                }
+                return Reflect.apply(
+                  originalMultiViewOpenPopup,
+                  PanelMultiView,
+                  [candidatePanel, ...rest],
+                );
+              };
+            } catch {
+              // Non-writable owners still host-open after togglePanel.
+            }
+          }
           try {
             await invokeMethod(
               ownerWindow.gUnifiedExtensions,
@@ -1360,7 +1390,15 @@ export function createFirefoxBrowserToolsBridge({
               "window.gUnifiedExtensions.togglePanel",
             );
           } catch {
-            // togglePanel anchors to the collapsed native button.
+            // togglePanel still initializes lazy panel contents.
+          } finally {
+            if (PanelMultiView && originalMultiViewOpenPopup) {
+              try {
+                PanelMultiView.openPopup = originalMultiViewOpenPopup;
+              } catch {
+                // Host-open uses the restored or original owner.
+              }
+            }
           }
           await openOrMovePanel(action, handoff.host, handoff.position);
           return true;

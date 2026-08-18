@@ -1242,9 +1242,19 @@ function je({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 						return L(!1), !0;
 					}
 					if (!z(r.gUnifiedExtensions)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gUnifiedExtensions.togglePanel");
+					let a = ve(r), o = a && B(a.openPopup) ? a.openPopup : void 0;
+					if (a && o) try {
+						a.openPopup = (e, ...t) => {
+							if (!(z(e) && e.id === "unified-extensions-panel")) return Reflect.apply(o, a, [e, ...t]);
+						};
+					} catch {}
 					try {
 						await y(r.gUnifiedExtensions, "togglePanel", "window.gUnifiedExtensions.togglePanel");
-					} catch {}
+					} catch {} finally {
+						if (a && o) try {
+							a.openPopup = o;
+						} catch {}
+					}
 					return await N(e, i.host, i.position), !0;
 				}
 				case "application-menu": {

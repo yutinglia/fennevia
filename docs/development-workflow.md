@@ -251,6 +251,25 @@ return/failure restores the correct presentation. Firefox-version changes use
 `docs/firefox-update-workflow.md` and must record unsupported/not-run scenarios
 honestly.
 
+### 7.1 Live chrome debug logs
+
+Firefox does not execute the repo `profile/chrome/fennevia/` tree in place.
+The running package is the installed development profile
+(`%LOCALAPPDATA%\fennevia\profiles\fennevia-dev\chrome\fennevia\`). After
+instrumenting source and running `npm run build`, copy the changed chrome
+files into that installed tree (or run package Update with Firefox closed),
+delete the profile `startupCache` directory, confirm the installed files
+contain the debug session id, then fully quit every Fennevia `firefox.exe`
+and relaunch.
+
+`src/firefox` and `src/shell` cannot use `fetch` or `http(s)` URLs: the Vite
+production-artifact gates reject them. `WindowShell.sys.mjs` is chrome ESM, so
+`typeof IOUtils` is always undefined; ingest from that file with `fetch` to
+the debug endpoint and/or `globalThis.IOUtils.writeUTF8` (and catch the
+rejected promise). `window.IOUtils` is not present on the Svelte chrome
+window. Write a mount-time boot log first so a missing log file is diagnosed
+as install/cache failure rather than a missed click.
+
 ## 8. Pull-request evidence
 
 A pull request should include:

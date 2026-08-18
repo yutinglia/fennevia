@@ -328,6 +328,9 @@
     action: BrowserToolAction,
     event?: MouseEvent,
   ) => {
+    const host = isPopupBrowserToolAction(action)
+      ? resolveBrowserToolHost(event)
+      : undefined;
     try {
       const browserTools = props.browserTools;
       if (!browserTools) {
@@ -335,7 +338,7 @@
       }
       if (isPopupBrowserToolAction(action)) {
         props.shell.setPopupHeld(props.edge, true);
-        await browserTools.invoke(action, resolveBrowserToolHost(event));
+        await browserTools.invoke(action, host);
         return;
       }
       props.onDismiss(props.edge);
@@ -1298,8 +1301,18 @@
               class="fennevia-control fennevia-browser-tools__button"
               data-fennevia-browser-tool="extensions"
               disabled={!browserToolsSnapshot?.extensions}
-              onclick={(event) =>
-                void runBrowserToolAction("extensions", event)}
+              onmousedown={(event) => {
+                if (event.button !== 0) {
+                  return;
+                }
+                void runBrowserToolAction("extensions", event);
+              }}
+              onclick={(event) => {
+                if (event.detail !== 0) {
+                  return;
+                }
+                void runBrowserToolAction("extensions", event);
+              }}
               title="Extensions"
               type="button"
             >

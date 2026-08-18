@@ -1356,8 +1356,14 @@ method. Do not open a `panelmultiview` panel with a raw `openPopupAtScreenRect`;
 Firefox 153 throws `panelView is undefined` on `isOpenIn`. Failed opens
 that fire `popuphidden` without showing the panel keep the NativeUi token.
 If that still leaves the panel closed, `PanelUI.show()` with the NativeUi handoff token
-already set and `moveTo` the host screen rectangle on `popupshown`. Unified Extensions still toggle the current owner, then
-re-anchor `#unified-extensions-panel`.
+already set and `moveTo` the host screen rectangle on `popupshown`. Unified Extensions
+awaits `gUnifiedExtensions.togglePanel()` so the lazy view can initialize, but while
+that call runs the bridge no-ops `PanelMultiView.openPopup` for
+`#unified-extensions-panel`. `togglePanel` fire-and-forgets an open on
+`#unified-extensions-button`; that in-flight native-button popup races a second
+host-anchored open and `popuphide`s the panel before `popupshown`. After restore, the
+bridge opens the panel on the project host. The top-row Extensions control uses
+`mousedown` like the native button; keyboard still uses `click`.
 
 `NativeUi.sys.mjs` ignores toolbox reveal for a short-lived panel-id handoff
 token and for popups whose `anchorNode` is inside the Fennevia frame.

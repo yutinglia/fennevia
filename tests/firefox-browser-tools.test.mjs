@@ -595,6 +595,63 @@ test("popup position follows the host surface and action default without closest
   }
 });
 
+test("extensions host-open ignores togglePanel's native-button PanelMultiView.openPopup", async () => {
+  const native = createNativeWindow();
+  const panel = native.targets.get("unified-extensions-panel");
+  const nativeButton = native.targets.get("unified-extensions-button");
+  native.window.PanelMultiView = {
+    async openPopup(candidate, anchor, options) {
+      native.calls.push([
+        "PanelMultiView.openPopup",
+        candidate.id,
+        anchor === nativeButton ? "native-button" : "host",
+        options?.position,
+      ]);
+      candidate.openPopup(anchor, options?.position);
+    },
+  };
+  native.window.gUnifiedExtensions.togglePanel = async function togglePanel() {
+    native.calls.push([
+      "method",
+      "gUnifiedExtensions.togglePanel",
+      this === native.window.gUnifiedExtensions,
+    ]);
+    void native.window.PanelMultiView.openPopup(panel, nativeButton, {
+      position: "bottomright topright",
+    });
+  };
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke("extensions", host),
+      true,
+    );
+    await Promise.resolve();
+    assert.equal(panel.state, "open");
+    assert.equal(panel.anchorNode, host);
+    assert.equal(
+      native.calls.filter(
+        (call) =>
+          call[0] === "PanelMultiView.openPopup" &&
+          call[1] === "unified-extensions-panel" &&
+          call[2] === "native-button",
+      ).length,
+      0,
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "PanelMultiView.openPopup" &&
+          call[1] === "unified-extensions-panel" &&
+          call[2] === "host",
+      ),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
 test("PanelMultiView.openPopup is preferred when present and unused handoff tokens are dropped", async () => {
   const native = createNativeWindow();
   native.window.PanelMultiView = {
