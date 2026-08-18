@@ -349,7 +349,12 @@ Firefox's method. A raw `openPopupAtScreenRect` is not used: it leaves
 Failed opens that fire `popuphidden` without showing the panel keep the
 NativeUi token so `PanelUI.show()` cannot reveal the collapsed navbar. If the
 panel still stays closed, it calls `PanelUI.show()` with the token already set
-and `moveTo`s the host screen rectangle on `popupshown`. The dedicated
+and `moveTo`s the host screen rectangle on `popupshown`. Unified Extensions
+awaits `gUnifiedExtensions.togglePanel()` to initialize the lazy view, ignores
+that owner's fire-and-forget native-button `PanelMultiView.openPopup`, then
+opens `#unified-extensions-panel` on the project host. The top-row Extensions
+control uses `mousedown` like the native button; keyboard still uses `click`.
+The dedicated
 original-toolbar, Downloads, and native-customize buttons are not shown;
 Downloads is available as the placeable `show-downloads` widget, and the
 application menu plus fail-open remain the complete native-chrome access
