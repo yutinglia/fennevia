@@ -1630,6 +1630,21 @@
   pointer-events: none;
 }
 
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__native-icon {
+  display: inline-block;
+  inline-size: 16px;
+  block-size: 16px;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  pointer-events: none;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
 #fennevia-shell-frame-host .fennevia-toolbar-widgets__badge {
   position: absolute;
   inset-block-start: 1px;
@@ -1790,13 +1805,6 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-}
-
-#fennevia-shell-frame-host .fennevia-customize__item-image {
-  inline-size: 16px;
-  block-size: 16px;
-  object-fit: contain;
-  pointer-events: none;
 }
 
 #fennevia-shell-frame-host .fennevia-customize__item-space {

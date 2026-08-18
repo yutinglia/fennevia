@@ -181,27 +181,27 @@ pwsh -NoProfile -File .\tests\firefox-release-recovery.ps1 `
 
 ## 4. Minimum runtime matrix
 
-| Case                             | Expected result                                                                                            |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Three clean cold starts          | One bootstrap and one process runtime per process                                                          |
-| Ordinary restart                 | Fresh per-window frame, bridge, roots, and state; no stale callbacks                                       |
-| Second normal window             | Independent complete frame and feature state; no duplicate process runtime                                 |
-| Private window                   | Full explicitly tested feature support or complete native fallback; never partial initialization           |
-| Close/reopen window              | Hosts, roots, bridge contexts, listeners, observers, holds, timers, mappings, and pending work are removed |
+| Case                             | Expected result                                                                                                                               |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Three clean cold starts          | One bootstrap and one process runtime per process                                                                                             |
+| Ordinary restart                 | Fresh per-window frame, bridge, roots, and state; no stale callbacks                                                                          |
+| Second normal window             | Independent complete frame and feature state; no duplicate process runtime                                                                    |
+| Private window                   | Full explicitly tested feature support or complete native fallback; never partial initialization                                              |
+| Close/reopen window              | Hosts, roots, bridge contexts, listeners, observers, holds, timers, mappings, and pending work are removed                                    |
 | Persisted session rehearsal      | A new process restores fixed native/frontend order, selected/pinned/lazy state; fail-open remains usable; cleanup restores the blank baseline |
-| Runtime stop twice               | First stop disposes; second is idempotent                                                                  |
-| Missing manifest                 | Clear bootstrap failure; native UI usable                                                                  |
-| Malformed manifest               | Clear registration/entry failure; native UI usable                                                         |
-| Missing/broken entry             | Privacy-safe first causal stack; no partial runtime                                                        |
-| Broken frontend bundle           | No `healthy`/`active`; partial frame cleaned; native UI usable                                             |
-| Missing/invalid CSS              | No activation; native UI usable                                                                            |
-| Missing bridge capability        | Typed fixed-symbol failure and complete cleanup                                                            |
-| Emergency fallback               | Matching window's project lifecycle is disposed without Svelte                                             |
-| Safe start                       | Manifest lookup/import/mount skipped early                                                                 |
-| Browser Toolbox                  | Project ownership and native retention are inspectable                                                     |
-| Install/update/disable/uninstall | Only owned files change; stock startup restored                                                            |
-| Unsafe package target            | Preflight rejects before mutation                                                                          |
-| Cleanup/reinstall                | No owned residue, stale process, or unexplained cache action                                               |
+| Runtime stop twice               | First stop disposes; second is idempotent                                                                                                     |
+| Missing manifest                 | Clear bootstrap failure; native UI usable                                                                                                     |
+| Malformed manifest               | Clear registration/entry failure; native UI usable                                                                                            |
+| Missing/broken entry             | Privacy-safe first causal stack; no partial runtime                                                                                           |
+| Broken frontend bundle           | No `healthy`/`active`; partial frame cleaned; native UI usable                                                                                |
+| Missing/invalid CSS              | No activation; native UI usable                                                                                                               |
+| Missing bridge capability        | Typed fixed-symbol failure and complete cleanup                                                                                               |
+| Emergency fallback               | Matching window's project lifecycle is disposed without Svelte                                                                                |
+| Safe start                       | Manifest lookup/import/mount skipped early                                                                                                    |
+| Browser Toolbox                  | Project ownership and native retention are inspectable                                                                                        |
+| Install/update/disable/uninstall | Only owned files change; stock startup restored                                                                                               |
+| Unsafe package target            | Preflight rejects before mutation                                                                                                             |
+| Cleanup/reinstall                | No owned residue, stale process, or unexplained cache action                                                                                  |
 
 Every expected result requires evidence. A check mark without environment,
 command, and observation is insufficient. During rapid development, this matrix
@@ -561,7 +561,9 @@ ADR-044 (#64) adds focused unit/static/build coverage for:
   icon URL parsing from `--webextension-toolbar-image`, rgba-only badge
   text/colors, disabled state, and privacy assertions that widget/extension
   ids never enter the serialized snapshot;
-- curated built-in icon tokens with generic fallback;
+- curated built-in icon tokens with generic fallback, plus ADR-046 localized
+  names (palette node / Fluent / `getLocalizedProperty`) and bounded
+  `chrome://` / `resource://` icon URLs rendered as CSS masks;
 - coalesced revision snapshots from CustomizableUI listener events and the
   bounded attribute `MutationObserver`, including customize-exit re-read and
   no-change suppression;
@@ -610,6 +612,13 @@ ADR-045 adds focused unit/static/build coverage for:
   editing, neither joining activation health;
 - privacy assertions that widget ids never enter the serialized frontend
   snapshot and that style tokens apply only as a fixed CSS custom-property set;
+- ADR-046 palette presentation: unused XUL nodes resolved from
+  `gNavToolbox.palette`, a dedicated sync `Localization` (pinned
+  `browser`/`sidebar`/`appmenu`/`screenshots` FTL plus allowlisted chrome
+  localization links; `document.l10n` is async after startup) /
+  `getLocalizedProperty` names, CSSOM / pinned `list-style-image`
+  chrome/resource URLs, no `wrapper.forWindow` call, and
+  CSS-mask rendering rather than `<img src>` for built-in icons;
 - deterministic disposal of the CustomizableUI listener, preference observer,
   MutationObserver, popup listeners, pending waiters, handle/token registries,
   and frame style properties.
@@ -1001,29 +1010,29 @@ of the installed package.
 
 ## 13. Evidence index
 
-| Milestone                  | Evidence                                             |
-| -------------------------- | ---------------------------------------------------- |
-| Development profile        | `docs/development-setup.md`                          |
-| Bootstrap                  | `docs/research/firefox-153-bootstrap.md`             |
-| Identity migration         | `docs/research/fennevia-identity-migration.md`       |
-| Installer lifecycle        | `docs/research/fennevia-installer-validation.md`     |
-| Window lifecycle           | `docs/research/firefox-153-window-lifecycle.md`      |
-| Initial XHTML hosts        | `docs/research/firefox-153-shell-hosts.md`           |
-| Health and recovery        | `docs/research/firefox-153-shell-health-recovery.md` |
-| Svelte build               | `docs/research/firefox-153-svelte-build.md`          |
-| Firefox boundary           | `docs/research/firefox-153-bridge-boundary.md`       |
-| Tabs bridge                | `docs/research/firefox-153-tabs-bridge.md`           |
-| Tab UI                     | `docs/research/firefox-153-tab-strip.md`             |
-| Four-edge frame            | `docs/research/firefox-153-four-edge-shell.md`       |
-| Top navigation             | `docs/research/firefox-153-navigation-controls.md`   |
-| Address launcher and popup | `docs/research/firefox-153-address-popup.md`         |
-| Urlbar coverage            | `docs/research/firefox-153-urlbar-coverage.md`       |
-| Right-edge bookmarks       | `docs/research/firefox-153-bookmarks-surface.md`     |
-| Bottom-edge downloads      | `docs/research/firefox-153-downloads-surface.md`     |
-| Content-only activation    | `docs/research/firefox-153-content-only-activation.md` |
+| Milestone                      | Evidence                                                      |
+| ------------------------------ | ------------------------------------------------------------- |
+| Development profile            | `docs/development-setup.md`                                   |
+| Bootstrap                      | `docs/research/firefox-153-bootstrap.md`                      |
+| Identity migration             | `docs/research/fennevia-identity-migration.md`                |
+| Installer lifecycle            | `docs/research/fennevia-installer-validation.md`              |
+| Window lifecycle               | `docs/research/firefox-153-window-lifecycle.md`               |
+| Initial XHTML hosts            | `docs/research/firefox-153-shell-hosts.md`                    |
+| Health and recovery            | `docs/research/firefox-153-shell-health-recovery.md`          |
+| Svelte build                   | `docs/research/firefox-153-svelte-build.md`                   |
+| Firefox boundary               | `docs/research/firefox-153-bridge-boundary.md`                |
+| Tabs bridge                    | `docs/research/firefox-153-tabs-bridge.md`                    |
+| Tab UI                         | `docs/research/firefox-153-tab-strip.md`                      |
+| Four-edge frame                | `docs/research/firefox-153-four-edge-shell.md`                |
+| Top navigation                 | `docs/research/firefox-153-navigation-controls.md`            |
+| Address launcher and popup     | `docs/research/firefox-153-address-popup.md`                  |
+| Urlbar coverage                | `docs/research/firefox-153-urlbar-coverage.md`                |
+| Right-edge bookmarks           | `docs/research/firefox-153-bookmarks-surface.md`              |
+| Bottom-edge downloads          | `docs/research/firefox-153-downloads-surface.md`              |
+| Content-only activation        | `docs/research/firefox-153-content-only-activation.md`        |
 | MVP hardening/update rehearsal | `docs/research/firefox-153-mvp-hardening-update-rehearsal.md` |
-| Persisted session restore  | `docs/research/firefox-153-session-restore-rehearsal.md` |
-| Release packaging/distribution | `docs/research/fennevia-release-packaging.md`       |
+| Persisted session restore      | `docs/research/firefox-153-session-restore-rehearsal.md`      |
+| Release packaging/distribution | `docs/research/fennevia-release-packaging.md`                 |
 
 Those records describe the exact milestone tested. Current production state is
 summarized in README, the master plan, the shell roadmap, architecture, issue

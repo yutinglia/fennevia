@@ -72,7 +72,7 @@
   import DownloadsPanel from "./DownloadsPanel.svelte";
   import ProgressLight from "./ProgressLight.svelte";
   import ShellIcon from "./ShellIcon.svelte";
-  import { resolveToolbarWidgetIcon } from "./toolbar-widget-icons";
+  import ToolbarWidgetGlyph from "./ToolbarWidgetGlyph.svelte";
 
   type Props = Readonly<{
     addressPopup?: AddressPopupController;
@@ -924,15 +924,7 @@
             title={widget.tooltip || widget.label}
             type="button"
           >
-            {#if widget.kind === "extension-action" && widget.iconUrl}
-              <img
-                alt=""
-                class="fennevia-toolbar-widgets__icon"
-                src={widget.iconUrl}
-              />
-            {:else}
-              <ShellIcon name={resolveToolbarWidgetIcon(widget)} />
-            {/if}
+            <ToolbarWidgetGlyph widget={widget} />
             {#if widget.badgeText}
               <span
                 aria-hidden="true"

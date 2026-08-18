@@ -1430,13 +1430,15 @@ generated-artifact checks are in
 explicit project-owner approval for the bounded ADR-037 privacy relaxation;
 the mirror-as-sole-model is deprecated and partially superseded by ADR-045 —
 the nav-bar mirror remains only as the default top-zone layout until the user
-customizes, and "native customize mode is the only editor" no longer holds
+customizes, and "native customize mode is the only editor" no longer holds;
+the curated-glyph-only built-in icon clause is superseded by ADR-046
 
 Mirror Firefox's own `CustomizableUI` nav-bar placement list as a read-only
 data source and render it in the Fennevia top row with project-owned glass
 buttons: WebExtension action buttons (real `moz-extension://` icon, badge
 text/colors, extension name as label/tooltip), user-pinned built-in buttons
-(curated `ShellIcon` tokens for a known id set, a generic glyph otherwise), and
+(curated `ShellIcon` tokens as fallback; native `chrome://` / `resource://`
+icons per ADR-046), and
 special placements (spring, spacer, separator) as gaps. Placements already
 represented by fixed Fennevia controls (back/forward, urlbar-container,
 search-container, Unified Extensions, application menu,
@@ -1451,8 +1453,9 @@ exit, pin/unpin, install/removal, badge, and icon changes.
 The per-window `src/firefox/toolbar-widgets.ts` controller keeps widget ids and
 native nodes in a privileged opaque-handle registry; the frontend receives only
 `{ handle, kind, label, tooltip, iconUrl, badge, icon, disabled }` with
-validated bounds (`moz-extension://`-only icon URLs, rgba-only badge colors,
-fixed icon tokens, bounded text). Activation passes the clicked project host
+validated bounds (bounded `moz-extension://`, `chrome://`, and `resource://`
+icon URLs per ADR-046, rgba-only badge colors, fixed icon tokens, bounded
+text). Activation passes the clicked project host
 back through the handle: widgets with a `viewId` open through
 `PanelUI.showSubView(viewId, host)` (the transient
 `customizationui-widget-panel` anchors on the host directly); other widgets
@@ -1475,8 +1478,9 @@ project-owned layout editing are recorded in ADR-045.
 extension action state, and popup ownership; mirroring that list read-only
 avoids inventing a second widget system while restoring pinned-extension access
 that the collapsed navbar removed. Curated icon tokens keep widget ids
-privileged-side, and the ADR-042 host-anchoring path keeps extension popup
-contents Firefox-owned. Live Firefox mirroring and popup anchoring are recorded
+privileged-side as a fallback, and the ADR-042 host-anchoring path keeps
+extension popup contents Firefox-owned. ADR-046 amends the built-in icon
+rendering path. Live Firefox mirroring and popup anchoring are recorded
 per-row in `docs/testing-and-recovery.md`; source pins and the selected minimum
 sequence are in `docs/research/firefox-153-toolbar-widget-mirror.md`.
 
@@ -1546,3 +1550,50 @@ without new storage machinery. Source pins are in
 `tests/customize-model.test.mjs`, `tests/firefox-toolbar-widgets.test.mjs`,
 and `tests/toolbar-widgets-state.test.mjs`, with the real-Firefox matrix
 recorded in `docs/testing-and-recovery.md`.
+
+## ADR-046: Localized widget names and native chrome:// icons via CSS mask
+
+**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary, with
+explicit project-owner approval (2026-08-19, planning conversation); supersedes
+ADR-044's rejection of built-in `chrome://` `list-style-image` extraction
+
+Unused CustomizableUI widgets often have no connected `document.getElementById`
+node because XUL palette items live in `gNavToolbox.palette`, which is not part
+of the document. API built-ins commonly expose only a Fluent `l10nId` on the
+internal widget record, not a group-wrapper `label`. The toolbar-widgets
+controller therefore resolves presentation without calling
+`wrapper.forWindow()` or `buildWidgetNode()`:
+
+- names from the document or palette node (`label` / `title` / `tooltiptext`
+  and `data-l10n-id`); a dedicated per-window sync `Localization` for
+  `browser/browser.ftl`, `browser/sidebar.ftl`, `browser/appmenu.ftl`, and
+  `browser/screenshots.ftl`, plus allowlisted `link[rel="localization"]`
+  hrefs from the chrome document, so `formatMessagesSync` still works after
+  chrome `document.l10n` has called `setAsync()`; then
+  `CustomizableUI.getLocalizedProperty`, and a small privileged Fluent-id map
+  pinned to Firefox 153 `CustomizableWidgets`, XUL palette widgets, and
+  `screenshot-button`. Wrapper `tooltiptext` values that are still
+  properties-bundle keys (`*.tooltiptext2`) or incomplete `%S` format
+  strings are dropped;
+- built-in icons from computed `list-style-image` when a node exists, otherwise
+  a per-window CSSOM cache of `#widgetId` rules (including nested `&` /
+  `@media` rules), then a pinned 153 `toolbarbutton-icons.css` URL map, then
+  the existing curated `ShellIcon` token.
+
+Bounded `chrome://` and `resource://` icon URLs may enter that window's
+in-memory frontend state and a per-element CSS `mask-image` (plus
+`-webkit-mask-image`) painted with `currentColor`. This avoids `<img src>` on
+context-fill SVGs, which render blank or black. Extension icons remain
+`moz-extension://` `<img src>`. Icon URLs follow the same privacy rule as
+extension identity: they never enter logs, diagnostics, prefs, CSS variables on
+shared roots, or root datasets. Empty, oversized, quoted, or non-allowlisted
+values fall back to the curated token or generic glyph.
+
+**Reasoning:** The customize palette is unusable when every unused built-in is
+labelled "Toolbar item" with a generic glyph. Palette lookup and Fluent restore
+the names Firefox already localizes. Masking the same `chrome://` URLs Firefox
+uses in `toolbarbutton-icons.css` keeps theme/forced-colors coupling on
+`currentColor` without cloning native nodes. Source pins remain in
+`docs/research/firefox-153-toolbar-widget-mirror.md`; validation lives in
+`tests/firefox-toolbar-widgets.test.mjs` and
+`tests/toolbar-widgets-state.test.mjs`.

@@ -90,9 +90,22 @@ const BADGE_MAX_LENGTH = 8;
 const ICON_URL_MAX_LENGTH = 512;
 const LISTENER_OPTIONS = Object.freeze({ capture: true });
 const COLOR_PATTERN = /^rgba?\([0-9\s.,%]{1,48}\)$/u;
-const CSS_URL_PATTERN = /url\("((?:[^"\\]|\\.){1,512})"\)/u;
+const QUOTED_CSS_URL_PATTERN = /url\(\s*"((?:[^"\\]|\\.){1,512})"\s*\)/u;
+const SINGLE_QUOTED_CSS_URL_PATTERN = /url\(\s*'((?:[^'\\]|\\.){1,512})'\s*\)/u;
+const UNQUOTED_CSS_URL_PATTERN = /url\(\s*((?:[^"')\\]|\\.){1,512})\s*\)/u;
 const MOZ_EXTENSION_URL_PREFIX = "moz-extension://";
+const CHROME_URL_PREFIX = "chrome://";
+const RESOURCE_URL_PREFIX = "resource://";
 const EXTENSION_WIDGET_SUFFIX = "-browser-action";
+const FORBIDDEN_ICON_URL_CHARACTER_PATTERN = /["'\\<>\s]/u;
+const WIDGET_ID_SELECTOR_PATTERN = /#([A-Za-z_][\w-]*)/gu;
+const FLUENT_RESOURCE_ID_MAX_LENGTH = 128;
+const FLUENT_RESOURCE_ID_LIMIT = 48;
+const FLUENT_RESOURCE_ID_PATTERN =
+  /^(?:branding|browser|toolkit|preview)\/(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.ftl$/u;
+const LOCALIZATION_KEY_PATTERN =
+  /^(?:[A-Za-z][\w-]*\.)?(?:label|tooltiptext\d*)$/u;
+const INCOMPLETE_BUNDLE_FORMAT_PATTERN = /%[0-9$]*[Ssd]/u;
 
 // Placements already represented by fixed Fennevia controls, the native
 // downloads-button (users place the Fennevia show-downloads widget instead),
@@ -133,6 +146,79 @@ const builtinIconTokenByWidgetId: ReadonlyMap<string, string> = new Map([
   ["screenshot-button", "screenshot"],
   ["sidebar-button", "sidebar"],
   ["zoom-controls", "zoom"],
+]);
+
+// Pinned L10nRegistry resource ids for unused-widget labels. Chrome
+// `document.l10n` is a DOMLocalization that calls `setAsync()` after the
+// initial translation, so `formatMessagesSync` then throws
+// `InvalidStateError`. A dedicated `new Localization(ids, true)` stays
+// synchronous. Palette nodes are disconnected and often never receive a
+// translated `label` attribute. XUL palette widgets such as New Window and
+// Full Screen live in `appmenu.ftl`; Screenshot is registered from
+// ScreenshotsUtils with `screenshots.ftl`. Extra ids come from the chrome
+// document's `link[rel="localization"]` hrefs.
+const TOOLBAR_FLUENT_RESOURCE_IDS: readonly string[] = Object.freeze([
+  "browser/browser.ftl",
+  "browser/sidebar.ftl",
+  "browser/appmenu.ftl",
+  "browser/screenshots.ftl",
+]);
+
+// Fluent ids for API-provided and unused XUL built-ins that often have no
+// translated label until placed. The group wrapper does not expose l10nId.
+const builtinFluentIdByWidgetId: ReadonlyMap<string, string> = new Map([
+  ["bookmarks-menu-button", "bookmarks-menu-button"],
+  ["characterencoding-button", "repair-text-encoding-button"],
+  ["email-link-button", "toolbar-button-email-link"],
+  ["firefox-view-button", "toolbar-button-firefox-view-2"],
+  ["fullscreen-button", "appmenuitem-fullscreen"],
+  ["import-button", "browser-import-button2"],
+  ["library-button", "navbar-library"],
+  ["logins-button", "toolbar-button-logins"],
+  ["new-window-button", "appmenuitem-new-window"],
+  ["open-file-button", "toolbar-button-open-file"],
+  ["preferences-button", "toolbar-settings-button"],
+  ["print-button", "navbar-print"],
+  ["privatebrowsing-button", "toolbar-button-new-private-window"],
+  ["save-page-button", "toolbar-button-save-page"],
+  ["screenshot-button", "screenshot-toolbar-button"],
+  ["send-tab-button", "toolbar-button-send-tab"],
+  ["share-tab-button", "toolbar-button-share-tab"],
+  ["sidebar-button", "show-sidebars"],
+  ["sync-button", "toolbar-button-synced-tabs"],
+  ["tab-groups-button", "toolbar-button-tab-groups"],
+]);
+
+// Pinned 153 `toolbarbutton-icons.css` URLs for unused API widgets when CSSOM
+// cannot see the sheet (nested `&` / `@media -moz-pref`, or a blocked sheet).
+const builtinIconUrlByWidgetId: ReadonlyMap<string, string> = new Map([
+  ["bookmarks-menu-button", "chrome://browser/skin/bookmark-star-on-tray.svg"],
+  ["characterencoding-button", "chrome://browser/skin/characterEncoding.svg"],
+  ["developer-button", "chrome://global/skin/icons/developer.svg"],
+  ["email-link-button", "chrome://browser/skin/mail.svg"],
+  ["find-button", "chrome://global/skin/icons/search-glass.svg"],
+  ["firefox-view-button", "chrome://browser/skin/firefox-view.svg"],
+  ["fullscreen-button", "chrome://browser/skin/fullscreen.svg"],
+  [
+    "ipprotection-button",
+    "chrome://browser/content/logos/ipprotection-states.svg#off",
+  ],
+  ["library-button", "chrome://browser/skin/library.svg"],
+  ["logins-button", "chrome://browser/skin/login.svg"],
+  ["new-window-button", "chrome://browser/skin/window.svg"],
+  ["open-file-button", "chrome://browser/skin/open.svg"],
+  ["panic-button", "chrome://browser/skin/forget.svg"],
+  ["preferences-button", "chrome://global/skin/icons/settings.svg"],
+  ["print-button", "chrome://global/skin/icons/print.svg"],
+  ["privatebrowsing-button", "chrome://browser/skin/privateBrowsing.svg"],
+  ["reset-pbm-toolbar-button", "chrome://browser/skin/flame.svg"],
+  ["save-page-button", "chrome://browser/skin/save.svg"],
+  ["screenshot-button", "chrome://browser/skin/screenshot.svg"],
+  ["send-tab-button", "chrome://browser/skin/send-tab-20.svg"],
+  ["share-tab-button", "chrome://browser/skin/share.svg"],
+  ["sidebar-button", "chrome://browser/skin/sidebar-collapsed.svg"],
+  ["sync-button", "chrome://browser/skin/synced-tabs.svg"],
+  ["tab-groups-button", "chrome://browser/skin/tabbrowser/tab-groups.svg"],
 ]);
 
 // Fixed presentation for Fennevia-owned placeable widgets. The frontend
@@ -421,6 +507,326 @@ const readAttribute = (node: NativeNode, name: string): string => {
   }
 };
 
+const extractCssUrl = (value: string): string => {
+  if (value === "" || value === "none") {
+    return "";
+  }
+  const quoted = QUOTED_CSS_URL_PATTERN.exec(value);
+  if (quoted) {
+    return quoted[1].replace(/\\(.)/gu, "$1");
+  }
+  const singleQuoted = SINGLE_QUOTED_CSS_URL_PATTERN.exec(value);
+  if (singleQuoted) {
+    return singleQuoted[1].replace(/\\(.)/gu, "$1");
+  }
+  const unquoted = UNQUOTED_CSS_URL_PATTERN.exec(value);
+  return unquoted ? unquoted[1].replace(/\\(.)/gu, "$1") : "";
+};
+
+const isAllowedPresentationIconUrl = (
+  url: string,
+  kind: "builtin" | "extension",
+): boolean => {
+  if (
+    url === "" ||
+    url.length > ICON_URL_MAX_LENGTH ||
+    FORBIDDEN_ICON_URL_CHARACTER_PATTERN.test(url)
+  ) {
+    return false;
+  }
+  if (kind === "extension") {
+    return url.startsWith(MOZ_EXTENSION_URL_PREFIX);
+  }
+  return (
+    url.startsWith(CHROME_URL_PREFIX) || url.startsWith(RESOURCE_URL_PREFIX)
+  );
+};
+
+const readFirstCollectionNode = (collection: unknown): NativeNode | null => {
+  if (isNativeNode(collection)) {
+    return collection;
+  }
+  if (Array.isArray(collection)) {
+    const first = collection[0];
+    return isNativeNode(first) ? first : null;
+  }
+  if (!isNativeRecord(collection)) {
+    return null;
+  }
+  const indexed = collection[0];
+  if (isNativeNode(indexed)) {
+    return indexed;
+  }
+  if (isFunction(collection.item)) {
+    try {
+      const item = Reflect.apply(collection.item, collection, [0]);
+      return isNativeNode(item) ? item : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const readStyleListStyleImage = (style: unknown): string => {
+  if (!isNativeRecord(style)) {
+    return "";
+  }
+  try {
+    const direct = style.listStyleImage;
+    if (typeof direct === "string" && direct !== "") {
+      const url = extractCssUrl(direct);
+      if (url) {
+        return url;
+      }
+    }
+  } catch {
+    // Computed style getters may throw for disconnected nodes.
+  }
+  if (isFunction(style.getPropertyValue)) {
+    try {
+      const value = Reflect.apply(style.getPropertyValue, style, [
+        "list-style-image",
+      ]);
+      if (typeof value === "string") {
+        return extractCssUrl(value);
+      }
+    } catch {
+      return "";
+    }
+  }
+  return "";
+};
+
+const readCssRuleListStyleImage = (rule: NativeRecord): string => {
+  try {
+    const style = rule.style;
+    const fromStyle = readStyleListStyleImage(style);
+    if (fromStyle) {
+      return fromStyle;
+    }
+  } catch {
+    // Some CSSRule types have no style object.
+  }
+  return "";
+};
+
+const readSelectorWidgetIds = (selectorText: unknown): string[] => {
+  if (typeof selectorText !== "string" || selectorText === "") {
+    return [];
+  }
+  const ids: string[] = [];
+  WIDGET_ID_SELECTOR_PATTERN.lastIndex = 0;
+  for (const match of selectorText.matchAll(WIDGET_ID_SELECTOR_PATTERN)) {
+    const widgetId = match[1];
+    if (widgetId) {
+      ids.push(widgetId);
+    }
+  }
+  return ids;
+};
+
+const collectBuiltinIconUrlsFromRule = (
+  rule: unknown,
+  sink: Map<string, string>,
+  inheritedIds: readonly string[] = [],
+): void => {
+  if (!isNativeRecord(rule)) {
+    return;
+  }
+  let selectorText: unknown;
+  try {
+    selectorText = rule.selectorText;
+  } catch {
+    selectorText = undefined;
+  }
+  const selectorIds = readSelectorWidgetIds(selectorText);
+  const widgetIds = selectorIds.length > 0 ? selectorIds : inheritedIds;
+  const url = readCssRuleListStyleImage(rule);
+  if (url && isAllowedPresentationIconUrl(url, "builtin")) {
+    for (const widgetId of widgetIds) {
+      sink.set(widgetId, url);
+    }
+  }
+  let nested: unknown;
+  try {
+    nested = rule.cssRules;
+  } catch {
+    nested = undefined;
+  }
+  if (isNativeRecord(nested) && typeof nested.length === "number") {
+    const length = nested.length;
+    for (let index = 0; index < length; index += 1) {
+      collectBuiltinIconUrlsFromRule(nested[index], sink, widgetIds);
+    }
+  }
+};
+
+const readIndexedEntry = (collection: unknown, index: number): unknown => {
+  if (Array.isArray(collection)) {
+    return collection[index];
+  }
+  if (!isNativeRecord(collection)) {
+    return undefined;
+  }
+  return collection[index];
+};
+
+const readFluentAttribute = (attributes: unknown, name: string): string => {
+  if (Array.isArray(attributes)) {
+    for (const item of attributes) {
+      if (
+        isNativeRecord(item) &&
+        item.name === name &&
+        typeof item.value === "string"
+      ) {
+        return item.value;
+      }
+    }
+    return "";
+  }
+  if (!isNativeRecord(attributes)) {
+    return "";
+  }
+  if (typeof attributes.length === "number" && attributes.length > 0) {
+    const length = attributes.length;
+    for (let index = 0; index < length; index += 1) {
+      const item = attributes[index];
+      if (
+        isNativeRecord(item) &&
+        item.name === name &&
+        typeof item.value === "string"
+      ) {
+        return item.value;
+      }
+    }
+  }
+  const direct = attributes[name];
+  return typeof direct === "string" ? direct : "";
+};
+
+const readFluentMessageText = (messages: unknown, l10nId: string): string => {
+  const first = readIndexedEntry(messages, 0);
+  if (!isNativeRecord(first)) {
+    return "";
+  }
+  const fromAttributes =
+    readFluentAttribute(first.attributes, "label") ||
+    readFluentAttribute(first.attributes, "tooltiptext");
+  const value = typeof first.value === "string" ? first.value : "";
+  const text = fromAttributes || value;
+  if (!text || text === l10nId) {
+    return "";
+  }
+  return boundString(text, LABEL_MAX_LENGTH);
+};
+
+const formatFluentFromLocalization = (
+  l10n: NativeRecord,
+  l10nId: string,
+): string => {
+  if (isFunction(l10n.formatMessagesSync)) {
+    try {
+      const messages = Reflect.apply(l10n.formatMessagesSync, l10n, [
+        [{ id: l10nId }],
+      ]);
+      const fromMessage = readFluentMessageText(messages, l10nId);
+      if (fromMessage) {
+        return fromMessage;
+      }
+    } catch {
+      // DocumentL10n throws after setAsync(); a dedicated sync instance
+      // should not. Either way, try formatValueSync next.
+    }
+  }
+  if (!isFunction(l10n.formatValueSync)) {
+    return "";
+  }
+  try {
+    const value = Reflect.apply(l10n.formatValueSync, l10n, [l10nId]);
+    if (typeof value !== "string" || value === "" || value === l10nId) {
+      return "";
+    }
+    return boundString(value, LABEL_MAX_LENGTH);
+  } catch {
+    return "";
+  }
+};
+
+const isAllowedFluentResourceId = (value: string): boolean =>
+  value.length > 0 &&
+  value.length <= FLUENT_RESOURCE_ID_MAX_LENGTH &&
+  !value.includes("..") &&
+  FLUENT_RESOURCE_ID_PATTERN.test(value);
+
+const collectFluentResourceIds = (document: NativeRecord): string[] => {
+  const collected: string[] = [];
+  const seen = new Set<string>();
+  const add = (value: string): void => {
+    const id = value.trim();
+    if (
+      seen.has(id) ||
+      !isAllowedFluentResourceId(id) ||
+      collected.length >= FLUENT_RESOURCE_ID_LIMIT
+    ) {
+      return;
+    }
+    seen.add(id);
+    collected.push(id);
+  };
+  for (const id of TOOLBAR_FLUENT_RESOURCE_IDS) {
+    add(id);
+  }
+  if (!isFunction(document.querySelectorAll)) {
+    return collected;
+  }
+  try {
+    const links = Reflect.apply(document.querySelectorAll, document, [
+      'link[rel="localization"]',
+    ]);
+    const length = Array.isArray(links)
+      ? links.length
+      : isNativeRecord(links) && typeof links.length === "number"
+        ? links.length
+        : 0;
+    for (let index = 0; index < length; index += 1) {
+      const link = readIndexedEntry(links, index);
+      if (!isNativeNode(link)) {
+        continue;
+      }
+      add(readAttribute(link, "href"));
+    }
+  } catch {
+    // Pinned resource ids remain enough for known toolbar widgets.
+  }
+  return collected;
+};
+
+const isUntranslatedLocalizationKey = (
+  value: string,
+  widgetId = "",
+): boolean => {
+  if (widgetId && (value === widgetId || value.startsWith(`${widgetId}.`))) {
+    return true;
+  }
+  return LOCALIZATION_KEY_PATTERN.test(value);
+};
+
+const readPresentationText = (
+  value: string,
+  maxLength: number,
+  widgetId = "",
+): string => {
+  if (
+    !value ||
+    isUntranslatedLocalizationKey(value, widgetId) ||
+    INCOMPLETE_BUNDLE_FORMAT_PATTERN.test(value)
+  ) {
+    return "";
+  }
+  return boundString(value, maxLength);
+};
+
 const isNodeConnected = (node: NativeRecord): boolean =>
   node.isConnected === true;
 
@@ -450,18 +856,8 @@ const readExtensionIconUrl = (actionButton: NativeNode): string => {
   if (!styleText) {
     styleText = readAttribute(actionButton, "style");
   }
-  const match = CSS_URL_PATTERN.exec(styleText);
-  if (!match) {
-    return "";
-  }
-  const url = match[1].replace(/\\(.)/gu, "$1");
-  if (
-    !url.startsWith(MOZ_EXTENSION_URL_PREFIX) ||
-    url.length > ICON_URL_MAX_LENGTH
-  ) {
-    return "";
-  }
-  return url;
+  const url = extractCssUrl(styleText);
+  return isAllowedPresentationIconUrl(url, "extension") ? url : "";
 };
 
 const readExtensionBadge = (
@@ -556,6 +952,8 @@ export function createFirefoxToolbarWidgetsBridge({
   const paletteTokenByKey = new Map<string, string>();
   const paletteTargetByToken = new Map<string, CustomizeLayoutEntry>();
   let mutationObserver: NativeRecord | null = null;
+  let builtinIconUrlCache: Map<string, string> | null = null;
+  let fluentLocalization: NativeRecord | null | undefined;
   let heldPanel: NativePanel | null = null;
   let heldPanelHandle = "";
   let pendingViewWaiter: PendingPanelWaiter | null = null;
@@ -645,6 +1043,310 @@ export function createFirefoxToolbarWidgetsBridge({
     }
   };
 
+  const readPaletteNode = (widgetId: string): NativeNode | null => {
+    const ownerWindow = nativeWindow;
+    if (!ownerWindow) {
+      return null;
+    }
+    const toolbox = ownerWindow.gNavToolbox;
+    if (!isNativeRecord(toolbox)) {
+      return null;
+    }
+    const palette = toolbox.palette;
+    if (
+      !isNativeRecord(palette) ||
+      !isFunction(palette.getElementsByAttribute)
+    ) {
+      return null;
+    }
+    try {
+      const found = Reflect.apply(palette.getElementsByAttribute, palette, [
+        "id",
+        widgetId,
+      ]);
+      return readFirstCollectionNode(found);
+    } catch {
+      return null;
+    }
+  };
+
+  const readPresentationNode = (widgetId: string): NativeNode | null => {
+    const ownerWindow = nativeWindow;
+    if (!ownerWindow) {
+      return null;
+    }
+    const inDocument = getDocumentElementById(ownerWindow, widgetId);
+    if (isNativeNode(inDocument)) {
+      return inDocument;
+    }
+    return readPaletteNode(widgetId);
+  };
+
+  const getSyncFluentLocalization = (): NativeRecord | null => {
+    if (fluentLocalization !== undefined) {
+      return fluentLocalization;
+    }
+    fluentLocalization = null;
+    const ownerWindow = nativeWindow;
+    if (!ownerWindow || !isFunction(ownerWindow.Localization)) {
+      return null;
+    }
+    const document = ownerWindow.document;
+    const resourceIds = isNativeRecord(document)
+      ? collectFluentResourceIds(document)
+      : [...TOOLBAR_FLUENT_RESOURCE_IDS];
+    try {
+      const created = Reflect.construct(ownerWindow.Localization, [
+        resourceIds,
+        true,
+      ]);
+      if (
+        !isNativeRecord(created) ||
+        (!isFunction(created.formatMessagesSync) &&
+          !isFunction(created.formatValueSync))
+      ) {
+        return null;
+      }
+      fluentLocalization = created;
+      return created;
+    } catch {
+      return null;
+    }
+  };
+
+  const formatFluentValue = (l10nId: string): string => {
+    if (!l10nId) {
+      return "";
+    }
+    const syncLocalization = getSyncFluentLocalization();
+    if (syncLocalization) {
+      const fromSync = formatFluentFromLocalization(syncLocalization, l10nId);
+      if (fromSync) {
+        return fromSync;
+      }
+    }
+    const ownerWindow = nativeWindow;
+    if (!ownerWindow) {
+      return "";
+    }
+    const document = ownerWindow.document;
+    if (!isNativeRecord(document)) {
+      return "";
+    }
+    const l10n = document.l10n;
+    if (!isNativeRecord(l10n)) {
+      return "";
+    }
+    return formatFluentFromLocalization(l10n, l10nId);
+  };
+
+  const readLocalizedProperty = (
+    customizableUi: NativeRecord,
+    widgetId: string,
+    property: "label" | "tooltiptext",
+  ): string => {
+    if (!isFunction(customizableUi.getLocalizedProperty)) {
+      return "";
+    }
+    try {
+      const value = Reflect.apply(
+        customizableUi.getLocalizedProperty,
+        customizableUi,
+        [widgetId, property],
+      );
+      if (typeof value !== "string" || value === "") {
+        return "";
+      }
+      return readPresentationText(value, LABEL_MAX_LENGTH, widgetId);
+    } catch {
+      return "";
+    }
+  };
+
+  const resolveWidgetLabel = (
+    customizableUi: NativeRecord,
+    widgetId: string,
+    wrapper: NativeRecord | null,
+    node: NativeNode | null,
+    isExtension: boolean,
+  ): string => {
+    const nodeLabel = node
+      ? readPresentationText(
+          readAttribute(node, "label") || readRecordString(node, "label"),
+          LABEL_MAX_LENGTH,
+          widgetId,
+        )
+      : "";
+    const nodeTitle = node
+      ? readPresentationText(
+          readAttribute(node, "title") || readRecordString(node, "title"),
+          LABEL_MAX_LENGTH,
+          widgetId,
+        )
+      : "";
+    const nodeTooltip = node
+      ? readPresentationText(
+          readAttribute(node, "tooltiptext") ||
+            readRecordString(node, "tooltiptext"),
+          LABEL_MAX_LENGTH,
+          widgetId,
+        )
+      : "";
+    const wrapperLabel = readPresentationText(
+      readRecordString(wrapper, "label"),
+      LABEL_MAX_LENGTH,
+      widgetId,
+    );
+    const wrapperTooltip = readPresentationText(
+      readRecordString(wrapper, "tooltiptext"),
+      LABEL_MAX_LENGTH,
+      widgetId,
+    );
+    const fluentFromNode = node
+      ? formatFluentValue(readAttribute(node, "data-l10n-id"))
+      : "";
+    const fluentFromMap = formatFluentValue(
+      builtinFluentIdByWidgetId.get(widgetId) ?? "",
+    );
+    return (
+      nodeLabel ||
+      nodeTitle ||
+      wrapperLabel ||
+      fluentFromNode ||
+      readLocalizedProperty(customizableUi, widgetId, "label") ||
+      fluentFromMap ||
+      nodeTooltip ||
+      wrapperTooltip ||
+      readLocalizedProperty(customizableUi, widgetId, "tooltiptext") ||
+      (isExtension ? "Extension" : "Toolbar item")
+    );
+  };
+
+  const resolveWidgetTooltip = (
+    widgetId: string,
+    wrapper: NativeRecord | null,
+    node: NativeNode | null,
+    label: string,
+  ): string => {
+    const nodeTooltip = node
+      ? readPresentationText(
+          readAttribute(node, "tooltiptext") ||
+            readRecordString(node, "tooltiptext"),
+          TOOLTIP_MAX_LENGTH,
+          widgetId,
+        )
+      : "";
+    const nodeTitle = node
+      ? readPresentationText(
+          readAttribute(node, "title") || readRecordString(node, "title"),
+          TOOLTIP_MAX_LENGTH,
+          widgetId,
+        )
+      : "";
+    const wrapperTooltip = readPresentationText(
+      readRecordString(wrapper, "tooltiptext"),
+      TOOLTIP_MAX_LENGTH,
+      widgetId,
+    );
+    return nodeTooltip || nodeTitle || wrapperTooltip || label;
+  };
+
+  const collectBuiltinIconUrlsFromDocument = (): Map<string, string> => {
+    const collected = new Map<string, string>();
+    const ownerWindow = nativeWindow;
+    if (!ownerWindow) {
+      return collected;
+    }
+    const document = ownerWindow.document;
+    if (!isNativeRecord(document)) {
+      return collected;
+    }
+    const styleSheets = document.styleSheets;
+    if (
+      !isNativeRecord(styleSheets) ||
+      typeof styleSheets.length !== "number"
+    ) {
+      return collected;
+    }
+    const length = styleSheets.length;
+    for (let index = 0; index < length; index += 1) {
+      let sheet: unknown;
+      try {
+        sheet = styleSheets[index];
+      } catch {
+        continue;
+      }
+      if (!isNativeRecord(sheet)) {
+        continue;
+      }
+      let rules: unknown;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      if (!isNativeRecord(rules) || typeof rules.length !== "number") {
+        continue;
+      }
+      const ruleCount = rules.length;
+      for (let ruleIndex = 0; ruleIndex < ruleCount; ruleIndex += 1) {
+        collectBuiltinIconUrlsFromRule(rules[ruleIndex], collected);
+      }
+    }
+    return collected;
+  };
+
+  const readCachedBuiltinIconUrl = (widgetId: string): string => {
+    if (!builtinIconUrlCache) {
+      builtinIconUrlCache = collectBuiltinIconUrlsFromDocument();
+    }
+    return builtinIconUrlCache.get(widgetId) ?? "";
+  };
+
+  const readComputedBuiltinIconUrl = (node: NativeNode): string => {
+    const ownerWindow = nativeWindow;
+    if (!ownerWindow || !isFunction(ownerWindow.getComputedStyle)) {
+      return "";
+    }
+    const candidates: NativeRecord[] = [node];
+    const nestedButton = querySelectorOn(node, "toolbarbutton");
+    if (isNativeNode(nestedButton)) {
+      candidates.unshift(nestedButton);
+    }
+    for (const candidate of candidates) {
+      try {
+        const style = Reflect.apply(ownerWindow.getComputedStyle, ownerWindow, [
+          candidate,
+        ]);
+        const url = readStyleListStyleImage(style);
+        if (isAllowedPresentationIconUrl(url, "builtin")) {
+          return url;
+        }
+      } catch {
+        // Disconnected palette nodes may not have computed chrome styles.
+      }
+    }
+    return "";
+  };
+
+  const readBuiltinIconUrl = (
+    widgetId: string,
+    node: NativeNode | null,
+  ): string => {
+    if (node) {
+      const computed = readComputedBuiltinIconUrl(node);
+      if (computed) {
+        return computed;
+      }
+    }
+    const cached = readCachedBuiltinIconUrl(widgetId);
+    if (cached) {
+      return cached;
+    }
+    const pinned = builtinIconUrlByWidgetId.get(widgetId) ?? "";
+    return isAllowedPresentationIconUrl(pinned, "builtin") ? pinned : "";
+  };
+
   const widgetSnapshotForSpecial = (
     kind: ToolbarWidgetKind,
   ): ToolbarWidgetSnapshot =>
@@ -691,9 +1393,21 @@ export function createFirefoxToolbarWidgetsBridge({
     const isExtension =
       wrapper?.webExtension === true ||
       isExtensionWidgetId(customizableUi, widgetId);
-    const label =
-      boundString(readRecordString(wrapper, "label"), LABEL_MAX_LENGTH) ||
-      (isExtension ? "Extension" : "Toolbar item");
+    const presentationNode = readPresentationNode(widgetId);
+    const label = resolveWidgetLabel(
+      customizableUi,
+      widgetId,
+      wrapper,
+      presentationNode,
+      isExtension,
+    );
+    let iconUrl = "";
+    if (isExtension && presentationNode) {
+      const actionButton = readExtensionActionButton(presentationNode);
+      iconUrl = actionButton ? readExtensionIconUrl(actionButton) : "";
+    } else if (!isExtension) {
+      iconUrl = readBuiltinIconUrl(widgetId, presentationNode);
+    }
     return Object.freeze({
       badgeBackground: "",
       badgeText: "",
@@ -704,11 +1418,11 @@ export function createFirefoxToolbarWidgetsBridge({
       icon: isExtension
         ? "extension"
         : (builtinIconTokenByWidgetId.get(widgetId) ?? "generic"),
-      iconUrl: "",
+      iconUrl,
       kind: isExtension ? ("extension-action" as const) : ("built-in" as const),
       label,
       missing: true,
-      tooltip: label,
+      tooltip: resolveWidgetTooltip(widgetId, wrapper, presentationNode, label),
     });
   };
 
@@ -729,10 +1443,6 @@ export function createFirefoxToolbarWidgetsBridge({
       wrapper?.webExtension === true ||
       isExtensionWidgetId(customizableUi, widgetId);
     const handle = registry.register(node);
-    const nodeLabel = readAttribute(node, "label");
-    const wrapperLabel = readRecordString(wrapper, "label");
-    const nodeTooltip = readAttribute(node, "tooltiptext");
-    const wrapperTooltip = readRecordString(wrapper, "tooltiptext");
 
     if (isExtension) {
       const actionButton = readExtensionActionButton(node);
@@ -741,8 +1451,7 @@ export function createFirefoxToolbarWidgetsBridge({
         : Object.freeze({ background: "", text: "", textColor: "" });
       const label =
         readExtensionLabel(node) ||
-        boundString(wrapperLabel || nodeLabel, LABEL_MAX_LENGTH) ||
-        "Extension";
+        resolveWidgetLabel(customizableUi, widgetId, wrapper, node, true);
       return Object.freeze({
         node,
         widget: Object.freeze({
@@ -759,17 +1468,18 @@ export function createFirefoxToolbarWidgetsBridge({
           kind: "extension-action" as const,
           label,
           missing: false,
-          tooltip:
-            boundString(wrapperTooltip || nodeTooltip, TOOLTIP_MAX_LENGTH) ||
-            label,
+          tooltip: resolveWidgetTooltip(widgetId, wrapper, node, label),
         }),
       });
     }
 
-    const label =
-      boundString(nodeLabel || wrapperLabel, LABEL_MAX_LENGTH) ||
-      boundString(nodeTooltip || wrapperTooltip, LABEL_MAX_LENGTH) ||
-      "Toolbar item";
+    const label = resolveWidgetLabel(
+      customizableUi,
+      widgetId,
+      wrapper,
+      node,
+      false,
+    );
     return Object.freeze({
       node,
       widget: Object.freeze({
@@ -780,14 +1490,11 @@ export function createFirefoxToolbarWidgetsBridge({
         fenneviaAction: "",
         handle,
         icon: builtinIconTokenByWidgetId.get(widgetId) ?? "generic",
-        iconUrl: "",
+        iconUrl: readBuiltinIconUrl(widgetId, node),
         kind: "built-in" as const,
         label,
         missing: false,
-        tooltip: boundString(
-          nodeTooltip || wrapperTooltip || label,
-          TOOLTIP_MAX_LENGTH,
-        ),
+        tooltip: resolveWidgetTooltip(widgetId, wrapper, node, label),
       }),
     });
   };
@@ -946,33 +1653,38 @@ export function createFirefoxToolbarWidgetsBridge({
     const isExtension =
       wrapper?.webExtension === true ||
       isExtensionWidgetId(customizableUi, widgetId);
-    const ownerWindow = requireWindow();
-    const node = getDocumentElementById(ownerWindow, widgetId);
-    const liveNode = isNativeNode(node) && isNodeConnected(node) ? node : null;
+    const presentationNode = readPresentationNode(widgetId);
+    const liveNode =
+      isNativeNode(presentationNode) && isNodeConnected(presentationNode)
+        ? presentationNode
+        : null;
     let label: string;
-    let iconUrl = "";
+    let iconUrl: string;
     if (isExtension) {
       const actionButton = liveNode
         ? readExtensionActionButton(liveNode)
-        : null;
+        : presentationNode
+          ? readExtensionActionButton(presentationNode)
+          : null;
       iconUrl = actionButton ? readExtensionIconUrl(actionButton) : "";
       label =
         (liveNode ? readExtensionLabel(liveNode) : "") ||
-        boundString(readRecordString(wrapper, "label"), LABEL_MAX_LENGTH) ||
-        "Extension";
+        resolveWidgetLabel(
+          customizableUi,
+          widgetId,
+          wrapper,
+          presentationNode,
+          true,
+        );
     } else {
-      label =
-        boundString(
-          (liveNode ? readAttribute(liveNode, "label") : "") ||
-            readRecordString(wrapper, "label"),
-          LABEL_MAX_LENGTH,
-        ) ||
-        boundString(
-          (liveNode ? readAttribute(liveNode, "tooltiptext") : "") ||
-            readRecordString(wrapper, "tooltiptext"),
-          LABEL_MAX_LENGTH,
-        ) ||
-        "Toolbar item";
+      label = resolveWidgetLabel(
+        customizableUi,
+        widgetId,
+        wrapper,
+        presentationNode,
+        false,
+      );
+      iconUrl = readBuiltinIconUrl(widgetId, presentationNode);
     }
     const token = paletteTokenFor(`w:${widgetId}`);
     paletteTargetByToken.set(
@@ -2047,6 +2759,7 @@ export function createFirefoxToolbarWidgetsBridge({
   } catch (error) {
     disposed = true;
     detachPrefObserver();
+    fluentLocalization = null;
     nativeWindow = null;
     for (const disposeListener of listenerDisposers.reverse()) {
       try {
@@ -2098,6 +2811,8 @@ export function createFirefoxToolbarWidgetsBridge({
       currentHandleIds.clear();
       paletteTokenByKey.clear();
       paletteTargetByToken.clear();
+      builtinIconUrlCache = null;
+      fluentLocalization = null;
       registry.dispose();
       nativeWindow = null;
       for (const disposeListener of listenerDisposers.reverse()) {
