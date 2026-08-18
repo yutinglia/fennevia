@@ -111,6 +111,13 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(component, /onpointerup=\{handlePanelPointerRelease\}/u);
   assert.match(component, /<ProgressLight presentation=\{loadLight\} \/>/u);
   assert.match(component, /<ProgressLight presentation=\{downloadLight\} \/>/u);
+  assert.match(component, /<ToolbarWidgetGlyph widget=\{widget\} \/>/u);
+
+  const glyph = await readProjectFile("src/shell/ToolbarWidgetGlyph.svelte");
+  assert.match(glyph, /moz-extension:\/\//u);
+  assert.match(glyph, /style:mask-image=\{nativeMaskImage\}/u);
+  assert.match(glyph, /style:-webkit-mask-image=\{nativeMaskImage\}/u);
+  assert.doesNotMatch(glyph, /<img[^>]+src=\{[^}]*chrome:/u);
 });
 
 test("the installed frontend is one IIFE, one style module, and one notice", async () => {

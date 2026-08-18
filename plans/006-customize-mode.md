@@ -5,7 +5,8 @@
 ## 1. Status and goal
 
 Status: implementation and documentation complete on
-`feat/fennevia-customize-mode` (ADR-045); the manual real-Firefox checklist in
+`feat/fennevia-customize-mode` (ADR-045); ADR-046 adds localized names and
+native built-in icons. The manual real-Firefox checklist in
 `docs/testing-and-recovery.md` §6.9 is still `not run`.
 
 This pass deprecates the ADR-044 read-only nav-bar widget mirror as the only
@@ -70,6 +71,9 @@ activation contract.
       and disposal.
 - [x] Internals map, security/privacy, plans, README, and testing matrix
       synchronized.
+- [x] ADR-046 localized palette/zone names and native chrome/resource icons
+      via CSS mask; unit coverage for palette lookup, dedicated sync
+      Localization, CSSOM, and forbidden `forWindow`.
 - [ ] Real-Firefox matrix in `docs/testing-and-recovery.md` §6.9.
 
 ## 5. Explicit non-goals

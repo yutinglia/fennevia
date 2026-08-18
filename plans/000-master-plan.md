@@ -70,7 +70,8 @@ Completed:
   exact one-sided ownership repair, reconciled compatibility inventory, and an
   executable Firefox stable-update rehearsal.
 
-Current fast branch enhancement under ADR-037, ADR-042, ADR-044, and ADR-045:
+Current fast branch enhancement under ADR-037, ADR-042, ADR-044, ADR-045, and
+ADR-046:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   Firefox tools, and progressive disclosure;
@@ -91,7 +92,9 @@ Current fast branch enhancement under ADR-037, ADR-042, ADR-044, and ADR-045:
   source by ADR-045: a Fennevia-owned customize mode with four-edge widget
   zones, the full current CustomizableUI inventory as an opaque-token palette,
   bounded style tokens, profile-local prefs, and owner-approved adopt/restore
-  writes onto the collapsed nav-bar. Native customize mode stays available
+  writes onto the collapsed nav-bar. ADR-046 restores localized widget names
+  and native built-in icons (CSS mask, not `<img>`) in that palette and in
+  widget zones. Native customize mode stays available
   through the Firefox application menu, complete native reveal, and fail-open;
   it is not a fixed top-row control.
 
@@ -522,9 +525,15 @@ clauses are superseded by ADR-045 below. Evidence: ADR-044,
   joining activation health. Native customize mode remains available through
   the Firefox application menu, complete native reveal, and fail-open.
 
-Evidence: ADR-045, `plans/006-customize-mode.md`, and
+Evidence: ADR-045, ADR-046, `plans/006-customize-mode.md`, and
 `docs/research/firefox-153-customize-mode.md`. The real-Firefox customize
 matrix is recorded as pending in `docs/testing-and-recovery.md` §6.9.
+
+ADR-046 (2026-08-19) restores localized widget names and native built-in
+icons in the customize palette and widget zones: palette-node / dedicated
+sync Fluent Localization / `getLocalizedProperty` labels, CSSOM `chrome://`
+/ `resource://` icon URLs painted as CSS masks with `currentColor`, and no
+`wrapper.forWindow` node build for presentation.
 
 Gate: basic browsing and required access paths work entirely through custom
 surfaces while native UI remains visible for comparison and fallback.

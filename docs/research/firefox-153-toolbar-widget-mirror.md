@@ -78,8 +78,8 @@ wraps its own body.
   135-136); the popup view id is `PanelUI-webext-${widgetId}-BAV` (line 137);
   the visible action button id is `${widgetId}-BAP` (line 138).
 - The widget is created with `CustomizableUI.createWidget({ type: "custom",
-  webExtension: true, showInPrivateBrowsing: extension.privateBrowsingAllowed,
-  label/tooltiptext: action title, viewId, ... })` (lines 195-205).
+webExtension: true, showInPrivateBrowsing: extension.privateBrowsingAllowed,
+label/tooltiptext: action title, viewId, ... })` (lines 195-205).
 - The built node is a `toolbaritem.unified-extensions-item` with
   `view-button-id` pointing at the inner
   `toolbarbutton.unified-extensions-item-action-button.webextension-browser-action`
@@ -104,7 +104,7 @@ wraps its own body.
   `panelmultiview` it sets `anchor.open = true`, builds a transient
   `panel#customizationui-widget-panel` containing the view, and opens it with
   `PanelMultiView.openPopup(tempPanel, anchor, { position:
-  "bottomright topright" })`. `popuphidden` resets `anchor.open` and removes
+"bottomright topright" })`. `popuphidden` resets `anchor.open` and removes
   the panel (lines 557-640). `_getPanelAnchor` returns the anchor itself for
   non-toolbarbutton elements (lines 1256-1259).
 - The extension popup attaches into that same transient panel: the widget's
@@ -148,7 +148,57 @@ wraps its own body.
   manual smoke item; a project glyph is the fallback.
 - Built-ins: curated project glyphs for a known set; otherwise a generic
   project glyph. Native chrome:// icon extraction was rejected (context-fill
-  coupling and styling leakage).
+  coupling and styling leakage). ADR-046 later amends this for CSS-mask
+  rendering; see the Later amendment section below.
+
+## Later amendment (ADR-046, 2026-08-19)
+
+This section records the selected follow-up; it does not rewrite the
+historical findings or rejected alternatives above.
+
+- Unused XUL widgets live in `gNavToolbox.palette`, which is not part of
+  the document (`XULWidgetGroupWrapper.forWindow` in
+  `CustomizableUI.sys.mjs`). Presentation lookup uses
+  `document.getElementById` first, then
+  `gNavToolbox.palette.getElementsByAttribute("id", widgetId)[0]`.
+  Connected nodes remain required for activation handles.
+- API built-ins often have only `l10nId` on the internal widget record;
+  the group wrapper does not expose that field. Names resolve from node
+  `label` / `title` / `tooltiptext`, wrapper strings, node `data-l10n-id`,
+  a dedicated sync `Localization` for `browser/browser.ftl`,
+  `browser/sidebar.ftl`, `browser/appmenu.ftl`, and
+  `browser/screenshots.ftl`, plus allowlisted chrome
+  `link[rel="localization"]` hrefs (chrome `document.l10n` calls
+  `setAsync()` after the initial translation, so `formatMessagesSync`
+  then throws `InvalidStateError`; XUL palette widgets such as
+  `new-window-button` / `fullscreen-button` use `appmenuitem-*` in
+  `appmenu.ftl`; `screenshot-button` uses `screenshot-toolbar-button`
+  in `screenshots.ftl`; other toolbar Fluent messages such as
+  `toolbar-button-email-link` are attribute-only, so `formatValueSync`
+  is empty),
+  `CustomizableUI.getLocalizedProperty`, and a small privileged Fluent-id
+  map pinned to 153 `CustomizableWidgets` and XUL palette widgets.
+  `WidgetGroupWrapper.tooltiptext` is often a raw key such as
+  `history-panelmenu.tooltiptext2`; those keys and incomplete `%S` bundle
+  strings are not used as names.
+- Built-in icons: computed `list-style-image` on the presentation node or
+  its first `toolbarbutton` child; otherwise a per-window CSSOM cache of
+  `#widgetId` rules from `document.styleSheets` (including `@media` and
+  nested `&` rules that inherit the parent id), matching
+  [`toolbarbutton-icons.css`](https://github.com/mozilla-firefox/firefox/blob/FIREFOX_153_0_4_RELEASE/browser/themes/shared/toolbarbutton-icons.css).
+  When CSSOM misses, a pinned 153 chrome/resource URL map is used. URLs
+  are bounded `chrome://` or `resource://`. The frontend paints them
+  with CSS `mask-image` and `currentColor`, not `<img src>`.
+- `wrapper.forWindow()` / `buildWidgetNode()` remain unused for
+  presentation so unused API widgets are not instantiated with command
+  listeners. Curated `ShellIcon` tokens remain the fallback.
+- The historical rejection of chrome:// icons as `<img src>` still holds.
+- Unit coverage for palette lookup, dedicated sync Localization / `getLocalizedProperty` names,
+  CSSOM `#id` `list-style-image` URLs, allowlisted `chrome://` /
+  `resource://` snapshot copy, and forbidden `forWindow` lives in
+  `tests/firefox-toolbar-widgets.test.mjs` and
+  `tests/toolbar-widgets-state.test.mjs`. The real-Firefox customize
+  matrix remains `not run`.
 
 ## Sources checked
 
@@ -184,9 +234,10 @@ customization entry point; no code was copied or adapted.
   removes the transient panel before any re-anchor is possible.
 - Writing `CustomizableUI` placements or building a project drag-and-drop
   editor: out of scope; native customize mode remains the only editor.
-- Extracting built-in chrome:// icons through computed `list-style-image`:
-  fragile context-fill and theme coupling; curated/generic project glyphs
-  selected instead.
+- Extracting built-in chrome:// icons through computed `list-style-image`
+  into an `<img src>`: fragile context-fill and theme coupling; curated
+  generic project glyphs were selected for ADR-044. ADR-046 later uses the
+  same URLs as a CSS mask with `currentColor` instead of `<img>`.
 
 ## Security and privacy effects
 
@@ -194,6 +245,10 @@ customization entry point; no code was copied or adapted.
   into frontend in-memory state for rendering only (ADR-044 owner-approved).
   They stay out of logs, persistence, diagnostics, CSS variables, and root
   datasets; diagnostics carry fixed codes and widget counts only.
+- Built-in `chrome://` / `resource://` icon URLs later follow the same
+  in-memory-only rule (ADR-046): they may exist only as a per-element CSS
+  mask on the owning window, never in prefs, logs, diagnostics, CSS
+  variables on shared roots, or root datasets.
 - Raw widget ids and native nodes stay privileged; the frontend receives
   opaque handles.
 - No new mapping, network access, persistence, or eval.

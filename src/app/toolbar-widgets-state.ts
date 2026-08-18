@@ -69,6 +69,26 @@ const ZONE_MAX_ENTRIES = 48;
 const ICON_TOKEN_PATTERN = /^[a-z][a-z0-9-]{0,31}$/u;
 const PALETTE_TOKEN_PATTERN = /^[a-z][a-z0-9-]{0,63}$/u;
 const MOZ_EXTENSION_URL_PREFIX = "moz-extension://";
+const CHROME_URL_PREFIX = "chrome://";
+const RESOURCE_URL_PREFIX = "resource://";
+const FORBIDDEN_ICON_URL_CHARACTER_PATTERN = /["'\\<>\s]/u;
+
+export function isAllowedToolbarWidgetIconUrl(value: string): boolean {
+  if (value === "") {
+    return true;
+  }
+  if (
+    value.length > ICON_URL_MAX_LENGTH ||
+    FORBIDDEN_ICON_URL_CHARACTER_PATTERN.test(value)
+  ) {
+    return false;
+  }
+  return (
+    value.startsWith(MOZ_EXTENSION_URL_PREFIX) ||
+    value.startsWith(CHROME_URL_PREFIX) ||
+    value.startsWith(RESOURCE_URL_PREFIX)
+  );
+}
 
 const toolbarWidgetKindSet = new Set<ToolbarWidgetKind>(toolbarWidgetKinds);
 const toolbarZoneNameSet = new Set<ToolbarZoneName>(toolbarZoneNames);
@@ -421,7 +441,7 @@ export function copyToolbarWidgetSnapshot(
     throw createStateError("FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_INVALID");
   }
   const iconUrl = requireBoundedString(candidate.iconUrl, ICON_URL_MAX_LENGTH);
-  if (iconUrl !== "" && !iconUrl.startsWith(MOZ_EXTENSION_URL_PREFIX)) {
+  if (!isAllowedToolbarWidgetIconUrl(iconUrl)) {
     throw createStateError("FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_URL_INVALID");
   }
   return Object.freeze({
@@ -463,7 +483,7 @@ export function copyToolbarPaletteEntrySnapshot(
     throw createStateError("FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_INVALID");
   }
   const iconUrl = requireBoundedString(candidate.iconUrl, ICON_URL_MAX_LENGTH);
-  if (iconUrl !== "" && !iconUrl.startsWith(MOZ_EXTENSION_URL_PREFIX)) {
+  if (!isAllowedToolbarWidgetIconUrl(iconUrl)) {
     throw createStateError("FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_URL_INVALID");
   }
   return Object.freeze({

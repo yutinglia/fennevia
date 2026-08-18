@@ -10,7 +10,48 @@ import { createFirefoxToolbarWidgetsBridge } from "../src/firefox/toolbar-widget
 const BROWSER_URI = "chrome://browser/content/browser.xhtml";
 const EXTENSION_ICON_URL =
   "moz-extension://11111111-2222-3333-4444-555555555555/icon-32.png";
+const FLUENT_ATTRIBUTE_MESSAGES = Object.freeze({
+  "toolbar-button-save-page": {
+    label: "Save Page",
+    tooltiptext: "Save this page",
+  },
+  "toolbar-button-email-link": {
+    label: "Email Link",
+    tooltiptext: "Email a link to this page",
+  },
+  "toolbar-button-share-tab": {
+    label: "Share",
+    tooltiptext: "Share this page",
+  },
+  "toolbar-button-open-file": {
+    label: "Open File Fluent",
+    tooltiptext: "Open a file",
+  },
+  "toolbar-button-logins": {
+    label: "Passwords",
+    tooltiptext: "View and manage your saved passwords",
+  },
+  "appmenuitem-new-window": {
+    label: "New Window",
+  },
+  "appmenuitem-fullscreen": {
+    label: "Full Screen",
+  },
+  "screenshot-toolbar-button": {
+    label: "Screenshot",
+    tooltiptext: "Take a screenshot",
+  },
+});
 let nextContextSequence = 0;
+
+function formatFluentAttributeMessages(keys) {
+  const id = keys?.[0]?.id;
+  const attributes = FLUENT_ATTRIBUTE_MESSAGES[id];
+  if (!attributes) {
+    return [{ value: null, attributes: null }];
+  }
+  return [{ value: null, attributes }];
+}
 
 function createEventTarget() {
   const listeners = new Map();
@@ -83,6 +124,79 @@ function createNativeWindow({
     documentURI: BROWSER_URI,
     getElementById(id) {
       return targets.get(id) ?? null;
+    },
+    querySelectorAll(selector) {
+      calls.push(["querySelectorAll", selector]);
+      return [];
+    },
+    l10n: {
+      formatMessagesSync(keys) {
+        calls.push(["l10n-messages", keys?.[0]?.id]);
+        return formatFluentAttributeMessages(keys);
+      },
+      formatValueSync(id) {
+        calls.push(["l10n-format", id]);
+        if (id === "navbar-print") {
+          return "Print";
+        }
+        return id;
+      },
+    },
+    styleSheets: {
+      0: {
+        cssRules: {
+          0: {
+            selectorText: "#save-page-button",
+            style: {
+              listStyleImage: 'url("chrome://browser/skin/save.svg")',
+            },
+          },
+          1: {
+            selectorText: "#find-button",
+            style: {
+              listStyleImage:
+                'url("chrome://global/skin/icons/search-glass.svg")',
+            },
+          },
+          2: {
+            selectorText: "#open-file-button",
+            style: {
+              listStyleImage: 'url("chrome://browser/skin/open.svg")',
+            },
+          },
+          3: {
+            cssRules: {
+              0: {
+                selectorText: "#print-button",
+                style: {
+                  listStyleImage: 'url("chrome://global/skin/icons/print.svg")',
+                },
+              },
+              length: 1,
+            },
+          },
+          4: {
+            selectorText: "#email-link-button",
+            style: {
+              listStyleImage: 'url("chrome://browser/skin/mail.svg")',
+            },
+          },
+          5: {
+            selectorText: "#share-tab-button",
+            cssRules: {
+              0: {
+                selectorText: "&",
+                style: {
+                  listStyleImage: 'url("chrome://browser/skin/share.svg")',
+                },
+              },
+              length: 1,
+            },
+          },
+          length: 6,
+        },
+      },
+      length: 1,
     },
   };
 
@@ -225,6 +339,13 @@ function createNativeWindow({
     [
       "extension-widget_example_com-browser-action",
       {
+        forWindow() {
+          calls.push([
+            "forWindow",
+            "extension-widget_example_com-browser-action",
+          ]);
+          throw new Error("forWindow must not be used for presentation");
+        },
         label: "Test Extension",
         tooltiptext: "Test Extension tooltip",
         viewId: "PanelUI-webext-widget_example_com-browser-action-view",
@@ -234,17 +355,113 @@ function createNativeWindow({
     [
       "extension-addons_example_com-browser-action",
       {
+        forWindow() {
+          calls.push([
+            "forWindow",
+            "extension-addons_example_com-browser-action",
+          ]);
+          throw new Error("forWindow must not be used for presentation");
+        },
         label: "Addons Extension",
         showInPrivateBrowsing: false,
         webExtension: true,
       },
     ],
-    ["print-button", { label: "Print" }],
-    ["sidebar-button", { label: "Sidebar wrapper" }],
-    ["history-panelmenu", { label: "History" }],
+    [
+      "print-button",
+      {
+        forWindow() {
+          calls.push(["forWindow", "print-button"]);
+          throw new Error("forWindow must not be used for presentation");
+        },
+        label: "Print",
+      },
+    ],
+    [
+      "sidebar-button",
+      {
+        forWindow() {
+          calls.push(["forWindow", "sidebar-button"]);
+          throw new Error("forWindow must not be used for presentation");
+        },
+        label: "Sidebar wrapper",
+      },
+    ],
+    [
+      "history-panelmenu",
+      {
+        forWindow() {
+          calls.push(["forWindow", "history-panelmenu"]);
+          throw new Error("forWindow must not be used for presentation");
+        },
+        label: "History",
+        tooltiptext: "history-panelmenu.tooltiptext2",
+      },
+    ],
+    [
+      "share-tab-button",
+      {
+        forWindow() {
+          calls.push(["forWindow", "share-tab-button"]);
+          throw new Error("forWindow must not be used for presentation");
+        },
+      },
+    ],
+    [
+      "logins-button",
+      {
+        forWindow() {
+          calls.push(["forWindow", "logins-button"]);
+          throw new Error("forWindow must not be used for presentation");
+        },
+      },
+    ],
+    [
+      "find-button",
+      {
+        forWindow() {
+          calls.push(["forWindow", "find-button"]);
+          throw new Error("forWindow must not be used for presentation");
+        },
+        tooltiptext: "find-button.tooltiptext3",
+      },
+    ],
+    [
+      "zoom-controls",
+      {
+        forWindow() {
+          calls.push(["forWindow", "zoom-controls"]);
+          throw new Error("forWindow must not be used for presentation");
+        },
+        tooltiptext: "zoom-controls.tooltiptext2",
+      },
+    ],
+    [
+      "edit-controls",
+      {
+        forWindow() {
+          calls.push(["forWindow", "edit-controls"]);
+          throw new Error("forWindow must not be used for presentation");
+        },
+        tooltiptext: "edit-controls.tooltiptext2",
+      },
+    ],
   ]);
 
-  const unusedWidgetIds = ["print-button"];
+  const unusedWidgetIds = [
+    "print-button",
+    "save-page-button",
+    "find-button",
+    "open-file-button",
+    "email-link-button",
+    "share-tab-button",
+    "logins-button",
+    "new-window-button",
+    "fullscreen-button",
+    "screenshot-button",
+    "zoom-controls",
+    "edit-controls",
+  ];
 
   const customizableUiListeners = new Set();
   const customizableUi = {
@@ -304,6 +521,22 @@ function createNativeWindow({
     getWidget(id) {
       return wrappers.get(id) ?? null;
     },
+    getLocalizedProperty(id, property) {
+      calls.push(["cui-localized", id, property]);
+      if (id === "find-button" && property === "label") {
+        return "Find in This Page";
+      }
+      if (id === "zoom-controls" && property === "label") {
+        return "Zoom";
+      }
+      if (id === "edit-controls" && property === "label") {
+        return "Edit";
+      }
+      if (property === "tooltiptext") {
+        return `${id}.tooltiptext2`;
+      }
+      return "";
+    },
     getWidgetIdsInArea(area) {
       calls.push(["cui-get-widget-ids", area]);
       if (area === "unified-extensions-area") {
@@ -326,7 +559,57 @@ function createNativeWindow({
     },
   };
 
-  const navToolboxPalette = {};
+  const paletteNodes = new Map();
+  paletteNodes.set("open-file-button", {
+    getAttribute(name) {
+      if (name === "label") {
+        return "Open File";
+      }
+      if (name === "tooltiptext") {
+        return "Open a file";
+      }
+      if (name === "title") {
+        return "";
+      }
+      return null;
+    },
+    id: "open-file-button",
+    isConnected: false,
+  });
+  paletteNodes.set("email-link-button", {
+    getAttribute(name) {
+      if (name === "data-l10n-id") {
+        return "toolbar-button-email-link";
+      }
+      return null;
+    },
+    id: "email-link-button",
+    isConnected: false,
+  });
+  paletteNodes.set("new-window-button", {
+    getAttribute(name) {
+      return name === "data-l10n-id" ? "appmenuitem-new-window" : null;
+    },
+    id: "new-window-button",
+    isConnected: false,
+  });
+  paletteNodes.set("fullscreen-button", {
+    getAttribute(name) {
+      return name === "data-l10n-id" ? "appmenuitem-fullscreen" : null;
+    },
+    id: "fullscreen-button",
+    isConnected: false,
+  });
+  const navToolboxPalette = {
+    getElementsByAttribute(name, value) {
+      calls.push(["palette-get", name, value]);
+      if (name !== "id") {
+        return [];
+      }
+      const node = paletteNodes.get(value);
+      return node ? [node] : [];
+    },
+  };
 
   const window = {
     CustomEvent: class {
@@ -483,7 +766,10 @@ test("default snapshot mirrors nav-bar placements into the top zone", () => {
     assert.equal(sidebar.label, "Sidebar");
     assert.equal(sidebar.icon, "sidebar");
     assert.equal(sidebar.tooltip, "Show sidebars");
-    assert.equal(sidebar.iconUrl, "");
+    assert.equal(
+      sidebar.iconUrl,
+      "chrome://browser/skin/sidebar-collapsed.svg",
+    );
     assert.match(sidebar.handle, /^toolbar-widget-registry-\d+-handle-\d+$/u);
 
     assert.equal(extension.label, "Test Extension");
@@ -512,17 +798,189 @@ test("default snapshot mirrors nav-bar placements into the top zone", () => {
     assert.ok(paletteLabels.includes("Show bookmarks panel"));
     assert.ok(paletteLabels.includes("Open Firefox downloads"));
     assert.ok(paletteLabels.includes("Print"));
+    assert.ok(paletteLabels.includes("Save Page"));
+    assert.ok(paletteLabels.includes("Find in This Page"));
+    assert.ok(paletteLabels.includes("Open File"));
+    assert.ok(paletteLabels.includes("Email Link"));
+    assert.ok(paletteLabels.includes("Share"));
+    assert.ok(paletteLabels.includes("Passwords"));
+    assert.ok(paletteLabels.includes("New Window"));
+    assert.ok(paletteLabels.includes("Full Screen"));
+    assert.ok(paletteLabels.includes("Screenshot"));
+    assert.ok(paletteLabels.includes("Zoom"));
+    assert.ok(paletteLabels.includes("Edit"));
     assert.ok(paletteLabels.includes("Addons Extension"));
     assert.ok(paletteLabels.includes("Flexible space"));
     assert.ok(
       snapshot.palette.every((entry) => /^palette-\d+$/u.test(entry.token)),
     );
+    assert.ok(
+      snapshot.palette.every(
+        (entry) => !/\.(?:label|tooltiptext\d*)$/u.test(entry.label),
+      ),
+    );
+    assert.equal(history.tooltip, "History");
+
+    const savePage = snapshot.palette.find(
+      (entry) => entry.label === "Save Page",
+    );
+    assert.equal(savePage.kind, "built-in");
+    assert.equal(savePage.iconUrl, "chrome://browser/skin/save.svg");
+    const findPage = snapshot.palette.find(
+      (entry) => entry.label === "Find in This Page",
+    );
+    assert.equal(
+      findPage.iconUrl,
+      "chrome://global/skin/icons/search-glass.svg",
+    );
+    const zoomControls = snapshot.palette.find(
+      (entry) => entry.label === "Zoom",
+    );
+    assert.equal(zoomControls.icon, "zoom");
+    const openFile = snapshot.palette.find(
+      (entry) => entry.label === "Open File",
+    );
+    assert.equal(openFile.iconUrl, "chrome://browser/skin/open.svg");
+    const emailLink = snapshot.palette.find(
+      (entry) => entry.label === "Email Link",
+    );
+    assert.equal(emailLink.iconUrl, "chrome://browser/skin/mail.svg");
+    const sharePage = snapshot.palette.find((entry) => entry.label === "Share");
+    assert.equal(sharePage.iconUrl, "chrome://browser/skin/share.svg");
+    const passwords = snapshot.palette.find(
+      (entry) => entry.label === "Passwords",
+    );
+    assert.equal(passwords.iconUrl, "chrome://browser/skin/login.svg");
+    const printEntry = snapshot.palette.find(
+      (entry) => entry.label === "Print",
+    );
+    assert.equal(printEntry.iconUrl, "chrome://global/skin/icons/print.svg");
+    const newWindow = snapshot.palette.find(
+      (entry) => entry.label === "New Window",
+    );
+    assert.equal(newWindow.iconUrl, "chrome://browser/skin/window.svg");
+    const fullScreen = snapshot.palette.find(
+      (entry) => entry.label === "Full Screen",
+    );
+    assert.equal(fullScreen.iconUrl, "chrome://browser/skin/fullscreen.svg");
+    const screenshot = snapshot.palette.find(
+      (entry) => entry.label === "Screenshot",
+    );
+    assert.equal(screenshot.iconUrl, "chrome://browser/skin/screenshot.svg");
+    assert.ok(!native.calls.some((entry) => entry[0] === "forWindow"));
 
     const serialized = JSON.stringify(snapshot);
     assert.doesNotMatch(
       serialized,
-      /sidebar-button|history-panelmenu|widget_example_com|back-button|urlbar-container|print-button/u,
+      /sidebar-button|history-panelmenu|widget_example_com|back-button|urlbar-container|print-button|save-page-button|find-button|open-file-button|email-link-button|share-tab-button|logins-button|new-window-button|fullscreen-button|screenshot-button|zoom-controls|edit-controls/u,
     );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("Fluent labels resolve through a dedicated sync Localization when document.l10n is async", () => {
+  const native = createNativeWindow();
+  native.window.document.l10n.formatMessagesSync = () => {
+    throw new Error("Can't use formatMessagesSync when state is async.");
+  };
+  native.window.document.l10n.formatValueSync = () => {
+    throw new Error("Can't use formatValueSync when state is async.");
+  };
+  native.window.Localization = class Localization {
+    constructor(resourceIds, isSync) {
+      native.calls.push(["Localization", [...resourceIds], isSync]);
+    }
+    formatMessagesSync(keys) {
+      native.calls.push(["sync-l10n-messages", keys?.[0]?.id]);
+      return formatFluentAttributeMessages(keys);
+    }
+    formatValueSync(id) {
+      native.calls.push(["sync-l10n-format", id]);
+      return id === "navbar-print" ? "Print" : id;
+    }
+  };
+  const pair = createController(native);
+  try {
+    const snapshot = pair.controller.toolbarWidgets.snapshot();
+    const paletteLabels = snapshot.palette.map((entry) => entry.label);
+    assert.ok(paletteLabels.includes("Email Link"));
+    assert.ok(paletteLabels.includes("Share"));
+    assert.ok(paletteLabels.includes("Passwords"));
+    assert.ok(paletteLabels.includes("Save Page"));
+    assert.ok(paletteLabels.includes("Print"));
+    assert.ok(paletteLabels.includes("New Window"));
+    assert.ok(paletteLabels.includes("Full Screen"));
+    assert.ok(paletteLabels.includes("Screenshot"));
+    assert.ok(paletteLabels.includes("Zoom"));
+    assert.ok(paletteLabels.includes("Edit"));
+    assert.ok(!paletteLabels.includes("Toolbar item"));
+    const localizationCall = native.calls.find(
+      (entry) => entry[0] === "Localization",
+    );
+    assert.equal(localizationCall?.[2], true);
+    assert.ok(localizationCall?.[1].includes("browser/browser.ftl"));
+    assert.ok(localizationCall?.[1].includes("browser/sidebar.ftl"));
+    assert.ok(localizationCall?.[1].includes("browser/appmenu.ftl"));
+    assert.ok(localizationCall?.[1].includes("browser/screenshots.ftl"));
+    assert.ok(
+      native.calls.some(
+        (entry) =>
+          entry[0] === "sync-l10n-messages" &&
+          entry[1] === "toolbar-button-share-tab",
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (entry) =>
+          entry[0] === "sync-l10n-messages" &&
+          (entry[1] === "appmenuitem-new-window" ||
+            entry[1] === "appmenuitem-fullscreen" ||
+            entry[1] === "screenshot-toolbar-button"),
+      ),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("sync Localization includes allowlisted chrome document Fluent resources", () => {
+  const native = createNativeWindow();
+  native.window.document.querySelectorAll = (selector) => {
+    native.calls.push(["querySelectorAll", selector]);
+    if (selector !== 'link[rel="localization"]') {
+      return [];
+    }
+    return [
+      {
+        getAttribute(name) {
+          return name === "href" ? "browser/firefoxView.ftl" : null;
+        },
+      },
+      {
+        getAttribute(name) {
+          return name === "href" ? "https://evil.example/x.ftl" : null;
+        },
+      },
+    ];
+  };
+  native.window.Localization = class Localization {
+    constructor(resourceIds, isSync) {
+      native.calls.push(["Localization", [...resourceIds], isSync]);
+    }
+    formatMessagesSync() {
+      return [{ value: null, attributes: null }];
+    }
+  };
+  const pair = createController(native);
+  try {
+    pair.controller.toolbarWidgets.snapshot();
+    const localizationCall = native.calls.find(
+      (entry) => entry[0] === "Localization",
+    );
+    assert.ok(localizationCall?.[1].includes("browser/firefoxView.ftl"));
+    assert.ok(localizationCall?.[1].includes("browser/appmenu.ftl"));
+    assert.ok(!localizationCall?.[1].includes("https://evil.example/x.ftl"));
   } finally {
     disposePair(pair);
   }

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   copyToolbarStylePartial,
+  copyToolbarPaletteEntrySnapshot,
   copyToolbarWidgetSnapshot,
   copyToolbarWidgetsEditOperation,
   copyToolbarWidgetsSnapshot,
@@ -198,6 +199,38 @@ test("copyToolbarWidgetSnapshot enforces bounded privacy-safe fields", () => {
       }),
     /FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_URL_INVALID/u,
   );
+  assert.deepEqual(
+    copyToolbarWidgetSnapshot({
+      ...missingWidget,
+      iconUrl: "chrome://browser/skin/save.svg",
+      label: "Save Page",
+      tooltip: "Save Page",
+    }).iconUrl,
+    "chrome://browser/skin/save.svg",
+  );
+  assert.deepEqual(
+    copyToolbarWidgetSnapshot({
+      ...missingWidget,
+      iconUrl: "resource://gre/res/icon.svg",
+    }).iconUrl,
+    "resource://gre/res/icon.svg",
+  );
+  assert.throws(
+    () =>
+      copyToolbarWidgetSnapshot({
+        ...extensionWidget,
+        iconUrl: "data:image/png;base64,AAAA",
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_URL_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarWidgetSnapshot({
+        ...missingWidget,
+        iconUrl: 'chrome://browser/skin/save".svg',
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_URL_INVALID/u,
+  );
   assert.throws(
     () => copyToolbarWidgetSnapshot({ ...extensionWidget, icon: "Bad Icon!" }),
     /FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_INVALID/u,
@@ -217,6 +250,21 @@ test("copyToolbarWidgetSnapshot enforces bounded privacy-safe fields", () => {
         label: "x".repeat(201),
       }),
     /FENNEVIA_TOOLBAR_WIDGETS_STATE_TEXT_INVALID/u,
+  );
+  assert.equal(
+    copyToolbarPaletteEntrySnapshot({
+      ...paletteEntry,
+      iconUrl: "chrome://browser/skin/save.svg",
+    }).iconUrl,
+    "chrome://browser/skin/save.svg",
+  );
+  assert.throws(
+    () =>
+      copyToolbarPaletteEntrySnapshot({
+        ...paletteEntry,
+        iconUrl: "https://example.test/icon.png",
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_URL_INVALID/u,
   );
 });
 

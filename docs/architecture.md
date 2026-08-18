@@ -381,7 +381,7 @@ ordinary snapshots only. Extension identity may exist in that window's
 in-memory DOM for rendering; it never enters logs, diagnostics, serialized
 frontend state, CSS variables, or root datasets. Missing `CustomizableUI`
 hides the zones and missing `Services.prefs` disables editing; neither joins
-activation health. See ADR-044, ADR-045,
+activation health. See ADR-044, ADR-045, ADR-046,
 `docs/research/firefox-153-toolbar-widget-mirror.md`, and
 `docs/research/firefox-153-customize-mode.md`.
 

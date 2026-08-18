@@ -10,7 +10,7 @@
     type ToolbarZoneName,
   } from "../app/toolbar-widgets-state";
   import ShellIcon from "./ShellIcon.svelte";
-  import { resolveToolbarWidgetIcon } from "./toolbar-widget-icons";
+  import ToolbarWidgetGlyph from "./ToolbarWidgetGlyph.svelte";
 
   type Props = Readonly<{
     onClose: () => void;
@@ -210,16 +210,10 @@
           {#each zoneWidgets as widget, index (`${index}-${widget.handle}-${widget.kind}`)}
             <li class="fennevia-customize__item">
               <span aria-hidden="true" class="fennevia-customize__item-icon">
-                {#if widget.kind === "extension-action" && widget.iconUrl}
-                  <img
-                    alt=""
-                    class="fennevia-customize__item-image"
-                    src={widget.iconUrl}
-                  />
-                {:else if widget.kind === "separator" || widget.kind === "spacer" || widget.kind === "spring"}
+                {#if widget.kind === "separator" || widget.kind === "spacer" || widget.kind === "spring"}
                   <span class="fennevia-customize__item-space">·</span>
                 {:else}
-                  <ShellIcon name={resolveToolbarWidgetIcon(widget)} />
+                  <ToolbarWidgetGlyph widget={widget} />
                 {/if}
               </span>
               <span class="fennevia-customize__item-label"
@@ -284,16 +278,10 @@
           {#each snapshot.palette as entry (entry.token)}
             <li class="fennevia-customize__item">
               <span aria-hidden="true" class="fennevia-customize__item-icon">
-                {#if entry.kind === "extension-action" && entry.iconUrl}
-                  <img
-                    alt=""
-                    class="fennevia-customize__item-image"
-                    src={entry.iconUrl}
-                  />
-                {:else if entry.kind === "special"}
+                {#if entry.kind === "special"}
                   <span class="fennevia-customize__item-space">·</span>
                 {:else}
-                  <ShellIcon name={resolveToolbarWidgetIcon(entry)} />
+                  <ToolbarWidgetGlyph widget={entry} />
                 {/if}
               </span>
               <span class="fennevia-customize__item-label">{entry.label}</span>

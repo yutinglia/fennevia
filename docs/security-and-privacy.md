@@ -367,7 +367,7 @@ Source inventory and real HTTP/HTTPS/internal/error/permission/protection/
 normal/second/private/fail-open evidence are in ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-### 7.4 Browser-tool native handoffs — implemented ADR-037, popup placement ADR-042, widget zones and customize mode ADR-044/ADR-045
+### 7.4 Browser-tool native handoffs — implemented ADR-037, popup placement ADR-042, widget zones and customize mode ADR-044/ADR-045/ADR-046
 
 Each managed window owns one `browser-tools` Firefox controller and one ordinary
 application adapter. The controller validates twenty-one required current
@@ -396,7 +396,7 @@ persistence, normal logs, and project network requests:
 - permission IDs, states, scopes, origins, sharing records, prompts, and native
   labels;
 - extension IDs, names, icons, widgets, customization state, actions, and
-  commands, except the bounded owner-approved ADR-044/ADR-045 rendering and
+  commands, except the bounded owner-approved ADR-044/ADR-045/ADR-046 rendering and
   customize flows below;
 - download names, paths, source URLs, byte records, errors, and native objects;
 - Firefox nodes, panels, handlers, preferences, principals, windows, and
@@ -424,19 +424,23 @@ per-window fail-open path. Project-authored toolbar SVGs contain no external
 asset, metadata, script, URL, or runtime load. See ADR-037, ADR-042, and
 `docs/research/firefox-153-native-popup-anchoring.md`.
 
-Owner-approved ADR-044/ADR-045 widget-zone and customize flow: each managed
+Owner-approved ADR-044/ADR-045/ADR-046 widget-zone and customize flow: each managed
 window may own one optional `toolbar-widgets` controller. It renders the
 Fennevia-owned four-zone widget layout (default: a read-only mirror of the
 current `CustomizableUI` nav-bar placements in the top zone) and sends the
 frontend an immutable snapshot per placed widget of opaque handle, fixed kind,
-bounded label and tooltip text, a `moz-extension://`-only icon URL, bounded
+bounded label and tooltip text, a bounded `moz-extension://` icon URL for
+extension actions, a bounded `chrome://` or `resource://` icon URL for
+built-ins (rendered as a CSS mask with `currentColor`, not `<img>`), bounded
 rgba-only badge text/colors, a fixed curated icon token, and disabled/missing
 flags, plus a widget palette of every remaining current `CustomizableUI` widget
 (placed areas and the unused palette), Fennevia-owned optional widgets, and the
 fixed specials, each behind an opaque palette token. Extension name, icon, and
 badge are extension identity and may exist only in that window's in-memory
 frontend state and rendered DOM (`img src`, button label/tooltip, badge chip).
-Widget ids and native nodes stay in the privileged handle/token registries.
+Built-in chrome/resource icon URLs follow the same in-memory-only rule via
+per-element `mask-image` (ADR-046). Widget ids and native nodes stay in the
+privileged handle/token registries.
 Extension identity never enters logs, diagnostics, serialized frontend state,
 CSS custom properties on shared roots, root datasets, clipboard, or network
 requests; diagnostics stay at widget counts, revisions, and fixed codes.

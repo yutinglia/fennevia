@@ -706,7 +706,8 @@ fail-open. Editing is optional and never joins activation health.
 Gate: CI passes with focused model/bridge/adapter coverage; the real Firefox
 rows in `docs/testing-and-recovery.md` §6.9 are recorded honestly (currently
 `not run`). Plan: `plans/006-customize-mode.md`; evidence:
-`docs/research/firefox-153-customize-mode.md`.
+`docs/research/firefox-153-customize-mode.md`. ADR-046 restores localized
+names and native built-in icons in that palette and in widget zones.
 
 ## Deferred work
 
