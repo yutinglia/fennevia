@@ -14,12 +14,15 @@ widget source and adds a Fennevia-owned customize mode:
 - the full current `CustomizableUI` widget inventory, extensions included, as
   an opaque-token palette;
 - project-owned placement editing across all four edge panels;
-- Fennevia-owned placeable widgets (`show-bookmarks`, `show-downloads`) and
+- Fennevia-owned placeable widgets (`show-bookmarks` reveals the right-edge
+  bookmarks surface; `show-downloads` opens Firefox's `#downloadsPanel`) and
   spacer/spring/separator specials;
 - bounded style tokens applied as a fixed CSS custom-property set;
 - profile-local persistence and owner-approved bounded CustomizableUI writes.
 
-Native customize mode remains a fixed handoff. Fennevia never writes
+Native customize mode remains available through the Firefox application menu,
+complete native reveal, and fail-open; it is not a fixed top-row control.
+Fennevia never writes
 `browser.uiCustomization.state` directly and never edits placements the user
 made natively.
 

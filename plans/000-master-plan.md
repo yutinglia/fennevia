@@ -73,10 +73,12 @@ Completed:
 Current fast branch enhancement under ADR-037, ADR-042, ADR-044, and ADR-045:
 
 - one non-wrapping top row with navigation, address/page status, loading,
-  page actions, Firefox tools, and progressive disclosure;
-- fixed native Trust/identity, protections, permission, Downloads, Unified
-  Extensions, application-menu, Settings, customization, and original-toolbar
-  handoffs without exporting their sensitive data;
+  Firefox tools, and progressive disclosure;
+- fixed native Trust/identity, protections, permission, Unified Extensions,
+  application-menu, and Settings handoffs without exporting their sensitive
+  data; Downloads is available as the placeable `show-downloads` widget;
+  native customization and original-toolbar remain bridge actions, not fixed
+  top-row buttons;
 - popup-opening handoffs re-anchor Firefox-owned panels beside the clicked
   Fennevia host without revealing native chrome;
 - retained Firefox caption controls styled in place as a compact island;
@@ -89,8 +91,9 @@ Current fast branch enhancement under ADR-037, ADR-042, ADR-044, and ADR-045:
   source by ADR-045: a Fennevia-owned customize mode with four-edge widget
   zones, the full current CustomizableUI inventory as an opaque-token palette,
   bounded style tokens, profile-local prefs, and owner-approved adopt/restore
-  writes onto the collapsed nav-bar. Native customize mode stays a fixed
-  handoff.
+  writes onto the collapsed nav-bar. Native customize mode stays available
+  through the Firefox application menu, complete native reveal, and fail-open;
+  it is not a fixed top-row control.
 
 Focused type/build/unit/static checks cover this enhancement. Its real Firefox
 manual matrix remains pending and is not part of the earlier #15 validation.
@@ -451,11 +454,13 @@ Evidence: ADR-031 and
 #### Single-line toolbar and native detail handoffs — focused implementation complete, manual Firefox pending (ADR-037, ADR-042)
 
 - one compact non-wrapping top row with navigation, top address/popup launcher,
-  existing bounded status, loading accent, page actions, Firefox tools, and
-  responsive progressive disclosure;
+  existing bounded status, loading accent, Firefox tools, and responsive
+  progressive disclosure;
 - fixed native handoffs for Trust/identity, protections, site permissions,
-  Downloads, Unified Extensions, application menu, Settings, native
-  customization, and the complete original toolbar;
+  Unified Extensions, application menu, and Settings; Downloads is available
+  as the placeable `show-downloads` widget; native customization and the
+  complete original toolbar remain bridge actions rather than fixed top-row
+  buttons;
 - six popup actions pass a project-owned host, keep native chrome hidden, and
   re-anchor the Firefox panel beside that host;
 - nine fixed booleans/actions only; no certificate, permission, tracker,
@@ -505,8 +510,8 @@ clauses are superseded by ADR-045 below. Evidence: ADR-044,
 - four-edge widget zones driven by `fennevia.customize.layout`, falling back
   to the ADR-044 nav-bar mirror until the first edit;
 - opaque-token palette of every current CustomizableUI widget plus Fennevia
-  `show-bookmarks` / `show-downloads` widgets and spacer/spring/separator
-  specials;
+  `show-bookmarks` (right-edge bookmarks) / `show-downloads` (Firefox
+  `#downloadsPanel`) widgets and spacer/spring/separator specials;
 - project-owned editor drawer under the top panel, held through the #31 popup
   hold, with add/move/remove/reset and bounded style tokens;
 - owner-approved persistence of widget ids in the layout pref and bounded
@@ -514,7 +519,8 @@ clauses are superseded by ADR-045 below. Evidence: ADR-044,
   logs, diagnostics, serialized frontend state, CSS variables, and root
   datasets;
 - optional editing: missing `Services.prefs` disables the editor without
-  joining activation health. Native customize mode remains a fixed handoff.
+  joining activation health. Native customize mode remains available through
+  the Firefox application menu, complete native reveal, and fail-open.
 
 Evidence: ADR-045, `plans/006-customize-mode.md`, and
 `docs/research/firefox-153-customize-mode.md`. The real-Firefox customize

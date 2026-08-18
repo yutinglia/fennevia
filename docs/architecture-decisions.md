@@ -1153,8 +1153,11 @@ native customization mode, and complete original-toolbar access. Re-resolve
 every Firefox owner at action time. ADR-042 supersedes toolbar reveal before
 popup-opening actions; Settings, customization, and complete original-toolbar
 access still use their previous owners. The dedicated original-toolbar top-row
-button was later removed by owner request; the action remains in the bridge,
-and Customize plus fail-open remain the native-chrome access paths.
+button was later removed by owner request; the action remains in the bridge.
+The dedicated Downloads and native-customize top-row buttons were later
+removed by owner request: Downloads is available as the placeable Fennevia
+`show-downloads` widget, the customize action remains in the bridge, and the
+application menu plus fail-open remain the native-chrome access paths.
 
 Keep the requested 7px browser-content frame as a fixed decorative gutter, not
 surface-dependent collision clearance. Edge panels remain overlays: they meet
@@ -1436,9 +1439,11 @@ text/colors, extension name as label/tooltip), user-pinned built-in buttons
 (curated `ShellIcon` tokens for a known id set, a generic glyph otherwise), and
 special placements (spring, spacer, separator) as gaps. Placements already
 represented by fixed Fennevia controls (back/forward, urlbar-container,
-search-container, downloads, Unified Extensions, application menu,
+search-container, Unified Extensions, application menu,
 personal-bookmarks, and similar) stay on a fixed
-skip list. Until the user customizes in Fennevia, this list remains the default
+skip list. `downloads-button` also remains skipped so the default nav-bar
+mirror does not reintroduce it; users place the Fennevia `show-downloads`
+widget instead. Until the user customizes in Fennevia, this list remains the default
 top-zone layout. `CustomizableUI` listeners plus a bounded attribute
 `MutationObserver` republish an immutable revision snapshot after customize
 exit, pin/unpin, install/removal, badge, and icon changes.
@@ -1489,7 +1494,9 @@ widget zone in each of the four edge panels from a project-owned layout,
 exposes the complete current `CustomizableUI` widget inventory (every placed
 area plus `getUnusedWidgets` over `gNavToolbox.palette`, extensions included)
 as an opaque-token palette, adds Fennevia-owned placeable widgets
-(`show-bookmarks`, `show-downloads`) and the spacer/spring/separator specials,
+(`show-bookmarks` reveals the right-edge bookmarks surface; `show-downloads`
+opens Firefox's `#downloadsPanel` through the existing browser-tools Downloads
+action) and the spacer/spring/separator specials,
 and accepts a fixed validated edit-operation set (`add`, `move`, `remove`,
 `reset-layout`, `set-style`, `reset-style`) with a revision guard. A
 project-owned editor drawer under the top panel — toggled by a dedicated
@@ -1521,7 +1528,9 @@ Fennevia placement is removed or the layout is reset. Fennevia never mutates
 placements the user made natively and never writes any other CustomizableUI
 state. Editing is an optional capability on top of the optional zone
 capability: missing `Services.prefs` disables editing, and neither joins
-activation health. Native customize mode stays available as a fixed handoff.
+activation health. Native customize mode stays available through the Firefox
+application menu, complete native reveal, and fail-open; it is not a fixed
+top-row control.
 
 **Reasoning:** The mirror restored pinned-extension access but left Firefox as
 the only layout owner and covered only the top row. A Fennevia-owned layout

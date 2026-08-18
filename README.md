@@ -20,7 +20,8 @@ use the keyboard, to reveal:
 - **Top:** Back, Forward, Reload/Stop, Firefox tools, a widget zone that
   follows your Firefox toolbar until you customize it in Fennevia, and
   project-owned window controls. Fennevia customize mode can place widgets on
-  all four edges; Firefox's native customize mode remains available.
+  all four edges; Firefox's native customize mode remains available from the
+  Firefox application menu.
 - **Left:** vertical tabs, a compact address/status launcher, and any widgets
   placed there.
 - **Right:** bookmarks, plus any widgets placed there.

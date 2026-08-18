@@ -859,8 +859,9 @@ export function mountShellApp({
       }),
       browserToolsState.subscribePopup((open) => {
         if (!open) {
-          shell.setPopupHeld("top", false);
-          shell.setPopupHeld("left", false);
+          for (const edge of edgeNames) {
+            shell.setPopupHeld(edge, false);
+          }
         }
       }),
     );
@@ -923,9 +924,9 @@ export function mountShellApp({
         props: {
           edge,
           frame,
+          browserTools: browserToolsState,
           ...(edge === "top" || edge === "left"
             ? {
-                browserTools: browserToolsState,
                 navigation: navigationState,
               }
             : {}),
@@ -1100,10 +1101,8 @@ export async function verifyShellAppHealth({
     'button[data-fennevia-action="reload-stop"]',
     'button[data-fennevia-action="home"]',
     'button[data-fennevia-browser-tool="extensions"]',
-    'button[data-fennevia-browser-tool="downloads"]',
     'button[data-fennevia-browser-tool="application-menu"]',
     'button[data-fennevia-browser-tool="settings"]',
-    'button[data-fennevia-browser-tool="customize"]',
     'button[data-fennevia-window-control="minimize"]',
     'button[data-fennevia-window-control="toggle-maximize"]',
     'button[data-fennevia-window-control="close"]',
@@ -1271,7 +1270,6 @@ export function getShellAppCapabilities({
         targets.top.querySelector(
           '[data-fennevia-browser-tool="extensions"]',
         ) &&
-        targets.top.querySelector('[data-fennevia-browser-tool="downloads"]') &&
         targets.top.querySelector(
           '[data-fennevia-browser-tool="application-menu"]',
         ),

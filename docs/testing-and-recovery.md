@@ -595,7 +595,8 @@ ADR-045 adds focused unit/static/build coverage for:
 - layout-driven four-zone snapshots with the ADR-044 nav-bar mirror as the
   default top zone until the first edit;
 - opaque palette tokens for unused/placed CustomizableUI widgets, Fennevia
-  `show-bookmarks` / `show-downloads` widgets, and spacer/spring/separator
+  `show-bookmarks` / `show-downloads` widgets (`show-downloads` opens Firefox's
+  `#downloadsPanel`), and spacer/spring/separator
   specials, with the fixed skip list (including Unified Extensions and app-menu
   buttons already represented by fixed Fennevia controls);
 - versioned `fennevia.customize.layout` / `fennevia.customize.style` JSON

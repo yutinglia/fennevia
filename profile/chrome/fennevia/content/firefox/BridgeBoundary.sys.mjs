@@ -3045,8 +3045,8 @@ var ur = "nav-bar", dr = "unified-extensions-area", fr = "fennevia.customize.lay
 	tooltip: "Reveal the Fennevia bookmarks panel"
 })], ["show-downloads", Object.freeze({
 	icon: "download",
-	label: "Show downloads panel",
-	tooltip: "Reveal the Fennevia downloads panel"
+	label: "Open Firefox downloads",
+	tooltip: "Open the Firefox downloads panel"
 })]]), X = (e) => typeof e == "object" && !!e, Z = (e) => typeof e == "function", Nr = (e) => X(e) && Z(e.getAttribute), Pr = (e) => X(e) && Z(e.hidePopup) && Z(e.moveToAnchor), Fr = (e, t) => typeof e == "string" ? e.slice(0, t) : "", Ir = (e) => {
 	let t = e.trim();
 	return Tr.test(t) ? t : "";
