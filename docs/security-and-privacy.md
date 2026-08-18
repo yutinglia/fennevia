@@ -379,8 +379,10 @@ actions require a project-owned XHTML host in this window, keep native chrome
 hidden, and re-anchor the Firefox-owned panel beside that host. Settings,
 customization, and complete original-toolbar access keep their previous owners;
 only the complete-toolbar action still requests reversible navbar reveal. The
-top row does not show a dedicated original-toolbar button; Customize and
-fail-open remain the visible native-chrome access paths.
+top row does not show dedicated original-toolbar, Downloads, or
+native-customize buttons; Downloads is available as the placeable
+`show-downloads` widget, and the application menu plus fail-open remain the
+visible native-chrome access paths.
 
 Only nine availability booleans, the fixed action/result values, an optional
 host for popup actions, and a privacy-safe `{ open, type: "native-popup" }`

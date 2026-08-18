@@ -94,8 +94,9 @@ const CSS_URL_PATTERN = /url\("((?:[^"\\]|\\.){1,512})"\)/u;
 const MOZ_EXTENSION_URL_PREFIX = "moz-extension://";
 const EXTENSION_WIDGET_SUFFIX = "-browser-action";
 
-// Placements already represented by fixed Fennevia controls, plus container
-// items that cannot be mirrored as buttons.
+// Placements already represented by fixed Fennevia controls, the native
+// downloads-button (users place the Fennevia show-downloads widget instead),
+// plus container items that cannot be mirrored as buttons.
 const SKIPPED_WIDGET_IDS = Object.freeze([
   "back-button",
   "forward-button",
@@ -155,8 +156,8 @@ const fenneviaWidgetPresentation: ReadonlyMap<
     "show-downloads",
     Object.freeze({
       icon: "download",
-      label: "Show downloads panel",
-      tooltip: "Reveal the Fennevia downloads panel",
+      label: "Open Firefox downloads",
+      tooltip: "Open the Firefox downloads panel",
     }),
   ],
 ]);

@@ -694,12 +694,14 @@ Gate: CI passes with focused bridge/adapter coverage; the real Firefox rows in
 Deprecate the ADR-044 mirror as the only widget source. The toolbar-widgets
 controller becomes layout-driven across all four edges, exposes the complete
 current CustomizableUI inventory as an opaque-token palette, adds Fennevia
-`show-bookmarks` / `show-downloads` widgets, and accepts a fixed edit set with
+`show-bookmarks` / `show-downloads` widgets (`show-downloads` opens Firefox's
+`#downloadsPanel`), and accepts a fixed edit set with
 a revision guard. A project-owned editor drawer under the top panel performs
 all editing. Profile-local `fennevia.customize.layout` / `.style` prefs persist
 versioned JSON. Owner-approved bounded writes adopt widgets onto the collapsed
-nav-bar and restore them on removal or reset. Native customize mode remains a
-fixed handoff. Editing is optional and never joins activation health.
+nav-bar and restore them on removal or reset. Native customize mode remains
+available through the Firefox application menu, complete native reveal, and
+fail-open. Editing is optional and never joins activation health.
 
 Gate: CI passes with focused model/bridge/adapter coverage; the real Firefox
 rows in `docs/testing-and-recovery.md` §6.9 are recorded honestly (currently

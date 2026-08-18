@@ -22,7 +22,7 @@ The tested MVP includes:
 | Top controls | Complete | Native-synchronised Back, Forward, Reload/Stop, New Tab, and bounded page status |
 | Single-line toolbar and native handoffs | Focused implementation; real-Firefox matrix pending | One non-wrapping top row, fixed native tool/original-toolbar actions, project-owned window controls, 7px gutter, drag regions, and transient shortcut hint |
 | Nav-bar widget mirror (ADR-044) | Focused implementation; superseded as sole model by ADR-045; real-Firefox matrix pending | Default top-zone layout from `CustomizableUI` nav-bar placements as project-styled buttons — extension actions with real icon/badge, pinned built-ins, spacers — with popups anchored on the project button |
-| Fennevia customize mode (ADR-045) | Focused implementation; real-Firefox matrix pending | Four-edge widget zones, full CustomizableUI inventory palette, project-owned editor drawer, bounded style tokens, profile-local prefs, and owner-approved adopt/restore writes; native customize mode remains a fixed handoff |
+| Fennevia customize mode (ADR-045) | Focused implementation; real-Firefox matrix pending | Four-edge widget zones, full CustomizableUI inventory palette, project-owned editor drawer, bounded style tokens, profile-local prefs, and owner-approved adopt/restore writes; native customize mode remains available from the Firefox application menu |
 | Urlbar coverage | Complete | Firefox-derived connection/protection/permission/action summaries and complete native Urlbar handoff |
 | Bookmarks | Complete | Bounded lazy Places hierarchy with live updates and Firefox-owned opening behavior |
 | Downloads | Complete | Anonymous event-driven aggregate progress/status while Firefox retains safety and file management |

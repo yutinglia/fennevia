@@ -357,7 +357,7 @@
     event: MouseEvent,
   ) => {
     if (widget.fenneviaAction !== "") {
-      runFenneviaWidgetAction(widget.fenneviaAction);
+      runFenneviaWidgetAction(widget.fenneviaAction, event);
       return;
     }
     const toolbarWidgets = props.toolbarWidgets;
@@ -380,14 +380,14 @@
     }
   };
 
-  const runFenneviaWidgetAction = (action: string) => {
+  const runFenneviaWidgetAction = (action: string, event?: MouseEvent) => {
     try {
       if (action === "show-bookmarks") {
         props.shell.revealProgrammatically("right");
         return;
       }
       if (action === "show-downloads") {
-        props.shell.revealProgrammatically("bottom");
+        void runBrowserToolAction("downloads", event);
       }
     } catch (error) {
       props.onFatalError(error);
@@ -441,14 +441,6 @@
         throw new Error("FENNEVIA_TOP_WINDOW_CONTROLS_UNAVAILABLE");
       }
       windowControls.invoke(action);
-    } catch (error) {
-      props.onFatalError(error);
-    }
-  };
-
-  const revealCompanionSurface = (edge: "right" | "bottom") => {
-    try {
-      props.shell.revealProgrammatically(edge);
     } catch (error) {
       props.onFatalError(error);
     }
@@ -923,7 +915,11 @@
             class="fennevia-control fennevia-toolbar-widgets__button"
             data-fennevia-browser-tool="toolbar-widget"
             data-fennevia-toolbar-widget-kind={widget.kind}
-            disabled={widget.disabled}
+            disabled={
+              widget.disabled ||
+              (widget.fenneviaAction === "show-downloads" &&
+                !browserToolsSnapshot?.downloads)
+            }
             onclick={(event) => void runToolbarWidgetAction(widget, event)}
             title={widget.tooltip || widget.label}
             type="button"
@@ -1297,34 +1293,6 @@
         </div>
 
         <div class="fennevia-navigation__trailing">
-          <div
-            aria-label="Page and shell actions"
-            class="fennevia-navigation__page-actions"
-            role="group"
-          >
-            <button
-              aria-label="Show bookmarks"
-              class="fennevia-control fennevia-navigation__button fennevia-navigation__secondary"
-              data-fennevia-action="show-bookmarks"
-              onclick={() => revealCompanionSurface("right")}
-              title="Bookmarks"
-              type="button"
-            >
-              <ShellIcon name="bookmark" />
-            </button>
-            <button
-              aria-label="Open Firefox downloads"
-              class="fennevia-control fennevia-navigation__button fennevia-navigation__secondary"
-              data-fennevia-browser-tool="downloads"
-              disabled={!browserToolsSnapshot?.downloads}
-              onclick={(event) => void runBrowserToolAction("downloads", event)}
-              title="Firefox downloads"
-              type="button"
-            >
-              <ShellIcon name="download" />
-            </button>
-          </div>
-
           {@render widgetZone("top")}
 
           <div
@@ -1355,17 +1323,6 @@
               type="button"
             >
               <ShellIcon name="settings" />
-            </button>
-            <button
-              aria-label="Customize Firefox toolbar"
-              class="fennevia-control fennevia-browser-tools__button fennevia-browser-tools__secondary"
-              data-fennevia-browser-tool="customize"
-              disabled={!browserToolsSnapshot?.customize}
-              onclick={() => void runBrowserToolAction("customize")}
-              title="Customize toolbar"
-              type="button"
-            >
-              <ShellIcon name="customize" />
             </button>
             {#if currentToolbarWidgets?.snapshot.canEdit}
               <button

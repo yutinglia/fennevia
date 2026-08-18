@@ -350,11 +350,13 @@ Failed opens that fire `popuphidden` without showing the panel keep the
 NativeUi token so `PanelUI.show()` cannot reveal the collapsed navbar. If the
 panel still stays closed, it calls `PanelUI.show()` with the token already set
 and `moveTo`s the host screen rectangle on `popupshown`. The dedicated
-original-toolbar button is not shown; Customize and fail-open remain the
-complete native-chrome access paths. Settings, customization, and the
-complete-toolbar action keep their previous owners; the complete-toolbar
-action still reveals the current navbar and focuses an original navigation
-control instead of enumerating `CustomizableUI`. The
+original-toolbar, Downloads, and native-customize buttons are not shown;
+Downloads is available as the placeable `show-downloads` widget, and the
+application menu plus fail-open remain the complete native-chrome access
+paths. Settings, customization, and the complete-toolbar action keep their
+previous owners; the complete-toolbar action still reveals the current navbar
+and focuses an original navigation control instead of enumerating
+`CustomizableUI`. The
 public contract contains only nine fixed availability booleans, nine fixed
 action strings, an optional host for popup actions, and a privacy-safe
 open/closed popup hold. It contains no URL, certificate, tracker, permission,
@@ -419,9 +421,11 @@ highlights only the newly added tab IDs.
 Shortcut hints float outside each revealed panel. Edge panels have no title chrome or hide buttons; they close
 through `Escape`, pointer leave, and the documented keyboard shortcut.
 Responsive rules progressively hide secondary controls
-while retaining accessible names, Unified Extensions, Settings, Customize,
-and the application menu. The dedicated original-toolbar button is not shown;
-Customize and fail-open remain the complete native-chrome access paths. The row consumes only
+while retaining accessible names, Unified Extensions, Settings, and the
+application menu. The dedicated original-toolbar, Downloads, and
+native-customize buttons are not shown; Downloads is available as the
+placeable `show-downloads` widget, and the application menu plus fail-open
+remain the complete native-chrome access paths. The row consumes only
 ordinary adapters and the existing top-edge focus/reveal contract; it does
 not inspect native DOM or create another trigger, timer, controller, or widget
 registry. ADR-043 overlays a decorative 2px load light in that same top root
