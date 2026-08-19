@@ -386,7 +386,10 @@ ordinary snapshots only. Extension identity may exist in that window's
 in-memory DOM for rendering; it never enters logs, diagnostics, serialized
 frontend state, CSS variables, or root datasets. Missing `CustomizableUI`
 hides the zones and missing `Services.prefs` disables editing; neither joins
-activation health. See ADR-044, ADR-045, ADR-046,
+activation health. ADR-047 moves placement editing onto the live four-edge
+widget zones with HTML5 drag-and-drop; the top-host drawer is the palette and
+style editor, centered in the remaining content well so it does not cover the
+four-edge drop zones. See ADR-044, ADR-045, ADR-046, ADR-047,
 `docs/research/firefox-153-toolbar-widget-mirror.md`, and
 `docs/research/firefox-153-customize-mode.md`.
 
@@ -737,11 +740,13 @@ src/
     address-popup.ts
     browser-tools-state.ts
     bookmark-state.ts
+    customize-session.ts
     download-state.ts
     edge-surfaces.ts
     navigation-state.ts
     tab-state.ts
     tab-strip.ts
+    toolbar-widget-drag.ts
     toolbar-widgets-state.ts
     urlbar-coverage-state.ts
     window-controls-state.ts

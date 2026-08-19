@@ -106,6 +106,28 @@ contracts.
 5. Style is a fixed bounded token set applied as CSS custom properties on the
    frame root by the frontend host module, skipped under forced colors.
 
+### Live-zone HTML5 drag-and-drop (ADR-047)
+
+This addendum records the later placement-UI change. It does not rewrite the
+ADR-045 inventory, write, or persistence findings above.
+
+- Firefox 153 `CustomizeMode.sys.mjs` owns native-area drag through
+  `DragPositionManager` and customizable-area wrappers. Fennevia zones are
+  project-owned XHTML, not CustomizableUI areas, so that code is not copied
+  and native-area drop remains a handoff to Firefox customize mode.
+- The four edge hosts live in one chrome document under
+  `#fennevia-shell-frame-host`. HTML5 drag-and-drop therefore works across
+  roots. The left tab strip already proved `DragEvent` / `dataTransfer` in
+  this privileged XHTML host (`application/x-fennevia-tab`).
+- `dragover` does not expose `getData`, so the active drag is module-level
+  ordinary state in `src/app/toolbar-widget-drag.ts`. The payload is an
+  opaque palette token or `{zone, index}` — never a Firefox widget id.
+- `EdgeShellController.setPointerHeld(true)` clears pointer holds on the
+  other three edges. A customize session therefore holds all four edges with
+  the existing `popup` hold and restores those holds if a Firefox popup
+  later closes. No new hold name, hide timer, or overlay host is added.
+- `yutinglia/my-firefox-custom` was not consulted.
+
 ## Sources checked
 
 ### Official Firefox (tag `FIREFOX_153_0_4_RELEASE`)
@@ -133,6 +155,7 @@ customization entry points; no code was copied or adapted.
 - Reimplementing Firefox customize mode (`CustomizeMode.sys.mjs`
   drag-and-drop into native areas): Fennevia zones are project-owned surfaces,
   not native areas; entering native customize mode remains a fixed handoff.
+  ADR-047 adds HTML5 drag only among Fennevia-owned zones and the palette.
 - Writing `browser.uiCustomization.state` directly: unsupported serialization
   details; the public `addWidgetToArea`/`removeWidgetFromArea` API already
   persists through Firefox's own saver.

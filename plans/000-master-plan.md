@@ -97,7 +97,9 @@ ADR-046:
   bounded style tokens, profile-local prefs, and owner-approved adopt/restore
   writes onto the collapsed nav-bar. ADR-046 restores localized widget names
   and native built-in icons (CSS mask, not `<img>`) in that palette and in
-  widget zones. Native customize mode stays available
+  widget zones. ADR-047 makes placement a live four-edge HTML5 drag-and-drop
+  session (palette plus style stay in the top-host drawer). Native customize
+  mode stays available
   through the Firefox application menu, complete native reveal, and fail-open;
   it is not a fixed top-row control.
 
@@ -521,8 +523,9 @@ clauses are superseded by ADR-045 below. Evidence: ADR-044,
 - opaque-token palette of every current CustomizableUI widget plus Fennevia
   `show-bookmarks` (right-edge bookmarks) / `show-downloads` (Firefox
   `#downloadsPanel`) widgets and spacer/spring/separator specials;
-- project-owned editor drawer under the top panel, held through the #31 popup
-  hold, with add/move/remove/reset and bounded style tokens;
+- project-owned editor: ADR-047 live four-edge HTML5 drag-and-drop with the
+  top-host palette/style drawer held through the #31 popup hold on every
+  edge, plus keyboard Delete / Ctrl+Arrow / Enter;
 - owner-approved persistence of widget ids in the layout pref and bounded
   `addWidgetToArea` / restore writes; extension identity still banned from
   logs, diagnostics, serialized frontend state, CSS variables, and root
@@ -531,7 +534,7 @@ clauses are superseded by ADR-045 below. Evidence: ADR-044,
   joining activation health. Native customize mode remains available through
   the Firefox application menu, complete native reveal, and fail-open.
 
-Evidence: ADR-045, ADR-046, `plans/006-customize-mode.md`, and
+Evidence: ADR-045, ADR-046, ADR-047, `plans/006-customize-mode.md`, and
 `docs/research/firefox-153-customize-mode.md`. The real-Firefox customize
 matrix is recorded as pending in `docs/testing-and-recovery.md` §6.9.
 

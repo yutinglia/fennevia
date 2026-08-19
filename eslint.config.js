@@ -80,7 +80,9 @@ export default defineConfig(
       "tests/navigation-state.test.mjs",
       "tests/progress-light.test.mjs",
       "tests/tab-state.test.mjs",
+      "tests/customize-session.test.mjs",
       "tests/tab-strip.test.mjs",
+      "tests/toolbar-widget-drag.test.mjs",
       "vite*.config.ts",
     ],
     languageOptions: {

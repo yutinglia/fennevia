@@ -3,6 +3,7 @@
 
   import { type AddressPopupController } from "../app/address-popup";
   import type { BrowserBookmarksStateAdapter } from "../app/bookmark-state";
+  import type { CustomizeSessionController } from "../app/customize-session";
   import {
     isPopupBrowserToolAction,
     type BrowserToolAction,
@@ -38,8 +39,19 @@
     type BrowserToolbarWidgetsState,
     type BrowserToolbarWidgetsStateAdapter,
     type ToolbarWidgetSnapshot,
+    type ToolbarWidgetsEditOperation,
     type ToolbarZoneName,
   } from "../app/toolbar-widgets-state";
+  import {
+    clearToolbarWidgetDrag,
+    createToolbarWidgetDropEdit,
+    getActiveToolbarWidgetDrag,
+    resolveWidgetInsertBefore,
+    serializeToolbarWidgetDrag,
+    startToolbarWidgetDrag,
+    toolbarWidgetDragMimeType,
+    type ToolbarWidgetDropTarget,
+  } from "../app/toolbar-widget-drag";
   import type {
     BrowserWindowControlsStateAdapter,
     WindowControlAction,
@@ -78,6 +90,7 @@
     addressPopup?: AddressPopupController;
     bookmarks?: BrowserBookmarksStateAdapter;
     browserTools?: BrowserToolsStateAdapter;
+    customizeSession?: CustomizeSessionController;
     downloads?: BrowserDownloadsStateAdapter;
     edge: EdgeName;
     frame: HTMLElement;
@@ -359,6 +372,9 @@
     widget: ToolbarWidgetSnapshot,
     event: MouseEvent,
   ) => {
+    if (props.customizeSession?.isOpen()) {
+      return;
+    }
     if (widget.fenneviaAction !== "") {
       runFenneviaWidgetAction(widget.fenneviaAction, event);
       return;
@@ -398,43 +414,247 @@
   };
 
   let customizeOpen = $state(false);
+  let dropPreview: Readonly<{
+    insertBefore: number;
+    zone: ToolbarZoneName;
+  }> | null = $state(null);
+
+  $effect(() => {
+    const session = props.customizeSession;
+    if (!session) {
+      customizeOpen = false;
+      return;
+    }
+    customizeOpen = session.isOpen();
+    return session.subscribe((snapshot) => {
+      const wasOpen = customizeOpen;
+      const open = snapshot.open;
+      customizeOpen = open;
+      if (props.edge !== "top") {
+        return;
+      }
+      void tick().then(() => {
+        if (open && !wasOpen) {
+          const closeButton = rootElement?.querySelector<HTMLButtonElement>(
+            "button[data-fennevia-customize-close]",
+          );
+          closeButton?.focus();
+          return;
+        }
+        if (!open && wasOpen) {
+          const toggle = rootElement?.querySelector<HTMLButtonElement>(
+            'button[data-fennevia-action="customize-shell"]',
+          );
+          toggle?.focus();
+        }
+      });
+    });
+  });
 
   // A forced dismissal of the top surface must not leave a floating editor.
   $effect(() => {
-    if (!surfaceState.visible && customizeOpen) {
-      customizeOpen = false;
-      try {
-        props.shell.setPopupHeld(props.edge, false);
-      } catch (error) {
-        props.onFatalError(error);
-      }
+    if (props.edge !== "top" || surfaceState.visible || !customizeOpen) {
+      return;
+    }
+    try {
+      props.customizeSession?.setOpen(false);
+    } catch (error) {
+      props.onFatalError(error);
     }
   });
 
   const setCustomizeOpen = (open: boolean) => {
-    if (customizeOpen === open) {
+    const session = props.customizeSession;
+    if (!session || session.isOpen() === open) {
       return;
     }
-    customizeOpen = open;
     try {
-      props.shell.setPopupHeld(props.edge, open);
+      session.setOpen(open);
     } catch (error) {
       props.onFatalError(error);
-      return;
     }
-    if (open) {
-      void tick().then(() => {
-        const closeButton = rootElement?.querySelector<HTMLButtonElement>(
-          "button[data-fennevia-customize-close]",
-        );
-        closeButton?.focus();
-      });
-      return;
+  };
+
+  const widgetDisplayLabel = (widget: ToolbarWidgetSnapshot): string => {
+    if (widget.label) {
+      return widget.missing ? `${widget.label} (unavailable)` : widget.label;
     }
-    const toggle = rootElement?.querySelector<HTMLButtonElement>(
-      'button[data-fennevia-action="customize-shell"]',
+    if (widget.kind === "separator") {
+      return "Separator";
+    }
+    if (widget.kind === "spacer") {
+      return "Space";
+    }
+    if (widget.kind === "spring") {
+      return "Flexible space";
+    }
+    return "Toolbar item";
+  };
+
+  const runToolbarWidgetEdit = async (
+    operation: ToolbarWidgetsEditOperation,
+  ) => {
+    try {
+      await props.toolbarWidgets?.edit(operation);
+    } catch {
+      // Editing is an optional capability; a stale revision must never take
+      // the shell down.
+    }
+  };
+
+  const collectWidgetInsertBefore = (
+    event: DragEvent,
+    zone: ToolbarZoneName,
+  ): number | null => {
+    const list = event.currentTarget;
+    if (!(list instanceof HTMLElement)) {
+      return null;
+    }
+    const items = Array.from(
+      list.querySelectorAll<HTMLElement>("[data-fennevia-toolbar-widget-item]"),
     );
-    toggle?.focus();
+    const horizontal = zone === "top";
+    const mids = items.map((item) => {
+      const bounds = item.getBoundingClientRect();
+      return horizontal
+        ? bounds.left + bounds.width / 2
+        : bounds.top + bounds.height / 2;
+    });
+    const pointer = horizontal ? event.clientX : event.clientY;
+    return resolveWidgetInsertBefore(mids, pointer);
+  };
+
+  const applyWidgetDrop = (target: ToolbarWidgetDropTarget) => {
+    const source = getActiveToolbarWidgetDrag();
+    const revision = currentToolbarWidgets?.revision ?? 0;
+    const operation = source
+      ? createToolbarWidgetDropEdit(source, target, revision)
+      : null;
+    dropPreview = null;
+    clearToolbarWidgetDrag();
+    if (!operation) {
+      return;
+    }
+    void runToolbarWidgetEdit(operation);
+  };
+
+  const handleWidgetZoneDragOver = (
+    event: DragEvent,
+    zone: ToolbarZoneName,
+  ) => {
+    if (!customizeOpen || !getActiveToolbarWidgetDrag()) {
+      return;
+    }
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+    const insertBefore = collectWidgetInsertBefore(event, zone);
+    if (insertBefore === null) {
+      return;
+    }
+    dropPreview = { insertBefore, zone };
+    props.customizeSession?.setLastFocusedZone(zone);
+  };
+
+  const handleWidgetZoneDrop = (event: DragEvent, zone: ToolbarZoneName) => {
+    if (!customizeOpen) {
+      return;
+    }
+    event.preventDefault();
+    const insertBefore = collectWidgetInsertBefore(event, zone) ?? 0;
+    applyWidgetDrop({ insertBefore, type: "zone", zone });
+  };
+
+  const handleWidgetZoneDragLeave = (
+    event: DragEvent,
+    zone: ToolbarZoneName,
+  ) => {
+    const current = event.currentTarget;
+    const related = event.relatedTarget;
+    if (
+      current instanceof Node &&
+      related instanceof Node &&
+      current.contains(related)
+    ) {
+      return;
+    }
+    if (dropPreview?.zone === zone) {
+      dropPreview = null;
+    }
+  };
+
+  const handleWidgetDragStart = (
+    event: DragEvent,
+    zone: ToolbarZoneName,
+    index: number,
+  ) => {
+    if (!customizeOpen) {
+      event.preventDefault();
+      return;
+    }
+    const transfer = event.dataTransfer;
+    if (!transfer) {
+      return;
+    }
+    const source = startToolbarWidgetDrag({ index, type: "zone", zone });
+    transfer.effectAllowed = "move";
+    transfer.setData(
+      toolbarWidgetDragMimeType,
+      serializeToolbarWidgetDrag(source),
+    );
+    transfer.setData("text/plain", source.type);
+    props.customizeSession?.setLastFocusedZone(zone);
+  };
+
+  const handleWidgetDragEnd = () => {
+    dropPreview = null;
+    clearToolbarWidgetDrag();
+  };
+
+  const handleWidgetItemKeydown = (
+    event: KeyboardEvent,
+    zone: ToolbarZoneName,
+    index: number,
+  ) => {
+    if (!customizeOpen) {
+      return;
+    }
+    const widgets = currentToolbarWidgets?.snapshot.zones[zone] ?? [];
+    const revision = currentToolbarWidgets?.revision ?? 0;
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      event.stopPropagation();
+      void runToolbarWidgetEdit({ index, revision, type: "remove", zone });
+      return;
+    }
+    const stacked = zone !== "top";
+    const earlier =
+      (stacked && event.key === "ArrowUp") ||
+      (!stacked && event.key === "ArrowLeft");
+    const later =
+      (stacked && event.key === "ArrowDown") ||
+      (!stacked && event.key === "ArrowRight");
+    if (!event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
+      return;
+    }
+    if (!earlier && !later) {
+      return;
+    }
+    const toIndex = earlier ? index - 1 : index + 1;
+    if (toIndex < 0 || toIndex >= widgets.length) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    void runToolbarWidgetEdit({
+      fromIndex: index,
+      fromZone: zone,
+      revision,
+      toIndex,
+      toZone: zone,
+      type: "move",
+    });
   };
 
   const runWindowControlAction = (action: WindowControlAction) => {
@@ -873,14 +1093,8 @@
       props.shell.setPointerHeld("left", false);
     }
     draggingTabId = null;
-    if (customizeOpen) {
-      customizeOpen = false;
-      try {
-        props.shell.setPopupHeld(props.edge, false);
-      } catch {
-        // Shell disposal releases the remaining holds.
-      }
-    }
+    dropPreview = null;
+    clearToolbarWidgetDrag();
     if (props.edge === "left") {
       addressPopupVisible = false;
     }
@@ -889,45 +1103,89 @@
 </script>
 
 {#snippet widgetZone(zone: ToolbarZoneName)}
-  {@const zoneWidgets = (currentToolbarWidgets?.snapshot.zones[zone] ?? []).filter(
-    (widget) => !widget.missing,
-  )}
-  {#if currentToolbarWidgets?.snapshot.available && zoneWidgets.length > 0}
+  {@const zoneWidgets = customizeOpen
+    ? (currentToolbarWidgets?.snapshot.zones[zone] ?? [])
+    : (currentToolbarWidgets?.snapshot.zones[zone] ?? []).filter(
+        (widget) => !widget.missing,
+      )}
+  {#if currentToolbarWidgets?.snapshot.available && (customizeOpen || zoneWidgets.length > 0)}
     <div
-      aria-label="Toolbar shortcuts"
+      aria-label={customizeOpen
+        ? `${zone} panel widgets, droppable`
+        : "Toolbar shortcuts"}
       class="fennevia-toolbar-widgets"
       class:fennevia-toolbar-widgets--stacked={zone !== "top"}
+      class:fennevia-toolbar-widgets--editing={customizeOpen}
+      data-fennevia-customize-insert={customizeOpen &&
+      dropPreview?.zone === zone
+        ? String(dropPreview.insertBefore)
+        : undefined}
+      data-fennevia-drop-end={customizeOpen &&
+      dropPreview?.zone === zone &&
+      zoneWidgets.length > 0 &&
+      dropPreview.insertBefore === zoneWidgets.length
+        ? ""
+        : undefined}
       data-fennevia-toolbar-widgets={zone}
+      ondragleave={(event) => handleWidgetZoneDragLeave(event, zone)}
+      ondragover={(event) => handleWidgetZoneDragOver(event, zone)}
+      ondrop={(event) => handleWidgetZoneDrop(event, zone)}
+      onfocusin={() => props.customizeSession?.setLastFocusedZone(zone)}
       role="group"
     >
+      {#if customizeOpen && zoneWidgets.length === 0}
+        <span class="fennevia-toolbar-widgets__placeholder"
+          >Drop widgets here</span
+        >
+      {/if}
       {#each zoneWidgets as widget, index (`${zone}-${index}-${widget.handle}-${widget.fenneviaAction}`)}
-        {#if widget.kind === "separator"}
-          <span
-            aria-hidden="true"
-            class="fennevia-toolbar-widgets__separator"
-          ></span>
-        {:else if widget.kind === "spacer"}
-          <span aria-hidden="true" class="fennevia-toolbar-widgets__spacer"
-          ></span>
-        {:else if widget.kind === "spring"}
-          <span aria-hidden="true" class="fennevia-toolbar-widgets__spring"
-          ></span>
+        {#if widget.kind === "separator" || widget.kind === "spacer" || widget.kind === "spring"}
+          {#if customizeOpen}
+            <button
+              aria-label={widgetDisplayLabel(widget)}
+              class={`fennevia-toolbar-widgets__item fennevia-toolbar-widgets__${widget.kind}`}
+              data-fennevia-drop-before={dropPreview?.zone === zone &&
+              dropPreview.insertBefore === index
+                ? ""
+                : undefined}
+              data-fennevia-toolbar-widget-item=""
+              draggable="true"
+              ondragend={handleWidgetDragEnd}
+              ondragstart={(event) => handleWidgetDragStart(event, zone, index)}
+              onkeydown={(event) => handleWidgetItemKeydown(event, zone, index)}
+              type="button"
+            ></button>
+          {:else}
+            <span
+              aria-hidden="true"
+              class={`fennevia-toolbar-widgets__item fennevia-toolbar-widgets__${widget.kind}`}
+            ></span>
+          {/if}
         {:else}
           <button
-            aria-label={widget.label}
-            class="fennevia-control fennevia-toolbar-widgets__button"
+            aria-label={widgetDisplayLabel(widget)}
+            class="fennevia-control fennevia-toolbar-widgets__button fennevia-toolbar-widgets__item"
             data-fennevia-browser-tool="toolbar-widget"
+            data-fennevia-drop-before={customizeOpen &&
+            dropPreview?.zone === zone &&
+            dropPreview.insertBefore === index
+              ? ""
+              : undefined}
+            data-fennevia-toolbar-widget-item=""
             data-fennevia-toolbar-widget-kind={widget.kind}
-            disabled={
-              widget.disabled ||
-              (widget.fenneviaAction === "show-downloads" &&
-                !browserToolsSnapshot?.downloads)
-            }
+            disabled={!customizeOpen &&
+              (widget.disabled ||
+                (widget.fenneviaAction === "show-downloads" &&
+                  !browserToolsSnapshot?.downloads))}
+            draggable={customizeOpen}
+            ondragend={handleWidgetDragEnd}
+            ondragstart={(event) => handleWidgetDragStart(event, zone, index)}
+            onkeydown={(event) => handleWidgetItemKeydown(event, zone, index)}
             onclick={(event) => void runToolbarWidgetAction(widget, event)}
             title={widget.tooltip || widget.label}
             type="button"
           >
-            <ToolbarWidgetGlyph widget={widget} />
+            <ToolbarWidgetGlyph {widget} />
             {#if widget.badgeText}
               <span
                 aria-hidden="true"
@@ -1436,6 +1694,7 @@
 
   {#if props.edge === "top" && customizeOpen && props.toolbarWidgets}
     <CustomizePanel
+      customizeSession={props.customizeSession}
       onClose={() => setCustomizeOpen(false)}
       state={currentToolbarWidgets}
       toolbarWidgets={props.toolbarWidgets}

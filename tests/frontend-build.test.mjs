@@ -111,7 +111,22 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(component, /onpointerup=\{handlePanelPointerRelease\}/u);
   assert.match(component, /<ProgressLight presentation=\{loadLight\} \/>/u);
   assert.match(component, /<ProgressLight presentation=\{downloadLight\} \/>/u);
-  assert.match(component, /<ToolbarWidgetGlyph widget=\{widget\} \/>/u);
+  assert.match(component, /<ToolbarWidgetGlyph \{widget\} \/>/u);
+  assert.match(component, /toolbarWidgetDragMimeType/u);
+  assert.match(css, /data-fennevia-customize-active/u);
+  assert.match(css, /--fennevia-bottom-clearance/u);
+  assert.match(
+    css,
+    /\.fennevia-customize \{[\s\S]*?var\(--fennevia-left-clearance\)[\s\S]*?var\(--fennevia-right-clearance\)/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-customize \{[\s\S]*?var\(--fennevia-bottom-clearance\)/u,
+  );
+  assert.doesNotMatch(
+    css,
+    /\.fennevia-customize \{[\s\S]*?inset-inline-end: var\(--fennevia-edge-inset\);/u,
+  );
 
   const glyph = await readProjectFile("src/shell/ToolbarWidgetGlyph.svelte");
   assert.match(glyph, /moz-extension:\/\//u);

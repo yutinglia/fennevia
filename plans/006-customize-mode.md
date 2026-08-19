@@ -6,7 +6,8 @@
 
 Status: implementation and documentation complete on
 `feat/fennevia-customize-mode` (ADR-045); ADR-046 adds localized names and
-native built-in icons. The manual real-Firefox checklist in
+native built-in icons; ADR-047 replaces the drawer list editor with live
+four-edge HTML5 drag-and-drop. The manual real-Firefox checklist in
 `docs/testing-and-recovery.md` §6.9 is still `not run`.
 
 This pass deprecates the ADR-044 read-only nav-bar widget mirror as the only
@@ -62,7 +63,12 @@ activation contract.
 - [x] Palette enumerates placed areas plus `getUnusedWidgets`, Fennevia
       widgets, and specials behind opaque tokens.
 - [x] Editor drawer under the top panel with add/move/remove/reset, including
-      cross-zone moves, held through the #31 popup hold.
+      cross-zone moves, held through the #31 popup hold. ADR-047 keeps the
+      drawer as palette plus style and moves placement onto live zones.
+- [x] ADR-047 live four-edge HTML5 drag-and-drop: customize session holds all
+      four popup holds, opaque `application/x-fennevia-toolbar-widget` payload,
+      existing `add`/`move`/`remove` edits, keyboard Delete/Ctrl+Arrow/Enter,
+      and no native-area CustomizeMode copy.
 - [x] Bounded style tokens on the project frame root; skipped under forced
       colors; cleared on dispose.
 - [x] Skip list includes placements already represented by fixed Fennevia

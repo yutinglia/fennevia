@@ -257,6 +257,10 @@ export function isToolbarZoneName(
   );
 }
 
+export function isToolbarPaletteToken(candidate: unknown): candidate is string {
+  return typeof candidate === "string" && PALETTE_TOKEN_PATTERN.test(candidate);
+}
+
 export function isFenneviaToolbarAction(
   candidate: unknown,
 ): candidate is FenneviaToolbarAction {
