@@ -1903,7 +1903,7 @@
 }
 
 #fennevia-shell-frame-host .fennevia-customize__style-label {
-  min-inline-size: 52px;
+  min-inline-size: 64px;
   color: var(--fennevia-glass-muted);
 }
 
@@ -1937,6 +1937,34 @@
   border-radius: var(--fennevia-chip-radius);
   font-size: 10px;
   line-height: 1;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__color-wrap {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__color {
+  display: inline-block;
+  inline-size: 20px;
+  block-size: 20px;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  border: 1px solid var(--fennevia-glass-border);
+  border-radius: var(--fennevia-chip-radius);
+  cursor: pointer;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__color::-moz-color-swatch {
+  border: none;
+  border-radius: var(--fennevia-chip-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__color--custom {
+  outline: 2px solid var(--fennevia-focus-color);
+  outline-offset: 1px;
 }
 
 #fennevia-shell-frame-host
@@ -2209,6 +2237,11 @@
     color: HighlightText;
     background: Highlight;
     border-color: Highlight;
+  }
+
+  #fennevia-shell-frame-host .fennevia-customize__color {
+    border-color: CanvasText;
+    forced-color-adjust: none;
   }
 
   #fennevia-shell-frame-host .fennevia-address-launcher__button,

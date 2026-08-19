@@ -6,6 +6,7 @@ import {
   isFirefoxBridgeError,
 } from "../src/firefox/bridge-boundary.ts";
 import { createFirefoxToolbarWidgetsBridge } from "../src/firefox/toolbar-widgets.ts";
+import { createDefaultToolbarStyle } from "../src/app/toolbar-widgets-state.ts";
 
 const BROWSER_URI = "chrome://browser/content/browser.xhtml";
 const EXTENSION_ICON_URL =
@@ -798,15 +799,7 @@ test("default snapshot mirrors nav-bar placements into the top zone", () => {
     assert.equal(history.icon, "history");
     assert.equal(history.label, "History");
 
-    assert.deepEqual(snapshot.style, {
-      accent: "",
-      blur: 18,
-      density: "cozy",
-      fontSize: 12,
-      radius: 4,
-      surfaceOpacity: 94,
-      theme: "auto",
-    });
+    assert.deepEqual(snapshot.style, createDefaultToolbarStyle());
 
     const paletteLabels = snapshot.palette.map((entry) => entry.label);
     assert.ok(paletteLabels.includes("Show bookmarks panel"));
@@ -1414,11 +1407,16 @@ test("style edits persist and external pref changes republish", async () => {
   const pair = createController(native);
   try {
     await pair.controller.toolbarWidgets.edit({
-      style: { accent: "#3b82f6", theme: "dark" },
+      style: {
+        accent: "#3b82f6",
+        chromeBackground: "#141A23",
+        theme: "dark",
+      },
       type: "set-style",
     });
     let snapshot = pair.controller.toolbarWidgets.snapshot();
     assert.equal(snapshot.style.accent, "#3b82f6");
+    assert.equal(snapshot.style.chromeBackground, "#141a23");
     assert.equal(snapshot.style.theme, "dark");
     assert.equal(snapshot.style.blur, 18);
     assert.ok(
@@ -1443,6 +1441,8 @@ test("style edits persist and external pref changes republish", async () => {
     snapshot = pair.controller.toolbarWidgets.snapshot();
     assert.equal(snapshot.style.blur, 28);
     assert.equal(snapshot.style.density, "compact");
+    assert.equal(snapshot.style.chromeBackground, "");
+    assert.equal(snapshot.style.saturation, 145);
 
     // Invalid persisted style falls back to the defaults.
     native.setPrefValue("fennevia.customize.style", "{not json");

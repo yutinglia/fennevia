@@ -390,8 +390,12 @@ without changing the tabs, bookmarks, or downloads panel sizes. With no
 layout preference the top zone falls back to the live nav-bar placement
 list. The first edit materializes a Fennevia layout into
 `fennevia.customize.layout`; `fennevia.customize.style` stores bounded style
-tokens. Both prefs are versioned JSON with a 16 KiB cap and fail safe to
-defaults. Placing a widget
+tokens (theme, accent, panel surface, chrome background, text, border, blur,
+radius, density, surface opacity, saturation, shadow, motion, and font size).
+Both prefs are versioned JSON with a 16 KiB cap and fail safe to defaults.
+Glass tokens apply on the project frame root. The chrome background token is
+applied by NativeUi as `--fennevia-chrome-background` on `:root#main-window`.
+Placing a widget
 with no live node performs the owner-approved `addWidgetToArea(id, "nav-bar")`
 adoption; removing the last Fennevia placement restores extensions to
 `AREA_ADDONS` and other widgets to the palette. The frontend receives frozen

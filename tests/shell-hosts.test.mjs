@@ -23,6 +23,20 @@ class FakeElement {
     this._children = [];
     this._attributes = new Map();
     this._textContent = "";
+    this.style = {
+      _properties: new Map(),
+      setProperty(name, value) {
+        this._properties.set(name, String(value));
+      },
+      removeProperty(name) {
+        const previous = this._properties.get(name) ?? "";
+        this._properties.delete(name);
+        return previous;
+      },
+      getPropertyValue(name) {
+        return this._properties.get(name) ?? "";
+      },
+    };
     if (localName === "style") {
       this.sheet = { cssRules: [{}] };
     }

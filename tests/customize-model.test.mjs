@@ -207,6 +207,23 @@ test("style serialization round-trips with versioning and fails safe", () => {
   assert.ok(serialized.includes('"version":1'));
   assert.deepEqual(parseCustomizeStyle(serialized), style);
 
+  assert.deepEqual(
+    parseCustomizeStyle(
+      JSON.stringify({
+        accent: "#3b82f6",
+        blur: 28,
+        theme: "dark",
+        version: 1,
+      }),
+    ),
+    {
+      ...createDefaultToolbarStyle(),
+      accent: "#3b82f6",
+      blur: 28,
+      theme: "dark",
+    },
+  );
+
   assert.equal(parseCustomizeStyle(""), null);
   assert.equal(parseCustomizeStyle("{not json"), null);
   assert.equal(parseCustomizeStyle('{"version":2}'), null);
@@ -216,6 +233,10 @@ test("style serialization round-trips with versioning and fails safe", () => {
   );
   assert.equal(
     parseCustomizeStyle(JSON.stringify({ blur: 999, version: 1 })),
+    null,
+  );
+  assert.equal(
+    parseCustomizeStyle(JSON.stringify({ saturation: 90, version: 1 })),
     null,
   );
 });

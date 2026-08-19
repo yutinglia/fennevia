@@ -1548,13 +1548,19 @@ When no layout preference exists, the top zone falls back to the ADR-044
 nav-bar mirror, so the deprecated behavior survives only as the default. The
 first edit materializes that layout into the `fennevia.customize.layout`
 string preference; `fennevia.customize.style` persists the bounded style
-tokens (theme, accent, blur, radius, density, surface opacity, font size).
+tokens (theme, accent, panel surface, chrome background, text, border, blur,
+radius, density, surface opacity, saturation, shadow, motion, and font size).
 Both prefs are strict versioned JSON with a 16 KiB cap, fail safe to defaults
 when invalid, are shared across windows through one preference observer per
 controller, and contain widget ids and fixed tokens only — never URLs, titles,
-input text, browsing data, or private-window state. Style is applied only as a
+input text, browsing data, or private-window state. Style is applied as a
 fixed CSS custom-property set on the project frame root, skips color
-overrides under forced colors, and is removed on dispose.
+overrides under forced colors, and is removed on dispose. The separate chrome
+background token is applied by NativeUi as `--fennevia-chrome-background` on
+`:root#main-window` (the same root NativeUi already owns for activation
+attributes). Svelte never writes Firefox-owned `documentElement` styles.
+Empty color tokens keep the CSS defaults, including Firefox
+`--toolbar-background-color` for the content gutter.
 
 Owner-approved relaxations recorded here: (a) the layout preference may
 persist Firefox widget ids, including extension widget ids, on the privileged

@@ -12,13 +12,18 @@ const CONTENT_CORNER_RADIUS_PX = 4;
 const EXPECTED_STYLE_RULE_COUNT = 7;
 
 const LISTENER_OPTIONS = Object.freeze({ capture: true });
+const CHROME_BACKGROUND_PROPERTY = "--fennevia-chrome-background";
+const CHROME_BACKGROUND_PATTERN = /^#[0-9a-f]{6}$/u;
 
 const NATIVE_UI_STYLE = `
 :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-suspended])
   #browser {
   box-sizing: border-box !important;
   padding: ${CONTENT_GUTTER_PX}px !important;
-  background-color: var(--toolbar-background-color) !important;
+  background-color: var(
+    --fennevia-chrome-background,
+    var(--toolbar-background-color)
+  ) !important;
 }
 
 :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-suspended])
@@ -147,6 +152,22 @@ const isElement = (value) =>
   typeof value === "object" &&
   typeof value.localName === "string" &&
   typeof value.hasAttribute === "function";
+
+const normalizeChromeBackground = (value) => {
+  if (typeof value !== "string" || value === "") {
+    return "";
+  }
+  const normalized = value.trim().toLowerCase();
+  return CHROME_BACKGROUND_PATTERN.test(normalized) ? normalized : "";
+};
+
+const isForcedColorsActive = (view) => {
+  try {
+    return view?.matchMedia?.("(forced-colors: active)")?.matches === true;
+  } catch {
+    return false;
+  }
+};
 
 const elementHasClass = (element, className) => {
   if (typeof element?.classList?.contains === "function") {
@@ -669,6 +690,52 @@ export function createNativeUiController({ window, frame, onError }) {
   const listeners = [];
   const openPopups = new Set();
   const popupHandoffIds = new Set();
+  let storedChromeBackground = "";
+
+  const clearChromeBackground = () => {
+    root.style?.removeProperty?.(CHROME_BACKGROUND_PROPERTY);
+  };
+
+  const applyChromeBackground = () => {
+    if (
+      storedChromeBackground === "" ||
+      isForcedColorsActive(window) ||
+      typeof root.style?.setProperty !== "function"
+    ) {
+      clearChromeBackground();
+      return;
+    }
+    root.style.setProperty(CHROME_BACKGROUND_PROPERTY, storedChromeBackground);
+  };
+
+  const setChromeBackground = (value) => {
+    if (disposed || failed) {
+      return false;
+    }
+    storedChromeBackground = normalizeChromeBackground(value);
+    applyChromeBackground();
+    return true;
+  };
+
+  try {
+    const forcedColorsQuery = window.matchMedia?.("(forced-colors: active)");
+    if (
+      forcedColorsQuery &&
+      typeof forcedColorsQuery.addEventListener === "function"
+    ) {
+      const onForcedColorsChange = () => {
+        if (!disposed && !failed) {
+          applyChromeBackground();
+        }
+      };
+      forcedColorsQuery.addEventListener("change", onForcedColorsChange);
+      listeners.push(() => {
+        forcedColorsQuery.removeEventListener("change", onForcedColorsChange);
+      });
+    }
+  } catch {
+    // matchMedia is optional in tests and missing-capability windows.
+  }
 
   const clearHideTimer = () => {
     if (hideTimer !== undefined) {
@@ -1342,6 +1409,12 @@ export function createNativeUiController({ window, frame, onError }) {
         firstError ??= error;
       }
       try {
+        storedChromeBackground = "";
+        clearChromeBackground();
+      } catch (error) {
+        firstError ??= error;
+      }
+      try {
         style.remove();
       } catch (error) {
         firstError ??= error;
@@ -1362,6 +1435,8 @@ export function createNativeUiController({ window, frame, onError }) {
         symbol: "nativeUi.revealForUrlbar",
       });
     },
+
+    setChromeBackground,
 
     revealForToolbar() {
       return revealForNativeHandoff({
@@ -1422,3 +1497,4 @@ export const nativeUiAttributes = Object.freeze({
 });
 export const nativeUiHideDelayMs = HIDE_DELAY_MS;
 export const nativeUiStyleId = STYLE_ID;
+export const nativeUiChromeBackgroundProperty = CHROME_BACKGROUND_PROPERTY;

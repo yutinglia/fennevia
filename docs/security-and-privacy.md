@@ -454,9 +454,11 @@ bounded versioned JSON in the `fennevia.customize.layout` and
 invalid values fail safe to the default mirror layout and default style). The
 layout pref contains Firefox widget ids — including extension widget ids — and
 the fixed Fennevia widget/special tokens; the style pref contains only the
-fixed style token set (theme, accent hex, blur, radius, density, surface
-opacity, font size). Neither pref may ever contain URLs, titles, text input,
-browsing data, or private-window state. Second, bounded `CustomizableUI`
+fixed style token set (theme, `#rrggbb` color tokens or empty defaults, and
+bounded integers for blur, radius, density, surface opacity, saturation,
+shadow, motion, and font size). Neither pref may ever contain URLs, titles,
+text input, browsing data, or private-window state. Second, bounded
+`CustomizableUI`
 writes: placing a widget that has no live node calls
 `addWidgetToArea(id, "nav-bar")` on the collapsed native nav-bar and records
 the id in the persisted `adopted` list; removing the last Fennevia placement of
@@ -483,8 +485,13 @@ zones and a missing `Services.prefs` disables editing, in both cases without
 joining activation health. Disposal detaches the CustomizableUI listener, the
 preference observer, the attribute `MutationObserver`, popup listeners, pending
 waiters, handles, palette tokens, and any held panel exactly once. Style tokens
-are applied only as the fixed CSS custom-property set on the project frame
-root, skip color overrides under forced colors, and are cleared on dispose.
+are applied as the fixed CSS custom-property set on the project frame root,
+skip color overrides under forced colors, and are cleared on dispose. The
+chrome background token is applied only by NativeUi as
+`--fennevia-chrome-background` on `:root#main-window`; the frontend never
+writes Firefox-owned documentElement styles. Forced colors and an empty token
+remove that property so Firefox `--toolbar-background-color` remains
+authoritative.
 
 ### 7.5 Bookmarks — implemented #14
 
