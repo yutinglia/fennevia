@@ -790,7 +790,9 @@ open native sidebar, #37 Urlbar handoff, and the ADR-037 original-toolbar
 action reveal the complete native owner. Fennevia-initiated Trust, permission,
 Downloads, extensions, and application-menu panels that are token-listed or
 re-anchored to a project host do not reveal the navbar. Customize,
-native-dialog, and DOM-fullscreen state suspend project hiding. Any missing,
+native-dialog, and DOM-fullscreen state suspend project hiding. Window-modal
+suspension follows `#window-modal-dialog.open` or a current tab dialog, not a
+leftover `window-modal-open` attribute. Any missing,
 invalid, partial, or stably changed required target/style first exposes native
 UI and then requests per-window ADR-021 cleanup.
 

@@ -272,7 +272,9 @@ For each edge:
 - browser fullscreen;
 - DOM fullscreen suspension;
 - customize-mode suspension;
-- native modal/window-modal suspension;
+- native modal/window-modal suspension, including first-run Terms of Use
+  Spotlight: native chrome must hide again after the HTML dialog closes even
+  if `window-modal-open` remains;
 - light and dark Firefox themes;
 - very light, dark, saturated, patterned, and moving content behind surfaces;
 - backdrop-filter unavailable or transparency reduced;

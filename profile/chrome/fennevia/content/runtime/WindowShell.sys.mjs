@@ -288,14 +288,28 @@ const findTabDialog = (browser) => {
   );
 };
 
-const readFrameEnvironment = ({ root, browser }) => {
+const isHtmlWindowModalOpen = (document, root) => {
+  const dialog = document?.getElementById?.("window-modal-dialog");
+  if (dialog) {
+    if (typeof dialog.open === "boolean") {
+      return dialog.open === true;
+    }
+    return dialog.hasAttribute("open");
+  }
+  return root.hasAttribute("window-modal-open");
+};
+
+const readFrameEnvironment = ({ window, root, browser }) => {
   if (root.hasAttribute("customizing")) {
     return "customize-mode";
   }
   if (root.hasAttribute("inDOMFullscreen")) {
     return "dom-fullscreen";
   }
-  if (root.hasAttribute("window-modal-open") || findTabDialog(browser)) {
+  if (
+    isHtmlWindowModalOpen(window?.document ?? root?.ownerDocument, root) ||
+    findTabDialog(browser)
+  ) {
     return "native-dialog";
   }
   return "normal";
@@ -317,10 +331,14 @@ const createFrameEnvironmentObserver = ({
   }
 
   let disposed = false;
+  const modalListenerRemovers = [];
+  const windowModalDialog = window?.document?.getElementById?.(
+    "window-modal-dialog",
+  );
   const update = () => {
     frame.setAttribute(
       FRAME_ENVIRONMENT_ATTRIBUTE,
-      readFrameEnvironment({ root, browser }),
+      readFrameEnvironment({ window, root, browser }),
     );
     if (root.hasAttribute("inFullscreen")) {
       frame.setAttribute(FRAME_FULLSCREEN_ATTRIBUTE, "");
@@ -342,6 +360,20 @@ const createFrameEnvironmentObserver = ({
       }
     }
   });
+  const onModalStateEvent = () => {
+    if (disposed) {
+      return;
+    }
+    try {
+      update();
+    } catch (error) {
+      try {
+        frame.setAttribute(FRAME_ENVIRONMENT_ATTRIBUTE, "controller-failure");
+      } finally {
+        onError(error);
+      }
+    }
+  };
 
   update();
   observer.observe(root, {
@@ -358,6 +390,40 @@ const createFrameEnvironmentObserver = ({
     attributeFilter: ["tabDialogShowing"],
     subtree: true,
   });
+  if (windowModalDialog) {
+    observer.observe(windowModalDialog, {
+      attributes: true,
+      attributeFilter: ["open"],
+    });
+  }
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("DOMModalDialogClosed", onModalStateEvent, {
+      capture: true,
+    });
+    modalListenerRemovers.push(() =>
+      window.removeEventListener("DOMModalDialogClosed", onModalStateEvent, {
+        capture: true,
+      }),
+    );
+  }
+  if (typeof windowModalDialog?.addEventListener === "function") {
+    windowModalDialog.addEventListener("close", onModalStateEvent, {
+      capture: true,
+    });
+    windowModalDialog.addEventListener("cancel", onModalStateEvent, {
+      capture: true,
+    });
+    modalListenerRemovers.push(() =>
+      windowModalDialog.removeEventListener("close", onModalStateEvent, {
+        capture: true,
+      }),
+    );
+    modalListenerRemovers.push(() =>
+      windowModalDialog.removeEventListener("cancel", onModalStateEvent, {
+        capture: true,
+      }),
+    );
+  }
 
   return Object.freeze({
     dispose() {
@@ -366,6 +432,13 @@ const createFrameEnvironmentObserver = ({
       }
       disposed = true;
       observer.disconnect();
+      for (const removeListener of modalListenerRemovers.reverse()) {
+        try {
+          removeListener();
+        } catch {
+          // Environment-observer cleanup is best-effort.
+        }
+      }
       return true;
     },
     snapshot() {

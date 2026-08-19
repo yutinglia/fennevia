@@ -802,6 +802,64 @@ test("customize, DOM fullscreen, and native dialogs suspend hiding fail-open", (
   controller.dispose();
 });
 
+test("a closed window-modal dialog does not keep native hiding suspended", () => {
+  const fixture = createFixture();
+  const dialog = append(
+    fixture.document,
+    fixture.document.body,
+    XHTML_NAMESPACE,
+    "dialog",
+    "window-modal-dialog",
+  );
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  const root = fixture.document.documentElement;
+  root.setAttribute("data-fennevia-active", "");
+
+  root.setAttribute("window-modal-open", "");
+  assert.equal(controller.snapshot().suspensionReason, null);
+  assert.equal(controller.snapshot().suspended, false);
+
+  dialog.setAttribute("open", "");
+  assert.equal(controller.snapshot().suspensionReason, "native-dialog");
+  dialog.removeAttribute("open");
+  assert.equal(controller.snapshot().suspended, false);
+  assert.equal(root.hasAttribute("window-modal-open"), true);
+
+  controller.dispose();
+});
+
+test("window-modal close unsuspends even if window.closed is spuriously true", () => {
+  const fixture = createFixture();
+  const dialog = append(
+    fixture.document,
+    fixture.document.body,
+    XHTML_NAMESPACE,
+    "dialog",
+    "window-modal-dialog",
+  );
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  const root = fixture.document.documentElement;
+  root.setAttribute("data-fennevia-active", "");
+  dialog.setAttribute("open", "");
+  assert.equal(controller.snapshot().suspensionReason, "native-dialog");
+
+  fixture.window.closed = true;
+  dialog.removeAttribute("open");
+  dialog.dispatch("close");
+  assert.equal(controller.snapshot().suspended, false);
+  assert.equal(root.hasAttribute(nativeUiAttributes.suspended), false);
+
+  controller.dispose();
+});
+
 test("partial activation CSS suspends native hiding and reports one deterministic failure", () => {
   const fixture = createFixture();
   const errors = [];

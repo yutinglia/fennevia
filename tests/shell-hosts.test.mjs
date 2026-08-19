@@ -626,6 +626,14 @@ test("customize, DOM fullscreen, browser fullscreen, and native dialogs update t
   nativeBrowser.removeAttribute("tabDialogShowing");
   assert.equal(frame.getAttribute("data-fennevia-environment"), "normal");
 
+  window.document.documentElement.setAttribute("window-modal-open", "");
+  assert.equal(frame.getAttribute("data-fennevia-environment"), "normal");
+  window.elements.modal.setAttribute("open", "");
+  assert.equal(frame.getAttribute("data-fennevia-environment"), "native-dialog");
+  window.elements.modal.removeAttribute("open");
+  assert.equal(frame.getAttribute("data-fennevia-environment"), "normal");
+  window.document.documentElement.removeAttribute("window-modal-open");
+
   controller.dispose();
   assert.equal(window.document.observers.size, 0);
 });
