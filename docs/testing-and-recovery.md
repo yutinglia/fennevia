@@ -622,9 +622,13 @@ ADR-045 adds focused unit/static/build coverage for:
 - deterministic disposal of the CustomizableUI listener, preference observer,
   MutationObserver, popup listeners, pending waiters, handle/token registries,
   and frame style properties.
+- ADR-047 live-zone HTML5 drag-and-drop: customize session popup-holds all
+  four edges, opaque drag payload, drop mapping to `add`/`move`/`remove`,
+  keyboard Delete/Ctrl+Arrow/palette Enter, and popup-close re-hold.
 
 The following are `not run`, not passed: live Fennevia customize drawer against
-a collapsed navbar, four-edge placement round-trips, adopt/restore of an
+a collapsed navbar, four-edge placement round-trips, **live-zone drag from
+palette onto each edge and back**, adopt/restore of an
 installed extension, style tokens under forced colors and reduced motion,
 multi-window pref observation, layout reset restoring native placements, and
 Escape/focus restoration while a widget popup is also held. Implementation/

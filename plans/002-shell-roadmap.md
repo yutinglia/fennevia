@@ -40,7 +40,8 @@ ADR-044 (#64) adds the read-only nav-bar widget mirror in the top surface with
 owner-approved rendering of extension identity data. ADR-045 deprecates that
 mirror as the only widget source and adds a Fennevia-owned customize mode with
 four-edge zones, the full CustomizableUI inventory, bounded style tokens, and
-owner-approved adopt/restore writes. Both have focused automated evidence;
+owner-approved adopt/restore writes. ADR-047 makes that editor a live four-edge
+HTML5 drag-and-drop session. These have focused automated evidence;
 the real Firefox matrices in `docs/testing-and-recovery.md` §6.8 and §6.9
 remain pending.
 
@@ -702,6 +703,13 @@ versioned JSON. Owner-approved bounded writes adopt widgets onto the collapsed
 nav-bar and restore them on removal or reset. Native customize mode remains
 available through the Firefox application menu, complete native reveal, and
 fail-open. Editing is optional and never joins activation health.
+
+ADR-047 keeps those write and persistence contracts and changes only the
+editor: a shell-owned customize session holds all four edges with the existing
+popup hold, live widget zones become HTML5 drop targets, and the top-host
+drawer is the unused-widget palette plus style. Keyboard Delete, Ctrl+Arrow,
+and palette Enter remain required. Native-area `CustomizeMode` drag stays
+deferred.
 
 Gate: CI passes with focused model/bridge/adapter coverage; the real Firefox
 rows in `docs/testing-and-recovery.md` §6.9 are recorded honestly (currently

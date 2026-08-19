@@ -367,7 +367,7 @@ Source inventory and real HTTP/HTTPS/internal/error/permission/protection/
 normal/second/private/fail-open evidence are in ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-### 7.4 Browser-tool native handoffs — implemented ADR-037, popup placement ADR-042, widget zones and customize mode ADR-044/ADR-045/ADR-046
+### 7.4 Browser-tool native handoffs — implemented ADR-037, popup placement ADR-042, widget zones and customize mode ADR-044/ADR-045/ADR-046/ADR-047
 
 Each managed window owns one `browser-tools` Firefox controller and one ordinary
 application adapter. The controller validates twenty-one required current
@@ -462,6 +462,13 @@ an adopted id restores it (`addWidgetToArea(id, AREA_ADDONS)` for extension
 widgets, `removeWidgetFromArea(id)` otherwise), and layout reset restores every
 adopted id and clears the pref. Fennevia never writes any other CustomizableUI
 state and never edits placements the user made natively.
+
+ADR-047 adds a frontend-only customize session: HTML5 `dataTransfer` on
+project-owned nodes may carry the MIME `application/x-fennevia-toolbar-widget`
+and a JSON payload of an opaque palette token or a zone name plus index.
+That payload never includes Firefox widget ids, extension identity, URLs, or
+labels. The session is not persisted; the frame marker
+`data-fennevia-customize-active` is a boolean presence attribute.
 
 Activation resolves only registry handles, validates the project host, opens
 `PanelUI.showSubView` view panels or dispatches the native node command, and

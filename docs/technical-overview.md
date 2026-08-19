@@ -22,7 +22,7 @@ The tested MVP includes:
 | Top controls | Complete | Native-synchronised Back, Forward, Reload/Stop, New Tab, and bounded page status |
 | Single-line toolbar and native handoffs | Focused implementation; real-Firefox matrix pending | One non-wrapping top row, fixed native tool/original-toolbar actions, project-owned window controls, 7px gutter, drag regions, and transient shortcut hint |
 | Nav-bar widget mirror (ADR-044) | Focused implementation; superseded as sole model by ADR-045; real-Firefox matrix pending | Default top-zone layout from `CustomizableUI` nav-bar placements as project-styled buttons — extension actions with real icon/badge, pinned built-ins, spacers — with popups anchored on the project button |
-| Fennevia customize mode (ADR-045, ADR-046) | Focused implementation; real-Firefox matrix pending | Four-edge widget zones, full CustomizableUI inventory palette with localized names and native built-in icons (CSS mask), project-owned editor drawer, bounded style tokens, profile-local prefs, and owner-approved adopt/restore writes; native customize mode remains available from the Firefox application menu |
+| Fennevia customize mode (ADR-045, ADR-046, ADR-047) | Focused implementation; real-Firefox matrix pending | Four-edge widget zones, full CustomizableUI inventory palette with localized names and native built-in icons (CSS mask), live-zone HTML5 drag-and-drop, bounded style tokens, profile-local prefs, and owner-approved adopt/restore writes; native customize mode remains available from the Firefox application menu |
 | Urlbar coverage | Complete | Firefox-derived connection/protection/permission/action summaries and complete native Urlbar handoff |
 | Bookmarks | Complete | Bounded lazy Places hierarchy with live updates and Firefox-owned opening behavior |
 | Downloads | Complete | Anonymous event-driven aggregate progress/status while Firefox retains safety and file management |
@@ -33,8 +33,9 @@ The tested MVP includes:
 
 The planned Windows MVP and first public prerelease are complete. ADR-037's
 single-line toolbar and native handoffs, ADR-044's nav-bar widget mirror, and
-ADR-045's Fennevia-owned customize mode, and ADR-046's localized names and
-native built-in widget icons have focused automated coverage; the
+ADR-045's Fennevia-owned customize mode, ADR-046's localized names and
+native built-in widget icons, and ADR-047's live-zone drag-and-drop have focused
+automated coverage; the
 changed real-Firefox visual and interaction matrices remain pending and are
 not part of the published `v0.10.0-beta.1` validation claim. [Issue
 #1](https://github.com/yutinglia/fennevia/issues/1) remains open because a real

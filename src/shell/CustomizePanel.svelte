@@ -1,18 +1,26 @@
 <script lang="ts">
+  import type { CustomizeSessionController } from "../app/customize-session";
+  import {
+    clearToolbarWidgetDrag,
+    createToolbarWidgetDropEdit,
+    getActiveToolbarWidgetDrag,
+    serializeToolbarWidgetDrag,
+    startToolbarWidgetDrag,
+    toolbarWidgetDragMimeType,
+  } from "../app/toolbar-widget-drag";
   import {
     toolbarStyleDensities,
     toolbarStyleThemes,
-    toolbarZoneNames,
     type BrowserToolbarWidgetsState,
     type BrowserToolbarWidgetsStateAdapter,
-    type ToolbarWidgetSnapshot,
+    type ToolbarPaletteEntrySnapshot,
     type ToolbarWidgetsEditOperation,
-    type ToolbarZoneName,
   } from "../app/toolbar-widgets-state";
   import ShellIcon from "./ShellIcon.svelte";
   import ToolbarWidgetGlyph from "./ToolbarWidgetGlyph.svelte";
 
   type Props = Readonly<{
+    customizeSession?: CustomizeSessionController;
     onClose: () => void;
     state: BrowserToolbarWidgetsState | null;
     toolbarWidgets: BrowserToolbarWidgetsStateAdapter;
@@ -20,15 +28,8 @@
 
   const props: Props = $props();
 
-  let selectedZone: ToolbarZoneName = $state("top");
   let statusMessage = $state("");
-
-  const zoneLabels: Readonly<Record<ToolbarZoneName, string>> = {
-    top: "Top",
-    left: "Left",
-    right: "Right",
-    bottom: "Bottom",
-  };
+  let paletteDropActive = $state(false);
 
   const themeLabels: Readonly<Record<string, string>> = {
     auto: "Auto",
@@ -61,67 +62,41 @@
 
   let snapshot = $derived(props.state?.snapshot ?? null);
   let revision = $derived(props.state?.revision ?? 0);
-  let zoneWidgets = $derived(snapshot?.zones[selectedZone] ?? []);
+  let addZoneLabel = $state("top");
 
-  const widgetDisplayLabel = (widget: ToolbarWidgetSnapshot): string => {
-    if (widget.label) {
-      return widget.missing ? `${widget.label} (unavailable)` : widget.label;
+  $effect(() => {
+    const session = props.customizeSession;
+    if (!session) {
+      addZoneLabel = "top";
+      return;
     }
-    if (widget.kind === "separator") {
-      return "Separator";
-    }
-    if (widget.kind === "spacer") {
-      return "Space";
-    }
-    if (widget.kind === "spring") {
-      return "Flexible space";
-    }
-    return "Toolbar item";
-  };
+    addZoneLabel = session.lastFocusedZone();
+    return session.subscribe((next) => {
+      addZoneLabel = next.lastFocusedZone;
+    });
+  });
 
   const runEdit = async (operation: ToolbarWidgetsEditOperation) => {
     statusMessage = "";
     try {
       await props.toolbarWidgets.edit(operation);
     } catch {
-      // Editing is an optional capability; a stale revision or missing
-      // backend must never take the shell down.
       statusMessage =
         "That change could not be applied. The layout may have just changed; try again.";
     }
   };
 
-  const addFromPalette = (token: string) =>
+  const addFromPalette = (token: string) => {
+    const zone = props.customizeSession?.lastFocusedZone() ?? "top";
+    const index = snapshot?.zones[zone].length ?? 0;
     void runEdit({
-      index: zoneWidgets.length,
+      index,
       revision,
       token,
       type: "add",
-      zone: selectedZone,
+      zone,
     });
-
-  const moveWithinZone = (fromIndex: number, toIndex: number) =>
-    void runEdit({
-      fromIndex,
-      fromZone: selectedZone,
-      revision,
-      toIndex,
-      toZone: selectedZone,
-      type: "move",
-    });
-
-  const moveToZone = (fromIndex: number, toZone: ToolbarZoneName) =>
-    void runEdit({
-      fromIndex,
-      fromZone: selectedZone,
-      revision,
-      toIndex: snapshot?.zones[toZone].length ?? 0,
-      toZone,
-      type: "move",
-    });
-
-  const removeAt = (index: number) =>
-    void runEdit({ index, revision, type: "remove", zone: selectedZone });
+  };
 
   const resetLayout = () => void runEdit({ revision, type: "reset-layout" });
 
@@ -132,12 +107,92 @@
 
   const unavailableNote =
     "Customization is unavailable in this window. The fixed Fennevia controls and native Firefox customize mode remain usable.";
+  const emptyPaletteNote =
+    "Every available widget is already placed. Drop a widget here to remove it from a panel.";
 
   const handleKeydown = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
       props.onClose();
+    }
+  };
+
+  const handlePaletteDragStart = (
+    event: DragEvent,
+    entry: ToolbarPaletteEntrySnapshot,
+  ) => {
+    const transfer = event.dataTransfer;
+    if (!transfer) {
+      return;
+    }
+    const source = startToolbarWidgetDrag({
+      token: entry.token,
+      type: "palette",
+    });
+    transfer.effectAllowed = "copyMove";
+    transfer.setData(
+      toolbarWidgetDragMimeType,
+      serializeToolbarWidgetDrag(source),
+    );
+    transfer.setData("text/plain", entry.token);
+  };
+
+  const handlePaletteDragOver = (event: DragEvent) => {
+    const source = getActiveToolbarWidgetDrag();
+    if (source?.type !== "zone") {
+      return;
+    }
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+    paletteDropActive = true;
+  };
+
+  const handlePaletteDragLeave = (event: DragEvent) => {
+    const current = event.currentTarget;
+    const related = event.relatedTarget;
+    if (
+      current instanceof Node &&
+      related instanceof Node &&
+      current.contains(related)
+    ) {
+      return;
+    }
+    paletteDropActive = false;
+  };
+
+  const handlePaletteDrop = (event: DragEvent) => {
+    const source = getActiveToolbarWidgetDrag();
+    paletteDropActive = false;
+    if (source?.type !== "zone") {
+      return;
+    }
+    event.preventDefault();
+    const operation = createToolbarWidgetDropEdit(
+      source,
+      { type: "palette" },
+      revision,
+    );
+    clearToolbarWidgetDrag();
+    if (operation) {
+      void runEdit(operation);
+    }
+  };
+
+  const handlePaletteDragEnd = () => {
+    paletteDropActive = false;
+    clearToolbarWidgetDrag();
+  };
+
+  const handlePaletteKeydown = (
+    event: KeyboardEvent,
+    entry: ToolbarPaletteEntrySnapshot,
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      addFromPalette(entry.token);
     }
   };
 </script>
@@ -171,132 +226,52 @@
   {:else}
     <p class="fennevia-customize__note" data-fennevia-customize-mode="">
       {snapshot.layoutCustomized
-        ? "Using your Fennevia layout. Reset to follow the Firefox toolbar again."
-        : "Following your Firefox toolbar layout until you make a change."}
+        ? "Using your Fennevia layout. Drag widgets onto the four edge panels. Drop them here to remove. Reset to follow the Firefox toolbar again."
+        : "Following your Firefox toolbar until you make a change. Drag widgets onto the four edge panels."}
+    </p>
+    <p class="fennevia-customize__note">
+      {`Keyboard add targets the ${addZoneLabel} panel. Press Delete on a placed widget to remove it.`}
     </p>
 
-    <div
-      aria-label="Choose a panel to edit"
-      class="fennevia-customize__zones"
-      role="group"
-    >
-      {#each toolbarZoneNames as zone (zone)}
-        <button
-          aria-pressed={selectedZone === zone}
-          class="fennevia-control fennevia-customize__zone"
-          data-fennevia-customize-zone={zone}
-          onclick={() => {
-            selectedZone = zone;
-          }}
-          type="button">{zoneLabels[zone]}</button
-        >
-      {/each}
-    </div>
-
     <section
-      aria-label="Widgets in the selected panel"
+      aria-label="Available widgets"
       class="fennevia-customize__section"
+      class:fennevia-customize__section--drop={paletteDropActive}
+      data-fennevia-customize-palette=""
+      ondragend={handlePaletteDragEnd}
+      ondragleave={handlePaletteDragLeave}
+      ondragover={handlePaletteDragOver}
+      ondrop={handlePaletteDrop}
     >
-      <h3 class="fennevia-customize__heading">
-        {`In the ${zoneLabels[selectedZone].toLowerCase()} panel`}
-      </h3>
-      {#if zoneWidgets.length === 0}
-        <p class="fennevia-customize__empty">No widgets in this panel yet.</p>
-      {:else}
-        <ol
-          class="fennevia-customize__list"
-          data-fennevia-customize-zone-list=""
-        >
-          {#each zoneWidgets as widget, index (`${index}-${widget.handle}-${widget.kind}`)}
-            <li class="fennevia-customize__item">
-              <span aria-hidden="true" class="fennevia-customize__item-icon">
-                {#if widget.kind === "separator" || widget.kind === "spacer" || widget.kind === "spring"}
-                  <span class="fennevia-customize__item-space">·</span>
-                {:else}
-                  <ToolbarWidgetGlyph widget={widget} />
-                {/if}
-              </span>
-              <span class="fennevia-customize__item-label"
-                >{widgetDisplayLabel(widget)}</span
-              >
-              <span class="fennevia-customize__item-actions">
-                <button
-                  aria-label={`Move ${widgetDisplayLabel(widget)} earlier`}
-                  class="fennevia-control fennevia-customize__action"
-                  data-fennevia-customize-move="earlier"
-                  disabled={index === 0}
-                  onclick={() => moveWithinZone(index, index - 1)}
-                  title="Move earlier"
-                  type="button">↑</button
-                >
-                <button
-                  aria-label={`Move ${widgetDisplayLabel(widget)} later`}
-                  class="fennevia-control fennevia-customize__action"
-                  data-fennevia-customize-move="later"
-                  disabled={index === zoneWidgets.length - 1}
-                  onclick={() => moveWithinZone(index, index + 1)}
-                  title="Move later"
-                  type="button">↓</button
-                >
-                {#each toolbarZoneNames as zone (zone)}
-                  {#if zone !== selectedZone}
-                    <button
-                      aria-label={`Move ${widgetDisplayLabel(
-                        widget,
-                      )} to the ${zoneLabels[zone].toLowerCase()} panel`}
-                      class="fennevia-control fennevia-customize__action"
-                      data-fennevia-customize-move-zone={zone}
-                      onclick={() => moveToZone(index, zone)}
-                      title={`Move to ${zoneLabels[zone].toLowerCase()}`}
-                      type="button">{zoneLabels[zone].slice(0, 1)}</button
-                    >
-                  {/if}
-                {/each}
-                <button
-                  aria-label={`Remove ${widgetDisplayLabel(widget)}`}
-                  class="fennevia-control fennevia-customize__action"
-                  data-fennevia-customize-remove=""
-                  onclick={() => removeAt(index)}
-                  title="Remove"
-                  type="button">×</button
-                >
-              </span>
-            </li>
-          {/each}
-        </ol>
-      {/if}
-    </section>
-
-    <section aria-label="Available widgets" class="fennevia-customize__section">
       <h3 class="fennevia-customize__heading">Available widgets</h3>
       {#if snapshot.palette.length === 0}
-        <p class="fennevia-customize__empty">
-          Every available widget is already placed.
-        </p>
+        <p class="fennevia-customize__empty">{emptyPaletteNote}</p>
       {:else}
-        <ul class="fennevia-customize__list" data-fennevia-customize-palette="">
+        <ul class="fennevia-customize__grid">
           {#each snapshot.palette as entry (entry.token)}
-            <li class="fennevia-customize__item">
-              <span aria-hidden="true" class="fennevia-customize__item-icon">
-                {#if entry.kind === "special"}
-                  <span class="fennevia-customize__item-space">·</span>
-                {:else}
-                  <ToolbarWidgetGlyph widget={entry} />
-                {/if}
-              </span>
-              <span class="fennevia-customize__item-label">{entry.label}</span>
-              <span class="fennevia-customize__item-actions">
-                <button
-                  aria-label={`Add ${entry.label} to the ${zoneLabels[
-                    selectedZone
-                  ].toLowerCase()} panel`}
-                  class="fennevia-control fennevia-customize__action"
-                  data-fennevia-customize-add={entry.token}
-                  onclick={() => addFromPalette(entry.token)}
-                  title="Add to selected panel"
-                  type="button">+</button
+            <li>
+              <button
+                aria-label={`Add ${entry.label} to the ${addZoneLabel} panel`}
+                class="fennevia-control fennevia-customize__tile"
+                data-fennevia-customize-add={entry.token}
+                draggable="true"
+                ondragend={handlePaletteDragEnd}
+                ondragstart={(event) => handlePaletteDragStart(event, entry)}
+                onkeydown={(event) => handlePaletteKeydown(event, entry)}
+                onclick={() => addFromPalette(entry.token)}
+                title={entry.label}
+                type="button"
+              >
+                <span aria-hidden="true" class="fennevia-customize__item-icon">
+                  {#if entry.kind === "special"}
+                    <span class="fennevia-customize__item-space">·</span>
+                  {:else}
+                    <ToolbarWidgetGlyph widget={entry} />
+                  {/if}
+                </span>
+                <span class="fennevia-customize__tile-label">{entry.label}</span
                 >
-              </span>
+              </button>
             </li>
           {/each}
         </ul>
