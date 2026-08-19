@@ -25,9 +25,11 @@ They reveal through their matching pointer edge or an accessible keyboard/focus
 path, float above content, and share one Fennevia-owned reveal, collision,
 accessibility, cleanup, and glass-design contract.
 
-Only after every required feature passes while Firefox native UI remains visible
-may a reversible per-window `active` gate hide the exact native surfaces with
-verified replacements. Native browser-content infrastructure, OS window
+A reversible per-window `active` gate is the durable hide of exact native
+surfaces after every required feature passes health. ADR-050 may collapse those
+same surfaces at first paint with a self-expiring sheet so the original toolbox
+does not flash; that sheet is not a substitute for the health gate. Native
+browser-content infrastructure, OS window
 controls, permissions, authentication, certificate, extension-install,
 download-safety, dialog, notification, popup, and DevTools behavior remains
 Firefox-owned.
@@ -121,6 +123,10 @@ Completed project-governance foundation:
 - ADR-049: release-only WinForms setup wizard (`FenneviaSetup.exe`) as the
   recommended end-user entry, with on-demand UAC when the selected Firefox
   program directory is not writable.
+- ADR-050: process-scoped self-expiring first-paint native hide so the original
+  toolbox does not paint before `active`; durable hide remains health-gated.
+  Real Firefox cold-start flash, CSS watchdog, and skeleton checks are
+  `not run`.
 
 At active rest, ADR-032/ADR-037 collapse only reviewed native toolbar/sidebar
 geometry and descendants, retain the native caption controls, and add a narrow

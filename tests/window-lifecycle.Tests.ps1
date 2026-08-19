@@ -25,11 +25,13 @@ $runtimeRoot = Join-Path $repositoryRoot "profile\chrome\fennevia\content\runtim
 $loggerPath = Join-Path $runtimeRoot "Logger.sys.mjs"
 $windowManagerPath = Join-Path $runtimeRoot "WindowManager.sys.mjs"
 $runtimePath = Join-Path $runtimeRoot "Runtime.sys.mjs"
+$startupHidePath = Join-Path $runtimeRoot "StartupNativeHide.sys.mjs"
+$startupHideCssPath = Join-Path $runtimeRoot "StartupNativeHide.css"
 $nodeTestPath = Join-Path $repositoryRoot "tests\window-lifecycle.test.mjs"
 $firefoxTestPath = Join-Path $repositoryRoot "tests\firefox-window-lifecycle.mjs"
 $failOpenTestPath = Join-Path $repositoryRoot "tests\firefox-fail-open.Tests.ps1"
 
-foreach ($requiredFile in @($loggerPath, $windowManagerPath, $runtimePath, $nodeTestPath, $firefoxTestPath, $failOpenTestPath)) {
+foreach ($requiredFile in @($loggerPath, $windowManagerPath, $runtimePath, $startupHidePath, $startupHideCssPath, $nodeTestPath, $firefoxTestPath, $failOpenTestPath)) {
     Assert-True -Condition (Test-Path -LiteralPath $requiredFile -PathType Leaf) -Message "A lifecycle source or test file is missing."
 }
 
@@ -59,7 +61,9 @@ foreach ($requiredToken in @(
     'quit-application-granted',
     'windowManager\.start\(\)',
     'windowManager\.stop\(\)',
-    'initializationCount\s*=\s*1'
+    'initializationCount\s*=\s*1',
+    'registerStartupNativeHide',
+    'FENNEVIA_STARTUP_NATIVE_HIDE_REGISTERED'
 )) {
     Assert-True -Condition ($runtimeContent -match $requiredToken) -Message "The process runtime is missing a required singleton or shutdown boundary."
 }

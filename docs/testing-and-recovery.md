@@ -743,8 +743,11 @@ the health phase requires:
 - a literal successful health result before the finite deadline.
 
 The initializer then calls `lifecycle.activate()` exactly once. Its active
-marker is the only state that enables native hiding. A failed activation enters
-the same fail-open disposal path.
+marker is the durable state that enables NativeUi hiding. ADR-050 may collapse
+the same toolbox surfaces before `active` through a process-scoped author
+sheet; that sheet is not a substitute for the health gate. A failed activation
+enters the same fail-open disposal path, which also stops the pending-hide
+selector by setting `data-fennevia-failed` or clearing the window.
 
 If any step fails:
 
@@ -755,7 +758,32 @@ If any step fails:
 5. clear edge holds and timers;
 6. remove style and frame descendants;
 7. report the privacy-safe first causal phase/stack;
-8. leave core native Firefox UI unchanged.
+8. leave core native Firefox UI unchanged. The ADR-050 startup sheet stops
+   matching when `failed` or `suspended` is set, and otherwise self-expires at
+   2,000 ms even if JavaScript never runs again.
+
+### 8.1.1 First-paint native hide
+
+ADR-050 registers `StartupNativeHide.css` as a process `AUTHOR_SHEET` when the
+runtime starts, before delayed-startup window work. The sheet applies only to
+`navigator:browser` `browser.xhtml` roots and only while `active`, `failed`,
+and `native-ui-suspended` are absent. Empty `100%` keyframes restore Firefox
+cascade values after 2,000 ms. Hosts, bridges, and Svelte stay on delayed
+startup.
+
+Until `WindowShell` registers `Ctrl+Alt+Shift+F12`, the CSS deadline is the
+fail-open path for a hung privileged runtime. Safe start and Firefox safe mode
+never import the runtime, so the sheet is never registered.
+
+| Check | Current result |
+| --- | --- |
+| Unit/static register, unregister, timeout lock, fail-open selectors | Implemented |
+| Real Firefox cold-start native toolbox flash | `not run` |
+| Real Firefox CSS 2 s watchdog restore of toolbox geometry | `not run` |
+| Real Firefox Windows pre-XUL skeleton with the pref disabled | `not run` |
+| Real Firefox safe-start / broken AutoConfig still shows native chrome immediately | `not run` for this sheet; historical safe-start evidence remains in the health record |
+
+Evidence: `docs/research/firefox-153-startup-native-hide.md`.
 
 ### 8.2 Emergency fallback
 
@@ -1045,6 +1073,7 @@ of the installed package.
 | Right-edge bookmarks           | `docs/research/firefox-153-bookmarks-surface.md`              |
 | Bottom-edge downloads          | `docs/research/firefox-153-downloads-surface.md`              |
 | Content-only activation        | `docs/research/firefox-153-content-only-activation.md`        |
+| First-paint native hide        | `docs/research/firefox-153-startup-native-hide.md`            |
 | MVP hardening/update rehearsal | `docs/research/firefox-153-mvp-hardening-update-rehearsal.md` |
 | Persisted session restore      | `docs/research/firefox-153-session-restore-rehearsal.md`      |
 | Release packaging/distribution | `docs/research/fennevia-release-packaging.md`                 |

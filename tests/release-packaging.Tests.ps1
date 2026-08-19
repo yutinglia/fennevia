@@ -109,7 +109,7 @@ try {
 
     $validation = Test-FenneviaReleaseTree -PackageRoot $first.PackageRoot
     Assert-True -Condition $validation.Passed -Message "The staged package must pass its strict release policy."
-    Assert-Equal -Actual $validation.FileCount -Expected 31 -Message "The strict release tree must have the reviewed file count."
+    Assert-Equal -Actual $validation.FileCount -Expected 33 -Message "The strict release tree must have the reviewed file count."
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\fennevia.ps1") -PathType Leaf) -Message "The release tree must include the console entry."
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\fennevia-gui.ps1") -PathType Leaf) -Message "The release tree must include the GUI entry."
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\lib\FenneviaGui.psm1") -PathType Leaf) -Message "The release tree must include the GUI module."

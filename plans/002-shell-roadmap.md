@@ -31,7 +31,9 @@ Validated baseline as of 2026-08-19:
 - bounded lazy Firefox Places bookmarks in the right surface;
 - event-driven anonymous aggregate Downloads status in the bottom surface;
 - exact Firefox native DOM and complete reveal/fallback paths retained;
-- production enters `active` only after the complete health gate.
+- production enters `active` only after the complete health gate;
+- ADR-050 first-paint native hide is implemented in source; the real Firefox
+  cold-start flash, CSS watchdog, and skeleton checks are `not run`.
 
 ADR-037's single-line toolbar/caption/gutter enhancement, ADR-042's
 host-anchored Firefox panel placement, and ADR-043's decorative gutter

@@ -36,7 +36,7 @@ AutoConfig performs only these tasks:
 2. Resolve the active profile's project manifest through `UChrm`.
 3. Register the Chrome Registry manifest through `nsIComponentRegistrar.autoRegister()`.
 4. Resolve and import one privileged `Bootstrap.sys.mjs` entry.
-5. Validate the entry contract and report success, duplicate evaluation, or fatal failure without hiding native UI.
+5. Validate the entry contract and report success, duplicate evaluation, or fatal failure without hiding native UI. The first-paint hide sheet is registered only after this entry starts the process runtime (ADR-050).
 
 It does not implement script discovery, hot reload, metadata parsing, sandbox abstraction, frontend UI, or application logic.
 
@@ -76,9 +76,15 @@ The process-global runtime owns:
 
 - a `Symbol.for()` singleton and one idempotent start/stop transition;
 - registration of the application-shutdown observer;
+- the ADR-050 first-paint native-hide author sheet, registered before
+  `WindowManager.start()` and unregistered on stop or start failure;
 - one browser `WindowManager`;
 - global version and diagnostic metadata;
 - aggregate lifecycle counts that contain no native handles or browsing data.
+
+Host, bridge, and Svelte initialization remain on
+`browser-delayed-startup-finished`. Only "do not paint the native topbar"
+moves earlier.
 
 The `WindowManager` registers
 `browser-delayed-startup-finished` before enumerating existing
@@ -521,7 +527,7 @@ Use this priority order:
 3. Do not apply unscoped rules to `button`, `input`, `*`, or other generic selectors.
 4. If Tailwind is adopted, disable Preflight and use a project-specific prefix.
 5. Changes to retained native UI belong only in the isolated native-UI controller stylesheet; every exact rule requires a documented reason and current source reference.
-6. Use agent or author sheets only when an ordinary scoped stylesheet cannot solve a demonstrated problem.
+6. Use agent or author sheets only when an ordinary scoped stylesheet cannot solve a demonstrated problem. ADR-050 is that case for first paint: Firefox 153/154 no longer parse chrome.manifest `style` overlays, so one `@-moz-document`-scoped `AUTHOR_SHEET` is registered at runtime start and unregistered on stop.
 7. Prefer text rendering and safe property assignment over unsanitized HTML.
 
 The issue #31 result keeps Svelte component CSS extracted at build time. Every
@@ -594,20 +600,30 @@ The implemented root state attributes are:
 [data-fennevia-state="created|mounted|healthy|active|failed"]
 ```
 
-Only a healthy shell may become active. Native-UI hiding rules must depend on
-`data-fennevia-active`. A bootstrap, bridge, CSS, or frontend failure must
-prevent or remove that attribute. `disposed` is controller state, not a retained
+Only a healthy shell may become active. Durable native-UI hiding rules must
+depend on `data-fennevia-active`. A bootstrap, bridge, CSS, or frontend failure
+must prevent or remove that attribute. ADR-050 may collapse the same toolbox
+surfaces before `active` through a process-scoped, 2,000 ms self-expiring
+author sheet so first paint does not show the native topbar; that sheet is not
+a substitute for the health gate. `disposed` is controller state, not a retained
 DOM marker: disposal removes every project state attribute. Safe start exits in
 AutoConfig before a browser-window controller exists and therefore deliberately
-sets no DOM attribute.
+sets no DOM attribute and never registers the startup hide sheet.
 
-ADR-032, as extended by ADR-037, ADR-038, and ADR-042, implements the gate with a seven-rule
-project-owned style and two temporary root markers:
+ADR-032, as extended by ADR-037, ADR-038, ADR-042, and ADR-050, implements the
+gate with a seven-rule
+project-owned style, a process-scoped first-paint author sheet, and two temporary root markers:
 
 ```text
 [data-fennevia-native-ui-revealed]
 [data-fennevia-native-ui-suspended]
 ```
+
+The startup sheet uses a 2,000 ms `step-end` animation whose empty `100%`
+keyframe restores Firefox cascade values if `active` never arrives. Emergency
+`Ctrl+Alt+Shift+F12` is still registered by the window shell before durable
+hide; until that binding exists, the CSS deadline is the fail-open path.
+Registration failure of the sheet does not fail the runtime.
 
 At active rest, the toolbox and horizontal toolbar geometry collapse together
 with exact non-caption content, the bookmarks toolbar, and exact native sidebar
@@ -775,7 +791,7 @@ profile/chrome/fennevia/
   chrome.manifest
   content/
     Bootstrap.sys.mjs
-    runtime/                 # authored privileged lifecycle/health/native UI
+    runtime/                 # authored privileged lifecycle/health/native UI/first-paint hide
     firefox/                 # generated private bridge boundary
     shell/                   # generated Svelte IIFE, CSS, and notice
 
@@ -801,6 +817,8 @@ profile/chrome/fennevia/content/
     Logger.sys.mjs
     NativeUi.sys.mjs
     Runtime.sys.mjs
+    StartupNativeHide.css
+    StartupNativeHide.sys.mjs
     WindowManager.sys.mjs
     WindowShell.sys.mjs
   shell/
@@ -809,12 +827,12 @@ profile/chrome/fennevia/content/
     THIRD_PARTY_NOTICES.txt
 ```
 
-All 12 profile files (the Chrome manifest plus the 11 files below `content/`)
+All 14 profile files (the Chrome manifest plus the 13 files below `content/`)
 are exact package artifacts with committed hashes. The
 bridge ESM and three shell files are reproducible only from `src/` and build
 configuration; the runtime modules remain reviewed source. The source/build
 boundaries and per-window execution decisions are recorded in ADR-022,
-ADR-023, and ADR-026.
+ADR-023, ADR-026, and ADR-050.
 
 ## 12. Dependency direction
 

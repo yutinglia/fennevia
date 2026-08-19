@@ -90,10 +90,13 @@ of inventing a new architecture.
 9. Do not delete, reparent, or replace core `browser.xhtml` DOM, tab-content
    infrastructure, command sets, popup sets, permission UI, or browser-content
    containers.
-10. Native visible UI may be hidden only after every required custom surface and
-    recovery path passes explicit health checks while native UI is still
-    visible. Visibility must be controlled by a reversible per-window root-state
-    gate.
+10. Native visible UI may be collapsed at first paint by the process-scoped
+    startup hide sheet. That sheet is scoped to `navigator:browser`,
+    self-expires at the health deadline, and yields immediately to `failed`,
+    `suspended`, emergency fallback, and safe start. Durable hiding after that
+    deadline still requires every required custom surface and recovery path to
+    pass health, and remains a reversible per-window `data-fennevia-active`
+    gate. Do not delete native DOM.
 11. Startup or runtime failure must fail open: native Firefox UI remains visible
     or returns immediately.
 12. Every observer, event listener, timer, progress listener, stylesheet,

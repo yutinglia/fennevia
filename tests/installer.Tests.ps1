@@ -223,6 +223,8 @@ function Copy-TestPackage {
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/Logger.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/NativeUi.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/Runtime.sys.mjs" },
+        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/StartupNativeHide.css" },
+        [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/StartupNativeHide.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/WindowManager.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/runtime/WindowShell.sys.mjs" },
         [pscustomobject]@{ Scope = "profile"; Path = "chrome/fennevia/content/shell/ShellApp.js" },
@@ -440,6 +442,8 @@ try {
         "chrome\fennevia\content\runtime\Logger.sys.mjs",
         "chrome\fennevia\content\runtime\NativeUi.sys.mjs",
         "chrome\fennevia\content\runtime\Runtime.sys.mjs",
+        "chrome\fennevia\content\runtime\StartupNativeHide.css",
+        "chrome\fennevia\content\runtime\StartupNativeHide.sys.mjs",
         "chrome\fennevia\content\runtime\WindowManager.sys.mjs",
         "chrome\fennevia\content\runtime\WindowShell.sys.mjs",
         ".fennevia\ownership.json"
