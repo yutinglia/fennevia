@@ -29,7 +29,9 @@ controls, private-window rules, and review triggers.
 ## 2. Current security baseline
 
 Current validated public prerelease package: `0.10.0-beta.1` on Firefox 153.0.4
-BuildID 20260810162159 for Windows x64.
+BuildID 20260810162159 and owner-confirmed Firefox 154.0 BuildID 20260812182057
+for Windows x64. Later Firefox majors may be installed after an explicit
+warning; that is not a support promise.
 
 Implemented controls:
 
@@ -59,8 +61,8 @@ Implemented controls:
   and rollback;
 - deterministic versioned release staging with an exact file/digest manifest,
   separate ZIP checksum, sensitive-data/local-path scan, annotated-tag gate,
-  draft-asset digest verification, and explicit Firefox compatibility
-  enforcement.
+  draft-asset digest verification, and Firefox 153+ compatibility
+  enforcement with an explicit untested-version warning.
 
 Not completed by this development baseline: a formal independent security
 audit, a stable/daily-driver support promise, signing, attestations, an SBOM,
@@ -683,9 +685,9 @@ Install, update, repair, disable, enable, and uninstall must:
   metadata is wholly absent, every present owned file still matches, and every
   removal remains ownership-listed or an empty recorded directory;
 - validate a release's strict whole-tree inventory/digests before planning,
-  require exact Firefox version/BuildID compatibility for install, update,
-  repair, and enable, and require enable to use ownership's exact source
-  manifest;
+  require Firefox major version 153 or newer for install, update, repair, and
+  enable, warn that only 153 and 154 are tested, and require enable to use
+  ownership's exact source manifest;
 - remove only ownership-proven files/directories;
 - never silently choose a default or daily-use profile;
 - leave unrelated profile content untouched.

@@ -8,8 +8,10 @@ floating edge panels that stay hidden until you need them.
 
 > [!WARNING]
 > Fennevia is a public **prerelease**, not a stable daily-driver product. It runs
-> privileged code and depends on unsupported Firefox internals. Install it only
-> on the exact supported Firefox build, use a dedicated Firefox profile, and
+> privileged code and depends on unsupported Firefox internals. It has been
+> tested only with Firefox **153** and **154**. Later Firefox versions may
+> break the shell. If you confirm install on a newer version, there is **no
+> promise** that everything will work. Use a dedicated Firefox profile, and
 > keep the downloaded release archive so you can disable or remove it later.
 
 ## What Fennevia changes
@@ -39,19 +41,21 @@ interface when a feature is unsupported or recovery is needed.
 
 The first public prerelease is
 [`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1).
-Its supported environment is intentionally narrow:
+Its tested environment is intentionally narrow:
 
-| Requirement      | Supported value                        |
+| Requirement      | Tested value                           |
 | ---------------- | -------------------------------------- |
 | Operating system | Windows x64                            |
-| Firefox          | Stock Firefox 153.0.4, release channel |
-| Firefox Build ID | `20260810162159`                       |
+| Firefox          | Stock Firefox 153.0.4 and 154.0, release channel |
+| Firefox Build ID | `20260810162159` (153.0.4), `20260812182057` (154.0) |
 | Package          | `fennevia-0.10.0-beta.1-windows.zip`   |
 
-Install, update, repair, and re-enable are blocked when the Firefox version or
-Build ID does not match. Disable and uninstall remain available for recovery
-after a Firefox update. Linux, macOS, Firefox ESR, Beta, Nightly, and newer or
-older Firefox builds are not supported by this release.
+Install, update, repair, and re-enable reject Firefox older than 153. Firefox
+153, 154, and newer majors may be installed after the installer warning: only
+153 and 154 are tested, later versions may break the shell, and confirming
+install does not promise that everything will work. Disable and uninstall
+remain available for recovery. Linux, macOS, Firefox ESR, Beta, and Nightly
+are not supported by this release.
 
 Installing the prebuilt release does **not** require Node.js, npm, or building
 Firefox from source.
@@ -101,7 +105,9 @@ pwsh -NoProfile -File .\scripts\fennevia.ps1
 Select `firefox.exe` and one registered profile **by name**. The console
 redraws in place and accepts keyboard or mouse input; it does not print a
 new menu after every key. Fennevia never preselects Firefox's default
-profile. Review the redacted plan, then confirm.
+profile. Review the Firefox 153/154 testing warning, then the redacted plan,
+then confirm. Confirming install on a newer Firefox is not a promise that
+the shell will keep working.
 
 Do not post your real profile path in an issue or public log. The scripted
 equivalent is:
@@ -156,9 +162,10 @@ delete unknown files from the Firefox program or profile.
 ## Important limitations
 
 - Fennevia uses Firefox internals that Mozilla can change without notice.
-- A normal Firefox update can move your installation outside the supported
-  build. Leave Fennevia disabled or uninstall it until a compatible release is
-  available.
+- A normal Firefox update can move your installation onto an untested build.
+  Later versions may break the shell. You may keep using Fennevia after the
+  installer warning, or leave it disabled / uninstall it. Confirming install
+  is not a support promise.
 - There is no automatic updater, code signing, build attestation, or completed
   independent security audit.
 - The current release is Windows-only and is not presented as a stable support

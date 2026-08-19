@@ -398,6 +398,59 @@ function Invoke-FenneviaConsoleHook {
     return & $Hooks[$Name] @Arguments
 }
 
+function Get-FenneviaConsoleFirefoxSupportWarning {
+    [CmdletBinding()]
+    param(
+        [AllowNull()]
+        [object] $Plan
+    )
+
+    $testedText = "153 and 154"
+    $kind = ""
+    $majors = "153,154"
+    $warning = "Fennevia is only tested on Firefox 153 and 154. Later Firefox versions may break the shell. Confirming install does not promise that everything will work."
+    if ($null -ne $Plan) {
+        if ($null -ne $Plan.PSObject.Properties["TestedFirefoxMajors"] -and -not [string]::IsNullOrWhiteSpace([string] $Plan.TestedFirefoxMajors)) {
+            $majors = [string] $Plan.TestedFirefoxMajors
+            $parts = @(
+                $majors.Split(",") |
+                    ForEach-Object { $_.Trim() } |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            )
+            if ($parts.Count -eq 1) {
+                $testedText = [string] $parts[0]
+            }
+            elseif ($parts.Count -eq 2) {
+                $testedText = "$($parts[0]) and $($parts[1])"
+            }
+            elseif ($parts.Count -gt 2) {
+                $head = $parts[0..($parts.Count - 2)] -join ", "
+                $testedText = "$head, and $($parts[$parts.Count - 1])"
+            }
+            $warning = "Fennevia is only tested on Firefox $testedText. Later Firefox versions may break the shell. Confirming install does not promise that everything will work."
+        }
+        elseif ($null -ne $Plan.PSObject.Properties["FirefoxSupportWarning"] -and -not [string]::IsNullOrWhiteSpace([string] $Plan.FirefoxSupportWarning)) {
+            $warning = [string] $Plan.FirefoxSupportWarning
+        }
+        if ($null -ne $Plan.PSObject.Properties["CompatibilityKind"] -and -not [string]::IsNullOrWhiteSpace([string] $Plan.CompatibilityKind)) {
+            $kind = [string] $Plan.CompatibilityKind
+        }
+    }
+
+    $lines = New-Object "Collections.Generic.List[string]"
+    $lines.Add("event=console.firefox-support-warning")
+    $lines.Add("testedFirefox=$majors")
+    if (-not [string]::IsNullOrWhiteSpace($kind)) {
+        $lines.Add("compatibilityKind=$kind")
+    }
+    $lines.Add("warning=$warning")
+    return [pscustomobject]@{
+        Lines = $lines.ToArray()
+        Title = "Tested only on Firefox $testedText. Continue with no working promise?"
+        Warning = $warning
+    }
+}
+
 function Read-FenneviaConsoleConfirmation {
     [CmdletBinding()]
     param(
@@ -530,6 +583,16 @@ function Invoke-FenneviaConsolePackageFlow {
     Invoke-FenneviaConsoleHook -Hooks $Hooks -Name "Write" -Arguments @(, $planLines)
     if ([int] $plan.PlannedMutationCount -eq 0) {
         return
+    }
+
+    if ($Action -in @("Install", "Update", "Repair", "Enable")) {
+        $supportWarning = Get-FenneviaConsoleFirefoxSupportWarning -Plan $plan
+        Invoke-FenneviaConsoleHook -Hooks $Hooks -Name "Write" -Arguments @(, $supportWarning.Lines)
+        $acknowledged = Read-FenneviaConsoleConfirmation -QuestionId "confirm-firefox-support" -Title $supportWarning.Title -Reader $Reader
+        if (-not $acknowledged) {
+            Invoke-FenneviaConsoleHook -Hooks $Hooks -Name "Write" -Arguments @(, @("event=console.cancelled action=$($Action.ToLowerInvariant()) reason=firefox-support-unacknowledged"))
+            return
+        }
     }
 
     $confirmed = Read-FenneviaConsoleConfirmation -QuestionId "confirm-plan" -Title "Apply the displayed $Action plan?" -Reader $Reader
@@ -839,6 +902,7 @@ function Invoke-FenneviaConsole {
 }
 
 Export-ModuleMember -Function @(
+    "Get-FenneviaConsoleFirefoxSupportWarning",
     "Get-FenneviaConsoleKind",
     "Get-FenneviaConsoleMenuItems",
     "Invoke-FenneviaConsole",

@@ -34,9 +34,12 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-16, public prerelease package `0.10.0-beta.1` is published and
-validated on Firefox 153.0.4 BuildID 20260810162159 for Windows x64 in an
-isolated copied Firefox program and marker-owned development profile.
+As of 2026-08-19, public prerelease package `0.10.0-beta.1` remains published
+for Windows x64. Validated evidence is Firefox 153.0.4 BuildID 20260810162159
+and owner-confirmed ordinary runtime on Firefox 154.0 BuildID 20260812182057.
+The installer accepts Firefox 153 and newer after an explicit warning that only
+153 and 154 are tested. See
+`docs/research/firefox-154-stable-transition.md` and ADR-048.
 
 Completed:
 
@@ -108,9 +111,10 @@ Completed project-governance foundation:
 - #18: MPL-2.0 project/inbound license, generated/installed artifact treatment,
   third-party provenance source of truth, and distribution checklist.
 - #39: deterministic versioned Windows release staging, exact source and file
-  manifest, registered-profile release mode, strict Firefox build allowlist,
+  manifest, registered-profile release mode, Firefox compatibility records,
   checksum, annotated-tag rehearsal, verify-before-publish GitHub workflow, and
-  independently reverified public `v0.10.0-beta.1` prerelease.
+  independently reverified public `v0.10.0-beta.1` prerelease. ADR-048 later
+  relaxed the exact BuildID install gate to Firefox 153+ with a warning.
 - #57: PowerShell console for release install/update/recovery and development
   environment setup, launch, and teardown, without changing the installer
   transaction contract.
@@ -157,7 +161,9 @@ claim.
 - A documented security, privacy, dependency, logging, resource-exposure,
   installation, testing, and provenance baseline for system-principal code.
 - At least one real Firefox stable transition handled with a complete
-  before/after record when such an update becomes available.
+  before/after record when such an update becomes available. Done for
+  153.0.4 → 154.0 ordinary runtime on 2026-08-19; ADR-048 then relaxed the
+  installer gate to Firefox 153+ with an explicit untested-version warning.
 
 ## 4. Non-goals
 
@@ -623,11 +629,14 @@ Deliverables:
 Gate: an agent unfamiliar with the implementation can install, start, diagnose,
 fail open, update, disable, and uninstall Fennevia from repository documentation.
 
-Gate passed on the Firefox 153.0.4 same-build rehearsal. No newer stable was
-available on 2026-08-16, so the first real stable transition remains explicitly
-not run and must use `docs/firefox-update-workflow.md` when available. Evidence:
-ADR-033/ADR-034 and
-`docs/research/firefox-153-mvp-hardening-update-rehearsal.md`.
+Gate passed on the Firefox 153.0.4 same-build rehearsal. The first real
+stock-stable transition to Firefox 154.0 BuildID 20260812182057 is recorded in
+`docs/research/firefox-154-stable-transition.md` from owner-confirmed ordinary
+runtime on 2026-08-19; the full update-workflow mass matrix remains `not run`.
+ADR-048 relaxes Install/Update/Repair/Enable to Firefox 153 and newer with an
+explicit no-promise warning. Evidence: ADR-033/ADR-034/ADR-048,
+`docs/research/firefox-153-mvp-hardening-update-rehearsal.md`, and
+`docs/research/firefox-154-stable-transition.md`.
 
 Post-gate issue #46 additionally passed a real clean-shutdown SessionStore
 rehearsal across separate Firefox processes. One fixed selected tab, one pinned

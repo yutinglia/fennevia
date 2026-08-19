@@ -43,8 +43,12 @@ of inventing a new architecture.
 - Initial support targets the latest Firefox stable available during
   implementation and a Windows-first development environment.
 - Current validated evidence is public prerelease package `0.10.0-beta.1` on
-  Firefox 153.0.4 BuildID `20260810162159` for Windows x64. This is a narrow
-  prerelease support boundary, not a stable or cross-platform support promise.
+  Firefox 153.0.4 BuildID `20260810162159` and owner-confirmed ordinary runtime
+  on Firefox 154.0 BuildID `20260812182057` for Windows x64. The installer
+  accepts Firefox 153 and newer after an explicit warning that only 153 and
+  154 are tested and that later versions may break with no working promise.
+  This is a narrow prerelease support boundary, not a stable or cross-platform
+  support promise.
 - Do not add branches, polyfills, or compatibility hacks for old Firefox
   versions unless an issue explicitly requires them.
 - Firefox internal APIs are intentionally used, but those dependencies must be

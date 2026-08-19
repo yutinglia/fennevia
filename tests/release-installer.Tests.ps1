@@ -280,17 +280,28 @@ try {
     $sameReleaseUpdate = Invoke-FenneviaPackageAction -Action Update -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot -DryRun
     Assert-Equal -Actual $sameReleaseUpdate.Status -Expected "already-current" -Message "Updating from the same extracted release must be a deterministic no-op."
 
-    $installedShell = Join-Path $registeredTarget.ProfileRoot "chrome\fennevia\content\shell\ShellApp.js"
-    Remove-Item -LiteralPath $installedShell -Force
     [void] (Invoke-FenneviaPackageAction -Action Disable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot)
-    $unsupportedIni = @(
+    $newerIni = @(
         "[App]",
         "Name=Firefox",
         "Version=154.0",
-        "BuildID=20260901000000"
+        "BuildID=20260812182057"
     ) -join [Environment]::NewLine
-    Write-TestFile -Path (Join-Path $registeredTarget.ProgramRoot "application.ini") -Content ($unsupportedIni + [Environment]::NewLine)
-    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_FIREFOX_UNSUPPORTED" -Message "Enable must reject a Firefox build outside the release allowlist." -Operation {
+    Write-TestFile -Path (Join-Path $registeredTarget.ProgramRoot "application.ini") -Content ($newerIni + [Environment]::NewLine)
+    $enableOn154 = Invoke-FenneviaPackageAction -Action Enable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot -DryRun
+    Assert-Equal -Actual $enableOn154.CompatibilityKind -Expected "tested" -Message "Enable on Firefox 154.0 must be classified as tested."
+    Assert-True -Condition ($enableOn154.FirefoxSupportWarning -match "153 and 154") -Message "Enable plans must carry the tested-version support warning."
+    $enabledOn154 = Invoke-FenneviaPackageAction -Action Enable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot
+    Assert-True -Condition $enabledOn154.Applied -Message "Enable must succeed on owner-confirmed Firefox 154.0."
+    [void] (Invoke-FenneviaPackageAction -Action Disable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot)
+    $olderIni = @(
+        "[App]",
+        "Name=Firefox",
+        "Version=152.0",
+        "BuildID=20260801000000"
+    ) -join [Environment]::NewLine
+    Write-TestFile -Path (Join-Path $registeredTarget.ProgramRoot "application.ini") -Content ($olderIni + [Environment]::NewLine)
+    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_FIREFOX_UNSUPPORTED" -Message "Enable must reject Firefox older than the tested baseline." -Operation {
         Invoke-FenneviaPackageAction -Action Enable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot -DryRun | Out-Null
     }
     $disabledPreference = Join-Path $registeredTarget.ProgramRoot "defaults\pref\fennevia.js.disabled"
@@ -301,11 +312,19 @@ try {
     Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $registeredTarget.ProgramRoot ".fennevia"))) -Message "Uninstall must remain available on an unsupported Firefox build."
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $registeredTarget.ProfileRoot "chrome\unrelated.css") -PathType Leaf) -Message "Release uninstall must preserve unrelated profile chrome content."
 
-    $unsupportedTarget = New-TestFirefoxTarget -Name "unsupported" -Version "153.0.4" -BuildId "20260810162158" -RegisterProfile
-    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_FIREFOX_UNSUPPORTED" -Message "Install must reject an unlisted Firefox BuildID before mutation." -Operation {
+    $unsupportedTarget = New-TestFirefoxTarget -Name "unsupported" -Version "152.0" -BuildId "20260801000000" -RegisterProfile
+    Assert-ThrowsCode -Code "FENNEVIA_INSTALL_FIREFOX_UNSUPPORTED" -Message "Install must reject Firefox older than the tested baseline before mutation." -Operation {
         Invoke-FenneviaPackageAction -Action Install -FirefoxPath $unsupportedTarget.FirefoxPath -ProfilePath $unsupportedTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot -DryRun | Out-Null
     }
     Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $unsupportedTarget.ProgramRoot ".fennevia"))) -Message "Unsupported-build rejection must occur before any installer mutation."
+
+    $newerTarget = New-TestFirefoxTarget -Name "untested-newer" -Version "155.0" -BuildId "20260901000000" -RegisterProfile
+    $newerPlan = Invoke-FenneviaPackageAction -Action Install -FirefoxPath $newerTarget.FirefoxPath -ProfilePath $newerTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot -DryRun
+    Assert-Equal -Actual $newerPlan.CompatibilityKind -Expected "untested-newer" -Message "Firefox 155 must be installable as untested-newer."
+    Assert-True -Condition ($newerPlan.FirefoxSupportWarning -match "does not promise") -Message "Untested Firefox plans must warn that confirming install is not a working promise."
+    $newerInstall = Invoke-FenneviaPackageAction -Action Install -FirefoxPath $newerTarget.FirefoxPath -ProfilePath $newerTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot
+    Assert-True -Condition $newerInstall.Applied -Message "Install must apply on Firefox newer than the tested majors after the relaxed gate."
+    [void] (Invoke-FenneviaPackageAction -Action Uninstall -FirefoxPath $newerTarget.FirefoxPath -ProfilePath $newerTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot)
 
     $unregisteredTarget = New-TestFirefoxTarget -Name "unregistered"
     Assert-ThrowsCode -Code "FENNEVIA_INSTALL_UNREGISTERED_PROFILE" -Message "Registered mode must not adopt an unregistered profile without ownership." -Operation {
@@ -365,7 +384,7 @@ try {
         Invoke-FenneviaPackageAction -Action Install -FirefoxPath $tamperTarget.FirefoxPath -ProfilePath $tamperTarget.ProfileRoot -ProfileMode Registered -PackageRoot $tamperedPackage -DryRun | Out-Null
     }
 
-    Write-Output "PASS: registered-profile release install, exact Firefox compatibility, survivor recovery/uninstall, repair, and tamper tests."
+    Write-Output "PASS: registered-profile release install, major-version Firefox compatibility, survivor recovery/uninstall, repair, and tamper tests."
 }
 finally {
     Remove-Module FenneviaInstaller, FenneviaRelease -ErrorAction SilentlyContinue
