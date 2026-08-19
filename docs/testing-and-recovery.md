@@ -596,8 +596,8 @@ The following are `not run`, not passed: real mirroring of an installed
 extension (icon, badge, popup), customize-mode pin/unpin round-trips,
 extension install/removal/disable while a window is open, private-window
 presentation of non-private-allowed extensions, second-window independence,
-badge updates from live extensions, and widget-zone overflow scrolling on
-narrow layouts. Implementation/source evidence is in
+badge updates from live extensions, and overflow scrolling inside the
+flexible top widget zone on narrow layouts. Implementation/source evidence is in
 `docs/research/firefox-153-toolbar-widget-mirror.md` and
 `plans/005-topbar-widget-mirror.md`.
 
