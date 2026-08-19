@@ -80,6 +80,12 @@ New-Item -ItemType Directory -Path $canonicalTestRoot | Out-Null
 
 Import-Module (Join-Path $repositoryRoot "scripts\lib\FenneviaRelease.psm1") -Force
 try {
+    $roslynCsc = Get-FenneviaRoslynCscPath
+    if (-not [string]::IsNullOrWhiteSpace([string] $roslynCsc)) {
+        Assert-True -Condition (Test-Path -LiteralPath $roslynCsc -PathType Leaf) -Message "Discovered Roslyn csc.exe must exist."
+        Assert-Equal -Actual ([IO.Path]::GetFileName($roslynCsc)) -Expected "csc.exe" -Message "Roslyn discovery must return csc.exe."
+    }
+
     $sourceCommit = "0123456789abcdef0123456789abcdef01234567"
     $first = New-FenneviaReleaseArtifacts `
         -RepositoryRoot $repositoryRoot `

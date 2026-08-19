@@ -1033,8 +1033,9 @@ function Get-FenneviaRoslynCscPath {
     $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
     if (Test-Path -LiteralPath $vswhere -PathType Leaf) {
         $found = @(
-            & $vswhere -latest -products * -prerelease -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\Roslyn\csc.exe"
-        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            & $vswhere -latest -products * -prerelease -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\Roslyn\csc.exe" |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        )
         if ($found.Count -gt 0) {
             $candidate = [IO.Path]::GetFullPath([string] $found[0])
             if (Test-Path -LiteralPath $candidate -PathType Leaf) {
@@ -1382,6 +1383,7 @@ function New-FenneviaReleaseArtifacts {
 
 Export-ModuleMember -Function @(
     "Get-FenneviaReleaseFirefoxCompatibility",
+    "Get-FenneviaRoslynCscPath",
     "New-FenneviaReleaseArtifacts",
     "New-FenneviaSetupExecutable",
     "Test-FenneviaReleaseChecksum",
