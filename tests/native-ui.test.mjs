@@ -9,6 +9,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import {
   createNativeUiController,
   nativeUiAttributes,
+  nativeUiChromeBackgroundProperty,
   nativeUiHideDelayMs,
   nativeUiStyleId,
 } from "../profile/chrome/fennevia/content/runtime/NativeUi.sys.mjs";
@@ -29,6 +30,20 @@ class FakeElement {
     this._children = [];
     this._listeners = new Map();
     this._textContent = "";
+    this.style = {
+      _properties: new Map(),
+      setProperty(name, value) {
+        this._properties.set(name, String(value));
+      },
+      removeProperty(name) {
+        const previous = this._properties.get(name) ?? "";
+        this._properties.delete(name);
+        return previous;
+      },
+      getPropertyValue(name) {
+        return this._properties.get(name) ?? "";
+      },
+    };
     if (localName === "style") {
       this.sheet = { cssRules: [] };
     }
@@ -564,6 +579,7 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
     /:is\(#toolbar-menubar, #TabsToolbar, #nav-bar\)\s+>\s+\.titlebar-buttonbox-container/u,
   );
   assert.match(style.textContent, /padding: 7px !important/u);
+  assert.match(style.textContent, /--fennevia-chrome-background/u);
   assert.match(
     style.textContent,
     /border-radius: var\(--chrome-block-radius, 4px\) !important/u,
@@ -600,6 +616,47 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
   assert.equal(fixture.window.listenerCount(), 0);
   assert.equal(fixture.window.pendingAnimationFrameCount(), 0);
   assert.equal(fixture.window.pendingTimerCount(), 0);
+});
+
+test("native UI applies a bounded chrome background token on the window root", () => {
+  const fixture = createFixture();
+  const errors = [];
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: (error) => errors.push(error),
+  });
+  const root = fixture.document.documentElement;
+
+  assert.equal(controller.setChromeBackground("#141A23"), true);
+  assert.equal(
+    root.style.getPropertyValue(nativeUiChromeBackgroundProperty),
+    "#141a23",
+  );
+  assert.equal(controller.setChromeBackground("not-a-color"), true);
+  assert.equal(
+    root.style.getPropertyValue(nativeUiChromeBackgroundProperty),
+    "",
+  );
+  assert.equal(controller.setChromeBackground("#3b82f6"), true);
+  assert.equal(
+    root.style.getPropertyValue(nativeUiChromeBackgroundProperty),
+    "#3b82f6",
+  );
+  assert.equal(controller.setChromeBackground(""), true);
+  assert.equal(
+    root.style.getPropertyValue(nativeUiChromeBackgroundProperty),
+    "",
+  );
+
+  assert.equal(controller.setChromeBackground("#111827"), true);
+  assert.equal(controller.dispose(), true);
+  assert.equal(
+    root.style.getPropertyValue(nativeUiChromeBackgroundProperty),
+    "",
+  );
+  assert.equal(controller.setChromeBackground("#ffffff"), false);
+  assert.deepEqual(errors, []);
 });
 
 test("activation blurs leftover Urlbar focus so native chrome can rest", () => {

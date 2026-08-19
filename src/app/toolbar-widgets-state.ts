@@ -53,11 +53,25 @@ export type ToolbarStyleDensity = (typeof toolbarStyleDensities)[number];
 export const toolbarStyleBounds = Object.freeze({
   blur: Object.freeze({ max: 32, min: 0 }),
   fontSize: Object.freeze({ max: 14, min: 11 }),
+  motion: Object.freeze({ max: 400, min: 0 }),
   radius: Object.freeze({ max: 16, min: 0 }),
+  saturation: Object.freeze({ max: 180, min: 100 }),
+  shadow: Object.freeze({ max: 100, min: 0 }),
   surfaceOpacity: Object.freeze({ max: 100, min: 50 }),
 });
 
 export const toolbarAccentPattern = /^#[0-9a-f]{6}$/u;
+export const toolbarStyleColorInputPattern = /^#[0-9A-Fa-f]{6}$/u;
+
+export const toolbarStyleColorKeys = Object.freeze([
+  "accent",
+  "border",
+  "chromeBackground",
+  "surface",
+  "text",
+] as const);
+
+export type ToolbarStyleColorKey = (typeof toolbarStyleColorKeys)[number];
 
 const LABEL_MAX_LENGTH = 200;
 const TOOLTIP_MAX_LENGTH = 300;
@@ -135,10 +149,17 @@ export type ToolbarPaletteEntrySnapshot = Readonly<{
 export type ToolbarStyleSnapshot = Readonly<{
   accent: string;
   blur: number;
+  border: string;
+  chromeBackground: string;
   density: ToolbarStyleDensity;
   fontSize: number;
+  motion: number;
   radius: number;
+  saturation: number;
+  shadow: number;
+  surface: string;
   surfaceOpacity: number;
+  text: string;
   theme: ToolbarStyleTheme;
 }>;
 
@@ -311,10 +332,17 @@ export function createDefaultToolbarStyle(): ToolbarStyleSnapshot {
   return Object.freeze({
     accent: "",
     blur: 18,
+    border: "",
+    chromeBackground: "",
     density: "cozy" as const,
     fontSize: 12,
+    motion: 180,
     radius: 4,
+    saturation: 145,
+    shadow: 50,
+    surface: "",
     surfaceOpacity: 94,
+    text: "",
     theme: "auto" as const,
   });
 }
@@ -328,21 +356,59 @@ const isBoundedStyleNumber = (
   value >= bounds.min &&
   value <= bounds.max;
 
-const isToolbarAccent = (value: unknown): value is string =>
-  typeof value === "string" &&
-  (value === "" || toolbarAccentPattern.test(value));
+const toolbarStyleColorKeySet = new Set<string>(toolbarStyleColorKeys);
+
+export function isToolbarStyleColorKey(
+  candidate: unknown,
+): candidate is ToolbarStyleColorKey {
+  return (
+    typeof candidate === "string" && toolbarStyleColorKeySet.has(candidate)
+  );
+}
+
+export function normalizeToolbarStyleColor(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  if (value === "") {
+    return "";
+  }
+  if (!toolbarStyleColorInputPattern.test(value)) {
+    return null;
+  }
+  return value.toLowerCase();
+}
+
+const readStyleColor = (value: unknown): string | null =>
+  normalizeToolbarStyleColor(value);
 
 export function copyToolbarStyleSnapshot(
   candidate: ToolbarStyleSnapshot,
 ): ToolbarStyleSnapshot {
+  if (!candidate || typeof candidate !== "object") {
+    throw createStateError("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
+  }
+  const accent = readStyleColor(candidate.accent);
+  const border = readStyleColor(candidate.border);
+  const chromeBackground = readStyleColor(candidate.chromeBackground);
+  const surface = readStyleColor(candidate.surface);
+  const text = readStyleColor(candidate.text);
   if (
-    !candidate ||
-    typeof candidate !== "object" ||
-    !isToolbarAccent(candidate.accent) ||
+    accent === null ||
+    border === null ||
+    chromeBackground === null ||
+    surface === null ||
+    text === null ||
     !isBoundedStyleNumber(candidate.blur, toolbarStyleBounds.blur) ||
     !isToolbarStyleDensity(candidate.density) ||
     !isBoundedStyleNumber(candidate.fontSize, toolbarStyleBounds.fontSize) ||
+    !isBoundedStyleNumber(candidate.motion, toolbarStyleBounds.motion) ||
     !isBoundedStyleNumber(candidate.radius, toolbarStyleBounds.radius) ||
+    !isBoundedStyleNumber(
+      candidate.saturation,
+      toolbarStyleBounds.saturation,
+    ) ||
+    !isBoundedStyleNumber(candidate.shadow, toolbarStyleBounds.shadow) ||
     !isBoundedStyleNumber(
       candidate.surfaceOpacity,
       toolbarStyleBounds.surfaceOpacity,
@@ -352,12 +418,19 @@ export function copyToolbarStyleSnapshot(
     throw createStateError("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
   }
   return Object.freeze({
-    accent: candidate.accent,
+    accent,
     blur: candidate.blur,
+    border,
+    chromeBackground,
     density: candidate.density,
     fontSize: candidate.fontSize,
+    motion: candidate.motion,
     radius: candidate.radius,
+    saturation: candidate.saturation,
+    shadow: candidate.shadow,
+    surface,
     surfaceOpacity: candidate.surfaceOpacity,
+    text,
     theme: candidate.theme,
   });
 }
@@ -368,18 +441,32 @@ export function copyToolbarStylePartial(
   if (!candidate || typeof candidate !== "object") {
     throw createStateError("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
   }
+  const keys = Object.keys(candidate);
+  const normalized: Partial<ToolbarStyleSnapshot> = {};
+  for (const key of keys) {
+    if (isToolbarStyleColorKey(key)) {
+      const color = readStyleColor(candidate[key]);
+      if (color === null) {
+        throw createStateError("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
+      }
+      Object.assign(normalized, { [key]: color });
+      continue;
+    }
+    Object.assign(normalized, {
+      [key]: candidate[key as keyof ToolbarStyleSnapshot],
+    });
+  }
   const merged = {
     ...createDefaultToolbarStyle(),
-    ...candidate,
+    ...normalized,
   };
   const validated = copyToolbarStyleSnapshot(merged);
-  const keys = Object.keys(candidate);
   if (
     keys.length === 0 ||
     keys.some((key) => !(key in validated)) ||
     keys.some(
       (key) =>
-        candidate[key as keyof ToolbarStyleSnapshot] !==
+        normalized[key as keyof ToolbarStyleSnapshot] !==
         validated[key as keyof ToolbarStyleSnapshot],
     )
   ) {

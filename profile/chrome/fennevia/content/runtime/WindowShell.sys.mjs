@@ -1190,8 +1190,17 @@ const mountProductionShell = ({
   let style;
   let tabsBridge;
   let toolbarWidgetsBridge;
+  let unsubscribeChromeStyle;
   let urlbarCoverageBridge;
   let windowControlsBridge;
+  const stopChromeStyle = () => {
+    if (typeof unsubscribeChromeStyle !== "function") {
+      return;
+    }
+    const stop = unsubscribeChromeStyle;
+    unsubscribeChromeStyle = undefined;
+    stop();
+  };
   try {
     logger.info({
       event: "bridge.boundary-created",
@@ -1333,6 +1342,28 @@ const mountProductionShell = ({
         }),
       );
     }
+    if (toolbarWidgetsBridge) {
+      try {
+        const applyChromeBackground = (snapshot) => {
+          nativeUi.setChromeBackground(snapshot.style.chromeBackground);
+        };
+        applyChromeBackground(toolbarWidgetsBridge.toolbarWidgets.snapshot());
+        unsubscribeChromeStyle = toolbarWidgetsBridge.toolbarWidgets.subscribe(
+          (event) => {
+            applyChromeBackground(event.snapshot);
+          },
+        );
+      } catch (error) {
+        reportError(
+          annotateShellLifecycleError(error, {
+            code:
+              error?.fenneviaCode ??
+              "FENNEVIA_NATIVE_UI_CHROME_STYLE_UNAVAILABLE",
+            phase: error?.fenneviaPhase ?? "native-ui-chrome-style",
+          }),
+        );
+      }
+    }
     style = createElement(frame.ownerDocument, "style", {
       id: SHELL_APP_STYLE_ID,
       textContent: shellAppCss,
@@ -1437,6 +1468,11 @@ const mountProductionShell = ({
       reportError(cleanupError);
     }
     try {
+      stopChromeStyle();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
+    try {
       toolbarWidgetsBridge?.dispose();
     } catch (cleanupError) {
       reportError(cleanupError);
@@ -1511,6 +1547,11 @@ const mountProductionShell = ({
     }
     try {
       tabsBridge?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      stopChromeStyle();
     } catch (error) {
       firstError ??= error;
     }

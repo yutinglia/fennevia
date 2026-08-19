@@ -316,6 +316,26 @@ test("style partials validate every provided key", () => {
     accent: "#3b82f6",
     blur: 0,
   });
+  assert.deepEqual(copyToolbarStylePartial({ accent: "#3B82F6", text: "" }), {
+    accent: "#3b82f6",
+    text: "",
+  });
+  assert.deepEqual(
+    copyToolbarStylePartial({
+      chromeBackground: "#141A23",
+      motion: 0,
+      saturation: 100,
+      shadow: 0,
+      surface: "#F7FAFC",
+    }),
+    {
+      chromeBackground: "#141a23",
+      motion: 0,
+      saturation: 100,
+      shadow: 0,
+      surface: "#f7fafc",
+    },
+  );
   assert.throws(
     () => copyToolbarStylePartial({}),
     /FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID/u,
@@ -326,6 +346,10 @@ test("style partials validate every provided key", () => {
   );
   assert.throws(
     () => copyToolbarStylePartial({ blur: 200 }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID/u,
+  );
+  assert.throws(
+    () => copyToolbarStylePartial({ saturation: 90 }),
     /FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID/u,
   );
   assert.throws(

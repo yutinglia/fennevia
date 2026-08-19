@@ -14,6 +14,8 @@
     type BrowserToolbarWidgetsState,
     type BrowserToolbarWidgetsStateAdapter,
     type ToolbarPaletteEntrySnapshot,
+    type ToolbarStyleColorKey,
+    type ToolbarStyleSnapshot,
     type ToolbarWidgetsEditOperation,
   } from "../app/toolbar-widgets-state";
   import ShellIcon from "./ShellIcon.svelte";
@@ -54,11 +56,39 @@
     "#14b8a6",
     "#64748b",
   ];
+  const surfacePresets: readonly string[] = [
+    "",
+    "#f7fafc",
+    "#e2e8f0",
+    "#94a3b8",
+    "#141a23",
+    "#111827",
+    "#1e293b",
+  ];
+  const textPresets: readonly string[] = [
+    "",
+    "#141d27",
+    "#0f172a",
+    "#eff6fc",
+    "#f8fafc",
+    "#64748b",
+  ];
+  const borderPresets: readonly string[] = [
+    "",
+    "#ffffff",
+    "#cbd5e1",
+    "#94a3b8",
+    "#334155",
+    "#1e293b",
+  ];
 
   const radiusPresets: readonly number[] = [0, 4, 8, 12, 16];
   const blurPresets: readonly number[] = [0, 8, 18, 28];
   const opacityPresets: readonly number[] = [70, 85, 94, 100];
   const fontSizePresets: readonly number[] = [11, 12, 13, 14];
+  const saturationPresets: readonly number[] = [100, 125, 145, 170];
+  const shadowPresets: readonly number[] = [0, 25, 50, 75, 100];
+  const motionPresets: readonly number[] = [0, 120, 180, 280];
 
   let snapshot = $derived(props.state?.snapshot ?? null);
   let revision = $derived(props.state?.revision ?? 0);
@@ -100,8 +130,16 @@
 
   const resetLayout = () => void runEdit({ revision, type: "reset-layout" });
 
-  const setStyle = (style: Readonly<Record<string, string | number>>) =>
+  const setStyle = (style: Readonly<Partial<ToolbarStyleSnapshot>>) =>
     void runEdit({ style, type: "set-style" });
+
+  const setStyleColor = (key: ToolbarStyleColorKey, value: string) =>
+    setStyle({ [key]: value.toLowerCase() } as Readonly<
+      Partial<ToolbarStyleSnapshot>
+    >);
+
+  const colorPickerValue = (value: string): string =>
+    value === "" ? "#808080" : value;
 
   const resetStyle = () => void runEdit({ type: "reset-style" });
 
@@ -281,6 +319,52 @@
     <section aria-label="Style" class="fennevia-customize__section">
       <h3 class="fennevia-customize__heading">Style</h3>
 
+      {#snippet colorRow(
+        label: string,
+        ariaLabel: string,
+        key: ToolbarStyleColorKey,
+        presets: readonly string[],
+        defaultMark: string,
+        dataName: string,
+      )}
+        {@const current = snapshot.style[key]}
+        {@const customSelected = current !== "" && !presets.includes(current)}
+        <div
+          class="fennevia-customize__style-row"
+          role="group"
+          aria-label={ariaLabel}
+        >
+          <span class="fennevia-customize__style-label">{label}</span>
+          {#each presets as color (color === "" ? "default" : color)}
+            <button
+              aria-label={color === ""
+                ? `Default ${label}`
+                : `${label} ${color}`}
+              aria-pressed={current === color}
+              class="fennevia-control fennevia-customize__swatch"
+              data-fennevia-customize-color={dataName}
+              data-fennevia-customize-value={color === "" ? "default" : color}
+              onclick={() => setStyleColor(key, color)}
+              style:background-color={color === "" ? undefined : color}
+              title={color === "" ? "Default" : color}
+              type="button">{color === "" ? defaultMark : ""}</button
+            >
+          {/each}
+          <label class="fennevia-customize__color-wrap">
+            <input
+              aria-label={`Custom ${label} color`}
+              class="fennevia-customize__color"
+              class:fennevia-customize__color--custom={customSelected}
+              data-fennevia-customize-color-input={dataName}
+              oninput={(event) => setStyleColor(key, event.currentTarget.value)}
+              title="Custom color"
+              type="color"
+              value={colorPickerValue(current)}
+            />
+          </label>
+        </div>
+      {/snippet}
+
       <div
         class="fennevia-customize__style-row"
         role="group"
@@ -298,25 +382,39 @@
         {/each}
       </div>
 
-      <div
-        class="fennevia-customize__style-row"
-        role="group"
-        aria-label="Accent color"
-      >
-        <span class="fennevia-customize__style-label">Accent</span>
-        {#each accentPresets as accent (accent)}
-          <button
-            aria-label={accent === "" ? "Default accent" : `Accent ${accent}`}
-            aria-pressed={snapshot.style.accent === accent}
-            class="fennevia-control fennevia-customize__swatch"
-            data-fennevia-customize-accent={accent === "" ? "default" : accent}
-            onclick={() => setStyle({ accent })}
-            style:background-color={accent === "" ? undefined : accent}
-            title={accent === "" ? "Default" : accent}
-            type="button">{accent === "" ? "A" : ""}</button
-          >
-        {/each}
-      </div>
+      {@render colorRow(
+        "Accent",
+        "Accent color",
+        "accent",
+        accentPresets,
+        "A",
+        "accent",
+      )}
+      {@render colorRow(
+        "Panels",
+        "Panel background",
+        "surface",
+        surfacePresets,
+        "D",
+        "surface",
+      )}
+      {@render colorRow(
+        "Window",
+        "Window background",
+        "chromeBackground",
+        surfacePresets,
+        "D",
+        "chrome",
+      )}
+      {@render colorRow("Type", "Text color", "text", textPresets, "D", "text")}
+      {@render colorRow(
+        "Border",
+        "Border color",
+        "border",
+        borderPresets,
+        "D",
+        "border",
+      )}
 
       <div
         class="fennevia-customize__style-row"
@@ -389,9 +487,60 @@
       <div
         class="fennevia-customize__style-row"
         role="group"
+        aria-label="Glass saturation"
+      >
+        <span class="fennevia-customize__style-label">Saturate</span>
+        {#each saturationPresets as saturation (saturation)}
+          <button
+            aria-pressed={snapshot.style.saturation === saturation}
+            class="fennevia-control fennevia-customize__option"
+            data-fennevia-customize-saturation={saturation}
+            onclick={() => setStyle({ saturation })}
+            type="button">{saturation}%</button
+          >
+        {/each}
+      </div>
+
+      <div
+        class="fennevia-customize__style-row"
+        role="group"
+        aria-label="Shadow intensity"
+      >
+        <span class="fennevia-customize__style-label">Shadow</span>
+        {#each shadowPresets as shadow (shadow)}
+          <button
+            aria-pressed={snapshot.style.shadow === shadow}
+            class="fennevia-control fennevia-customize__option"
+            data-fennevia-customize-shadow={shadow}
+            onclick={() => setStyle({ shadow })}
+            type="button">{shadow}</button
+          >
+        {/each}
+      </div>
+
+      <div
+        class="fennevia-customize__style-row"
+        role="group"
+        aria-label="Motion duration"
+      >
+        <span class="fennevia-customize__style-label">Motion</span>
+        {#each motionPresets as motion (motion)}
+          <button
+            aria-pressed={snapshot.style.motion === motion}
+            class="fennevia-control fennevia-customize__option"
+            data-fennevia-customize-motion={motion}
+            onclick={() => setStyle({ motion })}
+            type="button">{motion}ms</button
+          >
+        {/each}
+      </div>
+
+      <div
+        class="fennevia-customize__style-row"
+        role="group"
         aria-label="Font size"
       >
-        <span class="fennevia-customize__style-label">Text</span>
+        <span class="fennevia-customize__style-label">Size</span>
         {#each fontSizePresets as fontSize (fontSize)}
           <button
             aria-pressed={snapshot.style.fontSize === fontSize}

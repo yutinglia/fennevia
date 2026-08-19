@@ -621,10 +621,16 @@ ADR-045 adds focused unit/static/build coverage for:
 - bounded adopt/restore writes: `addWidgetToArea(id, "nav-bar")` for widgets
   with no live node, restore to `AREA_ADDONS` for extensions and
   `removeWidgetFromArea` otherwise;
+- style tokens for theme, accent, panel surface, chrome background, text,
+  border, blur, radius, density, surface opacity, saturation, shadow, motion,
+  and font size, including NativeUi `--fennevia-chrome-background` on
+  `:root#main-window` and skip of color overrides under forced colors /
+  motion duration under reduced motion;
 - missing `CustomizableUI` hiding zones and missing `Services.prefs` disabling
   editing, neither joining activation health;
 - privacy assertions that widget ids never enter the serialized frontend
-  snapshot and that style tokens apply only as a fixed CSS custom-property set;
+  snapshot and that style tokens apply as a fixed CSS custom-property set on
+  the frame root plus NativeUi `--fennevia-chrome-background` on `:root`;
 - ADR-046 palette presentation: unused XUL nodes resolved from
   `gNavToolbox.palette`, a dedicated sync `Localization` (pinned
   `browser`/`sidebar`/`appmenu`/`screenshots` FTL plus allowlisted chrome

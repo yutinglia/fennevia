@@ -232,13 +232,27 @@ const CUSTOMIZE_STYLE_PROPERTIES = Object.freeze([
   "--fennevia-edge-top-height",
   "--fennevia-focus-color",
   "--fennevia-glass-blur",
+  "--fennevia-glass-border",
+  "--fennevia-glass-muted",
   "--fennevia-glass-radius",
+  "--fennevia-glass-saturation",
+  "--fennevia-glass-separator",
+  "--fennevia-glass-shadow",
   "--fennevia-glass-surface",
+  "--fennevia-glass-text",
   "--fennevia-glass-tint",
+  "--fennevia-motion-duration",
   "--fennevia-selected-surface",
 ]);
 
 const HEX_COLOR_PATTERN = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/u;
+const DEFAULT_GLASS_BLUR_PX = 18;
+const DEFAULT_GLASS_RADIUS_PX = 4;
+const DEFAULT_FONT_SIZE_PX = 12;
+const DEFAULT_SURFACE_OPACITY = 94;
+const DEFAULT_SATURATION = 145;
+const DEFAULT_SHADOW = 50;
+const DEFAULT_MOTION_MS = 180;
 
 function hexToRgbComponents(hex: string): string | null {
   const match = HEX_COLOR_PATTERN.exec(hex);
@@ -250,6 +264,18 @@ function hexToRgbComponents(hex: string): string | null {
     .join(" ");
 }
 
+function shadowFromIntensity(intensity: number): string {
+  if (intensity === 0) {
+    return "none";
+  }
+  const scale = intensity / DEFAULT_SHADOW;
+  const y = Math.round(18 * scale);
+  const blur = Math.round(54 * scale);
+  const alpha = Math.round(28 * scale);
+  const inset = Math.round(22 * scale);
+  return `0 ${y}px ${blur}px rgb(0 12 24 / ${alpha}%), inset 0 1px 0 rgb(255 255 255 / ${inset}%)`;
+}
+
 function clearCustomizeStyle(frame: HTMLElement): void {
   for (const property of CUSTOMIZE_STYLE_PROPERTIES) {
     frame.style.removeProperty(property);
@@ -259,16 +285,16 @@ function clearCustomizeStyle(frame: HTMLElement): void {
 function applyCustomizeStyle(
   frame: HTMLElement,
   style: ToolbarStyleSnapshot,
-  forcedColors: boolean,
+  options: Readonly<{ forcedColors: boolean; reducedMotion: boolean }>,
 ): void {
   clearCustomizeStyle(frame);
-  if (style.blur !== 18) {
+  if (style.blur !== DEFAULT_GLASS_BLUR_PX) {
     frame.style.setProperty("--fennevia-glass-blur", `${style.blur}px`);
   }
-  if (style.radius !== 4) {
+  if (style.radius !== DEFAULT_GLASS_RADIUS_PX) {
     frame.style.setProperty("--fennevia-glass-radius", `${style.radius}px`);
   }
-  if (style.fontSize !== 12) {
+  if (style.fontSize !== DEFAULT_FONT_SIZE_PX) {
     frame.style.setProperty("font-size", `${style.fontSize}px`);
   }
   if (style.density === "compact") {
@@ -278,7 +304,10 @@ function applyCustomizeStyle(
     frame.style.setProperty("--fennevia-control-height", "36px");
     frame.style.setProperty("--fennevia-edge-top-height", "64px");
   }
-  if (forcedColors) {
+  if (!options.reducedMotion && style.motion !== DEFAULT_MOTION_MS) {
+    frame.style.setProperty("--fennevia-motion-duration", `${style.motion}ms`);
+  }
+  if (options.forcedColors) {
     // Forced-colors mode keeps the system palette authoritative.
     return;
   }
@@ -293,8 +322,18 @@ function applyCustomizeStyle(
       `rgb(${accent} / 20%)`,
     );
   }
-  if (style.surfaceOpacity !== 94) {
-    const tintOpacity = Math.max(50, style.surfaceOpacity - 10);
+  const tintOpacity = Math.max(50, style.surfaceOpacity - 10);
+  const surface = hexToRgbComponents(style.surface);
+  if (surface) {
+    frame.style.setProperty(
+      "--fennevia-glass-surface",
+      `rgb(${surface} / ${style.surfaceOpacity}%)`,
+    );
+    frame.style.setProperty(
+      "--fennevia-glass-tint",
+      `rgb(${surface} / ${tintOpacity}%)`,
+    );
+  } else if (style.surfaceOpacity !== DEFAULT_SURFACE_OPACITY) {
     frame.style.setProperty(
       "--fennevia-glass-surface",
       `light-dark(rgb(247 250 252 / ${style.surfaceOpacity}%), rgb(20 26 35 / ${style.surfaceOpacity}%))`,
@@ -302,6 +341,31 @@ function applyCustomizeStyle(
     frame.style.setProperty(
       "--fennevia-glass-tint",
       `light-dark(rgb(246 250 255 / ${tintOpacity}%), rgb(17 24 34 / ${tintOpacity}%))`,
+    );
+  }
+  const text = hexToRgbComponents(style.text);
+  if (text) {
+    frame.style.setProperty("--fennevia-glass-text", `rgb(${text})`);
+    frame.style.setProperty("--fennevia-glass-muted", `rgb(${text} / 70%)`);
+  }
+  const border = hexToRgbComponents(style.border);
+  if (border) {
+    frame.style.setProperty("--fennevia-glass-border", `rgb(${border})`);
+    frame.style.setProperty(
+      "--fennevia-glass-separator",
+      `rgb(${border} / 20%)`,
+    );
+  }
+  if (style.saturation !== DEFAULT_SATURATION) {
+    frame.style.setProperty(
+      "--fennevia-glass-saturation",
+      `${style.saturation}%`,
+    );
+  }
+  if (style.shadow !== DEFAULT_SHADOW) {
+    frame.style.setProperty(
+      "--fennevia-glass-shadow",
+      shadowFromIntensity(style.shadow),
     );
   }
 }
@@ -919,12 +983,15 @@ export function mountShellApp({
         typeof view.matchMedia === "function"
           ? view.matchMedia("(forced-colors: active)")
           : null;
+      const reducedMotionQuery =
+        typeof view.matchMedia === "function"
+          ? view.matchMedia("(prefers-reduced-motion: reduce)")
+          : null;
       const applyStyleFromState = (state: BrowserToolbarWidgetsState): void => {
-        applyCustomizeStyle(
-          frame,
-          state.snapshot.style,
-          forcedColorsQuery?.matches === true,
-        );
+        applyCustomizeStyle(frame, state.snapshot.style, {
+          forcedColors: forcedColorsQuery?.matches === true,
+          reducedMotion: reducedMotionQuery?.matches === true,
+        });
       };
       applyStyleFromState(widgetsState.snapshot());
       controllerSubscriptions.push(
@@ -940,17 +1007,24 @@ export function mountShellApp({
         }),
         widgetsState.subscribe(applyStyleFromState),
       );
-      if (forcedColorsQuery) {
-        const onForcedColorsChange = (): void => {
+      const mediaQueries = [forcedColorsQuery, reducedMotionQuery].filter(
+        (query): query is MediaQueryList => query !== null,
+      );
+      if (mediaQueries.length > 0) {
+        const onMediaChange = (): void => {
           try {
             applyStyleFromState(widgetsState.snapshot());
           } catch (error) {
             onFatalError(error);
           }
         };
-        forcedColorsQuery.addEventListener("change", onForcedColorsChange);
+        for (const query of mediaQueries) {
+          query.addEventListener("change", onMediaChange);
+        }
         controllerSubscriptions.push(() => {
-          forcedColorsQuery.removeEventListener("change", onForcedColorsChange);
+          for (const query of mediaQueries) {
+            query.removeEventListener("change", onMediaChange);
+          }
           return true;
         });
       }
