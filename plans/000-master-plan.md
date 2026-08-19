@@ -118,6 +118,9 @@ Completed project-governance foundation:
 - #57: PowerShell console for release install/update/recovery and development
   environment setup, launch, and teardown, without changing the installer
   transaction contract.
+- ADR-049: release-only WinForms setup wizard (`FenneviaSetup.exe`) as the
+  recommended end-user entry, with on-demand UAC when the selected Firefox
+  program directory is not writable.
 
 At active rest, ADR-032/ADR-037 collapse only reviewed native toolbar/sidebar
 geometry and descendants, retain the native caption controls, and add a narrow
@@ -175,8 +178,8 @@ claim.
 - Replacement titlebar/window buttons or custom OS window commands; styling the
   retained Firefox-owned caption group in place is allowed by ADR-037.
 - Overriding the complete `browser.xhtml`.
-- A branded Firefox fork, automatic update channel, graphical installer, or
-  commercial support product.
+- A branded Firefox fork, automatic update channel, Inno/NSIS/MSI product
+  installer, or commercial support product.
 - Pixel-for-pixel copying of Firefox, `my-firefox-custom`, Arc, Edge, or another
   browser.
 - Treating hardening as a container for unrelated product features.

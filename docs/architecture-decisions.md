@@ -1255,10 +1255,14 @@ baseline.
 
 ## ADR-040: Use a PowerShell console for release and development install
 
-**Status:** Accepted for issue #57
+**Status:** Accepted for issue #57; the "not a graphical installer" clause and
+the unconditional "not a self-elevating helper" clause are partially superseded
+by ADR-049
 
-Add `scripts/fennevia.ps1` as the recommended interactive Windows entry for
-release installation and development-environment setup. The console is
+Add `scripts/fennevia.ps1` as the interactive Windows console for release
+installation and development-environment setup. ADR-049 makes `FenneviaSetup.exe`
+the recommended release entry; the console remains the development entry and
+the advanced/scripted host. The console is
 presentation only: it discovers local Firefox programs, lists registered
 profile **names**, shows redacted plans, and confirms. Every mutation still
 calls `Invoke-FenneviaPackageAction` or the development-profile helpers. The
@@ -1283,12 +1287,13 @@ a second confirmation. Copyable output and installer status lines keep
 `<FIREFOX_PROGRAM>` and `<FENNEVIA_PROFILE>`. Redirected or non-interactive
 hosts fail closed.
 
-This is not a graphical installer, updater, or self-elevating helper. No npm
-TUI dependency is added. The interactive host is a Fennevia-owned native TUI
-in `scripts/lib/FenneviaTui.psm1`: alternate screen, dirty in-place redraw,
-VT SGR mouse (hover highlight, click to select, wheel), a log pane in the
-same frame, and a numbered fallback when stdin or stdout is redirected. Tests
-inject a Reader and do not require a real console.
+This is not an updater. No npm TUI dependency is added. The interactive host is
+a Fennevia-owned native TUI in `scripts/lib/FenneviaTui.psm1`: alternate screen,
+dirty in-place redraw, VT SGR mouse (hover highlight, click to select, wheel), a
+log pane in the same frame, and a numbered fallback when stdin or stdout is
+redirected. Tests inject a Reader and do not require a real console. ADR-049
+adds a separate release-only WinForms wizard that still calls this console's
+confirmation helpers and `Invoke-FenneviaPackageAction`.
 
 The TUI interaction model follows the author's profile picker in
 `yutinglia/powershell-profile` `profile.d/00-tui.ps1` at commit
@@ -1676,3 +1681,54 @@ runtime and would block every later stock stable until a release republished
 the pair. A minimum-major gate plus an explicit no-promise warning lets 154
 and later stables install while keeping older-than-153 builds fail-closed.
 Evidence: `docs/research/firefox-154-stable-transition.md`.
+
+## ADR-049: Release WinForms setup host with on-demand UAC
+
+**Status:** Accepted after explicit owner request for a normal Windows GUI
+setup wizard; partially supersedes ADR-040's "not a graphical installer" and
+unconditional "not a self-elevating helper" clauses
+
+Ship `FenneviaSetup.exe` at the extracted release root as the recommended
+end-user entry. The executable is a tiny STA launcher compiled during release
+packaging with Roslyn `csc /deterministic` when Visual Studio 2022 is present,
+or with .NET Framework `csc.exe` plus a fixed PE timestamp and source-hash
+MVID when it is not. It starts Windows PowerShell
+5.1 with `-Sta -ExecutionPolicy Bypass` only so Mark-of-the-Web extracted
+scripts can load; that bypass is not a mutation-check bypass.
+
+The wizard in `scripts/lib/FenneviaGui.psm1` is presentation only. It reuses
+`Initialize-FenneviaConsoleHooks`, `Resolve-FenneviaConsoleProfileSelection`,
+`New-FenneviaConsolePackageRequest`, `Get-FenneviaConsoleFirefoxSupportWarning`,
+and `Invoke-FenneviaPackageAction`. It runs only when `RELEASE-MANIFEST.json`
+is present. Source trees keep `scripts/fennevia.ps1` for development. The GUI
+never offers development setup, launch, or teardown.
+
+The wizard must:
+
+- list local Firefox builds and registered profile **names** without
+  preselecting Firefox's default profile;
+- require a second confirmation before using a default profile;
+- require the 153/154 testing warning for Install, Update, Repair, and Enable;
+- require the displayed `planSha256` before mutation;
+- refuse to apply while the selected Firefox is running, without killing it;
+- keep copyable output on `<FIREFOX_PROGRAM>` and `<FENNEVIA_PROFILE>`;
+- tell the user to keep the extracted release folder.
+
+On-demand UAC is allowed only when a mutating action's selected program
+directory is not writable and the user clicks **Continue as administrator**.
+Status never elevates. The unelevated host writes a 15-minute
+`%TEMP%\fennevia-setup-state-*.json` file with a current-user-only ACL, then
+relaunches `FenneviaSetup.exe --resume-state`. The elevated instance must
+re-resolve the same package root, recompute the plan, and refuse to apply if
+`planSha256` changed. UAC cancel leaves the wizard on the permission page.
+
+This is not an Inno/NSIS/MSI product installer, Add/Remove Programs entry,
+LocalAppData package cache, automatic updater, or signed binary. The
+transaction, ownership, deletion, and registered-profile contracts are
+unchanged.
+
+**Reasoning:** The PowerShell TUI is safe but not a normal Windows setup
+experience. A WinForms host can remove that friction for release users without
+reimplementing path, hash, or rollback rules. Self-elevation at startup would
+over-privilege profile writes; asking only when `Program Files` is not
+writable keeps the existing least-privilege default.

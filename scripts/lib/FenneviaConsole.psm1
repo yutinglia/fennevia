@@ -905,7 +905,9 @@ Export-ModuleMember -Function @(
     "Get-FenneviaConsoleFirefoxSupportWarning",
     "Get-FenneviaConsoleKind",
     "Get-FenneviaConsoleMenuItems",
+    "Initialize-FenneviaConsoleHooks",
     "Invoke-FenneviaConsole",
+    "Invoke-FenneviaConsoleHook",
     "New-FenneviaConsolePackageRequest",
     "Resolve-FenneviaConsoleProfileSelection",
     "Test-FenneviaConsoleInteractive"

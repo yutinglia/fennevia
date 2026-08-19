@@ -60,8 +60,9 @@ Governance foundation:
    registered-profile installation, and independently reverified public assets.
    ADR-048 later relaxed the exact BuildID install gate to Firefox 153+ with a
    warning.
-3. #57 added the PowerShell console as the recommended install and development
-   environment entry without changing the installer transaction contract.
+3. #57 added the PowerShell console as the development-environment entry and
+   an advanced release host without changing the installer transaction
+   contract. ADR-049 adds `FenneviaSetup.exe` as the recommended release GUI.
 
 Historical research records remain accurate for the milestone they tested.
 Current production architecture is defined by this roadmap, the master plan,

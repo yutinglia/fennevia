@@ -9,6 +9,7 @@ $script:ReleaseRepository = "https://github.com/yutinglia/fennevia"
 $script:ReleaseFixedTimestamp = New-Object DateTimeOffset(1980, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
 $script:ReleaseTextExtensions = @(
     ".cfg",
+    ".cs",
     ".css",
     ".html",
     ".js",
@@ -411,9 +412,12 @@ function Get-FenneviaReleaseSourceEntries {
         [pscustomobject]@{ Source = "LICENSE"; Destination = "LICENSE" },
         [pscustomobject]@{ Source = "THIRD_PARTY_NOTICES.md"; Destination = "THIRD_PARTY_NOTICES.md" },
         [pscustomobject]@{ Source = "scripts/fennevia.ps1"; Destination = "scripts/fennevia.ps1" },
+        [pscustomobject]@{ Source = "scripts/fennevia-gui.ps1"; Destination = "scripts/fennevia-gui.ps1" },
         [pscustomobject]@{ Source = "scripts/fennevia-package.ps1"; Destination = "scripts/fennevia-package.ps1" },
         [pscustomobject]@{ Source = "scripts/verify-release.ps1"; Destination = "scripts/verify-release.ps1" },
+        [pscustomobject]@{ Source = "scripts/gui/FenneviaSetup.cs"; Destination = "scripts/gui/FenneviaSetup.cs" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaConsole.psm1"; Destination = "scripts/lib/FenneviaConsole.psm1" },
+        [pscustomobject]@{ Source = "scripts/lib/FenneviaGui.psm1"; Destination = "scripts/lib/FenneviaGui.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaTui.psm1"; Destination = "scripts/lib/FenneviaTui.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaInstaller.psm1"; Destination = "scripts/lib/FenneviaInstaller.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaRelease.psm1"; Destination = "scripts/lib/FenneviaRelease.psm1" },
@@ -725,11 +729,15 @@ function Test-FenneviaReleaseTree {
         "INSTALL.md",
         "LICENSE",
         "THIRD_PARTY_NOTICES.md",
+        "FenneviaSetup.exe",
         "package-manifest.json",
         "scripts/fennevia.ps1",
+        "scripts/fennevia-gui.ps1",
         "scripts/fennevia-package.ps1",
         "scripts/verify-release.ps1",
+        "scripts/gui/FenneviaSetup.cs",
         "scripts/lib/FenneviaConsole.psm1",
+        "scripts/lib/FenneviaGui.psm1",
         "scripts/lib/FenneviaTui.psm1",
         "scripts/lib/FenneviaInstaller.psm1",
         "scripts/lib/FenneviaRelease.psm1",
@@ -1018,6 +1026,214 @@ function New-FenneviaDeterministicZip {
     }
 }
 
+function Get-FenneviaRoslynCscPath {
+    [CmdletBinding()]
+    param()
+
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path -LiteralPath $vswhere -PathType Leaf) {
+        $found = @(
+            & $vswhere -latest -products * -prerelease -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\Roslyn\csc.exe"
+        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        if ($found.Count -gt 0) {
+            $candidate = [IO.Path]::GetFullPath([string] $found[0])
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                return $candidate
+            }
+        }
+    }
+
+    $editions = @("Enterprise", "Professional", "Community", "BuildTools")
+    foreach ($edition in $editions) {
+        $candidate = Join-Path $env:ProgramFiles "Microsoft Visual Studio\2022\$edition\MSBuild\Current\Bin\Roslyn\csc.exe"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return [IO.Path]::GetFullPath($candidate)
+        }
+    }
+
+    $sdkRoot = Join-Path $env:ProgramFiles "dotnet\sdk"
+    if (Test-Path -LiteralPath $sdkRoot -PathType Container) {
+        $sdkCsc = @(
+            Get-ChildItem -LiteralPath $sdkRoot -Filter "csc.exe" -Recurse -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -match "[\\/]Roslyn[\\/]csc\.exe$" } |
+                Sort-Object FullName -Descending
+        )
+        if ($sdkCsc.Count -gt 0) {
+            return $sdkCsc[0].FullName
+        }
+    }
+    return $null
+}
+
+function Convert-FenneviaPeRvaToOffset {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [byte[]] $Bytes,
+
+        [Parameter(Mandatory)]
+        [uint32] $Rva
+    )
+
+    $lfanew = [BitConverter]::ToInt32($Bytes, 0x3C)
+    $sectionCount = [BitConverter]::ToUInt16($Bytes, $lfanew + 6)
+    $optionalSize = [BitConverter]::ToUInt16($Bytes, $lfanew + 20)
+    $sectionStart = $lfanew + 24 + $optionalSize
+    for ($index = 0; $index -lt $sectionCount; $index++) {
+        $section = $sectionStart + ($index * 40)
+        $virtualSize = [BitConverter]::ToUInt32($Bytes, $section + 8)
+        $virtualAddress = [BitConverter]::ToUInt32($Bytes, $section + 12)
+        $rawSize = [BitConverter]::ToUInt32($Bytes, $section + 16)
+        $rawPointer = [BitConverter]::ToUInt32($Bytes, $section + 20)
+        $span = $virtualSize
+        if ($rawSize -gt $span) {
+            $span = $rawSize
+        }
+        if ($Rva -ge $virtualAddress -and $Rva -lt ($virtualAddress + $span)) {
+            return [int] (($Rva - $virtualAddress) + $rawPointer)
+        }
+    }
+    throw "A PE relative virtual address is outside the image sections."
+}
+
+function Complete-FenneviaSetupDeterministicImage {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ExecutablePath,
+
+        [Parameter(Mandatory)]
+        [string] $SourcePath
+    )
+
+    $bytes = [IO.File]::ReadAllBytes($ExecutablePath)
+    if ($bytes.Length -lt 64 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+        throw "FenneviaSetup.exe is not a PE image."
+    }
+
+    $lfanew = [BitConverter]::ToInt32($bytes, 0x3C)
+    $timestamp = [BitConverter]::GetBytes([uint32] 315532800)
+    [Array]::Copy($timestamp, 0, $bytes, $lfanew + 8, 4)
+
+    $magic = [BitConverter]::ToUInt16($bytes, $lfanew + 24)
+    if ($magic -eq 0x10B) {
+        $directoryStart = $lfanew + 24 + 96
+    }
+    elseif ($magic -eq 0x20B) {
+        $directoryStart = $lfanew + 24 + 112
+    }
+    else {
+        throw "FenneviaSetup.exe uses an unsupported PE optional header."
+    }
+    $comRva = [BitConverter]::ToUInt32($bytes, $directoryStart + (14 * 8))
+    if ($comRva -eq 0) {
+        throw "FenneviaSetup.exe is missing a CLR header."
+    }
+    $comOffset = Convert-FenneviaPeRvaToOffset -Bytes $bytes -Rva $comRva
+    $metadataRva = [BitConverter]::ToUInt32($bytes, $comOffset + 8)
+    $metadataOffset = Convert-FenneviaPeRvaToOffset -Bytes $bytes -Rva $metadataRva
+    if ([BitConverter]::ToUInt32($bytes, $metadataOffset) -ne 0x424A5342) {
+        throw "FenneviaSetup.exe metadata signature is invalid."
+    }
+    $versionLength = [BitConverter]::ToUInt32($bytes, $metadataOffset + 12)
+    $streamCount = [BitConverter]::ToUInt16($bytes, $metadataOffset + 16 + $versionLength + 2)
+    $cursor = $metadataOffset + 16 + $versionLength + 4
+    $guidOffset = -1
+    for ($index = 0; $index -lt $streamCount; $index++) {
+        $streamOffset = [BitConverter]::ToUInt32($bytes, $cursor)
+        $nameStart = $cursor + 8
+        $nameChars = New-Object "Collections.Generic.List[char]"
+        $nameIndex = $nameStart
+        while ($nameIndex -lt $bytes.Length -and $bytes[$nameIndex] -ne 0) {
+            $nameChars.Add([char] $bytes[$nameIndex])
+            $nameIndex++
+        }
+        $nameBytes = ($nameIndex - $nameStart) + 1
+        $padded = [int][Math]::Ceiling($nameBytes / 4.0) * 4
+        $cursor = $nameStart + $padded
+        if ((-join $nameChars) -eq "#GUID") {
+            $guidOffset = $metadataOffset + [int] $streamOffset
+            break
+        }
+    }
+    if ($guidOffset -lt 0) {
+        throw "FenneviaSetup.exe is missing a #GUID metadata heap."
+    }
+
+    $sourceHash = Get-FenneviaReleaseSha256 -Path $SourcePath
+    $mvid = New-Object byte[] 16
+    for ($index = 0; $index -lt 16; $index++) {
+        $mvid[$index] = [Convert]::ToByte($sourceHash.Substring($index * 2, 2), 16)
+    }
+    [Array]::Copy($mvid, 0, $bytes, $guidOffset, 16)
+    [IO.File]::WriteAllBytes($ExecutablePath, $bytes)
+}
+
+function New-FenneviaSetupExecutable {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $SourcePath,
+
+        [Parameter(Mandatory)]
+        [string] $OutputPath
+    )
+
+    $canonicalSourceFile = ConvertTo-FenneviaReleaseCanonicalPath -Path $SourcePath
+    if (-not (Test-Path -LiteralPath $canonicalSourceFile -PathType Leaf)) {
+        throw "The Fennevia Setup source file is missing."
+    }
+    $canonicalSourceDir = ConvertTo-FenneviaReleaseCanonicalPath -Path (Split-Path -Parent $canonicalSourceFile)
+    $canonicalOutput = [IO.Path]::GetFullPath($OutputPath)
+    $frameworkDir = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319"
+    $mscorlib = Join-Path $frameworkDir "mscorlib.dll"
+    if (-not (Test-Path -LiteralPath $mscorlib -PathType Leaf)) {
+        throw "The .NET Framework 4 reference assemblies were not found."
+    }
+
+    $csc = Get-FenneviaRoslynCscPath
+    $useRoslyn = -not [string]::IsNullOrWhiteSpace($csc)
+    if (-not $useRoslyn) {
+        $csc = Join-Path $frameworkDir "csc.exe"
+        if (-not (Test-Path -LiteralPath $csc -PathType Leaf)) {
+            throw "A C# compiler was not found. FenneviaSetup.exe requires Visual Studio 2022 Roslyn or .NET Framework csc.exe."
+        }
+    }
+
+    $arguments = New-Object "Collections.Generic.List[string]"
+    [void] $arguments.Add("/nologo")
+    [void] $arguments.Add("/noconfig")
+    [void] $arguments.Add("/nostdlib+")
+    [void] $arguments.Add("/optimize+")
+    [void] $arguments.Add("/debug-")
+    [void] $arguments.Add("/target:winexe")
+    [void] $arguments.Add("/platform:anycpu")
+    [void] $arguments.Add("/filealign:512")
+    [void] $arguments.Add("/highentropyva+")
+    if ($useRoslyn) {
+        [void] $arguments.Add("/deterministic+")
+        [void] $arguments.Add("/utf8output")
+        [void] $arguments.Add("/pathmap:$canonicalSourceDir=src")
+    }
+    [void] $arguments.Add("/out:$canonicalOutput")
+    [void] $arguments.Add("/reference:$mscorlib")
+    [void] $arguments.Add("/reference:$(Join-Path $frameworkDir 'System.dll')")
+    [void] $arguments.Add("/reference:$(Join-Path $frameworkDir 'System.Windows.Forms.dll')")
+    [void] $arguments.Add("/reference:$(Join-Path $frameworkDir 'System.Drawing.dll')")
+    [void] $arguments.Add($canonicalSourceFile)
+
+    $null = & $csc @($arguments) 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "FenneviaSetup.exe compile failed."
+    }
+    if (-not (Test-Path -LiteralPath $canonicalOutput -PathType Leaf)) {
+        throw "FenneviaSetup.exe was not produced."
+    }
+    if (-not $useRoslyn) {
+        Complete-FenneviaSetupDeterministicImage -ExecutablePath $canonicalOutput -SourcePath $canonicalSourceFile
+    }
+}
+
 function New-FenneviaReleaseArtifacts {
     [CmdletBinding()]
     param(
@@ -1088,6 +1304,10 @@ function New-FenneviaReleaseArtifacts {
         }
         Copy-Item -LiteralPath $entry.SourcePath -Destination $destinationPath
     }
+
+    New-FenneviaSetupExecutable `
+        -SourcePath (Join-FenneviaReleaseRootPath -Root $treeRoot -RelativePath "scripts/gui/FenneviaSetup.cs") `
+        -OutputPath (Join-FenneviaReleaseRootPath -Root $treeRoot -RelativePath "FenneviaSetup.exe")
 
     $releaseFiles = @(
         Get-FenneviaReleaseTreeFiles -PackageRoot $treeRoot |
@@ -1163,6 +1383,7 @@ function New-FenneviaReleaseArtifacts {
 Export-ModuleMember -Function @(
     "Get-FenneviaReleaseFirefoxCompatibility",
     "New-FenneviaReleaseArtifacts",
+    "New-FenneviaSetupExecutable",
     "Test-FenneviaReleaseChecksum",
     "Test-FenneviaReleaseFirefoxCompatibility",
     "Test-FenneviaReleaseTree"
