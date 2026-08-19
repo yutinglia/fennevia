@@ -41,6 +41,10 @@ const FLUENT_ATTRIBUTE_MESSAGES = Object.freeze({
     label: "Screenshot",
     tooltiptext: "Take a screenshot",
   },
+  "reset-pbm-toolbar-button2": {
+    label: "Clear Private Session",
+    tooltiptext: "Clear Private Session",
+  },
 });
 let nextContextSequence = 0;
 
@@ -446,6 +450,15 @@ function createNativeWindow({
         tooltiptext: "edit-controls.tooltiptext2",
       },
     ],
+    [
+      "reset-pbm-toolbar-button",
+      {
+        forWindow() {
+          calls.push(["forWindow", "reset-pbm-toolbar-button"]);
+          throw new Error("forWindow must not be used for presentation");
+        },
+      },
+    ],
   ]);
 
   const unusedWidgetIds = [
@@ -461,6 +474,7 @@ function createNativeWindow({
     "screenshot-button",
     "zoom-controls",
     "edit-controls",
+    "reset-pbm-toolbar-button",
   ];
 
   const customizableUiListeners = new Set();
@@ -807,6 +821,7 @@ test("default snapshot mirrors nav-bar placements into the top zone", () => {
     assert.ok(paletteLabels.includes("New Window"));
     assert.ok(paletteLabels.includes("Full Screen"));
     assert.ok(paletteLabels.includes("Screenshot"));
+    assert.ok(paletteLabels.includes("Clear Private Session"));
     assert.ok(paletteLabels.includes("Zoom"));
     assert.ok(paletteLabels.includes("Edit"));
     assert.ok(paletteLabels.includes("Addons Extension"));
@@ -872,7 +887,7 @@ test("default snapshot mirrors nav-bar placements into the top zone", () => {
     const serialized = JSON.stringify(snapshot);
     assert.doesNotMatch(
       serialized,
-      /sidebar-button|history-panelmenu|widget_example_com|back-button|urlbar-container|print-button|save-page-button|find-button|open-file-button|email-link-button|share-tab-button|logins-button|new-window-button|fullscreen-button|screenshot-button|zoom-controls|edit-controls/u,
+      /sidebar-button|history-panelmenu|widget_example_com|back-button|urlbar-container|print-button|save-page-button|find-button|open-file-button|email-link-button|share-tab-button|logins-button|new-window-button|fullscreen-button|screenshot-button|zoom-controls|edit-controls|reset-pbm-toolbar-button/u,
     );
   } finally {
     disposePair(pair);
@@ -912,6 +927,7 @@ test("Fluent labels resolve through a dedicated sync Localization when document.
     assert.ok(paletteLabels.includes("New Window"));
     assert.ok(paletteLabels.includes("Full Screen"));
     assert.ok(paletteLabels.includes("Screenshot"));
+    assert.ok(paletteLabels.includes("Clear Private Session"));
     assert.ok(paletteLabels.includes("Zoom"));
     assert.ok(paletteLabels.includes("Edit"));
     assert.ok(!paletteLabels.includes("Toolbar item"));

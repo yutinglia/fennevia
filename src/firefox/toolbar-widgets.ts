@@ -166,6 +166,8 @@ const TOOLBAR_FLUENT_RESOURCE_IDS: readonly string[] = Object.freeze([
 
 // Fluent ids for API-provided and unused XUL built-ins that often have no
 // translated label until placed. The group wrapper does not expose l10nId.
+// `reset-pbm-toolbar-button` is created by ResetPBMPanel with
+// `reset-pbm-toolbar-button2` in browser.ftl, not CustomizableWidgets.
 const builtinFluentIdByWidgetId: ReadonlyMap<string, string> = new Map([
   ["bookmarks-menu-button", "bookmarks-menu-button"],
   ["characterencoding-button", "repair-text-encoding-button"],
@@ -180,6 +182,7 @@ const builtinFluentIdByWidgetId: ReadonlyMap<string, string> = new Map([
   ["preferences-button", "toolbar-settings-button"],
   ["print-button", "navbar-print"],
   ["privatebrowsing-button", "toolbar-button-new-private-window"],
+  ["reset-pbm-toolbar-button", "reset-pbm-toolbar-button2"],
   ["save-page-button", "toolbar-button-save-page"],
   ["screenshot-button", "screenshot-toolbar-button"],
   ["send-tab-button", "toolbar-button-send-tab"],

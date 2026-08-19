@@ -3068,6 +3068,7 @@ var lr = "nav-bar", ur = "unified-extensions-area", dr = "fennevia.customize.lay
 	["preferences-button", "toolbar-settings-button"],
 	["print-button", "navbar-print"],
 	["privatebrowsing-button", "toolbar-button-new-private-window"],
+	["reset-pbm-toolbar-button", "reset-pbm-toolbar-button2"],
 	["save-page-button", "toolbar-button-save-page"],
 	["screenshot-button", "screenshot-toolbar-button"],
 	["send-tab-button", "toolbar-button-send-tab"],

@@ -177,7 +177,9 @@ historical findings or rejected alternatives above.
   `toolbar-button-email-link` are attribute-only, so `formatValueSync`
   is empty),
   `CustomizableUI.getLocalizedProperty`, and a small privileged Fluent-id
-  map pinned to 153 `CustomizableWidgets` and XUL palette widgets.
+  map pinned to 153 `CustomizableWidgets`, XUL palette widgets,
+  `screenshot-button`, and `reset-pbm-toolbar-button`
+  (`reset-pbm-toolbar-button2` in `ResetPBMPanel`).
   `WidgetGroupWrapper.tooltiptext` is often a raw key such as
   `history-panelmenu.tooltiptext2`; those keys and incomplete `%S` bundle
   strings are not used as names.
