@@ -302,6 +302,17 @@ const findTabDialog = (browser) => {
   return visit(browser);
 };
 
+const isHtmlWindowModalOpen = (document, root) => {
+  const dialog = document?.getElementById?.("window-modal-dialog");
+  if (dialog) {
+    if (typeof dialog.open === "boolean") {
+      return dialog.open === true;
+    }
+    return dialog.hasAttribute("open");
+  }
+  return root.hasAttribute("window-modal-open");
+};
+
 const validateSupportedWindow = ({ window, root }) => {
   const chromeHidden = String(root.getAttribute("chromehidden") ?? "")
     .split(/\s+/u)
@@ -614,6 +625,7 @@ export function createNativeUiController({ window, frame, onError }) {
 
   let targets = collectNativeTargets({ window, frame });
   const { document, root, browser, toolbox, sidebarBox } = targets;
+  const windowModalDialog = document.getElementById("window-modal-dialog");
   if (
     typeof document.addEventListener !== "function" ||
     typeof document.removeEventListener !== "function"
@@ -781,7 +793,7 @@ export function createNativeUiController({ window, frame, onError }) {
     if (root.hasAttribute("inDOMFullscreen")) {
       return "dom-fullscreen";
     }
-    if (root.hasAttribute("window-modal-open") || findTabDialog(browser)) {
+    if (isHtmlWindowModalOpen(document, root) || findTabDialog(browser)) {
       return "native-dialog";
     }
     return null;
@@ -1111,8 +1123,18 @@ export function createNativeUiController({ window, frame, onError }) {
     register(toolbox, "aftercustomization", onAfterCustomization);
 
     const Observer = window.MutationObserver;
+    const isWindowUnavailable = () => {
+      if (disposed || failed || windowTearingDown) {
+        return true;
+      }
+      try {
+        return window.closed === true && root.isConnected !== true;
+      } catch {
+        return false;
+      }
+    };
     const reconcileObservedState = () => {
-      if (disposed || failed || windowTearingDown || window.closed === true) {
+      if (isWindowUnavailable()) {
         return;
       }
       try {
@@ -1130,9 +1152,24 @@ export function createNativeUiController({ window, frame, onError }) {
       }
     };
     observer = new Observer((records) => {
-      const structuralChange = Array.from(records ?? []).some(
+      const recordList = Array.from(records ?? []);
+      const structuralChange = recordList.some(
         (record) => record.type === "childList" && record.target !== style,
       );
+      const modalOpenChanged = recordList.some(
+        (record) =>
+          record.type === "attributes" &&
+          record.attributeName === "open" &&
+          record.target === windowModalDialog,
+      );
+      if (modalOpenChanged) {
+        try {
+          updateSuspension();
+        } catch (error) {
+          reportFailure(error);
+          return;
+        }
+      }
       if (!structuralChange) {
         reconcileObservedState();
         return;
@@ -1154,6 +1191,12 @@ export function createNativeUiController({ window, frame, onError }) {
       ],
       attributes: true,
     });
+    if (windowModalDialog) {
+      observer.observe(windowModalDialog, {
+        attributeFilter: ["open"],
+        attributes: true,
+      });
+    }
     observer.observe(browser, {
       attributeFilter: ["hidden", "sidebar-panel-open", "tabDialogShowing"],
       attributes: true,
@@ -1167,6 +1210,35 @@ export function createNativeUiController({ window, frame, onError }) {
       childList: true,
       subtree: true,
     });
+    const onNativeModalStateChanged = () => {
+      try {
+        updateSuspension();
+      } catch (error) {
+        reportFailure(error);
+        return;
+      }
+      if (disposed || failed) {
+        return;
+      }
+      try {
+        verifyStyle();
+        if (!suspensionReason) {
+          verifyTargets();
+          reconcile();
+          if (root.hasAttribute(ACTIVE_ATTRIBUTE)) {
+            releaseRestingNativeFocus();
+          }
+        }
+      } catch (error) {
+        reportFailure(error);
+      }
+    };
+    register(window, "DOMModalDialogClosed", onNativeModalStateChanged);
+    register(document, "DOMModalDialogClosed", onNativeModalStateChanged);
+    if (typeof windowModalDialog?.addEventListener === "function") {
+      register(windowModalDialog, "close", onNativeModalStateChanged);
+      register(windowModalDialog, "cancel", onNativeModalStateChanged);
+    }
     verifyHealth();
     reconcile();
   } catch (error) {

@@ -643,7 +643,10 @@ Native focus, toolbox-anchored Firefox doorhangers, an open native sidebar, and
 explicit Urlbar or original-toolbar handoffs set temporary reveal. Fennevia-
 initiated Trust/permission/Downloads/extensions/application-menu panels that
 are token-listed or re-anchored to a project host do not reveal the navbar.
-Customize and native-dialog state set suspension. DOM fullscreen also suspends project hiding
+Customize and current native-dialog state set suspension. Window-modal
+ownership follows `#window-modal-dialog.open` (and tab-dialog markers) rather
+than a leftover `window-modal-open` attribute after the HTML dialog has
+closed. DOM fullscreen also suspends project hiding
 while Firefox's own fullscreen CSS remains authoritative; browser fullscreen
 retains active mode. The controller validates exact nodes and seven parsed
 rules before health, then watches integrity. Invalid or partial CSS and stable
