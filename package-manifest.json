@@ -55,7 +55,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/NativeUi.sys.mjs",
-      "sha256": "ff30cf90d162709353c2bced8aa935eebda75e334a27549766666d0ec0c5dc3a"
+      "sha256": "bfbfa8dfd2b4b9a4f0daab4460ea66a0c4f57dc04ef7a42f585fc8d22c7b76d3"
     },
     {
       "scope": "profile",
