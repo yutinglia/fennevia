@@ -29,7 +29,7 @@ The tested MVP includes:
 | Urlbar coverage | Complete | Firefox-derived connection/protection/permission/action summaries and complete native Urlbar handoff |
 | Bookmarks | Complete | Bounded lazy Places hierarchy with live updates and Firefox-owned opening behavior |
 | Downloads | Complete | Anonymous event-driven aggregate progress/status while Firefox retains safety and file management |
-| Content-only activation | Complete | Exact health-gated native-surface hiding, transient native reveal, fullscreen/customize suspension, and fail-open cleanup |
+| Content-only activation | Complete for durable hide; first-paint sheet implemented, real flash matrix `not run` | Exact health-gated native-surface hiding, transient native reveal, fullscreen/customize suspension, fail-open cleanup, and a self-expiring first-paint author sheet (ADR-050) |
 | Firefox-update hardening | Complete for the tested build | Fixed local/CI gates, resource baseline, ownership repair, compatibility inventory, and same-build update rehearsal |
 | Licensing and distribution | Complete | MPL-2.0 policy, third-party provenance, deterministic ZIP/checksum, exact source/file manifest, and verified prerelease publication |
 | Later stable transition | Recorded for ordinary 154.0 runtime | First real stock-stable move is Firefox 153.0.4 / `20260810162159` to 154.0 / `20260812182057`; ADR-048 then relaxed the installer gate to Firefox 153+ with a no-promise warning |
@@ -99,10 +99,13 @@ Places, Downloads, commands, principals, permissions, dialogs, notifications,
 native popups, DevTools, security-sensitive prompts, and the OS window frame.
 Fennevia owns only its frame and descendants.
 
-Native UI is never deleted during startup. Visibility changes only after every
-required host, stylesheet, controller, bridge capability, and frontend root
-passes the bounded health gate. Any unsupported, failed, or disposed state
-removes the active gate and exposes native Firefox UI.
+Native UI is never deleted during startup. Durable visibility changes only
+after every required host, stylesheet, controller, bridge capability, and
+frontend root passes the bounded health gate. ADR-050 may collapse the same
+toolbox surfaces at first paint with a 2,000 ms self-expiring author sheet so
+the original topbar does not flash; that sheet yields to `failed`,
+`suspended`, emergency fallback, and the health deadline. Any unsupported,
+failed, or disposed state removes the active gate and exposes native Firefox UI.
 
 ## Technology and support choices
 

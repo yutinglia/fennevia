@@ -43,8 +43,8 @@ second/private, and fallback matrix remains pending.
 | Asset or trust boundary | Threat and consequence | Current control | Missing evidence or next gate | Owner |
 | --- | --- | --- | --- | --- |
 | AutoConfig and process bootstrap | Malformed/replaced/duplicated privileged code can execute arbitrarily or break startup | Minimal fixed entry, process guards, safe start before registration/import, privacy-safe fatal boundary, no discovery/dynamic loader | Repeat after Firefox/bootstrap changes | #3, #16 |
-| Chrome Registry manifest | Broad mapping or override can expose files or miss upstream security fixes | Dedicated `content fennevia` package, no `contentaccessible=yes`, no active `resource` alias, no override, ordinary-content denial test | Dedicated review before any new mapping/directive | #3; ADR-016 |
-| Generated privileged artifacts | HMR, endpoints, source maps, dynamic imports, extra chunks, or binaries can create remote execution/non-determinism | Exact twelve-file profile inventory, deterministic double builds, hash synchronization, scanner, Windows CI | Repeat after every build/tooling change | #8, #9, #15, #16 |
+| Chrome Registry manifest | Broad mapping or override can expose files or miss upstream security fixes | Dedicated `content fennevia` package, no `contentaccessible=yes`, no active `resource` alias, no override, no manifest `style` overlay, ordinary-content denial test | Dedicated review before any new mapping/directive | #3; ADR-016 |
+| Generated privileged artifacts | HMR, endpoints, source maps, dynamic imports, extra chunks, or binaries can create remote execution/non-determinism | Exact fourteen-file profile inventory, deterministic double builds, hash synchronization, scanner, Windows CI | Repeat after every build/tooling change | #8, #9, #15, #16 |
 | npm/build supply chain | Compromised package, lifecycle script, or native binary can compromise developer host/artifacts | Exact dev dependencies, lockfile v3, install scripts disabled, resolved graph/native binary/license review, audit | Repeat complete dependency record on upgrades | #8, #16 |
 | Browser windows and lifecycle | Duplicate/late callbacks or retained native windows can cross contexts and leak state | One process runtime, strict browser filtering, abort-first per-window cleanup, idempotent stop; #12 removes tab/progress/command/application listeners and observers per window | Repeat lifecycle/leak matrix for later features | #5, #12, #16 |
 | Four-edge frame and triggers | Broad overlays can block web content, prompts, or OS controls; stuck holds can trap focus | Zero-layout project frame, narrow triggers, pointer-transparent resting center, deterministic corners, modal/DOM-fullscreen/customize suspension, tracked holds/timers, reverse cleanup; the nonmodal #13 popup suppresses edges only while active | Revalidate after geometry/controller changes and Firefox updates | #31, #13, #15, #16 |
@@ -57,7 +57,7 @@ second/private, and fallback matrix remains pending.
 | Download data and file actions | Paths/source URLs/private state can leak; unsafe actions can execute files | #32 exposes six anonymous items, capped counts, fixed state/percentage only; uses PUBLIC/PRIVATE per-window views, no filenames/paths/sources/bytes/actions/forced reveal, exact view removal, and native safety retention | Revalidate current list/view/field/native-panel semantics on Firefox updates | #32; ADR-030 |
 | Normal diagnostics | URLs, titles, queries, bookmarks, downloads, paths, secrets, or private data can leak | Default-deny schemas, stable codes, redacted stacks, no network sink, hostile-value tests; #12–#14/#32/#37 and ADR-037 errors contain fixed phase/code/symbol/build/window-kind only and never address/status/permission/action/extension/widget/bookmark/download source data | Extend the same fixed schema to later features | #3, #5, #9–#14, #32, #37; ADR-037 |
 | Private-window state | State can leak to normal windows, process globals, preferences, or diagnostics | Per-window lifecycle/frame/tabs/navigation/popup/Urlbar/browser-tools/bookmark/download instances, opaque generations, bounded unpersisted state, complete fallback on uncertainty; #12–#14/#32/#37 passed normal/second/private isolation and disposal | Run ADR-042's pending second/private native-panel placement matrix, then repeat for each later bridge and Firefox update | #5, #9–#14, #31, #32, #37; ADR-037, ADR-042 |
-| Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native DOM retained; #13/#37 summarize fixed state/availability; ADR-037/ADR-042 delegate detail/actions to the original Firefox owners, re-anchor those panels to project hosts without cloning contents, and export no sensitive panel data; ADR-032 provides complete navbar/sidebar reveal, toolbox-doorhanger/focus holds, modal/customize/DOM-fullscreen suspension, and emergency fallback | Run ADR-042's pending native-panel placement/caption/fallback matrix and repeat after Firefox updates | #7, #13, #15, #31, #37; ADR-032, ADR-037, ADR-042 |
+| Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native DOM retained; #13/#37 summarize fixed state/availability; ADR-037/ADR-042 delegate detail/actions to the original Firefox owners, re-anchor those panels to project hosts without cloning contents, and export no sensitive panel data; ADR-032 provides complete navbar/sidebar reveal, toolbox-doorhanger/focus holds, modal/customize/DOM-fullscreen suspension, and emergency fallback; ADR-050 pending hide self-expires and yields to failed/suspended/active | Run ADR-042's pending native-panel placement/caption/fallback matrix and repeat after Firefox updates | #7, #13, #15, #31, #37; ADR-032, ADR-037, ADR-042, ADR-050 |
 | Installer/updater/repair/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data or adopt stale state | Explicit canonical targets, mode-specific marker/registration/ownership proof, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion; release mutations require strict package validation and Firefox major version 153 or newer; Repair accepts only one wholly absent side, one exact survivor/source, and no residue; one-sided Uninstall accepts only a valid survivor, absent peer metadata, and hash-matching present files; Disable/Uninstall remain recovery exits; the optional console and release GUI confirm the 153/154 testing warning and the displayed plan digest and never auto-select a default profile; the GUI may UAC-relaunch only after an explicit continue when the program directory is not writable, then recomputes `planSha256` | Revalidate for every platform/scope/compatibility change | #4, #16, #39, #57; ADR-033, ADR-036, ADR-040, ADR-048, ADR-049 |
 | Release publication | Stale, nondeterministic, tampered, secret-bearing, wrong-source, or partially uploaded assets can execute privileged code | Canonical SemVer/tag contract, strict machine manifest, deterministic sorted ZIP with fixed timestamps, separate SHA-256, sensitive-data/path scan, clean-tree double build, annotated-tag-only workflow, draft with exact two-asset and GitHub digest verification before publish, download recheck | Record exact first-publication run and repeat per release | #18, #39; ADR-036 |
 | Test-only performance evidence | Firefox process records can expose origins, window URIs/titles, IDs, and threads | Explicit harness mode immediately reduces raw records to numeric process/memory/CPU aggregates and fixed timings; static test rejects sensitive fields; no production caller or sink | Revalidate API shape on every supported Firefox | #16; ADR-034 |
@@ -65,7 +65,7 @@ second/private, and fallback matrix remains pending.
 | Startup cache/stale installed code | Removed or fixed privileged code may continue to run | Exact inventory and evidence-first cache policy; validated changes took effect without routine clearing | Cache action only after observed stale symptom | #3, #4, #16 |
 | External implementation/design | Unlicensed or copied code/design can create legal and maintenance risk | MPL-2.0 project/inbound policy; root third-party inventory; exact source/file/commit/license/modification record; preserved notices; `my-firefox-custom` no-copy boundary | Repeat gate before every included external item or distribution | #18; `docs/licensing-and-provenance.md` |
 | Runtime network/update/telemetry | Remote party can change privileged behavior or receive browsing data | Prohibited; scanner detects common endpoints/APIs | New issue + ADR + security review for any exception | ADR-012 |
-| Native UI hiding | Broad selectors can remove uncovered actions or leave no recovery | Production activates only after health; ADR-032/ADR-037/ADR-038/ADR-042 use one exact seven-rule per-window controller, retained caption-node validation, project-owned top-row window commands, Urlbar/original-toolbar reveal, Fennevia-host/token popup carve-out, CSS integrity checks, and suspension-first fail-open | Run the changed real geometry/caption/popup matrix, then revalidate exact target graph and both tab-layout branches on every supported Firefox | #15, #16; ADR-032, ADR-037, ADR-038, ADR-042 |
+| Native UI hiding | Broad selectors can remove uncovered actions or leave no recovery | Production durable hide activates only after health; ADR-032/ADR-037/ADR-038/ADR-042 use one exact seven-rule per-window controller, retained caption-node validation, project-owned top-row window commands, Urlbar/original-toolbar reveal, Fennevia-host/token popup carve-out, CSS integrity checks, and suspension-first fail-open; ADR-050 adds a 2,000 ms self-expiring first-paint `AUTHOR_SHEET` | Run the changed real geometry/caption/popup matrix and the ADR-050 cold-start/watchdog/skeleton checks, then revalidate exact target graph and both tab-layout branches on every supported Firefox | #15, #16; ADR-032, ADR-037, ADR-038, ADR-042, ADR-050 |
 
 Every unresolved high-risk row has an owner. An unimplemented control is a
 blocker, not an implicit risk acceptance.
@@ -86,6 +86,8 @@ content/runtime/HealthState.sys.mjs
 content/runtime/Logger.sys.mjs
 content/runtime/NativeUi.sys.mjs
 content/runtime/Runtime.sys.mjs
+content/runtime/StartupNativeHide.css
+content/runtime/StartupNativeHide.sys.mjs
 content/runtime/WindowManager.sys.mjs
 content/runtime/WindowShell.sys.mjs
 content/shell/ShellApp.js
@@ -517,7 +519,9 @@ Rules:
 - #37 native handoff must reveal and focus the native Urlbar while active;
 - identity/trust/protections/permission/extension/page-action panels and
   notification anchors must remain reachable and unobstructed;
-- every selector is gated by per-window `data-fennevia-active`;
+- every durable hiding selector is gated by per-window `data-fennevia-active`;
+- the ADR-050 pending hide is a separate self-expiring `AUTHOR_SHEET` that
+  yields immediately to `failed`, `suspended`, and `active`;
 - missing/invalid activation CSS prevents activation;
 - clearing active restores native UI without restart/Svelte;
 - unsupported mode suspends/clears active;
@@ -528,9 +532,10 @@ ADR-032 implements these rules with exact active/reveal/suspension selectors.
 Real Firefox 153 tests cover the complete Urlbar owner, native Downloads popup,
 History sidebar, customize mode, browser/DOM fullscreen policy, native modal,
 normal/second/private isolation, Browser Toolbox ownership, emergency fallback,
-and partial activation CSS. No new network, persistence, dependency, resource
-mapping, content-accessible asset, or browsing-derived diagnostic field was
-introduced.
+and partial activation CSS. ADR-050 adds a document-scoped `AUTHOR_SHEET` and
+`browser.startup.preXulSkeletonUI=false`; it adds no browsing-derived
+diagnostic field. Real Firefox cold-start flash, CSS watchdog restore, and
+skeleton comparison remain `not run`.
 
 ## 10. Private-window controls
 

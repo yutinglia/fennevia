@@ -314,6 +314,8 @@ async function validateTarget(
     "chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs",
     "chrome/fennevia/content/runtime/Logger.sys.mjs",
     "chrome/fennevia/content/runtime/Runtime.sys.mjs",
+    "chrome/fennevia/content/runtime/StartupNativeHide.css",
+    "chrome/fennevia/content/runtime/StartupNativeHide.sys.mjs",
     "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
   ];
   if (!expectSafeStart) {

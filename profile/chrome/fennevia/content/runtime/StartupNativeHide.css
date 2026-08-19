@@ -1,0 +1,116 @@
+/* SPDX-License-Identifier: MPL-2.0 */
+
+/*
+ * Process-scoped first-paint hide for navigator:browser windows.
+ * Registered as an AUTHOR_SHEET so it participates in the first style
+ * resolve of browser.xhtml. Every hiding property lives in the 0% keyframe
+ * of a 2000ms step-end animation; the empty 100% keyframe plus fill-mode
+ * forwards restores Firefox cascade values. data-fennevia-active,
+ * data-fennevia-failed, and data-fennevia-native-ui-suspended cancel the
+ * animation immediately.
+ */
+
+@-moz-document url("chrome://browser/content/browser.xhtml") {
+  :root#main-window[windowtype="navigator:browser"]:not([data-fennevia-active]):not(
+      [data-fennevia-failed]
+    ):not([data-fennevia-native-ui-suspended])
+    #navigator-toolbox {
+    animation-name: fennevia-startup-toolbox-hide;
+    animation-duration: 2000ms;
+    animation-timing-function: step-end;
+    animation-fill-mode: forwards;
+  }
+
+  :root#main-window[windowtype="navigator:browser"]:not([data-fennevia-active]):not(
+      [data-fennevia-failed]
+    ):not([data-fennevia-native-ui-suspended])
+    #navigator-toolbox
+    > :is(#toolbar-menubar, #TabsToolbar, #nav-bar) {
+    animation-name: fennevia-startup-toolbar-hide;
+    animation-duration: 2000ms;
+    animation-timing-function: step-end;
+    animation-fill-mode: forwards;
+  }
+
+  :root#main-window[windowtype="navigator:browser"]:not([data-fennevia-active]):not(
+      [data-fennevia-failed]
+    ):not([data-fennevia-native-ui-suspended])
+    #navigator-toolbox
+    > :is(#toolbar-menubar, #TabsToolbar, #nav-bar)
+    > :not(.titlebar-buttonbox-container),
+  :root#main-window[windowtype="navigator:browser"]:not([data-fennevia-active]):not(
+      [data-fennevia-failed]
+    ):not([data-fennevia-native-ui-suspended])
+    #navigator-toolbox
+    > #PersonalToolbar,
+  :root#main-window[windowtype="navigator:browser"]:not([data-fennevia-active]):not(
+      [data-fennevia-failed]
+    ):not([data-fennevia-native-ui-suspended])
+    :is(#urlbar, #urlbar-container),
+  :root#main-window[windowtype="navigator:browser"]:not([data-fennevia-active]):not(
+      [data-fennevia-failed]
+    ):not([data-fennevia-native-ui-suspended])
+    #navigator-toolbox
+    > :is(#toolbar-menubar, #TabsToolbar, #nav-bar)
+    > .titlebar-buttonbox-container,
+  :root#main-window[windowtype="navigator:browser"]:not([data-fennevia-active]):not(
+      [data-fennevia-failed]
+    ):not([data-fennevia-native-ui-suspended])
+    :is(
+      #sidebar-container,
+      #sidebar-launcher-splitter,
+      #sidebar-box,
+      #sidebar-splitter
+    ) {
+    animation-name: fennevia-startup-descendant-hide;
+    animation-duration: 2000ms;
+    animation-timing-function: step-end;
+    animation-fill-mode: forwards;
+  }
+
+  @keyframes fennevia-startup-toolbox-hide {
+    0% {
+      box-sizing: border-box;
+      min-height: 0;
+      height: 0;
+      max-height: 0;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
+      border: 0;
+    }
+
+    100% {
+      /* Restore Firefox cascade; do not leave hiding properties here. */
+    }
+  }
+
+  @keyframes fennevia-startup-toolbar-hide {
+    0% {
+      box-sizing: border-box;
+      min-height: 0;
+      height: 0;
+      max-height: 0;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      border: 0;
+    }
+
+    100% {
+      /* Restore Firefox cascade; do not leave hiding properties here. */
+    }
+  }
+
+  @keyframes fennevia-startup-descendant-hide {
+    0% {
+      visibility: collapse;
+      pointer-events: none;
+    }
+
+    100% {
+      /* Restore Firefox cascade; do not leave hiding properties here. */
+    }
+  }
+}

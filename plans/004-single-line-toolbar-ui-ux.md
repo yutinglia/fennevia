@@ -194,6 +194,8 @@ run for this fast pass. They are not implied by the focused results above.
 ## 6. Post-push manual Firefox checklist
 
 - [ ] Cold start shows no original toolbar flash after activation.
+      ADR-050 implements a first-paint hide for the native toolbox; real
+      Firefox verification of this row remains `not run`.
 - [ ] Top edge reveals one stable row with no twitch or trigger gap.
 - [ ] Back, forward, reload/stop, new tab, and address popup work.
 - [ ] HTTPS/site identity opens Firefox's native identity panel with its current

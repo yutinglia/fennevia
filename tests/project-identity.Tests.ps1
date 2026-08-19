@@ -75,6 +75,8 @@ $requiredPaths = @(
     "profile/chrome/fennevia/content/runtime/HealthState.sys.mjs",
     "profile/chrome/fennevia/content/runtime/Logger.sys.mjs",
     "profile/chrome/fennevia/content/runtime/Runtime.sys.mjs",
+    "profile/chrome/fennevia/content/runtime/StartupNativeHide.css",
+    "profile/chrome/fennevia/content/runtime/StartupNativeHide.sys.mjs",
     "profile/chrome/fennevia/content/runtime/WindowManager.sys.mjs",
     "profile/chrome/fennevia/content/runtime/WindowShell.sys.mjs",
     "package-manifest.json"

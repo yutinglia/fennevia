@@ -10,6 +10,8 @@
     "content/runtime/Logger.sys.mjs",
     "content/runtime/NativeUi.sys.mjs",
     "content/runtime/Runtime.sys.mjs",
+    "content/runtime/StartupNativeHide.css",
+    "content/runtime/StartupNativeHide.sys.mjs",
     "content/runtime/WindowManager.sys.mjs",
     "content/runtime/WindowShell.sys.mjs",
     "content/shell/ShellApp.js",
@@ -20,7 +22,7 @@
     {
       "scope": "program",
       "path": "defaults/pref/fennevia.js",
-      "sha256": "e2674a2829e27ddc2a82f4b48ab0179e8360245eec49c7683dbbb077c3a00693"
+      "sha256": "0bd1a31bb8a88a0bbde6f70f9384793a494d19314c3bdc4a2afc74d771188afe"
     },
     {
       "scope": "program",
@@ -60,7 +62,17 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/Runtime.sys.mjs",
-      "sha256": "3a2a1899dff7987fb8b7fbd0f2d766a826affaef9817ca7724193022dba4918e"
+      "sha256": "dc6045487681e0afc8ecc5da7942abcf663273a969ebbe59d2acfaefa466ccc8"
+    },
+    {
+      "scope": "profile",
+      "path": "chrome/fennevia/content/runtime/StartupNativeHide.css",
+      "sha256": "1ce91067acaf535315cefd92db6c05db512cf80b5b1ed5107f0b0710bc604d67"
+    },
+    {
+      "scope": "profile",
+      "path": "chrome/fennevia/content/runtime/StartupNativeHide.sys.mjs",
+      "sha256": "7dabd750f223cd9e30bf6b9114147283d5b321d671ed818398d8207742d8b172"
     },
     {
       "scope": "profile",

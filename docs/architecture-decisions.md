@@ -59,11 +59,19 @@ Dependencies on `gBrowser`, Services, Places, SessionStore, Downloads, commands,
 
 ## ADR-007: Hide native UI behind a health gate; do not delete it
 
-**Status:** Accepted
+**Status:** Accepted; first-paint pending hide added by ADR-050
 
-Set the active state only after frontend mount and required capability checks succeed. CSS hides native visible UI only while active. Failure leaves native UI usable.
+Set the durable active state only after frontend mount and required capability
+checks succeed. CSS hides native visible UI for the rest of the session only
+while active. A process-scoped, self-expiring startup sheet may collapse the
+same surfaces before `active` so first paint does not show the native toolbox;
+that sheet yields immediately to `failed`, `suspended`, emergency fallback, and
+the 2,000 ms health deadline. Failure leaves native UI usable.
 
-**Reasoning:** Firefox code may continue to rely on native elements, and the retained DOM provides a recovery path.
+**Reasoning:** Firefox code may continue to rely on native elements, and the
+retained DOM provides a recovery path. Showing native chrome until health
+completes caused a first-paint flash; ADR-050 removes that flash without
+deleting native DOM or making a dead runtime fail closed.
 
 ## ADR-008: Isolate overrides and default to zero
 
@@ -85,11 +93,16 @@ Production JavaScript and CSS are generated from TypeScript, Svelte, and source 
 
 ## ADR-011: Failure must expose native Firefox UI
 
-**Status:** Accepted
+**Status:** Accepted; pending-hide fail-open path extended by ADR-050
 
-Unknown, timeout, partial, or failed states do not activate native-UI hiding. Emergency fallback and safe start are release gates rather than optional convenience features.
+Unknown, timeout, partial, or failed states do not keep a durable native-UI
+hide. The startup hide sheet self-expires at the health deadline and is
+unregistered when the process runtime stops or fails to start. Emergency
+fallback and safe start remain release gates rather than optional convenience
+features.
 
-**Reasoning:** The project modifies the primary browser control surface with system-principal code. A closed failure mode could make recovery impractical.
+**Reasoning:** The project modifies the primary browser control surface with
+system-principal code. A closed failure mode could make recovery impractical.
 
 ## ADR-012: No runtime remote executable dependencies
 
@@ -928,7 +941,8 @@ proof are recorded in
 ## ADR-032: Activate exact reversible native surfaces with retained native reveal
 
 **Status:** Accepted and validated on Firefox 153.0.4;
-Fennevia-initiated host-anchored popup reveal carved by ADR-042
+Fennevia-initiated host-anchored popup reveal carved by ADR-042;
+first-paint pending hide added by ADR-050 without moving this gate
 
 After every ADR-021 health and required-capability check succeeds, the fixed
 production initializer performs the explicit `healthy -> active` transition.
@@ -1739,3 +1753,41 @@ experience. A WinForms host can remove that friction for release users without
 reimplementing path, hash, or rollback rules. Self-elevation at startup would
 over-privilege profile writes; asking only when `Program Files` is not
 writable keeps the existing least-privilege default.
+
+## ADR-050: Self-expiring first-paint native hide without delayed-startup shell work
+
+**Status:** Accepted after explicit project-owner implement request
+(2026-08-20, planning conversation) to stop the original toolbox flashing on
+boot while keeping fail-open; amends ADR-007 and ADR-011 timing only
+
+Register one process-scoped author stylesheet as soon as the Fennevia runtime
+starts, before `WindowManager` enumerates delayed-startup windows. The sheet
+applies only to `chrome://browser/content/browser.xhtml` roots with
+`windowtype="navigator:browser"` and only while `data-fennevia-active`,
+`data-fennevia-failed`, and `data-fennevia-native-ui-suspended` are absent.
+Hiding properties live in the `0%` keyframe of a 2,000 ms `step-end`
+animation whose `100%` keyframe is empty, so `animation-fill-mode: forwards`
+restores Firefox cascade values when health does not activate in time.
+Setting `data-fennevia-active` cancels the pending animation in the same
+style flush that enables NativeUi's seven rest rules.
+
+Do not use a chrome.manifest `style` overlay: Firefox 153 and 154
+`ManifestParser.cpp` no longer parse that directive. Do not use an unscoped
+agent sheet. Do not move host, bridge, or Svelte initialization before
+`browser-delayed-startup-finished`. Disable
+`browser.startup.preXulSkeletonUI` from program defaults so the Windows
+pre-XUL fake toolbar cannot paint a second native topbar.
+
+Safe start and Firefox safe mode never import the runtime, so the sheet is
+never registered. Runtime start failure unregisters the sheet if it was
+registered. Registration failure does not fail the runtime; the native
+toolbox may flash rather than leave the browser unusable.
+
+**Reasoning:** Delayed-startup NativeUi cannot beat first paint. A document-
+scoped author sheet registered at AutoConfig import time can. A CSS timeout
+that does not depend on JavaScript is the only fail-open that still works
+when the privileged runtime hangs after registration. Empty `100%` keyframes
+avoid leftover `!important` geometry after the deadline.
+
+Evidence: `docs/research/firefox-153-startup-native-hide.md`.
+

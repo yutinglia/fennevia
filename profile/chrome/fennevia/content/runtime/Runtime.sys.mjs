@@ -1,7 +1,14 @@
+import { registerStartupNativeHide as defaultRegisterStartupNativeHide } from "./StartupNativeHide.sys.mjs";
+
 const PROCESS_STATE_KEY = Symbol.for("fennevia.runtime.process-state");
 const SHUTDOWN_TOPIC = "quit-application-granted";
 
-export function createProcessRuntime({ services, windowManager, logger }) {
+export function createProcessRuntime({
+  services,
+  windowManager,
+  logger,
+  registerStartupNativeHide = defaultRegisterStartupNativeHide,
+}) {
   if (
     typeof services?.obs?.addObserver !== "function" ||
     typeof services?.obs?.removeObserver !== "function"
@@ -21,10 +28,34 @@ export function createProcessRuntime({ services, windowManager, logger }) {
   ) {
     throw new Error("FENNEVIA_RUNTIME_LOGGER_UNAVAILABLE");
   }
+  if (typeof registerStartupNativeHide !== "function") {
+    throw new Error("FENNEVIA_RUNTIME_STARTUP_NATIVE_HIDE_UNAVAILABLE");
+  }
 
   let state = "created";
   let initializationCount = 0;
   let shutdownObserverRegistered = false;
+  let startupNativeHide = null;
+
+  const disposeStartupNativeHide = (phase) => {
+    if (!startupNativeHide) {
+      return;
+    }
+    const registration = startupNativeHide;
+    startupNativeHide = null;
+    try {
+      if (typeof registration.dispose === "function") {
+        registration.dispose();
+      }
+    } catch (error) {
+      logger.error({
+        event: "startup-native-hide.cleanup-failed",
+        phase,
+        code: "FENNEVIA_STARTUP_NATIVE_HIDE_CLEANUP_FAILED",
+        error,
+      });
+    }
+  };
 
   const snapshot = () => {
     const windowSnapshot = windowManager.snapshot();
@@ -52,6 +83,24 @@ export function createProcessRuntime({ services, windowManager, logger }) {
       try {
         services.obs.addObserver(shutdownObserver, SHUTDOWN_TOPIC);
         shutdownObserverRegistered = true;
+        try {
+          startupNativeHide = registerStartupNativeHide();
+          if (startupNativeHide?.registered === true) {
+            logger.info({
+              event: "startup-native-hide.registered",
+              phase: "runtime-start",
+              code: "FENNEVIA_STARTUP_NATIVE_HIDE_REGISTERED",
+            });
+          }
+        } catch (error) {
+          startupNativeHide = null;
+          logger.error({
+            event: "startup-native-hide.failed",
+            phase: "runtime-start",
+            code: "FENNEVIA_STARTUP_NATIVE_HIDE_FAILED",
+            error,
+          });
+        }
         windowManager.start();
         initializationCount = 1;
         state = "started";
@@ -63,6 +112,7 @@ export function createProcessRuntime({ services, windowManager, logger }) {
         return snapshot();
       } catch (error) {
         state = "failed";
+        disposeStartupNativeHide("runtime-start");
         try {
           windowManager.stop();
         } catch (cleanupError) {
@@ -117,6 +167,7 @@ export function createProcessRuntime({ services, windowManager, logger }) {
       }
 
       windowManager.stop();
+      disposeStartupNativeHide(phase);
       state = "stopped";
       logger.info({
         event: "runtime.stopped",
@@ -144,6 +195,7 @@ export function startProcessRuntime({
   logger,
   createWindowManager,
   initializeWindow,
+  registerStartupNativeHide,
   targetGlobal = globalThis,
 }) {
   if (typeof createWindowManager !== "function") {
@@ -158,7 +210,7 @@ export function startProcessRuntime({
     throw new Error(
       existingState.status === "starting"
         ? "FENNEVIA_RUNTIME_START_IN_PROGRESS"
-        : "FENNEVIA_RUNTIME_PREVIOUSLY_FAILED"
+        : "FENNEVIA_RUNTIME_PREVIOUSLY_FAILED",
     );
   }
 
@@ -168,7 +220,12 @@ export function startProcessRuntime({
     logger,
     initializeWindow,
   });
-  const runtime = createProcessRuntime({ services, windowManager, logger });
+  const runtime = createProcessRuntime({
+    services,
+    windowManager,
+    logger,
+    ...(registerStartupNativeHide ? { registerStartupNativeHide } : {}),
+  });
   const state = {
     publicState: null,
     runtime,

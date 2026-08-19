@@ -37,6 +37,14 @@ const packageFiles = Object.freeze([
   }),
   Object.freeze({
     scope: "profile",
+    path: "chrome/fennevia/content/runtime/StartupNativeHide.css",
+  }),
+  Object.freeze({
+    scope: "profile",
+    path: "chrome/fennevia/content/runtime/StartupNativeHide.sys.mjs",
+  }),
+  Object.freeze({
+    scope: "profile",
     path: "chrome/fennevia/content/runtime/WindowManager.sys.mjs",
   }),
   Object.freeze({

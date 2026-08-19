@@ -48,6 +48,8 @@ $loggerPath = Join-Path $packageRoot "content\runtime\Logger.sys.mjs"
 $windowManagerPath = Join-Path $packageRoot "content\runtime\WindowManager.sys.mjs"
 $windowShellPath = Join-Path $packageRoot "content\runtime\WindowShell.sys.mjs"
 $runtimePath = Join-Path $packageRoot "content\runtime\Runtime.sys.mjs"
+$startupHidePath = Join-Path $packageRoot "content\runtime\StartupNativeHide.sys.mjs"
+$startupHideCssPath = Join-Path $packageRoot "content\runtime\StartupNativeHide.css"
 $inventoryPath = Join-Path $repositoryRoot "package-manifest.json"
 $contentProbePath = Join-Path $repositoryRoot "tests\bootstrap-content-access.mjs"
 $contentFixturePath = Join-Path $repositoryRoot "tests\fixtures\bootstrap-content-access.html"
@@ -64,6 +66,8 @@ $requiredFiles = @(
     $windowManagerPath,
     $windowShellPath,
     $runtimePath,
+    $startupHidePath,
+    $startupHideCssPath,
     $inventoryPath,
     $contentProbePath,
     $contentFixturePath,
@@ -78,11 +82,12 @@ foreach ($requiredAttribute in @(
     'program/defaults/pref/*.js text eol=crlf',
     'program/*.cfg text eol=crlf',
     'profile/chrome/fennevia/chrome.manifest text eol=crlf',
+    'profile/chrome/fennevia/**/*.css text eol=lf',
     'profile/chrome/fennevia/**/*.mjs text eol=lf'
 )) {
     Assert-True -Condition ($attributesContent.Contains($requiredAttribute)) -Message "Installed artifact EOL rules must keep package hashes stable across checkouts."
 }
-foreach ($modulePath in @($entryPath, $healthStatePath, $loggerPath, $runtimePath, $windowManagerPath, $windowShellPath)) {
+foreach ($modulePath in @($entryPath, $healthStatePath, $loggerPath, $runtimePath, $startupHidePath, $startupHideCssPath, $windowManagerPath, $windowShellPath)) {
     Assert-True -Condition (-not [IO.File]::ReadAllText($modulePath).Contains("`r`n")) -Message "Privileged modules must be materialized with LF bytes for stable package hashes."
 }
 
@@ -91,6 +96,7 @@ Assert-Match -Content $prefContent -Pattern 'pref\("general\.config\.obscure_val
 Assert-Match -Content $prefContent -Pattern 'pref\("general\.config\.filename",\s*"fennevia\.cfg"\);' -Message "AutoConfig must select the project cfg file."
 Assert-Match -Content $prefContent -Pattern 'pref\("general\.config\.sandbox_enabled",\s*false\);' -Message "Release AutoConfig must use the privileged sandbox for the minimal bootstrap."
 Assert-Match -Content $prefContent -Pattern 'pref\("fennevia\.safeStart",\s*false\);' -Message "The early safe-start preference must have a default."
+Assert-Match -Content $prefContent -Pattern 'pref\("browser\.startup\.preXulSkeletonUI",\s*false\);' -Message "Windows skeleton UI must be disabled so a fake native toolbar cannot paint before browser.xhtml."
 
 $configContent = Get-Content -Raw -LiteralPath $configPath
 $firstConfigLine = Get-Content -LiteralPath $configPath -TotalCount 1

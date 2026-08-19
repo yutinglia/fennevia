@@ -54,8 +54,8 @@ Implemented controls:
 - hidden-at-rest four-edge state with pointer-transparent center;
 - explicit suspension for native modal state, DOM fullscreen, and customize
   mode;
-- exact active-only native hiding with complete native reveal, safe start, and
-  emergency fallback;
+- exact active-only durable native hiding, plus a self-expiring first-paint
+  hide sheet, with complete native reveal, safe start, and emergency fallback;
 - default-deny diagnostics and no runtime network sink;
 - path-safe package lifecycle with ownership manifests, narrow one-sided repair,
   and rollback;
@@ -753,7 +753,9 @@ Current #31 behavior:
   mode;
 - native titlebar, toolbox, sidebar, popup sets, tabbox, browser content,
   notifications, prompts, and OS controls are never owned by Svelte; only the
-  privileged reversible native sheet may alter their reviewed active geometry.
+  privileged reversible native sheet may alter their reviewed active geometry,
+  and ADR-050's process author sheet may collapse the same reviewed toolbox
+  surfaces before `active` for at most the health deadline.
 
 Issue #12's top surface invokes retained Firefox commands. The native navbar,
 Urlbar, identity/permission UI, prompts, and security indicators remain attached
@@ -769,7 +771,10 @@ panel, command, extension, download, customization, and window-control owner.
 
 Issue #15 implements the narrow active-only boundary in ADR-032. One privileged
 controller validates exact Firefox 153 toolbar/sidebar/titlebar nodes and one
-seven-rule project style. It never reads URLs, labels, principals, certificates,
+seven-rule project style. ADR-050 adds one process-scoped author stylesheet
+with no browsing data, scoped by `@-moz-document` to
+`chrome://browser/content/browser.xhtml`. Neither the controller nor that sheet
+reads URLs, labels, principals, certificates,
 permissions, extension identity, popup contents, sidebar contents, or browser
 content. Root state stores only fixed reveal/suspension booleans; logs contain
 only fixed error phase/code, Firefox version/build, and per-window opaque ID.
@@ -789,10 +794,13 @@ native-dialog, and DOM-fullscreen state suspend project hiding. Any missing,
 invalid, partial, or stably changed required target/style first exposes native
 UI and then requests per-window ADR-021 cleanup.
 
-This adds no dependency, network request, resource mapping, executable input,
-content-accessible asset, preference, persistence, remote font, or new data
-flow. The detailed threat and coverage evidence is in
-`docs/research/firefox-153-content-only-activation.md`.
+Issue #15 adds no dependency, network request, resource mapping, executable
+input, content-accessible asset, preference, persistence, remote font, or new
+data flow. ADR-050 adds only a local author sheet and
+`browser.startup.preXulSkeletonUI=false` in program defaults; it still transmits
+no browsing data. The detailed threat and coverage evidence is in
+`docs/research/firefox-153-content-only-activation.md` and
+`docs/research/firefox-153-startup-native-hide.md`.
 
 ## 13. Private windows
 
