@@ -1580,11 +1580,7 @@
 }
 
 #fennevia-shell-frame-host
-  :is(
-    .fennevia-navigation__controls,
-    .fennevia-browser-tools,
-    .fennevia-toolbar-widgets
-  ) {
+  :is(.fennevia-navigation__controls, .fennevia-browser-tools) {
   display: flex;
   min-inline-size: 0;
   flex: 0 0 auto;
@@ -1597,19 +1593,20 @@
 }
 
 #fennevia-shell-frame-host .fennevia-toolbar-widgets {
-  max-inline-size: 320px;
-  flex: 0 1 auto;
+  display: flex;
+  min-inline-size: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 2px;
   overflow-x: auto;
   scrollbar-width: thin;
   white-space: nowrap;
 }
 
-#fennevia-shell-frame-host .fennevia-toolbar-widgets--stacked {
-  max-inline-size: none;
+#fennevia-shell-frame-host .fennevia-toolbar-widgets--compact {
   flex: 0 0 auto;
-  flex-wrap: wrap;
-  overflow: visible;
-  white-space: normal;
+  align-self: stretch;
+  margin: var(--fennevia-space-2);
 }
 
 #fennevia-shell-frame-host .fennevia-toolbar-widgets__separator {
@@ -1654,11 +1651,6 @@
   -moz-window-dragging: no-drag;
 }
 
-#fennevia-shell-frame-host
-  .fennevia-toolbar-widgets--stacked.fennevia-toolbar-widgets--editing {
-  min-block-size: 72px;
-}
-
 #fennevia-shell-frame-host .fennevia-toolbar-widgets__placeholder {
   padding: 0 var(--fennevia-space-2);
   color: var(--fennevia-glass-muted);
@@ -1672,27 +1664,14 @@
 }
 
 #fennevia-shell-frame-host
-  .fennevia-toolbar-widgets--editing:not(.fennevia-toolbar-widgets--stacked)
+  .fennevia-toolbar-widgets--editing
   .fennevia-toolbar-widgets__item[data-fennevia-drop-before] {
   box-shadow: inset 2px 0 0 var(--fennevia-focus-color);
 }
 
 #fennevia-shell-frame-host
-  .fennevia-toolbar-widgets--stacked.fennevia-toolbar-widgets--editing
-  .fennevia-toolbar-widgets__item[data-fennevia-drop-before] {
-  box-shadow: inset 0 2px 0 var(--fennevia-focus-color);
-}
-
-#fennevia-shell-frame-host
-  .fennevia-toolbar-widgets--editing:not(
-    .fennevia-toolbar-widgets--stacked
-  )[data-fennevia-drop-end] {
+  .fennevia-toolbar-widgets--editing[data-fennevia-drop-end] {
   box-shadow: inset -2px 0 0 var(--fennevia-focus-color);
-}
-
-#fennevia-shell-frame-host
-  .fennevia-toolbar-widgets--stacked.fennevia-toolbar-widgets--editing[data-fennevia-drop-end] {
-  box-shadow: inset 0 -2px 0 var(--fennevia-focus-color);
 }
 
 #fennevia-shell-frame-host .fennevia-toolbar-widgets__icon {
@@ -2100,10 +2079,6 @@
 @media (max-width: 1180px) {
   #fennevia-shell-frame-host .fennevia-browser-tools__secondary {
     display: none;
-  }
-
-  #fennevia-shell-frame-host [data-fennevia-toolbar-widgets="top"] {
-    max-inline-size: 200px;
   }
 }
 

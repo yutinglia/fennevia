@@ -502,10 +502,7 @@
     }
   };
 
-  const collectWidgetInsertBefore = (
-    event: DragEvent,
-    zone: ToolbarZoneName,
-  ): number | null => {
+  const collectWidgetInsertBefore = (event: DragEvent): number | null => {
     const list = event.currentTarget;
     if (!(list instanceof HTMLElement)) {
       return null;
@@ -513,15 +510,11 @@
     const items = Array.from(
       list.querySelectorAll<HTMLElement>("[data-fennevia-toolbar-widget-item]"),
     );
-    const horizontal = zone === "top";
     const mids = items.map((item) => {
       const bounds = item.getBoundingClientRect();
-      return horizontal
-        ? bounds.left + bounds.width / 2
-        : bounds.top + bounds.height / 2;
+      return bounds.left + bounds.width / 2;
     });
-    const pointer = horizontal ? event.clientX : event.clientY;
-    return resolveWidgetInsertBefore(mids, pointer);
+    return resolveWidgetInsertBefore(mids, event.clientX);
   };
 
   const applyWidgetDrop = (target: ToolbarWidgetDropTarget) => {
@@ -549,7 +542,7 @@
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = "move";
     }
-    const insertBefore = collectWidgetInsertBefore(event, zone);
+    const insertBefore = collectWidgetInsertBefore(event);
     if (insertBefore === null) {
       return;
     }
@@ -562,7 +555,7 @@
       return;
     }
     event.preventDefault();
-    const insertBefore = collectWidgetInsertBefore(event, zone) ?? 0;
+    const insertBefore = collectWidgetInsertBefore(event) ?? 0;
     applyWidgetDrop({ insertBefore, type: "zone", zone });
   };
 
@@ -628,13 +621,8 @@
       void runToolbarWidgetEdit({ index, revision, type: "remove", zone });
       return;
     }
-    const stacked = zone !== "top";
-    const earlier =
-      (stacked && event.key === "ArrowUp") ||
-      (!stacked && event.key === "ArrowLeft");
-    const later =
-      (stacked && event.key === "ArrowDown") ||
-      (!stacked && event.key === "ArrowRight");
+    const earlier = event.key === "ArrowLeft";
+    const later = event.key === "ArrowRight";
     if (!event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
       return;
     }
@@ -1114,7 +1102,7 @@
         ? `${zone} panel widgets, droppable`
         : "Toolbar shortcuts"}
       class="fennevia-toolbar-widgets"
-      class:fennevia-toolbar-widgets--stacked={zone !== "top"}
+      class:fennevia-toolbar-widgets--compact={zone !== "top"}
       class:fennevia-toolbar-widgets--editing={customizeOpen}
       data-fennevia-customize-insert={customizeOpen &&
       dropPreview?.zone === zone
@@ -1545,9 +1533,9 @@
           </div>
         </div>
 
-        <div class="fennevia-navigation__trailing">
-          {@render widgetZone("top")}
+        {@render widgetZone("top")}
 
+        <div class="fennevia-navigation__trailing">
           <div
             aria-label="Firefox tools"
             class="fennevia-browser-tools"

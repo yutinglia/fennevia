@@ -374,11 +374,18 @@ ADR-044 and ADR-045 add `src/firefox/toolbar-widgets.ts` and
 `src/firefox/customize-model.ts` to the same generated private ESM. One
 optional controller per window reads the current `CustomizableUI` inventory,
 keeps widget ids and native nodes in a privileged handle/token registry, and
-renders project-owned widget zones on all four edges. With no layout
-preference the top zone falls back to the live nav-bar placement list. The
-first edit materializes a Fennevia layout into `fennevia.customize.layout`;
-`fennevia.customize.style` stores bounded style tokens. Both prefs are
-versioned JSON with a 16 KiB cap and fail safe to defaults. Placing a widget
+renders project-owned widget zones on all four edges. The top zone sits
+between the fixed navigation cluster and the Firefox-tools cluster and grows
+to fill the remaining toolbar width so `spring` placements can pack like the
+Firefox nav-bar (widgets before a spring stay left; widgets after it stay
+right). Left, right, and bottom widget zones are the same kind of horizontal
+row at full panel width, so `spring` can pack leftover space there too,
+without changing the tabs, bookmarks, or downloads panel sizes. With no
+layout preference the top zone falls back to the live nav-bar placement
+list. The first edit materializes a Fennevia layout into
+`fennevia.customize.layout`; `fennevia.customize.style` stores bounded style
+tokens. Both prefs are versioned JSON with a 16 KiB cap and fail safe to
+defaults. Placing a widget
 with no live node performs the owner-approved `addWidgetToArea(id, "nav-bar")`
 adoption; removing the last Fennevia placement restores extensions to
 `AREA_ADDONS` and other widgets to the palette. The frontend receives frozen

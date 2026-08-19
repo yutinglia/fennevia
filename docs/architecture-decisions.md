@@ -1517,8 +1517,15 @@ as an opaque-token palette, adds Fennevia-owned placeable widgets
 opens Firefox's `#downloadsPanel` through the existing browser-tools Downloads
 action) and the spacer/spring/separator specials,
 and accepts a fixed validated edit-operation set (`add`, `move`, `remove`,
-`reset-layout`, `set-style`, `reset-style`) with a revision guard. A
-project-owned editor drawer under the top panel — toggled by a dedicated
+`reset-layout`, `set-style`, `reset-style`) with a revision guard. Visual
+packing is Firefox-like rather than a trailing chip cluster: the top widget
+zone sits between the fixed navigation buttons and the fixed Firefox-tools
+cluster, grows to fill remaining toolbar width, and lets `spring` ("Flexible
+space") consume that free space so widgets after the spring sit next to the
+tools. Left, right, and bottom zones are the same kind of full-width
+horizontal row, so `spring` can pack leftover space without changing the
+tabs, bookmarks, or downloads panel sizes. A project-owned editor drawer
+under the top panel — toggled by a dedicated
 top-row control, held open through the #31 popup hold, closed by `Escape` with
 focus restoration — performs all editing. The fixed health-gated Fennevia
 controls remain fixed and non-removable; zones add to them.
@@ -1632,13 +1639,13 @@ or zone indexes — never widget ids. Drops call the existing
 `add` / `move` / `remove` edit operations; adopt/restore writes are unchanged.
 Widget activation is disabled while the session is open. Keyboard remains a
 required path: `Escape` closes the session, `Delete` removes a focused placed
-widget, `Ctrl+Arrow` reorders within a zone, and palette `Enter`/click adds to
-the last-focused zone. The palette stays in the top-host CustomizePanel and is
-centered in the remaining content well using the #31 collision clearances,
-including `--fennevia-bottom-clearance`, so it does not cover the four-edge drop
-zones. Native `CustomizeMode.sys.mjs` drag into Firefox areas
-stays out of scope; native customize mode remains available from the application
-menu, complete native reveal, and fail-open.
+widget, `Ctrl+ArrowLeft/Right` reorders within a zone, and palette
+`Enter`/click adds to the last-focused zone. The palette stays in the
+top-host CustomizePanel and is centered in the remaining content well using
+the #31 collision clearances, including `--fennevia-bottom-clearance`, so it
+does not cover the four-edge drop zones. Native `CustomizeMode.sys.mjs` drag
+into Firefox areas stays out of scope; native customize mode remains available
+from the application menu, complete native reveal, and fail-open.
 
 **Reasoning:** The button-only drawer could not match Firefox customize mode:
 widgets were edited as a list instead of on the toolbars the user already sees,
