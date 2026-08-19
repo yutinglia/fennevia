@@ -569,6 +569,8 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
     /border-radius: var\(--chrome-block-radius, 4px\) !important/u,
   );
   assert.match(style.textContent, /height: 0 !important/u);
+  assert.match(style.textContent, /overflow: hidden !important/u);
+  assert.match(style.textContent, /:is\(#urlbar, #urlbar-container\)/u);
   assert.match(style.textContent, /\.titlebar-buttonbox-container/u);
   assert.doesNotMatch(style.textContent, /data-fennevia-top-visible/u);
   assert.match(style.textContent, /z-index: 6 !important/u);
@@ -598,6 +600,52 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
   assert.equal(fixture.window.listenerCount(), 0);
   assert.equal(fixture.window.pendingAnimationFrameCount(), 0);
   assert.equal(fixture.window.pendingTimerCount(), 0);
+});
+
+test("activation blurs leftover Urlbar focus so native chrome can rest", () => {
+  const fixture = createFixture();
+  let contentFocusCount = 0;
+  fixture.window.gURLBar.focused = true;
+  fixture.window.gURLBar.blur = () => {
+    fixture.window.gURLBar.focused = false;
+  };
+  fixture.window.gBrowser = {
+    selectedBrowser: {
+      focus() {
+        contentFocusCount += 1;
+        fixture.window.gURLBar.focused = false;
+        fixture.document.activeElement = fixture.browser;
+      },
+    },
+  };
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+
+  fixture.document.documentElement.setAttribute("data-fennevia-active", "");
+  assert.equal(contentFocusCount, 1);
+  assert.equal(controller.snapshot().revealed, false);
+
+  const urlbarInput = append(
+    fixture.document,
+    fixture.navTarget,
+    XHTML_NAMESPACE,
+    "input",
+    "urlbar-input",
+  );
+  fixture.document.activeElement = urlbarInput;
+  fixture.window.gURLBar.focused = true;
+  fixture.document.dispatch("focusin", urlbarInput);
+  assert.equal(contentFocusCount, 2);
+  assert.equal(controller.snapshot().revealed, false);
+
+  fixture.window.dispatch("keydown", { key: "a" });
+  fixture.document.dispatch("focusin", urlbarInput);
+  assert.equal(controller.snapshot().revealed, true);
+
+  controller.dispose();
 });
 
 test("Urlbar handoff reveals before focus and releases only after native focus leaves", async () => {

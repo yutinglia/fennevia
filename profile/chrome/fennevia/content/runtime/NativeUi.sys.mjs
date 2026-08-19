@@ -50,7 +50,7 @@ const NATIVE_UI_STYLE = `
   max-height: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   border: 0 !important;
 }
 
@@ -59,7 +59,9 @@ const NATIVE_UI_STYLE = `
   > :is(#toolbar-menubar, #TabsToolbar, #nav-bar)
   > :not(.titlebar-buttonbox-container),
 :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
-  #navigator-toolbox > #PersonalToolbar {
+  #navigator-toolbox > #PersonalToolbar,
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-revealed]):not([data-fennevia-native-ui-suspended])
+  :is(#urlbar, #urlbar-container) {
   visibility: collapse !important;
 }
 
@@ -648,6 +650,7 @@ export function createNativeUiController({ window, frame, onError }) {
   let handoffTimer;
   let handoffPending = false;
   let focusHeld = false;
+  let userInteracted = false;
   let customizationTransition = root.hasAttribute("customizing");
   let windowTearingDown = false;
   let suspensionReason = null;
@@ -713,6 +716,51 @@ export function createNativeUiController({ window, frame, onError }) {
     );
   };
 
+  const isUrlbarNode = (node) => {
+    if (!isElement(node)) {
+      return false;
+    }
+    if (
+      node.id === "urlbar" ||
+      node.id === "urlbar-container" ||
+      node.id === "urlbar-input"
+    ) {
+      return true;
+    }
+    const urlbar = window.gURLBar;
+    if (!urlbar) {
+      return false;
+    }
+    if (node === urlbar || node === urlbar.inputField) {
+      return true;
+    }
+    return (
+      isDescendantOrSelf(urlbar, node) ||
+      isDescendantOrSelf(urlbar.inputField, node)
+    );
+  };
+
+  const markUserInteracted = () => {
+    userInteracted = true;
+  };
+
+  const focusSelectedBrowser = () => {
+    try {
+      window.gURLBar?.blur?.();
+      window.gURLBar?.inputField?.blur?.();
+    } catch {
+      // Urlbar blur is best-effort before content focus.
+    }
+    try {
+      const selectedBrowser = window.gBrowser?.selectedBrowser;
+      if (typeof selectedBrowser?.focus === "function") {
+        selectedBrowser.focus();
+      }
+    } catch {
+      // Content focus restoration is best-effort.
+    }
+  };
+
   const prunePopups = () => {
     for (const popup of [...openPopups]) {
       const state = popup.getAttribute?.("state");
@@ -764,6 +812,23 @@ export function createNativeUiController({ window, frame, onError }) {
       openPopups.size > 0 ||
       isNativeSidebarOpen(),
     );
+  };
+
+  const releaseRestingNativeFocus = () => {
+    if (
+      disposed ||
+      userInteracted ||
+      handoffPending ||
+      !root.hasAttribute(ACTIVE_ATTRIBUTE) ||
+      suspensionReason ||
+      shouldReveal() ||
+      !isNativeFocusHeld()
+    ) {
+      return false;
+    }
+    focusHeld = false;
+    focusSelectedBrowser();
+    return true;
   };
 
   const reconcile = () => {
@@ -918,6 +983,12 @@ export function createNativeUiController({ window, frame, onError }) {
 
   const onFocusIn = (event) => {
     if (isManagedNode(event.target)) {
+      if (!handoffPending && !userInteracted && isUrlbarNode(event.target)) {
+        focusHeld = false;
+        focusSelectedBrowser();
+        scheduleHide();
+        return;
+      }
       focusHeld = true;
       reconcile();
       return;
@@ -944,6 +1015,9 @@ export function createNativeUiController({ window, frame, onError }) {
     handoffPending = false;
   };
   const onKeyDown = (event) => {
+    if (event.key !== "Escape") {
+      markUserInteracted();
+    }
     if (event.key !== "Escape" || !root.hasAttribute(REVEALED_ATTRIBUTE)) {
       return;
     }
@@ -1024,6 +1098,7 @@ export function createNativeUiController({ window, frame, onError }) {
     register(window, "blur", onWindowBlur);
     register(window, "unload", onWindowUnload);
     register(window, "keydown", onKeyDown);
+    register(document, "mousedown", markUserInteracted);
     for (const type of [
       "popupshowing",
       "popupshown",
@@ -1046,6 +1121,9 @@ export function createNativeUiController({ window, frame, onError }) {
         if (!suspensionReason) {
           verifyTargets();
           reconcile();
+          if (root.hasAttribute(ACTIVE_ATTRIBUTE)) {
+            releaseRestingNativeFocus();
+          }
         }
       } catch (error) {
         reportFailure(error);
