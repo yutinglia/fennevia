@@ -52,3 +52,7 @@ Thumbs.db
 
 # Generated production artifacts are intentionally not ignored yet.
 # Their repository policy will be decided by the build and installation spikes.
+
+# Compiled GUI launcher (produced by release packaging, not source)
+FenneviaSetup.exe
+scripts/gui/FenneviaSetup.exe

@@ -82,14 +82,17 @@ A release adds a second, distribution-level inventory:
 
 ```text
 fennevia-<VERSION>/
+  FenneviaSetup.exe
   RELEASE-MANIFEST.json
   package-manifest.json
   program/
   profile/
   scripts/fennevia.ps1
+  scripts/fennevia-gui.ps1
   scripts/fennevia-package.ps1
   scripts/verify-release.ps1
-  scripts/lib/{FenneviaConsole,FenneviaTui,FenneviaInstaller,FenneviaRelease,SecurityChecks}.psm1
+  scripts/gui/FenneviaSetup.cs
+  scripts/lib/{FenneviaConsole,FenneviaGui,FenneviaTui,FenneviaInstaller,FenneviaRelease,SecurityChecks}.psm1
   INSTALL.md
   LICENSE
   THIRD_PARTY_NOTICES.md
@@ -133,8 +136,8 @@ applying changes. Every command requires both targets:
   survivor, under the strict rules in section 4;
 - when `RELEASE-MANIFEST.json` is present, `Install`, `Update`, `Repair`, and
   `Enable` reject Firefox major versions older than the tested baseline (153).
-  Firefox 153, 154, and newer majors may proceed; the plan and installer TUI
-  warn that only 153 and 154 are tested and that confirming install does not
+  Firefox 153, 154, and newer majors may proceed; the plan, installer TUI, and
+  GUI warn that only 153 and 154 are tested and that confirming install does not
   promise that everything will work. `Enable` also requires the package-manifest
   hash recorded by ownership. `Disable` and `Uninstall` deliberately remain
   available on an older or untested updated Firefox for recovery.
@@ -143,16 +146,28 @@ The script proves that the selected executable is stock Firefox, but it cannot
 infer whether that installation is disposable or writable. Development must
 use the copied stock program and marker-owned profile procedure from
 `docs/development-setup.md`. A release may target an explicitly selected normal
-Firefox installation, but system-managed program files can require a separately
-opened elevated PowerShell; the installer never elevates itself.
+Firefox installation, but system-managed program files can require administrator
+permission. The transaction engine never elevates itself. The release GUI may
+relaunch through Windows UAC only after the user clicks **Continue as
+administrator** because the selected program directory is not writable.
 
 Normal output always substitutes `<FIREFOX_PROGRAM>` and `<FENNEVIA_PROFILE>`.
 It does not enumerate unrelated profile files or print absolute paths.
 
 ## 3. Preview and execute
 
-The recommended interactive entry is the PowerShell console. From an extracted
-release or the source tree:
+The recommended interactive release entry is `FenneviaSetup.exe` at the extracted
+archive root. It is a WinForms wizard over the same installer contract. From an
+extracted release:
+
+1. Double-click `FenneviaSetup.exe`.
+2. Select `firefox.exe` and one registered profile **by name**.
+3. Acknowledge the Firefox 153/154 testing warning when shown.
+4. Confirm the redacted plan. If the program directory is not writable, choose
+   **Continue as administrator** and approve the Windows prompt.
+
+The PowerShell console remains the development entry and the advanced release
+host. From an extracted release or the source tree:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\fennevia.ps1
@@ -408,6 +423,8 @@ runtimes:
 ```powershell
 pwsh -NoProfile -File .\tests\installer.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\installer.Tests.ps1
+pwsh -NoProfile -File .\tests\fennevia-gui.Tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\fennevia-gui.Tests.ps1
 pwsh -NoProfile -File .\tests\release-installer.Tests.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\release-installer.Tests.ps1
 pwsh -NoProfile -File .\tests\release-packaging.Tests.ps1

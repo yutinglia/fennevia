@@ -15,8 +15,7 @@ English.
 - [Current GitHub Releases](https://github.com/yutinglia/fennevia/releases) —
   versioned Windows packages and checksums.
 - [Release installation and recovery](../release/INSTALL.md) — the guide bundled
-  into each release archive. The recommended entry is
-  `scripts/fennevia.ps1`.
+  into each release archive. The recommended entry is `FenneviaSetup.exe`.
 - [Complete package lifecycle](installation.md) — detailed install, update,
   repair, disable, enable, uninstall, rollback, and interrupted-operation rules.
 - [Security policy](../SECURITY.md) — supported security-reporting scope and how

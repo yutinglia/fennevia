@@ -28,9 +28,10 @@ is no promise that everything will work. Keep this archive for later recovery.
    selects a default. A dedicated profile created through `about:profiles` is
    strongly recommended. The profile must be listed in Firefox's
    `profiles.ini`; do not pass the profile collection directory itself.
-6. The selected Firefox program directory must be writable. A system-managed
-   installation may require a separately opened elevated PowerShell. The
-   installer never elevates itself.
+6. The selected Firefox program directory must be writable, or you must approve
+   an administrator prompt from Fennevia Setup. The transaction engine never
+   elevates itself. The GUI asks for administrator permission only after you
+   click **Continue as administrator**.
 
 Keep path values local. Do not paste them into issues or logs:
 
@@ -41,7 +42,12 @@ $profile = '<FIREFOX_PROFILE>'
 
 ## Preview, install, and update
 
-The recommended interactive entry is:
+The recommended interactive entry is `FenneviaSetup.exe` in this directory.
+Select `firefox.exe` and one registered profile **by name**, acknowledge the
+Firefox 153/154 testing warning, then confirm the redacted plan. If the program
+folder is not writable, choose **Continue as administrator**.
+
+The PowerShell console remains available:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\fennevia.ps1

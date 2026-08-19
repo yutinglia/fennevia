@@ -80,6 +80,12 @@ New-Item -ItemType Directory -Path $canonicalTestRoot | Out-Null
 
 Import-Module (Join-Path $repositoryRoot "scripts\lib\FenneviaRelease.psm1") -Force
 try {
+    $roslynCsc = Get-FenneviaRoslynCscPath
+    if (-not [string]::IsNullOrWhiteSpace([string] $roslynCsc)) {
+        Assert-True -Condition (Test-Path -LiteralPath $roslynCsc -PathType Leaf) -Message "Discovered Roslyn csc.exe must exist."
+        Assert-Equal -Actual ([IO.Path]::GetFileName($roslynCsc)) -Expected "csc.exe" -Message "Roslyn discovery must return csc.exe."
+    }
+
     $sourceCommit = "0123456789abcdef0123456789abcdef01234567"
     $first = New-FenneviaReleaseArtifacts `
         -RepositoryRoot $repositoryRoot `
@@ -103,8 +109,13 @@ try {
 
     $validation = Test-FenneviaReleaseTree -PackageRoot $first.PackageRoot
     Assert-True -Condition $validation.Passed -Message "The staged package must pass its strict release policy."
-    Assert-Equal -Actual $validation.FileCount -Expected 27 -Message "The strict release tree must have the reviewed file count."
+    Assert-Equal -Actual $validation.FileCount -Expected 31 -Message "The strict release tree must have the reviewed file count."
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\fennevia.ps1") -PathType Leaf) -Message "The release tree must include the console entry."
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\fennevia-gui.ps1") -PathType Leaf) -Message "The release tree must include the GUI entry."
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\lib\FenneviaGui.psm1") -PathType Leaf) -Message "The release tree must include the GUI module."
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\gui\FenneviaSetup.cs") -PathType Leaf) -Message "The release tree must include the setup launcher source."
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "FenneviaSetup.exe") -PathType Leaf) -Message "The release tree must include the GUI launcher."
+    Assert-True -Condition ((Get-Item -LiteralPath (Join-Path $first.PackageRoot "FenneviaSetup.exe")).Length -gt 0) -Message "The GUI launcher must be a non-empty executable."
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\lib\FenneviaConsole.psm1") -PathType Leaf) -Message "The release tree must include the console module."
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\lib\FenneviaTui.psm1") -PathType Leaf) -Message "The release tree must include the TUI host."
     Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\lib\FirefoxDevProfile.psm1"))) -Message "The development-profile helper must not ship in the release ZIP."

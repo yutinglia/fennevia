@@ -10,6 +10,7 @@ $testFiles = @(
     "bootstrap-spike.Tests.ps1",
     "firefox-dev-profile.Tests.ps1",
     "fennevia-console.Tests.ps1",
+    "fennevia-gui.Tests.ps1",
     "installer.Tests.ps1",
     "installer-discovery.Tests.ps1",
     "production-artifacts.Tests.ps1",

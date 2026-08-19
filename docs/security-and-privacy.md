@@ -700,15 +700,23 @@ after Firefox updates. Registered mode is opt-in and proves only the explicitly
 passed path against Firefox registration; it never enumerates a profile into
 normal output or chooses one for the operator.
 
-The optional `scripts/fennevia.ps1` console may list `profiles.ini` **Name**
-values in a local interactive picker. That listing is not written to
+The optional `scripts/fennevia.ps1` console and the release GUI
+(`FenneviaSetup.exe` / `scripts/lib/FenneviaGui.psm1`) may list `profiles.ini`
+**Name** values in a local interactive picker. That listing is not written to
 `installer.plan`, `installer.result`, `installer.status`, or other copyable
-output. The console never preselects Firefox's default profile and requires a
-second confirmation before using a default. It does not self-elevate, kill
-Firefox, or apply a package plan without the displayed `planSha256`.
+output. Neither host preselects Firefox's default profile; both require a
+second confirmation before using a default. They do not kill Firefox or apply a
+package plan without the displayed `planSha256`. The transaction engine does
+not elevate itself. The GUI may relaunch through Windows UAC only after the
+user clicks **Continue as administrator** because the selected program
+directory is not writable, and only after the warning and plan are confirmed.
+The elevated instance recomputes the plan and refuses a changed digest. Status
+never elevates.
 
 The current implementation is in `scripts/fennevia.ps1`,
+`scripts/fennevia-gui.ps1`,
 `scripts/fennevia-package.ps1`, `scripts/lib/FenneviaConsole.psm1`,
+`scripts/lib/FenneviaGui.psm1`,
 `scripts/lib/FenneviaTui.psm1`, and
 `scripts/lib/FenneviaInstaller.psm1`. Operator behavior and recovery are in
 `docs/installation.md`.

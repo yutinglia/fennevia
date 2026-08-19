@@ -65,10 +65,11 @@ vertical presentation.
 
 Do not develop or validate privileged browser chrome in a daily-use profile.
 
-Follow `docs/development-setup.md`. The recommended interactive entry is
-`pwsh -NoProfile -File .\scripts\fennevia.ps1`. That console redraws in place
-and accepts mouse clicks; it does not append a new menu after every key. The
-scripted equivalent is:
+Follow `docs/development-setup.md`. The recommended interactive development
+entry is `pwsh -NoProfile -File .\scripts\fennevia.ps1`. That console redraws
+in place and accepts mouse clicks; it does not append a new menu after every
+key. Extracted releases should use `FenneviaSetup.exe`. The scripted equivalent
+is:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\firefox-dev.ps1 Initialize
@@ -131,7 +132,7 @@ npm run verify
 - Svelte/TypeScript checking;
 - pure and component tests plus Node coverage floors (80% lines and 80%
   functions on loaded `src/app` and `src/firefox` modules);
-- the fixed-list PowerShell bootstrap/profile/installer/release/artifact/
+- the fixed-list PowerShell bootstrap/profile/installer/GUI/release/artifact/
   identity/health/host/lifecycle suites;
 - resolved dependency audit;
 - deterministic frontend and bridge builds;
@@ -161,13 +162,17 @@ change is intentional and reviewed. Never hand-edit generated bridge or shell
 files.
 
 Release packaging has additional fixed-list coverage in
-`release-packaging.Tests.ps1` and `release-installer.Tests.ps1`. Both run under
-PowerShell 7 and Windows PowerShell 5.1. They require two byte-identical ZIPs,
-fixed/sorted entries, a strict extracted tree from a Unicode/space path,
-checksum and source records, tamper rejection, explicit registered-profile
+`fennevia-gui.Tests.ps1`, `release-packaging.Tests.ps1`, and
+`release-installer.Tests.ps1`. They run under PowerShell 7 and Windows
+PowerShell 5.1. They require two byte-identical ZIPs, a compiled
+`FenneviaSetup.exe`, GUI confirmation/elevation-state coverage without
+ShowDialog, fixed/sorted entries, a strict extracted tree from a Unicode/space
+path, checksum and source records, tamper rejection, explicit registered-profile
 mode, exact supported Firefox major-version gate (153+; older rejected),
 pre-mutation rejection, untested-newer warning text, and
-disable/uninstall recovery after an older Firefox update. Before a tag,
+disable/uninstall recovery after an older Firefox update. Real double-click,
+UAC, and system-Firefox GUI installs are release-matrix work and are `not run`
+on ordinary pull requests. Before a tag,
 also run the clean-tree preflight and a real Firefox install/no-op/disable/
 repair-or-update/enable/uninstall smoke test from the extracted ZIP.
 

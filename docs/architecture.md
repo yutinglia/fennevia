@@ -700,10 +700,11 @@ preference, repairs only one completely absent ownership side from exact
 surviving source proof, and uninstalls only exact owned files. An incomplete
 pair blocks state-changing install/update/disable/enable actions; explicit
 Uninstall may use one valid survivor only after verifying present owned hashes
-and absent peer metadata. `scripts/fennevia.ps1` is the recommended interactive
-front end: a native in-place TUI that does not change those contracts. The
+and absent peer metadata. `FenneviaSetup.exe` is the recommended interactive
+release front end: a WinForms wizard that does not change those contracts.
+`scripts/fennevia.ps1` remains the development console and advanced TUI. The
 normative contract and interrupted-operation recovery procedure are in
-`docs/installation.md` and ADR-018/ADR-033/ADR-036/ADR-040.
+`docs/installation.md` and ADR-018/ADR-033/ADR-036/ADR-040/ADR-049.
 
 ## 10. Security and privacy model
 

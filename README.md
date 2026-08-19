@@ -73,8 +73,10 @@ Firefox from source.
 5. Close every Firefox window, Browser Console, and Browser Toolbox using that
    program or profile.
 
-A system-managed Firefox installation may require PowerShell to be opened as an
-administrator. The Fennevia installer never elevates itself.
+A system-managed Firefox installation may require administrator permission to
+write AutoConfig files. Fennevia Setup asks for that permission only after you
+choose **Continue as administrator**. It does not elevate when you first open
+the wizard.
 
 ### 2. Download and verify the release
 
@@ -95,19 +97,20 @@ Do not continue if the checksum does not match.
 
 ### 3. Preview the installation
 
-Extract the ZIP and open PowerShell in the extracted Fennevia directory. The
-recommended installer is the interactive console:
+Extract the ZIP and double-click `FenneviaSetup.exe` in the extracted Fennevia
+directory. Select `firefox.exe` and one registered profile **by name**. Fennevia
+never preselects Firefox's default profile. Review the Firefox 153/154 testing
+warning, then the redacted plan, then confirm. Confirming install on a newer
+Firefox is not a promise that the shell will keep working. If the selected
+Firefox program folder is not writable, choose **Continue as administrator**
+and approve the Windows prompt.
+
+Keep the extracted folder. The PowerShell console remains available as an
+advanced host:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\fennevia.ps1
 ```
-
-Select `firefox.exe` and one registered profile **by name**. The console
-redraws in place and accepts keyboard or mouse input; it does not print a
-new menu after every key. Fennevia never preselects Firefox's default
-profile. Review the Firefox 153/154 testing warning, then the redacted plan,
-then confirm. Confirming install on a newer Firefox is not a promise that
-the shell will keep working.
 
 Do not post your real profile path in an issue or public log. The scripted
 equivalent is:
@@ -127,7 +130,7 @@ full update, recovery, and removal instructions.
 
 ### 4. Install
 
-After reviewing the preview in the console, confirm the displayed plan. The
+After reviewing the preview in Fennevia Setup, confirm the displayed plan. The
 scripted equivalent repeats the command without `-WhatIf`:
 
 ```powershell

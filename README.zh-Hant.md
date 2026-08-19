@@ -44,7 +44,7 @@ Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用�
 4. 找出準備使用的 `firefox.exe`。常見位置是 `C:\Program Files\Mozilla Firefox\firefox.exe`。
 5. 關閉所有正在使用該程式或設定檔的 Firefox 視窗、Browser Console 及 Browser Toolbox。
 
-若 Firefox 安裝在受系統保護的位置，可能需要另外以系統管理員身分開啟 PowerShell。Fennevia 安裝程式不會自行要求或取得系統管理員權限。
+若 Firefox 安裝在受系統保護的位置，寫入 AutoConfig 可能需要系統管理員權限。Fennevia Setup 只有在你選擇「以系統管理員繼續」後才會顯示 Windows 權限提示，不會在開啟精靈時自動提權。
 
 ### 2. 下載並驗證發行檔
 
@@ -65,13 +65,13 @@ if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 
 ### 3. 預覽安裝變更
 
-解壓縮 ZIP，在解壓後的 Fennevia 目錄開啟 PowerShell。建議使用互動式主控台：
+解壓縮 ZIP，在解壓後的 Fennevia 目錄雙擊 `FenneviaSetup.exe`。請自行選擇 `firefox.exe` 與一個已註冊的設定檔**名稱**。Fennevia 不會預先選取 Firefox 預設設定檔。請先閱讀僅測試 153／154 的警告，再檢查遮罩後的變更計劃並確認套用。在較新 Firefox 上確認安裝，並不保證介面能繼續正常運作。若所選 Firefox 程式資料夾無法寫入，請選擇「以系統管理員繼續」並同意 Windows 提示。
+
+請保留此解壓資料夾。進階使用者仍可使用 PowerShell 主控台：
 
 ```powershell
 pwsh -NoProfile -File .\scripts\fennevia.ps1
 ```
-
-請自行選擇 `firefox.exe` 與一個已註冊的設定檔**名稱**。主控台會在同一畫面重繪，並支援鍵盤與滑鼠，不會在每次按鍵後再印出一組選單。Fennevia 不會預先選取 Firefox 預設設定檔。請先閱讀僅測試 153／154 的警告，再檢查遮罩後的變更計劃並確認套用。在較新 Firefox 上確認安裝，並不保證介面能繼續正常運作。
 
 不要把真實設定檔路徑貼到 issue 或公開紀錄。對應的指令列寫法是：
 
