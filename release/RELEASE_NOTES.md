@@ -2,8 +2,10 @@
 
 This is Fennevia's first public prerelease package for Windows x64.
 
-Validated compatibility is intentionally narrow: stock Firefox 153.0.4,
-BuildID 20260810162159, release channel. Review `INSTALL.md` and
+Validated compatibility is intentionally narrow: tested on stock Firefox
+153.0.4 BuildID 20260810162159 and 154.0 BuildID 20260812182057, release
+channel. Later Firefox versions may break the shell; confirming install does
+not promise that everything will work. Review `INSTALL.md` and
 `RELEASE-MANIFEST.json` inside the archive before installation, use a dedicated
 Firefox profile, and verify the separately published SHA-256 file.
 
@@ -17,8 +19,8 @@ The annotated release tag identifies the corresponding source. The archive's
 `RELEASE-MANIFEST.json` records the complete source commit and preferred-source
 URL; `INSTALL.md` contains install, update, hard-disable, repair, enable,
 uninstall, and Firefox-update recovery commands. This release adds packaging,
-explicit registered-profile installer mode, and an exact Firefox compatibility
-gate. It does not change native-UI hiding, resource mappings, or Firefox runtime
+explicit registered-profile installer mode, and a Firefox 153+ compatibility
+gate with an explicit untested-version warning. It does not change native-UI hiding, resource mappings, or Firefox runtime
 internals from the validated MVP baseline.
 
 Fennevia relies on unsupported privileged Firefox internals and has not yet

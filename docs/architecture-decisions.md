@@ -1075,7 +1075,8 @@ are recorded in
 
 ## ADR-036: Publish exact prerelease trees and opt in to registered-profile installation
 
-**Status:** Accepted for Fennevia 0.10.0-beta.1 on Windows x64
+**Status:** Accepted for Fennevia 0.10.0-beta.1 on Windows x64; the exact
+Firefox version/BuildID install gate is superseded by ADR-048
 
 Use `package.json` as the canonical release version and accept only stable
 `MAJOR.MINOR.PATCH` or numbered `alpha`, `beta`, and `rc` prereleases. The exact
@@ -1112,7 +1113,9 @@ is later lost. When a release manifest is present, Install, Update, Repair, and
 Enable require an exact Firefox version and BuildID allowlist match. Enable also
 requires ownership's exact package-manifest hash. Disable and Uninstall remain
 available without release compatibility so an unsupported Firefox update
-cannot trap privileged startup code in place.
+cannot trap privileged startup code in place. ADR-048 later replaces that
+exact version/BuildID match with a Firefox 153+ major-version gate plus an
+explicit untested-version warning.
 
 If exactly one valid ownership record survives and its peer metadata is wholly
 absent, Uninstall may use that survivor without the old package. It verifies all
@@ -1604,3 +1607,36 @@ uses in `toolbarbutton-icons.css` keeps theme/forced-colors coupling on
 `docs/research/firefox-153-toolbar-widget-mirror.md`; validation lives in
 `tests/firefox-toolbar-widgets.test.mjs` and
 `tests/toolbar-widgets-state.test.mjs`.
+
+## ADR-048: Allow Firefox 153+ with an explicit untested-version warning
+
+**Status:** Accepted on 2026-08-19 after owner-confirmed Firefox 154.0 ordinary
+runtime; supersedes ADR-036's exact version/BuildID install gate
+
+Keep `firefoxCompatibility` as the **tested** Firefox records, not a closed
+install allowlist. The current tested majors are 153 (153.0.4 /
+`20260810162159`) and 154 (154.0 / `20260812182057`).
+
+When `RELEASE-MANIFEST.json` is present, Install, Update, Repair, and Enable:
+
+- reject Firefox major versions older than the lowest tested major (153);
+- allow 153, 154, and newer majors;
+- record `compatibilityKind` as `tested` or `untested-newer`;
+- always surface the warning that only the tested majors have evidence and
+  that confirming install does not promise that everything will work.
+
+The interactive installer TUI requires an explicit
+`confirm-firefox-support` acknowledgement before the existing plan
+confirmation. Scripted CLI preview/result lines carry the same warning.
+Disable and Uninstall remain available without this gate so an unusable
+newer or older Firefox cannot trap AutoConfig in place.
+
+Do not treat a newer major as a validated support promise. Linux, macOS, ESR,
+Beta, Nightly, and daily-driver use remain out of scope. A later Firefox still
+requires `docs/firefox-update-workflow.md` when internals break.
+
+**Reasoning:** Exact BuildID matching blocked the owner-confirmed Firefox 154.0
+runtime and would block every later stock stable until a release republished
+the pair. A minimum-major gate plus an explicit no-promise warning lets 154
+and later stables install while keeping older-than-153 builds fail-closed.
+Evidence: `docs/research/firefox-154-stable-transition.md`.

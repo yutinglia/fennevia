@@ -20,7 +20,8 @@ formal audit or penetration test.
 Current validated baseline:
 
 - public package `0.10.0-beta.1` prerelease;
-- Firefox 153.0.4 BuildID 20260810162159 release, Windows x64;
+- Firefox 153.0.4 BuildID 20260810162159 and 154.0 BuildID 20260812182057,
+  Windows x64; later majors may install after an explicit no-promise warning;
 - copied Firefox program plus marker-owned development profile;
 - native Firefox DOM and complete transient access retained;
 - functional left-edge vertical tabs and compact address/status launcher,
@@ -57,7 +58,7 @@ second/private, and fallback matrix remains pending.
 | Normal diagnostics | URLs, titles, queries, bookmarks, downloads, paths, secrets, or private data can leak | Default-deny schemas, stable codes, redacted stacks, no network sink, hostile-value tests; #12–#14/#32/#37 and ADR-037 errors contain fixed phase/code/symbol/build/window-kind only and never address/status/permission/action/extension/widget/bookmark/download source data | Extend the same fixed schema to later features | #3, #5, #9–#14, #32, #37; ADR-037 |
 | Private-window state | State can leak to normal windows, process globals, preferences, or diagnostics | Per-window lifecycle/frame/tabs/navigation/popup/Urlbar/browser-tools/bookmark/download instances, opaque generations, bounded unpersisted state, complete fallback on uncertainty; #12–#14/#32/#37 passed normal/second/private isolation and disposal | Run ADR-042's pending second/private native-panel placement matrix, then repeat for each later bridge and Firefox update | #5, #9–#14, #31, #32, #37; ADR-037, ADR-042 |
 | Native security UI | Custom surfaces/native hiding can obscure permission/auth/certificate/extension/download-safety/dialog UI | Native DOM retained; #13/#37 summarize fixed state/availability; ADR-037/ADR-042 delegate detail/actions to the original Firefox owners, re-anchor those panels to project hosts without cloning contents, and export no sensitive panel data; ADR-032 provides complete navbar/sidebar reveal, toolbox-doorhanger/focus holds, modal/customize/DOM-fullscreen suspension, and emergency fallback | Run ADR-042's pending native-panel placement/caption/fallback matrix and repeat after Firefox updates | #7, #13, #15, #31, #37; ADR-032, ADR-037, ADR-042 |
-| Installer/updater/repair/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data or adopt stale state | Explicit canonical targets, mode-specific marker/registration/ownership proof, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion; release mutations require strict package validation and an exact Firefox version/BuildID; Repair accepts only one wholly absent side, one exact survivor/source, and no residue; one-sided Uninstall accepts only a valid survivor, absent peer metadata, and hash-matching present files; Disable/Uninstall remain recovery exits; the optional console confirms the displayed plan digest and never auto-selects a default profile | Revalidate for every platform/scope/compatibility change | #4, #16, #39, #57; ADR-033, ADR-036, ADR-040 |
+| Installer/updater/repair/uninstaller | Ambiguous/broad/reparse targets can overwrite/delete unrelated Firefox/profile data or adopt stale state | Explicit canonical targets, mode-specific marker/registration/ownership proof, dry run, dual ownership manifests, staging, hashes, journal, rollback, exact deletion; release mutations require strict package validation and Firefox major version 153 or newer; Repair accepts only one wholly absent side, one exact survivor/source, and no residue; one-sided Uninstall accepts only a valid survivor, absent peer metadata, and hash-matching present files; Disable/Uninstall remain recovery exits; the optional console confirms the 153/154 testing warning and the displayed plan digest and never auto-selects a default profile | Revalidate for every platform/scope/compatibility change | #4, #16, #39, #57; ADR-033, ADR-036, ADR-040, ADR-048 |
 | Release publication | Stale, nondeterministic, tampered, secret-bearing, wrong-source, or partially uploaded assets can execute privileged code | Canonical SemVer/tag contract, strict machine manifest, deterministic sorted ZIP with fixed timestamps, separate SHA-256, sensitive-data/path scan, clean-tree double build, annotated-tag-only workflow, draft with exact two-asset and GitHub digest verification before publish, download recheck | Record exact first-publication run and repeat per release | #18, #39; ADR-036 |
 | Test-only performance evidence | Firefox process records can expose origins, window URIs/titles, IDs, and threads | Explicit harness mode immediately reduces raw records to numeric process/memory/CPU aggregates and fixed timings; static test rejects sensitive fields; no production caller or sink | Revalidate API shape on every supported Firefox | #16; ADR-034 |
 | Test-only persisted-session evidence | Firefox SessionStore can expose complete browsing state, while preference or failure-injection residue can alter later starts | Explicit four-phase harness accepts only fixed local fixtures; default-deny evidence emits fixed IDs/counts/booleans; a stale marker blocks prepare; exact preference state, bundle bytes, one blank tab, and process baseline are restored; no production caller or sink | Revalidate restore timing, lazy pending semantics, and cleanup on every supported Firefox | #46; ADR-035 |
@@ -576,9 +577,10 @@ Required preflight:
 
 Release-only preflight additionally requires a strict `RELEASE-MANIFEST.json`
 inventory and file hashes, package-manifest binding, supported Windows scope,
-and exact Firefox version/BuildID for install/update/repair/enable. Enable binds
-to ownership's source-manifest hash. Disable/uninstall remain available when an
-updated Firefox is not supported.
+and Firefox major version 153 or newer for install/update/repair/enable, plus
+an explicit warning that only 153 and 154 are tested. Enable binds
+to ownership's source-manifest hash. Disable/uninstall remain available when
+Firefox is older than 153.
 
 Mutation controls:
 

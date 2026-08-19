@@ -6,9 +6,12 @@ the public README. For installation and ordinary use, start with the
 
 ## Current engineering status
 
-As of 2026-08-16, Fennevia has a published Windows x64 prerelease,
-`v0.10.0-beta.1`, validated against stock Firefox 153.0.4 release, Build ID
-`20260810162159`.
+As of 2026-08-19, Fennevia has a published Windows x64 prerelease,
+`v0.10.0-beta.1`, tested on stock Firefox 153.0.4 release, Build ID
+`20260810162159`, with owner-confirmed ordinary runtime on Firefox 154.0
+Build ID `20260812182057`. The installer accepts Firefox 153 and newer after
+an explicit warning that later versions may break with no working promise;
+see ADR-048 and `docs/research/firefox-154-stable-transition.md`.
 
 The tested MVP includes:
 
@@ -29,7 +32,7 @@ The tested MVP includes:
 | Content-only activation | Complete | Exact health-gated native-surface hiding, transient native reveal, fullscreen/customize suspension, and fail-open cleanup |
 | Firefox-update hardening | Complete for the tested build | Fixed local/CI gates, resource baseline, ownership repair, compatibility inventory, and same-build update rehearsal |
 | Licensing and distribution | Complete | MPL-2.0 policy, third-party provenance, deterministic ZIP/checksum, exact source/file manifest, and verified prerelease publication |
-| Later stable transition | Pending availability/evidence | A real transition to a newer Firefox stable still requires the complete update workflow and cannot be claimed from the Firefox 153 rehearsal |
+| Later stable transition | Recorded for ordinary 154.0 runtime | First real stock-stable move is Firefox 153.0.4 / `20260810162159` to 154.0 / `20260812182057`; ADR-048 then relaxed the installer gate to Firefox 153+ with a no-promise warning |
 
 The planned Windows MVP and first public prerelease are complete. ADR-037's
 single-line toolbar and native handoffs, ADR-044's nav-bar widget mirror, and
@@ -37,9 +40,11 @@ ADR-045's Fennevia-owned customize mode, and ADR-046's localized names and
 native built-in widget icons have focused automated coverage; the
 changed real-Firefox visual and interaction matrices remain pending and are
 not part of the published `v0.10.0-beta.1` validation claim. [Issue
-#1](https://github.com/yutinglia/fennevia/issues/1) remains open because a real
-transition to a later Firefox stable has not yet produced the required
-compatibility record. Historical research files record what was actually true
+#1](https://github.com/yutinglia/fennevia/issues/1) recorded the first real
+stock-stable transition to Firefox 154.0 Build ID `20260812182057` on
+2026-08-19; see `docs/research/firefox-154-stable-transition.md`. ADR-048
+relaxes the installer to Firefox 153 and newer with an explicit warning.
+Historical research files record what was actually true
 at each milestone and are not rewritten when later work supersedes their
 production shape.
 
@@ -101,8 +106,9 @@ removes the active gate and exposes native Firefox UI.
 ## Technology and support choices
 
 - **Browser:** official stock Firefox rather than a maintained source fork.
-- **Supported release boundary:** exact Firefox version and Build ID allowlist,
-  currently Windows x64 / Firefox 153.0.4 / `20260810162159`.
+- **Supported release boundary:** Firefox major version 153 or newer on
+  Windows x64, with tested evidence on 153.0.4 / `20260810162159` and 154.0 /
+  `20260812182057`. Later majors may install after a no-promise warning.
 - **Bootstrap:** AutoConfig only for fixed manifest registration and one fixed
   privileged entry.
 - **Runtime:** privileged `.sys.mjs` modules with one process runtime and

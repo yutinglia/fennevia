@@ -203,9 +203,15 @@ try {
     }
 
     Invoke-FenneviaConsole -PackageRoot $releaseRoot -Reader (New-TestAnswerReader -Answers @("install", "candidate:0", "work", "no", "quit")) -Hooks $hooks
-    Assert-Equal -Actual $script:InvokeCount -Expected 0 -Message "Rejecting the plan must not apply a package mutation."
-    Assert-True -Condition (@($script:Written | Where-Object { $_ -match "event=console.cancelled" }).Count -gt 0) -Message "A cancelled plan should emit a console.cancelled event."
+    Assert-Equal -Actual $script:InvokeCount -Expected 0 -Message "Rejecting Firefox support acknowledgement must not apply a package mutation."
+    Assert-True -Condition (@($script:Written | Where-Object { $_ -match "event=console.cancelled action=install reason=firefox-support-unacknowledged" }).Count -gt 0) -Message "Declining the Firefox support warning should emit firefox-support-unacknowledged."
+    Assert-True -Condition (@($script:Written | Where-Object { $_ -match "event=console.firefox-support-warning" }).Count -gt 0) -Message "Install must show the Firefox support warning before confirmation."
     Assert-True -Condition (@($script:Written | Where-Object { $_ -match "C:\\hidden" }).Count -eq 0) -Message "Console output must not disclose injected absolute paths."
+
+    $script:Written.Clear()
+    Invoke-FenneviaConsole -PackageRoot $releaseRoot -Reader (New-TestAnswerReader -Answers @("install", "candidate:0", "work", "yes", "no", "quit")) -Hooks $hooks
+    Assert-Equal -Actual $script:InvokeCount -Expected 0 -Message "Rejecting the plan after support acknowledgement must not apply a package mutation."
+    Assert-True -Condition (@($script:Written | Where-Object { $_ -match "event=console.cancelled action=install reason=confirmation-required" }).Count -gt 0) -Message "Declining the plan should emit confirmation-required."
 
     $script:InvokeCount = 0
     $hooks["InvokePackage"] = {
@@ -231,7 +237,7 @@ try {
             Backups = @()
         }
     }
-    Invoke-FenneviaConsole -PackageRoot $releaseRoot -Reader (New-TestAnswerReader -Answers @("install", "candidate:0", "work", "yes", "quit")) -Hooks $hooks
+    Invoke-FenneviaConsole -PackageRoot $releaseRoot -Reader (New-TestAnswerReader -Answers @("install", "candidate:0", "work", "yes", "yes", "quit")) -Hooks $hooks
     Assert-Equal -Actual $script:InvokeCount -Expected 1 -Message "Confirming the plan should apply exactly once."
     Assert-Equal -Actual $script:LastRequest.ExpectedPlanSha256 -Expected ("c" * 64) -Message "Apply must reuse the displayed plan digest."
     Assert-Equal -Actual $script:LastRequest.ProfileMode -Expected "Registered" -Message "Release console actions must stay in Registered mode."
@@ -273,7 +279,16 @@ try {
     Assert-True -Condition (@($logLines | Where-Object { $_ -match "hidden" }).Count -eq 0) -Message "The in-TUI log must drop absolute paths."
     Assert-True -Condition (-not (Test-FenneviaTuiHostActive)) -Message "Layout tests must not open a real console host."
 
-    Write-Output "PASS: console kind, menus, profile picker, confirmation, plan-digest, and TUI layout tests."
+    $supportWarning = Get-FenneviaConsoleFirefoxSupportWarning -Plan ([pscustomobject]@{
+        CompatibilityKind = "untested-newer"
+        TestedFirefoxMajors = "153,154"
+        FirefoxSupportWarning = "Fennevia is only tested on Firefox 153 and 154. Later Firefox versions may break the shell. Confirming install does not promise that everything will work."
+    })
+    Assert-True -Condition ($supportWarning.Title -match "153 and 154") -Message "The TUI confirmation title must name the tested Firefox majors."
+    Assert-True -Condition (@($supportWarning.Lines | Where-Object { $_ -eq "event=console.firefox-support-warning" }).Count -eq 1) -Message "The TUI must emit a firefox-support-warning event."
+    Assert-True -Condition ($supportWarning.Warning -match "does not promise") -Message "The warning must state that confirming install is not a working promise."
+
+    Write-Output "PASS: console kind, menus, profile picker, confirmation, plan-digest, Firefox support warning, and TUI layout tests."
 }
 finally {
     Remove-Module FenneviaConsole, FenneviaTui, FenneviaInstaller -ErrorAction SilentlyContinue

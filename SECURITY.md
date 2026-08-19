@@ -8,8 +8,9 @@ APIs. It has not completed an independent security audit and must not be treated
 as a hardened production security boundary or a stable daily-driver product.
 
 Use a dedicated Firefox profile, verify release checksums, retain the exact
-release archive for recovery, and follow the compatibility allowlist before
-installation.
+release archive for recovery, and read the Firefox 153/154 testing warning
+before installation. Later Firefox versions may break the shell; confirming
+install is not a working promise.
 
 ## Supported versions
 
@@ -17,18 +18,17 @@ The current public security-reporting scope is:
 
 | Fennevia | Firefox | Platform | Status |
 | --- | --- | --- | --- |
-| `0.10.0-beta.1` | Stock Firefox 153.0.4 release, Build ID `20260810162159` | Windows x64 | Current public prerelease |
+| `0.10.0-beta.1` | Stock Firefox 153.0.4 and 154.0 release; Build IDs `20260810162159` / `20260812182057` | Windows x64 | Current public prerelease; later majors install only after an explicit no-promise warning |
 
-The installer rejects another Firefox version or Build ID for install, update,
-repair, and enable operations. Linux, macOS, Firefox ESR, Beta, Nightly, and
-other Firefox builds are not supported by this release.
+The installer rejects Firefox older than 153 for install, update, repair, and
+enable operations. Firefox 153, 154, and newer majors may be installed after
+the warning that only 153 and 154 are tested. Linux, macOS, Firefox ESR, Beta,
+and Nightly are not supported by this release.
 
 The `main` branch is development source, not a supported release channel. A
-Firefox update can move an existing installation outside the release's support
-boundary. In that case, keep Fennevia disabled or uninstall it with the retained
-package until a compatible release is available. Recovery-oriented `Disable`
-and `Uninstall` remain intentionally available after an unsupported Firefox
-update.
+Firefox update can move an existing installation onto an untested major.
+Later versions may break the shell. Confirming install is not a support
+promise. Recovery-oriented `Disable` and `Uninstall` remain available.
 
 ## Reporting a vulnerability
 

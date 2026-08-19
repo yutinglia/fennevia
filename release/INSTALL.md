@@ -4,8 +4,9 @@
 
 This archive contains a prebuilt Fennevia package. Ordinary installation does
 not require Node.js or npm. Fennevia runs privileged code and relies on Firefox
-internals, so use only the exact Firefox version/build listed in
-`RELEASE-MANIFEST.json` and keep this archive for later recovery.
+internals. It has been tested only with Firefox 153 and 154. Later Firefox
+versions may break the shell. If you confirm install on a newer version, there
+is no promise that everything will work. Keep this archive for later recovery.
 
 ## Before installation
 
@@ -47,8 +48,9 @@ pwsh -NoProfile -File .\scripts\fennevia.ps1
 ```
 
 The console lists local Firefox builds and registered profile **names**, never
-preselects Firefox's default profile, shows the redacted plan, and applies
-only after confirmation. The interactive host redraws in place and accepts
+preselects Firefox's default profile, shows the Firefox 153/154 testing
+warning, shows the redacted plan, and applies only after both confirmations.
+The interactive host redraws in place and accepts
 mouse clicks; it does not require Node.js. If stdin is redirected,
 use the scripted commands below.
 
@@ -74,8 +76,8 @@ pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Update `
   -ProfileMode Registered -WhatIf
 ```
 
-An update refuses modified owned files, a mismatched ownership pair, an
-unsupported Firefox build, or a release tree whose recorded bytes changed.
+An update refuses modified owned files, a mismatched ownership pair, Firefox
+older than the tested baseline, or a release tree whose recorded bytes changed.
 
 ## Hard disable, repair, enable, and uninstall
 
@@ -93,9 +95,9 @@ Fennevia bundle.
 
 If Firefox removed one complete side of an otherwise valid installation, the
 exact original release may preview `Repair`. Repair never adopts partial
-residue, a different release, or modified files. If the new Firefox build is
-not listed in this release manifest, do not repair or enable this release; keep
-it disabled/absent and wait for a compatible Fennevia release.
+residue, a different release, or modified files. Repair and enable reject
+Firefox older than 153. Firefox 153, 154, and newer majors may proceed after
+the testing warning; confirming that warning is not a support promise.
 
 If exactly one valid ownership record survives but the exact old release is no
 longer available, preview `Uninstall` instead. It does not read package bytes:

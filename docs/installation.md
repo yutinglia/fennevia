@@ -97,7 +97,7 @@ fennevia-<VERSION>/
 
 `RELEASE-MANIFEST.json` records the exact version, annotated tag, source commit
 and source archive, archive/checksum names, package-manifest SHA-256, supported
-platform and Firefox version/BuildID allowlist, compatibility evidence, known
+platform, tested Firefox version/BuildID records, compatibility evidence, known
 limitations, and every other release file's size and SHA-256. It intentionally
 does not contain a recursive self-hash. The release validator rejects an extra,
 missing, renamed, reparse-point, changed, credential-like, high-confidence
@@ -132,10 +132,12 @@ applying changes. Every command requires both targets:
   `Uninstall` may remove only hash-verified content proven by one valid
   survivor, under the strict rules in section 4;
 - when `RELEASE-MANIFEST.json` is present, `Install`, `Update`, `Repair`, and
-  `Enable` require the selected Firefox version and BuildID to match an exact
-  allowlist entry before mutation. `Enable` also requires the package-manifest
+  `Enable` reject Firefox major versions older than the tested baseline (153).
+  Firefox 153, 154, and newer majors may proceed; the plan and installer TUI
+  warn that only 153 and 154 are tested and that confirming install does not
+  promise that everything will work. `Enable` also requires the package-manifest
   hash recorded by ownership. `Disable` and `Uninstall` deliberately remain
-  available on an unsupported updated Firefox for recovery.
+  available on an older or untested updated Firefox for recovery.
 
 The script proves that the selected executable is stock Firefox, but it cannot
 infer whether that installation is disposable or writable. Development must
@@ -161,8 +163,9 @@ Uninstall against an explicitly selected registered profile. A source tree
 offers development setup, update, launch, recovery, and teardown against the
 marker-owned program copy and `fennevia-dev` profile. The console lists
 Firefox builds and registered profile **names** locally, never preselects
-Firefox's default profile, shows the redacted plan, and applies only after
-confirmation with that plan's `planSha256`. The interactive host is a native
+Firefox's default profile, shows the 153/154 testing warning, shows the
+redacted plan, and applies only after both acknowledgements with that plan's
+`planSha256`. The interactive host is a native
 TUI: it enters an alternate screen, redraws in place, and accepts keyboard and
 mouse input. Click an action to select it; Esc cancels. Plan and status lines
 stay in the same frame instead of scrolling a new menu after every key.
@@ -368,10 +371,11 @@ recovery shortcut.
 `Disable` is the first recovery action when the installed runtime or manifest is
 broken. It deactivates AutoConfig before that runtime can load and remains
 available when another owned package file is missing or the selected Firefox
-build is newer than the release allowlist. Cold-start Firefox after disable and
-confirm native Firefox starts with no Fennevia bootstrap record. Do not repair
-or enable an old release on an unsupported Firefox build; leave it disabled or
-absent until a compatible package exists.
+is older than the tested baseline. Cold-start Firefox after disable and
+confirm native Firefox starts with no Fennevia bootstrap record. Repair or
+enable on Firefox 153 or newer is allowed after the untested-version warning;
+do not treat that acknowledgement as a support promise. Leave an older-than-153
+build disabled or absent.
 
 `Uninstall` then removes the exact ownership-listed files that still exist. It
 leaves unrelated files below the profile's `chrome/` directory untouched. A
@@ -397,7 +401,7 @@ one-sided program/profile repair, exact-source enforcement, residue rejection,
 repair dry-run and failure rollback,
 unrelated-file preservation, permission failure, interrupted-transaction
 rejection, preview/execute plan mismatch, rollback, uninstall, redacted CLI
-output, registered-profile opt-in, release-tree tampering, exact Firefox-build
+output, registered-profile opt-in, release-tree tampering, Firefox-major
 rejection, and unsupported-build recovery in both supported PowerShell
 runtimes:
 

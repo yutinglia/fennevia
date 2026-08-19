@@ -28,11 +28,16 @@ ADR-039.
 
 ## 1. Current validated baseline
 
-As of 2026-08-16:
+As of 2026-08-19:
 
 - package: public `0.10.0-beta.1` prerelease;
-- Firefox: 153.0.4 release;
-- build ID: `20260810162159`;
+- tested Firefox: 153.0.4 release, Build ID `20260810162159`, and 154.0
+  release, Build ID `20260812182057`;
+- installer gate: Firefox 153+ after an explicit warning that only 153 and 154
+  are tested (ADR-048);
+- first real stock-stable transition: owner-confirmed ordinary runtime on
+  Firefox 154.0; full update-workflow mass matrix `not run`; see
+  `docs/research/firefox-154-stable-transition.md`;
 - first platform: Windows 11;
 - environment: copied stock Firefox program plus marker-owned direct-path
   development profile;
@@ -160,8 +165,9 @@ Release packaging has additional fixed-list coverage in
 PowerShell 7 and Windows PowerShell 5.1. They require two byte-identical ZIPs,
 fixed/sorted entries, a strict extracted tree from a Unicode/space path,
 checksum and source records, tamper rejection, explicit registered-profile
-mode, exact supported Firefox version/BuildID, pre-mutation rejection, and
-disable/uninstall recovery after an unsupported Firefox update. Before a tag,
+mode, exact supported Firefox major-version gate (153+; older rejected),
+pre-mutation rejection, untested-newer warning text, and
+disable/uninstall recovery after an older Firefox update. Before a tag,
 also run the clean-tree preflight and a real Firefox install/no-op/disable/
 repair-or-update/enable/uninstall smoke test from the extracted ZIP.
 

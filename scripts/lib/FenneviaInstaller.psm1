@@ -1083,13 +1083,13 @@ function Assert-FenneviaInstallerPackageCompatibility {
     )
 
     if ($null -eq $Package.ReleaseManifest) {
-        return
+        return $null
     }
 
     $releaseModule = Join-Path $PSScriptRoot "FenneviaRelease.psm1"
     $releaseModuleInfo = Import-Module $releaseModule -Force -PassThru
     try {
-        $supported = Test-FenneviaReleaseFirefoxCompatibility `
+        $compatibility = Get-FenneviaReleaseFirefoxCompatibility `
             -ReleaseManifest $Package.ReleaseManifest `
             -FirefoxVersion $Targets.FirefoxVersion `
             -FirefoxBuildId $Targets.FirefoxBuildID
@@ -1097,9 +1097,10 @@ function Assert-FenneviaInstallerPackageCompatibility {
     finally {
         Remove-Module $releaseModuleInfo -ErrorAction SilentlyContinue
     }
-    if (-not $supported) {
-        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_FIREFOX_UNSUPPORTED" -Message "This release does not support the selected stock Firefox version and BuildID. Disable or uninstall remains available for recovery."
+    if (-not [bool] $compatibility.Allowed) {
+        Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_FIREFOX_UNSUPPORTED" -Message "This release does not support Firefox versions older than the tested baseline. Disable or uninstall remains available for recovery."
     }
+    return $compatibility
 }
 
 function ConvertTo-FenneviaInstallerOwnershipJson {
@@ -1880,6 +1881,22 @@ function New-FenneviaInstallerInternalPlan {
     }
 }
 
+function Add-FenneviaInstallerPlanCompatibility {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Plan,
+
+        [AllowNull()]
+        [object] $Compatibility
+    )
+
+    if ($null -ne $Compatibility) {
+        Add-Member -InputObject $Plan -NotePropertyName Compatibility -NotePropertyValue $Compatibility -Force
+    }
+    return $Plan
+}
+
 function Assert-FenneviaInstallerTargetPathAvailable {
     [CmdletBinding()]
     param(
@@ -2396,8 +2413,10 @@ function New-FenneviaInstallerActionPlan {
             Assert-FenneviaInstallerMetadataSideClean -Targets $targets -Scope $survivingScope
         }
         $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
-        Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
-        return New-FenneviaInstallerRepairPlan -Targets $targets -Package $package -OwnershipState $ownershipState
+        $compatibility = Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
+        return Add-FenneviaInstallerPlanCompatibility `
+            -Plan (New-FenneviaInstallerRepairPlan -Targets $targets -Package $package -OwnershipState $ownershipState) `
+            -Compatibility $compatibility
     }
 
     if ($Action -eq "Uninstall" -and $ownershipState.Kind -notin @("absent", "complete")) {
@@ -2421,16 +2440,20 @@ function New-FenneviaInstallerActionPlan {
     switch ($Action) {
         "Install" {
             $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
-            Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
-            return New-FenneviaInstallerInstallPlan -Targets $targets -Package $package -OwnershipPair $ownershipPair
+            $compatibility = Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
+            return Add-FenneviaInstallerPlanCompatibility `
+                -Plan (New-FenneviaInstallerInstallPlan -Targets $targets -Package $package -OwnershipPair $ownershipPair) `
+                -Compatibility $compatibility
         }
         "Update" {
             if ($null -eq $ownershipPair) {
                 Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_NOT_INSTALLED" -Message "Update requires a valid existing ownership pair; use Install first."
             }
             $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
-            Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
-            return New-FenneviaInstallerUpdatePlan -Targets $targets -Package $package -OwnershipPair $ownershipPair
+            $compatibility = Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
+            return Add-FenneviaInstallerPlanCompatibility `
+                -Plan (New-FenneviaInstallerUpdatePlan -Targets $targets -Package $package -OwnershipPair $ownershipPair) `
+                -Compatibility $compatibility
         }
         "Disable" {
             if ($null -eq $ownershipPair) {
@@ -2443,11 +2466,13 @@ function New-FenneviaInstallerActionPlan {
                 Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_NOT_INSTALLED" -Message "Enable requires a valid existing ownership pair."
             }
             $package = Read-FenneviaInstallerPackageManifest -PackageRoot $PackageRoot
-            Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
+            $compatibility = Assert-FenneviaInstallerPackageCompatibility -Targets $targets -Package $package
             if ($package.ManifestSha256 -cne $ownershipPair.Data.SourceManifestSha256) {
                 Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_ENABLE_SOURCE_MISMATCH" -Message "Enable requires the exact package manifest recorded by the installed ownership pair."
             }
-            return New-FenneviaInstallerEnablePlan -Targets $targets -OwnershipPair $ownershipPair -Package $package
+            return Add-FenneviaInstallerPlanCompatibility `
+                -Plan (New-FenneviaInstallerEnablePlan -Targets $targets -OwnershipPair $ownershipPair -Package $package) `
+                -Compatibility $compatibility
         }
         "Uninstall" {
             return New-FenneviaInstallerUninstallPlan -Targets $targets -OwnershipPair $ownershipPair
@@ -3119,6 +3144,18 @@ function ConvertTo-FenneviaInstallerPublicResult {
         }
     }
     $status = if (-not $DryRun -and $publicOperations.Count -gt 0) { "applied" } else { $Plan.Status }
+    $compatibility = $null
+    if ($null -ne $Plan.PSObject.Properties["Compatibility"]) {
+        $compatibility = $Plan.Compatibility
+    }
+    $compatibilityKind = ""
+    $testedFirefoxMajors = ""
+    $firefoxSupportWarning = ""
+    if ($null -ne $compatibility) {
+        $compatibilityKind = [string] $compatibility.Kind
+        $testedFirefoxMajors = (@($compatibility.TestedMajors) -join ",")
+        $firefoxSupportWarning = [string] $compatibility.Warning
+    }
     return [pscustomobject]@{
         Action = $Plan.Action
         Status = $status
@@ -3134,6 +3171,9 @@ function ConvertTo-FenneviaInstallerPublicResult {
         PlannedBackupCount = $publicBackups.Count
         PlanSha256 = $PlanSha256
         StartupCacheAction = "none"
+        CompatibilityKind = $compatibilityKind
+        TestedFirefoxMajors = $testedFirefoxMajors
+        FirefoxSupportWarning = $firefoxSupportWarning
         Operations = $publicOperations
         Backups = $publicBackups.ToArray()
     }
@@ -3161,6 +3201,15 @@ function ConvertTo-FenneviaInstallerResultLines {
     $lines.Add("plannedBackupCount=$($Result.PlannedBackupCount)")
     $lines.Add("planSha256=$($Result.PlanSha256)")
     $lines.Add("startupCacheAction=$($Result.StartupCacheAction)")
+    if ($null -ne $Result.PSObject.Properties["CompatibilityKind"] -and -not [string]::IsNullOrWhiteSpace([string] $Result.CompatibilityKind)) {
+        $lines.Add("compatibilityKind=$($Result.CompatibilityKind)")
+    }
+    if ($null -ne $Result.PSObject.Properties["TestedFirefoxMajors"] -and -not [string]::IsNullOrWhiteSpace([string] $Result.TestedFirefoxMajors)) {
+        $lines.Add("testedFirefoxMajors=$($Result.TestedFirefoxMajors)")
+    }
+    if ($null -ne $Result.PSObject.Properties["FirefoxSupportWarning"] -and -not [string]::IsNullOrWhiteSpace([string] $Result.FirefoxSupportWarning)) {
+        $lines.Add("firefoxSupportWarning=$($Result.FirefoxSupportWarning)")
+    }
     $backupIndex = 0
     foreach ($backup in $Result.Backups) {
         $lines.Add("backup[$backupIndex]=$($backup.Scope):$($backup.Path)")
@@ -3206,6 +3255,9 @@ function Get-FenneviaInstallerInstallationStatus {
         ProgramWritable = $null
         SelectedFirefoxRunning = $false
         Compatible = $null
+        CompatibilityKind = ""
+        TestedFirefoxMajors = ""
+        FirefoxSupportWarning = ""
         ErrorCode = ""
         Problems = @()
     }
@@ -3252,10 +3304,14 @@ function Get-FenneviaInstallerInstallationStatus {
                     $releaseModule = Join-Path $PSScriptRoot "FenneviaRelease.psm1"
                     $releaseModuleInfo = Import-Module $releaseModule -Force -PassThru
                     try {
-                        $status.Compatible = [bool] (Test-FenneviaReleaseFirefoxCompatibility `
+                        $compatibility = Get-FenneviaReleaseFirefoxCompatibility `
                             -ReleaseManifest $package.ReleaseManifest `
                             -FirefoxVersion $targets.FirefoxVersion `
-                            -FirefoxBuildId $targets.FirefoxBuildID)
+                            -FirefoxBuildId $targets.FirefoxBuildID
+                        $status.Compatible = [bool] $compatibility.Allowed
+                        $status.CompatibilityKind = [string] $compatibility.Kind
+                        $status.TestedFirefoxMajors = (@($compatibility.TestedMajors) -join ",")
+                        $status.FirefoxSupportWarning = [string] $compatibility.Warning
                     }
                     finally {
                         Remove-Module $releaseModuleInfo -ErrorAction SilentlyContinue
@@ -3300,6 +3356,15 @@ function ConvertTo-FenneviaInstallerStatusLines {
     $lines.Add("programWritable=$writable")
     $lines.Add("selectedFirefoxRunning=$running")
     $lines.Add("compatible=$compatible")
+    if (-not [string]::IsNullOrWhiteSpace([string] $Status.CompatibilityKind)) {
+        $lines.Add("compatibilityKind=$($Status.CompatibilityKind)")
+    }
+    if (-not [string]::IsNullOrWhiteSpace([string] $Status.TestedFirefoxMajors)) {
+        $lines.Add("testedFirefoxMajors=$($Status.TestedFirefoxMajors)")
+    }
+    if (-not [string]::IsNullOrWhiteSpace([string] $Status.FirefoxSupportWarning)) {
+        $lines.Add("firefoxSupportWarning=$($Status.FirefoxSupportWarning)")
+    }
     if (-not [string]::IsNullOrWhiteSpace([string] $Status.ErrorCode)) {
         $lines.Add("errorCode=$($Status.ErrorCode)")
     }

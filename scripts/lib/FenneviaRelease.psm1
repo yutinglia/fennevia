@@ -806,6 +806,124 @@ function Test-FenneviaReleaseTree {
     }
 }
 
+function Get-FenneviaFirefoxMajorVersion {
+    [CmdletBinding()]
+    param(
+        [string] $Version
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Version)) {
+        return $null
+    }
+    $match = [regex]::Match([string] $Version, "^([0-9]+)")
+    if (-not $match.Success) {
+        return $null
+    }
+    return [int] $match.Groups[1].Value
+}
+
+function ConvertTo-FenneviaReleaseTestedFirefoxText {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [int[]] $Majors
+    )
+
+    $list = @($Majors | Sort-Object -Unique)
+    if ($list.Count -eq 0) {
+        return ""
+    }
+    if ($list.Count -eq 1) {
+        return [string] $list[0]
+    }
+    if ($list.Count -eq 2) {
+        return "$($list[0]) and $($list[1])"
+    }
+    $head = $list[0..($list.Count - 2)] -join ", "
+    return "$head, and $($list[-1])"
+}
+
+function Get-FenneviaReleaseFirefoxCompatibility {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $ReleaseManifest,
+
+        [Parameter(Mandatory)]
+        [string] $FirefoxVersion,
+
+        [Parameter(Mandatory)]
+        [string] $FirefoxBuildId
+    )
+
+    $majorMap = @{}
+    $exactMatch = $false
+    foreach ($record in @($ReleaseManifest.firefoxCompatibility)) {
+        $recordMajor = Get-FenneviaFirefoxMajorVersion -Version ([string] $record.version)
+        if ($null -ne $recordMajor) {
+            $majorMap["$recordMajor"] = $true
+        }
+        if (
+            [string] $record.version -ceq $FirefoxVersion -and
+            [string] $record.buildId -ceq $FirefoxBuildId -and
+            [string] $record.channel -ceq "release"
+        ) {
+            $exactMatch = $true
+        }
+    }
+    $testedMajors = @($majorMap.Keys | ForEach-Object { [int] $_ } | Sort-Object)
+    if ($testedMajors.Count -eq 0) {
+        throw "The release manifest has no Firefox compatibility record."
+    }
+
+    $minimumMajor = [int] $testedMajors[0]
+    $maximumTestedMajor = [int] $testedMajors[$testedMajors.Count - 1]
+    $testedText = ConvertTo-FenneviaReleaseTestedFirefoxText -Majors $testedMajors
+    $warning = "Fennevia is only tested on Firefox $testedText. Later Firefox versions may break the shell. Confirming install does not promise that everything will work."
+    $firefoxMajor = Get-FenneviaFirefoxMajorVersion -Version $FirefoxVersion
+    if ($null -eq $firefoxMajor) {
+        return [pscustomobject]@{
+            Allowed = $false
+            Kind = "invalid"
+            ExactMatch = $false
+            FirefoxMajor = $null
+            MinimumMajor = $minimumMajor
+            MaximumTestedMajor = $maximumTestedMajor
+            TestedMajors = $testedMajors
+            TestedFirefoxText = $testedText
+            Warning = $warning
+        }
+    }
+
+    $kind = "unsupported-older"
+    $allowed = $false
+    if ([int] $firefoxMajor -lt $minimumMajor) {
+        $kind = "unsupported-older"
+        $allowed = $false
+    }
+    elseif ($majorMap.ContainsKey("$firefoxMajor")) {
+        $kind = "tested"
+        $allowed = $true
+    }
+    else {
+        $kind = "untested-newer"
+        $allowed = $true
+    }
+
+    return [pscustomobject]@{
+        Allowed = $allowed
+        Kind = $kind
+        ExactMatch = $exactMatch
+        FirefoxMajor = [int] $firefoxMajor
+        MinimumMajor = $minimumMajor
+        MaximumTestedMajor = $maximumTestedMajor
+        TestedMajors = $testedMajors
+        TestedFirefoxText = $testedText
+        Warning = $warning
+    }
+}
+
 function Test-FenneviaReleaseFirefoxCompatibility {
     [CmdletBinding()]
     param(
@@ -819,16 +937,11 @@ function Test-FenneviaReleaseFirefoxCompatibility {
         [string] $FirefoxBuildId
     )
 
-    foreach ($record in @($ReleaseManifest.firefoxCompatibility)) {
-        if (
-            [string] $record.version -ceq $FirefoxVersion -and
-            [string] $record.buildId -ceq $FirefoxBuildId -and
-            [string] $record.channel -ceq "release"
-        ) {
-            return $true
-        }
-    }
-    return $false
+    $compatibility = Get-FenneviaReleaseFirefoxCompatibility `
+        -ReleaseManifest $ReleaseManifest `
+        -FirefoxVersion $FirefoxVersion `
+        -FirefoxBuildId $FirefoxBuildId
+    return [bool] $compatibility.Allowed
 }
 
 function New-FenneviaDeterministicZip {
@@ -1048,6 +1161,7 @@ function New-FenneviaReleaseArtifacts {
 }
 
 Export-ModuleMember -Function @(
+    "Get-FenneviaReleaseFirefoxCompatibility",
     "New-FenneviaReleaseArtifacts",
     "Test-FenneviaReleaseChecksum",
     "Test-FenneviaReleaseFirefoxCompatibility",

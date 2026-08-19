@@ -9,11 +9,17 @@
       "version": "153.0.4",
       "buildId": "20260810162159",
       "channel": "release"
+    },
+    {
+      "version": "154.0",
+      "buildId": "20260812182057",
+      "channel": "release"
     }
   ],
-  "compatibilityRecord": "docs/research/firefox-153-mvp-hardening-update-rehearsal.md",
+  "compatibilityRecord": "docs/research/firefox-154-stable-transition.md",
   "knownLimitations": [
-    "This prerelease is validated only on Windows with stock Firefox 153.0.4 build 20260810162159.",
+    "This prerelease is tested only on Windows with stock Firefox 153.0.4 build 20260810162159 and Firefox 154.0 build 20260812182057.",
+    "Firefox 153 and newer may be installed after an explicit warning acknowledgement. Later versions can break the shell, and confirming install does not promise that everything will work.",
     "A dedicated Firefox profile is strongly recommended; Linux, macOS, ESR, Beta, and Nightly are not supported by this release.",
     "Fennevia uses unsupported Firefox internals and has not completed an independent security audit.",
     "Firefox updates may remove program-directory files; keep the exact release ZIP for verified repair, update, disable, and uninstall operations."

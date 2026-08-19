@@ -81,9 +81,11 @@ Read these before changing code or current documentation:
   built-in icons.
 
 The public `v0.10.0-beta.1` prerelease completed the planned Windows MVP and
-versioned distribution path for Firefox 153.0.4 BuildID `20260810162159`. A real
-transition to a later Firefox stable remains a future compatibility gate; it is
-not inferred from a same-build rehearsal.
+versioned distribution path. Tested Firefox majors are 153.0.4 BuildID
+`20260810162159` and 154.0 BuildID `20260812182057`; see
+[`docs/research/firefox-154-stable-transition.md`](research/firefox-154-stable-transition.md)
+and ADR-048. The installer accepts Firefox 153 and newer after a warning that
+later versions may break with no working promise.
 
 ## Historical research and validation records
 

@@ -12,10 +12,13 @@ collision system, glass token set, or window-global coordination layer.
 
 ## Current status
 
-Validated baseline as of 2026-08-16:
+Validated baseline as of 2026-08-19:
 
-- public package `0.10.0-beta.1` prerelease;
-- Firefox 153.0.4 BuildID 20260810162159 release on Windows x64;
+- public package `0.10.0-beta.1` prerelease on Windows x64;
+- tested Firefox majors 153.0.4 BuildID 20260810162159 and 154.0 BuildID
+  20260812182057; installer accepts 153+ after an explicit warning (ADR-048);
+- first real stock-stable transition recorded in
+  `docs/research/firefox-154-stable-transition.md`;
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16,
   #17, #18, #22, #31, #32, #37, #39, #57, and #60 complete;
 - functional vertical tabs and a compact address/status launcher in the left
@@ -52,8 +55,10 @@ Governance foundation:
 
 1. #18 selected MPL-2.0 and the third-party attribution/provenance policy.
 2. #39 established deterministic, checksum-published Windows prereleases with
-   exact tagged source, a Firefox-build allowlist, explicit registered-profile
-   installation, and independently reverified public assets.
+   exact tagged source, tested Firefox compatibility records, explicit
+   registered-profile installation, and independently reverified public assets.
+   ADR-048 later relaxed the exact BuildID install gate to Firefox 153+ with a
+   warning.
 3. #57 added the PowerShell console as the recommended install and development
    environment entry without changing the installer transaction contract.
 

@@ -5,7 +5,7 @@
 Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為中心的瀏覽器介面。它讓網頁保持在畫面主體，並把瀏覽器控制項放到四個平時隱藏、需要時才浮現的邊緣面板。
 
 > [!WARNING]
-> Fennevia 是公開的**預發行版本**，不是穩定的日常使用產品。它會執行高權限程式碼，並依賴 Firefox 不保證穩定的內部介面。請只安裝在指定的 Firefox 版本與 Build ID、使用專用 Firefox 設定檔，並保留下載的發行壓縮檔，以便之後停用或移除。
+> Fennevia 是公開的**預發行版本**，不是穩定的日常使用產品。它會執行高權限程式碼，並依賴 Firefox 不保證穩定的內部介面。目前只在 Firefox **153** 與 **154** 上測試過。較新的 Firefox 可能會讓介面故障。若你在較新版本上確認安裝，**不保證**所有功能都能正常運作。請使用專用 Firefox 設定檔，並保留下載的發行壓縮檔，以便之後停用或移除。
 
 ## Fennevia 會改變甚麼
 
@@ -21,16 +21,16 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 ## 目前版本
 
-首個公開預發行版本是 [`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1)，支援範圍刻意限制得很窄：
+首個公開預發行版本是 [`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1)，測試範圍刻意限制得很窄：
 
-| 要求             | 支援值                                |
-| ---------------- | ------------------------------------- |
-| 作業系統         | Windows x64                           |
-| Firefox          | 原版 Firefox 153.0.4，Release channel |
-| Firefox Build ID | `20260810162159`                      |
-| 套件             | `fennevia-0.10.0-beta.1-windows.zip`  |
+| 要求             | 已測試值                                        |
+| ---------------- | ----------------------------------------------- |
+| 作業系統         | Windows x64                                     |
+| Firefox          | 原版 Firefox 153.0.4 與 154.0，Release channel |
+| Firefox Build ID | `20260810162159`（153.0.4）、`20260812182057`（154.0） |
+| 套件             | `fennevia-0.10.0-beta.1-windows.zip`            |
 
-若 Firefox 版本或 Build ID 不相符，安裝、更新、修復及重新啟用都會被拒絕；Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta、Nightly，以及較新或較舊的 Firefox 組建。
+Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用。153、154 以及更新的主版本可在安裝程式警告後安裝：目前只測試過 153 與 154，較新版本可能故障，確認安裝並不保證一切都能運作。Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta 及 Nightly。
 
 安裝預先建置的發行版**不需要** Node.js、npm，也不需要自行編譯 Firefox。
 
@@ -71,7 +71,7 @@ if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 pwsh -NoProfile -File .\scripts\fennevia.ps1
 ```
 
-請自行選擇 `firefox.exe` 與一個已註冊的設定檔**名稱**。主控台會在同一畫面重繪，並支援鍵盤與滑鼠，不會在每次按鍵後再印出一組選單。Fennevia 不會預先選取 Firefox 預設設定檔。請先檢查遮罩後的變更計劃，再確認套用。
+請自行選擇 `firefox.exe` 與一個已註冊的設定檔**名稱**。主控台會在同一畫面重繪，並支援鍵盤與滑鼠，不會在每次按鍵後再印出一組選單。Fennevia 不會預先選取 Firefox 預設設定檔。請先閱讀僅測試 153／154 的警告，再檢查遮罩後的變更計劃並確認套用。在較新 Firefox 上確認安裝，並不保證介面能繼續正常運作。
 
 不要把真實設定檔路徑貼到 issue 或公開紀錄。對應的指令列寫法是：
 
@@ -112,7 +112,7 @@ pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Install `
 ## 重要限制
 
 - Fennevia 使用 Mozilla 不保證穩定的 Firefox 內部介面。
-- Firefox 正常更新後，版本可能超出目前支援範圍。此時應保持停用或移除 Fennevia，直到有相容版本。
+- Firefox 正常更新後，可能進入尚未測試的版本。較新版本可能讓介面故障。你可以在安裝程式警告後繼續使用，或保持停用／移除。確認安裝並不是支援承諾。
 - 目前沒有自動更新、程式碼簽署或可驗證建置／發行證明（attestation），亦未完成獨立安全審計。
 - 目前發行版只支援 Windows，並不代表穩定或長期支援承諾。
 - 書籤編輯、完整下載管理、進階原生網址列功能及擴充套件整合仍可透過 Firefox 完整原生介面使用。
