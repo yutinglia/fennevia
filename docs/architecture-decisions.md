@@ -1495,7 +1495,8 @@ sequence are in `docs/research/firefox-153-toolbar-widget-mirror.md`.
 **Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary, with
 explicit project-owner approval (2026-08-18, planning conversation) for the two
 bounded rule relaxations below; partially supersedes ADR-044's
-mirror-as-sole-model and "native customize mode is the only editor" clauses
+mirror-as-sole-model and "native customize mode is the only editor" clauses;
+the "editor drawer performs all editing" clause is superseded by ADR-047
 
 Deprecate the ADR-044 read-only nav-bar mirror as the only widget source and
 replace it with a Fennevia-owned customize mode. The `toolbar-widgets`
@@ -1604,3 +1605,38 @@ uses in `toolbarbutton-icons.css` keeps theme/forced-colors coupling on
 `docs/research/firefox-153-toolbar-widget-mirror.md`; validation lives in
 `tests/firefox-toolbar-widgets.test.mjs` and
 `tests/toolbar-widgets-state.test.mjs`.
+
+## ADR-047: Live four-edge HTML5 drag-and-drop for Fennevia customize mode
+
+**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary;
+supersedes ADR-045's "editor drawer performs all editing" clause
+
+Placement editing happens on the live four-edge widget zones, not in a
+duplicate zone list. Opening Fennevia customize is a frontend session owned by
+the shell host: it sets the existing #31 `popup` hold on all four edges, marks
+the project frame with `data-fennevia-customize-active`, and keeps those holds
+if a Firefox-owned popup later closes. Pointer hold is not used because
+`setPointerHeld(true)` is exclusive and would hide the other edges. The top-host
+CustomizePanel becomes the unused-widget palette plus style/reset controls.
+Dragging uses HTML5 drag-and-drop on project-owned XHTML only, with MIME
+`application/x-fennevia-toolbar-widget` and a payload of opaque palette tokens
+or zone indexes — never widget ids. Drops call the existing
+`add` / `move` / `remove` edit operations; adopt/restore writes are unchanged.
+Widget activation is disabled while the session is open. Keyboard remains a
+required path: `Escape` closes the session, `Delete` removes a focused placed
+widget, `Ctrl+Arrow` reorders within a zone, and palette `Enter`/click adds to
+the last-focused zone. The palette stays in the top-host CustomizePanel and is
+centered in the remaining content well using the #31 collision clearances,
+including `--fennevia-bottom-clearance`, so it does not cover the four-edge drop
+zones. Native `CustomizeMode.sys.mjs` drag into Firefox areas
+stays out of scope; native customize mode remains available from the application
+menu, complete native reveal, and fail-open.
+
+**Reasoning:** The button-only drawer could not match Firefox customize mode:
+widgets were edited as a list instead of on the toolbars the user already sees,
+and the four independent Svelte roots cannot share `$state`. Reusing popup hold
+and the proven tab-strip HTML5 drag contract keeps the change inside the #31
+edge controller and the existing toolbar-widgets write boundary. Validation
+lives in `tests/customize-session.test.mjs` and
+`tests/toolbar-widget-drag.test.mjs`; the real-Firefox matrix remains in
+`docs/testing-and-recovery.md` §6.9.

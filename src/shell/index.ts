@@ -7,6 +7,11 @@ import {
   type AddressPopupSnapshot,
 } from "../app/address-popup";
 import {
+  createCustomizeSessionController,
+  customizeActiveAttribute,
+  type CustomizeSessionController,
+} from "../app/customize-session";
+import {
   createEdgeShellController,
   edgeNames,
   edgeSurfaceTiming,
@@ -341,6 +346,7 @@ export function mountShellApp({
   let addressPopupOriginEdge: EdgeName | null = null;
   let bookmarksState: BrowserBookmarksStateAdapter | undefined;
   let browserToolsState: BrowserToolsStateAdapter | undefined;
+  let customizeSession: CustomizeSessionController | undefined;
   let downloadsState: BrowserDownloadsStateAdapter | undefined;
   let navigationState: BrowserNavigationStateAdapter | undefined;
   let tabsState: BrowserTabsStateAdapter | undefined;
@@ -362,6 +368,25 @@ export function mountShellApp({
     onError: onFatalError,
     scheduler,
   });
+  customizeSession = createCustomizeSessionController({
+    frame,
+    onError: onFatalError,
+    shell,
+  });
+
+  const focusCustomizeToggle = (): void => {
+    const toggle = targets.top.querySelector<FocusableElement>(
+      'button[data-fennevia-action="customize-shell"]',
+    );
+    toggle?.focus({ preventScroll: true });
+  };
+
+  const closeCustomizeSession = (): boolean => {
+    if (!customizeSession?.isOpen()) {
+      return false;
+    }
+    return customizeSession.setOpen(false);
+  };
 
   const activeElementFor = (edge: EdgeName): FocusableElement | null => {
     const active = getFocusableOrigin(frame.ownerDocument.activeElement);
@@ -606,6 +631,7 @@ export function mountShellApp({
         return false;
       }
       addressPopup.confirmOpen();
+      closeCustomizeSession();
       shell.setInteractionSuppressed(true);
       return true;
     } catch (error) {
@@ -627,6 +653,9 @@ export function mountShellApp({
       if (closingSnapshot?.phase === "closing") {
         completeAddressPopupClose(closingSnapshot);
       }
+    }
+    if (!shouldEnable) {
+      closeCustomizeSession();
     }
     if (shell.snapshot().enabled !== shouldEnable) {
       for (const edge of edgeNames) {
@@ -665,6 +694,13 @@ export function mountShellApp({
         return;
       }
       if (event.key !== "Escape") {
+        return;
+      }
+      if (customizeSession?.isOpen()) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCustomizeSession();
+        focusCustomizeToggle();
         return;
       }
 
@@ -762,6 +798,12 @@ export function mountShellApp({
     }
     mountedFrames.delete(frame);
     try {
+      customizeSession?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    customizeSession = undefined;
+    try {
       addressPopup?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -815,6 +857,7 @@ export function mountShellApp({
       frame.removeAttribute(`data-fennevia-${edge}-visible`);
     }
     frame.removeAttribute("data-fennevia-address-popup-visible");
+    frame.removeAttribute(customizeActiveAttribute);
     focusOrigins.clear();
     addressPopupFocusOrigin = null;
     addressPopupOriginEdge = null;
@@ -858,10 +901,15 @@ export function mountShellApp({
         shell.setPopupHeld("left", open);
       }),
       browserToolsState.subscribePopup((open) => {
-        if (!open) {
-          for (const edge of edgeNames) {
-            shell.setPopupHeld(edge, false);
-          }
+        if (open) {
+          return;
+        }
+        if (customizeSession?.isOpen()) {
+          customizeSession.restoreHolds();
+          return;
+        }
+        for (const edge of edgeNames) {
+          shell.setPopupHeld(edge, false);
         }
       }),
     );
@@ -881,9 +929,14 @@ export function mountShellApp({
       applyStyleFromState(widgetsState.snapshot());
       controllerSubscriptions.push(
         widgetsState.subscribePopup((open) => {
-          if (!open) {
-            shell.setPopupHeld("top", false);
+          if (open) {
+            return;
           }
+          if (customizeSession?.isOpen()) {
+            customizeSession.restoreHolds();
+            return;
+          }
+          shell.setPopupHeld("top", false);
         }),
         widgetsState.subscribe(applyStyleFromState),
       );
@@ -945,6 +998,7 @@ export function mountShellApp({
           },
           shell,
           surface: shell.getSurface(edge),
+          customizeSession,
           toolbarWidgets: toolbarWidgetsState,
           ...(edge === "left"
             ? {
