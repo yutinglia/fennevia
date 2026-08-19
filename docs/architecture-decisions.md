@@ -1577,8 +1577,9 @@ controller therefore resolves presentation without calling
   hrefs from the chrome document, so `formatMessagesSync` still works after
   chrome `document.l10n` has called `setAsync()`; then
   `CustomizableUI.getLocalizedProperty`, and a small privileged Fluent-id map
-  pinned to Firefox 153 `CustomizableWidgets`, XUL palette widgets, and
-  `screenshot-button`. Wrapper `tooltiptext` values that are still
+  pinned to Firefox 153 `CustomizableWidgets`, XUL palette widgets,
+  `screenshot-button`, and `reset-pbm-toolbar-button` (`reset-pbm-toolbar-button2`
+  from `ResetPBMPanel`). Wrapper `tooltiptext` values that are still
   properties-bundle keys (`*.tooltiptext2`) or incomplete `%S` format
   strings are dropped;
 - built-in icons from computed `list-style-image` when a node exists, otherwise
