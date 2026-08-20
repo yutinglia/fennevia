@@ -57,6 +57,12 @@
     WindowControlAction,
     WindowControlsSnapshot,
   } from "../app/window-controls-state";
+  import { translate, type MessageKey, type MessageVars } from "../app/i18n";
+  import {
+    defaultFenneviaLocale,
+    type BrowserLocaleStateAdapter,
+    type FenneviaLocale,
+  } from "../app/locale-state";
   import {
     findCloseFocusTarget,
     findOpenedTabIds,
@@ -78,6 +84,12 @@
     getConnectionSecurityPresentation,
     getTrackingProtectionPresentation,
   } from "./navigation-labels";
+  import {
+    createTabStripLabels,
+    localizeWidgetLabel,
+    localizeWidgetTooltip,
+    zoneDisplayName,
+  } from "./locale-ui";
   import BookmarksPanel from "./BookmarksPanel.svelte";
   import { resolveBrowserToolHost } from "./browser-tool-host";
   import CustomizePanel from "./CustomizePanel.svelte";
@@ -94,6 +106,7 @@
     downloads?: BrowserDownloadsStateAdapter;
     edge: EdgeName;
     frame: HTMLElement;
+    locale: BrowserLocaleStateAdapter;
     navigation?: BrowserNavigationStateAdapter;
     onDismiss: (edge: EdgeName) => void;
     onDisposed: (edge: EdgeName) => void;
@@ -115,6 +128,10 @@
   };
 
   const props: Props = $props();
+  let localeId: FenneviaLocale = $state(defaultFenneviaLocale);
+  const t = (key: MessageKey, vars?: MessageVars): string =>
+    translate(localeId, key, vars);
+  let tabLabels = $derived(createTabStripLabels(localeId));
   let addressPopupVisible = $state(false);
   let currentNavigation: BrowserNavigationState = $state(
     createBrowserNavigationState({
@@ -139,11 +156,13 @@
   let connectionStatus = $derived(
     getConnectionSecurityPresentation(
       currentNavigation.snapshot.connectionSecurity,
+      localeId,
     ),
   );
   let protectionStatus = $derived(
     getTrackingProtectionPresentation(
       currentNavigation.snapshot.trackingProtection,
+      localeId,
     ),
   );
   let browserToolsSnapshot = $derived(props.browserTools?.snapshot());
@@ -163,12 +182,22 @@
     tabId: string;
   }> = [];
 
-  const surfaceLabels: Readonly<Record<EdgeName, string>> = {
-    top: "Browser controls",
-    left: "Tabs and address",
-    right: "Bookmarks",
-    bottom: "Downloads",
-  };
+  let surfaceLabels = $derived(
+    Object.freeze({
+      top: t("surface.top"),
+      left: t("surface.left"),
+      right: t("surface.right"),
+      bottom: t("surface.bottom"),
+    }),
+  );
+
+  $effect(() => {
+    const locale = props.locale;
+    localeId = locale.snapshot().id;
+    return locale.subscribe((snapshot) => {
+      localeId = snapshot.id;
+    });
+  });
 
   $effect(() => {
     const unsubscribe = props.surface.subscribe(() => {
@@ -475,21 +504,8 @@
     }
   };
 
-  const widgetDisplayLabel = (widget: ToolbarWidgetSnapshot): string => {
-    if (widget.label) {
-      return widget.missing ? `${widget.label} (unavailable)` : widget.label;
-    }
-    if (widget.kind === "separator") {
-      return "Separator";
-    }
-    if (widget.kind === "spacer") {
-      return "Space";
-    }
-    if (widget.kind === "spring") {
-      return "Flexible space";
-    }
-    return "Toolbar item";
-  };
+  const widgetDisplayLabel = (widget: ToolbarWidgetSnapshot): string =>
+    localizeWidgetLabel(localeId, widget);
 
   const runToolbarWidgetEdit = async (
     operation: ToolbarWidgetsEditOperation,
@@ -1099,8 +1115,8 @@
   {#if currentToolbarWidgets?.snapshot.available && (customizeOpen || zoneWidgets.length > 0)}
     <div
       aria-label={customizeOpen
-        ? `${zone} panel widgets, droppable`
-        : "Toolbar shortcuts"}
+        ? t("widget.droppableAria", { zone: zoneDisplayName(localeId, zone) })
+        : t("widget.toolbarShortcuts")}
       class="fennevia-toolbar-widgets"
       class:fennevia-toolbar-widgets--compact={zone !== "top"}
       class:fennevia-toolbar-widgets--editing={customizeOpen}
@@ -1123,7 +1139,7 @@
     >
       {#if customizeOpen && zoneWidgets.length === 0}
         <span class="fennevia-toolbar-widgets__placeholder"
-          >Drop widgets here</span
+          >{t("widget.dropHere")}</span
         >
       {/if}
       {#each zoneWidgets as widget, index (`${zone}-${index}-${widget.handle}-${widget.fenneviaAction}`)}
@@ -1170,7 +1186,11 @@
             ondragstart={(event) => handleWidgetDragStart(event, zone, index)}
             onkeydown={(event) => handleWidgetItemKeydown(event, zone, index)}
             onclick={(event) => void runToolbarWidgetAction(widget, event)}
-            title={widget.tooltip || widget.label}
+            title={localizeWidgetTooltip(
+              localeId,
+              widget.tooltip,
+              widgetDisplayLabel(widget),
+            )}
             type="button"
           >
             <ToolbarWidgetGlyph {widget} />
@@ -1193,6 +1213,7 @@
 <div
   id={`fennevia-shell-${props.edge}-root`}
   bind:this={rootElement}
+  lang={localeId}
   class="fennevia-edge-root"
   data-fennevia-edge={props.edge}
   data-fennevia-phase={surfaceState.phase}
@@ -1232,7 +1253,7 @@
   >
     {#if props.edge === "left"}
       <section
-        aria-label="Address and site status"
+        aria-label={t("nav.launcherAria")}
         class="fennevia-address-launcher"
         data-fennevia-address-launcher-region=""
       >
@@ -1244,12 +1265,12 @@
             aria-controls="fennevia-address-popup"
             aria-expanded={addressPopupVisible}
             aria-haspopup="dialog"
-            aria-label="Open address and search"
+            aria-label={t("nav.openAddress")}
             class="fennevia-address-launcher__button"
             data-fennevia-address-launcher=""
             data-fennevia-default-focus=""
             onclick={() => props.onOpenAddress?.()}
-            title="Open address and search"
+            title={t("nav.openAddress")}
             type="button"
           >
             <span aria-hidden="true" class="fennevia-address-launcher__glyph"
@@ -1257,12 +1278,14 @@
             >
             <span class="fennevia-address-launcher__location" dir="auto">
               {currentNavigation.snapshot.addressValue ||
-                "Search or enter address"}
+                t("address.placeholder")}
             </span>
           </button>
           <div class="fennevia-address-launcher__indicators">
             <button
-              aria-label={`Open Firefox site information. ${connectionStatus.label}`}
+              aria-label={t("nav.openSiteInformation", {
+                label: connectionStatus.label,
+              })}
               class="fennevia-address-launcher__indicator"
               data-fennevia-browser-tool="site-information"
               data-fennevia-connection-status=""
@@ -1270,11 +1293,15 @@
               disabled={!browserToolsSnapshot?.siteInformation}
               onclick={(event) =>
                 void runBrowserToolAction("site-information", event)}
-              title={`Open Firefox site information. ${connectionStatus.label}`}
+              title={t("nav.openSiteInformation", {
+                label: connectionStatus.label,
+              })}
               type="button">{connectionStatus.badge}</button
             >
             <button
-              aria-label={`Open Firefox tracking protection. ${protectionStatus.label}`}
+              aria-label={t("nav.openTrackingProtection", {
+                label: protectionStatus.label,
+              })}
               class="fennevia-address-launcher__indicator"
               data-fennevia-browser-tool="protections"
               data-fennevia-protection-status=""
@@ -1282,7 +1309,9 @@
               disabled={!browserToolsSnapshot?.protections}
               onclick={(event) =>
                 void runBrowserToolAction("protections", event)}
-              title={`Open Firefox tracking protection. ${protectionStatus.label}`}
+              title={t("nav.openTrackingProtection", {
+                label: protectionStatus.label,
+              })}
               type="button">{protectionStatus.badge}</button
             >
           </div>
@@ -1290,16 +1319,16 @@
       </section>
 
       <div class="fennevia-tabs-summary">
-        <span>Open tabs</span>
+        <span>{t("tab.openHeading")}</span>
         <output
-          aria-label={`${currentTabs.tabs.length} open tabs`}
+          aria-label={t("tab.openCount", { count: currentTabs.tabs.length })}
           data-fennevia-tab-count="">{currentTabs.tabs.length}</output
         >
       </div>
 
       <div class="fennevia-tab-strip">
         <div
-          aria-label="Open tabs"
+          aria-label={t("tab.openHeading")}
           aria-orientation="vertical"
           class="fennevia-tab-strip__list"
           data-fennevia-tab-list=""
@@ -1334,6 +1363,7 @@
                   tab,
                   index,
                   currentTabs.tabs.length,
+                  tabLabels,
                 )}
                 aria-selected={tab.selected}
                 class="fennevia-tab-strip__tab"
@@ -1345,7 +1375,7 @@
                 onkeydown={(event) => handleTabKeydown(event, tab.id)}
                 role="tab"
                 tabindex={rovingTabId === tab.id ? 0 : -1}
-                title={getDisplayTabTitle(tab)}
+                title={getDisplayTabTitle(tab, tabLabels)}
                 type="button"
               >
                 <span class="fennevia-tab-strip__visual" aria-hidden="true">
@@ -1365,7 +1395,7 @@
                   {/if}
                 </span>
                 <span class="fennevia-tab-strip__title" dir="auto">
-                  {getDisplayTabTitle(tab)}
+                  {getDisplayTabTitle(tab, tabLabels)}
                 </span>
                 {#if tab.pictureInPicture}
                   <span class="fennevia-tab-strip__pip" aria-hidden="true"
@@ -1376,12 +1406,20 @@
 
               {#if audioAction}
                 <button
-                  aria-label={getTabActionAccessibleName(audioAction, tab)}
+                  aria-label={getTabActionAccessibleName(
+                    audioAction,
+                    tab,
+                    tabLabels,
+                  )}
                   class="fennevia-control fennevia-tab-strip__action"
                   data-fennevia-action="toggle-mute"
                   onclick={(event) => handleTabAudioAction(event, tab.id)}
                   tabindex={rovingTabId === tab.id ? 0 : -1}
-                  title={getTabActionAccessibleName(audioAction, tab)}
+                  title={getTabActionAccessibleName(
+                    audioAction,
+                    tab,
+                    tabLabels,
+                  )}
                   type="button"
                   >{audioAction === "unmute"
                     ? "ø"
@@ -1395,6 +1433,7 @@
                 aria-label={getTabActionAccessibleName(
                   tab.pinned ? "unpin" : "pin",
                   tab,
+                  tabLabels,
                 )}
                 aria-pressed={tab.pinned}
                 class="fennevia-control fennevia-tab-strip__action"
@@ -1404,12 +1443,16 @@
                   togglePinned(tab);
                 }}
                 tabindex={rovingTabId === tab.id ? 0 : -1}
-                title={tab.pinned ? "Unpin tab" : "Pin tab"}
+                title={tab.pinned ? t("tab.unpinTab") : t("tab.pinTab")}
                 type="button">{tab.pinned ? "◆" : "◇"}</button
               >
 
               <button
-                aria-label={getTabActionAccessibleName("close", tab)}
+                aria-label={getTabActionAccessibleName(
+                  "close",
+                  tab,
+                  tabLabels,
+                )}
                 class="fennevia-control fennevia-tab-strip__action"
                 data-fennevia-action="close-tab"
                 onclick={(event) => {
@@ -1417,7 +1460,7 @@
                   closeTab(tab.id);
                 }}
                 tabindex={rovingTabId === tab.id ? 0 : -1}
-                title="Close tab"
+                title={t("tab.closeTab")}
                 type="button">×</button
               >
             </div>
@@ -1425,34 +1468,34 @@
         </div>
 
         <button
-          aria-label="Open new tab"
+          aria-label={t("tab.newTabAria")}
           class="fennevia-control fennevia-tab-strip__new"
           data-fennevia-action="new-tab"
           onclick={openTab}
-          title="New tab"
+          title={t("tab.newTab")}
           type="button"
         >
           <span aria-hidden="true">+</span>
-          <span>New tab</span>
+          <span>{t("tab.newTab")}</span>
         </button>
       </div>
 
       {@render widgetZone("left")}
     {:else if props.edge === "top"}
       <div
-        aria-label="Browser toolbar"
+        aria-label={t("nav.browserToolbar")}
         class="fennevia-navigation"
         data-fennevia-navigation=""
         role="toolbar"
       >
         <div class="fennevia-navigation__leading">
           <div
-            aria-label="Primary navigation"
+            aria-label={t("nav.primaryNavigation")}
             class="fennevia-navigation__controls"
             role="group"
           >
             <button
-              aria-label="Go back"
+              aria-label={t("nav.backAria")}
               class="fennevia-control fennevia-navigation__button"
               data-fennevia-action="back"
               data-fennevia-default-focus=""
@@ -1466,13 +1509,13 @@
                   navigation.back(pointerGestureFromMouseEvent(event)),
                 )}
               onmousedown={preventMiddleAutoscroll}
-              title="Back"
+              title={t("nav.back")}
               type="button"
             >
               <ShellIcon name="back" />
             </button>
             <button
-              aria-label="Go forward"
+              aria-label={t("nav.forwardAria")}
               class="fennevia-control fennevia-navigation__button"
               data-fennevia-action="forward"
               disabled={!currentNavigation.snapshot.canGoForward}
@@ -1485,7 +1528,7 @@
                   navigation.forward(pointerGestureFromMouseEvent(event)),
                 )}
               onmousedown={preventMiddleAutoscroll}
-              title="Forward"
+              title={t("nav.forward")}
               type="button"
             >
               <ShellIcon name="forward" />
@@ -1493,8 +1536,8 @@
             <button
               aria-busy={currentNavigation.snapshot.loading}
               aria-label={currentNavigation.snapshot.loading
-                ? "Stop loading"
-                : "Reload page"}
+                ? t("nav.stopAria")
+                : t("nav.reloadAria")}
               class="fennevia-control fennevia-navigation__button"
               data-fennevia-action="reload-stop"
               data-fennevia-loading={currentNavigation.snapshot.loading}
@@ -1505,7 +1548,9 @@
               onclick={() =>
                 runNavigationAction((navigation) => navigation.reloadOrStop())}
               onmousedown={preventMiddleAutoscroll}
-              title={currentNavigation.snapshot.loading ? "Stop" : "Reload"}
+              title={currentNavigation.snapshot.loading
+                ? t("nav.stop")
+                : t("nav.reload")}
               type="button"
             >
               <ShellIcon
@@ -1513,7 +1558,7 @@
               />
             </button>
             <button
-              aria-label="Go to home page"
+              aria-label={t("nav.homeAria")}
               class="fennevia-control fennevia-navigation__button"
               data-fennevia-action="home"
               onauxclick={(event) =>
@@ -1525,7 +1570,7 @@
                   navigation.home(pointerGestureFromMouseEvent(event)),
                 )}
               onmousedown={preventMiddleAutoscroll}
-              title="Home"
+              title={t("nav.home")}
               type="button"
             >
               <ShellIcon name="home" />
@@ -1537,13 +1582,13 @@
 
         <div class="fennevia-navigation__trailing">
           <div
-            aria-label="Firefox tools"
+            aria-label={t("nav.firefoxTools")}
             class="fennevia-browser-tools"
             data-fennevia-browser-tools=""
             role="group"
           >
             <button
-              aria-label="Open Firefox extensions"
+              aria-label={t("nav.extensionsAria")}
               class="fennevia-control fennevia-browser-tools__button"
               data-fennevia-browser-tool="extensions"
               disabled={!browserToolsSnapshot?.extensions}
@@ -1559,18 +1604,18 @@
                 }
                 void runBrowserToolAction("extensions", event);
               }}
-              title="Extensions"
+              title={t("nav.extensions")}
               type="button"
             >
               <ShellIcon name="extensions" />
             </button>
             <button
-              aria-label="Open Firefox settings"
+              aria-label={t("nav.settingsAria")}
               class="fennevia-control fennevia-browser-tools__button fennevia-browser-tools__secondary"
               data-fennevia-browser-tool="settings"
               disabled={!browserToolsSnapshot?.settings}
               onclick={() => void runBrowserToolAction("settings")}
-              title="Settings"
+              title={t("nav.settings")}
               type="button"
             >
               <ShellIcon name="settings" />
@@ -1578,24 +1623,24 @@
             {#if currentToolbarWidgets?.snapshot.canEdit}
               <button
                 aria-expanded={customizeOpen}
-                aria-label="Customize Fennevia shell"
+                aria-label={t("nav.customizeAria")}
                 class="fennevia-control fennevia-browser-tools__button"
                 data-fennevia-action="customize-shell"
                 onclick={() => setCustomizeOpen(!customizeOpen)}
-                title="Customize Fennevia"
+                title={t("nav.customizeTitle")}
                 type="button"
               >
                 <ShellIcon name="palette" />
               </button>
             {/if}
             <button
-              aria-label="Open Firefox menu"
+              aria-label={t("nav.firefoxMenuAria")}
               class="fennevia-control fennevia-browser-tools__button"
               data-fennevia-browser-tool="application-menu"
               disabled={!browserToolsSnapshot?.applicationMenu}
               onclick={(event) =>
                 void runBrowserToolAction("application-menu", event)}
-              title="Firefox menu"
+              title={t("nav.firefoxMenu")}
               type="button"
             >
               <ShellIcon name="menu" />
@@ -1603,34 +1648,36 @@
           </div>
 
           {#if props.windowKind === "private"}
-            <span class="fennevia-navigation__private">Private</span>
+            <span class="fennevia-navigation__private">{t("nav.private")}</span>
           {/if}
         </div>
 
         <div
-          aria-label="Window controls"
+          aria-label={t("window.controls")}
           class="fennevia-window-controls"
           data-fennevia-window-controls=""
           role="group"
         >
           <button
-            aria-label="Minimize window"
+            aria-label={t("window.minimizeAria")}
             class="fennevia-control fennevia-window-controls__button"
             data-fennevia-window-control="minimize"
             onclick={() => runWindowControlAction("minimize")}
-            title="Minimize"
+            title={t("window.minimize")}
             type="button"
           >
             <ShellIcon name="minimize" />
           </button>
           <button
             aria-label={windowControlsSnapshot.maximized
-              ? "Restore window"
-              : "Maximize window"}
+              ? t("window.restoreAria")
+              : t("window.maximizeAria")}
             class="fennevia-control fennevia-window-controls__button"
             data-fennevia-window-control="toggle-maximize"
             onclick={() => runWindowControlAction("toggle-maximize")}
-            title={windowControlsSnapshot.maximized ? "Restore" : "Maximize"}
+            title={windowControlsSnapshot.maximized
+              ? t("window.restore")
+              : t("window.maximize")}
             type="button"
           >
             <ShellIcon
@@ -1638,11 +1685,11 @@
             />
           </button>
           <button
-            aria-label="Close window"
+            aria-label={t("window.closeAria")}
             class="fennevia-control fennevia-window-controls__button fennevia-window-controls__close"
             data-fennevia-window-control="close"
             onclick={() => runWindowControlAction("close")}
-            title="Close"
+            title={t("window.close")}
             type="button"
           >
             <ShellIcon name="close" />
@@ -1653,6 +1700,7 @@
       {#if props.bookmarks}
         <BookmarksPanel
           bookmarks={props.bookmarks}
+          localeId={localeId}
           onFatalError={props.onFatalError}
         />
       {/if}
@@ -1661,13 +1709,14 @@
     {:else if props.downloads}
       <DownloadsPanel
         downloads={props.downloads}
+        localeId={localeId}
         onFatalError={props.onFatalError}
       />
 
       {@render widgetZone("bottom")}
     {/if}
 
-    <footer aria-label="Keyboard shortcut" class="fennevia-edge-panel__footer">
+    <footer aria-label={t("nav.keyboardShortcut")} class="fennevia-edge-panel__footer">
       <kbd>{edgeKeyboardBindings[props.edge]}</kbd>
     </footer>
 
@@ -1683,6 +1732,7 @@
   {#if props.edge === "top" && customizeOpen && props.toolbarWidgets}
     <CustomizePanel
       customizeSession={props.customizeSession}
+      localeId={localeId}
       onClose={() => setCustomizeOpen(false)}
       state={currentToolbarWidgets}
       toolbarWidgets={props.toolbarWidgets}

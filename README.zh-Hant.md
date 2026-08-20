@@ -109,6 +109,15 @@ pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Install `
 
 若 Firefox 仍在執行，但自訂介面無法正常使用，請按 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F12</kbd>，啟用內建的 Firefox 原生介面復原功能。若快捷鍵也失效，請關閉 Firefox，並使用同一個發行套件執行 `Disable`。不要手動刪除 Firefox 程式或設定檔內不確定用途的檔案。
 
+## 介面語言
+
+Fennevia 跟隨 Firefox 自己選單與訊息使用的語言，而不是網站的 `Accept-Language`。目前介面只提供英文與繁體中文。Fennevia 不會另外提供語言選擇器。
+
+- Firefox 介面為任何中文（`zh`、`zh-Hant`、`zh-Hans`、`zh-TW`、`zh-CN` 及其他 `zh-*`）時，**目前一律使用繁體中文**，因為尚未提供簡體中文文案。
+- 其他 Firefox 介面語言則使用英文。
+
+Firefox 原生選單、通知與工具列 widget 名稱仍跟隨 Firefox 本身。
+
 ## 重要限制
 
 - Fennevia 使用 Mozilla 不保證穩定的 Firefox 內部介面。

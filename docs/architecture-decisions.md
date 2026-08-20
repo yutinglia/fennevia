@@ -1846,3 +1846,39 @@ Source pins and the selected mapping are in
 `tests/tab-strip.test.mjs` and `tests/frontend-build.test.mjs`. Real Firefox
 Light/Dark visual review remains `not run`.
 
+## ADR-052: Follow Firefox UI language with project-owned en / zh-Hant catalogs
+
+**Status:** Accepted for the Firefox 153/154 Windows prerelease boundary;
+does not add a chrome.manifest `locale` mapping (ADR-016 remains in force)
+
+Fennevia shell copy follows the Firefox UI language, not website
+`Accept-Language`. The optional per-window locale bridge reads
+`Services.locale.appLocaleAsBCP47` and observes `intl:app-locales-changed`.
+The public snapshot is only `{ id: "en" | "zh-Hant" }`:
+
+- every Chinese tag (`zh`, `zh-Hant`, `zh-Hans`, `zh-TW`, `zh-CN`, and
+  longer matching subtags) currently maps to `zh-Hant` because there is no
+  Simplified Chinese catalog yet;
+- every other tag, including Japanese and a missing or throwing
+  `Services.locale`, maps to `en`.
+
+Project-owned strings live in typed `src/app/messages/en.ts` and
+`src/app/messages/zh-Hant.ts` catalogs compiled into the existing Svelte IIFE
+and the Firefox bridge bundle. A small `t()` interpolates `{name}` placeholders
+and falls back to English. There is no Fluent `.ftl` tree, npm i18n library,
+Fennevia language selector, Simplified Chinese catalog, or RTL `dir` flip
+(both supported locales are LTR). Missing locale capability must not fail
+window health; host `aria-label` values start as English and are rewritten
+from the same catalogs after the snapshot exists.
+
+Firefox-native toolbar widget names remain Firefox Fluent (ADR-046). Bookmark
+root titles remain `PlacesUtils.bookmarks.getLocalizedTitle`. Urlbar coverage
+still crosses the bridge as fixed enums only; the shell translates its own
+generic labels and never receives Firefox localized widget or permission text.
+
+**Reasoning:** Chrome `locale` mappings and Fluent would add privileged
+resource surface that ADR-016 omitted on purpose. Bundled catalogs keep the
+copy next to the Svelte hosts, stay reviewable without a second toolchain, and
+still follow the setting that displays Firefox menus and notifications.
+Validation lives in `tests/locale-state.test.mjs`, `tests/firefox-locale.test.mjs`,
+and `tests/i18n.test.mjs`. Real Firefox UI-language switching remains `not run`.

@@ -60,6 +60,26 @@ test("tab labels preserve page text as text and expose bounded ordinary state", 
     /data:image|favicon/iu,
   );
   assert.equal(getDisplayTabTitle(tab({ title: " \t " })), "Untitled tab");
+  assert.equal(
+    getDisplayTabTitle(tab({ title: " \t " }), {
+      allowMedia: "Allow media for",
+      attention: "Attention",
+      close: "Close",
+      indexOf: "{index} of {total}",
+      loading: "Loading",
+      mediaBlocked: "Media blocked",
+      mute: "Mute",
+      muted: "Muted",
+      pin: "Pin",
+      pinned: "Pinned",
+      pip: "Picture in picture",
+      playing: "Playing",
+      unmute: "Unmute",
+      unpin: "Unpin",
+      untitled: "未命名分頁",
+    }),
+    "未命名分頁",
+  );
 });
 
 test("accessible names include audio, attention, and container labels", () => {

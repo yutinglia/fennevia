@@ -284,6 +284,9 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
   assert.match(runtime, /Reflect\.deleteProperty\(/u);
   assert.doesNotMatch(runtime, /ShellApp\.sys\.mjs|import\s*\(/u);
 
+  assert.match(runtime, /createFirefoxLocaleBridge/u);
+  assert.match(runtime, /createStaticLocaleBridge/u);
+  assert.match(runtime, /getShellChromeHostLabel/u);
   assert.match(viteConfig, /fragments: "tree"/u);
   assert.match(viteConfig, /formats: \["iife"\]/u);
   assert.match(viteConfig, /codeSplitting: false/u);
@@ -312,6 +315,8 @@ test("the generated Firefox boundary is one deterministic private ESM artifact",
   assert.match(bridge, /createFirefoxTabsBridge/u);
   assert.match(bridge, /createFirefoxUrlbarCoverageBridge/u);
   assert.match(bridge, /createFirefoxWindowControlsBridge/u);
+  assert.match(bridge, /createFirefoxLocaleBridge/u);
+  assert.match(bridge, /getShellChromeHostLabel/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING/u);
   assert.match(bridge, /FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING/u);

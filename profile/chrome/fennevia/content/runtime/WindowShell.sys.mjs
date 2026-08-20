@@ -11,11 +11,14 @@ import {
   createFirefoxBookmarksBridge,
   createFirefoxBrowserToolsBridge,
   createFirefoxDownloadsBridge,
+  createFirefoxLocaleBridge,
   createFirefoxNavigationBridge,
   createFirefoxTabsBridge,
   createFirefoxToolbarWidgetsBridge,
   createFirefoxUrlbarCoverageBridge,
   createFirefoxWindowControlsBridge,
+  createStaticLocaleBridge,
+  getShellChromeHostLabel,
 } from "../firefox/BridgeBoundary.sys.mjs";
 import { shellAppCss } from "../shell/ShellStyles.sys.mjs";
 import { createNativeUiController, nativeUiStyleId } from "./NativeUi.sys.mjs";
@@ -1193,6 +1196,8 @@ const mountProductionShell = ({
   let unsubscribeChromeStyle;
   let urlbarCoverageBridge;
   let windowControlsBridge;
+  let localeBridge;
+  let unsubscribeLocaleLabels;
   const stopChromeStyle = () => {
     if (typeof unsubscribeChromeStyle !== "function") {
       return;
@@ -1324,6 +1329,56 @@ const mountProductionShell = ({
       window: browserWindow,
     });
     try {
+      localeBridge = createFirefoxLocaleBridge({
+        boundary: bridge,
+        onError(error) {
+          reportError(
+            annotateShellLifecycleError(error, {
+              code:
+                error?.fenneviaCode ??
+                "FENNEVIA_FIREFOX_LOCALE_RUNTIME_FAILED",
+              phase: error?.fenneviaPhase ?? "firefox-locale-event",
+            }),
+          );
+        },
+        window: browserWindow,
+      });
+    } catch (error) {
+      localeBridge = undefined;
+      reportError(
+        annotateShellLifecycleError(error, {
+          code:
+            error?.fenneviaCode ?? "FENNEVIA_FIREFOX_LOCALE_UNAVAILABLE",
+          phase: error?.fenneviaPhase ?? "firefox-locale-create",
+        }),
+      );
+    }
+    const localeApi = localeBridge?.locale ?? createStaticLocaleBridge();
+    const applyChromeHostLabels = (snapshot) => {
+      const localeId = snapshot?.id === "zh-Hant" ? "zh-Hant" : "en";
+      frame.setAttribute("lang", localeId);
+      frame.setAttribute(
+        "aria-label",
+        getShellChromeHostLabel(localeId, "frame"),
+      );
+      for (const edge of EDGE_NAMES) {
+        const host = browserWindow.document.getElementById(HOST_IDS[edge]);
+        host?.setAttribute(
+          "aria-label",
+          getShellChromeHostLabel(localeId, edge),
+        );
+      }
+      const overlayHost = browserWindow.document.getElementById(
+        HOST_IDS.overlay,
+      );
+      overlayHost?.setAttribute(
+        "aria-label",
+        getShellChromeHostLabel(localeId, "overlay"),
+      );
+    };
+    applyChromeHostLabels(localeApi.snapshot());
+    unsubscribeLocaleLabels = localeApi.subscribe(applyChromeHostLabels);
+    try {
       // Toolbar widget mirroring is an optional capability (ADR-044): a
       // creation failure must not block shell activation or native fallback.
       toolbarWidgetsBridge = createFirefoxToolbarWidgetsBridge({
@@ -1382,6 +1437,7 @@ const mountProductionShell = ({
       tabs: tabsBridge.tabs,
       toolbarWidgets: toolbarWidgetsBridge?.toolbarWidgets,
       urlbarCoverage: urlbarCoverageBridge.urlbarCoverage,
+      locale: localeApi,
       windowControls: windowControlsBridge.windowControls,
       windowKind,
       onFatalError(error) {
@@ -1423,6 +1479,7 @@ const mountProductionShell = ({
       toolbarWidgetsBridge,
       urlbarCoverageBridge,
       windowControlsBridge,
+      localeBridge,
     });
   } catch (error) {
     productionShellByFrame.delete(frame);
@@ -1444,6 +1501,18 @@ const mountProductionShell = ({
     }
     try {
       urlbarCoverageBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
+    try {
+      if (typeof unsubscribeLocaleLabels === "function") {
+        unsubscribeLocaleLabels();
+      }
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
+    try {
+      localeBridge?.dispose();
     } catch (cleanupError) {
       reportError(cleanupError);
     }
@@ -1527,6 +1596,18 @@ const mountProductionShell = ({
     }
     try {
       urlbarCoverageBridge?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      if (typeof unsubscribeLocaleLabels === "function") {
+        unsubscribeLocaleLabels();
+      }
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      localeBridge?.dispose();
     } catch (error) {
       firstError ??= error;
     }
@@ -1620,6 +1701,7 @@ const checkProductionShell = async ({ mountPoints, windowKind }) => {
   record.tabsBridge.assertRequiredCapabilities();
   record.urlbarCoverageBridge.assertRequiredCapabilities();
   record.windowControlsBridge.assertRequiredCapabilities();
+  record.localeBridge?.assertRequiredCapabilities();
   return record.frontend.verifyShellAppHealth({
     frame,
     overlayTarget,
@@ -1652,6 +1734,8 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     record.urlbarCoverageBridge.assertRequiredCapabilities();
   const windowControlsCapabilities =
     record.windowControlsBridge.assertRequiredCapabilities();
+  const localeCapabilities =
+    record.localeBridge?.assertRequiredCapabilities() ?? [];
   const toolbarWidgetsCapabilities =
     record.toolbarWidgetsBridge?.assertRequiredCapabilities() ?? [];
   const frontendCapabilities = record.frontend.getShellAppCapabilities({
@@ -1682,6 +1766,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     ...toolbarWidgetsCapabilities,
     ...urlbarCoverageCapabilities,
     ...windowControlsCapabilities,
+    ...localeCapabilities,
     ...frontendCapabilities,
   ]);
 };

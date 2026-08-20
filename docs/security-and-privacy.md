@@ -163,7 +163,8 @@ Only schema-defined values such as:
 - stack frames after redaction;
 - process-local opaque IDs and aggregate counts with no external mapping;
 - fixed edge identity and hold/state enum;
-- fixed bounded DOM path selected by source code.
+- fixed bounded DOM path selected by source code;
+- mapped Fennevia locale id `en` or `zh-Hant`.
 
 ### 6.2 Prohibited in normal logs and shared evidence
 
@@ -180,7 +181,10 @@ Only schema-defined values such as:
 - native event, window, tab, browser, controller, service, query, or download
   objects;
 - private-window browsing state;
-- extension data not required by a fixed project diagnostic.
+- extension data not required by a fixed project diagnostic;
+- raw Firefox UI locale tags, `intl.accept_languages` / accept-language
+  lists, language-pack inventories, and Firefox Fluent or Places localized
+  labels.
 
 Detailed local debugging, when unavoidable, must be explicitly enabled, remain
 local, be off by default, and be removed/redacted before sharing.
@@ -355,8 +359,10 @@ and native nodes remain privileged. Unknown permission IDs are omitted and
 unknown actions become generic presence only. None of these values enters
 normal logs, persistence, CSS variables, or root datasets.
 
-The detailed popup renders fixed project labels. It does not synthesize native
-clicks or expose permission/security mutation. Its one native-access action
+The detailed popup renders fixed project labels from the bundled en / zh-Hant
+catalogs (ADR-052). It still does not receive Firefox Fluent labels across the
+bridge, synthesize native clicks, or expose permission/security mutation.
+Its one native-access action
 closes the project popup and calls the current window's `openLocation()` so
 Firefox retains suggestions, providers, one-offs, extension actions, prompts,
 and identity/trust/protections/permission/action panels. Missing capability,

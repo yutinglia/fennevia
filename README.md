@@ -162,6 +162,20 @@ built-in native Firefox fallback. If that does not work, close Firefox and use
 the package's `Disable` action from the same release archive. Do not manually
 delete unknown files from the Firefox program or profile.
 
+## Interface language
+
+Fennevia follows the language Firefox uses for its own menus and messages, not
+the languages sent to websites. The shell currently ships English and
+Traditional Chinese. Fennevia does not add its own language picker.
+
+- Any Chinese Firefox UI language (`zh`, `zh-Hant`, `zh-Hans`, `zh-TW`,
+  `zh-CN`, and other `zh-*` tags) currently uses Traditional Chinese. There
+  is no Simplified Chinese catalog yet.
+- Every other Firefox UI language uses English.
+
+Native Firefox menus, notifications, and toolbar widget names still follow
+Firefox itself.
+
 ## Important limitations
 
 - Fennevia uses Firefox internals that Mozilla can change without notice.

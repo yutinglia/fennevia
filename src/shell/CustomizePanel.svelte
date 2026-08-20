@@ -17,33 +17,47 @@
     type ToolbarStyleColorKey,
     type ToolbarStyleSnapshot,
     type ToolbarWidgetsEditOperation,
+    type ToolbarZoneName,
   } from "../app/toolbar-widgets-state";
+  import { translate, type MessageKey, type MessageVars } from "../app/i18n";
+  import {
+    defaultFenneviaLocale,
+    type FenneviaLocale,
+  } from "../app/locale-state";
+  import {
+    localizeWidgetLabel,
+    zoneDisplayName,
+  } from "./locale-ui";
   import ShellIcon from "./ShellIcon.svelte";
   import ToolbarWidgetGlyph from "./ToolbarWidgetGlyph.svelte";
 
   type Props = Readonly<{
     customizeSession?: CustomizeSessionController;
+    localeId?: FenneviaLocale;
     onClose: () => void;
     state: BrowserToolbarWidgetsState | null;
     toolbarWidgets: BrowserToolbarWidgetsStateAdapter;
   }>;
 
   const props: Props = $props();
+  let localeId: FenneviaLocale = $derived(
+    props.localeId ?? defaultFenneviaLocale,
+  );
+  const t = (key: MessageKey, vars?: MessageVars): string =>
+    translate(localeId, key, vars);
 
   let statusMessage = $state("");
   let paletteDropActive = $state(false);
 
-  const themeLabels: Readonly<Record<string, string>> = {
-    auto: "Auto",
-    light: "Light",
-    dark: "Dark",
-  };
-
-  const densityLabels: Readonly<Record<string, string>> = {
-    compact: "Compact",
-    cozy: "Cozy",
-    comfortable: "Comfortable",
-  };
+  const themeLabel = (theme: string): string =>
+    translate(localeId, ("customize.theme." + theme) as MessageKey);
+  const densityLabel = (density: string): string =>
+    translate(localeId, ("customize.density." + density) as MessageKey);
+  const paletteLabel = (entry: ToolbarPaletteEntrySnapshot): string =>
+    localizeWidgetLabel(localeId, {
+      kind: entry.kind,
+      label: entry.label,
+    });
 
   // Empty swatches keep Firefox chrome design-token defaults. Hex values are
   // Acorn primitives from Firefox 153/154 color.tokens.json and
@@ -97,7 +111,8 @@
 
   let snapshot = $derived(props.state?.snapshot ?? null);
   let revision = $derived(props.state?.revision ?? 0);
-  let addZoneLabel = $state("top");
+  let addZoneLabel: ToolbarZoneName = $state("top");
+  let addZoneName = $derived(zoneDisplayName(localeId, addZoneLabel));
 
   $effect(() => {
     const session = props.customizeSession;
@@ -116,8 +131,7 @@
     try {
       await props.toolbarWidgets.edit(operation);
     } catch {
-      statusMessage =
-        "That change could not be applied. The layout may have just changed; try again.";
+      statusMessage = t("customize.editFailed");
     }
   };
 
@@ -147,11 +161,6 @@
     value === "" ? "#808080" : value;
 
   const resetStyle = () => void runEdit({ type: "reset-style" });
-
-  const unavailableNote =
-    "Customization is unavailable in this window. The fixed Fennevia controls and native Firefox customize mode remain usable.";
-  const emptyPaletteNote =
-    "Every available widget is already placed. Drop a widget here to remove it from a panel.";
 
   const handleKeydown = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
@@ -241,8 +250,9 @@
 </script>
 
 <div
-  aria-label="Customize Fennevia shell"
+  aria-label={t("customize.panelAria")}
   aria-modal="false"
+  lang={localeId}
   class="fennevia-customize"
   data-fennevia-customize-panel=""
   onkeydown={handleKeydown}
@@ -250,14 +260,14 @@
   tabindex="-1"
 >
   <header class="fennevia-customize__header">
-    <h2 class="fennevia-customize__title">Customize Fennevia</h2>
+    <h2 class="fennevia-customize__title">{t("customize.title")}</h2>
     <button
-      aria-label="Close customize panel"
+      aria-label={t("customize.closeAria")}
       class="fennevia-control fennevia-customize__close"
       data-fennevia-customize-close=""
       data-fennevia-default-focus=""
       onclick={() => props.onClose()}
-      title="Close"
+      title={t("window.close")}
       type="button"
     >
       <ShellIcon name="close" />
@@ -265,19 +275,19 @@
   </header>
 
   {#if !snapshot?.canEdit}
-    <p class="fennevia-customize__note">{unavailableNote}</p>
+    <p class="fennevia-customize__note">{t("customize.unavailable")}</p>
   {:else}
     <p class="fennevia-customize__note" data-fennevia-customize-mode="">
       {snapshot.layoutCustomized
-        ? "Using your Fennevia layout. Drag widgets onto the four edge panels. Drop them here to remove. Reset to follow the Firefox toolbar again."
-        : "Following your Firefox toolbar until you make a change. Drag widgets onto the four edge panels."}
+        ? t("customize.layoutCustomized")
+        : t("customize.followingFirefox")}
     </p>
     <p class="fennevia-customize__note">
-      {`Keyboard add targets the ${addZoneLabel} panel. Press Delete on a placed widget to remove it.`}
+      {t("customize.keyboardAdd", { zone: addZoneName })}
     </p>
 
     <section
-      aria-label="Available widgets"
+      aria-label={t("customize.paletteAria")}
       class="fennevia-customize__section"
       class:fennevia-customize__section--drop={paletteDropActive}
       data-fennevia-customize-palette=""
@@ -286,15 +296,18 @@
       ondragover={handlePaletteDragOver}
       ondrop={handlePaletteDrop}
     >
-      <h3 class="fennevia-customize__heading">Available widgets</h3>
+      <h3 class="fennevia-customize__heading">{t("customize.paletteAria")}</h3>
       {#if snapshot.palette.length === 0}
-        <p class="fennevia-customize__empty">{emptyPaletteNote}</p>
+        <p class="fennevia-customize__empty">{t("customize.emptyPalette")}</p>
       {:else}
         <ul class="fennevia-customize__grid">
           {#each snapshot.palette as entry (entry.token)}
             <li>
               <button
-                aria-label={`Add ${entry.label} to the ${addZoneLabel} panel`}
+                aria-label={t("customize.addWidgetAria", {
+                  label: paletteLabel(entry),
+                  zone: addZoneName,
+                })}
                 class="fennevia-control fennevia-customize__tile"
                 data-fennevia-customize-add={entry.token}
                 draggable="true"
@@ -302,7 +315,7 @@
                 ondragstart={(event) => handlePaletteDragStart(event, entry)}
                 onkeydown={(event) => handlePaletteKeydown(event, entry)}
                 onclick={() => addFromPalette(entry.token)}
-                title={entry.label}
+                title={paletteLabel(entry)}
                 type="button"
               >
                 <span aria-hidden="true" class="fennevia-customize__item-icon">
@@ -312,7 +325,7 @@
                     <ToolbarWidgetGlyph widget={entry} />
                   {/if}
                 </span>
-                <span class="fennevia-customize__tile-label">{entry.label}</span
+                <span class="fennevia-customize__tile-label">{paletteLabel(entry)}</span
                 >
               </button>
             </li>
@@ -321,8 +334,8 @@
       {/if}
     </section>
 
-    <section aria-label="Style" class="fennevia-customize__section">
-      <h3 class="fennevia-customize__heading">Style</h3>
+    <section aria-label={t("customize.style")} class="fennevia-customize__section">
+      <h3 class="fennevia-customize__heading">{t("customize.style")}</h3>
 
       {#snippet colorRow(
         label: string,
@@ -343,26 +356,26 @@
           {#each presets as color (color === "" ? "default" : color)}
             <button
               aria-label={color === ""
-                ? `Default ${label}`
-                : `${label} ${color}`}
+                ? t("customize.colorDefaultAria", { label })
+                : t("customize.colorLabelAria", { label, color })}
               aria-pressed={current === color}
               class="fennevia-control fennevia-customize__swatch"
               data-fennevia-customize-color={dataName}
               data-fennevia-customize-value={color === "" ? "default" : color}
               onclick={() => setStyleColor(key, color)}
               style:background-color={color === "" ? undefined : color}
-              title={color === "" ? "Default" : color}
+              title={color === "" ? t("customize.colorDefaultTitle") : color}
               type="button">{color === "" ? defaultMark : ""}</button
             >
           {/each}
           <label class="fennevia-customize__color-wrap">
             <input
-              aria-label={`Custom ${label} color`}
+              aria-label={t("customize.colorCustomAria", { label })}
               class="fennevia-customize__color"
               class:fennevia-customize__color--custom={customSelected}
               data-fennevia-customize-color-input={dataName}
               oninput={(event) => setStyleColor(key, event.currentTarget.value)}
-              title="Custom color"
+              title={t("customize.colorSwatchCustom")}
               type="color"
               value={colorPickerValue(current)}
             />
@@ -373,48 +386,55 @@
       <div
         class="fennevia-customize__style-row"
         role="group"
-        aria-label="Theme"
+        aria-label={t("customize.theme")}
       >
-        <span class="fennevia-customize__style-label">Theme</span>
+        <span class="fennevia-customize__style-label">{t("customize.theme")}</span>
         {#each toolbarStyleThemes as theme (theme)}
           <button
             aria-pressed={snapshot.style.theme === theme}
             class="fennevia-control fennevia-customize__option"
             data-fennevia-customize-theme={theme}
             onclick={() => setStyle({ theme })}
-            type="button">{themeLabels[theme]}</button
+            type="button">{themeLabel(theme)}</button
           >
         {/each}
       </div>
 
       {@render colorRow(
-        "Accent",
-        "Accent color",
+        t("customize.labelAccent"),
+        t("customize.colorAccent"),
         "accent",
         accentPresets,
         "A",
         "accent",
       )}
       {@render colorRow(
-        "Panels",
-        "Panel background",
+        t("customize.labelPanels"),
+        t("customize.colorPanel"),
         "surface",
         surfacePresets,
         "D",
         "surface",
       )}
       {@render colorRow(
-        "Window",
-        "Window background",
+        t("customize.labelWindow"),
+        t("customize.colorWindow"),
         "chromeBackground",
         surfacePresets,
         "D",
         "chrome",
       )}
-      {@render colorRow("Type", "Text color", "text", textPresets, "D", "text")}
       {@render colorRow(
-        "Border",
-        "Border color",
+        t("customize.labelType"),
+        t("customize.colorText"),
+        "text",
+        textPresets,
+        "D",
+        "text",
+      )}
+      {@render colorRow(
+        t("customize.labelBorder"),
+        t("customize.colorBorder"),
         "border",
         borderPresets,
         "D",
@@ -424,16 +444,16 @@
       <div
         class="fennevia-customize__style-row"
         role="group"
-        aria-label="Density"
+        aria-label={t("customize.density")}
       >
-        <span class="fennevia-customize__style-label">Density</span>
+        <span class="fennevia-customize__style-label">{t("customize.density")}</span>
         {#each toolbarStyleDensities as density (density)}
           <button
             aria-pressed={snapshot.style.density === density}
             class="fennevia-control fennevia-customize__option"
             data-fennevia-customize-density={density}
             onclick={() => setStyle({ density })}
-            type="button">{densityLabels[density]}</button
+            type="button">{densityLabel(density)}</button
           >
         {/each}
       </div>
@@ -441,9 +461,9 @@
       <div
         class="fennevia-customize__style-row"
         role="group"
-        aria-label="Corner radius"
+        aria-label={t("customize.styleRadius")}
       >
-        <span class="fennevia-customize__style-label">Corners</span>
+        <span class="fennevia-customize__style-label">{t("customize.labelCorners")}</span>
         {#each radiusPresets as radius (radius)}
           <button
             aria-pressed={snapshot.style.radius === radius}
@@ -458,9 +478,9 @@
       <div
         class="fennevia-customize__style-row"
         role="group"
-        aria-label="Glass blur"
+        aria-label={t("customize.styleBlur")}
       >
-        <span class="fennevia-customize__style-label">Blur</span>
+        <span class="fennevia-customize__style-label">{t("customize.labelBlur")}</span>
         {#each blurPresets as blur (blur)}
           <button
             aria-pressed={snapshot.style.blur === blur}
@@ -475,9 +495,9 @@
       <div
         class="fennevia-customize__style-row"
         role="group"
-        aria-label="Surface opacity"
+        aria-label={t("customize.styleOpacity")}
       >
-        <span class="fennevia-customize__style-label">Opacity</span>
+        <span class="fennevia-customize__style-label">{t("customize.labelOpacity")}</span>
         {#each opacityPresets as surfaceOpacity (surfaceOpacity)}
           <button
             aria-pressed={snapshot.style.surfaceOpacity === surfaceOpacity}
@@ -492,9 +512,9 @@
       <div
         class="fennevia-customize__style-row"
         role="group"
-        aria-label="Glass saturation"
+        aria-label={t("customize.styleSaturation")}
       >
-        <span class="fennevia-customize__style-label">Saturate</span>
+        <span class="fennevia-customize__style-label">{t("customize.labelSaturate")}</span>
         {#each saturationPresets as saturation (saturation)}
           <button
             aria-pressed={snapshot.style.saturation === saturation}
@@ -509,9 +529,9 @@
       <div
         class="fennevia-customize__style-row"
         role="group"
-        aria-label="Shadow intensity"
+        aria-label={t("customize.styleShadow")}
       >
-        <span class="fennevia-customize__style-label">Shadow</span>
+        <span class="fennevia-customize__style-label">{t("customize.labelShadow")}</span>
         {#each shadowPresets as shadow (shadow)}
           <button
             aria-pressed={snapshot.style.shadow === shadow}
@@ -526,9 +546,9 @@
       <div
         class="fennevia-customize__style-row"
         role="group"
-        aria-label="Motion duration"
+        aria-label={t("customize.styleMotion")}
       >
-        <span class="fennevia-customize__style-label">Motion</span>
+        <span class="fennevia-customize__style-label">{t("customize.labelMotion")}</span>
         {#each motionPresets as motion (motion)}
           <button
             aria-pressed={snapshot.style.motion === motion}
@@ -543,9 +563,9 @@
       <div
         class="fennevia-customize__style-row"
         role="group"
-        aria-label="Font size"
+        aria-label={t("customize.styleFontSize")}
       >
-        <span class="fennevia-customize__style-label">Size</span>
+        <span class="fennevia-customize__style-label">{t("customize.labelSize")}</span>
         {#each fontSizePresets as fontSize (fontSize)}
           <button
             aria-pressed={snapshot.style.fontSize === fontSize}
@@ -562,7 +582,7 @@
           class="fennevia-control fennevia-customize__reset"
           data-fennevia-customize-reset-style=""
           onclick={() => resetStyle()}
-          type="button">Reset style</button
+          type="button">{t("customize.resetStyle")}</button
         >
       </div>
     </section>
@@ -573,7 +593,7 @@
         data-fennevia-customize-reset-layout=""
         disabled={!snapshot.layoutCustomized}
         onclick={() => resetLayout()}
-        type="button">Reset layout</button
+        type="button">{t("customize.resetLayout")}</button
       >
       <output
         aria-live="polite"

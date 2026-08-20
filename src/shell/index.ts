@@ -64,6 +64,12 @@ import {
   type BrowserWindowControlsBridge,
   type BrowserWindowControlsStateAdapter,
 } from "../app/window-controls-state";
+import {
+  createBrowserLocaleStateAdapter,
+  createStaticLocaleBridge,
+  type BrowserLocaleBridge,
+  type BrowserLocaleStateAdapter,
+} from "../app/locale-state";
 import App from "./App.svelte";
 import AddressPopup from "./AddressPopup.svelte";
 import "./styles/edge-shell.css";
@@ -112,6 +118,7 @@ type MountOptions = Readonly<{
   targets: EdgeMountTargets;
   toolbarWidgets?: BrowserToolbarWidgetsBridge;
   urlbarCoverage: BrowserUrlbarCoverageBridge;
+  locale?: BrowserLocaleBridge;
   windowControls: BrowserWindowControlsBridge;
   windowKind: ShellWindowKind;
 }>;
@@ -139,6 +146,7 @@ type MountedShell = Readonly<{
   shell: EdgeShellController;
   tabs: BrowserTabsStateAdapter;
   toolbarWidgets: BrowserToolbarWidgetsStateAdapter | undefined;
+  locale: BrowserLocaleStateAdapter;
   urlbarCoverage: BrowserUrlbarCoverageStateAdapter;
   windowControls: BrowserWindowControlsStateAdapter;
 }>;
@@ -379,6 +387,7 @@ export function mountShellApp({
   browserTools,
   downloads,
   frame,
+  locale,
   navigation,
   onFatalError,
   onUnmountError,
@@ -416,6 +425,7 @@ export function mountShellApp({
   let browserToolsState: BrowserToolsStateAdapter | undefined;
   let customizeSession: CustomizeSessionController | undefined;
   let downloadsState: BrowserDownloadsStateAdapter | undefined;
+  let localeState: BrowserLocaleStateAdapter | undefined;
   let navigationState: BrowserNavigationStateAdapter | undefined;
   let tabsState: BrowserTabsStateAdapter | undefined;
   let toolbarWidgetsState: BrowserToolbarWidgetsStateAdapter | undefined;
@@ -907,6 +917,11 @@ export function mountShellApp({
       firstError ??= error;
     }
     try {
+      localeState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
       navigationState?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -950,6 +965,19 @@ export function mountShellApp({
       createBrowserUrlbarCoverageStateAdapter(urlbarCoverage);
     windowControlsState =
       createBrowserWindowControlsStateAdapter(windowControls);
+    localeState = createBrowserLocaleStateAdapter(
+      locale ?? createStaticLocaleBridge(),
+    );
+    const applyFrameLocale = () => {
+      const id = localeState?.snapshot().id ?? "en";
+      frame.setAttribute("lang", id);
+    };
+    applyFrameLocale();
+    controllerSubscriptions.push(
+      localeState.subscribe(() => {
+        applyFrameLocale();
+      }),
+    );
     addressPopup = createAddressPopupController({
       navigation: navigationState,
       tabs: tabsState,
@@ -1077,6 +1105,7 @@ export function mountShellApp({
           shell,
           surface: shell.getSurface(edge),
           customizeSession,
+          locale: localeState,
           toolbarWidgets: toolbarWidgetsState,
           ...(edge === "left"
             ? {
@@ -1107,6 +1136,7 @@ export function mountShellApp({
           overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "disposed");
         },
         onFatalError,
+        locale: localeState,
         popup: addressPopup,
         windowKind,
       },
@@ -1156,6 +1186,7 @@ export function mountShellApp({
       browserTools: browserToolsState,
       components: Object.freeze([...components]),
       downloads: downloadsState,
+      locale: localeState,
       navigation: navigationState,
       shell,
       tabs: tabsState,
