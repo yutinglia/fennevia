@@ -28,9 +28,9 @@ ADR-039.
 
 ## 1. Current validated baseline
 
-As of 2026-08-19:
+As of 2026-08-21:
 
-- package: public `0.10.0-beta.1` prerelease;
+- package: public `0.11.0-beta.1` prerelease;
 - tested Firefox: 153.0.4 release, Build ID `20260810162159`, and 154.0
   release, Build ID `20260812182057`;
 - installer gate: Firefox 153+ after an explicit warning that only 153 and 154
@@ -737,7 +737,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.10.0-beta.1` performs the sole production activation only after
+Current package `0.11.0-beta.1` performs the sole production activation only after
 the health phase requires:
 
 - exact frame identity and placement;
