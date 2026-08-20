@@ -12,6 +12,9 @@ English.
   installation, use, limitations, and emergency fallback.
 - [繁體中文 README](../README.zh-Hant.md) — complete Traditional Chinese version
   of the public README.
+- [Current project status](current-status.md) — reviewed progress snapshot,
+  implemented capabilities, validation gaps, support boundaries, and
+  recommended next priorities.
 - [Current GitHub Releases](https://github.com/yutinglia/fennevia/releases) —
   versioned Windows packages and checksums.
 - [Release installation and recovery](../release/INSTALL.md) — the guide bundled
@@ -27,15 +30,19 @@ Read these before changing code or current documentation:
 
 1. [Agent and repository rules](../AGENTS.md)
 2. [Contributing](../CONTRIBUTING.md)
-3. [Master plan](../plans/000-master-plan.md)
-4. [Shell roadmap](../plans/002-shell-roadmap.md)
-5. [Development setup](development-setup.md) — recommended entry:
+3. [Current project status](current-status.md)
+4. [Master plan](../plans/000-master-plan.md)
+5. [Shell roadmap](../plans/002-shell-roadmap.md)
+6. [Development setup](development-setup.md) — recommended entry:
    `scripts/fennevia.ps1` or `npm run env`
-6. [Development workflow](development-workflow.md)
-7. [Research playbook](research-playbook.md)
+7. [Development workflow](development-workflow.md)
+8. [Research playbook](research-playbook.md)
 
 ## Current technical documentation
 
+- [Current project status](current-status.md) — concise current capability and
+  evidence boundary; use this before reading milestone history as present-tense
+  product documentation.
 - [Technical overview](technical-overview.md) — current product model,
   engineering status, architecture summary, technology choices, and boundaries.
 - [Architecture](architecture.md) — normative runtime, bridge, ownership, and
@@ -62,6 +69,8 @@ Read these before changing code or current documentation:
 
 ## Plans and project status
 
+- [Current project status](current-status.md) — the present-tense summary. It
+  does not replace normative plans, ADRs, or testing requirements.
 - [Master plan](../plans/000-master-plan.md) — current project-wide goals,
   completed phases, success criteria, and remaining support gates.
 - [Shell roadmap](../plans/002-shell-roadmap.md) — the completed MVP sequence and
@@ -77,10 +86,10 @@ Read these before changing code or current documentation:
 - [Customize mode plan](../plans/006-customize-mode.md) — ADR-045 Fennevia-owned
   four-edge widget editor, bounded style tokens, and owner-approved
   CustomizableUI adopt/restore writes; ADR-046 localized names and native
-  built-in icons.
+  built-in icons; ADR-047 live four-edge drag-and-drop.
 
 The public `v0.11.0-beta.1` prerelease follows the planned Windows MVP and
-versioned distribution path. Tested Firefox majors are 153.0.4 BuildID
+versioned distribution path. Tested Firefox builds are 153.0.4 BuildID
 `20260810162159` and 154.0 BuildID `20260812182057`; see
 [`docs/research/firefox-154-stable-transition.md`](research/firefox-154-stable-transition.md)
 and ADR-048. The installer accepts Firefox 153 and newer after a warning that
