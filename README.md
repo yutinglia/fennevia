@@ -39,7 +39,9 @@ interface when a feature is unsupported or recovery is needed.
 
 ## Current release
 
-The first public prerelease is
+The current public prerelease is
+[`v0.11.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.11.0-beta.1).
+It follows the first public package
 [`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1).
 Its tested environment is intentionally narrow:
 
@@ -48,7 +50,7 @@ Its tested environment is intentionally narrow:
 | Operating system | Windows x64                            |
 | Firefox          | Stock Firefox 153.0.4 and 154.0, release channel |
 | Firefox Build ID | `20260810162159` (153.0.4), `20260812182057` (154.0) |
-| Package          | `fennevia-0.10.0-beta.1-windows.zip`   |
+| Package          | `fennevia-0.11.0-beta.1-windows.zip`   |
 
 Install, update, repair, and re-enable reject Firefox older than 153. Firefox
 153, 154, and newer majors may be installed after the installer warning: only
@@ -82,14 +84,14 @@ the wizard.
 
 Download both files from the same GitHub Release:
 
-- `fennevia-0.10.0-beta.1-windows.zip`
-- `fennevia-0.10.0-beta.1-windows.zip.sha256`
+- `fennevia-0.11.0-beta.1-windows.zip`
+- `fennevia-0.11.0-beta.1-windows.zip.sha256`
 
 Before extracting the ZIP, run this in PowerShell from the download directory:
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.10.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.10.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.11.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.11.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 

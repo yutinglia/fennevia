@@ -21,14 +21,14 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 ## 目前版本
 
-首個公開預發行版本是 [`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1)，測試範圍刻意限制得很窄：
+目前公開預發行版本是 [`v0.11.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.11.0-beta.1)，接續首個公開套件 [`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1)。測試範圍刻意限制得很窄：
 
 | 要求             | 已測試值                                        |
 | ---------------- | ----------------------------------------------- |
 | 作業系統         | Windows x64                                     |
 | Firefox          | 原版 Firefox 153.0.4 與 154.0，Release channel |
 | Firefox Build ID | `20260810162159`（153.0.4）、`20260812182057`（154.0） |
-| 套件             | `fennevia-0.10.0-beta.1-windows.zip`            |
+| 套件             | `fennevia-0.11.0-beta.1-windows.zip`            |
 
 Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用。153、154 以及更新的主版本可在安裝程式警告後安裝：目前只測試過 153 與 154，較新版本可能故障，確認安裝並不保證一切都能運作。Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta 及 Nightly。
 
@@ -50,14 +50,14 @@ Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用�
 
 從同一個 GitHub Release 下載：
 
-- `fennevia-0.10.0-beta.1-windows.zip`
-- `fennevia-0.10.0-beta.1-windows.zip.sha256`
+- `fennevia-0.11.0-beta.1-windows.zip`
+- `fennevia-0.11.0-beta.1-windows.zip.sha256`
 
 解壓縮前，在下載目錄開啟 PowerShell 並執行：
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.10.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.10.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.11.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.11.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 

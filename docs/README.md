@@ -79,7 +79,7 @@ Read these before changing code or current documentation:
   CustomizableUI adopt/restore writes; ADR-046 localized names and native
   built-in icons.
 
-The public `v0.10.0-beta.1` prerelease completed the planned Windows MVP and
+The public `v0.11.0-beta.1` prerelease follows the planned Windows MVP and
 versioned distribution path. Tested Firefox majors are 153.0.4 BuildID
 `20260810162159` and 154.0 BuildID `20260812182057`; see
 [`docs/research/firefox-154-stable-transition.md`](research/firefox-154-stable-transition.md)

@@ -6,8 +6,8 @@ the public README. For installation and ordinary use, start with the
 
 ## Current engineering status
 
-As of 2026-08-19, Fennevia has a published Windows x64 prerelease,
-`v0.10.0-beta.1`, tested on stock Firefox 153.0.4 release, Build ID
+As of 2026-08-21, Fennevia has a published Windows x64 prerelease,
+`v0.11.0-beta.1`, tested on stock Firefox 153.0.4 release, Build ID
 `20260810162159`, with owner-confirmed ordinary runtime on Firefox 154.0
 Build ID `20260812182057`. The installer accepts Firefox 153 and newer after
 an explicit warning that later versions may break with no working promise;
@@ -40,7 +40,7 @@ ADR-045's Fennevia-owned customize mode, ADR-046's localized names and
 native built-in widget icons, and ADR-047's live-zone drag-and-drop have focused
 automated coverage; the
 changed real-Firefox visual and interaction matrices remain pending and are
-not part of the published `v0.10.0-beta.1` validation claim. [Issue
+not part of a completed real-Firefox validation claim for `v0.11.0-beta.1`. [Issue
 #1](https://github.com/yutinglia/fennevia/issues/1) recorded the first real
 stock-stable transition to Firefox 154.0 Build ID `20260812182057` on
 2026-08-19; see `docs/research/firefox-154-stable-transition.md`. ADR-048
