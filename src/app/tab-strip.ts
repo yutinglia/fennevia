@@ -1,58 +1,100 @@
 import type { TabSnapshot } from "./tab-state";
+import { interpolate } from "./i18n.ts";
 
 export const untitledTabLabel = "Untitled tab";
 export const newTabHighlightDurationMs = 1_600;
+
+export type TabStripLabels = Readonly<{
+  allowMedia: string;
+  attention: string;
+  close: string;
+  indexOf: string;
+  loading: string;
+  mediaBlocked: string;
+  mute: string;
+  muted: string;
+  pin: string;
+  pinned: string;
+  pip: string;
+  playing: string;
+  unmute: string;
+  unpin: string;
+  untitled: string;
+}>;
+
+export const defaultTabStripLabels: TabStripLabels = Object.freeze({
+  allowMedia: "Allow media for",
+  attention: "Attention",
+  close: "Close",
+  indexOf: "{index} of {total}",
+  loading: "Loading",
+  mediaBlocked: "Media blocked",
+  mute: "Mute",
+  muted: "Muted",
+  pin: "Pin",
+  pinned: "Pinned",
+  pip: "Picture in picture",
+  playing: "Playing",
+  unmute: "Unmute",
+  unpin: "Unpin",
+  untitled: untitledTabLabel,
+});
 
 export type TabStripKeyAction =
   | Readonly<{ tabId: string; type: "close" }>
   | Readonly<{ tabId: string; type: "select" }>;
 
-export function getDisplayTabTitle(tab: TabSnapshot): string {
-  return tab.title.trim().length === 0 ? untitledTabLabel : tab.title;
+export function getDisplayTabTitle(
+  tab: TabSnapshot,
+  labels: TabStripLabels = defaultTabStripLabels,
+): string {
+  return tab.title.trim().length === 0 ? labels.untitled : tab.title;
 }
 
 export function getTabAccessibleName(
   tab: TabSnapshot,
   index: number,
   tabCount: number,
+  labels: TabStripLabels = defaultTabStripLabels,
 ): string {
   const audioLabel =
     tab.audio === "playing"
-      ? "Playing"
+      ? labels.playing
       : tab.audio === "muted"
-        ? "Muted"
+        ? labels.muted
         : tab.audio === "blocked"
-          ? "Media blocked"
+          ? labels.mediaBlocked
           : undefined;
   const states = [
-    `${index + 1} of ${tabCount}`,
-    tab.pinned ? "Pinned" : undefined,
-    tab.loading ? "Loading" : undefined,
+    interpolate(labels.indexOf, { index: index + 1, total: tabCount }),
+    tab.pinned ? labels.pinned : undefined,
+    tab.loading ? labels.loading : undefined,
     audioLabel,
-    tab.attention ? "Attention" : undefined,
-    tab.pictureInPicture ? "Picture in picture" : undefined,
+    tab.attention ? labels.attention : undefined,
+    tab.pictureInPicture ? labels.pip : undefined,
     tab.container?.label,
   ].filter((state): state is string => state !== undefined);
-  return `${getDisplayTabTitle(tab)}, ${states.join(", ")}`;
+  return `${getDisplayTabTitle(tab, labels)}, ${states.join(", ")}`;
 }
 
 export function getTabActionAccessibleName(
   action: "close" | "mute" | "pin" | "resume-media" | "unmute" | "unpin",
   tab: TabSnapshot,
+  labels: TabStripLabels = defaultTabStripLabels,
 ): string {
   const verb =
     action === "close"
-      ? "Close"
+      ? labels.close
       : action === "pin"
-        ? "Pin"
+        ? labels.pin
         : action === "unpin"
-          ? "Unpin"
+          ? labels.unpin
           : action === "mute"
-            ? "Mute"
+            ? labels.mute
             : action === "unmute"
-              ? "Unmute"
-              : "Allow media for";
-  return `${verb} ${getDisplayTabTitle(tab)}`;
+              ? labels.unmute
+              : labels.allowMedia;
+  return `${verb} ${getDisplayTabTitle(tab, labels)}`;
 }
 
 export function getTabAudioAction(

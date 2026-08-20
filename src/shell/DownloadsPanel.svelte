@@ -6,9 +6,15 @@
     BrowserDownloadsStateAdapter,
     DownloadItemState,
   } from "../app/download-state";
+  import { countLabel, translate, type MessageKey } from "../app/i18n";
+  import {
+    defaultFenneviaLocale,
+    type FenneviaLocale,
+  } from "../app/locale-state";
 
   type Props = Readonly<{
     downloads: BrowserDownloadsStateAdapter;
+    localeId?: FenneviaLocale;
     onFatalError: (error: unknown) => void;
   }>;
 
@@ -19,111 +25,138 @@
   }>;
 
   const props: Props = $props();
+  let localeId: FenneviaLocale = $derived(
+    props.localeId ?? defaultFenneviaLocale,
+  );
+  const t = (key: MessageKey, vars?: Record<string, number | string>): string =>
+    translate(localeId, key, vars);
   let current: BrowserDownloadsState = $state(
     untrack(() => props.downloads.snapshot()),
   );
 
-  const presentations: Readonly<
-    Record<DownloadItemState, DownloadPresentation>
-  > = Object.freeze({
-    active: Object.freeze({
-      icon: "↓",
-      label: "Downloading",
-      tone: "positive",
-    }),
-    canceled: Object.freeze({ icon: "×", label: "Canceled", tone: "muted" }),
-    failed: Object.freeze({ icon: "!", label: "Failed", tone: "danger" }),
-    paused: Object.freeze({ icon: "Ⅱ", label: "Paused", tone: "warning" }),
-    queued: Object.freeze({ icon: "·", label: "Queued", tone: "muted" }),
-    succeeded: Object.freeze({
-      icon: "✓",
-      label: "Finished",
-      tone: "positive",
-    }),
-  });
+  const presentations = $derived(
+    Object.freeze({
+      active: Object.freeze({
+        icon: "↓",
+        label: t("downloads.downloading"),
+        tone: "positive",
+      }),
+      canceled: Object.freeze({
+        icon: "×",
+        label: t("downloads.canceled"),
+        tone: "muted",
+      }),
+      failed: Object.freeze({
+        icon: "!",
+        label: t("downloads.failed"),
+        tone: "danger",
+      }),
+      paused: Object.freeze({
+        icon: "Ⅱ",
+        label: t("downloads.paused"),
+        tone: "warning",
+      }),
+      queued: Object.freeze({
+        icon: "·",
+        label: t("downloads.queued"),
+        tone: "muted",
+      }),
+      succeeded: Object.freeze({
+        icon: "✓",
+        label: t("downloads.finished"),
+        tone: "positive",
+      }),
+    } satisfies Record<DownloadItemState, DownloadPresentation>),
+  );
 
-  const countLabel = (
+  const counted = (
     count: number,
-    singular: string,
-    plural: string,
+    oneKey: MessageKey,
+    otherKey: MessageKey,
   ): string =>
-    `${count}${current.countOverflow && count === 999 ? "+" : ""} ${
-      count === 1 ? singular : plural
-    }`;
+    countLabel(
+      localeId,
+      count,
+      current.countOverflow && count === 999,
+      oneKey,
+      otherKey,
+    );
 
   let summary = $derived.by(() => {
     if (current.phase === "loading") {
       return Object.freeze({
-        detail: "Waiting for the native list",
-        title: "Loading downloads",
+        detail: t("downloads.detailLoading"),
+        title: t("downloads.loading"),
       });
     }
     if (current.activeCount > 0) {
       return Object.freeze({
         detail:
           current.progressMode === "determinate"
-            ? `${current.aggregatePercent}% overall`
-            : "Total size is not yet known",
-        title: countLabel(
+            ? t("downloads.detailOverall", {
+                percent: current.aggregatePercent ?? 0,
+              })
+            : t("downloads.detailIndeterminate"),
+        title: counted(
           current.activeCount,
-          "download active",
-          "downloads active",
+          "downloads.activeOne",
+          "downloads.activeOther",
         ),
       });
     }
     if (current.pausedCount > 0) {
       return Object.freeze({
-        detail: "Resume from Firefox when ready",
-        title: countLabel(
+        detail: t("downloads.detailPaused"),
+        title: counted(
           current.pausedCount,
-          "download paused",
-          "downloads paused",
+          "downloads.pausedOne",
+          "downloads.pausedOther",
         ),
       });
     }
     if (current.queuedCount > 0) {
       return Object.freeze({
-        detail: "Waiting to start",
-        title: countLabel(
+        detail: t("downloads.detailQueued"),
+        title: counted(
           current.queuedCount,
-          "download queued",
-          "downloads queued",
+          "downloads.queuedOne",
+          "downloads.queuedOther",
         ),
       });
     }
     if (current.failedCount > 0) {
       return Object.freeze({
-        detail: "Use Firefox Downloads for details",
-        title: countLabel(
+        detail: t("downloads.detailFailed"),
+        title: counted(
           current.failedCount,
-          "recent failure",
-          "recent failures",
+          "downloads.failedOne",
+          "downloads.failedOther",
         ),
       });
     }
     if (current.canceledCount > 0) {
       return Object.freeze({
-        detail: "No transfer is active",
-        title: countLabel(
+        detail: t("downloads.detailCanceled"),
+        title: counted(
           current.canceledCount,
-          "download canceled",
-          "downloads canceled",
+          "downloads.canceledOne",
+          "downloads.canceledOther",
         ),
       });
     }
     if (current.succeededCount > 0) {
       return Object.freeze({
-        detail: "No transfer is active",
-        title: countLabel(
+        detail: t("downloads.detailFinished"),
+        title: counted(
           current.succeededCount,
-          "download finished",
-          "downloads finished",
+          "downloads.finishedOne",
+          "downloads.finishedOther",
         ),
       });
     }
     return Object.freeze({
-      detail: "The surface stays quiet until needed",
-      title: "No active downloads",
+      detail: t("downloads.detailIdle"),
+      title: t("downloads.none"),
     });
   });
 
@@ -140,7 +173,8 @@
 </script>
 
 <section
-  aria-label="Download progress"
+  aria-label={t("downloads.panelAria")}
+  lang={localeId}
   class="fennevia-downloads"
   data-fennevia-default-focus=""
   data-fennevia-downloads=""
@@ -162,8 +196,10 @@
     {#if current.activeCount > 0}
       <div
         aria-label={current.progressMode === "determinate"
-          ? `Overall download progress: ${current.aggregatePercent}%`
-          : "Overall download progress: unknown total size"}
+          ? t("downloads.progressDeterminate", {
+              percent: current.aggregatePercent ?? 0,
+            })
+          : t("downloads.progressUnknown")}
         aria-valuemax={current.progressMode === "determinate" ? 100 : undefined}
         aria-valuemin={current.progressMode === "determinate" ? 0 : undefined}
         aria-valuenow={current.progressMode === "determinate"
@@ -184,26 +220,36 @@
     {:else}
       <span
         class="fennevia-downloads__inactive"
-        data-fennevia-download-inactive="">Idle</span
+        data-fennevia-download-inactive="">{t("downloads.idle")}</span
       >
     {/if}
   </div>
 
   <ul
-    aria-label="Current and recent download states"
+    aria-label={t("downloads.itemsAria")}
     class="fennevia-downloads__items"
   >
     {#each current.items as item, index (item.id)}
       <li
-        aria-label={`Download ${index + 1}: ${presentations[item.state].label}${
-          item.progressPercent === null ? "" : `, ${item.progressPercent}%`
-        }`}
+        aria-label={item.progressPercent === null
+          ? t("downloads.itemAria", {
+              index: index + 1,
+              label: presentations[item.state].label,
+            })
+          : t("downloads.itemAriaPercent", {
+              index: index + 1,
+              label: presentations[item.state].label,
+              percent: item.progressPercent,
+            })}
         class="fennevia-downloads__item"
         data-fennevia-download-state={item.state}
         data-fennevia-status-tone={presentations[item.state].tone}
-        title={`${presentations[item.state].label}${
-          item.progressPercent === null ? "" : ` · ${item.progressPercent}%`
-        }`}
+        title={item.progressPercent === null
+          ? presentations[item.state].label
+          : t("downloads.itemTitlePercent", {
+              label: presentations[item.state].label,
+              percent: item.progressPercent,
+            })}
       >
         <span aria-hidden="true">{presentations[item.state].icon}</span>
         {#if item.progressPercent !== null && item.state !== "succeeded"}
@@ -215,7 +261,7 @@
     {/each}
     {#if current.truncated}
       <li
-        aria-label="More downloads are not shown"
+        aria-label={t("downloads.moreAria")}
         class="fennevia-downloads__more"
       >
         +

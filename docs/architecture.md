@@ -200,6 +200,8 @@ implementation object, native handle, or capability object to Svelte. Issues
 #10, #12, #13, #14, #32, #37, and ADR-037 pass only frozen ordinary-data tabs,
 navigation/address, bookmarks, anonymous download-status, Urlbar coverage, and
 fixed browser-tool contracts through separate application adapters.
+ADR-052 adds an optional locale snapshot that carries only the mapped id `en`
+or `zh-Hant`.
 
 The boundary validates `window.document.defaultView`, the browser document URI,
 the process-local window ID, and normal/private kind before claiming a context.
@@ -218,8 +220,20 @@ and fixed state only. Event subscriptions and cleanup callbacks return
 idempotent disposers, and boundary disposal continues through all owned
 subscriptions and registries before reporting a typed cleanup error. These are
 the only shared utilities consumed by the tabs, navigation, bookmarks,
-downloads, Urlbar-coverage, and browser-tools bridges; no service locator,
+downloads, Urlbar-coverage, browser-tools, and locale bridges; no service locator,
 dependency-injection framework, or generic Firefox SDK exists.
+
+ADR-052 adds `src/firefox/locale.ts` to the same generated private ESM. It
+reads `Services.locale.appLocaleAsBCP47` (the Firefox UI language, not
+`intl.accept_languages`) and observes `intl:app-locales-changed`. The public
+object exposes only `{ id: "en" | "zh-Hant" }`. Every Chinese tag currently
+maps to `zh-Hant` until a Simplified Chinese catalog exists; every other tag
+maps to `en`.
+Missing locale symbols fall back to English and do not fail health. Project
+copy uses typed catalogs in `src/app/messages/` plus `t()`; chrome.manifest
+still omits `locale`. Firefox Fluent widget names (ADR-046) and Places root
+titles stay Firefox-owned. Frame, overlay, and surface roots set `lang` to
+the mapped id; both catalogs are LTR.
 
 ESLint applies a static boundary to `src/shell/` and ordinary `src/app/` code:
 Firefox implementation imports, privileged globals, and direct Firefox-owned
@@ -776,8 +790,14 @@ src/
     downloads.ts
     toolbar-widgets.ts
     window-controls.ts
+    locale.ts
   app/
     address-popup.ts
+    i18n.ts
+    locale-state.ts
+    messages/
+      en.ts
+      zh-Hant.ts
     browser-tools-state.ts
     bookmark-state.ts
     customize-session.ts
@@ -792,6 +812,7 @@ src/
     window-controls-state.ts
   shell/
     AddressPopup.svelte
+    locale-ui.ts
     App.svelte
     BookmarksPanel.svelte
     CustomizePanel.svelte

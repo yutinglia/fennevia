@@ -21,6 +21,12 @@
     type BrowserUrlbarCoverageState,
     type BrowserUrlbarCoverageStateAdapter,
   } from "../app/urlbar-coverage-state";
+  import { translate, type MessageKey, type MessageVars } from "../app/i18n";
+  import {
+    defaultFenneviaLocale,
+    type BrowserLocaleStateAdapter,
+    type FenneviaLocale,
+  } from "../app/locale-state";
   import { resolveBrowserToolHost } from "./browser-tool-host";
   import {
     getConnectionSecurityPresentation,
@@ -42,6 +48,7 @@
       action: BrowserToolAction,
       host?: unknown,
     ) => Promise<boolean>;
+    locale: BrowserLocaleStateAdapter;
     onOpenNativeUrlbar: () => boolean;
     onDisposed: () => void;
     onFatalError: (error: unknown) => void;
@@ -49,10 +56,10 @@
     windowKind: "normal" | "private";
   }>;
 
-  const nativeAccessDescription =
-    "Connection, protection, and permission rows open Firefox's current native panels. Open the full address bar for extension actions and complete controls.";
-
   const props: Props = $props();
+  let localeId: FenneviaLocale = $state(defaultFenneviaLocale);
+  const t = (key: MessageKey, vars?: MessageVars): string =>
+    translate(localeId, key, vars);
   let popupState: AddressPopupSnapshot = $state({
     closeReason: null,
     draftValue: "",
@@ -87,15 +94,20 @@
   let connection = $derived(
     getConnectionSecurityPresentation(
       currentNavigation.snapshot.connectionSecurity,
+      localeId,
     ),
   );
   let protection = $derived(
     getTrackingProtectionPresentation(
       currentNavigation.snapshot.trackingProtection,
+      localeId,
     ),
   );
   let permissions = $derived(
-    getSitePermissionPresentation(currentCoverage.snapshot.permissions),
+    getSitePermissionPresentation(
+      currentCoverage.snapshot.permissions,
+      localeId,
+    ),
   );
   let browserToolsSnapshot = $derived(props.browserTools.snapshot());
   let handoffDisabled = $derived(
@@ -104,6 +116,14 @@
   let visible = $derived(
     popupState.phase !== "hidden" && popupState.phase !== "disposed",
   );
+
+  $effect(() => {
+    const locale = props.locale;
+    localeId = locale.snapshot().id;
+    return locale.subscribe((snapshot) => {
+      localeId = snapshot.id;
+    });
+  });
 
   $effect(() => {
     popupState = props.popup.snapshot();
@@ -203,24 +223,26 @@
 
   const statusText = () => {
     if (popupState.error === "empty") {
-      return "Enter an address or search.";
+      return t("address.empty");
     }
     if (popupState.error === "too-long") {
-      return `Keep the address or search under ${maximumNavigationAddressLength.toLocaleString()} characters.`;
+      return t("address.tooLong", {
+        max: String(maximumNavigationAddressLength),
+      });
     }
     if (popupState.error === "submission-failed") {
-      return "Firefox could not open this entry. Native controls remain available.";
+      return t("address.submissionFailed");
     }
     if (popupState.error === "unsafe-scheme") {
-      return "Executable address schemes are not opened here.";
+      return t("address.unsafeScheme");
     }
     if (popupState.phase === "submitting") {
-      return "Opening with Firefox…";
+      return t("address.submitting");
     }
     if (currentNavigation.snapshot.loading) {
-      return "The current page is loading.";
+      return t("address.loading");
     }
-    return "Enter to open · Escape to cancel";
+    return t("address.enterHint");
   };
 
   onDestroy(() => {
@@ -230,6 +252,7 @@
 
 <div
   aria-hidden={!visible}
+  lang={localeId}
   class="fennevia-address-popup-root"
   data-fennevia-address-popup-phase={popupState.phase}
   data-fennevia-address-popup-root=""
@@ -239,7 +262,7 @@
   id="fennevia-address-popup-root"
 >
   <button
-    aria-label="Close address and search"
+    aria-label={t("address.closeAria")}
     class="fennevia-address-popup__backdrop"
     data-fennevia-address-popup-backdrop=""
     onclick={() => requestClose("outside")}
@@ -260,25 +283,25 @@
       <div>
         <span class="fennevia-address-popup__eyebrow"
           >{props.windowKind === "private"
-            ? "Private browsing"
-            : "Fennevia"}</span
+            ? t("address.privateBrowsing")
+            : t("address.productName")}</span
         >
-        <h2 id="fennevia-address-popup-title">Address and search</h2>
+        <h2 id="fennevia-address-popup-title">{t("address.title")}</h2>
       </div>
       <button
-        aria-label="Close address and search"
+        aria-label={t("address.closeAria")}
         class="fennevia-control fennevia-address-popup__close"
         data-fennevia-address-popup-close=""
         onclick={() => requestClose("cancelled")}
         onkeydown={handleCloseKeydown}
-        title="Close"
+        title={t("address.close")}
         type="button">×</button
       >
     </header>
 
     <label
       class="fennevia-address-popup__label"
-      for="fennevia-address-popup-input">Enter an address or search</label
+      for="fennevia-address-popup-input">{t("address.fieldLabel")}</label
     >
     <div class="fennevia-address-popup__field-shell">
       <span aria-hidden="true" class="fennevia-address-popup__glyph">⌁</span>
@@ -296,7 +319,7 @@
         maxlength={maximumNavigationAddressLength}
         oninput={handleInput}
         onkeydown={handleInputKeydown}
-        placeholder="Search or enter address"
+        placeholder={t("address.placeholder")}
         readonly={popupState.phase === "submitting" ||
           popupState.phase === "closing"}
         spellcheck="false"
@@ -314,46 +337,54 @@
     >
 
     <div
-      aria-label="Firefox site status"
+      aria-label={t("permission.statusAria")}
       class="fennevia-address-popup__details"
       data-fennevia-address-popup-details=""
       role="group"
     >
       <button
-        aria-label={`Open Firefox site information. ${connection.label}`}
+        aria-label={t("address.openSiteInformation", {
+          label: connection.label,
+        })}
         class="fennevia-address-popup__detail"
         data-fennevia-browser-tool="site-information"
         data-fennevia-connection-detail=""
         data-fennevia-status-tone={connection.tone}
         disabled={handoffDisabled || !browserToolsSnapshot.siteInformation}
         onclick={(event) => void handleBrowserTool("site-information", event)}
-        title={`Open Firefox site information. ${connection.label}`}
+        title={t("address.openSiteInformation", {
+          label: connection.label,
+        })}
         type="button"
       >
         <span aria-hidden="true" class="fennevia-address-popup__detail-mark"
           >{connection.badge}</span
         >
         <span class="fennevia-address-popup__detail-copy">
-          <strong>Connection</strong>
+          <strong>{t("address.statusConnection")}</strong>
           <span>{connection.label}</span>
         </span>
       </button>
       <button
-        aria-label={`Open Firefox tracking protection. ${protection.label}`}
+        aria-label={t("address.openTrackingProtection", {
+          label: protection.label,
+        })}
         class="fennevia-address-popup__detail"
         data-fennevia-browser-tool="protections"
         data-fennevia-protection-detail=""
         data-fennevia-status-tone={protection.tone}
         disabled={handoffDisabled || !browserToolsSnapshot.protections}
         onclick={(event) => void handleBrowserTool("protections", event)}
-        title={`Open Firefox tracking protection. ${protection.label}`}
+        title={t("address.openTrackingProtection", {
+          label: protection.label,
+        })}
         type="button"
       >
         <span aria-hidden="true" class="fennevia-address-popup__detail-mark"
           >{protection.badge}</span
         >
         <span class="fennevia-address-popup__detail-copy">
-          <strong>Protection</strong>
+          <strong>{t("address.statusProtection")}</strong>
           <span>{protection.label}</span>
         </span>
       </button>
@@ -362,36 +393,40 @@
         data-fennevia-status-tone={permissions.tone}
       >
         <button
-          aria-label={`Open Firefox site permissions. ${permissions.label}`}
+          aria-label={t("address.openSitePermissions", {
+            label: permissions.label,
+          })}
           class="fennevia-address-popup__detail-action"
           data-fennevia-browser-tool="site-permissions"
           data-fennevia-permission-detail=""
           disabled={handoffDisabled || !browserToolsSnapshot.sitePermissions}
           onclick={(event) => void handleBrowserTool("site-permissions", event)}
-          title={`Open Firefox site permissions. ${permissions.label}`}
+          title={t("address.openSitePermissions", {
+            label: permissions.label,
+          })}
           type="button"
         >
           <span aria-hidden="true" class="fennevia-address-popup__detail-mark"
             >{permissions.badge}</span
           >
           <span class="fennevia-address-popup__detail-copy">
-            <strong>Site permissions</strong>
+            <strong>{t("address.statusSitePermissions")}</strong>
             <span>{permissions.label}</span>
           </span>
         </button>
         {#if currentCoverage.snapshot.permissions.sharing.length > 0 || currentCoverage.snapshot.permissions.blocked.length > 0}
           <ul
-            aria-label="Firefox permission indicators"
+            aria-label={t("permission.indicatorsAria")}
             class="fennevia-address-popup__permission-indicators"
             data-fennevia-permission-indicators=""
           >
             {#each currentCoverage.snapshot.permissions.sharing as kind (kind)}
               <li data-fennevia-status-tone="warning">
-                {getSharingIndicatorLabel(kind)}
+                {getSharingIndicatorLabel(kind, localeId)}
               </li>
             {/each}
             {#each currentCoverage.snapshot.permissions.blocked as kind (kind)}
-              <li>{getBlockedPermissionIndicatorLabel(kind)}</li>
+              <li>{getBlockedPermissionIndicatorLabel(kind, localeId)}</li>
             {/each}
           </ul>
         {/if}
@@ -405,26 +440,26 @@
     >
       <div class="fennevia-address-popup__firefox-controls-copy">
         <strong id="fennevia-address-popup-firefox-controls-title"
-          >Firefox address-bar controls</strong
+          >{t("address.firefoxControls")}</strong
         >
-        <span>{nativeAccessDescription}</span>
+        <span>{t("address.nativeAccessDescription")}</span>
       </div>
 
       {#if currentCoverage.snapshot.items.length > 0}
         <ul
-          aria-label="Applicable Firefox address-bar items"
+          aria-label={t("address.urlbarItemsAria")}
           class="fennevia-address-popup__urlbar-items"
           data-fennevia-urlbar-items=""
         >
           {#each currentCoverage.snapshot.items as kind (kind)}
             <li data-fennevia-status-tone={getUrlbarItemTone(kind)}>
-              {getUrlbarItemLabel(kind)}
+              {getUrlbarItemLabel(kind, localeId)}
             </li>
           {/each}
         </ul>
       {:else}
         <span class="fennevia-address-popup__urlbar-empty"
-          >No additional page actions are available for this page.</span
+          >{t("address.noPageActions")}</span
         >
       {/if}
 
@@ -436,7 +471,7 @@
         type="button"
       >
         <span aria-hidden="true">↗</span>
-        <span>Open full Firefox address bar</span>
+        <span>{t("address.nativeAccess")}</span>
       </button>
     </section>
   </div>

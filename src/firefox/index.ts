@@ -3,6 +3,7 @@ export * from "./bookmarks";
 export * from "./browser-tools";
 export * from "./customize-model";
 export * from "./downloads";
+export * from "./locale";
 export * from "./navigation";
 export * from "./tabs";
 export * from "./toolbar-widgets";

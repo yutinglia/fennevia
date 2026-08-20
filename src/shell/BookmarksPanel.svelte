@@ -11,13 +11,24 @@
     type BrowserBookmarksState,
     type BrowserBookmarksStateAdapter,
   } from "../app/bookmark-state";
+  import { translate, type MessageKey, type MessageVars } from "../app/i18n";
+  import {
+    defaultFenneviaLocale,
+    type FenneviaLocale,
+  } from "../app/locale-state";
 
   type Props = Readonly<{
     bookmarks: BrowserBookmarksStateAdapter;
+    localeId?: FenneviaLocale;
     onFatalError: (error: unknown) => void;
   }>;
 
   const props: Props = $props();
+  let localeId: FenneviaLocale = $derived(
+    props.localeId ?? defaultFenneviaLocale,
+  );
+  const t = (key: MessageKey, vars?: MessageVars): string =>
+    translate(localeId, key, vars);
   let current: BrowserBookmarksState = $state(
     untrack(() => props.bookmarks.snapshot()),
   );
@@ -112,7 +123,7 @@
       await action();
     } catch (error) {
       if (getErrorCode(error) === "FENNEVIA_BOOKMARK_STATE_EXPANSION_LIMIT") {
-        localMessage = "Collapse a folder before opening another deep branch.";
+        localMessage = t("bookmarks.collapseLimit");
         return;
       }
       props.onFatalError(error);
@@ -123,7 +134,9 @@
     if (node.title.trim().length > 0) {
       return node.title;
     }
-    return node.kind === "folder" ? "Untitled folder" : "Untitled bookmark";
+    return node.kind === "folder"
+      ? t("bookmarks.untitledFolder")
+      : t("bookmarks.untitledBookmark");
   };
 
   const focusBookmark = async (bookmarkId: string | null): Promise<void> => {
@@ -267,15 +280,15 @@
       return localMessage;
     }
     if (current.notice === "stale-bookmark") {
-      return "That bookmark was removed or changed. The list is refreshing.";
+      return t("bookmarks.stale");
     }
     if (current.notice === "unsupported-bookmark") {
-      return "Executable and data bookmark links are not opened here.";
+      return t("bookmarks.unsupported");
     }
     if (current.notice === "open-failed") {
-      return "Firefox could not open that bookmark.";
+      return t("bookmarks.openFailed");
     }
-    return "Ctrl or Command + Enter opens a bookmark in a new tab.";
+    return t("bookmarks.hint");
   };
 
   onDestroy(() => {
@@ -286,13 +299,14 @@
 
 <section
   aria-busy={current.phase === "loading"}
-  aria-label="Bookmarks"
+  aria-label={t("bookmarks.panelAria")}
+  lang={localeId}
   class="fennevia-bookmarks"
   data-fennevia-bookmarks=""
 >
   <div class="fennevia-bookmarks__roots">
     <label class="fennevia-bookmarks__roots-label" for="fennevia-bookmark-roots">
-      Location
+      {t("bookmarks.location")}
     </label>
     <select
       bind:this={rootSelect}
@@ -303,10 +317,10 @@
       disabled={current.roots.length === 0}
       id="fennevia-bookmark-roots"
       onchange={handleRootChange}
-      title="Bookmark location"
+      title={t("bookmarks.locationTitle")}
     >
       {#if current.roots.length === 0}
-        <option selected value="">Loading…</option>
+        <option selected value="">{t("bookmarks.loadingShort")}</option>
       {/if}
       {#each current.roots as root (root.id)}
         <option
@@ -319,7 +333,7 @@
   </div>
 
   <div
-    aria-label="Bookmarks in selected location"
+    aria-label={t("bookmarks.listAria")}
     class="fennevia-bookmarks__list"
     data-fennevia-bookmark-list=""
     id="fennevia-bookmark-list"
@@ -328,13 +342,13 @@
     {#if current.phase === "loading"}
       <div class="fennevia-bookmarks__empty" role="status">
         <span aria-hidden="true">◌</span>
-        <span>Loading bookmark locations…</span>
+        <span>{t("bookmarks.loading")}</span>
       </div>
     {:else if current.phase === "error"}
       <div class="fennevia-bookmarks__empty" role="alert">
         <span aria-hidden="true">!</span>
         <span
-          >Bookmarks are unavailable. Native Firefox tools remain usable.</span
+          >{t("bookmarks.error")}</span
         >
       </div>
     {:else}
@@ -342,7 +356,7 @@
         {#if row.type === "item"}
           {#if row.node.kind === "separator"}
             <div
-              aria-label="Separator"
+              aria-label={t("bookmarks.separator")}
               class="fennevia-bookmarks__separator"
               data-fennevia-bookmark-separator=""
               role="separator"
@@ -392,12 +406,14 @@
               </button>
               {#if row.node.kind === "bookmark"}
                 <button
-                  aria-label={`Open ${displayTitle(row.node)} in a new tab`}
+                  aria-label={t("bookmarks.openNewTabAria", {
+                    title: displayTitle(row.node),
+                  })}
                   class="fennevia-bookmarks__new-tab"
                   data-fennevia-action="open-bookmark-new-tab"
                   disabled={current.openingBookmarkId !== null}
                   onclick={() => void openBookmark(row.node.id, "new-tab")}
-                  title="Open in new tab"
+                  title={t("bookmarks.openNewTab")}
                   type="button">↗</button
                 >
               {/if}
@@ -412,32 +428,35 @@
           >
             {#if row.branch.phase === "idle" || row.branch.phase === "loading"}
               <span aria-hidden="true">◌</span>
-              <span>Loading…</span>
+              <span>{t("bookmarks.loadingShort")}</span>
             {:else if row.branch.phase === "error"}
-              <span>Couldn’t load this folder.</span>
+              <span>{t("bookmarks.folderLoadError")}</span>
               <button
                 onclick={() =>
                   void runAction(() => props.bookmarks.retry(row.parentId))}
-                type="button">Retry</button
+                type="button">{t("bookmarks.retry")}</button
               >
             {:else if row.branch.phase === "stale"}
-              <span>This folder changed or was removed.</span>
+              <span>{t("bookmarks.folderChanged")}</span>
             {:else if row.branch.items.length === 0}
-              <span>No bookmarks here.</span>
+              <span>{t("bookmarks.emptyFolder")}</span>
             {/if}
             {#if row.branch.phase === "ready" && (row.branch.offset > 0 || row.branch.truncated)}
-              <div aria-label="Folder pages" class="fennevia-bookmarks__pager">
+              <div aria-label={t("bookmarks.folderPages")} class="fennevia-bookmarks__pager">
                 <button
                   disabled={row.branch.offset === 0}
                   onclick={() =>
                     void runAction(() =>
                       props.bookmarks.page(row.parentId, "previous"),
                     )}
-                  type="button">Previous</button
+                  type="button">{t("bookmarks.previous")}</button
                 >
                 <span>
-                  {row.branch.offset + 1}–{row.branch.offset +
-                    row.branch.items.length} of {row.branch.totalCount}
+                  {t("bookmarks.pageRange", {
+                    start: row.branch.offset + 1,
+                    end: row.branch.offset + row.branch.items.length,
+                    total: row.branch.totalCount,
+                  })}
                 </span>
                 <button
                   disabled={!row.branch.truncated}
@@ -445,7 +464,7 @@
                     void runAction(() =>
                       props.bookmarks.page(row.parentId, "next"),
                     )}
-                  type="button">Next</button
+                  type="button">{t("bookmarks.next")}</button
                 >
               </div>
             {/if}

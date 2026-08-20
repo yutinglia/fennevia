@@ -161,6 +161,12 @@ A build must not leave a dirty generated-artifact or manifest diff unless that
 change is intentional and reviewed. Never hand-edit generated bridge or shell
 files.
 
+Shell UI locale mapping, the optional `Services.locale` bridge, catalog key
+parity, and `t()` interpolation are covered by `tests/locale-state.test.mjs`,
+`tests/firefox-locale.test.mjs`, and `tests/i18n.test.mjs` in the ordinary CI
+gate. Switching the Firefox UI language (including language-pack changes
+without restart) is a real-Firefox release check and is `not run`.
+
 Release packaging has additional fixed-list coverage in
 `fennevia-gui.Tests.ps1`, `release-packaging.Tests.ps1`, and
 `release-installer.Tests.ps1`. They run under PowerShell 7 and Windows
