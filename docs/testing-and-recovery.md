@@ -292,7 +292,8 @@ owned surfaces. The center content hit target must remain Firefox-owned.
 
 Validate:
 
-- one tab, many tabs, and bounded vertical overflow;
+- one tab, many tabs, and bounded vertical overflow, with New tab following the
+  last tab and remaining pinned below the scroller when the list overflows;
 - exact native order;
 - selected, title, safe favicon/fallback, pinned, and loading state;
 - native and custom select/new/close/pin/unpin used alternately;
