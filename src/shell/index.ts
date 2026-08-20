@@ -246,6 +246,10 @@ const CUSTOMIZE_STYLE_PROPERTIES = Object.freeze([
 ]);
 
 const HEX_COLOR_PATTERN = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/u;
+const DEFAULT_PANEL_SURFACE =
+  "var(--panel-background-color, var(--toolbar-background-color))";
+const DEFAULT_TOOLBAR_SURFACE =
+  "var(--toolbar-background-color, var(--panel-background-color))";
 const DEFAULT_GLASS_BLUR_PX = 18;
 const DEFAULT_GLASS_RADIUS_PX = 4;
 const DEFAULT_FONT_SIZE_PX = 12;
@@ -273,7 +277,7 @@ function shadowFromIntensity(intensity: number): string {
   const blur = Math.round(54 * scale);
   const alpha = Math.round(28 * scale);
   const inset = Math.round(22 * scale);
-  return `0 ${y}px ${blur}px rgb(0 12 24 / ${alpha}%), inset 0 1px 0 rgb(255 255 255 / ${inset}%)`;
+  return `0 ${y}px ${blur}px color-mix(in srgb, var(--color-black, black) ${alpha}%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-white, white) ${inset}%, transparent)`;
 }
 
 function clearCustomizeStyle(frame: HTMLElement): void {
@@ -336,11 +340,11 @@ function applyCustomizeStyle(
   } else if (style.surfaceOpacity !== DEFAULT_SURFACE_OPACITY) {
     frame.style.setProperty(
       "--fennevia-glass-surface",
-      `light-dark(rgb(247 250 252 / ${style.surfaceOpacity}%), rgb(20 26 35 / ${style.surfaceOpacity}%))`,
+      `color-mix(in srgb, ${DEFAULT_PANEL_SURFACE} ${style.surfaceOpacity}%, transparent)`,
     );
     frame.style.setProperty(
       "--fennevia-glass-tint",
-      `light-dark(rgb(246 250 255 / ${tintOpacity}%), rgb(17 24 34 / ${tintOpacity}%))`,
+      `color-mix(in srgb, ${DEFAULT_TOOLBAR_SURFACE} ${tintOpacity}%, transparent)`,
     );
   }
   const text = hexToRgbComponents(style.text);

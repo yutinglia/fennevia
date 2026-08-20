@@ -276,6 +276,7 @@ For each edge:
   Spotlight: native chrome must hide again after the HTML dialog closes even
   if `window-modal-open` remains;
 - light and dark Firefox themes;
+- default shell colors following Firefox Light/Dark/System design tokens;
 - very light, dark, saturated, patterned, and moving content behind surfaces;
 - backdrop-filter unavailable or transparency reduced;
 - `prefers-reduced-motion`;
@@ -626,6 +627,8 @@ ADR-045 adds focused unit/static/build coverage for:
   and font size, including NativeUi `--fennevia-chrome-background` on
   `:root#main-window` and skip of color overrides under forced colors /
   motion duration under reduced motion;
+- empty style colors resolving to Firefox chrome design-system tokens
+  (ADR-051) rather than a private RGB palette;
 - missing `CustomizableUI` hiding zones and missing `Services.prefs` disabling
   editing, neither joining activation health;
 - privacy assertions that widget ids never enter the serialized frontend
@@ -649,6 +652,7 @@ The following are `not run`, not passed: live Fennevia customize drawer against
 a collapsed navbar, four-edge placement round-trips, **live-zone drag from
 palette onto each edge and back**, adopt/restore of an
 installed extension, style tokens under forced colors and reduced motion,
+default Firefox Light/Dark design-token colors on owned surfaces,
 multi-window pref observation, layout reset restoring native placements, and
 Escape/focus restoration while a widget popup is also held. Implementation/
 source evidence is in `docs/research/firefox-153-customize-mode.md` and
@@ -1075,6 +1079,7 @@ of the installed package.
 | Tabs bridge                    | `docs/research/firefox-153-tabs-bridge.md`                    |
 | Tab UI                         | `docs/research/firefox-153-tab-strip.md`                      |
 | Four-edge frame                | `docs/research/firefox-153-four-edge-shell.md`                |
+| Default chrome design tokens   | `docs/research/firefox-153-design-tokens.md`                  |
 | Top navigation                 | `docs/research/firefox-153-navigation-controls.md`            |
 | Address launcher and popup     | `docs/research/firefox-153-address-popup.md`                  |
 | Urlbar coverage                | `docs/research/firefox-153-urlbar-coverage.md`                |

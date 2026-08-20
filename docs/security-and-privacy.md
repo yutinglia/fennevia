@@ -456,7 +456,9 @@ layout pref contains Firefox widget ids — including extension widget ids — a
 the fixed Fennevia widget/special tokens; the style pref contains only the
 fixed style token set (theme, `#rrggbb` color tokens or empty defaults, and
 bounded integers for blur, radius, density, surface opacity, saturation,
-shadow, motion, and font size). Neither pref may ever contain URLs, titles,
+shadow, motion, and font size). Empty color tokens resolve through CSS `var()`
+to Firefox chrome design-system properties already on `browser.xhtml`; Fennevia
+does not persist or log those resolved colors. Neither pref may ever contain URLs, titles,
 text input, browsing data, or private-window state. Second, bounded
 `CustomizableUI`
 writes: placing a widget that has no live node calls

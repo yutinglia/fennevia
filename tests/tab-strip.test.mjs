@@ -268,9 +268,15 @@ test("the component uses semantic sibling controls and property-safe rendering o
     "motion-easing",
     "focus-color",
     "selected-surface",
+    "danger-color",
   ]) {
     assert.match(styles, new RegExp(`--fennevia-${token}:`, "u"));
   }
+  assert.match(styles, /--panel-background-color/u);
+  assert.match(styles, /--toolbar-background-color/u);
+  assert.match(styles, /--color-accent-primary/u);
+  assert.match(styles, /--focus-outline-color/u);
+  assert.doesNotMatch(styles, /247 250 252/u);
   for (const edge of ["top", "left", "right", "bottom"]) {
     assert.match(styles, new RegExp(`data-fennevia-edge=["']${edge}["']`, "u"));
   }

@@ -124,7 +124,8 @@ failed, or disposed state removes the active gate and exposes native Firefox UI.
   project-authored icon subtrees use SVG.
 - **Build:** Vite with byte-reproducible output and no CDN, HMR, source maps,
   extra runtime chunks, or network-loaded executable dependencies.
-- **Styling:** frame-scoped component CSS and local glass tokens with solid,
+- **Styling:** frame-scoped component CSS and local glass tokens whose default
+  colors consume Firefox chrome design-system variables, with solid,
   reduced-transparency, reduced-motion, and forced-colors fallbacks.
 - **Deliberate omissions:** no generic `.uc.js` loader, component library,
   Tailwind, Shadow DOM, runtime updater, telemetry, or remote configuration.

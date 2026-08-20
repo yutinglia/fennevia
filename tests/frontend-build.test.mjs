@@ -98,8 +98,13 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   );
   assert.match(
     css,
-    /\.fennevia-edge-panel__footer kbd \{[\s\S]*?background: light-dark\(rgb\(247 250 252\), rgb\(20 26 35\)\);/u,
+    /\.fennevia-edge-panel__footer kbd \{[\s\S]*?background: var\(\s*--input-text-background-color,\s*var\(--fennevia-glass-surface\)\s*\);/u,
   );
+  assert.match(css, /--panel-background-color/u);
+  assert.match(css, /--toolbar-background-color/u);
+  assert.match(css, /--color-accent-primary/u);
+  assert.match(css, /--focus-outline-color/u);
+  assert.doesNotMatch(css, /247 250 252/u);
 
   const component = await readProjectFile("src/shell/App.svelte");
   assert.match(
@@ -133,6 +138,11 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(glyph, /style:mask-image=\{nativeMaskImage\}/u);
   assert.match(glyph, /style:-webkit-mask-image=\{nativeMaskImage\}/u);
   assert.doesNotMatch(glyph, /<img[^>]+src=\{[^}]*chrome:/u);
+
+  const customize = await readProjectFile("src/shell/CustomizePanel.svelte");
+  assert.match(customize, /#0062f9/u);
+  assert.match(customize, /#fbfbfe/u);
+  assert.doesNotMatch(customize, /#3b82f6|#8b5cf6|#64748b|#f7fafc/u);
 });
 
 test("the installed frontend is one IIFE, one style module, and one notice", async () => {
@@ -223,6 +233,10 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(css, /data-fennevia-just-opened="true"/u);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(css, /@media \(forced-colors: active\)/u);
+  assert.match(css, /--panel-background-color/u);
+  assert.match(css, /--color-accent-primary/u);
+  assert.match(css, /--focus-outline-color/u);
+  assert.doesNotMatch(css, /247 250 252/u);
   assert.doesNotMatch(
     css,
     /#(?:navigator-toolbox|browser|tabbrowser-tabbox|main-window)\b/u,
