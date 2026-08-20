@@ -62,6 +62,21 @@ are not supported by this release.
 Installing the prebuilt release does **not** require Node.js, npm, or building
 Firefox from source.
 
+## Current progress
+
+Fennevia has moved beyond the first four-edge MVP. The current prerelease also
+includes a Fennevia-owned widget editor with live drag-and-drop across all four
+edges, bounded appearance and motion controls, Firefox design-token defaults,
+English and Traditional Chinese shell catalogs, first-paint native-toolbox
+hiding, and the `FenneviaSetup.exe` Windows setup wizard.
+
+The implementation has focused automated coverage, but the remaining
+real-Firefox visual, popup-placement, customize, first-paint, and complete GUI
+installer matrices are still pending. The main remaining work is therefore
+compatibility and release validation rather than a missing core shell feature.
+See [Current project status](docs/current-status.md) for the reviewed capability
+inventory, evidence boundary, known risks, and recommended priorities.
+
 ## Install
 
 ### 1. Prepare Firefox
@@ -193,12 +208,18 @@ Firefox itself.
   features, and extension integrations remain available through Firefox's full
   native interface.
 
-## An intentionally opinionated interface
+## Opinionated structure, bounded customization
 
-Fennevia is designed around the author's personal preferences and workflow. Its
-core layout, interactions, and visual design are intentionally not configurable
-in the current roadmap. The design may still change as the project evolves, and
-configurability may be reconsidered later.
+Fennevia still follows the author's content-first product direction: the four
+edge roles, hidden-at-rest behavior, reveal model, native-ownership boundaries,
+and overall interaction hierarchy are deliberate product decisions rather than
+an arbitrary layout system.
+
+The interface is no longer accurately described as non-configurable. Fennevia
+customize mode can place supported Firefox toolbar widgets on any edge and can
+adjust a bounded set of profile-local panel/window backgrounds, text, border,
+saturation, shadow, and motion values. It is intentionally not a general CSS
+editor, extension platform, or unlimited geometry builder.
 
 ## Documentation
 
@@ -206,6 +227,7 @@ The root README is intentionally limited to public, user-facing information.
 More detailed material is organised by audience:
 
 - [Documentation map](docs/README.md)
+- [Current project status](docs/current-status.md)
 - [Technical overview and current engineering status](docs/technical-overview.md)
 - [Architecture](docs/architecture.md)
 - [Testing and recovery](docs/testing-and-recovery.md)
