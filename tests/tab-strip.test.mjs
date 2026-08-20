@@ -239,7 +239,11 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(styles, /@media \(prefers-reduced-transparency: reduce\)/u);
   assert.match(styles, /unicode-bidi: plaintext/u);
-  assert.match(styles, /overflow-y: auto/u);
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__list \{[\s\S]*?flex: 0 1 auto;[\s\S]*?overflow-y: auto;/u,
+  );
+  assert.match(styles, /\.fennevia-tab-strip__new \{[\s\S]*?flex: none;/u);
   assert.match(styles, /:focus-visible/u);
   assert.match(styles, /@supports \(backdrop-filter: blur\(1px\)\)/u);
   for (const token of [

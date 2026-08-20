@@ -553,7 +553,9 @@ Forced-colors still uses Canvas/CanvasText/Highlight. See
 Issue #11 first proved the tab strip boundary horizontally; ADR-026 retains its
 data and accessibility contract but reorients it into the left edge. Pinned and
 regular items use bounded project-only layout, many tabs overflow inside one
-vertical scroller, and forced-colors/focus rules remain rooted at the frame. The
+vertical scroller, and the New tab control stays outside that scroller so it
+follows the last tab and remains visible when the list overflows.
+Forced-colors/focus rules remain rooted at the frame. The
 Browser Toolbox ownership walk excludes Firefox-generated native-anonymous
 scrollbar descendants before asserting XHTML project ownership; it does not
 reclassify those browser-owned XUL widgets as authored shell DOM. No selector
