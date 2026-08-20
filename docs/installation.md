@@ -186,7 +186,8 @@ Firefox's default profile, shows the 153/154 testing warning, shows the
 redacted plan, and applies only after both acknowledgements with that plan's
 `planSha256`. The interactive host is a native
 TUI: it enters an alternate screen, redraws in place, and accepts keyboard and
-mouse input. Click an action to select it; Esc cancels. Plan and status lines
+mouse input. Click an action to select it; Esc cancels. Search is a literal
+substring filter. Plan and status lines
 stay in the same frame instead of scrolling a new menu after every key.
 stdin/stdout redirection keeps a numbered fallback menu. Redirected or
 non-interactive hosts fail closed.

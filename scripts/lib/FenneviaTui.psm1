@@ -100,6 +100,9 @@ function Test-FenneviaTuiHostActive {
     return ($null -ne $script:FenneviaTuiState -and [bool] $script:FenneviaTuiState.Active)
 }
 
+$script:FenneviaTuiUnread = ""
+$script:FenneviaTuiClickArmed = $true
+
 function Add-FenneviaTuiLog {
     [CmdletBinding()]
     param(
@@ -163,6 +166,27 @@ function Get-FenneviaTuiWindowSize {
     return [pscustomobject]@{ Width = $width; Height = $height }
 }
 
+function Test-FenneviaTuiLiteralMatch {
+    [CmdletBinding()]
+    param(
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string] $Text,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Query
+    )
+
+    if ([string]::IsNullOrEmpty($Query)) {
+        return $true
+    }
+    if ([string]::IsNullOrEmpty($Text)) {
+        return $false
+    }
+    return $Text.IndexOf($Query, [StringComparison]::OrdinalIgnoreCase) -ge 0
+}
+
 function Get-FenneviaTuiLayout {
     [CmdletBinding()]
     param(
@@ -206,7 +230,7 @@ function Get-FenneviaTuiLayout {
             foreach ($entry in $itemList) {
                 $label = [string] $entry.Label
                 $id = [string] $entry.Id
-                if ($label -like "*$queryText*" -or $id -like "*$queryText*") {
+                if ((Test-FenneviaTuiLiteralMatch -Text $label -Query $queryText) -or (Test-FenneviaTuiLiteralMatch -Text $id -Query $queryText)) {
                     $entry
                 }
             }
@@ -467,6 +491,48 @@ function Resolve-FenneviaTuiMouseHit {
     return $null
 }
 
+function Resolve-FenneviaTuiClickArm {
+    [CmdletBinding()]
+    param(
+        [bool] $Armed,
+
+        [Parameter(Mandatory)]
+        [int] $Button,
+
+        [bool] $Down,
+
+        [int] $ElapsedMs = 0,
+
+        [int] $StaleWindowMs = 150
+    )
+
+    $isWheel = (($Button -band 64) -eq 64)
+    $isMotion = (-not $isWheel) -and (($Button -band 32) -eq 32)
+    $isReleasedMotion = $isMotion -and (($Button -band 3) -eq 3)
+    $isLeftPress = ($Button -eq 0) -and $Down
+    $isLeftRelease = ($Button -eq 0) -and (-not $Down)
+
+    if ($isWheel) {
+        return [pscustomobject]@{ Armed = $Armed; Select = $false; Hover = $false; Stale = $false }
+    }
+    if ($isLeftRelease -or $isReleasedMotion) {
+        return [pscustomobject]@{ Armed = $true; Select = $false; Hover = $isReleasedMotion; Stale = $false }
+    }
+    if ($isMotion) {
+        return [pscustomobject]@{ Armed = $Armed; Select = $false; Hover = $true; Stale = $false }
+    }
+    if ($isLeftPress) {
+        if ($Armed) {
+            return [pscustomobject]@{ Armed = $false; Select = $true; Hover = $false; Stale = $false }
+        }
+        if ($ElapsedMs -ge $StaleWindowMs) {
+            return [pscustomobject]@{ Armed = $false; Select = $true; Hover = $false; Stale = $false }
+        }
+        return [pscustomobject]@{ Armed = $false; Select = $false; Hover = $false; Stale = $true }
+    }
+    return [pscustomobject]@{ Armed = $Armed; Select = $false; Hover = $false; Stale = $false }
+}
+
 function Initialize-FenneviaTuiNative {
     [CmdletBinding()]
     param()
@@ -513,9 +579,219 @@ function Wait-FenneviaTuiKeyAvailable {
     return $false
 }
 
+function Test-FenneviaTuiEscapeSeqComplete {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Text
+    )
+
+    $normalized = $Text
+    if ($normalized.Length -gt 0 -and $normalized[0] -eq '[') {
+        $normalized = ([char]27).ToString() + $normalized
+    }
+    $esc = [regex]::Escape(([char]27).ToString())
+    if ($normalized -match ('^' + $esc + '\[<\d+;\d+;\d+[Mm]')) {
+        return $true
+    }
+    if ($normalized -match ('^' + $esc + '\[[ABCDFHP]')) {
+        return $true
+    }
+    if ($normalized -match ('^' + $esc + '\[\d+[~ABCDEFHP]')) {
+        return $true
+    }
+    return $false
+}
+
+function Resolve-FenneviaTuiEscapeText {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Text
+    )
+
+    $none = [pscustomobject]@{
+        Type = "none"
+        Char = ""
+        Button = 0
+        X = 0
+        Y = 0
+        Down = $false
+        Repeat = 1
+        Remainder = ""
+        Complete = $true
+    }
+    if ([string]::IsNullOrEmpty($Text)) {
+        return $none
+    }
+
+    $normalized = $Text
+    if ($normalized[0] -eq '[') {
+        $normalized = ([char]27).ToString() + $normalized
+    }
+
+    $esc = [char]27
+    $mouseRe = [regex]([regex]::Escape([string]$esc) + '\[<(\d+);(\d+);(\d+)([Mm])')
+    $mouse = $mouseRe.Match($normalized)
+    if ($mouse.Success -and $mouse.Index -eq 0) {
+        $remainder = ""
+        if ($mouse.Length -lt $normalized.Length) {
+            $remainder = $normalized.Substring($mouse.Length)
+        }
+        return [pscustomobject]@{
+            Type = "mouse"
+            Char = ""
+            Button = [int]$mouse.Groups[1].Value
+            X = [int]$mouse.Groups[2].Value
+            Y = [int]$mouse.Groups[3].Value
+            Down = ($mouse.Groups[4].Value -eq "M")
+            Repeat = 1
+            Remainder = $remainder
+            Complete = $true
+        }
+    }
+    if ($normalized.StartsWith(([string]$esc) + "[A")) {
+        $remainder = if ($normalized.Length -gt 3) { $normalized.Substring(3) } else { "" }
+        return [pscustomobject]@{ Type = "up"; Char = ""; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1; Remainder = $remainder; Complete = $true }
+    }
+    if ($normalized.StartsWith(([string]$esc) + "[B")) {
+        $remainder = if ($normalized.Length -gt 3) { $normalized.Substring(3) } else { "" }
+        return [pscustomobject]@{ Type = "down"; Char = ""; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1; Remainder = $remainder; Complete = $true }
+    }
+    if ($normalized -eq [string]$esc) {
+        return [pscustomobject]@{ Type = "cancel"; Char = ""; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1; Remainder = ""; Complete = $true }
+    }
+    if ($normalized.StartsWith(([string]$esc) + "[") -and $normalized.Length -ge 2) {
+        $last = $normalized.Substring($normalized.Length - 1)
+        $looksIncompleteMouse = $normalized.Contains("[<") -and $last -ne "M" -and $last -ne "m"
+        $looksShortCsi = $normalized.Length -lt 6
+        if ($looksIncompleteMouse -or $looksShortCsi) {
+            return [pscustomobject]@{ Type = "incomplete"; Char = ""; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1; Remainder = $normalized; Complete = $false }
+        }
+    }
+    return $none
+}
+
+function Read-FenneviaTuiCompleteEscape {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $Prefix
+    )
+
+    $builder = New-Object Text.StringBuilder
+    [void]$builder.Append($Prefix)
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    while ($builder.Length -lt 64) {
+        $soFar = $builder.ToString()
+        if (Test-FenneviaTuiEscapeSeqComplete -Text $soFar) {
+            break
+        }
+        $isMousePrefix = $soFar.Contains("[<")
+        if (-not [Console]::KeyAvailable) {
+            $waitMs = 8
+            if ($soFar.Length -eq 1) {
+                $waitMs = 25
+            }
+            elseif ($isMousePrefix) {
+                $waitMs = 15
+            }
+            if ($isMousePrefix -and $watch.ElapsedMilliseconds -lt 120) {
+                if (-not (Wait-FenneviaTuiKeyAvailable -Milliseconds $waitMs)) {
+                    continue
+                }
+            }
+            elseif (-not (Wait-FenneviaTuiKeyAvailable -Milliseconds $waitMs)) {
+                break
+            }
+        }
+        if (-not [Console]::KeyAvailable) {
+            if ($isMousePrefix -and $watch.ElapsedMilliseconds -lt 120) {
+                continue
+            }
+            break
+        }
+        $next = [Console]::ReadKey($true)
+        [void]$builder.Append($next.KeyChar)
+        if ($watch.ElapsedMilliseconds -gt 120) {
+            break
+        }
+    }
+    return $builder.ToString()
+}
+
+function ConvertFrom-FenneviaTuiParsedInput {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object] $Parsed
+    )
+
+    if ([string] $Parsed.Type -eq "incomplete") {
+        return [pscustomobject]@{ Type = "none"; Char = ""; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1 }
+    }
+
+    if (-not [string]::IsNullOrEmpty([string] $Parsed.Remainder)) {
+        $script:FenneviaTuiUnread = [string] $Parsed.Remainder + $script:FenneviaTuiUnread
+    }
+
+    return [pscustomobject]@{
+        Type = [string] $Parsed.Type
+        Char = [string] $Parsed.Char
+        Button = [int] $Parsed.Button
+        X = [int] $Parsed.X
+        Y = [int] $Parsed.Y
+        Down = [bool] $Parsed.Down
+        Repeat = [int] $Parsed.Repeat
+    }
+}
+
+function Clear-FenneviaTuiBufferedInput {
+    [CmdletBinding()]
+    param()
+
+    $script:FenneviaTuiUnread = ""
+    $n = 0
+    try {
+        while ([Console]::KeyAvailable -and $n -lt 512) {
+            [void][Console]::ReadKey($true)
+            $n++
+        }
+    }
+    catch {
+    }
+    return $n
+}
+
 function Read-FenneviaTuiInput {
     [CmdletBinding()]
     param()
+
+    if ($null -eq $script:FenneviaTuiUnread) {
+        $script:FenneviaTuiUnread = ""
+    }
+    if ($script:FenneviaTuiUnread.Length -gt 0) {
+        $queued = $script:FenneviaTuiUnread
+        $script:FenneviaTuiUnread = ""
+        if ($queued[0] -eq [char]27 -or $queued.StartsWith("[<") -or $queued.StartsWith("[")) {
+            $prefix = $queued
+            if ($queued[0] -eq '[') {
+                $prefix = ([char]27).ToString() + $queued
+            }
+            if (-not (Test-FenneviaTuiEscapeSeqComplete -Text $prefix)) {
+                $prefix = Read-FenneviaTuiCompleteEscape -Prefix $prefix
+            }
+            $parsed = Resolve-FenneviaTuiEscapeText -Text $prefix
+            return (ConvertFrom-FenneviaTuiParsedInput -Parsed $parsed)
+        }
+        $ch = [string]$queued[0]
+        if ($queued.Length -gt 1) {
+            $script:FenneviaTuiUnread = $queued.Substring(1)
+        }
+        return [pscustomobject]@{ Type = "char"; Char = $ch; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1 }
+    }
 
     $key = [Console]::ReadKey($true)
     $ctrl = [ConsoleModifiers]::Control
@@ -564,76 +840,29 @@ function Read-FenneviaTuiInput {
 
     $isEsc = ($key.Key -eq [ConsoleKey]::Escape) -or ($key.KeyChar -eq [char]27)
     if ($isEsc) {
-        $seq = New-Object Text.StringBuilder
-        [void]$seq.Append([char]27)
-        if (-not (Wait-FenneviaTuiKeyAvailable -Milliseconds 25)) {
-            return [pscustomobject]@{ Type = "cancel"; Char = ""; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1 }
+        $text = Read-FenneviaTuiCompleteEscape -Prefix ([string][char]27)
+        $parsed = Resolve-FenneviaTuiEscapeText -Text $text
+        return (ConvertFrom-FenneviaTuiParsedInput -Parsed $parsed)
+    }
+
+    if ($key.KeyChar -eq '[') {
+        $nextChar = $null
+        if ($script:FenneviaTuiUnread.Length -gt 0) {
+            $nextChar = $script:FenneviaTuiUnread[0]
+            $script:FenneviaTuiUnread = $script:FenneviaTuiUnread.Substring(1)
         }
-        while ([Console]::KeyAvailable) {
-            $next = [Console]::ReadKey($true)
-            [void]$seq.Append($next.KeyChar)
-            if (-not (Wait-FenneviaTuiKeyAvailable -Milliseconds 8)) {
-                break
-            }
-            if ($seq.Length -ge 512) {
-                break
-            }
+        elseif ([Console]::KeyAvailable) {
+            $nextChar = [Console]::ReadKey($true).KeyChar
         }
-        $text = $seq.ToString()
-        $mouseRe = [char]27 + '\[<(\d+);(\d+);(\d+)([Mm])'
-        $mouseMatches = [regex]::Matches($text, $mouseRe)
-        if ($mouseMatches.Count -gt 0) {
-            $wheelDelta = 0
-            $lastWheel = $null
-            $lastEvent = $null
-            foreach ($mouse in $mouseMatches) {
-                $lastEvent = $mouse
-                $btn = [int]$mouse.Groups[1].Value
-                if (($btn -band 64) -eq 64) {
-                    $lastWheel = $mouse
-                    if (($btn -band 1) -eq 0) {
-                        $wheelDelta--
-                    }
-                    else {
-                        $wheelDelta++
-                    }
-                }
-            }
-            if ($wheelDelta -ne 0 -and $null -ne $lastWheel) {
-                $button = 64
-                if ($wheelDelta -gt 0) {
-                    $button = 65
-                }
-                return [pscustomobject]@{
-                    Type = "mouse"
-                    Char = ""
-                    Button = $button
-                    Repeat = [Math]::Abs($wheelDelta)
-                    X = [int]$lastWheel.Groups[2].Value
-                    Y = [int]$lastWheel.Groups[3].Value
-                    Down = $true
-                }
-            }
-            return [pscustomobject]@{
-                Type = "mouse"
-                Char = ""
-                Button = [int]$lastEvent.Groups[1].Value
-                Repeat = 1
-                X = [int]$lastEvent.Groups[2].Value
-                Y = [int]$lastEvent.Groups[3].Value
-                Down = ($lastEvent.Groups[4].Value -eq "M")
-            }
+        if ($nextChar -eq '<') {
+            $text = Read-FenneviaTuiCompleteEscape -Prefix (([char]27).ToString() + "[<")
+            $parsed = Resolve-FenneviaTuiEscapeText -Text $text
+            return (ConvertFrom-FenneviaTuiParsedInput -Parsed $parsed)
         }
-        if ($text.Contains(([char]27).ToString() + "[A")) {
-            return [pscustomobject]@{ Type = "up"; Char = ""; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1 }
+        if ($null -ne $nextChar) {
+            $script:FenneviaTuiUnread = ([string]$nextChar) + $script:FenneviaTuiUnread
         }
-        if ($text.Contains(([char]27).ToString() + "[B")) {
-            return [pscustomobject]@{ Type = "down"; Char = ""; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1 }
-        }
-        if ($text.Length -eq 1) {
-            return [pscustomobject]@{ Type = "cancel"; Char = ""; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1 }
-        }
-        return [pscustomobject]@{ Type = "none"; Char = ""; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1 }
+        return [pscustomobject]@{ Type = "char"; Char = "["; Button = 0; X = 0; Y = 0; Down = $false; Repeat = 1 }
     }
 
     if ($key.KeyChar -and -not [char]::IsControl($key.KeyChar)) {
@@ -700,6 +929,57 @@ function Write-FenneviaTuiLayout {
     [Console]::Write($builder.ToString())
 }
 
+function Restore-FenneviaTuiHostMode {
+    [CmdletBinding()]
+    param(
+        [switch] $IncludeAlternateScreen
+    )
+
+    $state = $script:FenneviaTuiState
+    if ($null -eq $state -or $null -eq ("FenneviaTuiNative" -as [type])) {
+        return $false
+    }
+    if ($state.InputHandle -eq [IntPtr]::Zero -or $state.OutputHandle -eq [IntPtr]::Zero) {
+        return $false
+    }
+
+    try {
+        $inputMode = [uint32]0
+        $outputMode = [uint32]0
+        if (-not [FenneviaTuiNative]::GetConsoleMode($state.InputHandle, [ref]$inputMode)) {
+            return $false
+        }
+        if (-not [FenneviaTuiNative]::GetConsoleMode($state.OutputHandle, [ref]$outputMode)) {
+            return $false
+        }
+
+        $desiredInput = $inputMode
+        $desiredInput = $desiredInput -bor [uint32]0x0080
+        $desiredInput = $desiredInput -bor [uint32]0x0010
+        $desiredInput = $desiredInput -bor [uint32]0x0200
+        $desiredInput = $desiredInput -band (-bnot [uint32]0x0040)
+        $desiredInput = $desiredInput -band (-bnot [uint32]0x0002)
+        $desiredInput = $desiredInput -band (-bnot [uint32]0x0004)
+        $desiredOutput = $outputMode -bor [uint32]0x0001 -bor [uint32]0x0002 -bor [uint32]0x0004
+        [void][FenneviaTuiNative]::SetConsoleMode($state.InputHandle, $desiredInput)
+        [void][FenneviaTuiNative]::SetConsoleMode($state.OutputHandle, $desiredOutput)
+
+        [Console]::TreatControlCAsInput = $true
+        [Console]::CursorVisible = $false
+        [Console]::OutputEncoding = New-Object Text.UTF8Encoding $false
+        $esc = Get-FenneviaTuiEsc
+        $seq = "$esc[?25l$esc[?7l$esc[?1000h$esc[?1006h$esc[?1003h"
+        if ($IncludeAlternateScreen) {
+            $seq = "$esc[?1049h" + $seq
+        }
+        [Console]::Write($seq)
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function Enter-FenneviaTuiHost {
     [CmdletBinding()]
     param()
@@ -743,27 +1023,17 @@ function Enter-FenneviaTuiHost {
         $state.SavedCursorVisible = [Console]::CursorVisible
         $state.SavedOutputEncoding = [Console]::OutputEncoding
 
-        $desiredInput = $inputMode
-        $desiredInput = $desiredInput -bor [uint32]0x0080
-        $desiredInput = $desiredInput -bor [uint32]0x0010
-        $desiredInput = $desiredInput -bor [uint32]0x0200
-        $desiredInput = $desiredInput -band (-bnot [uint32]0x0040)
-        $desiredInput = $desiredInput -band (-bnot [uint32]0x0002)
-        $desiredInput = $desiredInput -band (-bnot [uint32]0x0004)
-        $desiredOutput = $outputMode -bor [uint32]0x0001 -bor [uint32]0x0002 -bor [uint32]0x0004
-        [void][FenneviaTuiNative]::SetConsoleMode($inputHandle, $desiredInput)
-        [void][FenneviaTuiNative]::SetConsoleMode($outputHandle, $desiredOutput)
-
-        $esc = Get-FenneviaTuiEsc
-        [Console]::TreatControlCAsInput = $true
-        [Console]::CursorVisible = $false
-        [Console]::OutputEncoding = New-Object Text.UTF8Encoding $false
-        [Console]::Write("$esc[?1049h$esc[?25l$esc[?7l$esc[?1000h$esc[?1006h$esc[?1003h")
+        $script:FenneviaTuiState = $state
+        if (-not (Restore-FenneviaTuiHostMode -IncludeAlternateScreen)) {
+            return $false
+        }
 
         $state.Native = $true
         $state.AlternateScreen = $true
         $state.Active = $true
         $script:FenneviaTuiState = $state
+        $script:FenneviaTuiUnread = ""
+        $script:FenneviaTuiClickArmed = $true
         return $true
     }
     catch {
@@ -782,7 +1052,9 @@ function Exit-FenneviaTuiHost {
     $state = $script:FenneviaTuiState
     $esc = Get-FenneviaTuiEsc
     try {
-        [Console]::Write("$esc[?2026l$esc[?1003l$esc[?1006l$esc[?1000l$esc[?7h$esc[?25h$esc[?1049l")
+        [Console]::Write("$esc[?2026l$esc[?1003l$esc[?1006l$esc[?1000l")
+        [void](Clear-FenneviaTuiBufferedInput)
+        [Console]::Write("$esc[?7h$esc[?25h$esc[?1049l")
     }
     catch {
     }
@@ -832,6 +1104,12 @@ function Invoke-FenneviaTuiPick {
     $lastW = -1
     $lastH = -1
     $lastWheelAt = [datetime]::MinValue
+    $pickerStartedAt = [datetime]::UtcNow
+    $clickArmed = $true
+    if ($null -ne $script:FenneviaTuiClickArmed) {
+        $clickArmed = [bool] $script:FenneviaTuiClickArmed
+    }
+    [void](Restore-FenneviaTuiHostMode)
 
     while ($true) {
         $size = Get-FenneviaTuiWindowSize
@@ -860,8 +1138,12 @@ function Invoke-FenneviaTuiPick {
         $inputEvent = Read-FenneviaTuiInput
         $view = @($layout.View)
         switch ([string] $inputEvent.Type) {
-            "cancel" { return $null }
+            "cancel" {
+                $script:FenneviaTuiClickArmed = $true
+                return $null
+            }
             "enter" {
+                $script:FenneviaTuiClickArmed = $true
                 if ([bool] $layout.InputMode) {
                     return $queryText
                 }
@@ -930,7 +1212,18 @@ function Invoke-FenneviaTuiPick {
                     $dirty = $true
                     break
                 }
-                if ([int] $inputEvent.Button -eq 35 -or [int] $inputEvent.Button -eq 32) {
+                $elapsedMs = [int]([datetime]::UtcNow - $pickerStartedAt).TotalMilliseconds
+                $arm = Resolve-FenneviaTuiClickArm `
+                    -Armed $clickArmed `
+                    -Button ([int] $inputEvent.Button) `
+                    -Down ([bool] $inputEvent.Down) `
+                    -ElapsedMs $elapsedMs
+                $clickArmed = [bool] $arm.Armed
+                $script:FenneviaTuiClickArmed = $clickArmed
+                if ([bool] $arm.Stale) {
+                    break
+                }
+                if ([bool] $arm.Hover) {
                     if (([datetime]::UtcNow - $lastWheelAt).TotalMilliseconds -lt 80) {
                         break
                     }
@@ -941,14 +1234,14 @@ function Invoke-FenneviaTuiPick {
                     }
                     break
                 }
-                if (-not [bool] $inputEvent.Down) {
-                    break
-                }
-                if ([int] $inputEvent.Button -ne 0) {
+                if (-not [bool] $arm.Select) {
                     break
                 }
                 $clickHit = Resolve-FenneviaTuiMouseHit -Layout $layout -X ([int] $inputEvent.X) -Y ([int] $inputEvent.Y)
                 if ($null -ne $clickHit -and $view.Count -gt 0) {
+                    [void](Clear-FenneviaTuiBufferedInput)
+                    $script:FenneviaTuiClickArmed = $false
+                    $clickArmed = $false
                     return $view[[int] $clickHit.ItemIndex]
                 }
             }
@@ -963,6 +1256,8 @@ Export-ModuleMember -Function @(
     "Get-FenneviaTuiLayout",
     "Get-FenneviaTuiLogLines",
     "Invoke-FenneviaTuiPick",
+    "Resolve-FenneviaTuiClickArm",
+    "Resolve-FenneviaTuiEscapeText",
     "Resolve-FenneviaTuiMouseHit",
     "Test-FenneviaTuiHostActive"
 )
