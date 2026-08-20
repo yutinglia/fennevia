@@ -68,7 +68,9 @@ Do not develop or validate privileged browser chrome in a daily-use profile.
 Follow `docs/development-setup.md`. The recommended interactive development
 entry is `pwsh -NoProfile -File .\scripts\fennevia.ps1`. That console redraws
 in place and accepts mouse clicks; it does not append a new menu after every
-key. Extracted releases should use `FenneviaSetup.exe`. The scripted equivalent
+key. Search is a literal substring filter, so `[` or a leaked SGR mouse
+sequence cannot crash the host. Each TUI prompt reasserts console input mode
+and VT mouse tracking after child processes such as `npm run build`. Extracted releases should use `FenneviaSetup.exe`. The scripted equivalent
 is:
 
 ```powershell

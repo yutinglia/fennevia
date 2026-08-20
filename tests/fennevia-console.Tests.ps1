@@ -272,6 +272,35 @@ try {
     $filtered = Get-FenneviaTuiLayout -Title "Fennevia Release" -Items $items -Query "qui" -Width 80 -Height 24
     Assert-Equal -Actual (@($filtered.View).Count) -Expected 1 -Message "Typing in the TUI must filter actions."
     Assert-Equal -Actual ([string] @($filtered.View)[0].Id) -Expected "quit" -Message "Filter matches must keep the original item identity."
+    $bracketQuery = Get-FenneviaTuiLayout -Title "Fennevia Release" -Items $items -Query "[" -Width 80 -Height 24
+    Assert-Equal -Actual (@($bracketQuery.View).Count) -Expected 0 -Message "A literal '[' query must not throw and must not use wildcard matching."
+    $mouseJunkQuery = Get-FenneviaTuiLayout -Title "Fennevia Release" -Items $items -Query "[<35;119;16M" -Width 80 -Height 24
+    Assert-Equal -Actual (@($mouseJunkQuery.View).Count) -Expected 0 -Message "A leaked SGR mouse sequence in Search must be treated as literal text."
+
+    $esc = [char]27
+    $pressThenMotion = Resolve-FenneviaTuiEscapeText -Text ($esc + "[<0;10;5M" + $esc + "[<32;10;6M")
+    Assert-Equal -Actual ([string] $pressThenMotion.Type) -Expected "mouse" -Message "The first complete SGR event must win."
+    Assert-Equal -Actual ([int] $pressThenMotion.Button) -Expected 0 -Message "A following motion event must not replace a left press."
+    Assert-True -Condition ([bool] $pressThenMotion.Down) -Message "A left press is a mouse-down event."
+    $pressRemainder = [string] $pressThenMotion.Remainder
+    $motionPrefix = ([string]$esc) + "[<32"
+    Assert-True -Condition ($pressRemainder.StartsWith($motionPrefix)) -Message "Later SGR events must remain queued instead of leaking as typed characters."
+    $hover = Resolve-FenneviaTuiEscapeText -Text ($esc + "[<35;119;16M")
+    Assert-Equal -Actual ([int] $hover.Button) -Expected 35 -Message "Windows Terminal hover reports SGR button 35."
+    Assert-Equal -Actual ([string] $hover.Remainder) -Expected "" -Message "A single complete hover event has no remainder."
+    $leaked = Resolve-FenneviaTuiEscapeText -Text "[<35;119;16M"
+    Assert-Equal -Actual ([string] $leaked.Type) -Expected "mouse" -Message "An SGR sequence missing the ESC prefix must still parse as mouse input."
+    Assert-Equal -Actual ([int] $leaked.Button) -Expected 35 -Message "A leaked hover sequence must keep button 35."
+
+    $stale = Resolve-FenneviaTuiClickArm -Armed:$false -Button 0 -Down:$true -ElapsedMs 47
+    Assert-True -Condition ([bool] $stale.Stale) -Message "A leftover press 47ms after the next prompt must be ignored."
+    Assert-True -Condition (-not [bool] $stale.Select) -Message "A stale leftover press must not select."
+    $armedClick = Resolve-FenneviaTuiClickArm -Armed:$true -Button 0 -Down:$true -ElapsedMs 11
+    Assert-True -Condition ([bool] $armedClick.Select) -Message "An armed left press must select."
+    $releaseArms = Resolve-FenneviaTuiClickArm -Armed:$false -Button 35 -Down:$true -ElapsedMs 8
+    Assert-True -Condition ([bool] $releaseArms.Armed) -Message "Hover with no button must re-arm clicks after a mouse navigation."
+    $lateClick = Resolve-FenneviaTuiClickArm -Armed:$false -Button 0 -Down:$true -ElapsedMs 500
+    Assert-True -Condition ([bool] $lateClick.Select) -Message "A later click at the same coordinates must still select after the stale window."
 
     Add-FenneviaTuiLog -Lines @("event=console.status", "C:\hidden\firefox.exe", "\\hidden\share")
     $logLines = @(Get-FenneviaTuiLogLines)
