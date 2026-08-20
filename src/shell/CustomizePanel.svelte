@@ -45,41 +45,46 @@
     comfortable: "Comfortable",
   };
 
+  // Empty swatches keep Firefox chrome design-token defaults. Hex values are
+  // Acorn primitives from Firefox 153/154 color.tokens.json and
+  // tokens-platform.css; #0062f9 is documented --color-blue-60.
   const accentPresets: readonly string[] = [
     "",
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-    "#ef4444",
-    "#f59e0b",
-    "#10b981",
-    "#14b8a6",
-    "#64748b",
+    "#0062f9",
+    "#7844f0",
+    "#9e3bc3",
+    "#c91a6d",
+    "#cf1748",
+    "#d44100",
+    "#008e00",
+    "#00cadb",
+    "#8f8f9d",
   ];
   const surfacePresets: readonly string[] = [
     "",
-    "#f7fafc",
-    "#e2e8f0",
-    "#94a3b8",
-    "#141a23",
-    "#111827",
-    "#1e293b",
+    "#ffffff",
+    "#fbfbfe",
+    "#f9f9fb",
+    "#f0f0f4",
+    "#42414d",
+    "#2b2a33",
+    "#1c1b22",
   ];
   const textPresets: readonly string[] = [
     "",
-    "#141d27",
-    "#0f172a",
-    "#eff6fc",
-    "#f8fafc",
-    "#64748b",
+    "#15141a",
+    "#5b5b66",
+    "#8f8f9d",
+    "#fbfbfe",
+    "#ffffff",
   ];
   const borderPresets: readonly string[] = [
     "",
     "#ffffff",
-    "#cbd5e1",
-    "#94a3b8",
-    "#334155",
-    "#1e293b",
+    "#f0f0f4",
+    "#bfbfc9",
+    "#52525e",
+    "#23222b",
   ];
 
   const radiusPresets: readonly number[] = [0, 4, 8, 12, 16];

@@ -537,7 +537,8 @@ matrix are recorded in `docs/research/firefox-153-tab-strip.md`.
 
 ## ADR-026: Use one zero-layout frame with four independently owned edge surfaces
 
-**Status:** Accepted and validated on Firefox 153.0.4
+**Status:** Accepted and validated on Firefox 153.0.4; default color values
+amended by ADR-051
 
 Insert one project-owned XHTML frame as an absolute child of `#browser`
 immediately before `#tabbrowser-tabbox`. The frame reserves no layout space and
@@ -1560,7 +1561,9 @@ background token is applied by NativeUi as `--fennevia-chrome-background` on
 `:root#main-window` (the same root NativeUi already owns for activation
 attributes). Svelte never writes Firefox-owned `documentElement` styles.
 Empty color tokens keep the CSS defaults, including Firefox
-`--toolbar-background-color` for the content gutter.
+`--toolbar-background-color` for the content gutter. ADR-051 maps those frame
+CSS color defaults onto Firefox chrome design-system tokens rather than a
+private RGB palette.
 
 Owner-approved relaxations recorded here: (a) the layout preference may
 persist Firefox widget ids, including extension widget ids, on the privileged
@@ -1796,4 +1799,50 @@ when the privileged runtime hangs after registration. Empty `100%` keyframes
 avoid leftover `!important` geometry after the deadline.
 
 Evidence: `docs/research/firefox-153-startup-native-hide.md`.
+
+## ADR-051: Consume Firefox chrome design tokens as the default shell theme
+
+**Status:** Accepted for the Firefox 153/154 Windows prerelease boundary;
+amends ADR-026's default color values and ADR-045's empty-style CSS defaults
+
+Keep the existing `--fennevia-*` token names on `#fennevia-shell-frame-host`.
+Change only their default values so an empty customize style follows Firefox's
+current chrome design system instead of a private slate/blue RGB palette.
+
+Default mapping (runtime `var()` only; token JSON is not copied):
+
+| Fennevia token | Firefox chrome token |
+| --- | --- |
+| `--fennevia-glass-surface` | `--panel-background-color` mixed to 94% |
+| `--fennevia-glass-tint` | `--toolbar-background-color` mixed to 82% |
+| `--fennevia-glass-text` | `--toolbar-text-color` / `--panel-text-color` |
+| `--fennevia-glass-muted` | `--toolbarbutton-icon-fill` |
+| `--fennevia-glass-border` | `--panel-border-color` |
+| `--fennevia-glass-separator` | `--chrome-content-separator-color` |
+| `--fennevia-focus-color` | `--focus-outline-color` / `--color-accent-primary` |
+| `--fennevia-danger-color` | `--text-color-error` |
+| `--fennevia-selected-surface` | `--color-accent-primary` at 20% |
+
+Those symbols exist on `browser.xhtml` through
+`toolkit/themes/shared/design-system/dist/tokens-platform.css`,
+`tokens-shared.css`, and `browser/themes/shared/browser-colors.css` on both
+`FIREFOX_153_0_4_RELEASE` and `FIREFOX_154_0_RELEASE`. Light and Dark in-app
+themes resolve `--color-accent-primary` to `--color-blue-60` /
+`--color-cyan-30`. System/native theme keeps `AccentColor`. Forced colors
+continue to replace the Fennevia tokens with Canvas/CanvasText/Highlight.
+
+Customize empty `#rrggbb` fields still mean "use CSS defaults." Swatches in
+the style editor use documented Acorn hex (gray primitives plus `--color-*-60`
+and Storybook `--color-blue-60` `#0062f9`), not Tailwind. NativeUi's content
+gutter already uses `--toolbar-background-color`; this change aligns the
+owned surfaces with the same official pattern.
+
+**Reasoning:** A content-first shell on stock Firefox should look like Firefox
+chrome when the user has not customized style. Inheriting the live chrome
+tokens follows Light/Dark/System automatically, picks up HCM layers already
+maintained upstream, and avoids a second palette that drifts from Acorn.
+Source pins and the selected mapping are in
+`docs/research/firefox-153-design-tokens.md`. Static coverage lives in
+`tests/tab-strip.test.mjs` and `tests/frontend-build.test.mjs`. Real Firefox
+Light/Dark visual review remains `not run`.
 

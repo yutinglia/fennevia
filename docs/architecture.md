@@ -393,7 +393,8 @@ list. The first edit materializes a Fennevia layout into
 tokens (theme, accent, panel surface, chrome background, text, border, blur,
 radius, density, surface opacity, saturation, shadow, motion, and font size).
 Both prefs are versioned JSON with a 16 KiB cap and fail safe to defaults.
-Glass tokens apply on the project frame root. The chrome background token is
+Glass tokens apply on the project frame root. Empty color tokens resolve to
+Firefox chrome design-system variables (ADR-051). The chrome background token is
 applied by NativeUi as `--fennevia-chrome-background` on `:root#main-window`.
 Placing a widget
 with no live node performs the owner-approved `addWidgetToArea(id, "nav-bar")`
@@ -541,7 +542,13 @@ kept the computed styles of the native toolbox, sidebar, popup set, Urlbar
 input, application-menu button, and modal prompt unchanged when that style was
 toggled. Tailwind and Shadow DOM remain unselected because the scoped component
 CSS satisfied the measured isolation and theme requirements without another
-dependency or rendering boundary.
+dependency or rendering boundary. ADR-051 maps the default `--fennevia-*` color
+tokens to Firefox chrome design-system variables (`--panel-background-color`,
+`--toolbar-background-color`, `--toolbar-text-color`, `--color-accent-primary`,
+`--focus-outline-color`, and related tokens from `tokens-platform.css` /
+`tokens-shared.css`). Empty customize color values keep those defaults.
+Forced-colors still uses Canvas/CanvasText/Highlight. See
+`docs/research/firefox-153-design-tokens.md`.
 
 Issue #11 first proved the tab strip boundary horizontally; ADR-026 retains its
 data and accessibility contract but reorients it into the left edge. Pinned and

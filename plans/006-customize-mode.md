@@ -70,7 +70,8 @@ activation contract.
       existing `add`/`move`/`remove` edits, keyboard Delete/Ctrl+Arrow/Enter,
       and no native-area CustomizeMode copy.
 - [x] Bounded style tokens on the project frame root; skipped under forced
-      colors; cleared on dispose.
+      colors; cleared on dispose. ADR-051 maps empty color defaults to Firefox
+      chrome design-system tokens.
 - [x] Skip list includes placements already represented by fixed Fennevia
       controls, including Unified Extensions and the application menu.
 - [x] Unit tests for model, bridge, adapter, skip list, missing capability,
