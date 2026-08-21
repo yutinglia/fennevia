@@ -173,11 +173,12 @@ Release packaging has additional fixed-list coverage in
 `fennevia-gui.Tests.ps1`, `release-packaging.Tests.ps1`, and
 `release-installer.Tests.ps1`. They run under PowerShell 7 and Windows
 PowerShell 5.1. They require two byte-identical ZIPs, a compiled
-`FenneviaSetup.exe`, GUI confirmation/elevation-state coverage without
-ShowDialog, fixed/sorted entries, a strict extracted tree from a Unicode/space
-path, checksum and source records, tamper rejection, explicit registered-profile
-mode, exact supported Firefox major-version gate (153+; older rejected),
-pre-mutation rejection, untested-newer warning text, and
+`FenneviaSetup.exe`, module-scoped button/list/checkbox event-flow,
+localized system-font, DPI/responsive-layout, and confirmation/elevation-state
+coverage without `ShowDialog`, fixed/sorted entries, a strict extracted tree
+from a Unicode/space path, checksum and source records, tamper rejection,
+explicit registered-profile mode, exact supported Firefox major-version gate
+(153+; older rejected), pre-mutation rejection, untested-newer warning text, and
 disable/uninstall recovery after an older Firefox update. Real double-click,
 UAC, and system-Firefox GUI installs are release-matrix work and are `not run`
 on ordinary pull requests. Before a tag,

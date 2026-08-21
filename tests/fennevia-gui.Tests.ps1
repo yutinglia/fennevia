@@ -62,6 +62,47 @@ function Assert-Throws {
     throw "Assertion failed: $Message Expected an exception, but none was thrown."
 }
 
+function Invoke-FenneviaGuiControlClick {
+    param(
+        [Parameter(Mandatory)]
+        [object] $Control
+    )
+
+    $method = $Control.GetType().GetMethod(
+        "OnClick",
+        [Reflection.BindingFlags]::Instance -bor [Reflection.BindingFlags]::NonPublic
+    )
+    if ($null -eq $method) {
+        throw "Assertion failed: The test control does not expose an OnClick method."
+    }
+    try {
+        [void] $method.Invoke($Control, @([EventArgs]::Empty))
+    }
+    catch {
+        if ($null -ne $_.Exception.InnerException) {
+            throw $_.Exception.InnerException
+        }
+        throw
+    }
+}
+
+function Get-FenneviaGuiDescendantControl {
+    param(
+        [Parameter(Mandatory)]
+        [object] $Control,
+
+        [Parameter(Mandatory)]
+        [type] $ControlType
+    )
+
+    foreach ($child in @($Control.Controls)) {
+        if ($ControlType.IsInstanceOfType($child)) {
+            Write-Output $child
+        }
+        Get-FenneviaGuiDescendantControl -Control $child -ControlType $ControlType
+    }
+}
+
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) ("fennevia-gui-tests-" + [guid]::NewGuid().ToString("N"))
 $canonicalTempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd("\", "/")
@@ -144,6 +185,12 @@ try {
     Add-FenneviaGuiCopyableLines -Session $session -Lines @("event=installer.plan", "program=C:\hidden\firefox.exe", "profile=<FENNEVIA_PROFILE>")
     Assert-True -Condition (@($session.CopyableLines | Where-Object { $_ -match "C:\\hidden" }).Count -eq 0) -Message "Copyable GUI lines must not disclose absolute paths."
     Assert-True -Condition (@($session.CopyableLines | Where-Object { $_ -eq "event=installer.plan" }).Count -eq 1) -Message "Redacted plan events should remain copyable."
+
+    $pathError = New-Object IO.FileNotFoundException("Missing C:\hidden\release-file")
+    $safePathError = ConvertTo-FenneviaGuiSafeErrorMessage -InputObject $pathError
+    Assert-True -Condition ($safePathError -match "FENNEVIA_GUI_LOCAL_PATH_ERROR") -Message "Path-bearing GUI failures should expose a stable privacy-safe code."
+    Assert-True -Condition ($safePathError -match "FileNotFoundException") -Message "Path-bearing GUI failures may expose an allowlisted exception class."
+    Assert-True -Condition (-not (Test-FenneviaGuiLineHasPath -Line $safePathError)) -Message "The actionable GUI error must not disclose the original local path."
 
     $session.Status = $unwritable
     $statePath = New-FenneviaGuiElevationState -Session $session
@@ -334,6 +381,98 @@ try {
     }
     finally {
         Remove-FenneviaGuiElevationState -Path $elevPath
+    }
+
+    $guiModule = Get-Module FenneviaGui
+    $wizardInvokeCount = $script:InvokeCount
+    $wizardUi = & $guiModule {
+        param($PackageRoot, $GuiHooks)
+        New-FenneviaGuiWizardWindow -PackageRoot $PackageRoot -Hooks $GuiHooks
+    } $canonicalRelease $resolved
+    $largeUiFont = $null
+    try {
+        Assert-Equal -Actual $wizardUi.Form.Font.Name -Expected ([System.Drawing.SystemFonts]::MessageBoxFont.Name) -Message "The wizard should use Windows' localized UI font instead of the legacy WinForms default."
+        Assert-Equal -Actual $wizardUi.Form.AutoScaleMode -Expected ([System.Windows.Forms.AutoScaleMode]::Dpi) -Message "The wizard should scale its complete layout for the active display DPI."
+
+        $dpiScale = [Math]::Max(1.0, ([double] $wizardUi.Form.DeviceDpi / 96.0))
+        $minimumScaledClientWidth = [int] [Math]::Round(520 * $dpiScale)
+        $minimumScaledClientHeight = [int] [Math]::Round(380 * $dpiScale)
+        Assert-True -Condition ($wizardUi.Form.ClientSize.Width -ge $minimumScaledClientWidth) -Message "The DPI-aware form must scale its client width with its text."
+        Assert-True -Condition ($wizardUi.Form.ClientSize.Height -ge $minimumScaledClientHeight) -Message "The DPI-aware form must scale its client height with its text."
+
+        $initialSize = $wizardUi.Form.Size
+        $wizardUi.Form.Size = $wizardUi.Form.MinimumSize
+        $wizardUi.Next.Text = "Continue as administrator"
+        $wizardUi.Form.PerformLayout()
+        Assert-True -Condition ($wizardUi.Back.Right -le $wizardUi.Next.Left) -Message "The responsive footer must keep Back separate from the primary action."
+        Assert-True -Condition ($wizardUi.Next.Right -le $wizardUi.Cancel.Left) -Message "A long primary action must not overlap Cancel at the minimum window size."
+        Assert-True -Condition ($wizardUi.Cancel.Right -le $wizardUi.ButtonRow.ClientSize.Width) -Message "Footer actions must remain inside the window at its minimum size."
+
+        $largeUiFont = New-Object System.Drawing.Font($wizardUi.Form.Font.FontFamily, 14)
+        $wizardUi.Form.Font = $largeUiFont
+        $wizardUi.Form.PerformLayout()
+        $welcomeText = $wizardUi.Body.Controls[0]
+        Assert-True -Condition ($welcomeText -is [System.Windows.Forms.RichTextBox]) -Message "Long wizard guidance should use a wrapping, scrollable text surface."
+        Assert-True -Condition ([bool] $welcomeText.ReadOnly -and [bool] $welcomeText.WordWrap) -Message "Wizard guidance should wrap without becoming editable."
+        Assert-Equal -Actual $welcomeText.ScrollBars -Expected ([System.Windows.Forms.RichTextBoxScrollBars]::Vertical) -Message "Enlarged wizard guidance should retain a complete vertical reading path."
+        $wizardUi.Form.Font = [System.Drawing.SystemFonts]::MessageBoxFont
+        $largeUiFont.Dispose()
+        $largeUiFont = $null
+        $wizardUi.Form.Size = $initialSize
+        $wizardUi.Form.PerformLayout()
+
+        Invoke-FenneviaGuiControlClick -Control $wizardUi.Next
+        Assert-Equal -Actual $wizardUi.Page -Expected "license" -Message "Clicking Next must resolve the module-private wizard handler after window creation returns."
+        Invoke-FenneviaGuiControlClick -Control $wizardUi.Back
+        Assert-Equal -Actual $wizardUi.Page -Expected "welcome" -Message "Clicking Back must resolve the module-private wizard handler after window creation returns."
+
+        Invoke-FenneviaGuiControlClick -Control $wizardUi.Next
+        Invoke-FenneviaGuiControlClick -Control $wizardUi.Next
+        Invoke-FenneviaGuiControlClick -Control $wizardUi.Next
+        Assert-Equal -Actual $wizardUi.Page -Expected "firefox" -Message "The wizard should reach Firefox selection through real button events."
+        $firefoxList = @(Get-FenneviaGuiDescendantControl -Control $wizardUi.Body -ControlType ([System.Windows.Forms.ListBox]))[0]
+        $firefoxList.SelectedIndex = 0
+        Assert-Equal -Actual $wizardUi.Session.FirefoxPath -Expected "C:\hidden\firefox.exe" -Message "Firefox selection events should update the session in module scope."
+
+        Invoke-FenneviaGuiControlClick -Control $wizardUi.Next
+        Assert-Equal -Actual $wizardUi.Page -Expected "profile" -Message "The wizard should reach registered-profile selection."
+        $profileList = @(Get-FenneviaGuiDescendantControl -Control $wizardUi.Body -ControlType ([System.Windows.Forms.ListBox]))[0]
+        $profileList.SelectedIndex = 0
+        Assert-Equal -Actual $wizardUi.Session.ProfileName -Expected "work" -Message "Profile selection events should retain nested console helper access."
+
+        Invoke-FenneviaGuiControlClick -Control $wizardUi.Next
+        Assert-Equal -Actual $wizardUi.Page -Expected "action" -Message "The wizard should reach action selection."
+        $actionList = @(Get-FenneviaGuiDescendantControl -Control $wizardUi.Body -ControlType ([System.Windows.Forms.ListBox]))[0]
+        $installIndex = -1
+        for ($index = 0; $index -lt $wizardUi.Actions.Count; $index++) {
+            if ([string] $wizardUi.Actions[$index].Id -ceq "install") {
+                $installIndex = $index
+                break
+            }
+        }
+        Assert-True -Condition ($installIndex -ge 0) -Message "The release wizard should expose Install."
+        $actionList.SelectedIndex = $installIndex
+
+        Invoke-FenneviaGuiControlClick -Control $wizardUi.Next
+        Assert-Equal -Actual $wizardUi.Page -Expected "support" -Message "Install should require the Firefox support warning."
+        $supportCheck = @(Get-FenneviaGuiDescendantControl -Control $wizardUi.Body -ControlType ([System.Windows.Forms.CheckBox]))[0]
+        $supportCheck.Checked = $true
+        Invoke-FenneviaGuiControlClick -Control $wizardUi.Next
+        Assert-Equal -Actual $wizardUi.Page -Expected "plan" -Message "Acknowledging support should reach plan confirmation."
+        $planCheck = @(Get-FenneviaGuiDescendantControl -Control $wizardUi.Body -ControlType ([System.Windows.Forms.CheckBox]))[0]
+        $planCheck.Checked = $true
+        Invoke-FenneviaGuiControlClick -Control $wizardUi.Next
+        Assert-Equal -Actual $wizardUi.Page -Expected "result" -Message "A confirmed writable plan should apply and reach the result page."
+        Assert-Equal -Actual $script:InvokeCount -Expected ($wizardInvokeCount + 1) -Message "The real wizard event flow should invoke the package action exactly once."
+    }
+    finally {
+        if ($null -ne $largeUiFont) {
+            $largeUiFont.Dispose()
+        }
+        & $guiModule {
+            $script:FenneviaGuiUi = $null
+        }
+        $wizardUi.Form.Dispose()
     }
 
     $label = ConvertTo-FenneviaGuiFirefoxChoiceLabel -Candidate ([pscustomobject]@{ Label = "Firefox 154.0"; BuildID = "20260812182057" })
