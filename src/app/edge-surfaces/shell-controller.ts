@@ -81,6 +81,7 @@ export function createEdgeShellController(
       edgeInteractionDefaults.windowLeaveHideDelayMs,
   });
   let interactionSuppressed = false;
+  let windowDragActive = false;
 
   const requireEdge = (edge: EdgeName): EdgeSurfaceController => {
     if (!isEdgeName(edge)) {
@@ -103,6 +104,8 @@ export function createEdgeShellController(
   };
 
   const interactionsEnabled = (): boolean => enabled && !interactionSuppressed;
+  const pointerInteractionsEnabled = (): boolean =>
+    interactionsEnabled() && !windowDragActive;
 
   const syncSurfaceEnabled = (): void => {
     const nextEnabled = interactionsEnabled();
@@ -112,7 +115,7 @@ export function createEdgeShellController(
   };
 
   const revealPointer = (edge: EdgeName): boolean => {
-    if (!interactionsEnabled()) {
+    if (!pointerInteractionsEnabled()) {
       return false;
     }
     let changed = false;
@@ -176,6 +179,7 @@ export function createEdgeShellController(
       disposed = true;
       enabled = false;
       interactionSuppressed = false;
+      windowDragActive = false;
       activeEdge = null;
       for (const edge of [...edgeNames].reverse()) {
         surfaces[edge].dispose();
@@ -231,6 +235,9 @@ export function createEdgeShellController(
         return false;
       }
       enabled = nextEnabled;
+      if (!nextEnabled) {
+        windowDragActive = false;
+      }
       activeEdge = null;
       syncSurfaceEnabled();
       return true;
@@ -279,6 +286,9 @@ export function createEdgeShellController(
         return false;
       }
       interactionSuppressed = nextSuppressed;
+      if (nextSuppressed) {
+        windowDragActive = false;
+      }
       activeEdge = null;
       syncSurfaceEnabled();
       return true;
@@ -286,7 +296,7 @@ export function createEdgeShellController(
 
     setPointerHeld(edge, held) {
       requireUsable();
-      if (held && !interactionsEnabled()) {
+      if (held && !pointerInteractionsEnabled()) {
         return false;
       }
       if (held) {
@@ -302,6 +312,31 @@ export function createEdgeShellController(
         return false;
       }
       return markActive(edge, requireEdge(edge).setPopupHeld(held));
+    },
+
+    setWindowDragActive(nextActive) {
+      requireUsable();
+      if (typeof nextActive !== "boolean") {
+        throw createEdgeSurfaceError(
+          "FENNEVIA_EDGE_WINDOW_DRAG_ACTIVE_INVALID",
+        );
+      }
+      if (windowDragActive === nextActive) {
+        return false;
+      }
+      if (nextActive && !interactionsEnabled()) {
+        return false;
+      }
+      windowDragActive = nextActive;
+      if (nextActive) {
+        // Firefox's four edge roots are separate Svelte mounts. Keep native
+        // window dragging in this shared controller so one root cannot reveal
+        // another while Windows is running its native move loop.
+        for (const edge of edgeNames) {
+          releasePointer(edge, "inside-window");
+        }
+      }
+      return true;
     },
 
     snapshot() {

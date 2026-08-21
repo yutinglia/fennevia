@@ -78,6 +78,8 @@ import {
 } from "./address-popup-coordinator";
 import { createSurfaceFocusCoordinator } from "./surface-focus";
 
+const WINDOW_DRAG_START_EVENT = "draggableregionleftmousedown";
+
 export function mountShellApp({
   bookmarks,
   browserTools,
@@ -268,6 +270,25 @@ export function mountShellApp({
     }
   };
 
+  const beginWindowDrag = (): void => {
+    if (disposed) {
+      return;
+    }
+    shell.setWindowDragActive(true);
+  };
+
+  const releaseWindowDrag = (): void => {
+    if (disposed) {
+      return;
+    }
+    shell.setWindowDragActive(false);
+  };
+
+  const releaseWindowInteraction = (): void => {
+    releaseWindowPointer();
+    releaseWindowDrag();
+  };
+
   const onPointerOut = (event: PointerEvent): void => {
     if (event.relatedTarget === null) {
       releaseWindowPointer();
@@ -279,9 +300,13 @@ export function mountShellApp({
       return;
     }
     listenersRegistered = false;
+    view.removeEventListener(WINDOW_DRAG_START_EVENT, beginWindowDrag);
     view.removeEventListener("keydown", onKeyDown, KEYBOARD_LISTENER_OPTIONS);
+    view.removeEventListener("mouseup", releaseWindowDrag);
     view.removeEventListener("pointerout", onPointerOut);
-    view.removeEventListener("blur", releaseWindowPointer);
+    view.removeEventListener("pointercancel", releaseWindowDrag);
+    view.removeEventListener("pointerup", releaseWindowDrag);
+    view.removeEventListener("blur", releaseWindowInteraction);
     frame.removeEventListener("focusin", surfaceFocus.onFrameFocusIn);
   };
 
@@ -620,9 +645,13 @@ export function mountShellApp({
       attributes: true,
       attributeFilter: [FRAME_ENVIRONMENT_ATTRIBUTE],
     });
+    view.addEventListener(WINDOW_DRAG_START_EVENT, beginWindowDrag);
     view.addEventListener("keydown", onKeyDown, KEYBOARD_LISTENER_OPTIONS);
+    view.addEventListener("mouseup", releaseWindowDrag);
     view.addEventListener("pointerout", onPointerOut);
-    view.addEventListener("blur", releaseWindowPointer);
+    view.addEventListener("pointercancel", releaseWindowDrag);
+    view.addEventListener("pointerup", releaseWindowDrag);
+    view.addEventListener("blur", releaseWindowInteraction);
     frame.addEventListener("focusin", surfaceFocus.onFrameFocusIn);
     listenersRegistered = true;
     frame.style.setProperty("--fennevia-edge-inset", `${edgeInsetCssPixels}px`);

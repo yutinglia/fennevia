@@ -140,8 +140,11 @@ Independently selected Fennevia direction:
 - [x] Ensure buttons, fields, tabs, links, and focusable controls never start a
       window drag.
 - [x] Ensure a native drag candidate immediately releases its pointer hold, and
-      retain pointer-up/cancel cleanup so a drag does not leave the left surface
-      revealed.
+      suppress pointer reveal across all four roots while the native window
+      drag is active. On Windows, consume Firefox's chrome-only drag-region
+      start event and synthesized mouse-up; retain panel/window pointer
+      fallbacks so releasing a side-panel drag cannot reveal the top surface or
+      leave the dragged surface open.
 
 ### E. Documentation and provenance
 
@@ -217,7 +220,8 @@ run for this fast pass. They are not implied by the focused results above.
 - [ ] Caption controls show, look balanced, and minimize/maximize/restore/close
       correctly in restored and maximized windows.
 - [ ] Dragging empty top/left/right/bottom chrome moves the window; releasing a
-      drag does not leave the left panel open.
+      drag from any edge does not leave that panel open or reveal another edge,
+      including top after a left/right drag.
 - [ ] Left and right panels begin below a visible top row; bottom yields to both
       side panels; no panels overlap incorrectly.
 - [ ] Moving from a panel into page content uses the configured in-window hide

@@ -193,6 +193,41 @@ test("the shared shell keeps pointer reveal exclusive while preserving legitimat
   assert.equal(clock.size(), 0);
 });
 
+test("window dragging suppresses cross-edge pointer reveal without clearing other holds", () => {
+  const clock = createScheduler();
+  const shell = createEdgeShellController({
+    hideDelayMs: 10,
+    scheduler: clock.scheduler,
+  });
+
+  shell.revealFromPointer("left");
+  assert.equal(shell.setWindowDragActive(true), true);
+  assert.equal(shell.setWindowDragActive(true), false);
+  assert.equal(shell.snapshot().surfaces.left.holds.pointer, false);
+  assert.equal(clock.size(), 1);
+
+  assert.equal(shell.revealFromPointer("top"), false);
+  assert.equal(shell.setPointerHeld("right", true), false);
+  assert.equal(shell.revealFromKeyboard("top"), true);
+  assert.equal(shell.setFocusHeld("right", true), true);
+  assert.equal(shell.setPopupHeld("bottom", true), true);
+  assert.equal(shell.revealProgrammatically("left", 100), true);
+
+  assert.equal(shell.setWindowDragActive(false), true);
+  assert.equal(shell.revealFromPointer("top"), true);
+  assert.equal(shell.snapshot().surfaces.top.holds.pointer, true);
+  assert.equal(shell.snapshot().surfaces.left.holds.programmatic, true);
+  assert.equal(shell.snapshot().surfaces.right.holds.focus, true);
+  assert.equal(shell.snapshot().surfaces.bottom.holds.popup, true);
+
+  assert.throws(
+    () => shell.setWindowDragActive("yes"),
+    /FENNEVIA_EDGE_WINDOW_DRAG_ACTIVE_INVALID/u,
+  );
+  shell.setEnabled(false);
+  assert.equal(shell.setWindowDragActive(true), false);
+});
+
 test("address popup suppression clears every edge and rejects new interactions", () => {
   const clock = createScheduler();
   const shell = createEdgeShellController({

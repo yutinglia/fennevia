@@ -173,6 +173,9 @@
   };
 
   const handleTriggerPointer = (event: PointerEvent) => {
+    if (event.buttons !== 0) {
+      return;
+    }
     const bounds = props.frame.getBoundingClientRect();
     const resolvedEdge = resolveEdgeAtPoint({
       height: bounds.height,
@@ -196,7 +199,7 @@
   };
 
   const handlePanelPointerOver = (event: PointerEvent) => {
-    if (crossedPointerBoundary(event)) {
+    if (event.buttons === 0 && crossedPointerBoundary(event)) {
       props.shell.setPointerHeld(props.edge, true);
     }
   };
@@ -224,7 +227,7 @@
     panelDragCandidate =
       event.button === 0 && !isInteractivePointerTarget(event.target);
     if (panelDragCandidate) {
-      props.shell.setPointerHeld(props.edge, false);
+      props.shell.setWindowDragActive(true);
     }
   };
 
@@ -233,7 +236,7 @@
       return;
     }
     panelDragCandidate = false;
-    props.shell.setPointerHeld(props.edge, false);
+    props.shell.setWindowDragActive(false);
   };
 
   const cancelFocusRelease = () => {
@@ -286,6 +289,9 @@
 
   onDestroy(() => {
     cancelFocusRelease();
+    if (panelDragCandidate) {
+      props.shell.setWindowDragActive(false);
+    }
     panelDragCandidate = false;
     clearToolbarWidgetDrag();
     props.onDisposed(props.edge);

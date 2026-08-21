@@ -264,6 +264,9 @@ For each edge:
 - pointer moving into browser content uses the in-window delay; pointer leaving
   the Firefox window uses the window-leave delay; a duplicate window-level
   event does not create or restart a second timer;
+- dragging the native window from neutral top/left/right/bottom panel chrome
+  releases all pointer holds, suppresses cross-edge pointer reveal until the
+  matching mouse/pointer release, and does not reveal top after a side drag;
 - `Escape` priority and dismissal;
 - focus transfer into the surface;
 - focus restoration to the prior valid target;
@@ -563,7 +566,9 @@ ADR-037 and ADR-042 add focused unit/static/build coverage for:
 - seven-rule native activation CSS, retained native caption nodes, project-owned
   top-row window controls, content gutter, and exact rule-count failure;
 - panel drag/no-drag declarations, edge-to-panel contact, transient shortcut
-  overlay, and `top > sides > bottom` collision policy;
+  overlay, `top > sides > bottom` collision policy, and shared native-window-
+  drag suppression from Firefox's drag-region start through its synthesized
+  mouse-up so left/right drag release cannot reveal the top edge;
 - ADR-043 2px gutter load/download lights, idle health nodes, anonymous
   download-width mapping, full-width activity pulse (not a fake load percent),
   reduced-motion static beam, and provenance checks that reject the
@@ -580,7 +585,9 @@ and active downloads. The complete checklist is in
 `plans/004-single-line-toolbar-ui-ux.md`; implementation/source evidence is in
 `docs/research/firefox-153-single-line-toolbar-handoffs.md`,
 `docs/research/firefox-153-native-popup-anchoring.md`, and
-`docs/research/firefox-153-gutter-progress-lights.md`.
+`docs/research/firefox-153-gutter-progress-lights.md`. The drag-release
+correction and exact Firefox 153/154 Windows event source are recorded in
+`docs/research/firefox-153-154-side-panel-window-drag-release.md`.
 
 ### 6.8 Nav-bar widget mirror — focused automation complete, real Firefox pending
 

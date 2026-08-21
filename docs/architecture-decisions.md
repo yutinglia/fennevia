@@ -1205,7 +1205,12 @@ Keep Firefox's existing minimize, maximize/restore, and close nodes in place
 for fail-open recovery. The compact native caption island from this decision is
 superseded by ADR-038. Empty project panel space may use Firefox's
 `-moz-window-dragging: drag`; every interactive or focusable descendant is an
-explicit no-drag region.
+explicit no-drag region. On Windows, Firefox dispatches the chrome-only
+`draggableregionleftmousedown` event before entering its native move loop and a
+synthesized mouse-up after that loop exits. The shared edge controller uses
+that window-level lifetime to release every pointer hold and reject cross-edge
+pointer reveal during the drag; keyboard, focus, and popup holds remain
+authoritative.
 
 Project hosts and structural frontend nodes remain XHTML. Project-authored
 inline glyphs may use the SVG namespace only inside an explicit

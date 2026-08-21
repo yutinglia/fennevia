@@ -120,7 +120,13 @@ that sheet with the explicitly selected 7px decorative browser gutter. Edge
 pointer strips stay on the #31 trigger contract. Their default is 12px, and
 ADR-054 lets the existing bounded customize preference select 6–24 CSS px so
 the hit target can remain distinct from the visible gutter without becoming an
-unbounded content overlay.
+unbounded content overlay. On Windows, Firefox's chrome-only
+`draggableregionleftmousedown` event starts a pointer-only native-window-drag
+lock in the same shared controller. Firefox's synthesized mouse-up after its
+hidden move loop, plus pointer-up/cancel and blur fallbacks, releases that lock.
+This coordinates all four independent roots so dragging neutral left/right
+chrome cannot reveal the top edge; keyboard, focus, and popup holds are not
+suppressed.
 
 Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
 owns the only root-state transition table: `created -> mounted -> healthy ->
