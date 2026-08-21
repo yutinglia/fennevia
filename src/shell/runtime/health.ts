@@ -41,8 +41,7 @@ export async function verifyShellAppHealth({
   const requiredLeftSelectors = [
     "section[data-fennevia-address-launcher-region]",
     "button[data-fennevia-address-launcher]",
-    'button[data-fennevia-connection-status][data-fennevia-browser-tool="site-information"]',
-    'button[data-fennevia-protection-status][data-fennevia-browser-tool="protections"]',
+    'button[data-fennevia-trust-status][data-fennevia-browser-tool="site-information"]',
     '[role="tablist"][aria-orientation="vertical"][data-fennevia-tab-list]',
     'button[role="tab"][data-fennevia-tab]',
     'button[data-fennevia-action="new-tab"]',
@@ -80,8 +79,7 @@ export async function verifyShellAppHealth({
     "input#fennevia-address-popup-input[data-fennevia-address-popup-input]",
     "output[data-fennevia-address-popup-status]",
     "[data-fennevia-address-popup-details]",
-    'button[data-fennevia-connection-detail][data-fennevia-browser-tool="site-information"]',
-    'button[data-fennevia-protection-detail][data-fennevia-browser-tool="protections"]',
+    'button[data-fennevia-trust-detail][data-fennevia-browser-tool="site-information"]',
     'button[data-fennevia-permission-detail][data-fennevia-browser-tool="site-permissions"]',
     "[data-fennevia-urlbar-coverage]",
     "button[data-fennevia-native-urlbar-access]",
@@ -268,16 +266,10 @@ export function getShellAppCapabilities({
     Object.freeze({
       available: Boolean(
         targets.left.querySelector(
-          'button[data-fennevia-connection-status][data-fennevia-browser-tool="site-information"]',
-        ) &&
-        targets.left.querySelector(
-          'button[data-fennevia-protection-status][data-fennevia-browser-tool="protections"]',
+          'button[data-fennevia-trust-status][data-fennevia-browser-tool="site-information"]',
         ) &&
         overlayTarget.querySelector(
-          'button[data-fennevia-connection-detail][data-fennevia-browser-tool="site-information"]',
-        ) &&
-        overlayTarget.querySelector(
-          'button[data-fennevia-protection-detail][data-fennevia-browser-tool="protections"]',
+          'button[data-fennevia-trust-detail][data-fennevia-browser-tool="site-information"]',
         ) &&
         overlayTarget.querySelector(
           'button[data-fennevia-permission-detail][data-fennevia-browser-tool="site-permissions"]',

@@ -412,11 +412,10 @@ addition.
 Validate:
 
 - short non-editable launcher with bounded committed location;
-- compact Firefox connection/HTTPS and tracking-protection badges in the
-  launcher, with fuller matching text in the popup;
-- clicking those badges or the popup connection/protection/permission cards
-  closes the custom UI and opens Firefox's current native Trust/identity,
-  protections, or permission panel;
+- one compact Firefox Trust shield at the leading edge inside the launcher
+  address frame, with fuller combined text in the popup;
+- clicking that shield or the popup Trust/permission rows closes the custom UI
+  as applicable and opens Firefox's current native Trust or permission panel;
 - secure, insecure, internal, error, protection blocking/detected/exception,
   non-handleable, transient, and unknown status mapping without URL inference;
 - ordinary URLs, host-like input, and ordinary searches;
@@ -448,21 +447,27 @@ sent to an external service.
 
 Evidence: `docs/research/firefox-153-address-popup.md`.
 
-### 6.4 Urlbar trust, permission, and action coverage — validated for #37
+### 6.4 Urlbar trust, permission, and action coverage — #37 validated; ADR-059 real follow-up pending
 
 Validate:
 
-- the short left launcher continues to show only committed location plus real
-  Firefox connection/HTTPS and ETP status, and those badges open the current
-  native Trust/identity or protections panel;
-- the centered popup shows matching detailed connection/protection rows, a
-  site-permission card, and current applicable Firefox-control labels;
-- clicking a popup connection, protection, or permission card closes the custom
-  popup and opens Firefox's current native panel for that owner;
+- the short left launcher shows only committed location plus one Firefox-style
+  Trust shield at the leading edge inside the shared address frame;
+- the shield and centered popup's one full-width Trust row combine real Firefox
+  connection/HTTPS and ETP status while keeping both bounded labels in the
+  accessible name;
+- clicking the launcher shield or popup Trust/permission row closes the custom
+  popup as applicable and opens Firefox's current native Trust or permission
+  panel;
+- active, disabled, insecure, and warning map to the exact four fixed packaged
+  `chrome://browser/skin/trust-icon-*.svg` masks, with no copied asset,
+  generated-CSS URL, `<img>`, or network fallback;
 - ordinary HTTP, valid HTTPS, secure internal, and real network-error
   classifications are derived from `gIdentityHandler`, never from URL text;
 - ETP unavailable, clear/detected/blocking, exception, and restored states
-  match current `gProtectionsHandler`/allow-list state;
+  match current `gProtectionsHandler`/allow-list state; an HTTPS ETP exception
+  changes the combined shield to disabled, while insecure/warning connection
+  meaning retains priority;
 - fixed active-sharing and blocked-permission indicators update from Firefox
   owner attributes; unknown permissions remain native-only;
 - static, conditional, overflow, extension, unknown native, search-mode,
@@ -488,8 +493,15 @@ original preference in `finally`. A temporary browser-scoped blocked-camera
 permission and one ETP exception are both removed in `finally`. The valid-HTTPS
 row loads fixed `https://example.com/` only and sends no user or browsing data.
 
-Evidence: ADR-031 and
-`docs/research/firefox-153-urlbar-coverage.md`.
+The historical #37 matrix passed before ADR-059 merged the two visible rows.
+ADR-059 adds focused state, source, accessibility, resource, build, and health
+checks and updates the real harness to compare both custom masks with
+`#trust-icon-container` for HTTP, HTTPS, ETP exception/restore, internal, and
+network-error states. That updated real-Firefox run is **not run**.
+
+Evidence: ADR-031, ADR-059,
+`docs/research/firefox-153-urlbar-coverage.md`, and
+`docs/research/firefox-153-154-unified-trust-shield.md`.
 
 ### 6.5 Right bookmarks — validated for #14
 
@@ -605,6 +617,9 @@ ADR-037 and ADR-042 add focused unit/static/build coverage for:
 - one-row top-surface selectors, project-authored SVG namespace containment,
   progressive disclosure, loading/focus/disabled states, reduced motion,
   forced colors, and deterministic generated artifacts;
+- one semantic Trust entry at the leading edge inside the left address frame,
+  one popup Trust row, exact fixed Firefox icon URIs rendered as masks, closed
+  state priority, combined accessible labels, and retained dual bridge actions;
 - seven-rule native activation CSS, retained native caption nodes, project-owned
   top-row window controls, content gutter, and exact rule-count failure;
 - panel drag/no-drag declarations, edge-to-panel contact, transient shortcut
@@ -617,8 +632,8 @@ ADR-037 and ADR-042 add focused unit/static/build coverage for:
   old-project neon IDs/hex/hue-rotate/z-index.
 
 The user requested a fast handoff and will test the browser manually. Therefore
-the following are `not run`, not passed: cold-start flash, real Trust/identity/
-protections/permission/Downloads/extension/menu popup placement and lifetime
+the following are `not run`, not passed: cold-start flash, real unified Trust
+shield/state and Trust/permission/Downloads/extension/menu popup placement and lifetime
 against a collapsed navbar, original-toolbar pinned widgets, customization
 enter/exit, caption commands/placement, window drag release, corner twitch,
 narrow/short/maximized/fullscreen/high-DPI layout, second/private windows,

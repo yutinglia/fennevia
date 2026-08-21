@@ -16,9 +16,10 @@ The target interface has four independent floating edge surfaces:
 - **Bottom:** download progress and status.
 
 The launcher opens a centered project-owned address/search popup. Compact and
-detailed connection/HTTPS and tracking-protection status comes from current
-Firefox state; native identity, protections, permission, and page-action panels
-remain Firefox-owned and open from explicit native-detail actions.
+detailed Trust status combines current Firefox connection/HTTPS and
+tracking-protection state behind one Firefox-style shield at the launcher's
+leading edge; native Trust/identity/protections, permission, and page-action
+panels remain Firefox-owned and open from explicit native-detail actions.
 
 All four surfaces are hidden at rest and reserve no permanent layout space.
 They reveal through their matching pointer edge or an accessible keyboard/focus
@@ -78,11 +79,12 @@ Completed:
   executable Firefox stable-update rehearsal.
 
 Current fast branch enhancement under ADR-037, ADR-042, ADR-044 through
-ADR-047, ADR-054 through ADR-057:
+ADR-047, and ADR-054 through ADR-059:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   Firefox tools, and progressive disclosure;
-- fixed native Trust/identity, protections, permission, Unified Extensions,
+- one visible Trust handoff backed by the retained fixed Trust/identity and
+  protections actions, plus permission, Unified Extensions,
   full-page translation, application-menu, and Settings handoffs without
   exporting their sensitive data; Downloads and translation are available as
   the placeable `show-downloads` and `show-translate` widgets;
@@ -425,7 +427,8 @@ Evidence: ADR-027 and
 #### Compact address launcher and centered popup — complete (#13)
 
 - non-editable bounded committed location in a compact left launcher;
-- compact real Firefox connection/HTTPS and tracking-protection status;
+- one compact Firefox-style Trust shield combining real connection/HTTPS and
+  tracking-protection status at the leading edge inside the address frame;
 - one centered project-owned popup with independent draft/editing state and
   fuller status text;
 - Firefox-owned URL fixup/search/principal/load behavior through the native
@@ -484,7 +487,8 @@ Evidence: ADR-030 and
 #### Detailed Urlbar coverage and native handoff — complete (#37)
 
 - exact Firefox 153 leading/trailing item and notification-anchor inventory;
-- compact left launcher still limited to real connection/HTTPS and ETP status;
+- compact left launcher still limited to one bounded Trust summary derived
+  from real connection/HTTPS and ETP status;
 - centered popup adds fixed sharing/blocked-permission and applicable-action
   labels;
 - one read-only per-window owner-state observer with deterministic cleanup;
@@ -503,7 +507,8 @@ Evidence: ADR-031 and
 - one compact non-wrapping top row with navigation, top address/popup launcher,
   existing bounded status, loading accent, Firefox tools, and responsive
   progressive disclosure;
-- fixed native handoffs for Trust/identity, protections, site permissions,
+- one visible Trust handoff backed by fixed Trust/identity and protections
+  actions, plus site permissions,
   Unified Extensions, built-in full-page translation, application menu, and
   Settings; Downloads and translation are available as the placeable
   `show-downloads` and `show-translate` widgets; native customization and the
@@ -513,8 +518,8 @@ Evidence: ADR-031 and
   re-anchor the Firefox panel beside that host;
 - ten fixed booleans/actions only; no certificate, permission, tracker,
   extension, download, widget, preference, URL, or native object crosses;
-- Firefox remains the complete data/action/popup owner and the custom HTTPS/ETP
-  labels remain summaries;
+- Firefox remains the complete data/action/popup owner and the custom combined
+  Trust label and shield remain a summary;
 - Firefox-owned caption buttons retained and styled in place, with empty panel
   chrome draggable and every interactive descendant excluded from dragging;
 - independently authored SVG glyphs and no copied code/design/assets from

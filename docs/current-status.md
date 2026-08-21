@@ -1,7 +1,7 @@
 # Current Project Status
 
 > Snapshot: 2026-08-22. This status review is based on the current development
-> worktree based on `dc14f12` plus the tab-status follow-up and the public
+> worktree based on `3713ad7` plus the unified Trust-shield follow-up and the public
 > `v0.11.0-beta.1` prerelease. Historical
 > research records and milestone ADR context remain unchanged.
 
@@ -49,8 +49,10 @@ and testing documents retain the complete engineering contract.
   drag/keyboard reorder with a visible insertion preview, and Firefox-owned tab
   context-menu handoff with complete lazy Fluent labels and no original-toolbar
   reveal.
-- Compact address/status launcher plus a centred address/search popup backed by
-  Firefox navigation and Urlbar behavior.
+- Compact address/status launcher with one Firefox-style Trust shield embedded
+  at the leading edge, plus a centred address/search popup backed by Firefox
+  navigation, bounded connection/protection state, and the native Trust/Urlbar
+  owners.
 - Top navigation, page status, Firefox tool handoffs, native-panel anchoring,
   gutter activity indicators, and compact window controls.
 - Generic relationship-based anchoring for non-security Firefox-owned XUL
@@ -120,6 +122,9 @@ following remain explicitly pending in the current plans and testing document:
 - ADR-058 tab loading/capture/crash indicators and fixed action placement under
   real WebRTC, crash, narrow-panel, reduced-motion, forced-color, DPI, and
   multi-window conditions;
+- ADR-059 unified Trust-shield rendering/state, leading in-launcher placement,
+  and native panel handoff across HTTP, HTTPS, ETP exception/restore, errors,
+  forced colors, DPI, and multiple windows;
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.
 

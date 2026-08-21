@@ -218,8 +218,7 @@
     forced-color-adjust: none;
   }
 
-  #fennevia-shell-frame-host .fennevia-address-launcher__button,
-  #fennevia-shell-frame-host .fennevia-address-launcher__indicator,
+  #fennevia-shell-frame-host .fennevia-address-launcher__cluster,
   #fennevia-shell-frame-host .fennevia-address-popup__detail,
   #fennevia-shell-frame-host .fennevia-address-popup__field-shell,
   #fennevia-shell-frame-host .fennevia-address-popup__field-shell:focus-within,
@@ -233,6 +232,14 @@
     color: CanvasText;
     background: Field;
     border-color: FieldText;
+    box-shadow: none;
+  }
+
+  #fennevia-shell-frame-host .fennevia-address-launcher__button,
+  #fennevia-shell-frame-host .fennevia-address-launcher__indicator {
+    color: CanvasText;
+    background: transparent;
+    border-color: transparent;
     box-shadow: none;
   }
 

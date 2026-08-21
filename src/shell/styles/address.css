@@ -11,22 +11,9 @@
 
 #fennevia-shell-frame-host .fennevia-address-launcher__cluster {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
-}
-
-#fennevia-shell-frame-host .fennevia-address-launcher__button {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  align-items: center;
-  inline-size: 100%;
-  min-block-size: 38px;
   min-inline-size: 0;
-  gap: 7px;
-  padding: 5px 8px;
-  overflow: hidden;
-  color: inherit;
   background: color-mix(
     in srgb,
     var(--fennevia-glass-surface) 78%,
@@ -40,14 +27,13 @@
     );
   border-radius: var(--fennevia-control-radius);
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 20%, transparent);
-  font: inherit;
-  text-align: start;
-  cursor: default;
 }
 
-#fennevia-shell-frame-host .fennevia-address-launcher__button:hover,
+#fennevia-shell-frame-host .fennevia-address-launcher__cluster:hover,
 #fennevia-shell-frame-host
-  .fennevia-address-launcher__button[aria-expanded="true"] {
+  .fennevia-address-launcher__cluster:has(
+    .fennevia-address-launcher__button[aria-expanded="true"]
+  ) {
   background: color-mix(
     in srgb,
     var(--fennevia-glass-surface) 94%,
@@ -60,11 +46,29 @@
   );
 }
 
-#fennevia-shell-frame-host .fennevia-address-launcher__glyph {
+#fennevia-shell-frame-host .fennevia-address-launcher__button {
   display: grid;
-  place-items: center;
-  color: var(--fennevia-glass-muted);
-  font-size: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 38px;
+  min-inline-size: 0;
+  padding: 5px 8px 5px 3px;
+  overflow: hidden;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 0 var(--fennevia-control-radius) var(--fennevia-control-radius)
+    0;
+  font: inherit;
+  text-align: start;
+  cursor: default;
+}
+
+#fennevia-shell-frame-host .fennevia-address-launcher__button:hover,
+#fennevia-shell-frame-host
+  .fennevia-address-launcher__button[aria-expanded="true"] {
+  background: color-mix(in srgb, currentColor 5%, transparent);
 }
 
 #fennevia-shell-frame-host .fennevia-address-launcher__location {
@@ -77,28 +81,27 @@
 }
 
 #fennevia-shell-frame-host .fennevia-address-launcher__indicators {
-  display: flex;
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  flex: 0 0 auto;
   min-inline-size: 0;
-  gap: 4px;
+  padding-inline-start: 4px;
 }
 
 #fennevia-shell-frame-host .fennevia-address-launcher__indicator {
+  display: grid;
+  place-items: center;
   appearance: none;
-  max-inline-size: 58px;
-  min-block-size: 22px;
-  min-inline-size: 0;
-  padding: 2px 5px;
+  inline-size: 30px;
+  block-size: 30px;
+  padding: 7px;
   overflow: hidden;
   color: var(--fennevia-glass-muted);
-  background: color-mix(in srgb, currentColor 7%, transparent);
-  border: 1px solid var(--fennevia-glass-separator);
+  background: transparent;
+  border: 0;
   border-radius: var(--fennevia-chip-radius);
   font: inherit;
-  font-size: 9px;
-  font-weight: 650;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   cursor: default;
 }
 
@@ -109,6 +112,18 @@
 
 #fennevia-shell-frame-host .fennevia-address-launcher__indicator:disabled {
   opacity: 0.38;
+}
+
+#fennevia-shell-frame-host .fennevia-firefox-trust-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  inline-size: 16px;
+  block-size: 16px;
+  background: currentColor;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  pointer-events: none;
 }
 
 #fennevia-shell-frame-host [data-fennevia-status-tone="positive"] {
@@ -365,9 +380,29 @@
   font-size: 11px;
 }
 
+#fennevia-shell-frame-host .fennevia-address-popup__detail--trust,
 #fennevia-shell-frame-host .fennevia-address-popup__detail--permissions {
   grid-column: 1 / -1;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__detail--permissions {
   align-items: start;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-address-popup__detail--trust
+  .fennevia-address-popup__detail-mark {
+  display: grid;
+  place-items: center;
+  min-block-size: 28px;
+  min-inline-size: 40px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-address-popup__detail--trust
+  .fennevia-firefox-trust-icon {
+  inline-size: 18px;
+  block-size: 18px;
 }
 
 #fennevia-shell-frame-host .fennevia-address-popup__detail-action {

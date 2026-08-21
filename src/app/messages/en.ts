@@ -8,18 +8,17 @@ export const en = {
   "address.loading": "The current page is loading.",
   "address.nativeAccess": "Open full Firefox address bar",
   "address.nativeAccessDescription":
-    "Connection, protection, and permission rows open Firefox's current native panels. Open the full address bar for extension actions and complete controls.",
+    "Site trust and permission rows open Firefox's current native panels. Open the full address bar for extension actions and complete controls.",
   "address.noPageActions":
     "No additional page actions are available for this page.",
-  "address.openSiteInformation": "Open Firefox site information. {label}",
   "address.openSitePermissions": "Open Firefox site permissions. {label}",
-  "address.openTrackingProtection": "Open Firefox tracking protection. {label}",
+  "address.openTrust":
+    "Open Firefox site trust. Connection: {connection}. Protection: {protection}",
   "address.placeholder": "Search or enter address",
   "address.privateBrowsing": "Private browsing",
   "address.productName": "Fennevia",
-  "address.statusConnection": "Connection",
-  "address.statusProtection": "Protection",
   "address.statusSitePermissions": "Site permissions",
+  "address.statusTrust": "Site trust",
   "address.submitting": "Opening with Firefox…",
   "address.submissionFailed":
     "Firefox could not open this entry. Native controls remain available.",
@@ -232,8 +231,8 @@ export const en = {
   "nav.keyboardShortcut": "Keyboard shortcut",
   "nav.launcherAria": "Address and site status",
   "nav.openAddress": "Open address and search",
-  "nav.openSiteInformation": "Open Firefox site information. {label}",
-  "nav.openTrackingProtection": "Open Firefox tracking protection. {label}",
+  "nav.openTrust":
+    "Open Firefox site trust. Connection: {connection}. Protection: {protection}",
   "nav.primaryNavigation": "Primary navigation",
   "nav.private": "Private",
   "nav.reload": "Reload",
@@ -295,6 +294,7 @@ export const en = {
   "protection.unavailable.badge": "ETP —",
   "protection.unavailable.label":
     "Enhanced Tracking Protection is not available for this page",
+  "trust.summary": "{connection} · {protection}",
   "surface.bottom": "Downloads",
   "surface.left": "Tabs and address",
   "surface.right": "Bookmarks",

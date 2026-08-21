@@ -204,6 +204,32 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(glyph, /style:-webkit-mask-image=\{nativeMaskImage\}/u);
   assert.doesNotMatch(glyph, /<img[^>]+src=\{[^}]*chrome:/u);
 
+  const [trustIcon, leftSurface, addressPopup] = await Promise.all([
+    readProjectFile("src/shell/FirefoxTrustIcon.svelte"),
+    readProjectFile("src/shell/surfaces/LeftSurface.svelte"),
+    readProjectFile("src/shell/AddressPopup.svelte"),
+  ]);
+  for (const state of ["active", "disabled", "insecure", "warning"]) {
+    assert.match(
+      trustIcon,
+      new RegExp(`chrome://browser/skin/trust-icon-${state}\\.svg`, "u"),
+    );
+  }
+  assert.match(trustIcon, /aria-hidden="true"/u);
+  assert.match(trustIcon, /style:mask-image=\{maskImage\}/u);
+  assert.match(trustIcon, /style:-webkit-mask-image=\{maskImage\}/u);
+  assert.doesNotMatch(trustIcon, /<img\b/u);
+  assert.match(leftSurface, /data-fennevia-trust-status/u);
+  assert.match(addressPopup, /data-fennevia-trust-detail/u);
+  assert.ok(
+    leftSurface.indexOf("data-fennevia-trust-status") <
+      leftSurface.indexOf('data-fennevia-address-launcher=""'),
+  );
+  assert.doesNotMatch(
+    `${leftSurface}\n${addressPopup}`,
+    /data-fennevia-(?:connection|protection)-(?:status|detail)/u,
+  );
+
   const customize = await Promise.all([
     readProjectFile("src/shell/CustomizePanel.svelte"),
     readProjectFile(
@@ -258,9 +284,14 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /site-permissions/u);
   assert.match(bundle, /application-menu/u);
   assert.doesNotMatch(bundle, /Show original toolbar/u);
-  assert.match(bundle, /Open Firefox site information/u);
-  assert.match(bundle, /Open Firefox tracking protection/u);
+  assert.match(bundle, /Open Firefox site trust/u);
   assert.match(bundle, /Open Firefox site permissions/u);
+  assert.match(bundle, /data-fennevia-trust-status/u);
+  assert.match(bundle, /data-fennevia-trust-detail/u);
+  assert.match(bundle, /chrome:\/\/browser\/skin\/trust-icon-active\.svg/u);
+  assert.match(bundle, /chrome:\/\/browser\/skin\/trust-icon-disabled\.svg/u);
+  assert.match(bundle, /chrome:\/\/browser\/skin\/trust-icon-insecure\.svg/u);
+  assert.match(bundle, /chrome:\/\/browser\/skin\/trust-icon-warning\.svg/u);
   assert.match(bundle, /data-fennevia-icon/u);
   assert.match(bundle, /data-fennevia-action/u);
   assert.doesNotMatch(bundle, /[\r\n]/u);
@@ -287,6 +318,14 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(css, /#fennevia-shell-frame-host \.fennevia-navigation/u);
   assert.match(css, /#fennevia-shell-frame-host \.fennevia-bookmarks/u);
   assert.match(css, /#fennevia-shell-frame-host \.fennevia-downloads/u);
+  assert.match(
+    css,
+    /\.fennevia-address-launcher__cluster \{[\s\S]*?grid-template-columns: auto minmax\(0, 1fr\);/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-address-launcher__indicator \{[\s\S]*?background: transparent;[\s\S]*?border: 0;/u,
+  );
   assert.match(css, /data-fennevia-download-progress="indeterminate"/u);
   assert.match(css, /--fennevia-progress-light-thickness: 2px;/u);
   assert.match(css, /@keyframes fennevia-progress-light-pulse/u);

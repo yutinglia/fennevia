@@ -8,7 +8,7 @@ Status: implementation and focused automation complete on
 `codex/fast-edge-debug`; real-Firefox manual validation remains pending.
 
 This fast development pass turns the top surface into one dense, single-line
-browser toolbar; exposes Firefox-owned site identity, protection, extension,
+browser toolbar; exposes Firefox-owned site Trust, permission, extension,
 menu, settings, and customization paths; refines the four-edge interaction; and
 makes the retained native Windows caption controls visually coherent with the
 shell.
@@ -38,7 +38,8 @@ Independently selected Fennevia direction:
 
 - one compact toolbar row with three functional zones rather than a clone of
   the old toolbar;
-- local project-authored vector glyphs and existing Firefox caption glyphs;
+- local project-authored vector glyphs, existing Firefox caption glyphs, and
+  ADR-059's fixed packaged Firefox Trust masks without copied asset bytes;
 - progressive disclosure at narrow widths while retaining accessible names;
 - fixed native capability handoffs rather than cloning arbitrary extension
   identity, labels, icons, commands, or security state;
@@ -61,7 +62,7 @@ Independently selected Fennevia direction:
 | Draggable empty chrome                                | Keep neutral panel space draggable and every interactive descendant explicitly `no-drag`; release edge pointer holds after drag completion.                                                                                                                                |
 | Unified extensions and pinned extension actions       | Add a native Unified Extensions handoff plus a complete original-toolbar handoff. Do not clone extension identities or arbitrary extension buttons.                                                                                                                        |
 | Firefox app menu, settings, and toolbar customization | Add fixed top-row actions that delegate to current Firefox owners; native customization mode is the only customization UI.                                                                                                                                                 |
-| HTTPS/site identity and tracking protection           | Add separate fixed buttons that open Firefox's current native identity and protections panels. Fennevia may display the existing bounded summary, but it must not imply that the summary replaces Firefox's complete certificate, permission, exception, or tracking data. |
+| HTTPS/site identity and tracking protection           | ADR-059 presents one Firefox-style Trust shield at the leading edge inside the compact address launcher and one combined popup row. Both retained bridge actions converge on Firefox's current Trust Panel; Fennevia's bounded summary does not replace complete certificate, permission, exception, breach, or tracking data. |
 | Site permissions                                      | Add a fixed handoff to Firefox's native permission panel; do not reproduce permission mutation controls in this pass.                                                                                                                                                      |
 | Downloads button in the top row                       | Open Firefox's native Downloads panel for its complete item data and actions. Keep the bottom edge as the existing anonymous progress/status surface.                                                                                                                      |
 | Native popup glass styling                            | Preserve Firefox-owned panels and theme behavior; do not apply broad native popup selectors.                                                                                                                                                                               |
@@ -114,8 +115,10 @@ Independently selected Fennevia direction:
 - [x] Remove the generic top panel header/footer from layout while preserving a
       named region, dismiss path, keyboard reveal, and focus restoration.
 - [x] Render one row containing navigation, compact address/page status,
-      separate native identity/protection handoffs, new tab, Firefox tools, and
-      overflow/native-toolbar access.
+      native Trust handoff, new tab, Firefox tools, and
+      overflow/native-toolbar access. ADR-059 later merges the left launcher's
+      identity/protection chips into one shield embedded at the leading edge of
+      the shared address frame.
 - [x] Make the address/page capsule open the existing centered popup.
 - [x] Add project-authored, consistent inline vector icons with text-equivalent
       accessible labels.
@@ -160,8 +163,9 @@ Independently selected Fennevia direction:
 - [x] Update `docs/testing-and-recovery.md` with automated and manual matrices.
 - [x] Record project-owned identity/protection panel parity as deferred future
       work rather than claiming the bounded summary is a complete replacement.
-- [x] Confirm no third-party code or asset entered the artifact; leave
-      `THIRD_PARTY_NOTICES.md` unchanged unless that conclusion changes.
+- [x] Confirm no third-party code or copied asset entered the artifact;
+      ADR-059 references four installed Firefox chrome resources without
+      vendoring them, so `THIRD_PARTY_NOTICES.md` remains unchanged.
 
 ### F. Fast verification, commit, and push
 
@@ -205,10 +209,10 @@ run for this fast pass. They are not implied by the focused results above.
       Firefox verification of this row remains `not run`.
 - [ ] Top edge reveals one stable row with no twitch or trigger gap.
 - [ ] Back, forward, reload/stop, new tab, and address popup work.
-- [ ] HTTPS/site identity opens Firefox's native identity panel with its current
-      certificate, connection, and permission details.
-- [ ] Tracking protection opens Firefox's native protections panel with its
-      current tracker, exception, and protection details.
+- [ ] The shield appears at the leading edge inside the compact address frame,
+      tracks active/insecure/disabled/warning state, and opens Firefox's native
+      Trust Panel with current connection, certificate, tracker, exception,
+      breach, and protection details.
 - [ ] Site permissions opens Firefox's native permission panel.
 - [ ] The top-row Downloads button opens Firefox's complete native Downloads
       panel; the bottom edge remains the bounded progress/status view.
