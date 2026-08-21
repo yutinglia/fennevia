@@ -464,13 +464,16 @@ handoff panel, clears `gPermissionPanel.setAnchor`, ends NativeUi tokens, and
 drops the owner-window reference. Malformed input/result, missing owner, invalid
 host, or thrown native action uses only fixed
 code/phase/symbol/version/build/window-kind diagnostics and the existing
-per-window fail-open path. Project-authored toolbar SVGs contain no external
-asset, metadata, script, URL, or runtime load. The Trust component references
-only four fixed installed `chrome://browser/skin/trust-icon-*.svg` resources as
-inline masks; it copies no bytes, introduces no content mapping or network
-fallback, and keeps the accessible text on the semantic button. See ADR-037,
-ADR-042, ADR-059, and
-`docs/research/firefox-153-native-popup-anchoring.md`.
+per-window fail-open path. ADR-060's general icon component accepts only a
+fixed token and references exact installed `chrome://` / `resource://` paths
+as inline masks; ADR-059's Trust component retains its stricter four-state
+installed resource map. Neither component accepts user-derived URLs, copies
+Firefox bytes, introduces a content mapping or network fallback, or moves the
+accessible name off the semantic owner. The remaining project-authored caption
+and ambiguous fallback SVGs contain no external asset, metadata, script, URL,
+or runtime load. See ADR-037, ADR-042, ADR-059, ADR-060,
+`docs/research/firefox-153-native-popup-anchoring.md`, and
+`docs/research/firefox-153-154-native-shell-icons.md`.
 
 Owner-approved ADR-044/ADR-045/ADR-046 widget-zone and customize flow: each managed
 window may own one optional `toolbar-widgets` controller. It renders the
@@ -479,8 +482,9 @@ current `CustomizableUI` nav-bar placements in the top zone) and sends the
 frontend an immutable snapshot per placed widget of opaque handle, fixed kind,
 bounded label and tooltip text, a bounded `moz-extension://` icon URL for
 extension actions, a bounded `chrome://` or `resource://` icon URL for
-built-ins (rendered as a CSS mask with `currentColor`, not `<img>`), bounded
-rgba-only badge text/colors, a fixed curated icon token, and disabled/missing
+rendered as a CSS mask with `currentColor`, not `<img>`), bounded rgba-only
+badge text/colors, a fixed curated presentation token whose exact meanings now
+prefer ADR-060's packaged Firefox map, and disabled/missing
 flags, plus a widget palette of every remaining current `CustomizableUI` widget
 (placed areas and the unused palette), Fennevia-owned optional widgets, and the
 fixed specials, each behind an opaque palette token. Extension name, icon, and
@@ -608,8 +612,9 @@ view, handle registry, observer subscription, selected root, loaded page,
 expansion, scroll/focus, and disposer. It records no private-window bookmark
 activity and shares no project state with normal windows.
 
-Titles are rendered through Svelte text bindings with type glyphs. No remote
-favicon, thumbnail, metadata, synchronization, or CSS URL is added. The native
+Titles are rendered through Svelte text bindings with fixed packaged Firefox
+folder/bookmark/disclosure icons. No remote favicon, thumbnail, metadata,
+synchronization, or user-derived CSS URL is added. The native
 bookmarks toolbar, sidebar, Library, dialogs, `Ctrl+D`, and management paths
 remain attached, visible, and authoritative. Initial query or required Places/
 opening capability failure blocks health and leaves those native paths usable.

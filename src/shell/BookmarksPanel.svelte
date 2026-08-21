@@ -17,6 +17,7 @@
     defaultFenneviaLocale,
     type FenneviaLocale,
   } from "../app/locale-state";
+  import FirefoxIcon from "./FirefoxIcon.svelte";
 
   type Props = Readonly<{
     bookmarks: BrowserBookmarksStateAdapter;
@@ -573,12 +574,12 @@
   >
     {#if current.phase === "loading"}
       <div class="fennevia-bookmarks__empty" role="status">
-        <span aria-hidden="true">◌</span>
+        <FirefoxIcon name="loading" />
         <span>{t("bookmarks.loading")}</span>
       </div>
     {:else if current.phase === "error"}
       <div class="fennevia-bookmarks__empty" role="alert">
-        <span aria-hidden="true">!</span>
+        <FirefoxIcon name="error" />
         <span>{t("bookmarks.error")}</span>
       </div>
     {:else}
@@ -625,11 +626,13 @@
                 type="button"
               >
                 <span aria-hidden="true" class="fennevia-bookmarks__item-icon">
-                  {row.node.kind === "folder"
-                    ? row.expanded
-                      ? "▾"
-                      : "▸"
-                    : "•"}
+                  <FirefoxIcon
+                    name={row.node.kind === "folder"
+                      ? row.expanded
+                        ? "arrow-down"
+                        : "arrow-right"
+                      : "bookmark-item"}
+                  />
                 </span>
                 <span class="fennevia-bookmarks__item-title" dir="auto">
                   {displayTitle(row.node)}
@@ -645,7 +648,7 @@
                   disabled={current.openingBookmarkId !== null}
                   onclick={() => void openBookmark(row.node.id, "new-tab")}
                   title={t("bookmarks.openNewTab")}
-                  type="button">↗</button
+                  type="button"><FirefoxIcon name="open-in-new" /></button
                 >
               {/if}
             </div>
@@ -658,7 +661,7 @@
             style:--fennevia-bookmark-depth={row.depth}
           >
             {#if row.branch.phase === "idle" || row.branch.phase === "loading"}
-              <span aria-hidden="true">◌</span>
+              <FirefoxIcon name="loading" />
               <span>{t("bookmarks.loadingShort")}</span>
             {:else if row.branch.phase === "error"}
               <span>{t("bookmarks.folderLoadError")}</span>

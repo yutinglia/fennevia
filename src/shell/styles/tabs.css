@@ -231,14 +231,6 @@
 #fennevia-shell-frame-host .fennevia-tab-strip__loading {
   color: var(--fennevia-focus-color);
   background: var(--fennevia-glass-surface);
-  animation: fennevia-tab-loading 900ms linear infinite;
-  transform-origin: center;
-}
-
-@keyframes fennevia-tab-loading {
-  to {
-    transform: rotate(1turn);
-  }
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip__title {
@@ -266,9 +258,19 @@
   border-radius: var(--fennevia-chip-radius);
 }
 
-#fennevia-shell-frame-host .fennevia-tab-strip__status .fennevia-icon {
+#fennevia-shell-frame-host .fennevia-tab-strip__status .fennevia-firefox-icon {
   inline-size: 14px;
   block-size: 14px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__action:is(
+    [data-fennevia-action="toggle-mute"],
+    [data-fennevia-action="close-tab"]
+  )
+  .fennevia-firefox-icon {
+  inline-size: 12px;
+  block-size: 12px;
 }
 
 #fennevia-shell-frame-host

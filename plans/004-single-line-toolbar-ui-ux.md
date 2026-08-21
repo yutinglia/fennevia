@@ -38,8 +38,10 @@ Independently selected Fennevia direction:
 
 - one compact toolbar row with three functional zones rather than a clone of
   the old toolbar;
-- local project-authored vector glyphs, existing Firefox caption glyphs, and
-  ADR-059's fixed packaged Firefox Trust masks without copied asset bytes;
+- ADR-060's fixed packaged Firefox icon family for exact native-equivalent
+  controls, ADR-059's separate Trust-state masks, and project-owned caption or
+  ambiguous fallback glyphs only where Firefox exposes no exact reusable
+  resource; no Firefox asset bytes are copied;
 - progressive disclosure at narrow widths while retaining accessible names;
 - fixed native capability handoffs rather than cloning arbitrary extension
   identity, labels, icons, commands, or security state;
@@ -120,8 +122,9 @@ Independently selected Fennevia direction:
       identity/protection chips into one shield embedded at the leading edge of
       the shared address frame.
 - [x] Make the address/page capsule open the existing centered popup.
-- [x] Add project-authored, consistent inline vector icons with text-equivalent
-      accessible labels.
+- [x] Use fixed installed Firefox resources for exact native-equivalent icons,
+      including Settings, while retaining text-equivalent accessible labels
+      and only the reviewed caption/ambiguous project glyph exceptions.
 - [x] Add clear hover, active, disabled, focus-visible, loading, private-window,
       narrow-window, forced-colors, and reduced-motion states.
 - [x] Use progressive disclosure so the row stays usable without wrapping.
@@ -164,7 +167,7 @@ Independently selected Fennevia direction:
 - [x] Record project-owned identity/protection panel parity as deferred future
       work rather than claiming the bounded summary is a complete replacement.
 - [x] Confirm no third-party code or copied asset entered the artifact;
-      ADR-059 references four installed Firefox chrome resources without
+      ADR-059/ADR-060 reference fixed installed Firefox resources without
       vendoring them, so `THIRD_PARTY_NOTICES.md` remains unchanged.
 
 ### F. Fast verification, commit, and push

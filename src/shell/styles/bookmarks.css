@@ -91,7 +91,6 @@
   color: var(--fennevia-focus-color);
   background: color-mix(in srgb, var(--fennevia-focus-color) 12%, transparent);
   border-radius: var(--fennevia-control-radius);
-  font-size: 11px;
 }
 
 #fennevia-shell-frame-host
@@ -99,7 +98,23 @@
   .fennevia-bookmarks__item-icon {
   color: var(--fennevia-glass-muted);
   background: color-mix(in srgb, currentColor 8%, transparent);
-  font-size: 15px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks__item-icon
+  .fennevia-firefox-icon {
+  inline-size: 12px;
+  block-size: 12px;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__new-tab .fennevia-firefox-icon {
+  inline-size: 14px;
+  block-size: 14px;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__empty .fennevia-firefox-icon {
+  inline-size: 20px;
+  block-size: 20px;
 }
 
 #fennevia-shell-frame-host .fennevia-bookmarks__item-title {

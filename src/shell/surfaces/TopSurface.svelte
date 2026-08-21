@@ -27,6 +27,7 @@
   } from "../../app/window-controls-state";
   import { resolveBrowserToolHost } from "../browser-tool-host";
   import ToolbarWidgetZone from "../features/toolbar-widgets/ToolbarWidgetZone.svelte";
+  import FirefoxIcon from "../FirefoxIcon.svelte";
   import ShellIcon from "../ShellIcon.svelte";
 
   type Props = Readonly<{
@@ -193,7 +194,7 @@
         title={t("nav.back")}
         type="button"
       >
-        <ShellIcon name="back" />
+        <FirefoxIcon name="back" />
       </button>
       <button
         aria-label={t("nav.forwardAria")}
@@ -212,7 +213,7 @@
         title={t("nav.forward")}
         type="button"
       >
-        <ShellIcon name="forward" />
+        <FirefoxIcon name="forward" />
       </button>
       <button
         aria-busy={currentNavigation.snapshot.loading}
@@ -234,7 +235,7 @@
           : t("nav.reload")}
         type="button"
       >
-        <ShellIcon
+        <FirefoxIcon
           name={currentNavigation.snapshot.loading ? "stop" : "reload"}
         />
       </button>
@@ -254,7 +255,7 @@
         title={t("nav.home")}
         type="button"
       >
-        <ShellIcon name="home" />
+        <FirefoxIcon name="home" />
       </button>
     </div>
   </div>
@@ -299,7 +300,7 @@
         title={t("nav.extensions")}
         type="button"
       >
-        <ShellIcon name="extensions" />
+        <FirefoxIcon name="extensions" />
       </button>
       <button
         aria-label={t("nav.settingsAria")}
@@ -310,7 +311,7 @@
         title={t("nav.settings")}
         type="button"
       >
-        <ShellIcon name="settings" />
+        <FirefoxIcon name="settings" />
       </button>
       {#if props.toolbarWidgetsState?.snapshot.canEdit}
         <button
@@ -322,7 +323,7 @@
           title={t("nav.customizeTitle")}
           type="button"
         >
-          <ShellIcon name="palette" />
+          <FirefoxIcon name="customize" />
         </button>
       {/if}
       <button
@@ -335,7 +336,7 @@
         title={t("nav.firefoxMenu")}
         type="button"
       >
-        <ShellIcon name="menu" />
+        <FirefoxIcon name="menu" />
       </button>
     </div>
 

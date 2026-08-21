@@ -43,7 +43,6 @@ const expectedSvelteDiagnosticSlugs = Object.freeze([
   "effect_update_depth_exceeded",
   "hydration_mismatch",
   "lifecycle_outside_component",
-  "props_invalid_value",
   "state_descriptors_fixed",
   "state_prototype_fixed",
   "state_unsafe_mutation",

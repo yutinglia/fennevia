@@ -23,7 +23,7 @@
   import { localizeWidgetLabel, zoneDisplayName } from "./locale-ui";
   import CustomizeInteractionSection from "./features/customize/CustomizeInteractionSection.svelte";
   import CustomizeStyleSection from "./features/customize/CustomizeStyleSection.svelte";
-  import ShellIcon from "./ShellIcon.svelte";
+  import FirefoxIcon from "./FirefoxIcon.svelte";
   import ToolbarWidgetGlyph from "./ToolbarWidgetGlyph.svelte";
 
   type Props = Readonly<{
@@ -198,7 +198,7 @@
       title={t("window.close")}
       type="button"
     >
-      <ShellIcon name="close" />
+      <FirefoxIcon name="close" />
     </button>
   </header>
 

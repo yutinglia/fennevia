@@ -30,7 +30,11 @@
   border: 1px solid
     color-mix(in srgb, var(--fennevia-focus-color) 32%, transparent);
   border-radius: var(--fennevia-control-radius);
-  font-size: 14px;
+}
+
+#fennevia-shell-frame-host .fennevia-downloads__item > .fennevia-firefox-icon {
+  inline-size: 12px;
+  block-size: 12px;
 }
 
 #fennevia-shell-frame-host .fennevia-downloads__summary-copy {

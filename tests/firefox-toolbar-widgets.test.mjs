@@ -6,6 +6,7 @@ import {
   isFirefoxBridgeError,
 } from "../src/firefox/bridge-boundary.ts";
 import { createFirefoxToolbarWidgetsBridge } from "../src/firefox/toolbar-widgets.ts";
+import { resolvePinnedBuiltinIconUrl } from "../src/firefox/toolbar-widgets/support.ts";
 import { createDefaultToolbarStyle } from "../src/app/toolbar-widgets-state.ts";
 
 const BROWSER_URI = "chrome://browser/content/browser.xhtml";
@@ -48,6 +49,25 @@ const FLUENT_ATTRIBUTE_MESSAGES = Object.freeze({
   },
 });
 let nextContextSequence = 0;
+
+test("pinned built-in icon fallbacks follow Firefox 153 and 154 resource names", () => {
+  assert.equal(
+    resolvePinnedBuiltinIconUrl("send-tab-button", "153.0.4"),
+    "chrome://browser/skin/send-tab-20.svg",
+  );
+  assert.equal(
+    resolvePinnedBuiltinIconUrl("send-tab-button", "154.0"),
+    "chrome://browser/skin/send-tab.svg",
+  );
+  assert.equal(
+    resolvePinnedBuiltinIconUrl("ipprotection-button", "153.0.4"),
+    "chrome://browser/content/ipprotection/assets/states/ipprotection-off.svg",
+  );
+  assert.equal(
+    resolvePinnedBuiltinIconUrl("ipprotection-button", "154.0"),
+    "chrome://browser/content/ipprotection/assets/states/ipprotection-off.svg",
+  );
+});
 
 function formatFluentAttributeMessages(keys) {
   const id = keys?.[0]?.id;

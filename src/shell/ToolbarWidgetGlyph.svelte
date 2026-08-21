@@ -3,8 +3,12 @@
     ToolbarPaletteEntrySnapshot,
     ToolbarWidgetSnapshot,
   } from "../app/toolbar-widgets-state";
+  import FirefoxIcon from "./FirefoxIcon.svelte";
   import ShellIcon from "./ShellIcon.svelte";
-  import { resolveToolbarWidgetIcon } from "./toolbar-widget-icons";
+  import {
+    resolveFirefoxToolbarWidgetIcon,
+    resolveToolbarWidgetIcon,
+  } from "./toolbar-widget-icons";
 
   type Props = Readonly<{
     widget: ToolbarPaletteEntrySnapshot | ToolbarWidgetSnapshot;
@@ -28,6 +32,7 @@
   const nativeMaskImage = $derived(
     nativeMaskUrl === "" ? "" : `url("${nativeMaskUrl}")`,
   );
+  const firefoxFallbackIcon = $derived(resolveFirefoxToolbarWidgetIcon(widget));
 </script>
 
 {#if extensionImageUrl}
@@ -39,6 +44,8 @@
     style:mask-image={nativeMaskImage}
     style:-webkit-mask-image={nativeMaskImage}
   ></span>
+{:else if firefoxFallbackIcon}
+  <FirefoxIcon name={firefoxFallbackIcon} />
 {:else}
   <ShellIcon name={resolveToolbarWidgetIcon(widget)} />
 {/if}

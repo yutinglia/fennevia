@@ -204,11 +204,146 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(glyph, /style:-webkit-mask-image=\{nativeMaskImage\}/u);
   assert.doesNotMatch(glyph, /<img[^>]+src=\{[^}]*chrome:/u);
 
-  const [trustIcon, leftSurface, addressPopup] = await Promise.all([
+  const [
+    firefoxIcon,
+    topSurface,
+    trustIcon,
+    leftSurface,
+    addressPopup,
+    bookmarks,
+    downloads,
+    customizePanel,
+    shellIcon,
+  ] = await Promise.all([
+    readProjectFile("src/shell/FirefoxIcon.svelte"),
+    readProjectFile("src/shell/surfaces/TopSurface.svelte"),
     readProjectFile("src/shell/FirefoxTrustIcon.svelte"),
     readProjectFile("src/shell/surfaces/LeftSurface.svelte"),
     readProjectFile("src/shell/AddressPopup.svelte"),
+    readProjectFile("src/shell/BookmarksPanel.svelte"),
+    readProjectFile("src/shell/DownloadsPanel.svelte"),
+    readProjectFile("src/shell/CustomizePanel.svelte"),
+    readProjectFile("src/shell/ShellIcon.svelte"),
   ]);
+  const nativeFirefoxIconUrls = [
+    "chrome://browser/skin/fxa/avatar-empty.svg",
+    "chrome://global/skin/icons/arrow-down.svg",
+    "chrome://global/skin/icons/arrow-right.svg",
+    "chrome://browser/skin/back.svg",
+    "chrome://browser/skin/bookmark.svg",
+    "chrome://browser/skin/bookmark-star-on-tray.svg",
+    "chrome://browser/skin/customize.svg",
+    "chrome://global/skin/icons/developer.svg",
+    "chrome://browser/skin/downloads/downloads.svg",
+    "chrome://global/skin/icons/edit.svg",
+    "chrome://browser/skin/firefox-view.svg",
+    "chrome://browser/skin/forward.svg",
+    "chrome://browser/skin/fullscreen.svg",
+    "chrome://browser/skin/history.svg",
+    "chrome://browser/skin/home.svg",
+    "chrome://browser/skin/library.svg",
+    "chrome://browser/skin/menu.svg",
+    "chrome://browser/skin/notification-icons/camera.svg",
+    "chrome://browser/skin/notification-icons/microphone.svg",
+    "chrome://browser/skin/notification-icons/screen.svg",
+    "chrome://browser/skin/privateBrowsing.svg",
+    "chrome://global/skin/icons/print.svg",
+    "chrome://browser/skin/pin.svg",
+    "chrome://browser/skin/screenshot.svg",
+    "chrome://browser/skin/sidebar-collapsed.svg",
+    "chrome://browser/skin/tabbrowser/crashed.svg",
+    "chrome://browser/skin/tabbrowser/tab-audio-blocked-circle-12.svg",
+    "chrome://browser/skin/tabbrowser/tab-audio-muted-small.svg",
+    "chrome://browser/skin/tabbrowser/tab-audio-playing-small.svg",
+    "chrome://global/skin/icons/check.svg",
+    "chrome://global/skin/icons/close.svg",
+    "chrome://global/skin/icons/defaultFavicon.svg",
+    "chrome://global/skin/icons/error.svg",
+    "chrome://global/skin/icons/loading.svg",
+    "chrome://global/skin/icons/open-in-new.svg",
+    "chrome://global/skin/icons/plus.svg",
+    "chrome://global/skin/icons/reload.svg",
+    "chrome://global/skin/icons/search-glass.svg",
+    "chrome://global/skin/icons/settings.svg",
+    "chrome://global/skin/media/pause-fill.svg",
+    "chrome://global/skin/media/picture-in-picture-closed.svg",
+    "chrome://mozapps/skin/extensions/extension.svg",
+    "chrome://browser/skin/translations.svg",
+    "chrome://browser/skin/window.svg",
+    "resource://content-accessible/close-12.svg",
+  ];
+  for (const iconUrl of nativeFirefoxIconUrls) {
+    assert.ok(firefoxIcon.includes(iconUrl), iconUrl);
+  }
+  for (const name of [
+    "back",
+    "customize",
+    "extensions",
+    "forward",
+    "home",
+    "menu",
+    "settings",
+  ]) {
+    assert.match(
+      topSurface,
+      new RegExp(`<FirefoxIcon(?:\\s+|[^>]*\\s)name="${name}"`, "u"),
+    );
+  }
+  assert.match(
+    topSurface,
+    /<FirefoxIcon\s+name=\{currentNavigation\.snapshot\.loading \? "stop" : "reload"\}/u,
+  );
+  assert.match(firefoxIcon, /aria-hidden="true"/u);
+  assert.match(firefoxIcon, /style:mask-image=\{maskImage\}/u);
+  assert.match(firefoxIcon, /style:-webkit-mask-image=\{maskImage\}/u);
+  assert.doesNotMatch(firefoxIcon, /<svg\b|<img\b/u);
+  assert.match(
+    css,
+    /\.fennevia-firefox-icon[\s\S]*?background-color: currentColor;[\s\S]*?mask-size: contain;/u,
+  );
+  assert.match(addressPopup, /<FirefoxIcon name="close" \/>/u);
+  assert.match(addressPopup, /<FirefoxIcon name="search" \/>/u);
+  assert.match(addressPopup, /<FirefoxIcon name="open-in-new" \/>/u);
+  assert.match(bookmarks, /<FirefoxIcon name="loading" \/>/u);
+  assert.match(bookmarks, /<FirefoxIcon name="error" \/>/u);
+  assert.match(downloads, /<FirefoxIcon name="download" \/>/u);
+  assert.match(
+    downloads,
+    /<FirefoxIcon name=\{presentations\[item\.state\]\.icon\} \/>/u,
+  );
+  assert.match(customizePanel, /<FirefoxIcon name="close" \/>/u);
+  assert.doesNotMatch(
+    `${addressPopup}\n${bookmarks}\n${downloads}`,
+    /[×⌁◌▾▸•↗↓✓Ⅱ]/u,
+  );
+  for (const nativeName of [
+    "back",
+    "bookmark",
+    "camera",
+    "customize",
+    "download",
+    "extensions",
+    "forward",
+    "loading",
+    "menu",
+    "pin",
+    "settings",
+    "tab",
+  ]) {
+    assert.doesNotMatch(shellIcon, new RegExp(`\\| "${nativeName}"`, "u"));
+  }
+  for (const exceptionName of [
+    "close",
+    "generic",
+    "maximize",
+    "minimize",
+    "restore",
+    "shield",
+    "zoom",
+  ]) {
+    assert.match(shellIcon, new RegExp(`(?:\\||=) "${exceptionName}"`, "u"));
+  }
+
   for (const state of ["active", "disabled", "insecure", "warning"]) {
     assert.match(
       trustIcon,

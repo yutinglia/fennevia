@@ -22,8 +22,8 @@ The tested MVP and current post-MVP implementation include:
 | Window runtime and recovery | Complete | Existing and later normal/private windows, persisted multi-tab Session Restore across separate Firefox processes, health states, safe start, emergency fallback, and deterministic disposal |
 | Frontend and bridge foundation | Complete | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership |
 | Four-edge frame | Complete | Independent top, left, right, and bottom XHTML surfaces, shared reveal/collision/focus policy, and accessibility fallbacks |
-| Tabs and address launcher | Complete; ADR-059 real-Firefox follow-up pending | Event-driven vertical tabs with loading animation, audio/container/attention/PiP, closed camera/microphone/screen-sharing and crash indicators, fixed trailing actions, drag/keyboard reorder, native tab context-menu handoff, compact committed address launcher with a leading Firefox Trust shield, and centred address/search popup |
-| Top controls | Complete | Native-synchronised Back, Forward, Reload/Stop, Home, New Tab, bounded page status, Firefox tool handoffs, and compact window-command controls |
+| Tabs and address launcher | Complete; ADR-059/ADR-060 real-Firefox follow-up pending | Event-driven vertical tabs with Firefox's packaged loading/status/action icon family, audio/container/attention/PiP, closed camera/microphone/screen-sharing and crash indicators, fixed trailing actions, drag/keyboard reorder, native tab context-menu handoff, compact committed address launcher with a leading Firefox Trust shield, and centred address/search popup |
+| Top controls | Complete; ADR-060 real-Firefox follow-up pending | Native-synchronised Back, Forward, Reload/Stop, Home, New Tab, bounded page status, Firefox tool handoffs, packaged Firefox control icons including the Settings gear, and compact project-owned window-command controls |
 | Single-line toolbar and native handoffs | Focused implementation; real-Firefox matrix pending | One non-wrapping top row, fixed native tool/original-toolbar actions, project-owned control surfaces backed by retained Firefox/OS command owners, 7px gutter, drag regions, and transient shortcut hint |
 | Nav-bar widget mirror (ADR-044) | Focused implementation; superseded as sole model by ADR-045; real-Firefox matrix pending | Default top-zone layout from `CustomizableUI` nav-bar placements as project-styled buttons — extension actions with real icon/badge, pinned built-ins, spacers — with popups anchored on the project button |
 | Fennevia customize mode (ADR-045, ADR-046, ADR-047, ADR-054) | Focused implementation; real-Firefox matrix pending | Four-edge widget zones, full CustomizableUI inventory palette with localized names and native built-in icons (CSS mask), live-zone HTML5 drag-and-drop, bounded appearance and interaction settings, profile-local prefs, and owner-approved adopt/restore writes; native customize mode remains available from the Firefox application menu |
@@ -40,8 +40,9 @@ The planned Windows MVP and first public prerelease are complete. ADR-037's
 single-line toolbar and native handoffs, ADR-044's nav-bar widget mirror,
 ADR-045's Fennevia-owned customize mode, ADR-046's localized names and native
 built-in widget icons, ADR-047's live-zone drag-and-drop, ADR-050's first-paint
-hide, ADR-054's bounded interaction settings, ADR-058's tab indicators, and
-ADR-059's unified Trust shield have focused automated
+hide, ADR-054's bounded interaction settings, ADR-058's tab indicators,
+ADR-059's unified Trust shield, and ADR-060's native shell icons have focused
+automated
 coverage. Their changed real-Firefox
 visual and interaction matrices remain pending and are not part of a completed
 real-Firefox validation claim for `v0.11.0-beta.1`.
@@ -167,7 +168,9 @@ failed, or disposed state removes the active gate and exposes native Firefox UI.
   parallel implementations.
 - **UI:** Svelte 5 with TypeScript, compiled into deterministic project-owned
   XHTML roots. Hosts and structural nodes remain XHTML; only explicit
-  project-authored icon subtrees use SVG.
+  reviewed caption/generic icon exception subtrees use SVG; exact
+  native-equivalent icons use decorative XHTML mask spans backed by fixed
+  packaged Firefox resources.
 - **Build:** Vite with byte-reproducible output and no CDN, HMR, source maps,
   extra runtime chunks, or network-loaded executable dependencies.
 - **Styling and interaction:** frame-scoped component CSS, Firefox chrome

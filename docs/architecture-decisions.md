@@ -2321,3 +2321,60 @@ bounded state boundary, semantic naming, deterministic layout, and complete
 native fallback. Source pins, exact asset mapping, rejected alternatives,
 privacy limits, tests, and pending real-browser rows are recorded in
 `docs/research/firefox-153-154-unified-trust-shield.md`.
+
+## ADR-060: Reuse packaged Firefox icons for exact native-equivalent shell controls
+
+**Status:** Accepted for the project-owner request on 2026-08-22; Firefox
+153.0.4/154.0 source review and complete automated validation finished; real
+Firefox visual validation pending
+
+When a Fennevia control or read-only state has an exact semantic counterpart
+in supported Firefox, render the corresponding installed `chrome://` or
+`resource://` icon through one fixed `FirefoxIcon.svelte` allowlist. Paint the
+resource as a `currentColor` CSS mask, keep it decorative and `aria-hidden`,
+and retain the accessible name on the owning button or state. The map must not
+accept an arbitrary URL, derive one from user data, interpolate one into the
+generated stylesheet, copy Firefox SVG bytes, or fall back to a network load.
+
+This applies to top navigation and browser tools; address-popup search, close,
+and native-access actions; bookmark hierarchy and external-open affordances;
+download summary and closed state glyphs; customize close; and tab fallback,
+loading, audio, picture-in-picture, sharing, crash, pin, close, and new-tab
+visuals. In particular, Settings uses Firefox's packaged
+`chrome://global/skin/icons/settings.svg` gear instead of the former
+sun-like project glyph. The native `loading.svg` owns its animation and
+reduced-motion behavior; Fennevia must not add a second rotation.
+
+Dynamic site favicons and extension-provided icons remain bounded data images,
+not substitutions from this fixed map. ADR-059's Trust icon keeps its separate
+closed state map. Windows caption controls remain project-owned SVGs because
+their platform/window-state semantics have no equivalent fixed Firefox asset;
+the ambiguous shield, zoom, and generic widget fallbacks may likewise remain
+owned. A customize spacer remains a non-icon gap marker. `ShellIcon.svelte`
+must contain only those reviewed exceptions.
+
+Pinned toolbar-widget fallback paths are also supported-version data. Firefox
+153 uses `send-tab-20.svg`, Firefox 154 uses `send-tab.svg`, and both supported
+versions package the common IP Protection off-state asset used by the fallback
+map. Prefer the live computed-style/CSSOM URL; use the version-aware pinned URL
+only when Firefox does not expose one. Every Firefox stable update must
+revalidate the fixed icon map and version branch. Missing or drifted resources
+must not trigger resource discovery or a network fallback; required shell
+failure still restores native UI.
+
+This decision supersedes only ADR-058's project-authored tab-SVG and custom
+loading-rotation clauses and the custom-glyph default recorded by ADR-037. It
+does not change ADR-058's state boundary, action placement, accessibility,
+privacy, or Firefox ownership. It extends ADR-046 and ADR-059's existing
+packaged-resource mask precedent to the rest of the exact native-equivalent
+shell vocabulary.
+
+**Reasoning:** Firefox 153.0.4 and 154.0 package a coherent 12–16 px icon family
+for these exact browser concepts. Reusing those resources aligns weight,
+silhouette, theme color, and reduced-motion behavior with stock Firefox while
+removing duplicate visual maintenance. Fixed installed-package references add
+no copied third-party artifact, dependency, runtime network request, or content
+mapping, so `THIRD_PARTY_NOTICES.md` remains unchanged. Source pins, the full
+project audit, exceptions, security review, validation, and remaining risk are
+recorded in
+`docs/research/firefox-153-154-native-shell-icons.md`.

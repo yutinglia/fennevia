@@ -28,6 +28,7 @@
     type FenneviaLocale,
   } from "../app/locale-state";
   import { resolveBrowserToolHost } from "./browser-tool-host";
+  import FirefoxIcon from "./FirefoxIcon.svelte";
   import FirefoxTrustIcon from "./FirefoxTrustIcon.svelte";
   import { getFirefoxTrustPresentation } from "./navigation-labels";
   import {
@@ -288,7 +289,7 @@
         onclick={() => requestClose("cancelled")}
         onkeydown={handleCloseKeydown}
         title={t("address.close")}
-        type="button">×</button
+        type="button"><FirefoxIcon name="close" /></button
       >
     </header>
 
@@ -297,7 +298,9 @@
       for="fennevia-address-popup-input">{t("address.fieldLabel")}</label
     >
     <div class="fennevia-address-popup__field-shell">
-      <span aria-hidden="true" class="fennevia-address-popup__glyph">⌁</span>
+      <span aria-hidden="true" class="fennevia-address-popup__glyph">
+        <FirefoxIcon name="search" />
+      </span>
       <input
         aria-busy={popupState.phase === "submitting"}
         aria-describedby="fennevia-address-popup-status"
@@ -444,7 +447,7 @@
         onkeydown={handleNativeAccessKeydown}
         type="button"
       >
-        <span aria-hidden="true">↗</span>
+        <FirefoxIcon name="open-in-new" />
         <span>{t("address.nativeAccess")}</span>
       </button>
     </section>

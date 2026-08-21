@@ -263,7 +263,8 @@ on unmount. Issue #11 renders that ordinary state as one accessible project-owne
 tab strip. Issue #60 extends the same strip with audio/container/attention
 indicators, middle-click close, drag and keyboard reorder, and Firefox-owned
 `#tabContextMenu` handoff. ADR-058 adds closed camera/microphone/screen-sharing
-and crash state plus project-authored SVG indicators. Primary tab buttons
+and crash state. ADR-060 replaces exact native-equivalent tab visuals with
+fixed packaged Firefox resources rendered as decorative masks. Primary tab buttons
 expose selected semantics and roving keyboard focus; capture/crash/PiP are
 read-only states inside that button, while pin, mute, and close remain sibling
 controls in fixed trailing grid areas. Titles
@@ -280,8 +281,9 @@ is in
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,
-`docs/research/firefox-153-154-panel-context-actions.md`, ADR-024, ADR-025, and
-ADR-041/ADR-058.
+`docs/research/firefox-153-154-panel-context-actions.md`,
+`docs/research/firefox-153-154-native-shell-icons.md`, ADR-024, ADR-025, and
+ADR-041/ADR-058/ADR-060.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather
@@ -630,15 +632,18 @@ active-only sheet collapses only its `.toolbar-items` owner.
 
 The ADR-037/ADR-038 top row uses the same frame-rooted token and control
 classes. Top-specific selectors cover one-line flex zoning, progressive
-disclosure, native-disabled state, loading emphasis, project-authored SVG
-glyphs, window-control grouping, reduced motion, and forced colors. Hover,
+disclosure, native-disabled state, loading emphasis, fixed packaged Firefox
+icon masks, reviewed project-owned caption glyphs, window-control grouping,
+reduced motion, and forced colors. Hover,
 active, and focus-visible behavior remains the common owned-control policy. No
 selector targets the native navbar, Urlbar, command set, or toolbox from
 component CSS; ADR-032 owns the separate reversible native sheet.
 
 The issue #14 right panel likewise uses only frame-rooted project classes and
-the existing responsive right-edge bounds. It renders type glyphs rather than
-remote favicons, uses text/property bindings for hostile titles, and provides
+the existing responsive right-edge bounds. ADR-060 renders its exact folder,
+bookmark, disclosure, and external-open meanings with packaged icons rather
+than remote favicons, uses text/property bindings for hostile titles, and
+provides
 solid, reduced-motion, and forced-colors states through the shared shell
 contract. No selector targets Firefox's bookmarks toolbar, sidebar, Library,
 popup set, or Places views from component CSS. ADR-032 independently owns the
@@ -910,6 +915,7 @@ src/
     BookmarksPanel.svelte
     CustomizePanel.svelte
     DownloadsPanel.svelte
+    FirefoxIcon.svelte
     ShellIcon.svelte
     entry.ts
     index.ts                  # public mount/health facade

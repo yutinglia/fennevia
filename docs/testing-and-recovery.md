@@ -345,11 +345,11 @@ Validate:
   value, with unknown values omitted and no fake capture action;
 - crashed-tab and picture-in-picture status badges with localized accessible
   names;
-- project-authored SVGs for fallback/loading/audio/status/pin/close, fixed
-  trailing pin/close placement with and without audio, and no text-symbol
-  placeholder icons;
-- loading-icon rotation while `busy`, with the visible state retained and the
-  animation stopped under reduced motion;
+- exact packaged Firefox resources for fallback/loading/audio/status/pin/close,
+  fixed trailing pin/close placement with and without audio, and no
+  text-symbol placeholder icons;
+- native `loading.svg` while `busy`, with no second project rotation and its
+  packaged reduced-motion behavior left intact;
 - container color stripe and bounded label; private windows omit container;
 - attention indicator;
 - deterministic close-focus recovery;
@@ -367,7 +367,8 @@ Evidence:
 - `docs/research/firefox-153-tabs-bridge.md`;
 - `docs/research/firefox-153-tab-strip.md`;
 - `docs/research/firefox-153-tab-strip-parity.md`;
-- `docs/research/firefox-153-four-edge-shell.md`.
+- `docs/research/firefox-153-four-edge-shell.md`;
+- `docs/research/firefox-153-154-native-shell-icons.md`.
 
 Issue #60 real Firefox rows (middle-click, audio/mute, container stripe,
 background-tab native menu, drag/keyboard reorder, menu popup hold, private
@@ -377,6 +378,11 @@ ADR-058 real Firefox rows (camera/microphone/screen capture transitions,
 crashed tab, simultaneous audio/PiP/capture status, narrow-panel control
 alignment, reduced motion, forced colors, high DPI, normal/second/private
 isolation, and cleanup): **not run**.
+
+ADR-060 real Firefox rows (native Settings gear and all other fixed shell
+resources, normal/second/private windows, light/dark/system themes, native
+loading animation, reduced motion, forced colors, high DPI, missing-resource
+fail-open, sizing, color, and optical alignment): **not run**.
 
 ### 6.2 Top navigation — implemented
 
@@ -614,9 +620,14 @@ ADR-037 and ADR-042 add focused unit/static/build coverage for:
 - owner re-resolution at action time, host rejection, malformed input/result,
   privacy-safe error symbols, pending-action accounting, popuphidden cleanup,
   and idempotent disposal;
-- one-row top-surface selectors, project-authored SVG namespace containment,
-  progressive disclosure, loading/focus/disabled states, reduced motion,
-  forced colors, and deterministic generated artifacts;
+- one-row top-surface selectors, packaged Firefox XHTML mask spans, reviewed
+  project-SVG exception containment, progressive disclosure,
+  loading/focus/disabled states, reduced motion, forced colors, and
+  deterministic generated artifacts;
+- one fixed no-input Firefox icon allowlist covering exact native-equivalent
+  top, tab, popup, bookmark, download, customize, and fixed widget meanings;
+  Settings resolves to `chrome://global/skin/icons/settings.svg`, Firefox bytes
+  are not copied, and obsolete text-symbol equivalents are absent;
 - one semantic Trust entry at the leading edge inside the left address frame,
   one popup Trust row, exact fixed Firefox icon URIs rendered as masks, closed
   state priority, combined accessible labels, and retained dual bridge actions;
@@ -657,9 +668,10 @@ ADR-044 (#64) adds focused unit/static/build coverage for:
   icon URL parsing from `--webextension-toolbar-image`, rgba-only badge
   text/colors, disabled state, and privacy assertions that widget/extension
   ids never enter the serialized snapshot;
-- curated built-in icon tokens with generic fallback, plus ADR-046 localized
-  names (palette node / Fluent / `getLocalizedProperty`) and bounded
-  `chrome://` / `resource://` icon URLs rendered as CSS masks;
+- live or version-aware packaged Firefox built-in icon URLs, a fixed native
+  presentation-token fallback before the narrow generic fallback, plus ADR-046
+  localized names (palette node / Fluent / `getLocalizedProperty`) and bounded
+  `chrome://` / `resource://` CSS-mask rendering;
 - coalesced revision snapshots from CustomizableUI listener events and the
   bounded attribute `MutationObserver`, including customize-exit re-read and
   no-change suppression;
@@ -912,8 +924,9 @@ the health phase requires:
 
 - exact frame identity and placement;
 - ordered top/left/right/bottom hosts plus the final address-overlay host;
-- five XHTML mount targets, XHTML structural frontend nodes, and only explicit
-  project-authored `svg[data-fennevia-icon]` SVG subtrees;
+- five XHTML mount targets and XHTML structural/frontend mask nodes, with SVG
+  limited to reviewed project-authored `svg[data-fennevia-icon]` exception
+  subtrees;
 - five frontend roots;
 - attached parsed project CSS;
 - edge reveal controller;
@@ -1075,7 +1088,8 @@ download filenames/URLs/paths, profile paths, or private browsing data.
 Use it to verify:
 
 - exact frame, edge-host, and address-overlay placement;
-- XHTML structural namespaces and SVG only below explicit project icon roots;
+- XHTML structural namespaces (including packaged-resource mask spans) and SVG
+  only below reviewed project icon exception roots;
 - project/native ownership boundary;
 - root state attributes;
 - hidden-at-rest geometry;
