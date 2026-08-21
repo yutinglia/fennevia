@@ -312,10 +312,29 @@ test("copyToolbarWidgetsSnapshot validates the container shape", () => {
 });
 
 test("style partials validate every provided key", () => {
-  assert.deepEqual(copyToolbarStylePartial({ accent: "#3b82f6", blur: 0 }), {
-    accent: "#3b82f6",
-    blur: 0,
-  });
+  assert.equal(createDefaultToolbarStyle().autoHideDelay, 300);
+  assert.equal(createDefaultToolbarStyle().shortcutHintDuration, 600);
+  assert.equal(createDefaultToolbarStyle().windowLeaveHideDelay, 800);
+  assert.deepEqual(
+    copyToolbarStylePartial({
+      accent: "#3b82f6",
+      autoHideDelay: 640,
+      blur: 0,
+      edgeTriggerSize: 20,
+      shortcutHintDuration: 0,
+      temporaryRevealDuration: 2_400,
+      windowLeaveHideDelay: 1_600,
+    }),
+    {
+      accent: "#3b82f6",
+      autoHideDelay: 640,
+      blur: 0,
+      edgeTriggerSize: 20,
+      shortcutHintDuration: 0,
+      temporaryRevealDuration: 2_400,
+      windowLeaveHideDelay: 1_600,
+    },
+  );
   assert.deepEqual(copyToolbarStylePartial({ accent: "#3B82F6", text: "" }), {
     accent: "#3b82f6",
     text: "",
@@ -350,6 +369,26 @@ test("style partials validate every provided key", () => {
   );
   assert.throws(
     () => copyToolbarStylePartial({ saturation: 90 }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID/u,
+  );
+  assert.throws(
+    () => copyToolbarStylePartial({ autoHideDelay: 99 }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID/u,
+  );
+  assert.throws(
+    () => copyToolbarStylePartial({ edgeTriggerSize: 25 }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID/u,
+  );
+  assert.throws(
+    () => copyToolbarStylePartial({ shortcutHintDuration: -1 }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID/u,
+  );
+  assert.throws(
+    () => copyToolbarStylePartial({ temporaryRevealDuration: 399 }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID/u,
+  );
+  assert.throws(
+    () => copyToolbarStylePartial({ windowLeaveHideDelay: 5_001 }),
     /FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID/u,
   );
   assert.throws(

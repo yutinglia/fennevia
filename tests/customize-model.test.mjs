@@ -200,8 +200,13 @@ test("style serialization round-trips with versioning and fails safe", () => {
   const style = Object.freeze({
     ...createDefaultToolbarStyle(),
     accent: "#3b82f6",
+    autoHideDelay: 640,
     blur: 28,
+    edgeTriggerSize: 20,
+    shortcutHintDuration: 0,
+    temporaryRevealDuration: 2_400,
     theme: "dark",
+    windowLeaveHideDelay: 1_600,
   });
   const serialized = serializeCustomizeStyle(style);
   assert.ok(serialized.includes('"version":1'));
@@ -211,17 +216,51 @@ test("style serialization round-trips with versioning and fails safe", () => {
     parseCustomizeStyle(
       JSON.stringify({
         accent: "#3b82f6",
+        autoHideDelay: 640,
         blur: 28,
+        edgeTriggerSize: 20,
+        shortcutHintDuration: 0,
+        temporaryRevealDuration: 2_400,
         theme: "dark",
         version: 1,
+        windowLeaveHideDelay: 1_600,
       }),
     ),
     {
       ...createDefaultToolbarStyle(),
       accent: "#3b82f6",
+      autoHideDelay: 640,
       blur: 28,
+      edgeTriggerSize: 20,
+      shortcutHintDuration: 0,
+      temporaryRevealDuration: 2_400,
       theme: "dark",
+      windowLeaveHideDelay: 1_600,
     },
+  );
+
+  const previousStyle = parseCustomizeStyle(
+    JSON.stringify({ accent: "#3b82f6", blur: 28, theme: "dark", version: 1 }),
+  );
+  assert.equal(
+    previousStyle?.autoHideDelay,
+    createDefaultToolbarStyle().autoHideDelay,
+  );
+  assert.equal(
+    previousStyle?.edgeTriggerSize,
+    createDefaultToolbarStyle().edgeTriggerSize,
+  );
+  assert.equal(
+    previousStyle?.shortcutHintDuration,
+    createDefaultToolbarStyle().shortcutHintDuration,
+  );
+  assert.equal(
+    previousStyle?.temporaryRevealDuration,
+    createDefaultToolbarStyle().temporaryRevealDuration,
+  );
+  assert.equal(
+    previousStyle?.windowLeaveHideDelay,
+    createDefaultToolbarStyle().windowLeaveHideDelay,
   );
 
   assert.equal(parseCustomizeStyle(""), null);
@@ -237,6 +276,32 @@ test("style serialization round-trips with versioning and fails safe", () => {
   );
   assert.equal(
     parseCustomizeStyle(JSON.stringify({ saturation: 90, version: 1 })),
+    null,
+  );
+  assert.equal(
+    parseCustomizeStyle(JSON.stringify({ autoHideDelay: 99, version: 1 })),
+    null,
+  );
+  assert.equal(
+    parseCustomizeStyle(JSON.stringify({ edgeTriggerSize: 25, version: 1 })),
+    null,
+  );
+  assert.equal(
+    parseCustomizeStyle(
+      JSON.stringify({ shortcutHintDuration: 10_001, version: 1 }),
+    ),
+    null,
+  );
+  assert.equal(
+    parseCustomizeStyle(
+      JSON.stringify({ temporaryRevealDuration: 399, version: 1 }),
+    ),
+    null,
+  );
+  assert.equal(
+    parseCustomizeStyle(
+      JSON.stringify({ windowLeaveHideDelay: 5_001, version: 1 }),
+    ),
     null,
   );
 });

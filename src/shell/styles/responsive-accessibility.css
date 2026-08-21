@@ -145,8 +145,8 @@
   #fennevia-shell-frame-host
     .fennevia-edge-root[data-fennevia-visible="true"]
     .fennevia-edge-panel__footer {
-    animation: none;
-    opacity: 1;
+    animation: fennevia-shortcut-tip-reduced-motion
+      var(--fennevia-shortcut-tip-duration) step-end both;
   }
 
   #fennevia-shell-frame-host

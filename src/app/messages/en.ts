@@ -93,6 +93,9 @@ export const en = {
   "connection.unavailable.badge": "Info",
   "connection.unavailable.label": "Connection information is unavailable",
   "customize.addWidgetAria": "Add {label} to the {zone} panel",
+  "customize.autoHideDelay": "Hide after entering page",
+  "customize.autoHideDelayHelp":
+    "How long a panel remains visible after the pointer moves into page content or another area inside Firefox.",
   "customize.closeAria": "Close customize panel",
   "customize.colorAccent": "Accent color",
   "customize.colorBorder": "Border color",
@@ -110,10 +113,16 @@ export const en = {
   "customize.density.cozy": "Cozy",
   "customize.editFailed":
     "That change could not be applied. The layout may have just changed; try again.",
+  "customize.edgeTriggerSize": "Edge trigger size",
+  "customize.edgeTriggerSizeHelp":
+    "Width of the invisible edge target. Larger values are easier to hit but cover more of the page edge.",
   "customize.emptyPalette":
     "Every available widget is already placed. Drop a widget here to remove it from a panel.",
   "customize.followingFirefox":
     "Following your Firefox toolbar until you make a change. Drag widgets onto the four edge panels.",
+  "customize.interaction": "Interaction",
+  "customize.interactionHelp":
+    "These settings apply to all four edge panels. Focus, keyboard access, and open popups always keep a panel visible.",
   "customize.keyboardAdd":
     "Keyboard add targets the {zone} panel. Press Delete on a placed widget to remove it.",
   "customize.labelAccent": "Accent",
@@ -133,8 +142,12 @@ export const en = {
   "customize.paletteAria": "Available widgets",
   "customize.panelAria": "Customize Fennevia shell",
   "customize.resetLayout": "Reset layout",
-  "customize.resetStyle": "Reset style",
-  "customize.style": "Style",
+  "customize.resetStyle": "Reset appearance and interaction",
+  "customize.shortcutHintDuration": "Shortcut tips",
+  "customize.shortcutHintDurationHelp":
+    "How long keyboard shortcut tips stay visible when an edge panel opens. Set to 0 to hide them entirely.",
+  "customize.shortcutHintOff": "Off",
+  "customize.style": "Appearance",
   "customize.styleBlur": "Glass blur",
   "customize.styleFontSize": "Font size",
   "customize.styleMotion": "Motion duration",
@@ -142,10 +155,16 @@ export const en = {
   "customize.styleRadius": "Corner radius",
   "customize.styleSaturation": "Glass saturation",
   "customize.styleShadow": "Shadow intensity",
+  "customize.temporaryRevealDuration": "Temporary reveal",
+  "customize.temporaryRevealDurationHelp":
+    "How long actions such as Show bookmarks reveal a panel when it is not otherwise held.",
   "customize.theme": "Theme",
   "customize.theme.auto": "Auto",
   "customize.theme.dark": "Dark",
   "customize.theme.light": "Light",
+  "customize.windowLeaveHideDelay": "Hide after leaving window",
+  "customize.windowLeaveHideDelayHelp":
+    "How long a panel remains visible after the pointer leaves the Firefox window.",
   "customize.title": "Customize Fennevia",
   "customize.unavailable":
     "Customization is unavailable in this window. The fixed Fennevia controls and native Firefox customize mode remain usable.",

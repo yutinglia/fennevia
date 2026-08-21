@@ -21,6 +21,7 @@
     type FenneviaLocale,
   } from "../app/locale-state";
   import { localizeWidgetLabel, zoneDisplayName } from "./locale-ui";
+  import CustomizeInteractionSection from "./features/customize/CustomizeInteractionSection.svelte";
   import CustomizeStyleSection from "./features/customize/CustomizeStyleSection.svelte";
   import ShellIcon from "./ShellIcon.svelte";
   import ToolbarWidgetGlyph from "./ToolbarWidgetGlyph.svelte";
@@ -261,6 +262,12 @@
         </ul>
       {/if}
     </section>
+
+    <CustomizeInteractionSection
+      {localeId}
+      onSetStyle={(style) => void runEdit({ style, type: "set-style" })}
+      style={snapshot.style}
+    />
 
     <CustomizeStyleSection
       {localeId}

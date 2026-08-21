@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
   import {
-    toolbarStyleDensities,
     toolbarStyleThemes,
     type ToolbarStyleColorKey,
     type ToolbarStyleSnapshot,
@@ -25,8 +24,6 @@
     translate(props.localeId, key, vars);
   const themeLabel = (theme: string): string =>
     translate(props.localeId, ("customize.theme." + theme) as MessageKey);
-  const densityLabel = (density: string): string =>
-    translate(props.localeId, ("customize.density." + density) as MessageKey);
 
   // Empty swatches keep Firefox chrome design-token defaults. Hex values are
   // Acorn primitives from Firefox 153/154 color.tokens.json and
@@ -76,7 +73,6 @@
   const fontSizePresets: readonly number[] = [11, 12, 13, 14];
   const saturationPresets: readonly number[] = [100, 125, 145, 170];
   const shadowPresets: readonly number[] = [0, 25, 50, 75, 100];
-  const motionPresets: readonly number[] = [0, 120, 180, 280];
 
   const setStyle = (style: Readonly<Partial<ToolbarStyleSnapshot>>) =>
     props.onSetStyle(style);
@@ -199,24 +195,6 @@
   <div
     class="fennevia-customize__style-row"
     role="group"
-    aria-label={t("customize.density")}
-  >
-    <span class="fennevia-customize__style-label">{t("customize.density")}</span
-    >
-    {#each toolbarStyleDensities as density (density)}
-      <button
-        aria-pressed={props.style.density === density}
-        class="fennevia-control fennevia-customize__option"
-        data-fennevia-customize-density={density}
-        onclick={() => setStyle({ density })}
-        type="button">{densityLabel(density)}</button
-      >
-    {/each}
-  </div>
-
-  <div
-    class="fennevia-customize__style-row"
-    role="group"
     aria-label={t("customize.styleRadius")}
   >
     <span class="fennevia-customize__style-label"
@@ -305,25 +283,6 @@
         data-fennevia-customize-shadow={shadow}
         onclick={() => setStyle({ shadow })}
         type="button">{shadow}</button
-      >
-    {/each}
-  </div>
-
-  <div
-    class="fennevia-customize__style-row"
-    role="group"
-    aria-label={t("customize.styleMotion")}
-  >
-    <span class="fennevia-customize__style-label"
-      >{t("customize.labelMotion")}</span
-    >
-    {#each motionPresets as motion (motion)}
-      <button
-        aria-pressed={props.style.motion === motion}
-        class="fennevia-control fennevia-customize__option"
-        data-fennevia-customize-motion={motion}
-        onclick={() => setStyle({ motion })}
-        type="button">{motion}ms</button
       >
     {/each}
   </div>

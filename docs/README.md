@@ -86,7 +86,9 @@ Read these before changing code or current documentation:
 - [Customize mode plan](../plans/006-customize-mode.md) — ADR-045 Fennevia-owned
   four-edge widget editor, bounded style tokens, and owner-approved
   CustomizableUI adopt/restore writes; ADR-046 localized names and native
-  built-in icons; ADR-047 live four-edge drag-and-drop.
+  built-in icons; ADR-047 live four-edge drag-and-drop; ADR-054 bounded
+  separate in-window/window-leave hide, temporary-reveal, shortcut-tip, and
+  edge-trigger settings.
 - [Codebase modularization plan](../plans/007-codebase-modularization.md) —
   ADR-053 feature-first source boundaries, compatibility facades, and fixed
   installer implementation inventory.

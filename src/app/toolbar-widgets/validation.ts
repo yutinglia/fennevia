@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
+import { edgeInteractionDefaults } from "../edge-surfaces/contracts.ts";
 import {
   toolbarZoneNames,
   toolbarStyleBounds,
@@ -111,19 +112,24 @@ export function isInteractiveToolbarWidget(
 export function createDefaultToolbarStyle(): ToolbarStyleSnapshot {
   return Object.freeze({
     accent: "",
+    autoHideDelay: edgeInteractionDefaults.hideDelayMs,
     blur: 18,
     border: "",
     chromeBackground: "",
     density: "cozy" as const,
+    edgeTriggerSize: edgeInteractionDefaults.triggerThicknessCssPixels,
     fontSize: 12,
     motion: 180,
     radius: 4,
     saturation: 145,
     shadow: 50,
+    shortcutHintDuration: 600,
     surface: "",
     surfaceOpacity: 94,
+    temporaryRevealDuration: edgeInteractionDefaults.programmaticRevealMs,
     text: "",
     theme: "auto" as const,
+    windowLeaveHideDelay: edgeInteractionDefaults.windowLeaveHideDelayMs,
   });
 }
 
@@ -181,8 +187,16 @@ export function copyToolbarStyleSnapshot(
     chromeBackground === null ||
     surface === null ||
     text === null ||
+    !isBoundedStyleNumber(
+      candidate.autoHideDelay,
+      toolbarStyleBounds.autoHideDelay,
+    ) ||
     !isBoundedStyleNumber(candidate.blur, toolbarStyleBounds.blur) ||
     !isToolbarStyleDensity(candidate.density) ||
+    !isBoundedStyleNumber(
+      candidate.edgeTriggerSize,
+      toolbarStyleBounds.edgeTriggerSize,
+    ) ||
     !isBoundedStyleNumber(candidate.fontSize, toolbarStyleBounds.fontSize) ||
     !isBoundedStyleNumber(candidate.motion, toolbarStyleBounds.motion) ||
     !isBoundedStyleNumber(candidate.radius, toolbarStyleBounds.radius) ||
@@ -192,10 +206,22 @@ export function copyToolbarStyleSnapshot(
     ) ||
     !isBoundedStyleNumber(candidate.shadow, toolbarStyleBounds.shadow) ||
     !isBoundedStyleNumber(
+      candidate.shortcutHintDuration,
+      toolbarStyleBounds.shortcutHintDuration,
+    ) ||
+    !isBoundedStyleNumber(
       candidate.surfaceOpacity,
       toolbarStyleBounds.surfaceOpacity,
     ) ||
-    !isToolbarStyleTheme(candidate.theme)
+    !isBoundedStyleNumber(
+      candidate.temporaryRevealDuration,
+      toolbarStyleBounds.temporaryRevealDuration,
+    ) ||
+    !isToolbarStyleTheme(candidate.theme) ||
+    !isBoundedStyleNumber(
+      candidate.windowLeaveHideDelay,
+      toolbarStyleBounds.windowLeaveHideDelay,
+    )
   ) {
     throw createToolbarWidgetsStateError(
       "FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID",
@@ -203,19 +229,24 @@ export function copyToolbarStyleSnapshot(
   }
   return Object.freeze({
     accent,
+    autoHideDelay: candidate.autoHideDelay,
     blur: candidate.blur,
     border,
     chromeBackground,
     density: candidate.density,
+    edgeTriggerSize: candidate.edgeTriggerSize,
     fontSize: candidate.fontSize,
     motion: candidate.motion,
     radius: candidate.radius,
     saturation: candidate.saturation,
     shadow: candidate.shadow,
+    shortcutHintDuration: candidate.shortcutHintDuration,
     surface,
     surfaceOpacity: candidate.surfaceOpacity,
+    temporaryRevealDuration: candidate.temporaryRevealDuration,
     text,
     theme: candidate.theme,
+    windowLeaveHideDelay: candidate.windowLeaveHideDelay,
   });
 }
 

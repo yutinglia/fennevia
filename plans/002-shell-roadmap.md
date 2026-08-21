@@ -46,7 +46,10 @@ owner-approved rendering of extension identity data. ADR-045 deprecates that
 mirror as the only widget source and adds a Fennevia-owned customize mode with
 four-edge zones, the full CustomizableUI inventory, bounded style tokens, and
 owner-approved adopt/restore writes. ADR-047 makes that editor a live four-edge
-HTML5 drag-and-drop session. These have focused automated evidence;
+HTML5 drag-and-drop session. ADR-054 adds bounded global interaction controls
+for separate in-window/window-leave hide timing, temporary reveal timing,
+shortcut-tip timing, and edge trigger thickness. These have focused automated
+evidence;
 the real Firefox matrices in `docs/testing-and-recovery.md` §6.8 and §6.9
 remain pending.
 
@@ -289,7 +292,8 @@ Issue #31 provides one common contract for every feature surface:
 - independently owned top, left, right, and bottom hosts;
 - hidden-at-rest state with no permanent content space;
 - pointer, keyboard, focus, popup, and bounded programmatic reveal reasons;
-- one tracked anti-flicker hide timer per edge;
+- one tracked anti-flicker hide timer per edge, with a bounded configurable
+  delay;
 - deterministic corner ownership;
 - overlap clearances and collision policy;
 - `Escape` and focus restoration;
@@ -724,11 +728,24 @@ drawer is the unused-widget palette plus style. Keyboard Delete, Ctrl+Arrow,
 and palette Enter remain required. Native-area `CustomizeMode` drag stays
 deferred.
 
+ADR-054 extends the existing version-1 `fennevia.customize.style` payload with
+global interaction settings. In-window and window-leave hide delays are each
+bounded to `100–5000 ms`, temporary programmatic reveal duration to
+`400–10000 ms`, and edge trigger thickness to `6–24 CSS px`. Shortcut-tip
+duration is bounded to `0–10000 ms`, where zero omits the hint. Old payloads use
+the defaults `300 ms`, `800 ms`, `1200 ms`, `600 ms`, and `12 CSS px`.
+Non-null/null pointer destinations select the two hide delays, with window blur
+as a fallback. The values reconfigure the existing #31 controller, timer, CSS
+hint animation, hit strips, and corner arbitration; they do not create
+per-feature UX systems, and focus/keyboard/popup holds remain authoritative.
+
 Gate: CI passes with focused model/bridge/adapter coverage; the real Firefox
 rows in `docs/testing-and-recovery.md` §6.9 are recorded honestly (currently
 `not run`). Plan: `plans/006-customize-mode.md`; evidence:
 `docs/research/firefox-153-customize-mode.md`. ADR-046 restores localized
-names and native built-in icons in that palette and in widget zones.
+names and native built-in icons in that palette and in widget zones. ADR-054
+adds the bounded interaction controls and their focused model/controller/build
+coverage.
 
 ## Deferred work
 

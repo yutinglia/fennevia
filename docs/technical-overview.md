@@ -26,8 +26,8 @@ The tested MVP and current post-MVP implementation include:
 | Top controls | Complete | Native-synchronised Back, Forward, Reload/Stop, Home, New Tab, bounded page status, Firefox tool handoffs, and compact window-command controls |
 | Single-line toolbar and native handoffs | Focused implementation; real-Firefox matrix pending | One non-wrapping top row, fixed native tool/original-toolbar actions, project-owned control surfaces backed by retained Firefox/OS command owners, 7px gutter, drag regions, and transient shortcut hint |
 | Nav-bar widget mirror (ADR-044) | Focused implementation; superseded as sole model by ADR-045; real-Firefox matrix pending | Default top-zone layout from `CustomizableUI` nav-bar placements as project-styled buttons — extension actions with real icon/badge, pinned built-ins, spacers — with popups anchored on the project button |
-| Fennevia customize mode (ADR-045, ADR-046, ADR-047) | Focused implementation; real-Firefox matrix pending | Four-edge widget zones, full CustomizableUI inventory palette with localized names and native built-in icons (CSS mask), live-zone HTML5 drag-and-drop, bounded style tokens, profile-local prefs, and owner-approved adopt/restore writes; native customize mode remains available from the Firefox application menu |
-| Appearance and localization | Focused implementation; real-Firefox matrix pending | Firefox chrome design tokens provide the default theme; bounded panel/window background, text, border, saturation, shadow, and motion values are profile-local; shell strings follow Firefox UI locale with English and Traditional Chinese catalogs |
+| Fennevia customize mode (ADR-045, ADR-046, ADR-047, ADR-054) | Focused implementation; real-Firefox matrix pending | Four-edge widget zones, full CustomizableUI inventory palette with localized names and native built-in icons (CSS mask), live-zone HTML5 drag-and-drop, bounded appearance and interaction settings, profile-local prefs, and owner-approved adopt/restore writes; native customize mode remains available from the Firefox application menu |
+| Appearance, interaction, and localization | Focused implementation; real-Firefox matrix pending | Firefox chrome design tokens provide the default theme; bounded panel/window appearance, motion, separate in-window/window-leave hide timing, temporary reveal timing, shortcut-tip timing, and edge trigger thickness are profile-local; shell strings follow Firefox UI locale with English and Traditional Chinese catalogs |
 | Urlbar coverage | Complete | Firefox-derived connection/protection/permission/action summaries and complete native Urlbar handoff |
 | Bookmarks | Complete | Bounded lazy Places hierarchy with live updates and Firefox-owned opening behavior |
 | Downloads | Complete | Anonymous event-driven aggregate progress/status while Firefox retains safety and file management |
@@ -39,8 +39,9 @@ The tested MVP and current post-MVP implementation include:
 The planned Windows MVP and first public prerelease are complete. ADR-037's
 single-line toolbar and native handoffs, ADR-044's nav-bar widget mirror,
 ADR-045's Fennevia-owned customize mode, ADR-046's localized names and native
-built-in widget icons, ADR-047's live-zone drag-and-drop, and ADR-050's
-first-paint hide have focused automated coverage. Their changed real-Firefox
+built-in widget icons, ADR-047's live-zone drag-and-drop, ADR-050's first-paint
+hide, and ADR-054's bounded interaction settings have focused automated
+coverage. Their changed real-Firefox
 visual and interaction matrices remain pending and are not part of a completed
 real-Firefox validation claim for `v0.11.0-beta.1`.
 
@@ -80,11 +81,18 @@ drag-and-drop, and may perform only the bounded adopt/restore writes accepted by
 ADR-045. Native Firefox customize mode remains available through the
 application menu.
 
-Appearance customization is deliberately bounded. Profile-local settings may
-adjust panel and window backgrounds, text, border, saturation, shadow, and
-motion values. The default empty values resolve to Firefox chrome design tokens
-so Light, Dark, and System chrome remain authoritative defaults. This is not an
-arbitrary CSS or geometry editor.
+Appearance and interaction customization are deliberately bounded.
+Profile-local settings may adjust panel and window backgrounds, text, border,
+saturation, shadow, and motion values. They may also set the in-window hide
+delay (`100–5,000 ms`), window-leave hide delay (`100–5,000 ms`), temporary
+programmatic reveal duration (`400–10,000 ms`), shortcut-tip duration
+(`0–10,000 ms`, where zero hides it), and edge trigger thickness
+(`6–24 CSS px`). The interaction defaults are `300 ms`, `800 ms`, `1,200 ms`,
+`600 ms`, and `12 CSS px`; old version-1 style payloads receive those defaults.
+The shell distinguishes a non-null in-window pointer destination from a null
+window exit and retains `blur` as the stuck-pointer fallback. Color defaults
+resolve to Firefox chrome design tokens so Light, Dark, and System chrome remain
+authoritative defaults. This is not an arbitrary CSS or geometry editor.
 
 The retained Firefox toolbar is transient in active mode. **Original Firefox
 toolbar** in the custom top row reveals pinned extension widgets and any
@@ -155,10 +163,11 @@ failed, or disposed state removes the active gate and exposes native Firefox UI.
   project-authored icon subtrees use SVG.
 - **Build:** Vite with byte-reproducible output and no CDN, HMR, source maps,
   extra runtime chunks, or network-loaded executable dependencies.
-- **Styling:** frame-scoped component CSS, Firefox chrome design tokens as the
-  default color source, and bounded profile-local appearance/motion values,
-  with solid, reduced-transparency, reduced-motion, and forced-colors
-  fallbacks.
+- **Styling and interaction:** frame-scoped component CSS, Firefox chrome
+  design tokens as the default color source, bounded profile-local appearance,
+  motion, reveal timing, and trigger-size values, with solid,
+  reduced-transparency, reduced-motion, and forced-colors fallbacks. Timing
+  values reconfigure the shared edge controller; they do not add timers.
 - **Localization:** shell-owned English and Traditional Chinese catalogs chosen
   from Firefox UI locale; native Firefox strings remain Firefox-owned. Until a
   Simplified Chinese catalog exists, every `zh-*` locale maps to Traditional
@@ -176,8 +185,9 @@ failed, or disposed state removes the active gate and exposes native Firefox UI.
 - Preserve immediate recovery that does not depend on Svelte.
 - Keep privileged artifacts deterministic, local, bounded, and reviewable.
 - Preserve Firefox-owned security infrastructure and complete native access.
-- Offer bounded widget placement and appearance controls without turning the
-  privileged shell into an unrestricted customization loader.
+- Offer bounded widget placement, appearance, and edge-interaction controls
+  without turning the privileged shell into an unrestricted customization
+  loader.
 - Maintain an evidence-based stable-update workflow.
 
 ## Non-goals
@@ -208,10 +218,12 @@ boundaries, and interaction hierarchy remain product decisions rather than a
 fully user-programmable shell.
 
 That boundary no longer means “not configurable.” ADR-045 through ADR-047 add a
-project-owned four-edge widget editor, and the current style model exposes a
-bounded set of background, text, border, saturation, shadow, and motion values.
-These settings are versioned, size-limited, validated, profile-local, and kept
-away from Firefox-owned DOM and sensitive extension identity persistence.
+project-owned four-edge widget editor, and ADR-054 extends the current style
+model with bounded in-window/window-leave hide, temporary-reveal,
+zero-disable shortcut-tip, and trigger-thickness values in addition to
+background, text, border, saturation, shadow, and motion. These settings are
+versioned, size-limited, validated, profile-local, and kept away from
+Firefox-owned DOM and sensitive extension identity persistence.
 
 `yutinglia/my-firefox-custom` may be consulted for desired capabilities and broad
 visual ideas such as edge activation, delayed hiding, glass surfaces,

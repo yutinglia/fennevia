@@ -7,7 +7,8 @@
 Status: implementation and documentation complete on
 `feat/fennevia-customize-mode` (ADR-045); ADR-046 adds localized names and
 native built-in icons; ADR-047 replaces the drawer list editor with live
-four-edge HTML5 drag-and-drop. The manual real-Firefox checklist in
+four-edge HTML5 drag-and-drop; ADR-054 adds bounded global edge-interaction
+settings. The manual real-Firefox checklist in
 `docs/testing-and-recovery.md` §6.9 is still `not run`.
 
 This pass deprecates the ADR-044 read-only nav-bar widget mirror as the only
@@ -19,7 +20,8 @@ widget source and adds a Fennevia-owned customize mode:
 - Fennevia-owned placeable widgets (`show-bookmarks` reveals the right-edge
   bookmarks surface; `show-downloads` opens Firefox's `#downloadsPanel`) and
   spacer/spring/separator specials;
-- bounded style tokens applied as a fixed CSS custom-property set;
+- bounded appearance and interaction settings applied through a fixed CSS
+  custom-property set and the shared #31 edge controller;
 - profile-local persistence and owner-approved bounded CustomizableUI writes.
 
 Native customize mode remains available through the Firefox application menu,
@@ -72,6 +74,13 @@ activation contract.
 - [x] Bounded style tokens on the project frame root; skipped under forced
       colors; cleared on dispose. ADR-051 maps empty color defaults to Firefox
       chrome design-system tokens.
+- [x] ADR-054 global in-window and window-leave hide delays (`100–5000 ms`),
+      temporary reveal duration (`400–10000 ms`), shortcut-tip duration
+      (`0–10000 ms`, zero disables), and edge trigger thickness (`6–24 CSS px`)
+      in the existing version-1 style preference. Legacy payloads receive
+      defaults; null/non-null pointer destinations route through the shared
+      controller/timer while the existing hint animation and CSS/point hit
+      geometry update together.
 - [x] Skip list includes placements already represented by fixed Fennevia
       controls, including Unified Extensions and the application menu.
 - [x] Unit tests for model, bridge, adapter, skip list, missing capability,

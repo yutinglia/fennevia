@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { edgeNames, edgeSurfaceTiming, holdNames } from "./contracts.ts";
+import {
+  edgeNames,
+  edgeSurfaceTiming,
+  holdNames,
+  pointerExitLocations,
+} from "./contracts.ts";
 import type {
   EdgeName,
+  PointerExitLocation,
   EdgeSurfacePhase,
   EdgeSurfaceSnapshot,
   EdgeSurfaceController,
@@ -39,6 +45,10 @@ function validateDelay(value: number, maximum: number, code: string): void {
   if (!Number.isInteger(value) || value < 1 || value > maximum) {
     throw createEdgeSurfaceError(code);
   }
+}
+
+function isPointerExitLocation(value: unknown): value is PointerExitLocation {
+  return pointerExitLocations.includes(value as PointerExitLocation);
 }
 
 function createHolds(): Record<HoldName, boolean> {
@@ -104,6 +114,7 @@ export function createEdgeSurfaceController(
     hideDelayMs = edgeSurfaceTiming.hideDelayMs,
     onError = () => {},
     scheduler = defaultScheduler,
+    windowLeaveHideDelayMs = edgeSurfaceTiming.windowLeaveHideDelayMs,
   }: ControllerOptions = {},
 ): EdgeSurfaceController {
   if (!isEdgeName(edge)) {
@@ -113,6 +124,11 @@ export function createEdgeSurfaceController(
     hideDelayMs,
     edgeSurfaceTiming.maximumProgrammaticRevealMs,
     "FENNEVIA_EDGE_HIDE_DELAY_INVALID",
+  );
+  validateDelay(
+    windowLeaveHideDelayMs,
+    edgeSurfaceTiming.maximumProgrammaticRevealMs,
+    "FENNEVIA_EDGE_WINDOW_LEAVE_HIDE_DELAY_INVALID",
   );
   if (
     typeof scheduler?.setTimeout !== "function" ||
@@ -126,7 +142,10 @@ export function createEdgeSurfaceController(
   const listeners = new Set<(snapshot: EdgeSurfaceSnapshot) => void>();
   let disposed = false;
   let enabled = true;
+  let currentHideDelayMs = hideDelayMs;
+  let currentWindowLeaveHideDelayMs = windowLeaveHideDelayMs;
   let hideTimer: TimerHandle | undefined;
+  let pendingHideLocation: PointerExitLocation | undefined;
   let programmaticTimer: TimerHandle | undefined;
   let revision = 0;
   let visible = false;
@@ -174,6 +193,7 @@ export function createEdgeSurfaceController(
     }
     const timer = hideTimer;
     hideTimer = undefined;
+    pendingHideLocation = undefined;
     scheduler.clearTimeout(timer);
     return true;
   };
@@ -203,25 +223,37 @@ export function createEdgeSurfaceController(
     return changed;
   };
 
-  const scheduleHide = (): boolean => {
+  const scheduleHide = (
+    location: PointerExitLocation = "inside-window",
+  ): boolean => {
     if (!enabled || disposed || hasHold(holds) || !visible) {
       return false;
     }
     if (hideTimer !== undefined) {
       return false;
     }
+    pendingHideLocation = location;
+    const delayMs =
+      location === "outside-window"
+        ? currentWindowLeaveHideDelayMs
+        : currentHideDelayMs;
     hideTimer = scheduler.setTimeout(() => {
       hideTimer = undefined;
+      pendingHideLocation = undefined;
       if (!disposed && enabled && !hasHold(holds) && visible) {
         visible = false;
         publish();
       }
-    }, hideDelayMs);
+    }, delayMs);
     publish();
     return true;
   };
 
-  const setHold = (name: HoldName, held: boolean): boolean => {
+  const setHold = (
+    name: HoldName,
+    held: boolean,
+    releaseLocation: PointerExitLocation = "inside-window",
+  ): boolean => {
     requireUsable();
     if (!enabled && held) {
       return false;
@@ -238,7 +270,7 @@ export function createEdgeSurfaceController(
     } else if (hasHold(holds)) {
       publish();
     } else {
-      scheduleHide();
+      scheduleHide(releaseLocation);
     }
     return true;
   };
@@ -335,12 +367,62 @@ export function createEdgeSurfaceController(
       return setHold("focus", held);
     },
 
-    setPointerHeld(held) {
-      return setHold("pointer", held);
+    setHideDelayMs(delayMs) {
+      requireUsable();
+      validateDelay(
+        delayMs,
+        edgeSurfaceTiming.maximumProgrammaticRevealMs,
+        "FENNEVIA_EDGE_HIDE_DELAY_INVALID",
+      );
+      if (currentHideDelayMs === delayMs) {
+        return false;
+      }
+      currentHideDelayMs = delayMs;
+      if (hideTimer !== undefined && pendingHideLocation === "inside-window") {
+        clearHideTimer();
+        scheduleHide("inside-window");
+      }
+      return true;
+    },
+
+    setPointerHeld(held, releaseLocation = "inside-window") {
+      if (!isPointerExitLocation(releaseLocation)) {
+        throw createEdgeSurfaceError(
+          "FENNEVIA_EDGE_POINTER_EXIT_LOCATION_INVALID",
+        );
+      }
+      if (
+        !held &&
+        !holds.pointer &&
+        hideTimer !== undefined &&
+        pendingHideLocation !== releaseLocation
+      ) {
+        clearHideTimer();
+        return scheduleHide(releaseLocation);
+      }
+      return setHold("pointer", held, releaseLocation);
     },
 
     setPopupHeld(held) {
       return setHold("popup", held);
+    },
+
+    setWindowLeaveHideDelayMs(delayMs) {
+      requireUsable();
+      validateDelay(
+        delayMs,
+        edgeSurfaceTiming.maximumProgrammaticRevealMs,
+        "FENNEVIA_EDGE_WINDOW_LEAVE_HIDE_DELAY_INVALID",
+      );
+      if (currentWindowLeaveHideDelayMs === delayMs) {
+        return false;
+      }
+      currentWindowLeaveHideDelayMs = delayMs;
+      if (hideTimer !== undefined && pendingHideLocation === "outside-window") {
+        clearHideTimer();
+        scheduleHide("outside-window");
+      }
+      return true;
     },
 
     snapshot,

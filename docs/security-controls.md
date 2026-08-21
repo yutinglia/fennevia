@@ -432,8 +432,9 @@ The #31 contract is mandatory.
 
 ### 8.1 Trigger and layout
 
-- narrow bounded trigger thickness (12px hit strip, independent of the 7px
-  content gutter);
+- narrow bounded trigger thickness (12 CSS px by default, user-bounded to
+  6–24 CSS px, independent of the 7px content gutter); the same validated
+  value drives CSS and corner arbitration;
 - decorative 2px load/download lights in that gutter (`pointer-events: none`,
   `aria-hidden`, no extra margin);
 - pointer-transparent center;
@@ -457,7 +458,16 @@ Allow only fixed:
 - disposed.
 
 Each hold has explicit acquire/release ownership. Timers are tracked and cleared
-on replacement/disposal. Exceptions enter fail-open cleanup.
+on replacement/disposal. ADR-054 may rearm the same hide timer with separate
+100–5,000 ms in-window and window-leave delays and select a 400–10,000 ms
+default for the existing programmatic timer. A non-null pointer destination
+inside the Firefox window selects the first delay; a null destination or the
+existing window-blur fallback selects the second. Focus, keyboard, and popup
+holds still prevent timed hiding. Exceptions enter fail-open cleanup.
+
+The existing shortcut-tip CSS animation accepts a bounded 0–10,000 ms
+duration. Zero omits the nonessential shortcut footer from the initial Svelte
+render; no JavaScript timer, observer, or privileged data path is added.
 
 ### 8.3 Focus/accessibility
 
@@ -552,6 +562,13 @@ Each feature records:
 
 Allowed persistence is limited to schema-defined shell preferences independent
 of browsing activity.
+
+The existing `fennevia.customize.style` schema may persist ADR-054's bounded
+in-window hide delay, window-leave hide delay, temporary reveal duration,
+shortcut-tip duration, and trigger thickness. These are global shell
+preferences, never observations of private-window activity; they use the
+existing 16 KiB cap, preference observer, reset path, and fail-safe defaults
+rather than a new persistence owner.
 
 Prohibited persistence:
 

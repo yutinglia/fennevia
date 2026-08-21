@@ -62,7 +62,9 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   const css = await readShellStyles(projectRoot);
 
   assert.match(css, /--fennevia-edge-trigger-thickness: 12px;/u);
+  assert.match(css, /--fennevia-hide-delay: 300ms;/u);
   assert.match(css, /--fennevia-edge-inset: 7px;/u);
+  assert.match(css, /--fennevia-shortcut-tip-duration: 600ms;/u);
   assert.match(
     css,
     /data-fennevia-edge="top"\][\s\S]*?\.fennevia-edge-trigger \{\s*inset-inline: 0;/u,
@@ -81,7 +83,11 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
     css,
     /position: absolute;[\s\S]*@keyframes fennevia-shortcut-tip/u,
   );
-  assert.match(css, /animation: fennevia-shortcut-tip 2800ms/u);
+  assert.match(
+    css,
+    /animation: fennevia-shortcut-tip var\(--fennevia-shortcut-tip-duration\)/u,
+  );
+  assert.match(css, /@keyframes fennevia-shortcut-tip-reduced-motion/u);
   assert.match(
     css,
     /data-fennevia-edge="top"\]\s*\.fennevia-edge-panel__footer \{\s*inset-block-start: calc\(100% \+ var\(--fennevia-space-2\)\);/u,
@@ -108,13 +114,16 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(css, /--focus-outline-color/u);
   assert.doesNotMatch(css, /247 250 252/u);
 
-  const [component, progressLight, toolbarWidgets] = await Promise.all([
-    readProjectFile("src/shell/App.svelte"),
-    readProjectFile("src/shell/surfaces/EdgeProgressLight.svelte"),
-    readProjectFile(
-      "src/shell/features/toolbar-widgets/ToolbarWidgetZone.svelte",
-    ),
-  ]);
+  const [component, progressLight, toolbarWidgets, mountShell, customizeStyle] =
+    await Promise.all([
+      readProjectFile("src/shell/App.svelte"),
+      readProjectFile("src/shell/surfaces/EdgeProgressLight.svelte"),
+      readProjectFile(
+        "src/shell/features/toolbar-widgets/ToolbarWidgetZone.svelte",
+      ),
+      readProjectFile("src/shell/runtime/mount-shell.ts"),
+      readProjectFile("src/shell/runtime/customize-style.ts"),
+    ]);
   assert.match(
     component,
     /handlePanelPointerDown[\s\S]*?setPointerHeld\(props\.edge, false\)/u,
@@ -128,6 +137,21 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(progressLight, /<ProgressLight \{presentation\} \/>/u);
   assert.match(toolbarWidgets, /<ToolbarWidgetGlyph \{widget\} \/>/u);
   assert.match(toolbarWidgets, /toolbarWidgetDragMimeType/u);
+  assert.match(
+    component,
+    /shell\.snapshot\(\)\.interaction\.triggerThicknessCssPixels/u,
+  );
+  assert.match(mountShell, /shell\.setInteractionConfig/u);
+  assert.match(mountShell, /shell\.releasePointer\(edge, "outside-window"\)/u);
+  assert.match(mountShell, /windowLeaveHideDelayMs/u);
+  assert.match(customizeStyle, /--fennevia-edge-trigger-thickness/u);
+  assert.match(customizeStyle, /--fennevia-hide-delay/u);
+  assert.match(customizeStyle, /--fennevia-shortcut-tip-duration/u);
+  assert.match(component, /shortcutHintDuration !== 0/u);
+  assert.match(
+    component,
+    /event\.relatedTarget === null \? "outside-window" : "inside-window"/u,
+  );
   assert.match(css, /data-fennevia-customize-active/u);
   assert.match(css, /--fennevia-bottom-clearance/u);
   assert.match(
@@ -152,11 +176,20 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   const customize = await Promise.all([
     readProjectFile("src/shell/CustomizePanel.svelte"),
     readProjectFile(
+      "src/shell/features/customize/CustomizeInteractionSection.svelte",
+    ),
+    readProjectFile(
       "src/shell/features/customize/CustomizeStyleSection.svelte",
     ),
   ]).then((parts) => parts.join("\n"));
   assert.match(customize, /#0062f9/u);
   assert.match(customize, /#fbfbfe/u);
+  assert.match(customize, /data-fennevia-customize-auto-hide-delay/u);
+  assert.match(customize, /data-fennevia-customize-edge-trigger-size/u);
+  assert.match(customize, /data-fennevia-customize-shortcut-hint-duration/u);
+  assert.match(customize, /data-fennevia-customize-temporary-reveal-duration/u);
+  assert.match(customize, /data-fennevia-customize-window-leave-hide-delay/u);
+  assert.match(customize, /type="range"/u);
   assert.doesNotMatch(customize, /#3b82f6|#8b5cf6|#64748b|#f7fafc/u);
 });
 

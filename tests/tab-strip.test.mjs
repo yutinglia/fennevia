@@ -296,6 +296,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
     "glass-shadow",
     "edge-inset",
     "edge-trigger-thickness",
+    "shortcut-tip-duration",
     "progress-light-thickness",
     "progress-light",
     "edge-side-width",
@@ -322,14 +323,14 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(styles, /@media \(max-width: 700px\), \(max-height: 520px\)/u);
   assert.doesNotMatch(styles, /transition\s*:\s*all\b/iu);
   assert.deepEqual(
-    [...styles.matchAll(/^\s*animation:\s*([^;]+);/gmu)].map(
-      (match) => match[1],
+    [...styles.matchAll(/^\s*animation:\s*([^;]+);/gmu)].map((match) =>
+      match[1].replace(/\s+/gu, " "),
     ),
     [
       "fennevia-progress-light-pulse 1.4s ease-in-out infinite alternate",
-      "fennevia-shortcut-tip 2800ms ease-out both",
+      "fennevia-shortcut-tip var(--fennevia-shortcut-tip-duration) ease-out both",
       "fennevia-tab-opened 1600ms var(--fennevia-motion-easing) both",
-      "none",
+      "fennevia-shortcut-tip-reduced-motion var(--fennevia-shortcut-tip-duration) step-end both",
       "none",
       "none",
     ],
