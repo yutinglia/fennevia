@@ -76,17 +76,22 @@ Completed:
   executable Firefox stable-update rehearsal.
 
 Current fast branch enhancement under ADR-037, ADR-042, ADR-044 through
-ADR-047, and ADR-054:
+ADR-047, ADR-054 through ADR-057:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   Firefox tools, and progressive disclosure;
 - fixed native Trust/identity, protections, permission, Unified Extensions,
-  application-menu, and Settings handoffs without exporting their sensitive
-  data; Downloads is available as the placeable `show-downloads` widget;
+  full-page translation, application-menu, and Settings handoffs without
+  exporting their sensitive data; Downloads and translation are available as
+  the placeable `show-downloads` and `show-translate` widgets;
   native customization and original-toolbar remain bridge actions, not fixed
   top-row buttons;
 - popup-opening handoffs re-anchor Firefox-owned panels beside the clicked
   Fennevia host without revealing native chrome;
+- useful bounded context actions on all four project-owned panels, with the
+  translated Firefox tab menu retained on tab rows, bounded bookmark/folder
+  actions plus native Library access on bookmark rows, and a visible tab drag
+  insertion preview;
 - retained Firefox caption controls styled in place as a compact island;
 - a 7px browser-content gutter, gap-free edge contact, transient shortcut hint,
   panel drag regions, and `top > sides > bottom` collision priority;
@@ -383,13 +388,19 @@ Evidence: ADR-026 and
 - selected/title/favicon/pinned/loading/audio/attention/container state;
 - select, new, close, pin, unpin, mute, move, and native context-menu handoff;
 - bounded vertical overflow;
-- keyboard navigation, drag reorder, and deterministic close-focus recovery;
+- keyboard navigation, drag reorder with browser ghost/insertion preview, and
+  deterministic close-focus recovery;
+- synchronous native lazy-label activation and a NativeUi popup token so the
+  Firefox tab menu is complete without revealing original chrome;
+- non-consuming parent context routing so the delegated tab owner still opens
+  that native menu, with explicit project-menu focus release for auto-hide;
 - ordinary bridge contracts only;
 - native tab strip retained.
 
 Evidence: ADR-025, ADR-026, ADR-041,
 `docs/research/firefox-153-tab-strip.md`, and
-`docs/research/firefox-153-tab-strip-parity.md`.
+`docs/research/firefox-153-tab-strip-parity.md`, plus ADR-055 and
+`docs/research/firefox-153-154-panel-context-actions.md`.
 
 #### Top primary controls — complete (#12)
 
@@ -429,7 +440,9 @@ Evidence: ADR-028 and
 - bounded/lazy roots and child queries;
 - event-driven native bookmark updates;
 - current-tab and source-validated new-tab opening;
-- right-edge tree/list accessibility.
+- right-edge tree/list accessibility;
+- pointer/keyboard bookmark and folder actions plus Firefox-owned Library
+  management.
 
 The implementation uses four localized roots, 32-item replaceable pages,
 depth/expansion caps, per-window opaque IDs and observers, native
@@ -438,7 +451,8 @@ bookmark UI remains visible. Normal, second, private, live-mutation,
 Browser-Toolbox, cleanup, and fail-open recovery evidence passed.
 
 Evidence: ADR-029 and
-`docs/research/firefox-153-bookmarks-surface.md`.
+`docs/research/firefox-153-bookmarks-surface.md`, plus ADR-055 and
+`docs/research/firefox-153-154-panel-context-actions.md`.
 
 #### Bottom downloads — complete (#32)
 
@@ -485,13 +499,14 @@ Evidence: ADR-031 and
   existing bounded status, loading accent, Firefox tools, and responsive
   progressive disclosure;
 - fixed native handoffs for Trust/identity, protections, site permissions,
-  Unified Extensions, application menu, and Settings; Downloads is available
-  as the placeable `show-downloads` widget; native customization and the
+  Unified Extensions, built-in full-page translation, application menu, and
+  Settings; Downloads and translation are available as the placeable
+  `show-downloads` and `show-translate` widgets; native customization and the
   complete original toolbar remain bridge actions rather than fixed top-row
   buttons;
-- six popup actions pass a project-owned host, keep native chrome hidden, and
+- seven popup actions pass a project-owned host, keep native chrome hidden, and
   re-anchor the Firefox panel beside that host;
-- nine fixed booleans/actions only; no certificate, permission, tracker,
+- ten fixed booleans/actions only; no certificate, permission, tracker,
   extension, download, widget, preference, URL, or native object crosses;
 - Firefox remains the complete data/action/popup owner and the custom HTTPS/ETP
   labels remain summaries;
@@ -538,8 +553,9 @@ clauses are superseded by ADR-045 below. Evidence: ADR-044,
 - four-edge widget zones driven by `fennevia.customize.layout`, falling back
   to the ADR-044 nav-bar mirror until the first edit;
 - opaque-token palette of every current CustomizableUI widget plus Fennevia
-  `show-bookmarks` (right-edge bookmarks) / `show-downloads` (Firefox
-  `#downloadsPanel`) widgets and spacer/spring/separator specials;
+  `show-bookmarks` (right-edge bookmarks), `show-downloads` (Firefox
+  `#downloadsPanel`), and `show-translate` (Firefox built-in full-page
+  translations) widgets and spacer/spring/separator specials;
 - project-owned editor: ADR-047 live four-edge HTML5 drag-and-drop with the
   top-host palette/style drawer held through the #31 popup hold on every
   edge, plus keyboard Delete / Ctrl+Arrow / Enter;
@@ -611,12 +627,22 @@ Delivered by ADR-032 and extended by ADR-037:
   collapses every native caption copy at rest and shows project-owned
   window buttons on the visible top row; notifications, popups, dialogs, and
   content remain Firefox-owned;
-- native focus, toolbox-anchored Firefox doorhangers, an open native sidebar,
-  #37's Urlbar handoff, and ADR-037's original-toolbar handoff reveal the
-  complete retained native path;
+- native focus, an open native sidebar, #37's Urlbar handoff, and ADR-037's
+  original-toolbar handoff reveal the complete retained native path;
 - Fennevia-initiated Trust/permission/Downloads/extensions/application-menu
   panels that are token-listed or re-anchored to a project host do not reveal
   the navbar;
+- ADR-056 moves any other non-excluded non-security hidden-toolbox XUL popup to one
+  health-checked project proxy after yielding to a feature-specific host;
+  missing/ineffective movement reveals Firefox chrome and a thrown move
+  suspends before fail-open;
+- ADR-057 excludes `#notification-popup` from post-open movement, preserves
+  Firefox's lazy owner initialization, and pre-anchors healthy hidden-toolbox
+  notifications to the project proxy; original chrome stays hidden on that
+  path while unavailable/ineffective routing holds complete native reveal, so
+  extension installation and every shared security prompt retain Firefox's
+  anti-clickjacking timing; the owner-observed Firefox 154 AMO path currently
+  takes that accepted complete-native-chrome fallback;
 - customize/native-dialog/DOM-fullscreen policy suspends project hiding;
 - invalid or partial activation CSS and stable native-target drift fail open
   per window.

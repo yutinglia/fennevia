@@ -88,7 +88,7 @@
       }
       if (isPopupBrowserToolAction(action)) {
         props.shell.setPopupHeld(props.edge, true);
-        await browserTools.invoke(action, host);
+        await browserTools.invoke(action, host, event);
         return;
       }
       props.onDismiss(props.edge);
@@ -113,6 +113,10 @@
       }
       if (action === "show-downloads") {
         void runBrowserToolAction("downloads", event);
+        return;
+      }
+      if (action === "show-translate") {
+        void runBrowserToolAction("translate", event);
       }
     } catch (error) {
       props.onFatalError(error);
@@ -378,7 +382,9 @@
           disabled={!props.customizeOpen &&
             (widget.disabled ||
               (widget.fenneviaAction === "show-downloads" &&
-                !browserToolsSnapshot?.downloads))}
+                !browserToolsSnapshot?.downloads) ||
+              (widget.fenneviaAction === "show-translate" &&
+                !browserToolsSnapshot?.translate))}
           draggable={props.customizeOpen}
           ondragend={handleWidgetDragEnd}
           ondragstart={(event) => handleWidgetDragStart(event, index)}

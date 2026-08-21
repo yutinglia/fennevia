@@ -212,6 +212,7 @@ export function createFirefoxBookmarksBridge() {
       return Object.freeze({ items: Object.freeze([]), offset, parentId, status: "ok", totalCount: 0, truncated: false });
     },
     async open() { return Object.freeze({ reason: "stale", status: "rejected" }); },
+    manage() { return true; },
     async roots() { return roots; },
     subscribe() { return () => true; },
   });
@@ -409,6 +410,7 @@ export function createFirefoxBookmarksBridge() {
       return Object.freeze({ items: Object.freeze([]), offset, parentId, status: "ok", totalCount: 0, truncated: false });
     },
     async open() { return Object.freeze({ reason: "stale", status: "rejected" }); },
+    manage() { return true; },
     async roots() { return roots; },
     subscribe() { return () => true; },
   });
@@ -507,6 +509,7 @@ export function createFirefoxBookmarksBridge() {
       return Object.freeze({ items: Object.freeze([]), offset, parentId, status: "ok", totalCount: 0, truncated: false });
     },
     async open() { return Object.freeze({ reason: "stale", status: "rejected" }); },
+    manage() { return true; },
     async roots() { return roots; },
     subscribe() { return () => true; },
   });
@@ -690,6 +693,7 @@ export function createFirefoxBookmarksBridge() {
       return Object.freeze({ items: Object.freeze([]), offset, parentId, status: "ok", totalCount: 0, truncated: false });
     },
     async open() { return Object.freeze({ reason: "stale", status: "rejected" }); },
+    manage() { return true; },
     async roots() { return roots; },
     subscribe() { return () => true; },
   });

@@ -57,19 +57,30 @@ export type FirefoxTabsBridgeController = Readonly<{
   tabs: BrowserTabsBridge;
 }>;
 
+const TAB_CONTEXT_MENU_PANEL_ID = "tabContextMenu";
+
 export function createFirefoxTabsBridge({
+  beginNativePopupHandoff,
   boundary,
+  endNativePopupHandoff,
   moduleLoader,
   onError,
   window,
 }: Readonly<{
+  beginNativePopupHandoff: (panelId: string) => boolean;
   boundary: FirefoxBridgeBoundary;
+  endNativePopupHandoff: (panelId: string) => void;
   moduleLoader?: NativeModuleLoader;
   onError: (error: unknown) => void;
   window: unknown;
 }>): FirefoxTabsBridgeController {
   boundary.assertOwnsWindow(window);
-  if (!isNativeRecord(window) || typeof onError !== "function") {
+  if (
+    !isNativeRecord(window) ||
+    typeof beginNativePopupHandoff !== "function" ||
+    typeof endNativePopupHandoff !== "function" ||
+    typeof onError !== "function"
+  ) {
     throw createTabsError(
       boundary,
       "FENNEVIA_FIREFOX_TABS_OPTIONS_INVALID",
@@ -89,6 +100,7 @@ export function createFirefoxTabsBridge({
   const registry = boundary.createHandleRegistry<NativeTab>("tab");
   let identityService: NativeIdentityService | null = null;
   let tabContextMenu: NativeRecord | null = null;
+  let tabContextMenuHandoffActive = false;
 
   if (typeof moduleLoader === "function") {
     try {
@@ -448,6 +460,52 @@ export function createFirefoxTabsBridge({
     return tabContextMenu;
   };
 
+  const beginTabContextMenuHandoff = (): void => {
+    if (tabContextMenuHandoffActive) {
+      return;
+    }
+    let accepted: boolean;
+    try {
+      accepted = beginNativePopupHandoff(TAB_CONTEXT_MENU_PANEL_ID) === true;
+    } catch (error) {
+      throw createTabsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_HANDOFF_FAILED",
+        "firefox-tabs-context-menu-handoff",
+        "nativeUi.beginPopupHandoff",
+        error,
+      );
+    }
+    if (!accepted) {
+      throw createTabsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_HANDOFF_REJECTED",
+        "firefox-tabs-context-menu-handoff",
+        "nativeUi.beginPopupHandoff",
+      );
+    }
+    tabContextMenuHandoffActive = true;
+  };
+
+  const endTabContextMenuHandoff = (): FirefoxBridgeError | null => {
+    if (!tabContextMenuHandoffActive) {
+      return null;
+    }
+    tabContextMenuHandoffActive = false;
+    try {
+      endNativePopupHandoff(TAB_CONTEXT_MENU_PANEL_ID);
+      return null;
+    } catch (error) {
+      return createTabsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_HANDOFF_RELEASE_FAILED",
+        "firefox-tabs-context-menu-handoff",
+        "nativeUi.endPopupHandoff",
+        error,
+      );
+    }
+  };
+
   const publicBridge: BrowserTabsBridge = Object.freeze({
     close(tabId: string): void {
       const tab = requireOwnedTab(tabId);
@@ -527,8 +585,27 @@ export function createFirefoxTabsBridge({
         );
       }
       try {
+        callTabMethod("translateTabContextMenu", []);
+      } catch (error) {
+        if (isFirefoxBridgeError(error)) {
+          throw error;
+        }
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_TRANSLATION_FAILED",
+          "firefox-tabs-action",
+          "window.gBrowser.translateTabContextMenu",
+          error,
+        );
+      }
+      beginTabContextMenuHandoff();
+      try {
         Reflect.apply(openPopup, menu, [tab, "after_start", 0, 0, true]);
       } catch (error) {
+        const handoffError = endTabContextMenuHandoff();
+        if (handoffError) {
+          onError(handoffError);
+        }
         throw createTabsError(
           boundary,
           "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_REJECTED",
@@ -690,7 +767,14 @@ export function createFirefoxTabsBridge({
     );
     listenerDisposers.push(
       boundary.subscribe(menu, "popuphidden", (event) => {
-        if (disposed || !isTabContextMenuEvent(event, menu)) {
+        if (!isTabContextMenuEvent(event, menu)) {
+          return;
+        }
+        const handoffError = endTabContextMenuHandoff();
+        if (handoffError) {
+          onError(handoffError);
+        }
+        if (disposed) {
           return;
         }
         publish(Object.freeze({ open: false, type: "context-menu" }));
@@ -743,6 +827,10 @@ export function createFirefoxTabsBridge({
         } catch (error) {
           firstError ??= error;
         }
+      }
+      const handoffError = endTabContextMenuHandoff();
+      if (handoffError) {
+        firstError ??= handoffError;
       }
       tabContextMenu = null;
       identityService = null;

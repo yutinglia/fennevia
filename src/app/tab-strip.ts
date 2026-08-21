@@ -44,6 +44,11 @@ export type TabStripKeyAction =
   | Readonly<{ tabId: string; type: "close" }>
   | Readonly<{ tabId: string; type: "select" }>;
 
+export type TabDropPreview = Readonly<{
+  index: number;
+  position: "after" | "before";
+}> | null;
+
 export function getDisplayTabTitle(
   tab: TabSnapshot,
   labels: TabStripLabels = defaultTabStripLabels,
@@ -199,6 +204,28 @@ export function resolveTabDropIndex(
     targetIndex = Math.min(Math.max(targetIndex, pinnedCount), tabs.length - 1);
   }
   return targetIndex === draggingIndex ? null : targetIndex;
+}
+
+export function resolveTabDropPreview(
+  tabs: readonly TabSnapshot[],
+  draggingTabId: string,
+  targetIndex: number | null,
+): TabDropPreview {
+  const draggingIndex = tabs.findIndex((tab) => tab.id === draggingTabId);
+  if (
+    draggingIndex < 0 ||
+    targetIndex === null ||
+    !Number.isSafeInteger(targetIndex) ||
+    targetIndex < 0 ||
+    targetIndex >= tabs.length ||
+    targetIndex === draggingIndex
+  ) {
+    return null;
+  }
+  return Object.freeze({
+    index: targetIndex,
+    position: targetIndex < draggingIndex ? "before" : "after",
+  });
 }
 
 export function getTabStripKeyAction(

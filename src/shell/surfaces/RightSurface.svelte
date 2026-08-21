@@ -31,7 +31,9 @@
 <BookmarksPanel
   bookmarks={props.bookmarks}
   localeId={props.localeId}
+  onDismiss={props.onDismiss}
   onFatalError={props.onFatalError}
+  shell={props.shell}
 />
 
 <ToolbarWidgetZone

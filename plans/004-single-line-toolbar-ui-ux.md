@@ -67,9 +67,10 @@ Independently selected Fennevia direction:
 | Native popup glass styling                            | Preserve Firefox-owned panels and theme behavior; do not apply broad native popup selectors.                                                                                                                                                                               |
 | Native security-panel replacement                     | Deferred. Record an explicit follow-up to research and reimplement equivalent project-owned identity/protection UI only after its complete data and action contracts are specified.                                                                                        |
 | Native status panel restyling                         | Preserve Firefox's native status panel unchanged; no new URL/status data flow in this pass.                                                                                                                                                                                |
-| Context-menu translation                              | Preserve Firefox's native context-menu/translation path; do not add a second translator or remote fallback.                                                                                                                                                                |
+| Full-page translation widget                         | ADR-057 adds a placeable semantic button that calls `FullPageTranslationsPanel.open(event)` and routes only the Firefox-owned panel to the clicked host. No page/language/model/result data crosses the bridge.                                                                 |
+| Context-menu translation                              | Preserve Firefox's native owner: direct tab-menu open must first call current synchronous `gBrowser.translateTabContextMenu()` and hold NativeUi for `tabContextMenu`; do not add a second translator or remote fallback.                                                                                                                    |
 | Native sidebar tool hiding                            | Not needed: active rest already hides exact native sidebar owners with a complete reveal/fallback path.                                                                                                                                                                    |
-| Bookmark drag-and-drop/editing                        | Deferred; current bounded right-edge bookmark reader/opener remains unchanged.                                                                                                                                                                                             |
+| Bookmark drag-and-drop/editing                        | Deferred; the bounded right-edge reader/opener may add fixed open/folder/Library context actions, but it must not add drag editing, URL exposure, or a cloned Places menu.                                                                                                                                                                 |
 | Local unpacked-extension loader                       | Prohibited by Fennevia's project identity and security model; do not add arbitrary path persistence or a generic loader.                                                                                                                                                   |
 
 ## 4. Implementation checklist
@@ -96,8 +97,9 @@ Independently selected Fennevia direction:
 - [x] Re-resolve the owning native target at action time.
 - [x] Request the existing native-UI reveal before opening the complete
       original toolbar. ADR-042 later superseded reveal-before-click for the
-      six popup-opening actions; those now re-anchor Firefox-owned panels to
-      the clicked project host without revealing native chrome.
+      six ADR-042 popup-opening actions; ADR-057 later adds the seventh
+      translation action. Those re-anchor Firefox-owned panels to the clicked
+      project host without revealing native chrome.
 - [x] Delegate site identity, protections, site permissions, native Downloads,
       extensions, app menu, settings, and customization to Firefox's current
       implementation.

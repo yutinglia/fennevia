@@ -11,6 +11,7 @@ import {
   nativeUiAttributes,
   nativeUiChromeBackgroundProperty,
   nativeUiHideDelayMs,
+  nativeUiPopupAnchorId,
   nativeUiStyleId,
 } from "../profile/chrome/fennevia/content/runtime/NativeUi.sys.mjs";
 
@@ -30,6 +31,7 @@ class FakeElement {
     this._children = [];
     this._listeners = new Map();
     this._textContent = "";
+    this.moveToAnchorCalls = [];
     this.style = {
       _properties: new Map(),
       setProperty(name, value) {
@@ -197,6 +199,11 @@ class FakeElement {
       this.removeAttribute(name);
     }
     return enabled;
+  }
+
+  moveToAnchor(anchor, position, x = 0, y = 0) {
+    this.anchorNode = anchor;
+    this.moveToAnchorCalls.push([anchor, position, x, y]);
   }
 }
 
@@ -571,7 +578,17 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
   });
 
   const style = fixture.document.getElementById(nativeUiStyleId);
+  const popupProxyAnchor = fixture.document.getElementById(
+    nativeUiPopupAnchorId,
+  );
   assert.equal(style.parentElement, fixture.frame);
+  assert.equal(popupProxyAnchor.parentElement, fixture.frame);
+  assert.equal(popupProxyAnchor.getAttribute("aria-hidden"), "true");
+  assert.equal(
+    popupProxyAnchor.hasAttribute("data-fennevia-native-popup-anchor"),
+    true,
+  );
+  assert.match(popupProxyAnchor.getAttribute("style"), /pointer-events: none/u);
   assert.equal(style.sheet.cssRules.length, 7);
   assert.match(style.textContent, /#browser > #tabbrowser-tabbox/u);
   assert.match(
@@ -611,6 +628,7 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
   assert.equal(controller.dispose(), true);
   assert.equal(controller.dispose(), false);
   assert.equal(fixture.document.getElementById(nativeUiStyleId), null);
+  assert.equal(fixture.document.getElementById(nativeUiPopupAnchorId), null);
   assert.equal(fixture.document.observers.size, 0);
   assert.equal(fixture.document.listenerCount(), 0);
   assert.equal(fixture.window.listenerCount(), 0);
@@ -734,7 +752,7 @@ test("Urlbar handoff reveals before focus and releases only after native focus l
   controller.dispose();
 });
 
-test("native popup anchors and an open unsupported sidebar hold the reversible reveal", async () => {
+test("intentional native access popups and an open unsupported sidebar hold the reversible reveal", async () => {
   const fixture = createFixture();
   const controller = createNativeUiController({
     window: fixture.window,
@@ -758,6 +776,7 @@ test("native popup anchors and an open unsupported sidebar hold the reversible r
     "panel",
     "test-native-panel",
   );
+  assert.equal(controller.revealForToolbar(), true);
   panel.anchorNode = fixture.navTarget;
   panel.setAttribute("state", "showing");
   fixture.document.dispatch("popupshowing", panel);
@@ -766,6 +785,7 @@ test("native popup anchors and an open unsupported sidebar hold the reversible r
 
   panel.setAttribute("state", "closed");
   fixture.document.dispatch("popuphidden", panel);
+  fixture.window.flushAnimationFrames();
   await waitForNativeHide();
   assert.equal(controller.snapshot().revealed, false);
 
@@ -775,6 +795,387 @@ test("native popup anchors and an open unsupported sidebar hold the reversible r
   assert.equal(controller.snapshot().revealed, false);
 
   controller.dispose();
+});
+
+test("ordinary hidden-toolbox popups use the project proxy anchor without revealing native chrome", async () => {
+  const fixture = createFixture();
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  fixture.document.documentElement.setAttribute("data-fennevia-active", "");
+  const proxyAnchor = fixture.document.getElementById(nativeUiPopupAnchorId);
+
+  const exercisePopup = async ({ id, useDocumentPopupNode = false }) => {
+    const panel = append(
+      fixture.document,
+      fixture.document.body,
+      XUL_NAMESPACE,
+      "panel",
+      id,
+    );
+    if (useDocumentPopupNode) {
+      fixture.document.popupNode = fixture.navTarget;
+    } else {
+      panel.anchorNode = fixture.navTarget;
+    }
+    panel.setAttribute("state", "showing");
+    fixture.document.dispatch("popupshowing", panel);
+    assert.equal(controller.snapshot().revealed, false);
+    assert.equal(controller.snapshot().openPopupCount, 0);
+    assert.equal(controller.snapshot().pendingPopupProxyCount, 1);
+
+    panel.setAttribute("state", "open");
+    fixture.document.dispatch("popupshown", panel);
+    await delay(20);
+    assert.equal(panel.anchorNode, proxyAnchor);
+    assert.deepEqual(panel.moveToAnchorCalls.at(-1), [
+      proxyAnchor,
+      "after_end",
+      0,
+      0,
+    ]);
+    assert.equal(controller.snapshot().revealed, false);
+    assert.equal(controller.snapshot().pendingPopupProxyCount, 0);
+    assert.equal(controller.snapshot().proxiedPopupCount, 1);
+
+    panel.setAttribute("state", "closed");
+    fixture.document.dispatch("popuphidden", panel);
+    fixture.document.popupNode = null;
+    await waitForNativeHide();
+    assert.equal(controller.snapshot().proxiedPopupCount, 0);
+    panel.remove();
+  };
+
+  await exercisePopup({ id: "full-page-translations-panel" });
+  await exercisePopup({ id: "editBookmarkPanel" });
+
+  controller.dispose();
+});
+
+test("Firefox security notifications are pre-anchored without a post-show move and fail open otherwise", async () => {
+  const fixture = createFixture();
+  const anchorCalls = [];
+  const originalGetVisibleAnchorElement = function (anchorElement) {
+    anchorCalls.push(anchorElement);
+    return anchorElement;
+  };
+  const popupNotifications = {
+    _getVisibleAnchorElement: originalGetVisibleAnchorElement,
+  };
+  fixture.window.PopupNotifications = popupNotifications;
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  fixture.document.documentElement.setAttribute("data-fennevia-active", "");
+  const proxyAnchor = fixture.document.getElementById(nativeUiPopupAnchorId);
+  const panel = append(
+    fixture.document,
+    fixture.document.body,
+    XUL_NAMESPACE,
+    "panel",
+    "notification-popup",
+  );
+  panel.anchorNode = popupNotifications._getVisibleAnchorElement(
+    fixture.navTarget,
+  );
+  assert.equal(panel.anchorNode, proxyAnchor);
+  assert.deepEqual(anchorCalls, [fixture.navTarget]);
+  panel.setAttribute("state", "showing");
+  fixture.document.dispatch("popupshowing", panel);
+
+  assert.equal(controller.snapshot().revealed, false);
+  assert.equal(controller.snapshot().openPopupCount, 0);
+  assert.equal(controller.snapshot().pendingPopupProxyCount, 0);
+  assert.equal(controller.snapshot().proxiedPopupCount, 1);
+
+  panel.setAttribute("state", "open");
+  fixture.document.dispatch("popupshown", panel);
+  await delay(20);
+
+  assert.equal(panel.moveToAnchorCalls.length, 0);
+  assert.equal(controller.snapshot().revealed, false);
+  assert.equal(controller.snapshot().proxiedPopupCount, 1);
+
+  panel.setAttribute("state", "closed");
+  fixture.document.dispatch("popuphidden", panel);
+  await waitForNativeHide();
+  assert.equal(controller.snapshot().revealed, false);
+  assert.equal(controller.snapshot().proxiedPopupCount, 0);
+
+  const projectHost = append(
+    fixture.document,
+    fixture.frame,
+    XHTML_NAMESPACE,
+    "button",
+    "security-notification-project-anchor",
+  );
+  panel.anchorNode = popupNotifications._getVisibleAnchorElement(projectHost);
+  assert.equal(panel.anchorNode, projectHost);
+  panel.setAttribute("state", "showing");
+  fixture.document.dispatch("popupshowing", panel);
+  assert.equal(controller.snapshot().revealed, true);
+  panel.setAttribute("state", "open");
+  fixture.document.dispatch("popupshown", panel);
+  await delay(20);
+  assert.equal(panel.moveToAnchorCalls.length, 0);
+  panel.setAttribute("state", "closed");
+  fixture.document.dispatch("popuphidden", panel);
+  await waitForNativeHide();
+  assert.equal(controller.snapshot().revealed, false);
+  controller.dispose();
+  assert.equal(
+    popupNotifications._getVisibleAnchorElement,
+    originalGetVisibleAnchorElement,
+  );
+});
+
+test("the PopupNotifications lazy getter is preserved until Firefox first requests it", () => {
+  const fixture = createFixture();
+  let getterCalls = 0;
+  const originalGetVisibleAnchorElement = (anchorElement) => anchorElement;
+  const popupNotifications = {
+    _getVisibleAnchorElement: originalGetVisibleAnchorElement,
+  };
+  const originalGetter = function () {
+    getterCalls += 1;
+    Object.defineProperty(this, "PopupNotifications", {
+      configurable: true,
+      enumerable: true,
+      value: popupNotifications,
+      writable: true,
+    });
+    return popupNotifications;
+  };
+  Object.defineProperty(fixture.window, "PopupNotifications", {
+    configurable: true,
+    enumerable: true,
+    get: originalGetter,
+  });
+
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  fixture.document.documentElement.setAttribute("data-fennevia-active", "");
+  assert.equal(getterCalls, 0);
+  assert.notEqual(
+    Object.getOwnPropertyDescriptor(fixture.window, "PopupNotifications").get,
+    originalGetter,
+  );
+
+  const owner = fixture.window.PopupNotifications;
+  const proxyAnchor = fixture.document.getElementById(nativeUiPopupAnchorId);
+  assert.equal(getterCalls, 1);
+  assert.equal(owner._getVisibleAnchorElement(fixture.navTarget), proxyAnchor);
+
+  controller.dispose();
+  assert.equal(owner._getVisibleAnchorElement, originalGetVisibleAnchorElement);
+  assert.equal(fixture.window.PopupNotifications, popupNotifications);
+  assert.equal(getterCalls, 1);
+});
+
+test("disposing before PopupNotifications materializes restores its lazy getter", () => {
+  const fixture = createFixture();
+  const originalGetter = () => ({
+    _getVisibleAnchorElement: (anchorElement) => anchorElement,
+  });
+  Object.defineProperty(fixture.window, "PopupNotifications", {
+    configurable: true,
+    get: originalGetter,
+  });
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+
+  controller.dispose();
+
+  assert.equal(
+    Object.getOwnPropertyDescriptor(fixture.window, "PopupNotifications").get,
+    originalGetter,
+  );
+});
+
+test("a feature-specific popup re-anchor wins over the deferred generic proxy", async () => {
+  const fixture = createFixture();
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  fixture.document.documentElement.setAttribute("data-fennevia-active", "");
+  const host = append(
+    fixture.document,
+    fixture.frame,
+    XHTML_NAMESPACE,
+    "button",
+    "fennevia-widget-button",
+  );
+  const panel = append(
+    fixture.document,
+    fixture.document.body,
+    XUL_NAMESPACE,
+    "panel",
+    "widget-panel",
+  );
+  fixture.document.addEventListener("popupshown", (event) => {
+    if (event.originalTarget === panel) {
+      panel.moveToAnchor(host, "after_end", 0, 0);
+    }
+  });
+
+  panel.anchorNode = fixture.navTarget;
+  panel.setAttribute("state", "showing");
+  fixture.document.dispatch("popupshowing", panel);
+  panel.setAttribute("state", "open");
+  fixture.document.dispatch("popupshown", panel);
+  await delay(20);
+
+  assert.equal(panel.anchorNode, host);
+  assert.equal(controller.snapshot().pendingPopupProxyCount, 0);
+  assert.equal(controller.snapshot().proxiedPopupCount, 0);
+  assert.equal(controller.snapshot().revealed, false);
+
+  controller.dispose();
+});
+
+test("disposing while a popup proxy is pending cancels the move and forgets the popup", async () => {
+  const fixture = createFixture();
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  fixture.document.documentElement.setAttribute("data-fennevia-active", "");
+  const panel = append(
+    fixture.document,
+    fixture.document.body,
+    XUL_NAMESPACE,
+    "panel",
+    "pending-native-panel",
+  );
+  panel.anchorNode = fixture.navTarget;
+  panel.setAttribute("state", "showing");
+  fixture.document.dispatch("popupshowing", panel);
+  panel.setAttribute("state", "open");
+  fixture.document.dispatch("popupshown", panel);
+
+  assert.equal(controller.snapshot().pendingPopupProxyCount, 1);
+  assert.equal(fixture.window.pendingTimerCount(), 1);
+  assert.equal(controller.dispose(), true);
+  assert.equal(fixture.window.pendingTimerCount(), 0);
+  await delay(20);
+  assert.equal(panel.anchorNode, fixture.navTarget);
+  assert.equal(panel.moveToAnchorCalls.length, 0);
+});
+
+test("an explicit nested-popup anchor wins over a stale document popup node", () => {
+  const fixture = createFixture();
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  fixture.document.documentElement.setAttribute("data-fennevia-active", "");
+  const parentPanel = append(
+    fixture.document,
+    fixture.document.body,
+    XUL_NAMESPACE,
+    "panel",
+    "parent-panel",
+  );
+  const nestedButton = append(
+    fixture.document,
+    parentPanel,
+    XUL_NAMESPACE,
+    "toolbarbutton",
+    "nested-settings-button",
+  );
+  const nestedMenu = append(
+    fixture.document,
+    fixture.document.body,
+    XUL_NAMESPACE,
+    "menupopup",
+    "nested-settings-menu",
+  );
+  nestedMenu.anchorNode = nestedButton;
+  fixture.document.popupNode = fixture.navTarget;
+  nestedMenu.setAttribute("state", "showing");
+
+  fixture.document.dispatch("popupshowing", nestedMenu);
+
+  assert.equal(controller.snapshot().pendingPopupProxyCount, 0);
+  assert.equal(controller.snapshot().openPopupCount, 0);
+  assert.equal(controller.snapshot().revealed, false);
+
+  controller.dispose();
+});
+
+test("unsupported or failed popup proxying fails open to Firefox chrome", async () => {
+  const missingFixture = createFixture();
+  const missingController = createNativeUiController({
+    window: missingFixture.window,
+    frame: missingFixture.frame,
+    onError: assert.fail,
+  });
+  missingFixture.document.documentElement.setAttribute(
+    "data-fennevia-active",
+    "",
+  );
+  const unsupportedPanel = append(
+    missingFixture.document,
+    missingFixture.document.body,
+    XUL_NAMESPACE,
+    "panel",
+    "unsupported-native-panel",
+  );
+  unsupportedPanel.moveToAnchor = undefined;
+  unsupportedPanel.anchorNode = missingFixture.navTarget;
+  unsupportedPanel.setAttribute("state", "showing");
+  missingFixture.document.dispatch("popupshowing", unsupportedPanel);
+  assert.equal(missingController.snapshot().revealed, true);
+  assert.equal(missingController.snapshot().openPopupCount, 1);
+  missingController.dispose();
+
+  const failedFixture = createFixture();
+  const errors = [];
+  const failedController = createNativeUiController({
+    window: failedFixture.window,
+    frame: failedFixture.frame,
+    onError: (error) => errors.push(error),
+  });
+  failedFixture.document.documentElement.setAttribute(
+    "data-fennevia-active",
+    "",
+  );
+  const failedPanel = append(
+    failedFixture.document,
+    failedFixture.document.body,
+    XUL_NAMESPACE,
+    "panel",
+    "failed-native-panel",
+  );
+  failedPanel.anchorNode = failedFixture.navTarget;
+  failedPanel.moveToAnchor = () => {
+    throw new Error("synthetic move failure");
+  };
+  failedPanel.setAttribute("state", "showing");
+  failedFixture.document.dispatch("popupshowing", failedPanel);
+  failedPanel.setAttribute("state", "open");
+  failedFixture.document.dispatch("popupshown", failedPanel);
+  await delay(20);
+
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].fenneviaCode, "FENNEVIA_NATIVE_UI_POPUP_PROXY_FAILED");
+  assert.equal(failedController.snapshot().suspended, true);
+  assert.equal(failedController.snapshot().revealed, false);
+  failedController.dispose();
 });
 
 test("Fennevia-anchored and token-listed panels do not reveal native chrome", async () => {
@@ -934,6 +1335,34 @@ test("partial activation CSS suspends native hiding and reports one deterministi
 
   assert.equal(errors.length, 1);
   assert.equal(errors[0].fenneviaCode, "FENNEVIA_NATIVE_UI_STYLE_PARTIAL");
+  assert.equal(root.hasAttribute(nativeUiAttributes.suspended), true);
+  assert.equal(root.hasAttribute(nativeUiAttributes.revealed), false);
+
+  controller.dispose();
+  assert.equal(root.hasAttribute(nativeUiAttributes.suspended), false);
+});
+
+test("popup proxy anchor mutation suspends native hiding and reports one deterministic failure", () => {
+  const fixture = createFixture();
+  const errors = [];
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: (error) => errors.push(error),
+  });
+  const root = fixture.document.documentElement;
+  root.setAttribute("data-fennevia-active", "");
+  const popupProxyAnchor = fixture.document.getElementById(
+    nativeUiPopupAnchorId,
+  );
+
+  popupProxyAnchor.setAttribute("style", "position: fixed;");
+
+  assert.equal(errors.length, 1);
+  assert.equal(
+    errors[0].fenneviaCode,
+    "FENNEVIA_NATIVE_UI_POPUP_PROXY_INVALID",
+  );
   assert.equal(root.hasAttribute(nativeUiAttributes.suspended), true);
   assert.equal(root.hasAttribute(nativeUiAttributes.revealed), false);
 

@@ -39,6 +39,7 @@ function createEventTarget() {
 
 function createNativeWindow({ privateWindow = false } = {}) {
   const document = { defaultView: null, documentURI: BROWSER_URI };
+  const placesOrganizerCalls = [];
   const window = {
     BROWSER_NEW_TAB_URL: privateWindow
       ? "about:privatebrowsing"
@@ -49,6 +50,12 @@ function createNativeWindow({ privateWindow = false } = {}) {
       tabContainer: createEventTarget(),
       tabs: [],
     },
+    PlacesCommandHook: {
+      showPlacesOrganizer(item) {
+        placesOrganizerCalls.push(item);
+      },
+    },
+    placesOrganizerCalls,
   };
   document.defaultView = window;
   return window;
@@ -285,6 +292,16 @@ test("roots expose localized bounded ordinary data with opaque IDs only", async 
         .assertRequiredCapabilities()
         .every((capability) => capability.available),
     );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("bookmark management opens Firefox Library through its retained owner", () => {
+  const pair = createController();
+  try {
+    assert.equal(pair.controller.bookmarks.manage(), true);
+    assert.deepEqual(pair.window.placesOrganizerCalls, ["UnfiledBookmarks"]);
   } finally {
     disposePair(pair);
   }
@@ -647,6 +664,41 @@ test("a missing opening capability fails creation with current-build diagnostics
         error.fenneviaCode ===
           "FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING" &&
         error.fenneviaSymbol === "PlacesUIUtils.openNodeIn" &&
+        error.fenneviaBuildId === "20260810162159",
+    );
+  } finally {
+    boundary.dispose();
+  }
+});
+
+test("a missing Library owner fails creation with current-build diagnostics", () => {
+  const fixture = createPlacesFixture();
+  const window = createNativeWindow();
+  window.PlacesCommandHook.showPlacesOrganizer = undefined;
+  const boundary = createFirefoxBridgeBoundary({
+    buildId: "20260810162159",
+    contextId: `window-00000000-0000-4000-8000-${String(
+      ++nextContextSequence,
+    ).padStart(12, "0")}`,
+    firefoxVersion: "153.0.4",
+    window,
+    windowKind: "normal",
+  });
+  try {
+    assert.throws(
+      () =>
+        createFirefoxBookmarksBridge({
+          boundary,
+          moduleLoader: fixture.moduleLoader,
+          onError() {},
+          window,
+        }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode ===
+          "FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING" &&
+        error.fenneviaSymbol ===
+          "window.PlacesCommandHook.showPlacesOrganizer" &&
         error.fenneviaBuildId === "20260810162159",
     );
   } finally {

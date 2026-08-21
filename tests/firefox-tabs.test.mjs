@@ -144,6 +144,10 @@ function createNativeWindow({ privateWindow = false } = {}) {
     },
     selectedBrowser,
     tabContainer,
+    translateTabContextMenu() {
+      actionCalls.push(["translateTabContextMenu"]);
+      tabContextMenu.translated = true;
+    },
     unpinTab(tab) {
       actionCalls.push(["unpinTab", tab]);
       if (!tab.hasAttribute("pinned")) {
@@ -204,9 +208,11 @@ function createNativeWindow({ privateWindow = false } = {}) {
     },
     id: "tabContextMenu",
     moveTo(screenX, screenY) {
+      actionCalls.push(["moveTabContextMenu"]);
       this.lastMoveTo = [screenX, screenY];
     },
     openPopup(triggerNode, position, x, y, isContextMenu) {
+      actionCalls.push(["openTabContextMenu"]);
       this.lastOpenPopup = [triggerNode, position, x, y, isContextMenu];
       this.triggerNode = triggerNode;
       this.dispatch("popupshown", this);
@@ -236,7 +242,12 @@ function createNativeWindow({ privateWindow = false } = {}) {
   };
 }
 
-function createController(native, errors = [], moduleLoader) {
+function createController(
+  native,
+  errors = [],
+  moduleLoader,
+  handoffOverrides = {},
+) {
   const contextId = `window-00000000-0000-4000-8000-${String(
     ++nextContextSequence,
   ).padStart(12, "0")}`;
@@ -249,15 +260,24 @@ function createController(native, errors = [], moduleLoader) {
       ? "private"
       : "normal",
   });
+  const handoffCalls = [];
   const controller = createFirefoxTabsBridge({
+    beginNativePopupHandoff(panelId) {
+      handoffCalls.push(["begin", panelId]);
+      return handoffOverrides.begin?.(panelId) ?? true;
+    },
     boundary,
+    endNativePopupHandoff(panelId) {
+      handoffCalls.push(["end", panelId]);
+      handoffOverrides.end?.(panelId);
+    },
     ...(moduleLoader === undefined ? {} : { moduleLoader }),
     onError(error) {
       errors.push(error);
     },
     window: native.window,
   });
-  return { boundary, controller };
+  return { boundary, controller, handoffCalls };
 }
 
 function disposePair(pair) {
@@ -529,7 +549,11 @@ test("missing required tabs capabilities fail with typed current-build diagnosti
     assert.throws(
       () =>
         createFirefoxTabsBridge({
+          beginNativePopupHandoff() {
+            return true;
+          },
           boundary,
+          endNativePopupHandoff() {},
           onError() {},
           window: native.window,
         }),
@@ -538,6 +562,45 @@ test("missing required tabs capabilities fail with typed current-build diagnosti
         error.fenneviaCode === "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING" &&
         error.fenneviaSymbol === "window.gBrowser.unpinTab" &&
         error.fenneviaBuildId === "20260810162159",
+    );
+  } finally {
+    boundary.dispose();
+  }
+});
+
+test("missing tab context-menu translation fails before the native popup opens", () => {
+  const native = createNativeWindow();
+  native.gBrowser.translateTabContextMenu = undefined;
+  const boundary = createFirefoxBridgeBoundary({
+    buildId: "20260810162159",
+    contextId: "window-00000000-0000-4000-8000-888888888888",
+    firefoxVersion: "153.0.4",
+    window: native.window,
+    windowKind: "normal",
+  });
+  try {
+    assert.throws(
+      () =>
+        createFirefoxTabsBridge({
+          beginNativePopupHandoff() {
+            return true;
+          },
+          boundary,
+          endNativePopupHandoff() {},
+          onError() {},
+          window: native.window,
+        }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING" &&
+        error.fenneviaSymbol === "window.gBrowser.translateTabContextMenu" &&
+        error.fenneviaBuildId === "20260810162159",
+    );
+    assert.equal(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "openTabContextMenu",
+      ),
+      false,
     );
   } finally {
     boundary.dispose();
@@ -674,8 +737,14 @@ test("move, mute, and native context-menu handoff stay inside the bridge", () =>
     assert.equal(pair.controller.tabs.snapshot()[0].audio, "muted");
 
     pair.controller.tabs.openContextMenu(firstId, { screenX: 24, screenY: 48 });
+    assert.equal(native.tabContextMenu.translated, true);
     assert.equal(native.tabContextMenu.triggerNode, native.tabs[1]);
     assert.deepEqual(native.tabContextMenu.lastMoveTo, [24, 48]);
+    assert.deepEqual(
+      native.gBrowser.actionCalls.slice(-3).map((call) => call[0]),
+      ["translateTabContextMenu", "openTabContextMenu", "moveTabContextMenu"],
+    );
+    assert.deepEqual(pair.handoffCalls, [["begin", "tabContextMenu"]]);
     assert.deepEqual(
       events
         .filter((event) => event.type === "context-menu")
@@ -684,6 +753,10 @@ test("move, mute, and native context-menu handoff stay inside the bridge", () =>
     );
 
     native.tabContextMenu.hidePopup();
+    assert.deepEqual(pair.handoffCalls, [
+      ["begin", "tabContextMenu"],
+      ["end", "tabContextMenu"],
+    ]);
     assert.deepEqual(
       events
         .filter((event) => event.type === "context-menu")
@@ -709,6 +782,69 @@ test("move, mute, and native context-menu handoff stay inside the bridge", () =>
   }
 });
 
+test("context-menu open failures and disposal release native UI handoffs", () => {
+  const failedNative = createNativeWindow();
+  failedNative.tabContextMenu.openPopup = () => {
+    throw new Error("popup unavailable");
+  };
+  const failedPair = createController(failedNative);
+  try {
+    const tabId = failedPair.controller.tabs.snapshot()[0].id;
+    assert.throws(
+      () =>
+        failedPair.controller.tabs.openContextMenu(tabId, {
+          screenX: 10,
+          screenY: 20,
+        }),
+      /FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_REJECTED/u,
+    );
+    assert.deepEqual(failedPair.handoffCalls, [
+      ["begin", "tabContextMenu"],
+      ["end", "tabContextMenu"],
+    ]);
+  } finally {
+    disposePair(failedPair);
+  }
+
+  const openNative = createNativeWindow();
+  const openPair = createController(openNative);
+  const tabId = openPair.controller.tabs.snapshot()[0].id;
+  openPair.controller.tabs.openContextMenu(tabId, {
+    screenX: 10,
+    screenY: 20,
+  });
+  assert.equal(openPair.controller.dispose(), true);
+  assert.deepEqual(openPair.handoffCalls, [
+    ["begin", "tabContextMenu"],
+    ["end", "tabContextMenu"],
+  ]);
+  openPair.boundary.dispose();
+});
+
+test("a rejected native UI handoff prevents the tab context menu from opening", () => {
+  const native = createNativeWindow();
+  const pair = createController(native, [], undefined, {
+    begin() {
+      return false;
+    },
+  });
+  try {
+    const tabId = pair.controller.tabs.snapshot()[0].id;
+    assert.throws(
+      () =>
+        pair.controller.tabs.openContextMenu(tabId, {
+          screenX: 10,
+          screenY: 20,
+        }),
+      /FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_HANDOFF_REJECTED/u,
+    );
+    assert.equal(native.tabContextMenu.triggerNode, undefined);
+    assert.deepEqual(pair.handoffCalls, [["begin", "tabContextMenu"]]);
+  } finally {
+    disposePair(pair);
+  }
+});
+
 test("missing moveTabTo fails health with a typed current-build diagnostic", () => {
   const native = createNativeWindow();
   native.gBrowser.moveTabTo = undefined;
@@ -723,7 +859,11 @@ test("missing moveTabTo fails health with a typed current-build diagnostic", () 
     assert.throws(
       () =>
         createFirefoxTabsBridge({
+          beginNativePopupHandoff() {
+            return true;
+          },
           boundary,
+          endNativePopupHandoff() {},
           onError() {},
           window: native.window,
         }),

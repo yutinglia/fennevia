@@ -289,7 +289,14 @@ Rules:
 - audio/attention/PiP are booleans or a closed enum; color names may appear in
   `data-fennevia-container-color` because they are allowlisted tokens;
 - native `#tabContextMenu` remains the owner of Duplicate, Close others, Send
-  tab, Reopen in container, and Undo close.
+  tab, Reopen in container, and Undo close;
+- the required synchronous Firefox translation owner activates lazy Fluent IDs
+  before direct popup open; Fennevia stores or logs no native label;
+- a fixed NativeUi `tabContextMenu` token suppresses original-chrome reveal and
+  is released on open failure, popup close, or bridge disposal;
+- drag preview uses the existing project tab button plus one CSS insertion
+  marker and carries only the opaque tab ID, never a title, URL, thumbnail, or
+  favicon bytes.
 
 ### 7.2 Navigation and address/status popup — implemented (#12 and #13)
 
@@ -387,26 +394,29 @@ Source inventory and real HTTP/HTTPS/internal/error/permission/protection/
 normal/second/private/fail-open evidence are in ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-### 7.4 Browser-tool native handoffs — implemented ADR-037, popup placement ADR-042, widget zones and customize mode ADR-044/ADR-045/ADR-046/ADR-047
+### 7.4 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, widget zones and customize mode ADR-044/ADR-045/ADR-046/ADR-047
 
 Each managed window owns one `browser-tools` Firefox controller and one ordinary
-application adapter. The controller validates twenty-one required current
-capabilities while native UI is visible and accepts only nine fixed actions:
+application adapter. The controller validates twenty required current
+capabilities and one optional translations owner while native UI is visible,
+and accepts only ten fixed actions:
 site information, protections, site permissions, native Downloads, Unified
-Extensions, application menu, Settings, native customization mode, and complete
-original-toolbar access. Every action re-resolves its owner. The six popup
+Extensions, built-in full-page translation, application menu, Settings, native
+customization mode, and complete original-toolbar access. Every action
+re-resolves its owner. The seven popup
 actions require a project-owned XHTML host in this window, keep native chrome
 hidden, and re-anchor the Firefox-owned panel beside that host. Settings,
 customization, and complete original-toolbar access keep their previous owners;
 only the complete-toolbar action still requests reversible navbar reveal. The
 top row does not show dedicated original-toolbar, Downloads, or
-native-customize buttons; Downloads is available as the placeable
-`show-downloads` widget, and the application menu plus fail-open remain the
-visible native-chrome access paths.
+native-customize buttons; Downloads and translation are available as the
+placeable `show-downloads` and `show-translate` widgets, and the application
+menu plus fail-open remain the visible native-chrome access paths.
 
-Only nine availability booleans, the fixed action/result values, an optional
-host for popup actions, and a privacy-safe `{ open, type: "native-popup" }`
-hold cross the bridge. Host nodes never enter snapshots, datasets, or logs.
+Only ten availability booleans, the fixed action/result values, an optional
+host and transient initiating event for popup actions, and a privacy-safe
+`{ open, type: "native-popup" }` hold cross the bridge. Host/event objects are
+never serialized, retained in snapshots, placed in datasets, or logged.
 The following remain privileged and absent from Svelte, DOM attributes,
 persistence, normal logs, and project network requests:
 
@@ -521,6 +531,15 @@ writes Firefox-owned documentElement styles. Forced colors and an empty token
 remove that property so Firefox `--toolbar-background-color` remains
 authoritative.
 
+ADR-055's four common panel context menus contain only fixed localized labels,
+closed action names, and ephemeral coordinates clamped to the project frame.
+They delegate through existing typed tabs/bookmarks/browser-tools adapters.
+The right bookmark-row menu carries only its existing opaque ID; the left tab
+keeps Firefox's own menu. No URL, title, Places GUID, download detail, native
+node, private-window activity, or preference is added to menu state, datasets,
+logs, or persistence. Per-edge popup holds and document/window listeners exist
+only while a menu is open and are removed on every close or disposal path.
+
 ### 7.5 Bookmarks — implemented #14
 
 The Places controller is per window and holds native modules, records, GUIDs,
@@ -556,6 +575,15 @@ bookmark transition data, background-tab preference, native-window/default
 context policy, and private targeting. Fennevia does not provide a `loadURI` shortcut,
 bookmarklet execution, or project-owned principal.
 
+The fixed Manage Bookmarks action accepts no identifier or user text and calls
+the current window's required
+`PlacesCommandHook.showPlacesOrganizer("UnfiledBookmarks")`. Firefox owns the
+Library window, editing/search/import/export behavior, and reuse policy. A
+bookmark-row context menu offers only existing current/new-tab open, folder
+expand/collapse, and this Library action. It stores no URL or title beyond the
+already-rendered bounded row and releases its right-edge hold/listeners on
+dismissal or disposal.
+
 Firefox natively shares profile bookmarks with private windows. Fennevia shows
 that same native data but gives every private window an independent transient
 view, handle registry, observer subscription, selected root, loaded page,
@@ -568,7 +596,8 @@ bookmarks toolbar, sidebar, Library, dialogs, `Ctrl+D`, and management paths
 remain attached, visible, and authoritative. Initial query or required Places/
 opening capability failure blocks health and leaves those native paths usable.
 Source evidence and real hostile-title/private/fail-open tests are in
-`docs/research/firefox-153-bookmarks-surface.md` and ADR-029.
+`docs/research/firefox-153-bookmarks-surface.md`,
+`docs/research/firefox-153-154-panel-context-actions.md`, ADR-029, and ADR-055.
 
 ### 7.6 Downloads — implemented #32
 
@@ -810,9 +839,10 @@ Issue #37 adds only fixed read-only status/action availability and an explicit
 handoff to `window.openLocation()`. It does not replace native panels, prompts,
 providers, extension actions, or commands.
 
-ADR-037 and ADR-042 add fixed native browser-tool handoffs. They do not inspect
-or copy the sensitive panel data described in section 7.4; Firefox remains the
-panel, command, extension, download, customization, and window-control owner.
+ADR-037, ADR-042, ADR-056, and ADR-057 add fixed native browser-tool handoffs
+and popup placement. They do not inspect or copy the sensitive panel data described in
+section 7.4; Firefox remains the panel, prompt, command, extension, download,
+customization, and window-control owner.
 
 Issue #15 implements the narrow active-only boundary in ADR-032. One privileged
 controller validates exact Firefox 153 toolbar/sidebar/titlebar nodes and one
@@ -830,11 +860,29 @@ revealed/suspended. Native vertical-tab mode retains its navbar titlebar owner.
 The browser receives only a 7px gutter and the tabbox receives only
 border/radius/clip styling. Every native caption copy is collapsed at rest;
 ADR-038 project-owned top-row buttons call Firefox window commands without
-clicking those nodes. Native focus, toolbox-anchored Firefox doorhangers, an
-open native sidebar, #37 Urlbar handoff, and the ADR-037 original-toolbar
-action reveal the complete native owner. Fennevia-initiated Trust, permission,
-Downloads, extensions, and application-menu panels that are token-listed or
-re-anchored to a project host do not reveal the navbar. Customize,
+clicking those nodes. Native focus, an open native sidebar, #37 Urlbar handoff,
+and the ADR-037 original-toolbar action reveal the complete native owner.
+Fennevia-initiated Trust, permission, Downloads, extensions, and
+application-menu panels that are token-listed or re-anchored to a project host
+do not reveal the navbar. ADR-056 gives other non-security hidden-toolbox XUL popups one
+fixed project-owned, non-interactive proxy anchor after `popupshown`; it stores
+only popup references, timers, and counts per window and never reads popup
+children, labels, origins, permission state, extension identity, or actions.
+Missing/ineffective relocation reveals Firefox chrome and a thrown relocation
+suspends hiding before fail-open. ADR-057 excludes the shared
+`#notification-popup` from post-open movement. NativeUi wraps Firefox's lazy
+owner descriptor without reading it, invokes the original stored visible-anchor
+callback first, and substitutes the health-checked project proxy only for a
+hidden-toolbox anchor before initial placement. The exact callback/descriptor
+is restored on failure, unload, and disposal. A successful pre-anchor keeps
+original chrome hidden with one native security-delay cycle; unavailable or
+ineffective routing immediately holds complete native reveal. The
+owner-observed Firefox 154 AMO path currently uses that accepted native-chrome
+fallback. Fennevia reads no
+notification contents/actions. The placeable translation widget delegates to
+`FullPageTranslationsPanel.open(event)` and routes only the native panel to the
+clicked host; page text, languages, model state, and results never cross.
+Customize,
 native-dialog, and DOM-fullscreen state suspend project hiding. Window-modal
 suspension follows `#window-modal-dialog.open` or a current tab dialog, not a
 leftover `window-modal-open` attribute. Any missing,
@@ -847,7 +895,10 @@ data flow. ADR-050 adds only a local author sheet and
 `browser.startup.preXulSkeletonUI=false` in program defaults; it still transmits
 no browsing data. The detailed threat and coverage evidence is in
 `docs/research/firefox-153-content-only-activation.md` and
-`docs/research/firefox-153-startup-native-hide.md`.
+`docs/research/firefox-153-startup-native-hide.md`; ADR-056/ADR-057 source and
+security boundaries are recorded in
+`docs/research/firefox-153-154-native-popup-proxy.md` and
+`docs/research/firefox-153-154-install-notification-and-translations-widget.md`.
 
 ## 13. Private windows
 

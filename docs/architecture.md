@@ -266,10 +266,18 @@ indicators, middle-click close, drag and keyboard reorder, and Firefox-owned
 roving keyboard focus; pin, mute, and close remain sibling controls. Titles
 stay bounded text, favicon values use a strict internal/raster allowlist with a
 property-only image and explicit fallback, and no browsing value enters logs or
-diagnostics. Current source and runtime evidence is in
+diagnostics. The bridge synchronously activates Firefox's lazy tab-menu Fluent
+IDs before opening and acquires a NativeUi handoff token for the popup lifetime,
+so the real native-tab trigger neither produces blank static labels nor reveals
+the original toolbar. Dragging uses the current tab button as the browser drag
+image and one calculated before/after insertion marker; every terminal path
+clears it and the shared left pointer hold. Current source and runtime evidence
+is in
 `docs/research/firefox-153-tabs-bridge.md`,
 `docs/research/firefox-153-tab-strip.md`,
-`docs/research/firefox-153-tab-strip-parity.md`, ADR-024, ADR-025, and ADR-041.
+`docs/research/firefox-153-tab-strip-parity.md`,
+`docs/research/firefox-153-154-panel-context-actions.md`, ADR-024, ADR-025, and
+ADR-041.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather
@@ -304,7 +312,7 @@ paired `PlacesUtils.observers` listener, and keeps bookmark GUIDs, result
 records, URL objects, native node-like values, services, and the owning window
 inside the privileged layer. Its public object exposes only four localized root
 snapshots, opaque context-bound IDs, bounded child pages, one fixed tree-change
-event, and current/new-tab open actions.
+event, current/new-tab open actions, and one fixed Manage Bookmarks action.
 
 The bridge never calls the unimplemented `Bookmarks.fetchTree()`. A child page
 uses one parent lookup plus at most 32 indexed `Bookmarks.fetch()` calls; the
@@ -320,8 +328,13 @@ targets, then delegates node conversion and opening to
 `PlacesUIUtils.promiseNodeLikeFromFetchInfo()` and `openNodeIn()`. Firefox keeps
 URL security checks, trusted-link principal policy, bookmark transition data,
 background-tab preference, and private-window targeting. URLs never enter the
-public snapshot or DOM. See ADR-029 and
-`docs/research/firefox-153-bookmarks-surface.md`.
+public snapshot or DOM. Manage Bookmarks delegates to the owning window's
+`PlacesCommandHook.showPlacesOrganizer("UnfiledBookmarks")`, matching Firefox's
+current Library command without exposing its window. Bookmark/folder rows own
+a bounded text-only context menu using the existing opaque IDs and right-edge
+popup hold. See ADR-029,
+`docs/research/firefox-153-bookmarks-surface.md`, and
+`docs/research/firefox-153-154-panel-context-actions.md`.
 
 Issue #32 adds `src/firefox/downloads.ts` to the same generated private ESM.
 One controller per window imports the fixed current Downloads module, selects
@@ -358,11 +371,12 @@ observer is disconnected exactly once with the window. See ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
 ADR-037 adds `src/firefox/browser-tools.ts` to the same generated private ESM.
-One controller per window validates the current Firefox owners needed for nine
+One controller per window validates the current Firefox owners needed for ten
 actions: site information, protections, site permissions, native Downloads,
-Unified Extensions, application menu, Settings, native customization, and
-complete original-toolbar access. It re-resolves every owner at action time.
-ADR-042's six popup actions pass a project-owned XHTML host, keep native
+Unified Extensions, built-in full-page translation, application menu, Settings,
+native customization, and complete original-toolbar access. It re-resolves
+every owner at action time. ADR-042/ADR-057's seven popup actions pass a
+project-owned XHTML host, keep native
 chrome hidden, and re-anchor the Firefox panel beside that host. If the
 current owner throws after initializing a lazy panel, the bridge still
 opens the existing panel on that host. Popup position follows the host
@@ -382,21 +396,25 @@ awaits `gUnifiedExtensions.togglePanel()` to initialize the lazy view, ignores
 that owner's fire-and-forget native-button `PanelMultiView.openPopup`, then
 opens `#unified-extensions-panel` on the project host. The top-row Extensions
 control uses `mousedown` like the native button; keyboard still uses `click`.
+ADR-057's translation action calls `FullPageTranslationsPanel.open(event)` and
+routes only that owner's `PanelMultiView.openPopup` to the exact clicked host;
+missing translation support disables only the optional widget.
 The dedicated
 original-toolbar, Downloads, and native-customize buttons are not shown;
-Downloads is available as the placeable `show-downloads` widget, and the
-application menu plus fail-open remain the complete native-chrome access
-paths. Settings, customization, and the complete-toolbar action keep their
+Downloads and translation are available as the placeable `show-downloads` and
+`show-translate` widgets, and the application menu plus fail-open remain the
+complete native-chrome access paths. Settings, customization, and the complete-toolbar action keep their
 previous owners; the complete-toolbar action still reveals the current navbar
 and focuses an original navigation control instead of enumerating
 `CustomizableUI`. The
-public contract contains only nine fixed availability booleans, nine fixed
-action strings, an optional host for popup actions, and a privacy-safe
+public contract contains only ten fixed availability booleans, ten fixed
+action strings, an optional host/transient trigger event for popup actions, and a privacy-safe
 open/closed popup hold. It contains no URL, certificate, tracker, permission,
 extension, download, widget, preference, native node, handler, panel, or
 window. The unprivileged adapter validates results and releases its
-per-window reference on unmount. See ADR-037, ADR-042, and
-`docs/research/firefox-153-native-popup-anchoring.md`.
+per-window reference on unmount. See ADR-037, ADR-042, ADR-057,
+`docs/research/firefox-153-native-popup-anchoring.md`, and
+`docs/research/firefox-153-154-install-notification-and-translations-widget.md`.
 
 ADR-044 and ADR-045 add `src/firefox/toolbar-widgets.ts` and
 `src/firefox/customize-model.ts` to the same generated private ESM. One
@@ -463,6 +481,16 @@ shared framework-independent controller coordinates edge visibility, while
 each root retains independent component ownership. Mount, health, official
 unmount, and fresh-state remount are explicit frontend API operations.
 
+ADR-055 gives every edge root one project-owned common context-menu pattern.
+Neutral top/left/right/bottom content exposes a fixed useful action for that
+surface plus capability-backed Fennevia/native customization access. Tab and
+bookmark descendants stop propagation and keep their more specific owners.
+All menus remain ordinary XHTML below the existing roots, clamp to the shared
+frame, reuse the edge popup hold, and clean up focus/listeners/holds on every
+dismissal path. Native popup actions receive the stable edge panel element as
+their host and continue through existing adapters; no Firefox-owned node enters
+Svelte and no additional trigger, timer, or window-global coordinator exists.
+
 Issue #12 originally replaced the top placeholder with four accessible
 navigation controls and bounded status. ADR-037 keeps that navigation/tool
 state in one non-wrapping row. ADR-038 removes the top address cluster and
@@ -480,9 +508,10 @@ through `Escape`, pointer leave, and the documented keyboard shortcut.
 Responsive rules progressively hide secondary controls
 while retaining accessible names, Unified Extensions, Settings, and the
 application menu. The dedicated original-toolbar, Downloads, and
-native-customize buttons are not shown; Downloads is available as the
-placeable `show-downloads` widget, and the application menu plus fail-open
-remain the complete native-chrome access paths. The row consumes only
+native-customize buttons are not shown; Downloads and built-in translation are
+available as the placeable `show-downloads` and `show-translate` widgets, and
+the application menu plus fail-open remain the complete native-chrome access
+paths. The row consumes only
 ordinary adapters and the existing top-edge focus/reveal contract; it does
 not inspect native DOM or create another trigger, timer, controller, or widget
 registry. ADR-043 overlays a decorative 2px load light in that same top root
@@ -654,8 +683,8 @@ DOM marker: disposal removes every project state attribute. Safe start exits in
 AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute and never registers the startup hide sheet.
 
-ADR-032, as extended by ADR-037, ADR-038, ADR-042, and ADR-050, implements the
-gate with a seven-rule
+ADR-032, as extended by ADR-037, ADR-038, ADR-042, ADR-050, ADR-056, and ADR-057,
+implements the gate with a seven-rule
 project-owned style, a process-scoped first-paint author sheet, and two temporary root markers:
 
 ```text
@@ -683,24 +712,42 @@ recovery; ADR-038 collapses every native caption copy at rest and shows
 project-owned window controls on the right of the visible top row. No caption
 node is moved or replaced.
 
-Native focus, toolbox-anchored Firefox doorhangers, an open native sidebar, and
-explicit Urlbar or original-toolbar handoffs set temporary reveal. Fennevia-
-initiated Trust/permission/Downloads/extensions/application-menu panels that
-are token-listed or re-anchored to a project host do not reveal the navbar.
+Native focus, an open native sidebar, and explicit Urlbar or original-toolbar
+handoffs set temporary reveal. Fennevia-initiated
+Trust/permission/Downloads/extensions/application-menu panels that are
+token-listed or re-anchored to a project host do not reveal the navbar.
+ADR-056 extends that placement policy to every non-excluded non-security popup first opened
+against the hidden toolbox: after `popupshown`, NativeUi yields one event-loop
+turn to a more specific feature bridge, then moves the Firefox-owned popup to a
+fixed non-interactive proxy anchor in the project frame. Missing or ineffective
+`moveToAnchor()` retains the complete native reveal; a thrown move suspends
+hiding before fail-open. ADR-057 excludes `#notification-popup` from that
+post-open movement. Without eagerly materializing Firefox's lazy owner,
+NativeUi runs its visible-anchor callback first and substitutes the fixed
+project proxy only for a healthy hidden-toolbox anchor before initial popup
+placement. A successful pre-anchor keeps original chrome hidden and preserves
+one security-delay cycle; a missing or ineffective route immediately holds
+complete native reveal. The owner-observed Firefox 154 AMO path currently uses
+that accepted fallback. Deliberately revealed native chrome, sidebar/content
+popups, token/host handoffs, tooltips, tab preview, and Firefox's
+`nopreventnavboxhide` carve-out are unchanged.
 Customize and current native-dialog state set suspension. Window-modal
 ownership follows `#window-modal-dialog.open` (and tab-dialog markers) rather
 than a leftover `window-modal-open` attribute after the HTML dialog has
 closed. DOM fullscreen also suspends project hiding
 while Firefox's own fullscreen CSS remains authoritative; browser fullscreen
-retains active mode. The controller validates exact nodes and seven parsed
-rules before health, then watches integrity. Invalid or partial CSS and stable
-target drift suspend first and request per-window fail-open disposal. Clearing
-active restores Firefox immediately without Svelte or restart. Retaining all
-native DOM preserves implicit command, popup, customization, titlebar, and
-platform integration.
+retains active mode. The controller validates exact nodes, seven parsed rules,
+and the proxy anchor's fixed identity/parent/style before health, then watches
+integrity. Invalid or partial CSS, proxy mutation, and stable target drift
+suspend first and request per-window fail-open disposal. Clearing active
+restores Firefox immediately without Svelte or restart. Retaining all native
+DOM preserves implicit command, popup, customization, titlebar, and platform
+integration.
 
 The complete owner/replacement/fallback inventory and Firefox 153 evidence are
-in `docs/research/firefox-153-content-only-activation.md`.
+in `docs/research/firefox-153-content-only-activation.md`; the Firefox 153/154
+popup-proxy extension is in
+`docs/research/firefox-153-154-native-popup-proxy.md`.
 
 ## 8. Override policy
 

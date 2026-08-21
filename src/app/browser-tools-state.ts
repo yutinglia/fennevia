@@ -4,6 +4,7 @@ export const browserToolActions = Object.freeze([
   "site-permissions",
   "downloads",
   "extensions",
+  "translate",
   "application-menu",
   "settings",
   "customize",
@@ -16,6 +17,7 @@ export const popupBrowserToolActions = Object.freeze([
   "site-permissions",
   "downloads",
   "extensions",
+  "translate",
   "application-menu",
 ] as const);
 
@@ -32,6 +34,7 @@ export type BrowserToolsSnapshot = Readonly<{
   settings: boolean;
   siteInformation: boolean;
   sitePermissions: boolean;
+  translate: boolean;
 }>;
 
 export type BrowserToolsPopupEvent = Readonly<{
@@ -40,7 +43,11 @@ export type BrowserToolsPopupEvent = Readonly<{
 }>;
 
 export type BrowserToolsBridge = Readonly<{
-  invoke: (action: BrowserToolAction, host?: unknown) => Promise<boolean>;
+  invoke: (
+    action: BrowserToolAction,
+    host?: unknown,
+    triggerEvent?: unknown,
+  ) => Promise<boolean>;
   snapshot: () => BrowserToolsSnapshot;
   subscribe: (
     listener: (event: BrowserToolsPopupEvent) => void,
@@ -49,7 +56,11 @@ export type BrowserToolsBridge = Readonly<{
 
 export type BrowserToolsStateAdapter = Readonly<{
   dispose: () => boolean;
-  invoke: (action: BrowserToolAction, host?: unknown) => Promise<boolean>;
+  invoke: (
+    action: BrowserToolAction,
+    host?: unknown,
+    triggerEvent?: unknown,
+  ) => Promise<boolean>;
   snapshot: () => BrowserToolsSnapshot;
   status: () => Readonly<{
     disposed: boolean;
@@ -105,7 +116,8 @@ export function copyBrowserToolsSnapshot(
     typeof candidate.protections !== "boolean" ||
     typeof candidate.settings !== "boolean" ||
     typeof candidate.siteInformation !== "boolean" ||
-    typeof candidate.sitePermissions !== "boolean"
+    typeof candidate.sitePermissions !== "boolean" ||
+    typeof candidate.translate !== "boolean"
   ) {
     throw createStateError("FENNEVIA_BROWSER_TOOLS_STATE_SNAPSHOT_INVALID");
   }
@@ -119,6 +131,7 @@ export function copyBrowserToolsSnapshot(
     settings: candidate.settings,
     siteInformation: candidate.siteInformation,
     sitePermissions: candidate.sitePermissions,
+    translate: candidate.translate,
   });
 }
 
@@ -174,7 +187,11 @@ export function createBrowserToolsStateAdapter(
       return true;
     },
 
-    async invoke(action: BrowserToolAction, host?: unknown): Promise<boolean> {
+    async invoke(
+      action: BrowserToolAction,
+      host?: unknown,
+      triggerEvent?: unknown,
+    ): Promise<boolean> {
       if (!isBrowserToolAction(action)) {
         throw createStateError("FENNEVIA_BROWSER_TOOLS_STATE_ACTION_INVALID");
       }
@@ -184,7 +201,7 @@ export function createBrowserToolsStateAdapter(
       ) {
         throw createStateError("FENNEVIA_BROWSER_TOOLS_STATE_HOST_INVALID");
       }
-      const result = await requireBridge().invoke(action, host);
+      const result = await requireBridge().invoke(action, host, triggerEvent);
       if (typeof result !== "boolean") {
         throw createStateError("FENNEVIA_BROWSER_TOOLS_STATE_RESULT_INVALID");
       }

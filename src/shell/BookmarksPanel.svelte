@@ -11,6 +11,7 @@
     type BrowserBookmarksState,
     type BrowserBookmarksStateAdapter,
   } from "../app/bookmark-state";
+  import type { EdgeShellController } from "../app/edge-surfaces";
   import { translate, type MessageKey, type MessageVars } from "../app/i18n";
   import {
     defaultFenneviaLocale,
@@ -20,7 +21,17 @@
   type Props = Readonly<{
     bookmarks: BrowserBookmarksStateAdapter;
     localeId?: FenneviaLocale;
+    onDismiss: () => void;
     onFatalError: (error: unknown) => void;
+    shell: EdgeShellController;
+  }>;
+
+  type BookmarkContextMenu = Readonly<{
+    bookmarkId: string;
+    expanded: boolean;
+    kind: "bookmark" | "folder";
+    left: number;
+    top: number;
   }>;
 
   const props: Props = $props();
@@ -34,7 +45,12 @@
   );
   let localMessage = $state("");
   let rovingBookmarkId: string | null = $state(null);
+  let bookmarkPanel: HTMLElement | undefined = $state();
+  let contextMenu: BookmarkContextMenu | null = $state(null);
+  let contextMenuElement: HTMLDivElement | undefined = $state();
   let rootSelect: HTMLSelectElement | undefined = $state();
+  let contextMenuRestoreTarget: HTMLElement | null = null;
+  let contextMenuSequence = 0;
   let rows: readonly BookmarkVisibleRow[] = $derived(
     getVisibleBookmarkRows(current),
   );
@@ -42,6 +58,94 @@
     bookmarkId: string;
     node: HTMLButtonElement;
   }> = [];
+
+  const reportAsyncError = (work: Promise<unknown>): void => {
+    void work.catch(props.onFatalError);
+  };
+
+  const blurFocusedContextMenuItem = (): void => {
+    const menu = contextMenuElement;
+    const activeElement = menu?.ownerDocument.activeElement;
+    if (
+      menu &&
+      activeElement instanceof HTMLElement &&
+      menu.contains(activeElement)
+    ) {
+      activeElement.blur();
+    }
+  };
+
+  const closeBookmarkContextMenu = (restoreFocus: boolean): void => {
+    if (!contextMenu) {
+      return;
+    }
+    contextMenuSequence += 1;
+    const restoreTarget = contextMenuRestoreTarget;
+    if (restoreFocus && restoreTarget?.isConnected) {
+      restoreTarget.focus({ preventScroll: true });
+    } else {
+      blurFocusedContextMenuItem();
+    }
+    contextMenu = null;
+    contextMenuRestoreTarget = null;
+    props.shell.setPopupHeld("right", false);
+  };
+
+  const openBookmarkContextMenu = async (
+    row: BookmarkVisibleItemRow,
+    source: HTMLElement,
+    clientX: number,
+    clientY: number,
+    restoreFocus: boolean,
+  ): Promise<void> => {
+    if (row.node.kind === "separator" || !bookmarkPanel) {
+      return;
+    }
+    const sequence = ++contextMenuSequence;
+    const panelBounds = bookmarkPanel.getBoundingClientRect();
+    const wasClosed = contextMenu === null;
+    contextMenuRestoreTarget = restoreFocus ? source : null;
+    rovingBookmarkId = row.node.id;
+    contextMenu = {
+      bookmarkId: row.node.id,
+      expanded: row.expanded,
+      kind: row.node.kind,
+      left: Math.max(6, clientX - panelBounds.left),
+      top: Math.max(6, clientY - panelBounds.top),
+    };
+    if (wasClosed) {
+      props.shell.setPopupHeld("right", true);
+    }
+    await tick();
+    if (
+      sequence !== contextMenuSequence ||
+      !contextMenu ||
+      !contextMenuElement ||
+      !bookmarkPanel
+    ) {
+      return;
+    }
+    const menuBounds = contextMenuElement.getBoundingClientRect();
+    const currentPanelBounds = bookmarkPanel.getBoundingClientRect();
+    contextMenu = {
+      ...contextMenu,
+      left: Math.min(
+        Math.max(6, clientX - currentPanelBounds.left),
+        Math.max(6, currentPanelBounds.width - menuBounds.width - 6),
+      ),
+      top: Math.min(
+        Math.max(6, clientY - currentPanelBounds.top),
+        Math.max(6, currentPanelBounds.height - menuBounds.height - 6),
+      ),
+    };
+    await tick();
+    if (sequence !== contextMenuSequence) {
+      return;
+    }
+    contextMenuElement
+      ?.querySelector<HTMLButtonElement>('[role="menuitem"]')
+      ?.focus({ preventScroll: true });
+  };
 
   const itemRows = (
     value: readonly BookmarkVisibleRow[] = rows,
@@ -202,10 +306,109 @@
     void openBookmark(bookmarkId, "new-tab");
   };
 
+  const handleBookmarkContextMenu = (
+    event: MouseEvent,
+    row: BookmarkVisibleItemRow,
+  ): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    const source = event.currentTarget;
+    if (!(source instanceof HTMLElement)) {
+      return;
+    }
+    reportAsyncError(
+      openBookmarkContextMenu(row, source, event.clientX, event.clientY, false),
+    );
+  };
+
+  const activateContextMenuAction = (
+    action:
+      "manage-bookmarks" | "open-current" | "open-new-tab" | "toggle-folder",
+  ): void => {
+    const target = contextMenu;
+    if (!target) {
+      return;
+    }
+    closeBookmarkContextMenu(true);
+    if (action === "manage-bookmarks") {
+      try {
+        props.onDismiss();
+        props.bookmarks.manage();
+      } catch (error) {
+        props.onFatalError(error);
+      }
+      return;
+    }
+    if (action === "toggle-folder") {
+      reportAsyncError(toggleFolder(target.bookmarkId));
+      return;
+    }
+    reportAsyncError(
+      openBookmark(
+        target.bookmarkId,
+        action === "open-new-tab" ? "new-tab" : "current",
+      ),
+    );
+  };
+
+  const handleContextMenuKeydown = (event: KeyboardEvent): void => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeBookmarkContextMenu(true);
+      return;
+    }
+    if (!contextMenuElement) {
+      return;
+    }
+    const menuItems = Array.from(
+      contextMenuElement.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]',
+      ),
+    );
+    const currentIndex = menuItems.findIndex(
+      (item) => item === item.ownerDocument.activeElement,
+    );
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % menuItems.length;
+    } else if (event.key === "ArrowUp") {
+      nextIndex = (currentIndex - 1 + menuItems.length) % menuItems.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = menuItems.length - 1;
+    }
+    if (nextIndex !== null && menuItems[nextIndex]) {
+      event.preventDefault();
+      event.stopPropagation();
+      menuItems[nextIndex].focus({ preventScroll: true });
+    }
+  };
+
   const handleItemKeydown = async (
     event: KeyboardEvent,
     row: BookmarkVisibleItemRow,
   ): Promise<void> => {
+    if (
+      event.key === "ContextMenu" ||
+      (event.shiftKey && event.key === "F10")
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      const source = event.currentTarget;
+      if (source instanceof HTMLElement) {
+        const bounds = source.getBoundingClientRect();
+        await openBookmarkContextMenu(
+          row,
+          source,
+          bounds.left + Math.min(24, bounds.width / 2),
+          bounds.bottom,
+          true,
+        );
+      }
+      return;
+    }
     const visibleItems = itemRows();
     const currentIndex = visibleItems.findIndex(
       (candidate) => candidate.node.id === row.node.id,
@@ -291,13 +494,39 @@
     return t("bookmarks.hint");
   };
 
+  $effect(() => {
+    if (!contextMenu || !bookmarkPanel) {
+      return;
+    }
+    const ownerDocument = bookmarkPanel.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView;
+    const closeFromPointer = (event: PointerEvent): void => {
+      const target = event.target;
+      if (target instanceof Node && contextMenuElement?.contains(target)) {
+        return;
+      }
+      closeBookmarkContextMenu(false);
+    };
+    const closeFromBlur = (): void => closeBookmarkContextMenu(false);
+    ownerDocument.addEventListener("pointerdown", closeFromPointer, true);
+    ownerWindow?.addEventListener("blur", closeFromBlur);
+    return () => {
+      ownerDocument.removeEventListener("pointerdown", closeFromPointer, true);
+      ownerWindow?.removeEventListener("blur", closeFromBlur);
+    };
+  });
+
   onDestroy(() => {
+    closeBookmarkContextMenu(false);
     bookmarkButtons.length = 0;
+    bookmarkPanel = undefined;
+    contextMenuElement = undefined;
     rootSelect = undefined;
   });
 </script>
 
 <section
+  bind:this={bookmarkPanel}
   aria-busy={current.phase === "loading"}
   aria-label={t("bookmarks.panelAria")}
   lang={localeId}
@@ -305,7 +534,10 @@
   data-fennevia-bookmarks=""
 >
   <div class="fennevia-bookmarks__roots">
-    <label class="fennevia-bookmarks__roots-label" for="fennevia-bookmark-roots">
+    <label
+      class="fennevia-bookmarks__roots-label"
+      for="fennevia-bookmark-roots"
+    >
       {t("bookmarks.location")}
     </label>
     <select
@@ -347,9 +579,7 @@
     {:else if current.phase === "error"}
       <div class="fennevia-bookmarks__empty" role="alert">
         <span aria-hidden="true">!</span>
-        <span
-          >{t("bookmarks.error")}</span
-        >
+        <span>{t("bookmarks.error")}</span>
       </div>
     {:else}
       {#each rows as row (row.key)}
@@ -383,6 +613,7 @@
                 onauxclick={(event) =>
                   row.node.kind === "bookmark" &&
                   handleBookmarkAuxClick(event, row.node.id)}
+                oncontextmenu={(event) => handleBookmarkContextMenu(event, row)}
                 onclick={(event) =>
                   row.node.kind === "folder"
                     ? void toggleFolder(row.node.id)
@@ -442,7 +673,10 @@
               <span>{t("bookmarks.emptyFolder")}</span>
             {/if}
             {#if row.branch.phase === "ready" && (row.branch.offset > 0 || row.branch.truncated)}
-              <div aria-label={t("bookmarks.folderPages")} class="fennevia-bookmarks__pager">
+              <div
+                aria-label={t("bookmarks.folderPages")}
+                class="fennevia-bookmarks__pager"
+              >
                 <button
                   disabled={row.branch.offset === 0}
                   onclick={() =>
@@ -479,4 +713,50 @@
     class="fennevia-bookmarks__status"
     data-fennevia-bookmark-status="">{noticeText()}</output
   >
+
+  {#if contextMenu}
+    <div
+      bind:this={contextMenuElement}
+      aria-label={t("bookmarks.contextMenuAria")}
+      class="fennevia-bookmarks__context-menu"
+      data-fennevia-bookmark-context-menu=""
+      oncontextmenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onkeydown={handleContextMenuKeydown}
+      role="menu"
+      style:left={`${contextMenu.left}px`}
+      style:top={`${contextMenu.top}px`}
+      tabindex="-1"
+    >
+      {#if contextMenu.kind === "bookmark"}
+        <button
+          onclick={() => activateContextMenuAction("open-current")}
+          role="menuitem"
+          type="button">{t("bookmarks.openCurrent")}</button
+        >
+        <button
+          onclick={() => activateContextMenuAction("open-new-tab")}
+          role="menuitem"
+          type="button">{t("bookmarks.openNewTab")}</button
+        >
+      {:else}
+        <button
+          onclick={() => activateContextMenuAction("toggle-folder")}
+          role="menuitem"
+          type="button"
+          >{contextMenu.expanded
+            ? t("bookmarks.collapseFolder")
+            : t("bookmarks.expandFolder")}</button
+        >
+      {/if}
+      <div class="fennevia-bookmarks__context-separator" role="separator"></div>
+      <button
+        onclick={() => activateContextMenuAction("manage-bookmarks")}
+        role="menuitem"
+        type="button">{t("bookmarks.manage")}</button
+      >
+    </div>
+  {/if}
 </section>

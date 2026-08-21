@@ -35,6 +35,7 @@ export function createBrowserBookmarksStateAdapter(
     !bridge ||
     typeof bridge !== "object" ||
     typeof bridge.children !== "function" ||
+    typeof bridge.manage !== "function" ||
     typeof bridge.open !== "function" ||
     typeof bridge.roots !== "function" ||
     typeof bridge.subscribe !== "function" ||
@@ -391,6 +392,14 @@ export function createBrowserBookmarksStateAdapter(
         }
       }
       publish({ notice, openingBookmarkId: null });
+      return result;
+    },
+
+    manage(): boolean {
+      const result = requireBridge().manage();
+      if (typeof result !== "boolean") {
+        throw createStateError("FENNEVIA_BOOKMARK_STATE_MANAGE_RESULT_INVALID");
+      }
       return result;
     },
 

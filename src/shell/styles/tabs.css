@@ -36,6 +36,7 @@
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip__item {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 30px 30px;
   flex: none;
@@ -95,6 +96,29 @@
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-dragging="true"] {
   opacity: 0.55;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__item[data-fennevia-drop-preview]::after {
+  position: absolute;
+  z-index: 1;
+  inset-inline: 7px;
+  block-size: 3px;
+  background: var(--fennevia-focus-color);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px var(--fennevia-glass-surface);
+  content: "";
+  pointer-events: none;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__item[data-fennevia-drop-preview="before"]::after {
+  inset-block-start: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__item[data-fennevia-drop-preview="after"]::after {
+  inset-block-end: 0;
 }
 
 #fennevia-shell-frame-host

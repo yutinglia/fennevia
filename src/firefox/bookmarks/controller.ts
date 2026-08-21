@@ -175,6 +175,15 @@ export function createFirefoxBookmarksBridge({
         read: () => nativePlacesUiUtils?.openNodeIn,
         symbol: "PlacesUIUtils.openNodeIn",
       }),
+      Object.freeze({
+        isAvailable: isFunction,
+        name: "firefox.places-organizer",
+        read: () =>
+          isNativeRecord(window.PlacesCommandHook)
+            ? window.PlacesCommandHook.showPlacesOrganizer
+            : undefined,
+        symbol: "window.PlacesCommandHook.showPlacesOrganizer",
+      }),
     ]);
 
   let nativeWindow: NativeRecord | null = window;
@@ -556,6 +565,34 @@ export function createFirefoxBookmarksBridge({
         totalCount,
         truncated: pageOffset + items.length < totalCount,
       });
+    },
+
+    manage(): boolean {
+      const ownerWindow = requireWindow();
+      const owner = ownerWindow.PlacesCommandHook;
+      const showPlacesOrganizer = isNativeRecord(owner)
+        ? owner.showPlacesOrganizer
+        : undefined;
+      if (!isFunction(showPlacesOrganizer)) {
+        throw createBookmarksError(
+          boundary,
+          "FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING",
+          "firefox-bookmarks-manage",
+          "window.PlacesCommandHook.showPlacesOrganizer",
+        );
+      }
+      try {
+        Reflect.apply(showPlacesOrganizer, owner, ["UnfiledBookmarks"]);
+      } catch (error) {
+        throw createBookmarksError(
+          boundary,
+          "FENNEVIA_FIREFOX_BOOKMARKS_MANAGE_FAILED",
+          "firefox-bookmarks-manage",
+          "window.PlacesCommandHook.showPlacesOrganizer",
+          error,
+        );
+      }
+      return true;
     },
 
     async open(

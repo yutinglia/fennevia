@@ -1275,7 +1275,13 @@ const mountProductionShell = ({
       window: browserWindow,
     });
     tabsBridge = createFirefoxTabsBridge({
+      beginNativePopupHandoff(panelId) {
+        return nativeUi.beginPopupHandoff(panelId);
+      },
       boundary: bridge,
+      endNativePopupHandoff(panelId) {
+        nativeUi.endPopupHandoff(panelId);
+      },
       moduleLoader(uri) {
         return ChromeUtils.importESModule(uri);
       },
