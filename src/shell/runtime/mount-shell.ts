@@ -1,0 +1,676 @@
+// SPDX-License-Identifier: MPL-2.0
+import { flushSync, mount, unmount } from "svelte";
+
+import {
+  type AddressPopupInvocationSource,
+  type AddressPopupSnapshot,
+} from "../../app/address-popup";
+import {
+  createBrowserBookmarksStateAdapter,
+  type BrowserBookmarksStateAdapter,
+} from "../../app/bookmark-state";
+import {
+  createBrowserToolsStateAdapter,
+  type BrowserToolAction,
+  type BrowserToolsStateAdapter,
+} from "../../app/browser-tools-state";
+import {
+  createCustomizeSessionController,
+  customizeActiveAttribute,
+  type CustomizeSessionController,
+} from "../../app/customize-session";
+import {
+  createBrowserDownloadsStateAdapter,
+  type BrowserDownloadsStateAdapter,
+} from "../../app/download-state";
+import {
+  createEdgeShellController,
+  edgeInsetCssPixels,
+  edgeNames,
+  edgeSurfaceTiming,
+  edgeTriggerThicknessCssPixels,
+  getKeyboardRevealEdge,
+  type EdgeName,
+} from "../../app/edge-surfaces";
+import {
+  createBrowserLocaleStateAdapter,
+  createStaticLocaleBridge,
+  type BrowserLocaleStateAdapter,
+} from "../../app/locale-state";
+import {
+  createBrowserNavigationStateAdapter,
+  type BrowserNavigationStateAdapter,
+} from "../../app/navigation-state";
+import {
+  createBrowserTabsStateAdapter,
+  type BrowserTabsStateAdapter,
+} from "../../app/tab-state";
+import {
+  createBrowserToolbarWidgetsStateAdapter,
+  type BrowserToolbarWidgetsState,
+  type BrowserToolbarWidgetsStateAdapter,
+} from "../../app/toolbar-widgets-state";
+import {
+  createBrowserUrlbarCoverageStateAdapter,
+  type BrowserUrlbarCoverageStateAdapter,
+} from "../../app/urlbar-coverage-state";
+import {
+  createBrowserWindowControlsStateAdapter,
+  type BrowserWindowControlsStateAdapter,
+} from "../../app/window-controls-state";
+import AddressPopup from "../AddressPopup.svelte";
+import App from "../App.svelte";
+import {
+  FRAME_ENVIRONMENT_ATTRIBUTE,
+  FRAME_READY_ATTRIBUTE,
+  KEYBOARD_LISTENER_OPTIONS,
+  MOUNT_STATUS_ATTRIBUTE,
+  createFrontendError,
+  isWindowKind,
+  mountedFrames,
+  mountedTargets,
+  validateMounts,
+  type MountOptions,
+  type MountedComponent,
+} from "./contracts";
+import { applyCustomizeStyle, clearCustomizeStyle } from "./customize-style";
+import {
+  createAddressPopupCoordinator,
+  type AddressPopupCoordinator,
+} from "./address-popup-coordinator";
+import { createSurfaceFocusCoordinator } from "./surface-focus";
+
+export function mountShellApp({
+  bookmarks,
+  browserTools,
+  downloads,
+  frame,
+  locale,
+  navigation,
+  onFatalError,
+  onUnmountError,
+  overlayTarget,
+  tabs,
+  targets,
+  toolbarWidgets,
+  urlbarCoverage,
+  windowControls,
+  windowKind,
+}: MountOptions): () => boolean {
+  if (
+    typeof onFatalError !== "function" ||
+    typeof onUnmountError !== "function" ||
+    !isWindowKind(windowKind)
+  ) {
+    throw createFrontendError("FENNEVIA_FRONTEND_OPTIONS_INVALID");
+  }
+  validateMounts(frame, overlayTarget, targets);
+
+  const view = frame.ownerDocument.defaultView;
+  const MutationObserverConstructor = view?.MutationObserver;
+  if (!view || typeof MutationObserverConstructor !== "function") {
+    throw createFrontendError("FENNEVIA_FRONTEND_WINDOW_INVALID");
+  }
+
+  let disposed = false;
+  let environmentObserver: MutationObserver | undefined;
+  let listenersRegistered = false;
+  let addressPopupCoordinator: AddressPopupCoordinator | undefined;
+  let bookmarksState: BrowserBookmarksStateAdapter | undefined;
+  let browserToolsState: BrowserToolsStateAdapter | undefined;
+  let customizeSession: CustomizeSessionController | undefined;
+  let downloadsState: BrowserDownloadsStateAdapter | undefined;
+  let localeState: BrowserLocaleStateAdapter | undefined;
+  let navigationState: BrowserNavigationStateAdapter | undefined;
+  let tabsState: BrowserTabsStateAdapter | undefined;
+  let toolbarWidgetsState: BrowserToolbarWidgetsStateAdapter | undefined;
+  let urlbarCoverageState: BrowserUrlbarCoverageStateAdapter | undefined;
+  let windowControlsState: BrowserWindowControlsStateAdapter | undefined;
+  const components: MountedComponent[] = [];
+  const controllerSubscriptions: Array<() => boolean> = [];
+  const scheduler = Object.freeze({
+    clearTimeout(handle: unknown) {
+      view.clearTimeout(handle as number);
+    },
+    setTimeout(callback: () => void, delayMs: number) {
+      return view.setTimeout(callback, delayMs);
+    },
+  });
+  const shell = createEdgeShellController({
+    onError: onFatalError,
+    scheduler,
+  });
+  customizeSession = createCustomizeSessionController({
+    frame,
+    onError: onFatalError,
+    shell,
+  });
+
+  const surfaceFocus = createSurfaceFocusCoordinator({ frame, targets });
+  const { activeElementFor, focusCustomizeToggle, focusSurface, restoreFocus } =
+    surfaceFocus;
+
+  const closeCustomizeSession = (): boolean => {
+    if (!customizeSession?.isOpen()) {
+      return false;
+    }
+    return customizeSession.setOpen(false);
+  };
+
+  const dismissSurface = (edge: EdgeName): void => {
+    restoreFocus(edge);
+    shell.dismiss(edge);
+  };
+
+  const addressPopupIsVisible = (snapshot?: AddressPopupSnapshot): boolean =>
+    addressPopupCoordinator?.isVisible(snapshot) ?? false;
+
+  const openNativeUrlbar = (): boolean =>
+    addressPopupCoordinator?.openNativeUrlbar() ?? false;
+
+  const openAddressPopup = (source: AddressPopupInvocationSource): boolean =>
+    addressPopupCoordinator?.open(source) ?? false;
+
+  const openNativeBrowserTool = async (
+    action: BrowserToolAction,
+    host?: unknown,
+  ): Promise<boolean> => {
+    if (!browserToolsState) {
+      return false;
+    }
+    return browserToolsState.invoke(action, host);
+  };
+
+  const syncEnvironment = (): void => {
+    if (disposed) {
+      return;
+    }
+    const shouldEnable =
+      frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) === "normal";
+    if (!shouldEnable && addressPopupIsVisible()) {
+      addressPopupCoordinator?.closeForEnvironment();
+    }
+    if (!shouldEnable) {
+      closeCustomizeSession();
+    }
+    if (shell.snapshot().enabled !== shouldEnable) {
+      for (const edge of edgeNames) {
+        restoreFocus(edge);
+      }
+      shell.setEnabled(shouldEnable);
+    }
+  };
+
+  const onKeyDown = (event: KeyboardEvent): void => {
+    if (
+      disposed ||
+      event.defaultPrevented ||
+      frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) !== "normal"
+    ) {
+      return;
+    }
+    try {
+      const revealEdge = getKeyboardRevealEdge(event);
+      if (addressPopupIsVisible()) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          addressPopupCoordinator?.controller.requestClose("cancelled");
+        } else if (revealEdge) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+      if (revealEdge) {
+        event.preventDefault();
+        event.stopPropagation();
+        shell.revealFromKeyboard(revealEdge);
+        focusSurface(revealEdge);
+        return;
+      }
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (customizeSession?.isOpen()) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCustomizeSession();
+        focusCustomizeToggle();
+        return;
+      }
+
+      const snapshot = shell.snapshot();
+      const focusedEdge = edgeNames.find((edge) => activeElementFor(edge));
+      const target =
+        focusedEdge ??
+        (snapshot.activeEdge && snapshot.surfaces[snapshot.activeEdge].visible
+          ? snapshot.activeEdge
+          : null);
+      if (!target) {
+        return;
+      }
+      if (snapshot.surfaces[target].holds.popup) {
+        return;
+      }
+      event.preventDefault();
+      restoreFocus(target);
+      shell.dismiss(target);
+    } catch (error) {
+      onFatalError(error);
+    }
+  };
+
+  const releaseWindowPointer = (): void => {
+    if (disposed) {
+      return;
+    }
+    for (const edge of edgeNames) {
+      shell.setPointerHeld(edge, false);
+    }
+  };
+
+  const onPointerOut = (event: PointerEvent): void => {
+    if (event.relatedTarget === null) {
+      releaseWindowPointer();
+    }
+  };
+
+  const removeDomListeners = (): void => {
+    if (!listenersRegistered) {
+      return;
+    }
+    listenersRegistered = false;
+    view.removeEventListener("keydown", onKeyDown, KEYBOARD_LISTENER_OPTIONS);
+    view.removeEventListener("pointerout", onPointerOut);
+    view.removeEventListener("blur", releaseWindowPointer);
+    frame.removeEventListener("focusin", surfaceFocus.onFrameFocusIn);
+  };
+
+  const disposeMountedState = (): unknown => {
+    let firstError: unknown;
+    environmentObserver?.disconnect();
+    environmentObserver = undefined;
+    removeDomListeners();
+    clearCustomizeStyle(frame);
+    frame.removeAttribute(FRAME_READY_ATTRIBUTE);
+    for (const unsubscribe of controllerSubscriptions.splice(0).reverse()) {
+      try {
+        unsubscribe();
+      } catch (error) {
+        firstError ??= error;
+      }
+    }
+    for (const mounted of components.splice(0).reverse()) {
+      let unmountResult: Promise<void> | undefined;
+      try {
+        unmountResult = unmount(mounted.component, { outro: false });
+        flushSync();
+      } catch (error) {
+        firstError ??= error;
+      }
+      void unmountResult?.catch(onUnmountError);
+      mountedTargets.delete(mounted.target);
+      mounted.target.setAttribute(MOUNT_STATUS_ATTRIBUTE, "disposed");
+      if (mounted.target.childNodes.length !== 0) {
+        firstError ??= createFrontendError(
+          "FENNEVIA_FRONTEND_UNMOUNT_INCOMPLETE",
+        );
+      }
+    }
+    mountedFrames.delete(frame);
+    try {
+      customizeSession?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    customizeSession = undefined;
+    try {
+      addressPopupCoordinator?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    addressPopupCoordinator = undefined;
+    try {
+      bookmarksState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      browserToolsState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      downloadsState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      toolbarWidgetsState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      urlbarCoverageState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      windowControlsState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      localeState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      navigationState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      tabsState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      shell.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    for (const edge of edgeNames) {
+      frame.removeAttribute(`data-fennevia-${edge}-visible`);
+    }
+    frame.removeAttribute("data-fennevia-address-popup-visible");
+    frame.removeAttribute(customizeActiveAttribute);
+    surfaceFocus.clear();
+    return firstError;
+  };
+
+  for (const edge of edgeNames) {
+    targets[edge].setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounting");
+  }
+  overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounting");
+
+  try {
+    tabsState = createBrowserTabsStateAdapter(tabs);
+    navigationState = createBrowserNavigationStateAdapter(navigation);
+    bookmarksState = createBrowserBookmarksStateAdapter(bookmarks);
+    browserToolsState = createBrowserToolsStateAdapter(browserTools);
+    downloadsState = createBrowserDownloadsStateAdapter(downloads);
+    toolbarWidgetsState = toolbarWidgets
+      ? createBrowserToolbarWidgetsStateAdapter(toolbarWidgets)
+      : undefined;
+    urlbarCoverageState =
+      createBrowserUrlbarCoverageStateAdapter(urlbarCoverage);
+    windowControlsState =
+      createBrowserWindowControlsStateAdapter(windowControls);
+    localeState = createBrowserLocaleStateAdapter(
+      locale ?? createStaticLocaleBridge(),
+    );
+    const applyFrameLocale = () => {
+      const id = localeState?.snapshot().id ?? "en";
+      frame.setAttribute("lang", id);
+    };
+    applyFrameLocale();
+    controllerSubscriptions.push(
+      localeState.subscribe(() => {
+        applyFrameLocale();
+      }),
+    );
+    addressPopupCoordinator = createAddressPopupCoordinator({
+      closeCustomizeSession,
+      frame,
+      navigation: navigationState,
+      onFatalError,
+      overlayTarget,
+      shell,
+      tabs: tabsState,
+      targets,
+      urlbarCoverage: urlbarCoverageState,
+      view,
+    });
+    const addressPopup = addressPopupCoordinator.controller;
+    controllerSubscriptions.push(
+      addressPopup.subscribe((snapshot) => {
+        frame.toggleAttribute(
+          "data-fennevia-address-popup-visible",
+          addressPopupIsVisible(snapshot),
+        );
+        addressPopupCoordinator?.scheduleClose(snapshot);
+      }),
+      navigationState.subscribeAddressPopupOpen((request) => {
+        return openAddressPopup(request.source);
+      }),
+      tabsState.subscribeContextMenu((open) => {
+        shell.setPopupHeld("left", open);
+      }),
+      browserToolsState.subscribePopup((open) => {
+        if (open) {
+          return;
+        }
+        if (customizeSession?.isOpen()) {
+          customizeSession.restoreHolds();
+          return;
+        }
+        for (const edge of edgeNames) {
+          shell.setPopupHeld(edge, false);
+        }
+      }),
+    );
+    if (toolbarWidgetsState) {
+      const widgetsState = toolbarWidgetsState;
+      const forcedColorsQuery =
+        typeof view.matchMedia === "function"
+          ? view.matchMedia("(forced-colors: active)")
+          : null;
+      const reducedMotionQuery =
+        typeof view.matchMedia === "function"
+          ? view.matchMedia("(prefers-reduced-motion: reduce)")
+          : null;
+      const applyStyleFromState = (state: BrowserToolbarWidgetsState): void => {
+        applyCustomizeStyle(frame, state.snapshot.style, {
+          forcedColors: forcedColorsQuery?.matches === true,
+          reducedMotion: reducedMotionQuery?.matches === true,
+        });
+      };
+      applyStyleFromState(widgetsState.snapshot());
+      controllerSubscriptions.push(
+        widgetsState.subscribePopup((open) => {
+          if (open) {
+            return;
+          }
+          if (customizeSession?.isOpen()) {
+            customizeSession.restoreHolds();
+            return;
+          }
+          shell.setPopupHeld("top", false);
+        }),
+        widgetsState.subscribe(applyStyleFromState),
+      );
+      const mediaQueries = [forcedColorsQuery, reducedMotionQuery].filter(
+        (query): query is MediaQueryList => query !== null,
+      );
+      if (mediaQueries.length > 0) {
+        const onMediaChange = (): void => {
+          try {
+            applyStyleFromState(widgetsState.snapshot());
+          } catch (error) {
+            onFatalError(error);
+          }
+        };
+        for (const query of mediaQueries) {
+          query.addEventListener("change", onMediaChange);
+        }
+        controllerSubscriptions.push(() => {
+          for (const query of mediaQueries) {
+            query.removeEventListener("change", onMediaChange);
+          }
+          return true;
+        });
+      }
+    }
+    for (const edge of edgeNames) {
+      const surface = shell.getSurface(edge);
+      controllerSubscriptions.push(
+        surface.subscribe((snapshot) => {
+          frame.toggleAttribute(
+            `data-fennevia-${edge}-visible`,
+            snapshot.visible,
+          );
+          if (!snapshot.visible && !addressPopupIsVisible()) {
+            restoreFocus(edge);
+          }
+        }),
+      );
+    }
+    syncEnvironment();
+
+    for (const edge of edgeNames) {
+      const target = targets[edge];
+      const component = mount(App, {
+        props: {
+          edge,
+          frame,
+          browserTools: browserToolsState,
+          ...(edge === "top" || edge === "left"
+            ? {
+                navigation: navigationState,
+              }
+            : {}),
+          ...(edge === "top"
+            ? {
+                windowControls: windowControlsState,
+              }
+            : {}),
+          onDismiss: dismissSurface,
+          onFatalError,
+          onDisposed(disposedEdge: EdgeName) {
+            targets[disposedEdge].setAttribute(
+              MOUNT_STATUS_ATTRIBUTE,
+              "disposed",
+            );
+          },
+          shell,
+          surface: shell.getSurface(edge),
+          customizeSession,
+          locale: localeState,
+          toolbarWidgets: toolbarWidgetsState,
+          ...(edge === "left"
+            ? {
+                addressPopup,
+                onOpenAddress: () => openAddressPopup("left-launcher"),
+                tabs: tabsState,
+              }
+            : {}),
+          ...(edge === "right" ? { bookmarks: bookmarksState } : {}),
+          ...(edge === "bottom" ? { downloads: downloadsState } : {}),
+          windowKind,
+        },
+        target,
+      }) as Record<string, unknown>;
+      components.push(Object.freeze({ component, name: edge, target }));
+      mountedTargets.add(target);
+      target.setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounted");
+    }
+
+    const addressPopupComponent = mount(AddressPopup, {
+      props: {
+        browserTools: browserToolsState,
+        coverage: urlbarCoverageState,
+        navigation: navigationState,
+        onOpenBrowserTool: openNativeBrowserTool,
+        onOpenNativeUrlbar: openNativeUrlbar,
+        onDisposed() {
+          overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "disposed");
+        },
+        onFatalError,
+        locale: localeState,
+        popup: addressPopup,
+        windowKind,
+      },
+      target: overlayTarget,
+    }) as Record<string, unknown>;
+    components.push(
+      Object.freeze({
+        component: addressPopupComponent,
+        name: "address-popup",
+        target: overlayTarget,
+      }),
+    );
+    mountedTargets.add(overlayTarget);
+    overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounted");
+    flushSync();
+
+    environmentObserver = new MutationObserverConstructor(() => {
+      try {
+        syncEnvironment();
+      } catch (error) {
+        onFatalError(error);
+      }
+    });
+    environmentObserver.observe(frame, {
+      attributes: true,
+      attributeFilter: [FRAME_ENVIRONMENT_ATTRIBUTE],
+    });
+    view.addEventListener("keydown", onKeyDown, KEYBOARD_LISTENER_OPTIONS);
+    view.addEventListener("pointerout", onPointerOut);
+    view.addEventListener("blur", releaseWindowPointer);
+    frame.addEventListener("focusin", surfaceFocus.onFrameFocusIn);
+    listenersRegistered = true;
+    frame.style.setProperty(
+      "--fennevia-hide-delay",
+      `${edgeSurfaceTiming.hideDelayMs}ms`,
+    );
+    frame.style.setProperty(
+      "--fennevia-edge-trigger-thickness",
+      `${edgeTriggerThicknessCssPixels}px`,
+    );
+    frame.style.setProperty("--fennevia-edge-inset", `${edgeInsetCssPixels}px`);
+    frame.setAttribute(FRAME_READY_ATTRIBUTE, "");
+
+    const record = Object.freeze({
+      addressPopup,
+      bookmarks: bookmarksState,
+      browserTools: browserToolsState,
+      components: Object.freeze([...components]),
+      downloads: downloadsState,
+      locale: localeState,
+      navigation: navigationState,
+      shell,
+      tabs: tabsState,
+      toolbarWidgets: toolbarWidgetsState,
+      urlbarCoverage: urlbarCoverageState,
+      windowControls: windowControlsState,
+    });
+    mountedFrames.set(frame, record);
+
+    return () => {
+      if (disposed) {
+        return false;
+      }
+      disposed = true;
+      const firstError = disposeMountedState();
+      if (firstError !== undefined) {
+        throw firstError;
+      }
+      return true;
+    };
+  } catch (error) {
+    disposed = true;
+    const cleanupError = disposeMountedState();
+    for (const edge of edgeNames) {
+      targets[edge].replaceChildren();
+      targets[edge].setAttribute(MOUNT_STATUS_ATTRIBUTE, "failed");
+    }
+    overlayTarget.replaceChildren();
+    overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "failed");
+    if (cleanupError !== undefined) {
+      onUnmountError(cleanupError);
+    }
+    throw error;
+  }
+}

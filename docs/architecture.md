@@ -780,62 +780,129 @@ The normative policy is in `docs/security-and-privacy.md`. The threat model, log
 src/
   firefox/
     bridge-boundary.ts
-    index.ts
-    tabs.ts
-    navigation.ts
-    browser-tools.ts
     customize-model.ts
-    urlbar-coverage.ts
-    bookmarks.ts
-    downloads.ts
-    toolbar-widgets.ts
-    window-controls.ts
+    index.ts
     locale.ts
+    window-controls.ts
+    <feature>.ts              # stable public facade
+    bookmarks/
+    browser-tools/
+    downloads/
+    navigation/
+    tabs/
+    urlbar-coverage/
+      controller.ts           # per-window ownership and cleanup
+      support.ts              # capability checks and native-data helpers
+    toolbar-widgets/
+      controller.ts
+      native-support.ts
+      presentation.ts
+      popup-actions.ts
+      support.ts              # private support facade
   app/
     address-popup.ts
+    browser-tools-state.ts
+    bookmark-state.ts         # stable public facade
+    bookmarks/
+      contracts.ts
+      validation.ts
+      adapter.ts
+      visible-rows.ts
+    customize-session.ts
+    download-state.ts
+    edge-surfaces.ts          # stable public facade
+    edge-surfaces/
+      contracts.ts
+      surface-controller.ts
+      shell-controller.ts
+      geometry.ts
     i18n.ts
     locale-state.ts
     messages/
       en.ts
       zh-Hant.ts
-    browser-tools-state.ts
-    bookmark-state.ts
-    customize-session.ts
-    download-state.ts
-    edge-surfaces.ts
     navigation-state.ts
     tab-state.ts
     tab-strip.ts
     toolbar-widget-drag.ts
-    toolbar-widgets-state.ts
+    toolbar-widgets-state.ts  # stable public facade
+    toolbar-widgets/
+      contracts.ts
+      validation.ts
+      state.ts
+      adapter.ts
+      errors.ts
     urlbar-coverage-state.ts
     window-controls-state.ts
   shell/
     AddressPopup.svelte
-    locale-ui.ts
     App.svelte
     BookmarksPanel.svelte
     CustomizePanel.svelte
     DownloadsPanel.svelte
     ShellIcon.svelte
-    toolbar-widget-icons.ts
     entry.ts
-    index.ts
+    index.ts                  # public mount/health facade
+    locale-ui.ts
+    toolbar-widget-icons.ts
+    features/
+      customize/CustomizeStyleSection.svelte
+      tabs/TabStrip.svelte
+      toolbar-widgets/ToolbarWidgetZone.svelte
+    runtime/
+      contracts.ts
+      health.ts
+      mount-shell.ts
+      address-popup-coordinator.ts
+      surface-focus.ts
+      customize-style.ts
+    surfaces/
+      TopSurface.svelte
+      LeftSurface.svelte
+      RightSurface.svelte
+      BottomSurface.svelte
+      EdgeProgressLight.svelte
     styles/
-      edge-shell.css
+      edge-shell.css          # ordered import facade
+      foundation.css
+      address.css
+      tabs.css
+      toolbar.css
+      bookmarks.css
+      downloads.css
+      customize.css
+      window-controls.css
+      responsive-accessibility.css
+
+scripts/lib/
+  FenneviaInstaller.psm1      # fixed implementation loader + public exports
+  installer/
+    Common.ps1
+    Discovery.ps1
+    Ownership.ps1
+    Planning.ps1
+    Transaction.ps1
+    Public.ps1
 
 profile/chrome/fennevia/
   chrome.manifest
   content/
     Bootstrap.sys.mjs
-    runtime/                 # authored privileged lifecycle/health/native UI/first-paint hide
-    firefox/                 # generated private bridge boundary
-    shell/                   # generated Svelte IIFE, CSS, and notice
+    runtime/                  # authored privileged lifecycle/health/native UI/first-paint hide
+    firefox/                  # generated private bridge boundary
+    shell/                    # generated Svelte IIFE, CSS, and notice
 
 program/
   defaults/pref/fennevia.js
   fennevia.cfg
 ```
+
+Facade files preserve the established import paths while implementation modules
+are grouped by feature and responsibility. Firefox feature folders remain
+privileged and may not be imported by `src/app/` or `src/shell/`. CSS modules
+are imported in one explicit order so the pre-refactor cascade remains
+authoritative. The installer module dot-sources only its fixed reviewed list;
+there is no directory scanning or plugin discovery.
 
 Svelte/application modules consume only ordinary contracts. Unsupported native
 handles and Firefox calls remain inside generated `src/firefox/` output or the

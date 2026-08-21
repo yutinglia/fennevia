@@ -4,6 +4,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { readShellStyles } from "./support/shell-styles.mjs";
+
 import {
   findCloseFocusTarget,
   findOpenedTabIds,
@@ -201,13 +203,26 @@ test("keyboard navigation wraps, respects direction, and produces explicit actio
 });
 
 test("the component uses semantic sibling controls and property-safe rendering only", async () => {
-  const [source, styles] = await Promise.all([
+  const [frameSource, tabSource, topSource, styles] = await Promise.all([
     readFile(path.join(projectRoot, "src", "shell", "App.svelte"), "utf8"),
     readFile(
-      path.join(projectRoot, "src", "shell", "styles", "edge-shell.css"),
+      path.join(
+        projectRoot,
+        "src",
+        "shell",
+        "features",
+        "tabs",
+        "TabStrip.svelte",
+      ),
       "utf8",
     ),
+    readFile(
+      path.join(projectRoot, "src", "shell", "surfaces", "TopSurface.svelte"),
+      "utf8",
+    ),
+    readShellStyles(projectRoot),
   ]);
+  const source = [frameSource, tabSource, topSource].join("\n");
 
   assert.match(source, /role="tablist"/u);
   assert.match(source, /aria-orientation="vertical"/u);
@@ -228,9 +243,9 @@ test("the component uses semantic sibling controls and property-safe rendering o
   );
   assert.match(source, /focusReleaseTimer !== timer/u);
   assert.match(source, /releaseSurfaceFocus\(\);\s*\}, 0\)/u);
-  assert.match(source, /onDestroy\(\(\) => \{\s*cancelDelayedFocus\(\)/u);
-  assert.match(source, /cancelDelayedFocus\(\);\s*cancelFocusRelease\(\)/u);
-  assert.match(source, /cancelHighlight\(\)/u);
+  assert.match(tabSource, /onDestroy\(\(\) => \{\s*cancelDelayedFocus\(\)/u);
+  assert.match(tabSource, /cancelHighlight\(\)/u);
+  assert.match(frameSource, /onDestroy\(\(\) => \{\s*cancelFocusRelease\(\)/u);
   assert.match(source, /data-fennevia-action="home"/u);
   assert.match(source, /handleNavigationAuxClick/u);
   assert.match(source, /preventMiddleAutoscroll/u);

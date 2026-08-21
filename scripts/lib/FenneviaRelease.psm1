@@ -420,6 +420,12 @@ function Get-FenneviaReleaseSourceEntries {
         [pscustomobject]@{ Source = "scripts/lib/FenneviaGui.psm1"; Destination = "scripts/lib/FenneviaGui.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaTui.psm1"; Destination = "scripts/lib/FenneviaTui.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaInstaller.psm1"; Destination = "scripts/lib/FenneviaInstaller.psm1" },
+        [pscustomobject]@{ Source = "scripts/lib/installer/Common.ps1"; Destination = "scripts/lib/installer/Common.ps1" },
+        [pscustomobject]@{ Source = "scripts/lib/installer/Discovery.ps1"; Destination = "scripts/lib/installer/Discovery.ps1" },
+        [pscustomobject]@{ Source = "scripts/lib/installer/Ownership.ps1"; Destination = "scripts/lib/installer/Ownership.ps1" },
+        [pscustomobject]@{ Source = "scripts/lib/installer/Planning.ps1"; Destination = "scripts/lib/installer/Planning.ps1" },
+        [pscustomobject]@{ Source = "scripts/lib/installer/Transaction.ps1"; Destination = "scripts/lib/installer/Transaction.ps1" },
+        [pscustomobject]@{ Source = "scripts/lib/installer/Public.ps1"; Destination = "scripts/lib/installer/Public.ps1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaRelease.psm1"; Destination = "scripts/lib/FenneviaRelease.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/SecurityChecks.psm1"; Destination = "scripts/lib/SecurityChecks.psm1" }
     )) {
@@ -740,6 +746,12 @@ function Test-FenneviaReleaseTree {
         "scripts/lib/FenneviaGui.psm1",
         "scripts/lib/FenneviaTui.psm1",
         "scripts/lib/FenneviaInstaller.psm1",
+        "scripts/lib/installer/Common.ps1",
+        "scripts/lib/installer/Discovery.ps1",
+        "scripts/lib/installer/Ownership.ps1",
+        "scripts/lib/installer/Planning.ps1",
+        "scripts/lib/installer/Transaction.ps1",
+        "scripts/lib/installer/Public.ps1",
         "scripts/lib/FenneviaRelease.psm1",
         "scripts/lib/SecurityChecks.psm1"
     )
