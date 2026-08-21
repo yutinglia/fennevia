@@ -1,0 +1,34 @@
+#fennevia-shell-frame-host .fennevia-window-controls {
+  display: flex;
+  min-inline-size: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  margin-inline-start: 2px;
+  padding: 2px 2px 2px 8px;
+  border-inline-start: 1px solid var(--fennevia-glass-separator);
+  -moz-window-dragging: no-drag;
+}
+
+#fennevia-shell-frame-host .fennevia-window-controls__close:hover {
+  color: var(--button-text-color-primary, white);
+  background: var(
+    --button-background-color-destructive-hover,
+    var(--button-background-color-destructive, var(--color-red-70, #cf1748))
+  );
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__private {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  color: light-dark(var(--color-purple-70), var(--color-purple-30));
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: var(--fennevia-chip-radius);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+#fennevia-shell-frame-host template {
+  display: none;
+}

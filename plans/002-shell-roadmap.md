@@ -303,6 +303,11 @@ Issue #31 provides one common contract for every feature surface:
 Feature modules receive a narrow surface API. They do not manipulate CSS
 classes, timers, z-index values, or trigger DOM directly.
 
+ADR-053 and `plans/007-codebase-modularization.md` organize those modules into
+feature folders. Top-level files remain compatibility facades; no feature may
+use the refactor to create a second controller, timer, trigger, or privileged
+boundary.
+
 Current contents:
 
 - left: functional vertical tabs;

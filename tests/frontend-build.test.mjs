@@ -4,6 +4,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { readShellStyles } from "./support/shell-styles.mjs";
+
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -33,7 +35,7 @@ test("the exact frontend toolchain is development-only and lockfile-pinned", asy
 });
 
 test("visible edge transforms override every directional off-screen transform", async () => {
-  const css = await readProjectFile("src/shell/styles/edge-shell.css");
+  const css = await readShellStyles(projectRoot);
   const visibleRule = css.indexOf(
     '.fennevia-edge-root[data-fennevia-visible="true"]',
   );
@@ -57,7 +59,7 @@ test("visible edge transforms override every directional off-screen transform", 
 });
 
 test("edge panels touch the trigger gutter, release native drags, and float visible transient shortcuts", async () => {
-  const css = await readProjectFile("src/shell/styles/edge-shell.css");
+  const css = await readShellStyles(projectRoot);
 
   assert.match(css, /--fennevia-edge-trigger-thickness: 12px;/u);
   assert.match(css, /--fennevia-edge-inset: 7px;/u);
@@ -106,7 +108,13 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(css, /--focus-outline-color/u);
   assert.doesNotMatch(css, /247 250 252/u);
 
-  const component = await readProjectFile("src/shell/App.svelte");
+  const [component, progressLight, toolbarWidgets] = await Promise.all([
+    readProjectFile("src/shell/App.svelte"),
+    readProjectFile("src/shell/surfaces/EdgeProgressLight.svelte"),
+    readProjectFile(
+      "src/shell/features/toolbar-widgets/ToolbarWidgetZone.svelte",
+    ),
+  ]);
   assert.match(
     component,
     /handlePanelPointerDown[\s\S]*?setPointerHeld\(props\.edge, false\)/u,
@@ -114,10 +122,12 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(component, /handlePanelPointerRelease/u);
   assert.match(component, /onpointercancel=\{handlePanelPointerRelease\}/u);
   assert.match(component, /onpointerup=\{handlePanelPointerRelease\}/u);
-  assert.match(component, /<ProgressLight presentation=\{loadLight\} \/>/u);
-  assert.match(component, /<ProgressLight presentation=\{downloadLight\} \/>/u);
-  assert.match(component, /<ToolbarWidgetGlyph \{widget\} \/>/u);
-  assert.match(component, /toolbarWidgetDragMimeType/u);
+  assert.match(component, /<EdgeProgressLight/u);
+  assert.match(progressLight, /resolveLoadProgressLight/u);
+  assert.match(progressLight, /resolveDownloadProgressLight/u);
+  assert.match(progressLight, /<ProgressLight \{presentation\} \/>/u);
+  assert.match(toolbarWidgets, /<ToolbarWidgetGlyph \{widget\} \/>/u);
+  assert.match(toolbarWidgets, /toolbarWidgetDragMimeType/u);
   assert.match(css, /data-fennevia-customize-active/u);
   assert.match(css, /--fennevia-bottom-clearance/u);
   assert.match(
@@ -139,7 +149,12 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(glyph, /style:-webkit-mask-image=\{nativeMaskImage\}/u);
   assert.doesNotMatch(glyph, /<img[^>]+src=\{[^}]*chrome:/u);
 
-  const customize = await readProjectFile("src/shell/CustomizePanel.svelte");
+  const customize = await Promise.all([
+    readProjectFile("src/shell/CustomizePanel.svelte"),
+    readProjectFile(
+      "src/shell/features/customize/CustomizeStyleSection.svelte",
+    ),
+  ]).then((parts) => parts.join("\n"));
   assert.match(customize, /#0062f9/u);
   assert.match(customize, /#fbfbfe/u);
   assert.doesNotMatch(customize, /#3b82f6|#8b5cf6|#64748b|#f7fafc/u);

@@ -1,0 +1,246 @@
+#fennevia-shell-frame-host .fennevia-customize {
+  position: absolute;
+  z-index: 3;
+  inset-block-start: calc(
+    var(--fennevia-edge-inset) + var(--fennevia-top-clearance)
+  );
+  inset-block-end: calc(
+    var(--fennevia-edge-inset) + var(--fennevia-bottom-clearance)
+  );
+  inset-inline-start: calc(
+    var(--fennevia-edge-inset) + var(--fennevia-left-clearance)
+  );
+  inset-inline-end: calc(
+    var(--fennevia-edge-inset) + var(--fennevia-right-clearance)
+  );
+  display: flex;
+  flex-direction: column;
+  gap: var(--fennevia-space-3);
+  max-inline-size: 520px;
+  block-size: fit-content;
+  max-block-size: calc(
+    100% - (2 * var(--fennevia-edge-inset)) - var(--fennevia-top-clearance) -
+      var(--fennevia-bottom-clearance)
+  );
+  margin: auto;
+  padding: var(--fennevia-space-3);
+  overflow-y: auto;
+  color: var(--fennevia-glass-text);
+  background: var(--fennevia-glass-surface);
+  border: 1px solid var(--fennevia-glass-border);
+  border-radius: var(--fennevia-glass-radius);
+  box-shadow: var(--fennevia-glass-shadow);
+  pointer-events: auto;
+  -moz-window-dragging: no-drag;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  #fennevia-shell-frame-host .fennevia-customize {
+    background: var(--fennevia-glass-tint);
+    backdrop-filter: blur(var(--fennevia-glass-blur))
+      saturate(var(--fennevia-glass-saturation));
+  }
+}
+
+#fennevia-shell-frame-host .fennevia-customize__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__note {
+  margin: 0;
+  color: var(--fennevia-glass-muted);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fennevia-space-2);
+  padding-block-start: var(--fennevia-space-2);
+  border-block-start: 1px solid var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__heading {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+#fennevia-shell-frame-host
+  :is(.fennevia-customize__empty, .fennevia-customize__status) {
+  margin: 0;
+  color: var(--fennevia-glass-muted);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  align-items: stretch;
+  gap: var(--fennevia-space-2);
+  max-block-size: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__grid > li {
+  display: flex;
+  min-inline-size: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__tile {
+  display: flex;
+  min-block-size: 72px;
+  min-inline-size: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  inline-size: 100%;
+  padding: var(--fennevia-space-2) var(--fennevia-space-1);
+  overflow: hidden;
+  cursor: grab;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__tile-label {
+  display: -webkit-box;
+  max-inline-size: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 10px;
+  line-clamp: 2;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__section--drop {
+  outline: 1px dashed var(--fennevia-focus-color);
+  outline-offset: 2px;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__item-icon {
+  display: inline-flex;
+  inline-size: 16px;
+  block-size: 16px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__item-space {
+  color: var(--fennevia-glass-muted);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__style-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fennevia-space-1);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__style-label {
+  min-inline-size: 64px;
+  color: var(--fennevia-glass-muted);
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-customize__option,
+    .fennevia-customize__reset,
+    .fennevia-customize__close
+  ) {
+  display: inline-flex;
+  min-block-size: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 2px var(--fennevia-space-2);
+  background: transparent;
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+  line-height: 1;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__swatch {
+  display: inline-flex;
+  inline-size: 20px;
+  block-size: 20px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--fennevia-glass-border);
+  border-radius: var(--fennevia-chip-radius);
+  font-size: 10px;
+  line-height: 1;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__color-wrap {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__color {
+  display: inline-block;
+  inline-size: 20px;
+  block-size: 20px;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  border: 1px solid var(--fennevia-glass-border);
+  border-radius: var(--fennevia-chip-radius);
+  cursor: pointer;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__color::-moz-color-swatch {
+  border: none;
+  border-radius: var(--fennevia-chip-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__color--custom {
+  outline: 2px solid var(--fennevia-focus-color);
+  outline-offset: 1px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize
+  :is(
+    .fennevia-customize__option,
+    .fennevia-customize__swatch
+  )[aria-pressed="true"] {
+  background: var(--fennevia-selected-surface);
+  border-color: var(--fennevia-focus-color);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__swatch[aria-pressed="true"] {
+  outline: 2px solid var(--fennevia-focus-color);
+  outline-offset: 1px;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--fennevia-space-2);
+  padding-block-start: var(--fennevia-space-2);
+  border-block-start: 1px solid var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-navigation__button[data-fennevia-loading="true"] {
+  color: var(--fennevia-focus-color);
+  background: color-mix(in srgb, var(--fennevia-focus-color) 16%, transparent);
+}

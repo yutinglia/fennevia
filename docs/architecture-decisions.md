@@ -1882,3 +1882,50 @@ copy next to the Svelte hosts, stay reviewable without a second toolchain, and
 still follow the setting that displays Firefox menus and notifications.
 Validation lives in `tests/locale-state.test.mjs`, `tests/firefox-locale.test.mjs`,
 and `tests/i18n.test.mjs`. Real Firefox UI-language switching remains `not run`.
+
+## ADR-053: Feature-first source modules with compatibility facades
+
+**Status:** Accepted after the project owner's explicit whole-codebase
+refactoring request (2026-08-21); organizational only, with no relaxation of
+privileged, fail-open, native-ownership, privacy, or support rules
+
+Keep the existing public TypeScript import paths such as
+`src/app/edge-surfaces.ts`, `src/app/bookmark-state.ts`,
+`src/firefox/navigation.ts`, and `src/firefox/toolbar-widgets.ts` as thin
+facades. Move implementation into feature folders whose files have one primary
+responsibility:
+
+- application contracts, validation/copying, pure state reduction, adapters,
+  and view derivation are separate;
+- Firefox capability/native-data helpers are separate from per-window
+  controllers and popup-action coordination;
+- Svelte edge surfaces and feature components are separate from the frame
+  coordinator;
+- shell mounting delegates address-popup and focus ownership to explicit
+  coordinators;
+- the root stylesheet is an ordered import facade over feature CSS modules;
+- `FenneviaInstaller.psm1` loads a fixed reviewed list of implementation
+  files for common safety checks, target discovery, ownership, planning,
+  transactions, and public output.
+
+Facades are not a second implementation and must not grow feature logic. A
+feature folder may use private support facades, but `src/app/` and
+`src/shell/` still cannot import Firefox implementations. The installer
+loader must never enumerate scripts or accept plugin paths. The CSS import
+order is part of the cascade contract. Generated `profile/` files remain
+build output and may change only through the documented deterministic build.
+
+This decision adds no dependency, Firefox symbol, runtime resource mapping,
+preference, native-DOM mutation, data field, logging field, or support claim.
+Behavioral changes require their own decision and evidence; refactoring alone
+must preserve focused tests, coverage floors, deterministic cleanup, release
+inventory verification, and the complete ordinary CI gate. Real-Firefox mass
+matrices are not reclassified as passed by structural equivalence.
+
+**Reasoning:** The former flat files mixed stable contracts, native capability
+checks, state copying, UI composition, event coordination, and cleanup. That
+made reviews broad and encouraged unrelated edits in files exceeding one or
+two thousand lines. Feature folders make privileged ownership and disposal
+boundaries visible while compatibility facades avoid a repository-wide public
+API migration. Fixed CSS and installer inventories preserve deterministic and
+fail-closed behavior instead of replacing monoliths with discovery mechanisms.

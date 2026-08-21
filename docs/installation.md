@@ -97,6 +97,7 @@ fennevia-<VERSION>/
   scripts/verify-release.ps1
   scripts/gui/FenneviaSetup.cs
   scripts/lib/{FenneviaConsole,FenneviaGui,FenneviaTui,FenneviaInstaller,FenneviaRelease,SecurityChecks}.psm1
+  scripts/lib/installer/{Common,Discovery,Ownership,Planning,Transaction,Public}.ps1
   INSTALL.md
   LICENSE
   THIRD_PARTY_NOTICES.md
@@ -111,6 +112,12 @@ missing, renamed, reparse-point, changed, credential-like, high-confidence
 secret-bearing, or local-machine-path-bearing file. The separately published
 `.sha256` file authenticates the ZIP as a whole; verify it before trusting the
 installer and validator code inside that ZIP.
+
+`FenneviaInstaller.psm1` loads the six installer implementation files above
+from a fixed ordered allowlist. It does not enumerate or execute arbitrary
+`.ps1` files. Splitting the module changes only review boundaries: target
+validation, ownership proofs, plan hashes, transaction journals, rollback, and
+the exported command surface remain unchanged.
 
 ## 2. Target and preflight rules
 

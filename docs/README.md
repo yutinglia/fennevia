@@ -87,6 +87,9 @@ Read these before changing code or current documentation:
   four-edge widget editor, bounded style tokens, and owner-approved
   CustomizableUI adopt/restore writes; ADR-046 localized names and native
   built-in icons; ADR-047 live four-edge drag-and-drop.
+- [Codebase modularization plan](../plans/007-codebase-modularization.md) —
+  ADR-053 feature-first source boundaries, compatibility facades, and fixed
+  installer implementation inventory.
 
 The public `v0.11.0-beta.1` prerelease follows the planned Windows MVP and
 versioned distribution path. Tested Firefox builds are 153.0.4 BuildID

@@ -216,6 +216,10 @@ claim.
     plans and ADRs; do not rewrite old research records.
 11. **Reference, do not copy.** External customizations are compatibility or
     product-direction signals, not implementation templates.
+12. **Separate responsibility without widening APIs.** Keep stable facades at
+    established import paths while feature folders separate contracts,
+    validation, native support, controllers, UI composition, and cleanup
+    according to ADR-053 and `plans/007-codebase-modularization.md`.
 
 ## 6. Phases and gates
 

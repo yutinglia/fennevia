@@ -146,6 +146,10 @@ failed, or disposed state removes the active gate and exposes native Firefox UI.
   deterministic per-window ownership.
 - **Firefox integration:** small typed bridges under `src/firefox/`; no native
   handles enter Svelte or serializable application state.
+- **Source organization:** feature folders separate public contracts,
+  validation, controllers, native support, UI surfaces, and deterministic
+  cleanup. Existing top-level imports remain stable facades rather than
+  parallel implementations.
 - **UI:** Svelte 5 with TypeScript, compiled into deterministic project-owned
   XHTML roots. Hosts and structural nodes remain XHTML; only explicit
   project-authored icon subtrees use SVG.
@@ -229,4 +233,5 @@ layout, or visual composition.
 - [Master plan](../plans/000-master-plan.md)
 - [Shell roadmap](../plans/002-shell-roadmap.md)
 - [Single-line toolbar plan](../plans/004-single-line-toolbar-ui-ux.md)
+- [Codebase modularization plan](../plans/007-codebase-modularization.md)
 - [Research and validation records](research/)

@@ -1,0 +1,210 @@
+#fennevia-shell-frame-host .fennevia-icon {
+  display: block;
+  inline-size: 16px;
+  block-size: 16px;
+  flex: 0 0 auto;
+  overflow: visible;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  pointer-events: none;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-block-size: 0;
+  min-inline-size: 0;
+  gap: 10px;
+  padding: 6px 8px 6px 10px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__leading,
+#fennevia-shell-frame-host .fennevia-navigation__trailing {
+  display: flex;
+  min-inline-size: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+#fennevia-shell-frame-host .fennevia-navigation__trailing {
+  margin-inline-start: auto;
+}
+
+#fennevia-shell-frame-host
+  :is(.fennevia-navigation__controls, .fennevia-browser-tools) {
+  display: flex;
+  min-inline-size: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets {
+  display: flex;
+  min-inline-size: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets--compact {
+  flex: 0 0 auto;
+  align-self: stretch;
+  margin: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__separator {
+  align-self: stretch;
+  flex: 0 0 auto;
+  inline-size: 1px;
+  margin-block: 4px;
+  background: var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-toolbar-widgets--editing
+  :is(
+    .fennevia-toolbar-widgets__separator,
+    .fennevia-toolbar-widgets__spacer,
+    .fennevia-toolbar-widgets__spring
+  ) {
+  min-inline-size: 12px;
+  min-block-size: 24px;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__spacer {
+  flex: 0 0 auto;
+  inline-size: 16px;
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__spring {
+  flex: 1 1 16px;
+  min-inline-size: 8px;
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets--editing {
+  min-inline-size: 48px;
+  min-block-size: 32px;
+  outline: 1px dashed var(--fennevia-glass-separator);
+  outline-offset: 2px;
+  -moz-window-dragging: no-drag;
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__placeholder {
+  padding: 0 var(--fennevia-space-2);
+  color: var(--fennevia-glass-muted);
+  font-size: 11px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-toolbar-widgets--editing
+  .fennevia-toolbar-widgets__item {
+  cursor: grab;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-toolbar-widgets--editing
+  .fennevia-toolbar-widgets__item[data-fennevia-drop-before] {
+  box-shadow: inset 2px 0 0 var(--fennevia-focus-color);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-toolbar-widgets--editing[data-fennevia-drop-end] {
+  box-shadow: inset -2px 0 0 var(--fennevia-focus-color);
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__icon {
+  inline-size: 16px;
+  block-size: 16px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__native-icon {
+  display: inline-block;
+  inline-size: 16px;
+  block-size: 16px;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  pointer-events: none;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__badge {
+  position: absolute;
+  inset-block-start: 1px;
+  inset-inline-end: 1px;
+  min-inline-size: 12px;
+  padding: 0 2px;
+  color: var(--button-text-color-primary, white);
+  background: var(
+    --button-background-color-destructive,
+    var(--color-red-60, #cf1748)
+  );
+  border-radius: 6px;
+  font-size: 8px;
+  font-weight: 650;
+  line-height: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-navigation__button,
+    .fennevia-browser-tools__button,
+    .fennevia-toolbar-widgets__button,
+    .fennevia-window-controls__button
+  ) {
+  display: inline-flex;
+  min-inline-size: var(--fennevia-control-height);
+  min-block-size: var(--fennevia-control-height);
+  block-size: var(--fennevia-control-height);
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--fennevia-control-radius);
+  line-height: 1;
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-navigation__button,
+    .fennevia-browser-tools__button,
+    .fennevia-toolbar-widgets__button,
+    .fennevia-window-controls__button
+  ):disabled {
+  color: var(--fennevia-glass-muted);
+  background: transparent;
+  opacity: 0.38;
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__button {
+  position: relative;
+}

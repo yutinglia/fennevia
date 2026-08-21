@@ -733,7 +733,11 @@ The current implementation is in `scripts/fennevia.ps1`,
 `scripts/fennevia-package.ps1`, `scripts/lib/FenneviaConsole.psm1`,
 `scripts/lib/FenneviaGui.psm1`,
 `scripts/lib/FenneviaTui.psm1`, and
-`scripts/lib/FenneviaInstaller.psm1`. Operator behavior and recovery are in
+`scripts/lib/FenneviaInstaller.psm1` plus its fixed, release-inventoried
+`scripts/lib/installer/{Common,Discovery,Ownership,Planning,Transaction,Public}.ps1`
+implementation files. The module never scans that directory; missing or
+unexpectedly unshipped required files fail import rather than weakening path,
+ownership, or rollback checks. Operator behavior and recovery are in
 `docs/installation.md`.
 
 The development-profile helper follows the same principles and manages only its
