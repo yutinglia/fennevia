@@ -269,8 +269,12 @@ Issue #60 completes the remaining flat-list parity on that same strip:
 
 - middle-click close;
 - audio playing/muted/blocked plus a sibling mute toggle;
+- camera, microphone, and screen-sharing status plus crashed-tab state through
+  closed optional snapshot fields;
 - container color stripe and bounded label;
 - attention and picture-in-picture indicators;
+- project-authored semantic SVGs, fixed trailing action grid areas, and a
+  reduced-motion-safe loading-icon rotation;
 - drag reorder with a browser drag ghost/insertion marker and
   `Ctrl+Shift+ArrowUp/Down`;
 - Firefox-owned `#tabContextMenu` handoff with #31 popup hold, synchronous lazy
@@ -284,9 +288,10 @@ Deferred:
 - thumbnails/previews;
 - container icon loads from `resource://usercontext-content/`.
 
-Evidence: ADR-025, ADR-026, ADR-041, and
+Evidence: ADR-025, ADR-026, ADR-041, ADR-058, and
 `docs/research/firefox-153-tab-strip.md`,
-`docs/research/firefox-153-tab-strip-parity.md`, plus ADR-055 and
+`docs/research/firefox-153-tab-strip-parity.md`,
+`docs/research/firefox-153-154-tab-status-indicators.md`, plus ADR-055 and
 `docs/research/firefox-153-154-panel-context-actions.md`.
 
 ## Milestone F: Shared four-edge interaction and design frame — complete

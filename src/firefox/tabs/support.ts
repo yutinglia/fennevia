@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { TabContainerColor, TabSnapshot } from "../../app/tab-state.ts";
-import { isTabContainerColor } from "../../app/tab-state.ts";
+import type {
+  TabContainerColor,
+  TabSharingState,
+  TabSnapshot,
+} from "../../app/tab-state.ts";
+import { isTabContainerColor, isTabSharingState } from "../../app/tab-state.ts";
 import {
   FirefoxBridgeError,
   type FirefoxBridgeBoundary,
@@ -15,17 +19,24 @@ export const TAB_EVENT_TYPES = Object.freeze([
   "TabMove",
   "TabPinned",
   "TabUnpinned",
+  "TabRemotenessChange",
   "TabAttrModified",
+]);
+export const GBROWSER_TAB_EVENT_TYPES = Object.freeze([
+  "oop-browser-crashed",
+  "oop-browser-buildid-mismatch",
 ]);
 export const SNAPSHOT_ATTRIBUTES = new Set([
   "activemedia-blocked",
   "attention",
   "busy",
+  "crashed",
   "image",
   "label",
   "muted",
   "pictureinpicture",
   "selected",
+  "sharing",
   "soundplaying",
   "usercontextid",
 ]);
@@ -104,6 +115,11 @@ export const isNativeTabContextMenu = (value: unknown): value is NativeRecord =>
   isFunction(value.addEventListener) &&
   isFunction(value.removeEventListener);
 
+export const isNativeEventTarget = (value: unknown): value is NativeRecord =>
+  isNativeRecord(value) &&
+  isFunction(value.addEventListener) &&
+  isFunction(value.removeEventListener);
+
 export const tabsCapabilitySpecifications: readonly TabsCapabilitySpecification[] =
   Object.freeze([
     Object.freeze({
@@ -117,6 +133,12 @@ export const tabsCapabilitySpecifications: readonly TabsCapabilitySpecification[
       name: "firefox.selected-tab",
       read: (window: NativeRecord) => readGBrowserMember(window, "selectedTab"),
       symbol: "window.gBrowser.selectedTab",
+    }),
+    Object.freeze({
+      isAvailable: isNativeEventTarget,
+      name: "firefox.tab-crash-events",
+      read: readGBrowser,
+      symbol: "window.gBrowser.addEventListener.removeEventListener",
     }),
     ...[
       ["add-tab", "addTrustedTab"],
@@ -257,7 +279,9 @@ export const snapshotsEqual = (
       tab.faviconUrl === candidate.faviconUrl &&
       tab.audio === candidate.audio &&
       tab.attention === candidate.attention &&
+      tab.crashed === candidate.crashed &&
       tab.pictureInPicture === candidate.pictureInPicture &&
+      tab.sharing === candidate.sharing &&
       tab.container?.color === candidate.container?.color &&
       tab.container?.label === candidate.container?.label
     );
@@ -286,6 +310,11 @@ export const resolveContainerColor = (
   const resolved = CONTAINER_COLOR_ALIASES[value] ?? value;
   return isTabContainerColor(resolved) ? resolved : undefined;
 };
+
+export const resolveTabSharingState = (
+  value: unknown,
+): TabSharingState | undefined =>
+  isTabSharingState(value) ? value : undefined;
 
 export const isTabContextMenuEvent = (
   event: unknown,

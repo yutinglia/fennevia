@@ -55,6 +55,8 @@ Completed:
 - #11: accessible custom tab UI, now rendered vertically in the left edge;
 - #60: left-edge flat-list native parity (audio, container, attention,
   middle-click close, drag/keyboard reorder, Firefox `#tabContextMenu`);
+- ADR-058: fixed tab action placement, animated loading icon, and closed
+  camera/microphone/screen-sharing plus crash indicators;
 - #31: zero-layout four-edge frame, shared reveal controller, corner/collision
   policy, glass tokens, accessibility fallbacks, and complete cleanup;
 - #12: event-driven selected-navigation bridge and top-edge Back, Forward,
@@ -385,7 +387,9 @@ Evidence: ADR-026 and
 #### Left vertical tabs — complete (#11, #60)
 
 - native-order vertical list;
-- selected/title/favicon/pinned/loading/audio/attention/container state;
+- selected/title/favicon/pinned/loading/audio/attention/container state plus
+  closed camera/microphone/screen-sharing, crash, and picture-in-picture
+  indicators;
 - select, new, close, pin, unpin, mute, move, and native context-menu handoff;
 - bounded vertical overflow;
 - keyboard navigation, drag reorder with browser ghost/insertion preview, and
@@ -397,9 +401,10 @@ Evidence: ADR-026 and
 - ordinary bridge contracts only;
 - native tab strip retained.
 
-Evidence: ADR-025, ADR-026, ADR-041,
+Evidence: ADR-025, ADR-026, ADR-041, ADR-058,
 `docs/research/firefox-153-tab-strip.md`, and
-`docs/research/firefox-153-tab-strip-parity.md`, plus ADR-055 and
+`docs/research/firefox-153-tab-strip-parity.md`,
+`docs/research/firefox-153-154-tab-status-indicators.md`, plus ADR-055 and
 `docs/research/firefox-153-154-panel-context-actions.md`.
 
 #### Top primary controls — complete (#12)

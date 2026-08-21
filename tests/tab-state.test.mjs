@@ -34,23 +34,35 @@ test("tab state copies only ordinary fields into frozen ordered snapshots", () =
   assert.ok(Object.isFrozen(state.tabs[0]));
 });
 
-test("tab state copies audio, attention, and container fields and rejects invalid values", () => {
+test("tab state copies bounded indicator fields and rejects invalid values", () => {
   const state = createBrowserTabsState([
     {
       ...firstTab,
       attention: true,
       audio: "playing",
       container: { color: "blue", label: "Personal".repeat(20) },
+      crashed: true,
       pictureInPicture: true,
+      sharing: "microphone",
     },
   ]);
   assert.equal(state.tabs[0].audio, "playing");
   assert.equal(state.tabs[0].attention, true);
+  assert.equal(state.tabs[0].crashed, true);
   assert.equal(state.tabs[0].pictureInPicture, true);
+  assert.equal(state.tabs[0].sharing, "microphone");
   assert.equal(state.tabs[0].container.color, "blue");
   assert.equal(state.tabs[0].container.label.length, 80);
   assert.throws(
     () => createBrowserTabsState([{ ...firstTab, audio: "loud" }]),
+    /FENNEVIA_TAB_STATE_SNAPSHOT_INVALID/u,
+  );
+  assert.throws(
+    () => createBrowserTabsState([{ ...firstTab, sharing: "browser" }]),
+    /FENNEVIA_TAB_STATE_SNAPSHOT_INVALID/u,
+  );
+  assert.throws(
+    () => createBrowserTabsState([{ ...firstTab, crashed: "yes" }]),
     /FENNEVIA_TAB_STATE_SNAPSHOT_INVALID/u,
   );
   assert.throws(

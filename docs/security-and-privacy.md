@@ -44,6 +44,8 @@ Implemented controls:
 - frame-scoped CSS and project-only XHTML ownership;
 - typed per-window Firefox boundary and context-scoped opaque IDs;
 - bounded tab titles and allowlisted property-only favicon values;
+- closed per-window tab capture/crash indicators without WebRTC or device
+  details;
 - bounded navigation title/display-URI text and explicit native command actions;
 - bounded address draft plus fixed Firefox-derived connection/protection enums;
 - fixed Urlbar permission/action availability with read-only owner-state
@@ -265,7 +267,8 @@ The tabs bridge/application/UI may expose:
 - selected, pinned, loading booleans;
 - optional bounded allowlisted favicon value;
 - optional closed audio enum (`playing` / `muted` / `blocked`);
-- optional attention and picture-in-picture booleans;
+- optional closed sharing enum (`camera` / `microphone` / `screen`);
+- optional attention, picture-in-picture, and crashed booleans;
 - optional container `{ color, label }` where `color` is a closed Firefox
   identity color name and `label` is at most 80 text characters.
 
@@ -286,8 +289,14 @@ Rules:
 - container labels follow the title rule: shown as text/accessible name, never
   logged, never placed in error text, and never stored as `userContextId`;
 - container colors are a closed enum mapped to CSS tokens, not page hex/URLs;
-- audio/attention/PiP are booleans or a closed enum; color names may appear in
-  `data-fennevia-container-color` because they are allowlisted tokens;
+- audio/sharing are closed enums and attention/PiP/crashed are booleans. Their
+  fixed visual tokens may exist only in the owning window's project tab
+  descendants and accessible name; they never enter logs, persistence, a frame
+  root dataset, or another window;
+- origins, permission records, paused state, device IDs/names, native
+  `_sharingState`, and WebRTC objects never cross the privileged boundary;
+- color names may appear in `data-fennevia-container-color` because they are
+  allowlisted tokens;
 - native `#tabContextMenu` remains the owner of Duplicate, Close others, Send
   tab, Reopen in container, and Undo close;
 - the required synchronous Firefox translation owner activates lazy Fluent IDs

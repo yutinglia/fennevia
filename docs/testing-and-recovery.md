@@ -341,8 +341,17 @@ Validate:
   dynamic localized labels, translation before open, left-edge popup hold, and
   NativeUi handoff that does not reveal original Firefox chrome;
 - audio playing/muted/blocked indicator and mute toggle without first selecting;
+- camera, microphone, and screen-sharing indicators from the closed native tab
+  value, with unknown values omitted and no fake capture action;
+- crashed-tab and picture-in-picture status badges with localized accessible
+  names;
+- project-authored SVGs for fallback/loading/audio/status/pin/close, fixed
+  trailing pin/close placement with and without audio, and no text-symbol
+  placeholder icons;
+- loading-icon rotation while `busy`, with the visible state retained and the
+  animation stopped under reduced motion;
 - container color stripe and bounded label; private windows omit container;
-- attention and picture-in-picture indicators;
+- attention indicator;
 - deterministic close-focus recovery;
 - selected item remains reachable;
 - direct frontend unmount/remount;
@@ -363,6 +372,11 @@ Evidence:
 Issue #60 real Firefox rows (middle-click, audio/mute, container stripe,
 background-tab native menu, drag/keyboard reorder, menu popup hold, private
 window without containers, fail-open, disposal during menu/drag): **not run**.
+
+ADR-058 real Firefox rows (camera/microphone/screen capture transitions,
+crashed tab, simultaneous audio/PiP/capture status, narrow-panel control
+alignment, reduced motion, forced colors, high DPI, normal/second/private
+isolation, and cleanup): **not run**.
 
 ### 6.2 Top navigation — implemented
 

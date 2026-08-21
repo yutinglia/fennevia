@@ -262,8 +262,11 @@ unknown properties, owns frontend subscriptions, and releases the public bridge
 on unmount. Issue #11 renders that ordinary state as one accessible project-owned
 tab strip. Issue #60 extends the same strip with audio/container/attention
 indicators, middle-click close, drag and keyboard reorder, and Firefox-owned
-`#tabContextMenu` handoff. Primary tab buttons expose selected semantics and
-roving keyboard focus; pin, mute, and close remain sibling controls. Titles
+`#tabContextMenu` handoff. ADR-058 adds closed camera/microphone/screen-sharing
+and crash state plus project-authored SVG indicators. Primary tab buttons
+expose selected semantics and roving keyboard focus; capture/crash/PiP are
+read-only states inside that button, while pin, mute, and close remain sibling
+controls in fixed trailing grid areas. Titles
 stay bounded text, favicon values use a strict internal/raster allowlist with a
 property-only image and explicit fallback, and no browsing value enters logs or
 diagnostics. The bridge synchronously activates Firefox's lazy tab-menu Fluent
@@ -276,8 +279,9 @@ is in
 `docs/research/firefox-153-tabs-bridge.md`,
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
+`docs/research/firefox-153-154-tab-status-indicators.md`,
 `docs/research/firefox-153-154-panel-context-actions.md`, ADR-024, ADR-025, and
-ADR-041.
+ADR-041/ADR-058.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather

@@ -7,7 +7,7 @@ short reviewed progress snapshot, see [Current project status](current-status.md
 
 ## Current engineering status
 
-As of 2026-08-21, Fennevia has a published Windows x64 prerelease,
+As of 2026-08-22, Fennevia has a published Windows x64 prerelease,
 `v0.11.0-beta.1`, tested on stock Firefox 153.0.4 release, Build ID
 `20260810162159`, with owner-confirmed ordinary runtime on Firefox 154.0
 Build ID `20260812182057`. The installer accepts Firefox 153 and newer after
@@ -22,7 +22,7 @@ The tested MVP and current post-MVP implementation include:
 | Window runtime and recovery | Complete | Existing and later normal/private windows, persisted multi-tab Session Restore across separate Firefox processes, health states, safe start, emergency fallback, and deterministic disposal |
 | Frontend and bridge foundation | Complete | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership |
 | Four-edge frame | Complete | Independent top, left, right, and bottom XHTML surfaces, shared reveal/collision/focus policy, and accessibility fallbacks |
-| Tabs and address launcher | Complete | Event-driven vertical tabs with audio/container/attention state, drag/keyboard reorder, native tab context-menu handoff, compact committed address/status launcher, and centred address/search popup |
+| Tabs and address launcher | Complete | Event-driven vertical tabs with loading animation, audio/container/attention/PiP, closed camera/microphone/screen-sharing and crash indicators, fixed trailing actions, drag/keyboard reorder, native tab context-menu handoff, compact committed address/status launcher, and centred address/search popup |
 | Top controls | Complete | Native-synchronised Back, Forward, Reload/Stop, Home, New Tab, bounded page status, Firefox tool handoffs, and compact window-command controls |
 | Single-line toolbar and native handoffs | Focused implementation; real-Firefox matrix pending | One non-wrapping top row, fixed native tool/original-toolbar actions, project-owned control surfaces backed by retained Firefox/OS command owners, 7px gutter, drag regions, and transient shortcut hint |
 | Nav-bar widget mirror (ADR-044) | Focused implementation; superseded as sole model by ADR-045; real-Firefox matrix pending | Default top-zone layout from `CustomizableUI` nav-bar placements as project-styled buttons — extension actions with real icon/badge, pinned built-ins, spacers — with popups anchored on the project button |

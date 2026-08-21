@@ -2,9 +2,13 @@
   export type ShellIconName =
     | "account"
     | "address"
+    | "audio"
+    | "audio-muted"
     | "back"
     | "bookmark"
+    | "camera"
     | "close"
+    | "crashed"
     | "customize"
     | "developer"
     | "download"
@@ -19,21 +23,27 @@
     | "library"
     | "lock"
     | "maximize"
+    | "media-blocked"
     | "menu"
+    | "microphone"
     | "minimize"
     | "new-window"
     | "palette"
     | "permissions"
+    | "picture-in-picture"
+    | "pin"
     | "plus"
     | "print"
     | "private"
     | "reload"
     | "restore"
     | "screenshot"
+    | "screen-share"
     | "settings"
     | "shield"
     | "sidebar"
     | "stop"
+    | "tab"
     | "toolbar"
     | "translate"
     | "zoom";
@@ -67,6 +77,17 @@
     <path d="M19 3v5h-5" />
   {:else if name === "stop"}
     <rect fill="currentColor" height="10" rx="2" width="10" x="7" y="7" />
+  {:else if name === "audio"}
+    <path d="M5 10h4l5-4v12l-5-4H5Z" />
+    <path d="M17 9.5a4 4 0 0 1 0 5" />
+    <path d="M19 7a7 7 0 0 1 0 10" />
+  {:else if name === "audio-muted"}
+    <path d="M5 10h4l5-4v12l-5-4H5Z" />
+    <path d="m17 10 4 4M21 10l-4 4" />
+  {:else if name === "media-blocked"}
+    <circle cx="12" cy="12" r="8" />
+    <path d="m10 9 5 3-5 3Z" />
+    <path d="M6.4 6.4 17.6 17.6" />
   {:else if name === "plus"}
     <path d="M12 5v14M5 12h14" />
   {:else if name === "home"}
@@ -108,8 +129,23 @@
   {:else if name === "permissions"}
     <circle cx="8" cy="12" r="3" />
     <path d="M11 12h9M16 12v3M19 12v2" />
+  {:else if name === "microphone"}
+    <rect height="11" rx="3" width="6" x="9" y="3" />
+    <path d="M6.5 11.5a5.5 5.5 0 0 0 11 0M12 17v4M9 21h6" />
+  {:else if name === "camera"}
+    <rect height="10" rx="2" width="12" x="4" y="7" />
+    <path d="m16 10 4-2v8l-4-2Z" />
+  {:else if name === "picture-in-picture"}
+    <rect height="14" rx="2" width="18" x="3" y="5" />
+    <rect height="6" rx="1" width="8" x="11" y="11" />
+  {:else if name === "pin"}
+    <path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z" />
+    <path d="M12 14v7" />
   {:else if name === "close"}
     <path d="m7 7 10 10M17 7 7 17" />
+  {:else if name === "crashed"}
+    <path d="M12 4 21 20H3Z" />
+    <path d="M12 9v5M12 17h.01" />
   {:else if name === "minimize"}
     <path d="M5 19h14" />
   {:else if name === "maximize"}
@@ -158,6 +194,9 @@
   {:else if name === "screenshot"}
     <path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4" />
     <circle cx="12" cy="12" r="3" />
+  {:else if name === "screen-share"}
+    <rect height="13" rx="2" width="18" x="3" y="4" />
+    <path d="M8 21h8M12 17v4M9 12l5-5M10 7h4v4" />
   {:else if name === "sidebar"}
     <rect height="16" rx="3" width="18" x="3" y="4" />
     <path d="M9.5 4v16" />
@@ -167,5 +206,8 @@
   {:else if name === "zoom"}
     <circle cx="11" cy="11" r="6" />
     <path d="m15.5 15.5 4 4M9 11h4M11 9v4" />
+  {:else if name === "tab"}
+    <rect height="14" rx="3" width="18" x="3" y="5" />
+    <path d="M3 9h18M7 7h.01" />
   {/if}
 </svg>

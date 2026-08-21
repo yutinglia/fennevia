@@ -7,16 +7,20 @@ export const newTabHighlightDurationMs = 1_600;
 export type TabStripLabels = Readonly<{
   allowMedia: string;
   attention: string;
+  cameraInUse: string;
   close: string;
+  crashed: string;
   indexOf: string;
   loading: string;
   mediaBlocked: string;
+  microphoneInUse: string;
   mute: string;
   muted: string;
   pin: string;
   pinned: string;
   pip: string;
   playing: string;
+  screenSharing: string;
   unmute: string;
   unpin: string;
   untitled: string;
@@ -25,16 +29,20 @@ export type TabStripLabels = Readonly<{
 export const defaultTabStripLabels: TabStripLabels = Object.freeze({
   allowMedia: "Allow media for",
   attention: "Attention",
+  cameraInUse: "Using camera",
   close: "Close",
+  crashed: "Crashed",
   indexOf: "{index} of {total}",
   loading: "Loading",
   mediaBlocked: "Media blocked",
+  microphoneInUse: "Using microphone",
   mute: "Mute",
   muted: "Muted",
   pin: "Pin",
   pinned: "Pinned",
   pip: "Picture in picture",
   playing: "Playing",
+  screenSharing: "Sharing screen",
   unmute: "Unmute",
   unpin: "Unpin",
   untitled: untitledTabLabel,
@@ -70,11 +78,21 @@ export function getTabAccessibleName(
         : tab.audio === "blocked"
           ? labels.mediaBlocked
           : undefined;
+  const sharingLabel =
+    tab.sharing === "camera"
+      ? labels.cameraInUse
+      : tab.sharing === "microphone"
+        ? labels.microphoneInUse
+        : tab.sharing === "screen"
+          ? labels.screenSharing
+          : undefined;
   const states = [
     interpolate(labels.indexOf, { index: index + 1, total: tabCount }),
     tab.pinned ? labels.pinned : undefined,
+    tab.crashed ? labels.crashed : undefined,
     tab.loading ? labels.loading : undefined,
     audioLabel,
+    sharingLabel,
     tab.attention ? labels.attention : undefined,
     tab.pictureInPicture ? labels.pip : undefined,
     tab.container?.label,

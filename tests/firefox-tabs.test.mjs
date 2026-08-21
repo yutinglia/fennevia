@@ -69,6 +69,7 @@ function createTab(label, attributes = {}) {
 
 function createNativeWindow({ privateWindow = false } = {}) {
   const tabContainer = createEventTarget();
+  const gBrowserEvents = createEventTarget();
   const tabs = [
     createTab("First", {
       image: "chrome://branding/content/icon32.png",
@@ -82,6 +83,7 @@ function createNativeWindow({ privateWindow = false } = {}) {
   const actionCalls = [];
   const selectedBrowser = { webNavigation: {} };
   const gBrowser = {
+    ...gBrowserEvents,
     actionCalls,
     addTrustedTab(uri, options) {
       options.triggeringPrincipal ??= { testPrincipal: true };
@@ -512,12 +514,14 @@ test("disposal removes listeners, clears mappings, and prevents callbacks", () =
   pair.controller.tabs.subscribe(() => {
     callbackCount += 1;
   });
-  assert.equal(native.tabContainer.listenerCount(), 7);
+  assert.equal(native.tabContainer.listenerCount(), 8);
+  assert.equal(native.gBrowser.listenerCount(), 2);
   assert.equal(native.tabContextMenu.listenerCount(), 2);
 
   assert.equal(pair.controller.dispose(), true);
   assert.equal(pair.controller.dispose(), false);
   assert.equal(native.tabContainer.listenerCount(), 0);
+  assert.equal(native.gBrowser.listenerCount(), 0);
   assert.equal(native.tabContextMenu.listenerCount(), 0);
   native.gBrowser.updateAttribute(native.tabs[0], "label", "After dispose");
   assert.equal(callbackCount, 0);
@@ -637,7 +641,7 @@ test("subscriber failures are reported without exposing tab data or blocking pee
   }
 });
 
-test("audio, attention, picture-in-picture, and container fields reconcile from native attributes", () => {
+test("audio, sharing, crash, picture-in-picture, and container fields reconcile from native attributes", () => {
   const identities = new Map([
     [1, { color: "blue", name: "Personal" }],
     [2, { color: "turquoise", name: "Work" }],
@@ -660,15 +664,26 @@ test("audio, attention, picture-in-picture, and container fields reconcile from 
     native.gBrowser.updateAttribute(native.tabs[0], "soundplaying", "true");
     native.gBrowser.updateAttribute(native.tabs[0], "attention", "true");
     native.gBrowser.updateAttribute(native.tabs[0], "pictureinpicture", "true");
+    native.gBrowser.updateAttribute(native.tabs[0], "sharing", "microphone");
     native.gBrowser.updateAttribute(native.tabs[0], "usercontextid", "1");
+    native.tabs[0].setAttribute("crashed", "true");
+    native.gBrowser.dispatch("oop-browser-crashed", native.tabs[0], {
+      isTopFrame: true,
+    });
     let snapshot = pair.controller.tabs.snapshot();
     assert.equal(snapshot[0].audio, "playing");
     assert.equal(snapshot[0].attention, true);
+    assert.equal(snapshot[0].crashed, true);
     assert.equal(snapshot[0].pictureInPicture, true);
+    assert.equal(snapshot[0].sharing, "microphone");
     assert.deepEqual(snapshot[0].container, {
       color: "blue",
       label: "Personal",
     });
+
+    native.tabs[0].removeAttribute("crashed");
+    native.tabContainer.dispatch("TabRemotenessChange", native.tabs[0], {});
+    assert.equal(pair.controller.tabs.snapshot()[0].crashed, undefined);
 
     native.gBrowser.updateAttribute(native.tabs[0], "muted", "true");
     snapshot = pair.controller.tabs.snapshot();
@@ -683,6 +698,13 @@ test("audio, attention, picture-in-picture, and container fields reconcile from 
     );
     snapshot = pair.controller.tabs.snapshot();
     assert.equal(snapshot[0].audio, "blocked");
+
+    native.gBrowser.updateAttribute(native.tabs[0], "sharing", "camera");
+    assert.equal(pair.controller.tabs.snapshot()[0].sharing, "camera");
+    native.gBrowser.updateAttribute(native.tabs[0], "sharing", "screen");
+    assert.equal(pair.controller.tabs.snapshot()[0].sharing, "screen");
+    native.gBrowser.updateAttribute(native.tabs[0], "sharing", "unknown");
+    assert.equal(pair.controller.tabs.snapshot()[0].sharing, undefined);
 
     native.gBrowser.updateAttribute(native.tabs[1], "usercontextid", "2");
     snapshot = pair.controller.tabs.snapshot();
@@ -873,6 +895,42 @@ test("missing moveTabTo fails health with a typed current-build diagnostic", () 
         error.fenneviaSymbol === "window.gBrowser.moveTabTo" &&
         error.fenneviaBuildId === "20260810162159",
     );
+  } finally {
+    boundary.dispose();
+  }
+});
+
+test("missing gBrowser event-target capability fails before crash listeners attach", () => {
+  const native = createNativeWindow();
+  native.gBrowser.removeEventListener = undefined;
+  const boundary = createFirefoxBridgeBoundary({
+    buildId: "20260812182057",
+    contextId: "window-00000000-0000-4000-8000-999999999999",
+    firefoxVersion: "154.0",
+    window: native.window,
+    windowKind: "normal",
+  });
+  try {
+    assert.throws(
+      () =>
+        createFirefoxTabsBridge({
+          beginNativePopupHandoff() {
+            return true;
+          },
+          boundary,
+          endNativePopupHandoff() {},
+          onError() {},
+          window: native.window,
+        }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING" &&
+        error.fenneviaSymbol ===
+          "window.gBrowser.addEventListener.removeEventListener" &&
+        error.fenneviaBuildId === "20260812182057",
+    );
+    assert.equal(native.tabContainer.listenerCount(), 0);
+    assert.equal(native.gBrowser.listenerCount(), 0);
   } finally {
     boundary.dispose();
   }

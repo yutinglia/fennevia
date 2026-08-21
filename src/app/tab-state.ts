@@ -1,8 +1,19 @@
 export const maximumTabTitleLength = 256;
 export const maximumContainerLabelLength = 80;
 
-export const tabAudioStates = Object.freeze(["playing", "muted", "blocked"]);
+export const tabAudioStates = Object.freeze([
+  "playing",
+  "muted",
+  "blocked",
+] as const);
 export type TabAudioState = (typeof tabAudioStates)[number];
+
+export const tabSharingStates = Object.freeze([
+  "camera",
+  "microphone",
+  "screen",
+] as const);
+export type TabSharingState = (typeof tabSharingStates)[number];
 
 export const tabContainerColors = Object.freeze([
   "blue",
@@ -15,11 +26,12 @@ export const tabContainerColors = Object.freeze([
   "red",
   "violet",
   "yellow",
-]);
+] as const);
 export type TabContainerColor = (typeof tabContainerColors)[number];
 
 const tabAudioStateSet = new Set<string>(tabAudioStates);
 const tabContainerColorSet = new Set<string>(tabContainerColors);
+const tabSharingStateSet = new Set<string>(tabSharingStates);
 
 export type TabContainerSnapshot = Readonly<{
   color: TabContainerColor;
@@ -30,12 +42,14 @@ export type TabSnapshot = Readonly<{
   attention?: boolean;
   audio?: TabAudioState;
   container?: TabContainerSnapshot;
+  crashed?: boolean;
   faviconUrl?: string;
   id: string;
   loading: boolean;
   pictureInPicture?: boolean;
   pinned: boolean;
   selected: boolean;
+  sharing?: TabSharingState;
   title: string;
 }>;
 
@@ -120,6 +134,10 @@ export function isTabContainerColor(
   return typeof value === "string" && tabContainerColorSet.has(value);
 }
 
+export function isTabSharingState(value: unknown): value is TabSharingState {
+  return typeof value === "string" && tabSharingStateSet.has(value);
+}
+
 const copyTabContainer = (
   candidate: TabContainerSnapshot | undefined,
 ): TabContainerSnapshot | undefined => {
@@ -156,8 +174,11 @@ const copyTabSnapshot = (candidate: TabSnapshot): TabSnapshot => {
     (candidate.audio !== undefined && !isTabAudioState(candidate.audio)) ||
     (candidate.attention !== undefined &&
       typeof candidate.attention !== "boolean") ||
+    (candidate.crashed !== undefined &&
+      typeof candidate.crashed !== "boolean") ||
     (candidate.pictureInPicture !== undefined &&
-      typeof candidate.pictureInPicture !== "boolean")
+      typeof candidate.pictureInPicture !== "boolean") ||
+    (candidate.sharing !== undefined && !isTabSharingState(candidate.sharing))
   ) {
     throw createStateError("FENNEVIA_TAB_STATE_SNAPSHOT_INVALID");
   }
@@ -167,6 +188,7 @@ const copyTabSnapshot = (candidate: TabSnapshot): TabSnapshot => {
     ...(candidate.attention === true ? { attention: true } : {}),
     ...(candidate.audio === undefined ? {} : { audio: candidate.audio }),
     ...(container === undefined ? {} : { container }),
+    ...(candidate.crashed === true ? { crashed: true } : {}),
     ...(candidate.faviconUrl === undefined
       ? {}
       : { faviconUrl: candidate.faviconUrl }),
@@ -175,6 +197,7 @@ const copyTabSnapshot = (candidate: TabSnapshot): TabSnapshot => {
     loading: candidate.loading,
     pinned: candidate.pinned,
     selected: candidate.selected,
+    ...(candidate.sharing === undefined ? {} : { sharing: candidate.sharing }),
     title: candidate.title.slice(0, maximumTabTitleLength),
   });
 };

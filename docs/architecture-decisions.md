@@ -2220,3 +2220,43 @@ policies preserve the native owner in both cases while choosing the least
 invasive safe placement for each class. Source evidence, rejected
 alternatives, and pending real rows are recorded in
 `docs/research/firefox-153-154-install-notification-and-translations-widget.md`.
+
+## ADR-058: Model native tab indicators as closed state and owned semantic SVGs
+
+**Status:** Accepted for the project-owner request on 2026-08-22; Firefox
+153.0.4/154.0 source and complete automated validation complete; real Firefox
+visual and capture-state validation pending
+
+Extend the existing ordinary tab snapshot with optional
+`sharing: "camera" | "microphone" | "screen"` and `crashed: true`. Read only
+the native tab's `sharing` and `crashed` attributes. Reconcile sharing through
+its exact `TabAttrModified` name; reconcile crash entry through Firefox's two
+top-frame crash events and crash removal through `TabRemotenessChange` plus the
+existing busy/image updates. Unknown sharing values are omitted. Never expose
+Firefox's private browser `_sharingState`, WebRTC records, origin, paused state,
+device identity, permission detail, or native objects.
+
+Render loading, fallback, audio, pin, close, picture-in-picture, capture, and
+crash visuals with project-authored current-color inline SVGs. Capture, crash,
+and picture-in-picture are read-only status badges inside the primary tab
+button; their localized state appears in that tab's accessible name. They are
+not controls. Audio mute/resume, pin/unpin, and close remain semantic sibling
+buttons. Give the optional audio action its own named grid area before fixed
+pin and close areas; status badges remain inside the flexible tab area. Animate
+only the existing `busy` loading icon and stop its rotation under reduced
+motion without removing the state.
+
+Do not copy Firefox's theme SVGs or native tab markup. Do not add tab notes,
+pending/discarded controls, tab groups, split view, or generic unknown-icon
+discovery through this decision. Firefox remains the owner of capture
+permissions, prompts, stop-sharing actions, and authoritative native UI.
+
+**Reasoning:** Firefox 153.0.4 and 154.0 already collapse active tab capture to
+three presentation values and publish changes through the existing tab event
+path. Reusing that narrow contract supplies the requested microphone and peer
+indicators without exporting a broader privacy-sensitive WebRTC record. Named
+grid areas keep true actions aligned, while owned SVGs provide a coherent,
+accessible visual language without a new runtime asset or upstream-theme
+dependency. Source pins, rejected alternatives, privacy limits, and pending
+real-browser rows are recorded in
+`docs/research/firefox-153-154-tab-status-indicators.md`.
