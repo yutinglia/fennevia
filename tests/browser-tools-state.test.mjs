@@ -20,6 +20,7 @@ const availableSnapshot = Object.freeze({
   settings: true,
   siteInformation: true,
   sitePermissions: true,
+  translate: true,
 });
 
 test("browser tools state accepts only the fixed native handoff contract", () => {
@@ -29,6 +30,7 @@ test("browser tools state accepts only the fixed native handoff contract", () =>
     "site-permissions",
     "downloads",
     "extensions",
+    "translate",
     "application-menu",
     "settings",
     "customize",
@@ -42,6 +44,7 @@ test("browser tools state accepts only the fixed native handoff contract", () =>
     "site-permissions",
     "downloads",
     "extensions",
+    "translate",
     "application-menu",
   ]);
   assert.ok(popupBrowserToolActions.every(isPopupBrowserToolAction));
@@ -60,6 +63,7 @@ test("browser tools state accepts only the fixed native handoff contract", () =>
     "settings",
     "siteInformation",
     "sitePermissions",
+    "translate",
   ]);
   assert.doesNotMatch(
     JSON.stringify(snapshot),
@@ -101,8 +105,8 @@ test("browser tools adapter forwards fixed actions, popup hosts, and popup holds
   const popupEvents = [];
   let publish;
   const adapter = createBrowserToolsStateAdapter({
-    async invoke(action, host) {
-      calls.push([action, host]);
+    async invoke(action, host, triggerEvent) {
+      calls.push([action, host, triggerEvent]);
       return true;
     },
     snapshot: () => availableSnapshot,
@@ -119,13 +123,21 @@ test("browser tools adapter forwards fixed actions, popup hosts, and popup holds
     },
   });
   const host = {};
+  const triggerEvent = {};
   const unsubscribe = adapter.subscribePopup((open) => {
     popupEvents.push(open);
   });
 
   for (const action of browserToolActions) {
     const extra = isPopupBrowserToolAction(action) ? host : undefined;
-    assert.equal(await adapter.invoke(action, extra), true);
+    assert.equal(
+      await adapter.invoke(
+        action,
+        extra,
+        action === "translate" ? triggerEvent : undefined,
+      ),
+      true,
+    );
   }
   assert.deepEqual(
     calls.map((call) => call[0]),
@@ -133,6 +145,13 @@ test("browser tools adapter forwards fixed actions, popup hosts, and popup holds
   );
   assert.equal(
     calls.filter((call) => call[0] === "downloads" && call[1] === host).length,
+    1,
+  );
+  assert.equal(
+    calls.filter(
+      (call) =>
+        call[0] === "translate" && call[1] === host && call[2] === triggerEvent,
+    ).length,
     1,
   );
   publish(Object.freeze({ open: true, type: "native-popup" }));

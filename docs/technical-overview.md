@@ -81,6 +81,12 @@ drag-and-drop, and may perform only the bounded adopt/restore writes accepted by
 ADR-045. Native Firefox customize mode remains available through the
 application menu.
 
+Fennevia's owned palette also includes `show-bookmarks`, `show-downloads`, and
+`show-translate`. The translation widget opens Firefox's built-in full-page
+translation owner on the clicked project host. Its narrow popup route remains
+active until Firefox's asynchronously created panel is actually shown; Firefox
+retains all language, model, settings, error, focus, and translation behavior.
+
 Appearance and interaction customization are deliberately bounded.
 Profile-local settings may adjust panel and window backgrounds, text, border,
 saturation, shadow, and motion values. They may also set the in-window hide

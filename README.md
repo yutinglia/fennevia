@@ -31,11 +31,19 @@ use the keyboard, to reveal:
 - **Centre:** an address/search popup opened from the launcher or with
   <kbd>Ctrl</kbd>+<kbd>L</kbd>.
 
+Right-click works across all four edge panels. It offers a useful action for
+that edge plus available Fennevia/Firefox customization and original-toolbar
+access; tab rows keep Firefox's complete translated tab menu, bookmark rows
+offer bounded open/folder/Library actions, and tab dragging shows its insertion
+point before drop.
+
 Firefox still owns security prompts, permissions, certificates, extension
 installation, download safety, DevTools, the full native address bar, and the
 window commands behind the custom caption buttons. Native caption nodes stay in
 place for fail-open recovery. Fennevia can reveal the complete native Firefox
 interface when a feature is unsupported or recovery is needed.
+The current Firefox 154 AMO install flow may use that complete native-chrome
+fallback; this is an accepted safety behavior rather than a custom prompt.
 
 ## Current release
 
@@ -68,7 +76,10 @@ Fennevia has moved beyond the first four-edge MVP. The current prerelease also
 includes a Fennevia-owned widget editor with live drag-and-drop across all four
 edges, bounded appearance and edge-interaction controls, Firefox design-token
 defaults, English and Traditional Chinese shell catalogs, first-paint
-native-toolbox hiding, and the `FenneviaSetup.exe` Windows setup wizard.
+native-toolbox hiding, generic Firefox-owned popup proxy anchoring, four-panel
+context actions, tab drag preview, native-safe extension-install prompts, a
+placeable Firefox built-in translation widget, and the `FenneviaSetup.exe`
+Windows setup wizard.
 
 The implementation has focused automated coverage, but the remaining
 real-Firefox visual, popup-placement, customize, first-paint, and complete GUI

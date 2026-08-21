@@ -26,6 +26,7 @@ export type BrowserToolCapabilitySpecification = Readonly<{
   isAvailable: (value: unknown) => boolean;
   name: string;
   read: (window: NativeRecord) => unknown;
+  requirement?: "optional" | "required";
   symbol: string;
 }>;
 
@@ -45,6 +46,7 @@ export const NATIVE_POPUP_PANEL_IDS = Object.freeze([
   "protections-popup",
   "trustpanel-popup",
   "unified-extensions-panel",
+  "full-page-translations-panel",
 ]);
 
 export const nativePopupPanelIdSet = new Set<string>(NATIVE_POPUP_PANEL_IDS);
@@ -55,6 +57,7 @@ export const popupPanelByAction: Readonly<
   "application-menu": Object.freeze(["appMenu-popup"]),
   downloads: Object.freeze(["downloadsPanel"]),
   extensions: Object.freeze(["unified-extensions-panel"]),
+  translate: Object.freeze(["full-page-translations-panel"]),
   protections: Object.freeze(["trustpanel-popup", "protections-popup"]),
   "site-information": Object.freeze(["trustpanel-popup", "identity-popup"]),
   "site-permissions": Object.freeze(["permission-popup"]),
@@ -68,6 +71,7 @@ export const popupPositionByAction: Readonly<
   "application-menu": APPLICATION_MENU_POSITION,
   downloads: "after_start",
   extensions: "after_end",
+  translate: "after_end",
   protections: "end_before",
   "site-information": "end_before",
   "site-permissions": "after_end",
@@ -225,6 +229,16 @@ export const browserToolCapabilitySpecifications: ReadonlyArray<BrowserToolCapab
     }),
     defineBrowserToolCapability({
       isAvailable: isFunction,
+      name: "browser-tools.full-page-translations",
+      read: (window) =>
+        isNativeRecord(window.FullPageTranslationsPanel)
+          ? window.FullPageTranslationsPanel.open
+          : undefined,
+      requirement: "optional",
+      symbol: "window.FullPageTranslationsPanel.open",
+    }),
+    defineBrowserToolCapability({
+      isAvailable: isFunction,
       name: "browser-tools.application-menu",
       read: (window) =>
         isNativeRecord(window.PanelUI) ? window.PanelUI.show : undefined,
@@ -367,7 +381,7 @@ export const evaluateBrowserToolCapabilities = (
         snapshot: Object.freeze({
           available,
           name: specification.name,
-          requirement: "required" as const,
+          requirement: specification.requirement ?? ("required" as const),
           symbol: specification.symbol,
         }),
       });
@@ -424,6 +438,7 @@ export const createSnapshot = (
       available("browser-tools.trust-panel") &&
       available("browser-tools.identity-anchor"),
     sitePermissions: available("browser-tools.permission-open-popup"),
+    translate: available("browser-tools.full-page-translations"),
   });
 };
 

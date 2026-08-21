@@ -35,6 +35,7 @@
     | "sidebar"
     | "stop"
     | "toolbar"
+    | "translate"
     | "zoom";
 
   type Props = Readonly<{
@@ -160,6 +161,9 @@
   {:else if name === "sidebar"}
     <rect height="16" rx="3" width="18" x="3" y="4" />
     <path d="M9.5 4v16" />
+  {:else if name === "translate"}
+    <path d="M4 5h8M8 3v2M5.5 8.5c2.4 3 5.4 4.8 8.5 5.5" />
+    <path d="M11 5c-.8 3.3-3.2 6.2-6.5 8M13 20l3.5-9 3.5 9M14.2 17h5.6" />
   {:else if name === "zoom"}
     <circle cx="11" cy="11" r="6" />
     <path d="m15.5 15.5 4 4M9 11h4M11 9v4" />

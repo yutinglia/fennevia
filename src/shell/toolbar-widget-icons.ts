@@ -24,6 +24,7 @@ const toolbarWidgetIconNames: ReadonlyMap<string, ShellIconName> = new Map<
   ["screenshot", "screenshot"],
   ["shield", "shield"],
   ["sidebar", "sidebar"],
+  ["translate", "translate"],
   ["zoom", "zoom"],
 ]);
 

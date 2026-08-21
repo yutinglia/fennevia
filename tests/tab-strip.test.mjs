@@ -18,6 +18,7 @@ import {
   newTabHighlightDurationMs,
   resolveRovingTabId,
   resolveTabDropIndex,
+  resolveTabDropPreview,
 } from "../src/app/tab-strip.ts";
 
 const projectRoot = path.resolve(
@@ -120,6 +121,16 @@ test("move helpers stay inside the pinned partition and ignore no-op drops", () 
   assert.equal(resolveTabDropIndex(tabs, "open-b", [10, 30, 50, 70], 20), 2);
   assert.equal(resolveTabDropIndex(tabs, "open-b", [10, 30, 50, 70], 80), null);
   assert.equal(resolveTabDropIndex(tabs, "pinned-a", [10, 30, 50, 70], 80), 1);
+  assert.deepEqual(resolveTabDropPreview(tabs, "open-b", 2), {
+    index: 2,
+    position: "before",
+  });
+  assert.deepEqual(resolveTabDropPreview(tabs, "pinned-a", 1), {
+    index: 1,
+    position: "after",
+  });
+  assert.equal(resolveTabDropPreview(tabs, "open-a", 2), null);
+  assert.equal(resolveTabDropPreview(tabs, "missing", 1), null);
 });
 
 test("roving focus prefers a live target, then the selected tab, then native order", () => {
@@ -275,7 +286,14 @@ test("the component uses semantic sibling controls and property-safe rendering o
   );
   assert.match(source, /findTabMoveIndex/u);
   assert.match(source, /resolveTabDropIndex/u);
+  assert.match(source, /resolveTabDropPreview/u);
+  assert.match(source, /transfer\.setDragImage/u);
+  assert.match(source, /data-fennevia-drop-preview/u);
+  assert.match(source, /ondragleave=\{handleTabListDragLeave\}/u);
+  assert.match(source, /clearTabDrag\(\)/u);
   assert.match(source, /setPointerHeld\("left", true\)/u);
+  assert.match(styles, /data-fennevia-drop-preview="before"/u);
+  assert.match(styles, /data-fennevia-drop-preview="after"/u);
   assert.match(styles, /@media \(forced-colors: active\)/u);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(styles, /@media \(prefers-reduced-transparency: reduce\)/u);

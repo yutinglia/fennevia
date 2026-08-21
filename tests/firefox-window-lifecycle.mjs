@@ -1487,6 +1487,9 @@ async function collectShellHostState(client) {
     const style = document.getElementById("fennevia-shell-style");
     const appStyle = document.getElementById("fennevia-shell-app-style");
     const nativeStyle = document.getElementById("fennevia-native-ui-style");
+    const nativePopupProxyAnchor = document.getElementById(
+      "fennevia-native-popup-anchor"
+    );
     const describeNativeLayout = element => {
       if (!element) {
         return null;
@@ -1600,6 +1603,16 @@ async function collectShellHostState(client) {
         identityBoxOwnedByNavBar:
           document.getElementById("identity-box")?.closest("#nav-bar") ===
           document.getElementById("nav-bar"),
+        popupProxyAnchorAriaHidden:
+          nativePopupProxyAnchor?.getAttribute("aria-hidden") === "true",
+        popupProxyAnchorCount: document.querySelectorAll(
+          "#fennevia-native-popup-anchor"
+        ).length,
+        popupProxyAnchorParentIsFrame:
+          nativePopupProxyAnchor?.parentElement === frame,
+        popupProxyAnchorPointerEvents: nativePopupProxyAnchor
+          ? getComputedStyle(nativePopupProxyAnchor).pointerEvents
+          : null,
         navBar: describeNativeLayout(document.getElementById("nav-bar")),
         navBarCustomizationTarget: describeNativeLayout(
           document.getElementById("nav-bar-customization-target")
@@ -5363,6 +5376,9 @@ async function exerciseFrontendUnmountRemount(client) {
         async open() {
           return Object.freeze({ reason: "stale", status: "rejected" });
         },
+        manage() {
+          return true;
+        },
         async roots() {
           return bookmarkRoots;
         },
@@ -5684,6 +5700,10 @@ function assertShellHostState(state, windowKind) {
   try {
     assert.equal(state.nativeUi.styleParentIsFrame, true);
     assert.equal(state.nativeUi.styleRuleCount, 7);
+    assert.equal(state.nativeUi.popupProxyAnchorAriaHidden, true);
+    assert.equal(state.nativeUi.popupProxyAnchorCount, 1);
+    assert.equal(state.nativeUi.popupProxyAnchorParentIsFrame, true);
+    assert.equal(state.nativeUi.popupProxyAnchorPointerEvents, "none");
     assert.equal(state.nativeUi.revealed, false);
     assert.equal(state.nativeUi.suspended, false);
     assert.equal(state.nativeUi.identityBoxOwnedByNavBar, true);

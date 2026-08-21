@@ -213,6 +213,14 @@ export const fenneviaWidgetPresentation: ReadonlyMap<
       tooltip: "Open the Firefox downloads panel",
     }),
   ],
+  [
+    "show-translate",
+    Object.freeze({
+      icon: "translate",
+      label: "Translate this page",
+      tooltip: "Open Firefox built-in translations",
+    }),
+  ],
 ]);
 
 export const isNativeRecord = (value: unknown): value is NativeRecord =>

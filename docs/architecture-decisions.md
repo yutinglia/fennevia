@@ -731,7 +731,9 @@ normal/second/private/Browser-Toolbox evidence are recorded in
 
 **Status:** Accepted and validated on Firefox 153.0.4. The four-root data,
 bounded pages, and nested-list contract remain; root chrome is a native
-`select` rather than a `tablist`.
+`select` rather than a `tablist`. The bounded context actions and Library
+handoff are source-backed on Firefox 153.0.4 and 154.0; their real-Firefox
+interaction rows remain not run.
 
 Create one bookmarks controller inside each ADR-023 window boundary. Firefox's
 profile Places database remains shared according to native policy, but every
@@ -778,6 +780,12 @@ private kind. Firefox therefore retains URL security checks,
 background-tab preference, and private targeting. Ordinary HTTP(S), internal,
 file, and other non-blocked schemes remain subject to Firefox's native checks.
 
+Expose one additional fixed `manage()` action that calls the owning window's
+`PlacesCommandHook.showPlacesOrganizer("UnfiledBookmarks")`, matching
+Firefox's current `Browser:ShowAllBookmarks` command. The native Library owns
+window reuse, complete editing, search, import/export, and selection behavior;
+no Library window or Places object crosses the bridge.
+
 Render the right surface as a four-root tablist followed by one ordinary nested
 list rather than an ARIA tree. Root Left/Right/Home/End behavior and item
 Up/Down/Home/End, folder Left/Right, Enter/Space, Ctrl/Command+Enter, middle
@@ -786,6 +794,14 @@ Firefox chrome. Separators do not enter roving focus. Stable opaque keys retain
 focus through title/URL/reorder updates; removing the focused item selects the
 nearest surviving action or the selected root. Loading, empty, paged, stale,
 unavailable, and error output remains text-accessible.
+
+Pointer right-click, the Context Menu key, and Shift+F10 on a bookmark row open
+a project-owned bounded action menu. Bookmark rows offer current/new-tab open;
+folders offer expand/collapse; both expose the fixed native Library handoff.
+The menu carries only the existing opaque ID, clamps inside the panel, uses the
+shared right-edge popup hold, restores focus on Escape, and cleans up outside
+pointer/blur listeners and holds on close or disposal. It deliberately does
+not clone Firefox's Places tree context menu or expose edit/delete placeholders.
 
 Consume ADR-026's existing right host, reveal/focus controller, one anti-flicker
 timer, corner arbitration, collision bounds, glass tokens, environment
@@ -945,7 +961,8 @@ proof are recorded in
 
 **Status:** Accepted and validated on Firefox 153.0.4;
 Fennevia-initiated host-anchored popup reveal carved by ADR-042;
-first-paint pending hide added by ADR-050 without moving this gate
+first-paint pending hide added by ADR-050 without moving this gate;
+toolbox-doorhanger reveal clause superseded by ADR-056
 
 After every ADR-021 health and required-capability check succeeds, the fixed
 production initializer performs the explicit `healthy -> active` transition.
@@ -1163,7 +1180,8 @@ Implementation and validation evidence are recorded in
 **Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary;
 top-row address cluster and native caption island superseded by ADR-038;
 popup-action toolbar reveal superseded by ADR-042; the widget/identity
-enumeration prohibition partially superseded by ADR-044
+enumeration prohibition partially superseded by ADR-044; the fixed
+browser-tools contract is extended by ADR-057
 
 Render the top edge as one project-owned, non-wrapping toolbar row. Expose only
 nine fixed browser-tool availability booleans and nine fixed actions through a
@@ -1333,7 +1351,9 @@ enumeration in normal output"; it is not automatic target selection.
 
 ## ADR-041: Complete left-edge tab strip native parity through Firefox-owned menu handoff
 
-**Status:** Accepted for issue #60
+**Status:** Accepted for issue #60; lazy-menu translation and popup handoff are
+source-backed on Firefox 153.0.4 and 154.0, with the real interaction rows not
+run
 
 Keep the #10/#11 flat vertical tab list as the only left-edge tab model. Extend
 its ordinary snapshot with optional audio, attention, picture-in-picture, and
@@ -1341,6 +1361,20 @@ container `{ color, label }` fields. Add `move`, `toggleMute`, and
 `openContextMenu({ screenX, screenY })`. Open Firefox `#tabContextMenu` with the
 native `<tab>` as `triggerNode`, then `moveTo` the cursor. Hold the left edge
 through the existing #31 `setPopupHeld("left")` path while that popup is open.
+Before opening, call the required synchronous
+`gBrowser.translateTabContextMenu()` owner so its lazy Fluent resource and
+every `data-lazy-l10n-id` are activated even though the event did not pass
+through the collapsed native tab container. Acquire the existing NativeUi
+`tabContextMenu` popup-handoff token before `openPopup` so the native-tab anchor
+does not reveal original chrome. Release that token on open failure,
+`popuphidden`, or bridge disposal.
+
+HTML5 drag keeps the existing opaque tab ID and pinned-partition move action.
+Use the current project tab button as `setDragImage()` and render one
+calculated before/after insertion marker for the accepted move index. Clear the
+marker and existing left pointer hold on drag leave, invalid/mismatched payload,
+drop, drag end, and disposal. The existing Ctrl+Shift+Arrow reorder path remains
+the keyboard equivalent.
 
 Do not reimplement Duplicate, Close others, Send tab, Reopen in container, or
 Undo close in Svelte. Do not put native tab, menu, identity, or principal
@@ -1358,12 +1392,17 @@ user-derived text like titles: show them, never log them. Color names are a
 closed Firefox enum mapped to CSS tokens. Live `openPopup`+`moveTo` proof
 against a collapsed native tab strip was not run on this change; the
 source-selected sequence is recorded in
-`docs/research/firefox-153-tab-strip-parity.md`, with a bridge-owned `.tab`
-trigger node as the fallback if positioning fails on the supported build.
+`docs/research/firefox-153-tab-strip-parity.md` and the blank-label/handoff
+correction in
+`docs/research/firefox-153-154-panel-context-actions.md`, with a bridge-owned
+`.tab` trigger node as the fallback if positioning fails on the supported
+build.
 
 ## ADR-042: Anchor Firefox-owned panels beside Fennevia buttons without revealing native chrome
 
-**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary
+**Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary; the
+six-action placement contract is extended by ADR-057's seventh translation
+action
 
 Keep Firefox as the sole owner of Trust, identity, protections, permission,
 Downloads, Unified Extensions, and application-menu panel contents. For the
@@ -1397,10 +1436,10 @@ bridge opens the panel on the project host. The top-row Extensions control uses
 
 `NativeUi.sys.mjs` ignores toolbox reveal for a short-lived panel-id handoff
 token and for popups whose `anchorNode` is inside the Fennevia frame.
-Firefox-initiated doorhangers that stay anchored in the toolbox still reveal
-native chrome. Settings, customization, original-toolbar access, and native
-Urlbar handoff are unchanged. Do not reparent native anchors or clone panel
-contents.
+ADR-056 supersedes the toolbox-doorhanger reveal clause with a general
+project-proxy anchor while preserving Firefox ownership and fail-open. Settings,
+customization, original-toolbar access, and native Urlbar handoff are unchanged.
+Do not reparent native anchors or clone panel contents.
 
 Hold the matching top or left edge with the existing `#31` `setPopupHeld` path
 while a Fennevia-initiated panel is open. Keep the centered address overlay
@@ -1527,7 +1566,8 @@ explicit project-owner approval (2026-08-18, planning conversation) for the two
 bounded rule relaxations below; partially supersedes ADR-044's
 mirror-as-sole-model and "native customize mode is the only editor" clauses;
 the "editor drawer performs all editing" clause is superseded by ADR-047; the
-style preference schema is extended by ADR-054
+style preference schema is extended by ADR-054; the owned-widget list is
+extended by ADR-057
 
 Deprecate the ADR-044 read-only nav-bar mirror as the only widget source and
 replace it with a Fennevia-owned customize mode. The `toolbar-widgets`
@@ -2005,3 +2045,178 @@ the shell unnecessarily rigid across pointer precision and work styles. Reusing
 the accepted customize preference, shared #31 controller, and existing
 shortcut-tip animation provides useful choice without creating per-surface
 behavior, a second timer, or an unrestricted geometry editor.
+
+## ADR-055: Use bounded project-owned context actions on every edge panel
+
+**Status:** Accepted for the project-owner request on 2026-08-21; source and
+automated validation complete, real-Firefox interaction matrix not run
+
+Give each of the four project-owned edge panel roots one common context-menu
+owner. Right-click on neutral panel content opens a menu with a fixed useful
+edge action: Firefox Settings on top, New Tab on left, Manage Bookmarks on
+right, and Firefox Downloads on bottom. Capability-backed common actions add
+Customize Fennevia, Customize Firefox Toolbar, and Show Original Firefox
+Toolbar. More specific descendants own their own context behavior and stop
+propagation: a left tab keeps ADR-041's complete Firefox-owned tab menu, while a
+right bookmark row uses ADR-029's bounded open/folder/Library menu. Because the
+panel listener is native and Svelte descendant handlers are delegated, the
+parent must return without preventing or stopping recognized item events; the
+specific descendant consumes them when its handler runs.
+
+The common menus are project-owned XHTML below their existing surface roots.
+They contain fixed localized text and ordinary typed actions only; Svelte does
+not acquire a Firefox window, popup, tab, Places node, or controller. Native
+actions continue through the tabs, bookmarks, and browser-tools adapters. A
+native popup receives the stable edge panel element as its temporary host
+before the project menu is removed. Do not create another native context menu,
+clone Firefox toolbar or Places commands, or add fake disabled entries.
+
+Use `role="menu"` and `menuitem`, focus the first action, support Arrow Up/Down,
+Home/End, Escape, Context Menu key, and Shift+F10 through normal browser
+`contextmenu` dispatch, and restore the initiating control when keyboard
+dismissal requests it. Clamp placement to the one project frame. The existing
+per-edge popup hold prevents auto-hide. Pointer exit alone does not dismiss the
+menu or its working panel. An outside pointer press, window blur, surface hide,
+action completion/failure, Escape, or component disposal closes the menu and
+releases listeners and holds. A focused menu item must be blurred before
+pointer-origin teardown so removal cannot strand the shared focus hold;
+keyboard dismissal restores its initiating control. When an action opens a
+Firefox-owned popup, retain the same hold until the existing browser-tools
+popup-close subscription releases it. Add no edge trigger, hide timer, global
+z-index scheme, or window-global flag.
+
+This change stores no context-menu preference or history and introduces no
+network resource, dependency, telemetry, or diagnostic field. The only
+ephemeral item identifiers are existing context-bound opaque tab/bookmark IDs;
+URLs, titles, native nodes, and private-window state are not logged or
+persisted. Missing required privileged owners remain typed fail-open
+capabilities. Source pins, rejected alternatives, and validation are recorded
+in `docs/research/firefox-153-154-panel-context-actions.md`.
+
+**Reasoning:** Every Fennevia-owned surface should provide a predictable useful
+right-click path without surrendering native policy where Firefox already has
+the correct owner. One shared bounded menu pattern preserves consistent
+keyboard, focus, hold, and cleanup behavior, while descendant-specific menus
+keep tab and bookmark semantics accurate.
+
+## ADR-056: Proxy hidden-toolbox Firefox popups without revealing original chrome
+
+**Status:** Accepted for the project-owner request on 2026-08-22; source and
+focused automated validation complete, real-Firefox placement matrix not run.
+The `#notification-popup` clause is superseded by ADR-057.
+
+Keep every native popup, doorhanger, prompt, command, focus rule, security
+delay, and action Firefox-owned. While healthy active mode is unsuspended and
+the original toolbox is still hidden, classify any non-excluded top-level XUL
+popup whose current anchor, trigger, or `document.popupNode` is below
+`#navigator-toolbox`. Instead of adding that popup to NativeUi's complete-chrome
+reveal hold, defer through `popupshown` and move the still-Firefox-owned popup
+to one fixed project-owned XHTML proxy anchor through the Firefox 153/154
+`XULPopupElement.moveToAnchor()` contract.
+
+The proxy is a non-interactive, `aria-hidden`, 1-by-1 element at the frame's top
+inline-end. Its fixed ID, parent, and inline style are required health state;
+NativeUi observes them, removes the element on every cleanup path, and retains
+only per-window popup references, one-turn timers, and privacy-safe counts.
+Popup IDs, labels, URLs, origins, extension identity, permissions, and contents
+do not cross into project state or diagnostics. Native anchor nodes remain in
+place and are never reparented, clicked, or cloned.
+
+Delay the generic move by one event-loop turn after `popupshown`. This lets an
+existing feature-specific bridge move a toolbar-widget popup to its exact
+clicked Fennevia button first; a popup already anchored inside the Fennevia
+frame then wins and the generic move is abandoned. Existing panel-ID handoff
+tokens also remain authoritative.
+
+Do not proxy tooltips, `#tab-preview-panel`, popups with
+`nopreventnavboxhide="true"`, content- or sidebar-anchored popups, token-listed
+handoffs, popups already attached to a Fennevia host, suspended environments,
+or popups opened while the user has deliberately revealed native chrome.
+Missing or ineffective `moveToAnchor()` keeps the prior complete-chrome reveal
+for that popup. A thrown move is a fixed, privacy-safe NativeUi failure that
+suspends hiding before per-window fail-open cleanup. Customize mode, native and
+tab dialogs, DOM fullscreen, open sidebars, explicit Urlbar/original-toolbar
+handoffs, emergency fallback, and safe start are unchanged.
+
+This relationship-based rule covers automatic/full-page translation,
+bookmark/page-action/recommendation panels, and future toolbox-anchored XUL
+popups without maintaining feature-specific IDs. ADR-057 removes the shared
+`#notification-popup` security owner from this rule. Source pins, inventory,
+rejected alternatives, and pending real-browser rows are recorded in
+`docs/research/firefox-153-154-native-popup-proxy.md`.
+
+**Reasoning:** The earlier reveal rule kept security-sensitive Firefox UI
+reachable but exposed the entire original chrome for every transient popup.
+Firefox's supported popup contract already separates popup content ownership
+from its visual anchor. A project-owned placement point preserves the native
+security surface while keeping Fennevia's content-first shell stable; explicit
+fallback is safer than hiding a popup whose current Firefox build cannot be
+moved.
+
+## ADR-057: Keep Firefox security notifications native and delegate a placeable translations widget
+
+**Status:** Accepted for the project-owner request on 2026-08-22; source and
+focused automated validation complete; the owner-observed Firefox 154 AMO path
+uses the accepted complete-native-chrome fallback, and post-fix real translation
+validation remains pending
+
+Never move the shared Firefox `#notification-popup` after it opens. Before its
+first position is chosen, preserve Firefox's lazy `window.PopupNotifications`
+initialization and wrap only its stored `_getVisibleAnchorElement` callback.
+Run the original callback first. While Fennevia is healthy, active, hidden, and
+the requested or resolved anchor belongs to the retained toolbox, return the
+existing project proxy anchor; otherwise return Firefox's result unchanged.
+Track a panel initially anchored there as proxied without calling
+`moveToAnchor()`. If the lazy descriptor/callback is unavailable, the anchor is
+not the proxy, or native chrome is deliberately revealed, use the existing
+complete-native-chrome hold as fail-open. Restore the exact lazy descriptor or
+materialized callback on failure, unload, and disposal. Do not inspect
+notification children, IDs, origins, permissions, extension identity, labels,
+or actions.
+
+This clause supersedes only ADR-056's `PopupNotifications` coverage. Firefox
+153/154 resets each notification's anti-clickjacking timestamps on
+`popuppositioned`; `XULPopupElement.moveToAnchor()` after `popupshown` therefore
+restarts the security delay and can make extension-install confirmation appear
+unusable. The explicit owner panel covers install progress/confirmation/
+failure, extension permissions, site permissions, password, WebAuthn, and any
+other current or future family routed through the same Firefox owner. The
+pre-open route avoids both a second security-timer reset and unnecessary
+original-chrome reveal; Firefox-native reveal remains the safety fallback.
+The owner-observed Firefox 154 AMO path currently exercises that fallback and
+shows complete native chrome. This is accepted current behavior, not a failed
+suppression claim; no AMO-specific prompt interception is added.
+
+Add one optional fixed `translate` action and one Fennevia-owned placeable
+`show-translate` widget. A semantic project button passes its real activation
+event and exact project host to the privileged browser-tools boundary. That
+boundary calls the per-window Firefox 153/154
+`FullPageTranslationsPanel.open(event)` owner and, only for
+`#full-page-translations-panel`, routes `PanelMultiView.openPopup()` to the
+clicked host. Firefox 153/154 starts a private asynchronous open operation but
+returns from `open()` before that operation reaches the popup call, so retain
+the narrow route until `popupshown` or a bounded timeout. Restore the native
+method in `finally`, retain the existing popup hold and deterministic disposal,
+and let
+Firefox own language lists, settings, model state, errors, focus, commands,
+translation, and telemetry. If the owner is absent, expose `translate: false`
+and disable the widget without failing shell activation.
+
+The browser-tools contract now contains ten fixed actions and availability
+booleans, seven popup actions, twenty required Firefox capabilities, and one
+optional translation capability. The only new transient value crossing the
+boundary is the initiating UI event; it is neither serialized nor retained.
+No page text, URL, title, language, translation state/result, model data, panel
+content, or extension/security-prompt data enters frontend state, persistence,
+diagnostics, or logs.
+
+**Reasoning:** Firefox intentionally couples `#notification-popup` positioning
+to security timing, so a generic post-open movement is not ownership-neutral.
+Routing the owner callback before its first position preserves one native
+security-delay cycle; wrapping the lazy descriptor avoids changing owner
+materialization order. The built-in translation panel has a separate feature
+owner whose supported open path can be routed at the moment it opens. These
+policies preserve the native owner in both cases while choosing the least
+invasive safe placement for each class. Source evidence, rejected
+alternatives, and pending real rows are recorded in
+`docs/research/firefox-153-154-install-notification-and-translations-widget.md`.

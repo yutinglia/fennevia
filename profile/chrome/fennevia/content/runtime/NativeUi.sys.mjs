@@ -6,6 +6,14 @@ const ACTIVE_ATTRIBUTE = "data-fennevia-active";
 const REVEALED_ATTRIBUTE = "data-fennevia-native-ui-revealed";
 const SUSPENDED_ATTRIBUTE = "data-fennevia-native-ui-suspended";
 const STYLE_ID = "fennevia-native-ui-style";
+const POPUP_PROXY_ANCHOR_ID = "fennevia-native-popup-anchor";
+const POPUP_PROXY_POSITION = "after_end";
+const SECURITY_NOTIFICATION_PANEL_ID = "notification-popup";
+const POPUP_NOTIFICATIONS_PROPERTY = "PopupNotifications";
+const POPUP_NOTIFICATIONS_ANCHOR_CALLBACK = "_getVisibleAnchorElement";
+const POPUP_PROXY_ANCHOR_STYLE =
+  "position: absolute; inset-block-start: 0; inset-inline-end: 12px; " +
+  "inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none;";
 const HIDE_DELAY_MS = 180;
 const CONTENT_GUTTER_PX = 7;
 const CONTENT_CORNER_RADIUS_PX = 4;
@@ -616,6 +624,7 @@ const capabilitySnapshots = Object.freeze(
     ["fennevia.native-ui-toolbar-handoff", "nativeUi.revealForToolbar"],
     ["fennevia.native-ui-popup-handoff", "nativeUi.beginPopupHandoff"],
     ["fennevia.native-ui-popup-hold", "popupshowing/popuphidden"],
+    ["fennevia.native-ui-popup-proxy-anchor", `#${POPUP_PROXY_ANCHOR_ID}`],
     [
       "fennevia.native-ui-environment-suspension",
       "customizing/inDOMFullscreen",
@@ -664,6 +673,13 @@ export function createNativeUiController({ window, frame, onError }) {
       { domPath: `#${STYLE_ID}` },
     );
   }
+  if (document.getElementById(POPUP_PROXY_ANCHOR_ID)) {
+    throw createNativeUiError(
+      "FENNEVIA_NATIVE_UI_POPUP_PROXY_COLLISION",
+      "native-ui-popup-proxy-create",
+      { domPath: `#${POPUP_PROXY_ANCHOR_ID}` },
+    );
+  }
 
   const style = document.createElementNS(XHTML_NAMESPACE, "style");
   style.id = STYLE_ID;
@@ -672,6 +688,12 @@ export function createNativeUiController({ window, frame, onError }) {
     element.hasAttribute?.("data-fennevia-edge-host"),
   );
   frame.insertBefore(style, firstEdgeHost ?? null);
+  const popupProxyAnchor = document.createElementNS(XHTML_NAMESPACE, "span");
+  popupProxyAnchor.id = POPUP_PROXY_ANCHOR_ID;
+  popupProxyAnchor.setAttribute("aria-hidden", "true");
+  popupProxyAnchor.setAttribute("data-fennevia-native-popup-anchor", "");
+  popupProxyAnchor.setAttribute("style", POPUP_PROXY_ANCHOR_STYLE);
+  frame.insertBefore(popupProxyAnchor, firstEdgeHost ?? null);
 
   let disposed = false;
   let failed = false;
@@ -689,8 +711,16 @@ export function createNativeUiController({ window, frame, onError }) {
   let suspensionReason = null;
   const listeners = [];
   const openPopups = new Set();
+  const pendingPopupProxies = new Set();
+  const proxiedPopups = new Set();
+  const popupProxyTimers = new Map();
   const popupHandoffIds = new Set();
   let storedChromeBackground = "";
+  let popupNotificationsOwner;
+  let popupNotificationsOwnerDescriptor;
+  let popupNotificationsAnchorCallbackRouter;
+  let popupNotificationsLazyDescriptor;
+  let popupNotificationsLazyGetterRouter;
 
   const clearChromeBackground = () => {
     root.style?.removeProperty?.(CHROME_BACKGROUND_PROPERTY);
@@ -769,6 +799,214 @@ export function createNativeUiController({ window, frame, onError }) {
     }
   };
 
+  const clearPopupProxyTimer = (popup) => {
+    if (!popupProxyTimers.has(popup)) {
+      return false;
+    }
+    const timer = popupProxyTimers.get(popup);
+    popupProxyTimers.delete(popup);
+    window.clearTimeout(timer);
+    return true;
+  };
+
+  const clearPopupProxyTimers = () => {
+    for (const popup of [...popupProxyTimers.keys()]) {
+      clearPopupProxyTimer(popup);
+    }
+  };
+
+  const forgetPopup = (popup) => {
+    clearPopupProxyTimer(popup);
+    pendingPopupProxies.delete(popup);
+    proxiedPopups.delete(popup);
+    openPopups.delete(popup);
+  };
+
+  const isToolboxNode = (candidate) =>
+    isElement(candidate) && isDescendantOrSelf(targets.toolbox, candidate);
+
+  const canRoutePopupNotificationAnchor = () =>
+    !disposed &&
+    !failed &&
+    !windowTearingDown &&
+    !suspensionReason &&
+    root.hasAttribute(ACTIVE_ATTRIBUTE) &&
+    !root.hasAttribute(REVEALED_ATTRIBUTE) &&
+    popupProxyAnchor.isConnected === true &&
+    document.getElementById(POPUP_PROXY_ANCHOR_ID) === popupProxyAnchor;
+
+  const restorePopupNotificationsOwnerRouter = () => {
+    if (!popupNotificationsOwner || !popupNotificationsAnchorCallbackRouter) {
+      return false;
+    }
+    const owner = popupNotificationsOwner;
+    const currentDescriptor = Object.getOwnPropertyDescriptor(
+      owner,
+      POPUP_NOTIFICATIONS_ANCHOR_CALLBACK,
+    );
+    if (currentDescriptor?.value === popupNotificationsAnchorCallbackRouter) {
+      if (popupNotificationsOwnerDescriptor) {
+        Object.defineProperty(
+          owner,
+          POPUP_NOTIFICATIONS_ANCHOR_CALLBACK,
+          popupNotificationsOwnerDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(owner, POPUP_NOTIFICATIONS_ANCHOR_CALLBACK);
+      }
+    }
+    popupNotificationsOwner = undefined;
+    popupNotificationsOwnerDescriptor = undefined;
+    popupNotificationsAnchorCallbackRouter = undefined;
+    return true;
+  };
+
+  const routePopupNotificationsOwner = (owner) => {
+    if (
+      (typeof owner !== "object" && typeof owner !== "function") ||
+      owner === null
+    ) {
+      return false;
+    }
+    if (
+      owner === popupNotificationsOwner &&
+      owner[POPUP_NOTIFICATIONS_ANCHOR_CALLBACK] ===
+        popupNotificationsAnchorCallbackRouter
+    ) {
+      return true;
+    }
+    if (popupNotificationsOwner) {
+      restorePopupNotificationsOwnerRouter();
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(
+      owner,
+      POPUP_NOTIFICATIONS_ANCHOR_CALLBACK,
+    );
+    if (descriptor && !Object.hasOwn(descriptor, "value")) {
+      return false;
+    }
+    const originalCallback = owner[POPUP_NOTIFICATIONS_ANCHOR_CALLBACK];
+    if (
+      typeof originalCallback !== "function" ||
+      (descriptor &&
+        descriptor.configurable !== true &&
+        descriptor.writable !== true)
+    ) {
+      return false;
+    }
+    const callbackRouter = function (...args) {
+      const resolvedAnchor = Reflect.apply(originalCallback, this, args);
+      if (!canRoutePopupNotificationAnchor()) {
+        return resolvedAnchor;
+      }
+      const requestedAnchor = args[0];
+      return isToolboxNode(requestedAnchor) || isToolboxNode(resolvedAnchor)
+        ? popupProxyAnchor
+        : resolvedAnchor;
+    };
+    Object.defineProperty(owner, POPUP_NOTIFICATIONS_ANCHOR_CALLBACK, {
+      ...(descriptor ?? {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+      }),
+      value: callbackRouter,
+    });
+    popupNotificationsOwner = owner;
+    popupNotificationsOwnerDescriptor = descriptor;
+    popupNotificationsAnchorCallbackRouter = callbackRouter;
+    return true;
+  };
+
+  const installPopupNotificationsAnchorRouter = () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      window,
+      POPUP_NOTIFICATIONS_PROPERTY,
+    );
+    if (!descriptor) {
+      return false;
+    }
+    if (Object.hasOwn(descriptor, "value")) {
+      return routePopupNotificationsOwner(descriptor.value);
+    }
+    if (
+      typeof descriptor.get !== "function" ||
+      descriptor.configurable !== true
+    ) {
+      return false;
+    }
+    const originalGetter = descriptor.get;
+    const getterRouter = function () {
+      const owner = Reflect.apply(originalGetter, this, []);
+      try {
+        if (!routePopupNotificationsOwner(owner)) {
+          reportFailure(
+            createNativeUiError(
+              "FENNEVIA_NATIVE_UI_POPUP_NOTIFICATIONS_ANCHOR_UNAVAILABLE",
+              "native-ui-popup-notifications-anchor",
+              {
+                firefoxSymbol:
+                  "window.PopupNotifications._getVisibleAnchorElement",
+              },
+            ),
+          );
+        }
+      } catch (error) {
+        reportFailure(
+          createNativeUiError(
+            "FENNEVIA_NATIVE_UI_POPUP_NOTIFICATIONS_ANCHOR_FAILED",
+            "native-ui-popup-notifications-anchor",
+            {
+              cause: error,
+              firefoxSymbol:
+                "window.PopupNotifications._getVisibleAnchorElement",
+            },
+          ),
+        );
+      }
+      return owner;
+    };
+    Object.defineProperty(window, POPUP_NOTIFICATIONS_PROPERTY, {
+      ...descriptor,
+      get: getterRouter,
+    });
+    popupNotificationsLazyDescriptor = descriptor;
+    popupNotificationsLazyGetterRouter = getterRouter;
+    return true;
+  };
+
+  const restorePopupNotificationsAnchorRouter = () => {
+    let firstError;
+    try {
+      restorePopupNotificationsOwnerRouter();
+    } catch (error) {
+      firstError = error;
+    }
+    try {
+      if (popupNotificationsLazyGetterRouter) {
+        const currentDescriptor = Object.getOwnPropertyDescriptor(
+          window,
+          POPUP_NOTIFICATIONS_PROPERTY,
+        );
+        if (currentDescriptor?.get === popupNotificationsLazyGetterRouter) {
+          Object.defineProperty(
+            window,
+            POPUP_NOTIFICATIONS_PROPERTY,
+            popupNotificationsLazyDescriptor,
+          );
+        }
+      }
+    } catch (error) {
+      firstError ??= error;
+    }
+    popupNotificationsLazyDescriptor = undefined;
+    popupNotificationsLazyGetterRouter = undefined;
+    if (firstError) {
+      throw firstError;
+    }
+    return true;
+  };
+
   const isManagedNode = (candidate) =>
     isElement(candidate) &&
     [targets.toolbox, targets.sidebarContainer, targets.sidebarBox].some(
@@ -841,14 +1079,18 @@ export function createNativeUiController({ window, frame, onError }) {
   };
 
   const prunePopups = () => {
-    for (const popup of [...openPopups]) {
+    for (const popup of new Set([
+      ...openPopups,
+      ...pendingPopupProxies,
+      ...proxiedPopups,
+    ])) {
       const state = popup.getAttribute?.("state");
       if (
         popup.isConnected === false ||
         state === "closed" ||
         popup.hasAttribute?.("hidden")
       ) {
-        openPopups.delete(popup);
+        forgetPopup(popup);
       }
     }
   };
@@ -874,6 +1116,9 @@ export function createNativeUiController({ window, frame, onError }) {
       handoffPending = false;
       focusHeld = false;
       openPopups.clear();
+      pendingPopupProxies.clear();
+      proxiedPopups.clear();
+      clearPopupProxyTimers();
       clearHideTimer();
     } else {
       root.removeAttribute(SUSPENDED_ATTRIBUTE);
@@ -944,6 +1189,19 @@ export function createNativeUiController({ window, frame, onError }) {
         "FENNEVIA_NATIVE_UI_STYLE_INVALID",
         "native-ui-style-validate",
         { domPath: `#${frame.id}>#${STYLE_ID}` },
+      );
+    }
+    if (
+      document.getElementById(POPUP_PROXY_ANCHOR_ID) !== popupProxyAnchor ||
+      popupProxyAnchor.parentElement !== frame ||
+      popupProxyAnchor.getAttribute("aria-hidden") !== "true" ||
+      !popupProxyAnchor.hasAttribute("data-fennevia-native-popup-anchor") ||
+      popupProxyAnchor.getAttribute("style") !== POPUP_PROXY_ANCHOR_STYLE
+    ) {
+      throw createNativeUiError(
+        "FENNEVIA_NATIVE_UI_POPUP_PROXY_INVALID",
+        "native-ui-popup-proxy-validate",
+        { domPath: `#${frame.id}>#${POPUP_PROXY_ANCHOR_ID}` },
       );
     }
     let cssRuleCount;
@@ -1042,6 +1300,8 @@ export function createNativeUiController({ window, frame, onError }) {
     try {
       root.setAttribute(SUSPENDED_ATTRIBUTE, "");
       root.removeAttribute(REVEALED_ATTRIBUTE);
+      clearPopupProxyTimers();
+      restorePopupNotificationsAnchorRouter();
     } catch {
       // The lifecycle callback still clears the active health gate.
     }
@@ -1092,6 +1352,11 @@ export function createNativeUiController({ window, frame, onError }) {
     clearEscapeTimer();
     clearHandoffRelease();
     handoffPending = false;
+    try {
+      restorePopupNotificationsAnchorRouter();
+    } catch {
+      // Window teardown keeps the native popup owner as the safe fallback.
+    }
   };
   const onKeyDown = (event) => {
     if (event.key !== "Escape") {
@@ -1110,10 +1375,20 @@ export function createNativeUiController({ window, frame, onError }) {
     }, 0);
   };
 
-  const popupAnchorIsManaged = (popup) =>
-    [popup?.anchorNode, popup?.triggerNode, document.popupNode].some(
-      isManagedNode,
+  const popupAnchorCandidates = (popup) => {
+    const explicitCandidates = [popup?.anchorNode, popup?.triggerNode].filter(
+      isElement,
     );
+    return explicitCandidates.length > 0
+      ? explicitCandidates
+      : [document.popupNode];
+  };
+
+  const popupAnchorIsManaged = (popup) =>
+    popupAnchorCandidates(popup).some(isManagedNode);
+
+  const popupAnchorIsInToolbox = (popup) =>
+    popupAnchorCandidates(popup).some(isToolboxNode);
 
   const isFenneviaPopupAnchor = (popup) =>
     isDescendantOrSelf(frame, popup?.anchorNode);
@@ -1121,6 +1396,101 @@ export function createNativeUiController({ window, frame, onError }) {
   const isIgnoredHandoffPopup = (popup) =>
     (typeof popup?.id === "string" && popupHandoffIds.has(popup.id)) ||
     isFenneviaPopupAnchor(popup);
+
+  const isSecurityNotificationPopup = (popup) =>
+    popup?.id === SECURITY_NOTIFICATION_PANEL_ID;
+
+  const canProxyPopup = (popup) =>
+    root.hasAttribute(ACTIVE_ATTRIBUTE) &&
+    !root.hasAttribute(REVEALED_ATTRIBUTE) &&
+    !suspensionReason &&
+    !isSecurityNotificationPopup(popup) &&
+    popupAnchorIsInToolbox(popup) &&
+    typeof popup?.moveToAnchor === "function";
+
+  const proxyPopup = (popup) => {
+    pendingPopupProxies.delete(popup);
+    if (
+      disposed ||
+      failed ||
+      suspensionReason ||
+      !root.hasAttribute(ACTIVE_ATTRIBUTE)
+    ) {
+      return false;
+    }
+    if (isIgnoredHandoffPopup(popup)) {
+      return true;
+    }
+    const state = popup.getAttribute?.("state");
+    if (
+      popup.isConnected === false ||
+      state === "closed" ||
+      state === "hiding" ||
+      popup.hasAttribute?.("hidden")
+    ) {
+      return false;
+    }
+    if (isElement(popup.anchorNode) && !isToolboxNode(popup.anchorNode)) {
+      return true;
+    }
+    if (typeof popup.moveToAnchor !== "function") {
+      openPopups.add(popup);
+      reconcile();
+      return false;
+    }
+    try {
+      Reflect.apply(popup.moveToAnchor, popup, [
+        popupProxyAnchor,
+        POPUP_PROXY_POSITION,
+        0,
+        0,
+      ]);
+    } catch (error) {
+      reportFailure(
+        createNativeUiError(
+          "FENNEVIA_NATIVE_UI_POPUP_PROXY_FAILED",
+          "native-ui-popup-proxy",
+          {
+            cause: error,
+            firefoxSymbol: "XULPopupElement.moveToAnchor",
+          },
+        ),
+      );
+      return false;
+    }
+    if (popup.anchorNode !== popupProxyAnchor) {
+      openPopups.add(popup);
+      reconcile();
+      return false;
+    }
+    openPopups.delete(popup);
+    proxiedPopups.add(popup);
+    reconcile();
+    return true;
+  };
+
+  const schedulePopupProxy = (popup) => {
+    if (popupProxyTimers.has(popup)) {
+      return false;
+    }
+    try {
+      const timer = window.setTimeout(() => {
+        popupProxyTimers.delete(popup);
+        proxyPopup(popup);
+      }, 0);
+      popupProxyTimers.set(popup, timer);
+      return true;
+    } catch (error) {
+      reportFailure(
+        createNativeUiError(
+          "FENNEVIA_NATIVE_UI_POPUP_PROXY_SCHEDULE_FAILED",
+          "native-ui-popup-proxy",
+          { cause: error, firefoxSymbol: "window.setTimeout" },
+        ),
+      );
+      return false;
+    }
+  };
 
   const onPopupEvent = (event) => {
     const popup = isElement(event.originalTarget)
@@ -1137,8 +1507,22 @@ export function createNativeUiController({ window, frame, onError }) {
       return;
     }
 
-    if (event.type === "popupshowing" || event.type === "popupshown") {
+    if (event.type === "popupshowing") {
+      if (isSecurityNotificationPopup(popup)) {
+        forgetPopup(popup);
+        if (popup.anchorNode === popupProxyAnchor) {
+          proxiedPopups.add(popup);
+        } else {
+          openPopups.add(popup);
+        }
+        reconcile();
+        return;
+      }
       if (isIgnoredHandoffPopup(popup)) {
+        return;
+      }
+      if (canProxyPopup(popup)) {
+        pendingPopupProxies.add(popup);
         return;
       }
       if (
@@ -1150,7 +1534,36 @@ export function createNativeUiController({ window, frame, onError }) {
       }
       return;
     }
-    openPopups.delete(popup);
+    if (event.type === "popupshown") {
+      if (isSecurityNotificationPopup(popup)) {
+        forgetPopup(popup);
+        if (popup.anchorNode === popupProxyAnchor) {
+          proxiedPopups.add(popup);
+        } else {
+          openPopups.add(popup);
+        }
+        reconcile();
+        return;
+      }
+      if (isIgnoredHandoffPopup(popup)) {
+        pendingPopupProxies.delete(popup);
+        return;
+      }
+      if (pendingPopupProxies.has(popup) || canProxyPopup(popup)) {
+        pendingPopupProxies.add(popup);
+        schedulePopupProxy(popup);
+        return;
+      }
+      if (
+        root.hasAttribute(REVEALED_ATTRIBUTE) ||
+        popupAnchorIsManaged(popup)
+      ) {
+        openPopups.add(popup);
+        reconcile();
+      }
+      return;
+    }
+    forgetPopup(popup);
     scheduleHide();
   };
 
@@ -1172,6 +1585,7 @@ export function createNativeUiController({ window, frame, onError }) {
 
   try {
     updateSuspension();
+    installPopupNotificationsAnchorRouter();
     register(document, "focusin", onFocusIn);
     register(document, "focusout", onFocusOut);
     register(window, "blur", onWindowBlur);
@@ -1272,6 +1686,15 @@ export function createNativeUiController({ window, frame, onError }) {
     });
     observer.observe(toolbox, { childList: true, subtree: true });
     observer.observe(frame, { childList: true });
+    observer.observe(popupProxyAnchor, {
+      attributeFilter: [
+        "aria-hidden",
+        "data-fennevia-native-popup-anchor",
+        "id",
+        "style",
+      ],
+      attributes: true,
+    });
     observer.observe(style, {
       characterData: true,
       childList: true,
@@ -1324,11 +1747,17 @@ export function createNativeUiController({ window, frame, onError }) {
       }
     }
     try {
+      restorePopupNotificationsAnchorRouter();
+    } catch {
+      // The creation error remains causal.
+    }
+    try {
       root.removeAttribute(REVEALED_ATTRIBUTE);
       root.removeAttribute(SUSPENDED_ATTRIBUTE);
     } catch {
       // The creation error remains causal.
     }
+    popupProxyAnchor.remove();
     style.remove();
     targets = null;
     throw error;
@@ -1383,6 +1812,7 @@ export function createNativeUiController({ window, frame, onError }) {
         clearStructuralVerificationTimer();
         clearEscapeTimer();
         clearHandoffRelease();
+        clearPopupProxyTimers();
       } catch (error) {
         firstError = error;
       }
@@ -1392,6 +1822,11 @@ export function createNativeUiController({ window, frame, onError }) {
         firstError ??= error;
       }
       observer = null;
+      try {
+        restorePopupNotificationsAnchorRouter();
+      } catch (error) {
+        firstError ??= error;
+      }
       for (const removeListener of listeners.reverse()) {
         try {
           removeListener();
@@ -1401,6 +1836,8 @@ export function createNativeUiController({ window, frame, onError }) {
       }
       listeners.length = 0;
       openPopups.clear();
+      pendingPopupProxies.clear();
+      proxiedPopups.clear();
       popupHandoffIds.clear();
       try {
         root.removeAttribute(REVEALED_ATTRIBUTE);
@@ -1411,6 +1848,11 @@ export function createNativeUiController({ window, frame, onError }) {
       try {
         storedChromeBackground = "";
         clearChromeBackground();
+      } catch (error) {
+        firstError ??= error;
+      }
+      try {
+        popupProxyAnchor.remove();
       } catch (error) {
         firstError ??= error;
       }
@@ -1479,7 +1921,9 @@ export function createNativeUiController({ window, frame, onError }) {
         disposed,
         failed,
         openPopupCount: openPopups.size,
+        pendingPopupProxyCount: pendingPopupProxies.size,
         popupHandoffCount: popupHandoffIds.size,
+        proxiedPopupCount: proxiedPopups.size,
         revealed: root.hasAttribute(REVEALED_ATTRIBUTE),
         styleRuleCount: style.sheet?.cssRules?.length ?? 0,
         suspended: root.hasAttribute(SUSPENDED_ATTRIBUTE),
@@ -1497,4 +1941,5 @@ export const nativeUiAttributes = Object.freeze({
 });
 export const nativeUiHideDelayMs = HIDE_DELAY_MS;
 export const nativeUiStyleId = STYLE_ID;
+export const nativeUiPopupAnchorId = POPUP_PROXY_ANCHOR_ID;
 export const nativeUiChromeBackgroundProperty = CHROME_BACKGROUND_PROPERTY;

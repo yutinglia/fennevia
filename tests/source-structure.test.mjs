@@ -55,6 +55,10 @@ test("shell composition and CSS retain explicit bounded module ownership", async
   assert.match(app, /\.\/surfaces\/TopSurface\.svelte/u);
   assert.match(app, /\.\/surfaces\/LeftSurface\.svelte/u);
   assert.match(
+    app,
+    /\.\/features\/context-menu\/EdgePanelContextMenu\.svelte/u,
+  );
+  assert.match(
     customize,
     /features\/customize\/CustomizeStyleSection\.svelte/u,
   );

@@ -94,6 +94,7 @@ function createNativeWindow() {
     "identity-permission-box",
     "downloads-button",
     "unified-extensions-button",
+    "translations-button",
     "PanelUI-menu-button",
     "back-button",
   ]) {
@@ -108,6 +109,7 @@ function createNativeWindow() {
     "protections-popup",
     "trustpanel-popup",
     "unified-extensions-panel",
+    "full-page-translations-panel",
   ]) {
     addPanel(id);
   }
@@ -147,6 +149,20 @@ function createNativeWindow() {
       },
       async show() {
         calls.push(["method", "PanelUI.show", this === window.PanelUI]);
+      },
+    },
+    FullPageTranslationsPanel: {
+      async open(event) {
+        calls.push([
+          "method",
+          "FullPageTranslationsPanel.open",
+          this === window.FullPageTranslationsPanel,
+          event,
+        ]);
+        event.stopPropagation();
+        targets
+          .get("full-page-translations-panel")
+          .openPopup(targets.get("translations-button"), "after_end");
       },
     },
     document,
@@ -295,10 +311,11 @@ test("browser tools expose only fixed capabilities and native handoff booleans",
       settings: true,
       siteInformation: true,
       sitePermissions: true,
+      translate: true,
     });
     assert.ok(Object.isFrozen(snapshot));
     const capabilities = pair.controller.assertRequiredCapabilities();
-    assert.equal(capabilities.length, 20);
+    assert.equal(capabilities.length, 21);
     assert.ok(capabilities.every((capability) => capability.available));
     assert.doesNotMatch(
       JSON.stringify(snapshot),
@@ -328,6 +345,7 @@ test("popup actions open Firefox panels beside the project host without toolbar 
       "site-permissions",
       "downloads",
       "extensions",
+      "translate",
       "application-menu",
     ]) {
       assert.equal(
@@ -647,6 +665,147 @@ test("extensions host-open ignores togglePanel's native-button PanelMultiView.op
           call[2] === "host",
       ),
     );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("translate delegates to Firefox and routes its PanelMultiView popup to the clicked host", async () => {
+  const native = createNativeWindow();
+  const panel = native.targets.get("full-page-translations-panel");
+  const nativeButton = native.targets.get("translations-button");
+  const triggerEvent = {
+    button: 0,
+    stopPropagation() {
+      native.calls.push(["stopPropagation", "translate-trigger"]);
+    },
+    type: "click",
+  };
+  native.window.PanelMultiView = {
+    async openPopup(candidate, anchor, options) {
+      native.calls.push([
+        "PanelMultiView.openPopup",
+        candidate.id,
+        anchor,
+        options?.position,
+        options?.triggerEvent,
+      ]);
+      candidate.openPopup(anchor, options?.position);
+    },
+  };
+  native.window.FullPageTranslationsPanel.open = async function open(event) {
+    native.calls.push([
+      "method",
+      "FullPageTranslationsPanel.open",
+      this === native.window.FullPageTranslationsPanel,
+      event,
+    ]);
+    event.stopPropagation();
+    await native.window.PanelMultiView.openPopup(panel, nativeButton, {
+      position: "bottomright topright",
+      triggerEvent: event,
+    });
+  };
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke(
+        "translate",
+        host,
+        triggerEvent,
+      ),
+      true,
+    );
+    assert.equal(panel.state, "open");
+    assert.equal(panel.anchorNode, host);
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "PanelMultiView.openPopup" &&
+          call[1] === "full-page-translations-panel" &&
+          call[2] === host &&
+          call[3] === "after_end" &&
+          call[4] === triggerEvent,
+      ),
+    );
+    assert.equal(
+      native.calls.filter(
+        (call) =>
+          call[0] === "PanelMultiView.openPopup" && call[2] === nativeButton,
+      ).length,
+      0,
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("translate keeps its route until Firefox lazily creates and opens the panel", async () => {
+  const native = createNativeWindow();
+  native.window.setTimeout = setTimeout;
+  native.window.clearTimeout = clearTimeout;
+  native.targets.delete("full-page-translations-panel");
+  const nativeButton = native.targets.get("translations-button");
+  const triggerEvent = {
+    button: 0,
+    stopPropagation() {
+      native.calls.push(["stopPropagation", "lazy-translate-trigger"]);
+    },
+    type: "click",
+  };
+  const originalOpenPopup = async (candidate, anchor, options) => {
+    native.calls.push([
+      "PanelMultiView.openPopup",
+      candidate.id,
+      anchor,
+      options?.position,
+      options?.triggerEvent,
+    ]);
+    candidate.openPopup(anchor, options?.position);
+  };
+  native.window.PanelMultiView = { openPopup: originalOpenPopup };
+  native.window.FullPageTranslationsPanel.open = async function open(event) {
+    native.calls.push([
+      "method",
+      "FullPageTranslationsPanel.open",
+      this === native.window.FullPageTranslationsPanel,
+      event,
+    ]);
+    event.stopPropagation();
+    void Promise.resolve().then(async () => {
+      const lazyPanel = native.addPanel("full-page-translations-panel");
+      await native.window.PanelMultiView.openPopup(lazyPanel, nativeButton, {
+        position: "bottomright topright",
+        triggerEvent: event,
+      });
+    });
+  };
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke(
+        "translate",
+        host,
+        triggerEvent,
+      ),
+      true,
+    );
+    const panel = native.targets.get("full-page-translations-panel");
+    assert.equal(panel.state, "open");
+    assert.equal(panel.anchorNode, host);
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "PanelMultiView.openPopup" &&
+          call[1] === "full-page-translations-panel" &&
+          call[2] === host &&
+          call[3] === "after_end" &&
+          call[4] === triggerEvent,
+      ),
+    );
+    assert.equal(native.window.PanelMultiView.openPopup, originalOpenPopup);
   } finally {
     disposePair(pair);
   }
@@ -1125,6 +1284,34 @@ test("missing required native targets fail before activation", () => {
     );
   } finally {
     boundary.dispose();
+  }
+});
+
+test("missing optional translations owner disables only the translate action", async () => {
+  const native = createNativeWindow();
+  delete native.window.FullPageTranslationsPanel;
+  const pair = createController(native);
+  try {
+    assert.equal(pair.controller.browserTools.snapshot().translate, false);
+    const capabilities = pair.controller.assertRequiredCapabilities();
+    assert.ok(
+      capabilities.some(
+        (capability) =>
+          capability.name === "browser-tools.full-page-translations" &&
+          capability.available === false &&
+          capability.requirement === "optional",
+      ),
+    );
+    await assert.rejects(
+      pair.controller.browserTools.invoke("translate", native.addHost()),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode ===
+          "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING" &&
+        error.fenneviaSymbol === "window.FullPageTranslationsPanel.open",
+    );
+  } finally {
+    disposePair(pair);
   }
 });
 

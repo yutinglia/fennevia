@@ -18,8 +18,9 @@ widget source and adds a Fennevia-owned customize mode:
   an opaque-token palette;
 - project-owned placement editing across all four edge panels;
 - Fennevia-owned placeable widgets (`show-bookmarks` reveals the right-edge
-  bookmarks surface; `show-downloads` opens Firefox's `#downloadsPanel`) and
-  spacer/spring/separator specials;
+  bookmarks surface; `show-downloads` opens Firefox's `#downloadsPanel`;
+  ADR-057's `show-translate` opens Firefox's built-in full-page translation
+  panel) and spacer/spring/separator specials;
 - bounded appearance and interaction settings applied through a fixed CSS
   custom-property set and the shared #31 edge controller;
 - profile-local persistence and owner-approved bounded CustomizableUI writes.

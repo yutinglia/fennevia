@@ -71,6 +71,10 @@ function createBridge() {
         }
         return Object.freeze({ status: "opened" });
       },
+      manage() {
+        calls.push(["manage"]);
+        return true;
+      },
       async roots() {
         calls.push(["roots"]);
         return roots;
@@ -300,6 +304,18 @@ test("opening reports safe fixed outcomes and keeps only one action in flight", 
     } finally {
       staleAdapter.dispose();
     }
+  } finally {
+    adapter.dispose();
+  }
+});
+
+test("bookmark management delegates through one fixed native action", async () => {
+  const native = createBridge();
+  const adapter = createBrowserBookmarksStateAdapter(native.bridge);
+  try {
+    await adapter.ready();
+    assert.equal(adapter.manage(), true);
+    assert.deepEqual(native.calls.at(-1), ["manage"]);
   } finally {
     adapter.dispose();
   }

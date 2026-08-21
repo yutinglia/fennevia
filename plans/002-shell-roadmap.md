@@ -271,8 +271,11 @@ Issue #60 completes the remaining flat-list parity on that same strip:
 - audio playing/muted/blocked plus a sibling mute toggle;
 - container color stripe and bounded label;
 - attention and picture-in-picture indicators;
-- drag reorder and `Ctrl+Shift+ArrowUp/Down`;
-- Firefox-owned `#tabContextMenu` handoff with #31 popup hold.
+- drag reorder with a browser drag ghost/insertion marker and
+  `Ctrl+Shift+ArrowUp/Down`;
+- Firefox-owned `#tabContextMenu` handoff with #31 popup hold, synchronous lazy
+  Fluent activation, and the NativeUi token that prevents original chrome from
+  revealing around its native-tab anchor.
 
 Deferred:
 
@@ -283,7 +286,8 @@ Deferred:
 
 Evidence: ADR-025, ADR-026, ADR-041, and
 `docs/research/firefox-153-tab-strip.md`,
-`docs/research/firefox-153-tab-strip-parity.md`.
+`docs/research/firefox-153-tab-strip-parity.md`, plus ADR-055 and
+`docs/research/firefox-153-154-panel-context-actions.md`.
 
 ## Milestone F: Shared four-edge interaction and design frame — complete
 
@@ -319,6 +323,16 @@ Current contents:
   and Firefox-tool handoffs;
 - right: functional bounded/lazy bookmarks;
 - bottom: functional bounded download progress/status.
+
+ADR-055 layers one bounded project-owned common context menu onto every edge:
+Settings on top, New Tab on neutral left content, Manage Bookmarks on neutral
+right content, and Firefox Downloads on bottom, plus available Fennevia/native
+customization and original-toolbar actions. Tab and bookmark descendants retain
+their specific owners. All paths reuse the shared popup hold and deterministic
+focus/listener cleanup. A 2026-08-22 owner-reported follow-up corrected the
+native-parent/delegated-item event order and explicit focus release needed for
+panel auto-hide. Focused automation is complete; the repeated real Firefox
+153/154 context-menu matrix remains not run.
 
 Gate: pointer, keyboard, focus, popup, corner, suspension, layout, and cleanup
 behavior pass in normal, second-normal, and private windows without changing
@@ -382,9 +396,10 @@ The same top host now renders one non-wrapping row with the existing navigation
 state, a launcher for the existing centered popup, loading feedback, fixed page
 actions, Firefox-owned detail/tool handoffs, and progressive disclosure. The
 browser-tools boundary delegates Trust/identity, protections, permissions,
-Downloads, Unified Extensions, the application menu, Settings, customization,
-and complete original-toolbar access without exposing their data or arbitrary
-widget identity. ADR-042 keeps native chrome hidden for the six popup actions
+Downloads, Unified Extensions, built-in full-page translation, the application
+menu, Settings, customization, and complete original-toolbar access without
+exposing their data or arbitrary widget identity. ADR-042/ADR-057 keep native
+chrome hidden for the seven popup actions
 and re-anchors each Firefox-owned panel to the clicked project host. Settings,
 customization, and the complete original-toolbar path keep their previous
 owners.
@@ -471,6 +486,7 @@ Implemented and validated:
 - context-bound opaque IDs;
 - event-driven create/remove/move/reorder/title/URL updates;
 - current-tab and source-validated new-tab opening;
+- fixed current-window Manage Bookmarks handoff to Firefox's Library;
 - private-window behavior;
 - deterministic observer/query cleanup.
 
@@ -485,6 +501,8 @@ must not be mirrored eagerly.
 - current-tab and supported new-tab opening;
 - safe empty/loading/truncated/stale/error states;
 - keyboard traversal and focus stability;
+- pointer/keyboard bookmark/folder context actions with bounded placement,
+  focus restoration, and right-edge popup-hold cleanup;
 - no remote favicons for the MVP;
 - native Library, `Ctrl+D`, bookmark dialogs, and management paths retained.
 
@@ -505,7 +523,8 @@ Toolbox, missing-capability, and frontend-recovery matrices passed on Firefox
 153.0.4 while native bookmark UI remained visible.
 
 Evidence: ADR-029 and
-`docs/research/firefox-153-bookmarks-surface.md`.
+`docs/research/firefox-153-bookmarks-surface.md`, plus ADR-055 and
+`docs/research/firefox-153-154-panel-context-actions.md`.
 
 ## Milestone J: Bottom-edge download progress/status — complete (#32)
 
@@ -635,11 +654,20 @@ content, bookmarks/sidebar collapse, a 7px content gutter, and tabbox border.
 ADR-038 collapses every native caption copy at rest and places project-owned
 window controls on the top row. Native vertical-tab titlebar ownership,
 notifications, popups, dialogs, content, and DevTools remain intact. Native
-focus, toolbox-anchored Firefox doorhangers, open sidebar panels, #37's Urlbar
-handoff, and ADR-037's original-toolbar handoff temporarily reveal the complete
-native owner. Fennevia-initiated host-anchored or token-listed panels do not
-reveal the navbar. Customize, native dialogs, and DOM fullscreen suspend
-project hiding.
+focus, open sidebar panels, #37's Urlbar handoff, and ADR-037's original-toolbar
+handoff temporarily reveal the complete native owner. Fennevia-initiated
+host-anchored or token-listed panels do not reveal the navbar. ADR-056 also
+proxies other non-excluded non-security hidden-toolbox XUL popups to a fixed
+project anchor after yielding to an exact feature host; missing or ineffective
+movement retains Firefox chrome and a thrown move suspends before fail-open.
+ADR-057 excludes `#notification-popup` from post-open movement and preserves
+Firefox's lazy owner while pre-anchoring healthy hidden-toolbox notifications
+to the fixed project proxy. Original chrome stays hidden on that path;
+unavailable or ineffective routing holds complete native reveal, so Firefox
+security timing and actions remain authoritative. The owner-observed Firefox
+154 AMO path currently takes that accepted complete-native-chrome fallback.
+Customize, native dialogs,
+and DOM fullscreen suspend project hiding.
 Partial activation CSS fails open only the affected window.
 
 Gate passed on Firefox 153.0.4 with normal/second/private, active rest and
@@ -712,8 +740,9 @@ Gate: CI passes with focused bridge/adapter coverage; the real Firefox rows in
 Deprecate the ADR-044 mirror as the only widget source. The toolbar-widgets
 controller becomes layout-driven across all four edges, exposes the complete
 current CustomizableUI inventory as an opaque-token palette, adds Fennevia
-`show-bookmarks` / `show-downloads` widgets (`show-downloads` opens Firefox's
-`#downloadsPanel`), and accepts a fixed edit set with
+`show-bookmarks` / `show-downloads` / `show-translate` widgets
+(`show-downloads` opens Firefox's `#downloadsPanel`; `show-translate` opens the
+Firefox-owned full-page translation panel), and accepts a fixed edit set with
 a revision guard. A project-owned editor drawer under the top panel performs
 all editing. Profile-local `fennevia.customize.layout` / `.style` prefs persist
 versioned JSON. Owner-approved bounded writes adopt widgets onto the collapsed

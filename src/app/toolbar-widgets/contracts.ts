@@ -25,6 +25,7 @@ export type ToolbarZoneName = (typeof toolbarZoneNames)[number];
 export const fenneviaToolbarActions = Object.freeze([
   "show-bookmarks",
   "show-downloads",
+  "show-translate",
 ] as const);
 
 export type FenneviaToolbarAction = (typeof fenneviaToolbarActions)[number];

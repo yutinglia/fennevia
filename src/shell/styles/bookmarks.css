@@ -1,4 +1,5 @@
 #fennevia-shell-frame-host .fennevia-bookmarks {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   min-block-size: 0;
@@ -205,4 +206,46 @@
 
 #fennevia-shell-frame-host .fennevia-bookmarks button:disabled {
   opacity: 0.52;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__context-menu {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  min-inline-size: 180px;
+  max-inline-size: calc(100% - 12px);
+  max-block-size: calc(100% - 12px);
+  gap: 2px;
+  padding: 5px;
+  overflow-y: auto;
+  color: var(--fennevia-glass-text);
+  background: var(--fennevia-glass-surface);
+  border: 1px solid var(--fennevia-glass-border);
+  border-radius: var(--fennevia-control-radius);
+  box-shadow: var(--fennevia-glass-shadow);
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__context-menu > button {
+  min-block-size: 32px;
+  padding: 5px 9px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: calc(var(--fennevia-control-radius) - 2px);
+  font: inherit;
+  text-align: start;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__context-separator {
+  block-size: 1px;
+  margin: 3px 5px;
+  background: var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks__context-menu
+  > button:is(:hover, :focus-visible) {
+  background: var(--fennevia-selected-surface);
+  border-color: var(--fennevia-focus-color);
+  outline: none;
 }

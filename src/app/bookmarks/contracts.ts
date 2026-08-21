@@ -56,6 +56,7 @@ export type BrowserBookmarksBridge = Readonly<{
     bookmarkId: string,
     disposition?: BookmarkOpenDisposition,
   ) => Promise<BookmarkOpenResult>;
+  manage: () => boolean;
   roots: () => Promise<readonly BookmarkNodeSnapshot[]>;
   subscribe: (listener: (event: BookmarkTreeEvent) => void) => () => boolean;
 }>;
@@ -114,6 +115,7 @@ export type BrowserBookmarksStateAdapter = Readonly<{
     bookmarkId: string,
     disposition?: BookmarkOpenDisposition,
   ) => Promise<BookmarkOpenResult>;
+  manage: () => boolean;
   page: (parentId: string, direction: "next" | "previous") => Promise<boolean>;
   ready: () => Promise<true>;
   retry: (parentId: string) => Promise<boolean>;

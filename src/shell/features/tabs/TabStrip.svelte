@@ -27,6 +27,8 @@
     newTabHighlightDurationMs,
     resolveRovingTabId,
     resolveTabDropIndex,
+    resolveTabDropPreview,
+    type TabDropPreview,
   } from "../../../app/tab-strip";
   import { createTabStripLabels } from "../../locale-ui";
 
@@ -51,6 +53,7 @@
   let rovingTabId: string | null = $state(null);
   let highlightedTabIds: readonly string[] = $state([]);
   let draggingTabId: string | null = $state(null);
+  let dropPreview: TabDropPreview = $state(null);
   let tabStripElement: HTMLDivElement | undefined = $state();
   let delayedFocusTimer: DelayedTimer | undefined;
   let highlightTimer: DelayedTimer | undefined;
@@ -330,13 +333,46 @@
     transfer.effectAllowed = "move";
     transfer.setData("application/x-fennevia-tab", tabId);
     transfer.setData("text/plain", tabId);
+    const dragImage = event.currentTarget;
+    if (dragImage instanceof HTMLElement) {
+      const bounds = dragImage.getBoundingClientRect();
+      transfer.setDragImage(
+        dragImage,
+        Math.min(24, Math.max(0, bounds.width / 2)),
+        Math.max(0, bounds.height / 2),
+      );
+    }
     draggingTabId = tabId;
+    dropPreview = null;
     props.shell.setPointerHeld("left", true);
   };
 
-  const handleTabDragEnd = () => {
+  const clearTabDrag = () => {
+    const wasDragging = draggingTabId !== null;
     draggingTabId = null;
-    props.shell.setPointerHeld("left", false);
+    dropPreview = null;
+    if (wasDragging) {
+      props.shell.setPointerHeld("left", false);
+    }
+  };
+
+  const handleTabDragEnd = () => {
+    clearTabDrag();
+  };
+
+  const resolveDragTargetIndex = (
+    list: HTMLElement,
+    tabId: string,
+    pointerY: number,
+  ): number | null => {
+    const items = Array.from(
+      list.querySelectorAll<HTMLElement>("[data-fennevia-tab-item]"),
+    );
+    const mids = items.map((item) => {
+      const bounds = item.getBoundingClientRect();
+      return bounds.top + bounds.height / 2;
+    });
+    return resolveTabDropIndex(currentTabs.tabs, tabId, mids, pointerY);
   };
 
   const handleTabListDragOver = (event: DragEvent) => {
@@ -347,36 +383,55 @@
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = "move";
     }
+    const list = event.currentTarget;
+    if (!(list instanceof HTMLElement)) {
+      dropPreview = null;
+      return;
+    }
+    const targetIndex = resolveDragTargetIndex(
+      list,
+      draggingTabId,
+      event.clientY,
+    );
+    dropPreview = resolveTabDropPreview(
+      currentTabs.tabs,
+      draggingTabId,
+      targetIndex,
+    );
+  };
+
+  const handleTabListDragLeave = (event: DragEvent) => {
+    const list = event.currentTarget;
+    const nextTarget = event.relatedTarget;
+    if (
+      list instanceof HTMLElement &&
+      nextTarget instanceof Node &&
+      list.contains(nextTarget)
+    ) {
+      return;
+    }
+    dropPreview = null;
   };
 
   const handleTabListDrop = (event: DragEvent) => {
+    if (!draggingTabId) {
+      return;
+    }
     const tabId =
       event.dataTransfer?.getData("application/x-fennevia-tab") ||
       event.dataTransfer?.getData("text/plain") ||
       draggingTabId;
-    if (!tabId) {
+    if (tabId !== draggingTabId) {
+      clearTabDrag();
       return;
     }
     event.preventDefault();
     const list = event.currentTarget;
-    if (!(list instanceof HTMLElement)) {
-      return;
-    }
-    const items = Array.from(
-      list.querySelectorAll<HTMLElement>("[data-fennevia-tab-item]"),
-    );
-    const mids = items.map((item) => {
-      const bounds = item.getBoundingClientRect();
-      return bounds.top + bounds.height / 2;
-    });
-    const targetIndex = resolveTabDropIndex(
-      currentTabs.tabs,
-      tabId,
-      mids,
-      event.clientY,
-    );
-    draggingTabId = null;
-    props.shell.setPointerHeld("left", false);
+    const targetIndex =
+      list instanceof HTMLElement
+        ? resolveDragTargetIndex(list, tabId, event.clientY)
+        : null;
+    clearTabDrag();
     if (targetIndex === null) {
       return;
     }
@@ -430,10 +485,7 @@
     cancelHighlight();
     highlightedTabIds = [];
     tabButtons.length = 0;
-    if (draggingTabId) {
-      props.shell.setPointerHeld("left", false);
-    }
-    draggingTabId = null;
+    clearTabDrag();
   });
 </script>
 
@@ -455,6 +507,7 @@
     aria-orientation="vertical"
     class="fennevia-tab-strip__list"
     data-fennevia-tab-list=""
+    ondragleave={handleTabListDragLeave}
     ondragover={handleTabListDragOver}
     ondrop={handleTabListDrop}
     role="tablist"
@@ -468,6 +521,9 @@
         data-fennevia-audio={tab.audio}
         data-fennevia-container-color={tab.container?.color}
         data-fennevia-dragging={draggingTabId === tab.id}
+        data-fennevia-drop-preview={dropPreview?.index === index
+          ? dropPreview.position
+          : undefined}
         data-fennevia-just-opened={highlightedTabIds.includes(tab.id)}
         data-fennevia-loading={tab.loading}
         data-fennevia-picture-in-picture={tab.pictureInPicture === true}

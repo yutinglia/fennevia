@@ -12,6 +12,8 @@ const ownedEnglishLabels = Object.freeze({
   [en["widget.showBookmarksTooltip"]]: "widget.showBookmarksTooltip",
   [en["widget.showDownloads"]]: "widget.showDownloads",
   [en["widget.showDownloadsTooltip"]]: "widget.showDownloadsTooltip",
+  [en["widget.showTranslate"]]: "widget.showTranslate",
+  [en["widget.showTranslateTooltip"]]: "widget.showTranslateTooltip",
   [en["widget.space"]]: "widget.space",
   [en["widget.toolbarItem"]]: "widget.toolbarItem",
 } as const);
@@ -58,6 +60,8 @@ export function localizeWidgetLabel(
     label = translate(locale, "widget.showBookmarks");
   } else if (widget.fenneviaAction === "show-downloads") {
     label = translate(locale, "widget.showDownloads");
+  } else if (widget.fenneviaAction === "show-translate") {
+    label = translate(locale, "widget.showTranslate");
   } else if (widget.kind === "separator") {
     label = translate(locale, "widget.separator");
   } else if (widget.kind === "spacer") {

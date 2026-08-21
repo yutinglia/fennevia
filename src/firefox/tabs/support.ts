@@ -124,6 +124,7 @@ export const tabsCapabilitySpecifications: readonly TabsCapabilitySpecification[
       ["pin-tab", "pinTab"],
       ["unpin-tab", "unpinTab"],
       ["move-tab", "moveTabTo"],
+      ["translate-tab-context-menu", "translateTabContextMenu"],
     ].map(([name, member]) =>
       Object.freeze({
         isAvailable: isFunction,

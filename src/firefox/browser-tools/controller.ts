@@ -38,6 +38,8 @@ import {
 } from "./support.ts";
 import type { NativeRecord, NativePanel, PopupHandoff } from "./support.ts";
 
+const TRANSLATIONS_PANEL_OPEN_TIMEOUT_MS = 10_000;
+
 export type FirefoxBrowserToolsBridgeController = Readonly<{
   assertRequiredCapabilities: () => readonly FirefoxCapabilitySnapshot[];
   browserTools: BrowserToolsBridge;
@@ -114,7 +116,9 @@ export function createFirefoxBrowserToolsBridge({
     (): readonly FirefoxCapabilitySnapshot[] => {
       const evaluations = evaluateBrowserToolCapabilities(requireWindow());
       const missing = evaluations.find(
-        (evaluation) => !evaluation.snapshot.available,
+        (evaluation) =>
+          evaluation.snapshot.requirement === "required" &&
+          !evaluation.snapshot.available,
       );
       if (missing) {
         throw createBrowserToolsError(
@@ -197,6 +201,40 @@ export function createFirefoxBrowserToolsBridge({
       );
     }
     return host;
+  };
+
+  const resolveTranslationTriggerEvent = (
+    candidate: unknown,
+    host: NativeRecord,
+  ): NativeRecord => {
+    if (
+      isNativeRecord(candidate) &&
+      isFunction(candidate.stopPropagation) &&
+      (candidate.type === "click" || candidate.type === "keypress")
+    ) {
+      return candidate;
+    }
+    const ownerWindow = requireWindow();
+    const MouseEvent = ownerWindow.MouseEvent;
+    if (isFunction(MouseEvent)) {
+      try {
+        const event = Reflect.construct(MouseEvent, [
+          "click",
+          Object.freeze({ bubbles: true, button: 0 }),
+        ]);
+        if (isNativeRecord(event) && isFunction(event.stopPropagation)) {
+          return event;
+        }
+      } catch {
+        // The bounded event-shaped fallback below still uses the native owner.
+      }
+    }
+    return Object.freeze({
+      button: 0,
+      stopPropagation() {},
+      target: host,
+      type: "click",
+    });
   };
 
   const findOpenPanel = (panelIds: readonly string[]): NativePanel | null => {
@@ -807,6 +845,7 @@ export function createFirefoxBrowserToolsBridge({
   const invokePopupAction = async (
     action: PopupBrowserToolAction,
     host: unknown,
+    triggerEvent?: unknown,
   ): Promise<boolean> => {
     const ownerWindow = requireWindow();
     const handoff = await preparePopupAction(action, host);
@@ -993,6 +1032,108 @@ export function createFirefoxBrowserToolsBridge({
           return true;
         }
 
+        case "translate": {
+          const translations = ownerWindow.FullPageTranslationsPanel;
+          if (!isNativeRecord(translations) || !isFunction(translations.open)) {
+            throw createBrowserToolsError(
+              boundary,
+              "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING",
+              "firefox-browser-tools-action",
+              "window.FullPageTranslationsPanel.open",
+            );
+          }
+          const panelMultiView = readPanelMultiViewOwner(ownerWindow);
+          const originalOpenPopup = panelMultiView?.openPopup;
+          let routedOpenPopup:
+            ((candidatePanel: unknown, ...rest: unknown[]) => unknown) | null =
+            null;
+          if (panelMultiView && isFunction(originalOpenPopup)) {
+            routedOpenPopup = (candidatePanel, ...rest) => {
+              if (
+                isNativeRecord(candidatePanel) &&
+                candidatePanel.id === "full-page-translations-panel"
+              ) {
+                const options = isNativeRecord(rest[1])
+                  ? Object.freeze({
+                      ...rest[1],
+                      position: handoff.position,
+                    })
+                  : Object.freeze({ position: handoff.position });
+                const result = Reflect.apply(
+                  originalOpenPopup,
+                  panelMultiView,
+                  [candidatePanel, handoff.host, options],
+                );
+                return result;
+              }
+              return Reflect.apply(originalOpenPopup, panelMultiView, [
+                candidatePanel,
+                ...rest,
+              ]);
+            };
+            try {
+              panelMultiView.openPopup = routedOpenPopup;
+            } catch {
+              routedOpenPopup = null;
+            }
+          }
+          let panelShown = false;
+          try {
+            await invokeMethod(
+              translations,
+              "open",
+              "window.FullPageTranslationsPanel.open",
+              [resolveTranslationTriggerEvent(triggerEvent, handoff.host)],
+            );
+            // Firefox 153/154's async open() starts its private #openPromise but
+            // returns without awaiting it. Keep the narrowly scoped route in
+            // place until the lazily materialized panel actually opens.
+            panelShown = await waitForPanelShown(
+              handoff.panelId,
+              TRANSLATIONS_PANEL_OPEN_TIMEOUT_MS,
+            );
+          } finally {
+            if (
+              panelMultiView &&
+              originalOpenPopup &&
+              routedOpenPopup &&
+              panelMultiView.openPopup === routedOpenPopup
+            ) {
+              try {
+                panelMultiView.openPopup = originalOpenPopup;
+              } catch {
+                // The popupshown handoff still places the Firefox-owned panel.
+              }
+            }
+          }
+          if (!panelShown) {
+            throw createBrowserToolsError(
+              boundary,
+              "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED",
+              "firefox-browser-tools-action",
+              "document.full-page-translations-panel.popupshown",
+            );
+          }
+          const opened = resolveActionPanel(action);
+          if (!opened || !isPanelOpen(opened)) {
+            throw createBrowserToolsError(
+              boundary,
+              "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED",
+              "firefox-browser-tools-action",
+              "document.full-page-translations-panel.openPopup",
+            );
+          }
+          if (opened.anchorNode !== handoff.host) {
+            placePanelBesideHost(
+              opened,
+              handoff.host,
+              handoff.position,
+              "document.full-page-translations-panel.moveToAnchor",
+            );
+          }
+          return true;
+        }
+
         case "application-menu": {
           const panel = requireActionPanel(action);
           if (isPanelOpen(panel)) {
@@ -1093,6 +1234,7 @@ export function createFirefoxBrowserToolsBridge({
   const invoke = async (
     action: BrowserToolAction,
     host?: unknown,
+    triggerEvent?: unknown,
   ): Promise<boolean> => {
     if (!isBrowserToolAction(action)) {
       throw createBrowserToolsError(
@@ -1106,7 +1248,7 @@ export function createFirefoxBrowserToolsBridge({
     pendingActionCount += 1;
     try {
       if (isPopupBrowserToolAction(action)) {
-        return await invokePopupAction(action, host);
+        return await invokePopupAction(action, host, triggerEvent);
       }
 
       switch (action) {

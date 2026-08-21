@@ -1,9 +1,8 @@
 # Current Project Status
 
-> Snapshot: 2026-08-21. This status review is based on `main` at
-> `63caf8de1dc70ed5f43636a492b92b35af75c3c0` and the public
-> `v0.11.0-beta.1` prerelease. Historical research records and milestone ADR
-> context remain unchanged.
+> Snapshot: 2026-08-22. This status review is based on the current development
+> worktree at `a8e44b3` and the public `v0.11.0-beta.1` prerelease. Historical
+> research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
 READMEs remain user-facing, while the master plan, shell roadmap, architecture,
@@ -44,15 +43,34 @@ and testing documents retain the complete engineering contract.
 - Hidden-at-rest top, left, right, and bottom surfaces with a shared reveal,
   focus, popup-hold, collision, accessibility, and cleanup contract.
 - Left-edge vertical tabs with selected/loading state, audio, containers,
-  attention, middle-click close, drag/keyboard reorder, and Firefox-owned tab
-  context-menu handoff.
+  attention, middle-click close, drag/keyboard reorder with a visible insertion
+  preview, and Firefox-owned tab context-menu handoff with complete lazy Fluent
+  labels and no original-toolbar reveal.
 - Compact address/status launcher plus a centred address/search popup backed by
   Firefox navigation and Urlbar behavior.
 - Top navigation, page status, Firefox tool handoffs, native-panel anchoring,
   gutter activity indicators, and compact window controls.
+- Generic relationship-based anchoring for non-security Firefox-owned XUL
+  popups opened from the hidden toolbox; unsupported movement remains
+  fail-open to original Firefox chrome. ADR-057 pre-anchors the shared security
+  notification panel before first open, keeps it fully Firefox-owned without a
+  post-show move or unnecessary original-chrome reveal, and retains native
+  reveal if routing is unavailable so marketplace installation and other
+  prompts preserve Firefox timing. The owner-observed Firefox 154 AMO path
+  currently uses that accepted complete-native-chrome fallback. It also adds a
+  placeable widget for the Firefox-owned full-page translation panel; the
+  2026-08-22 follow-up keeps its routing active until Firefox's asynchronously
+  created panel is actually shown.
 - Lazy, event-driven right-edge bookmarks and anonymous bottom-edge download
   progress/status while Firefox retains authoritative editing, safety, and file
   management.
+- Useful pointer/keyboard right-click menus on all four edge panels: top
+  Settings, left New Tab/native tab actions, right bookmark/folder/Library
+  actions, bottom Firefox Downloads, plus available Fennevia/native customize
+  and original-toolbar actions. The 2026-08-22 owner-reported follow-up fixes
+  delegated tab-event interception and explicitly releases pointer-menu focus
+  so edge auto-hide can resume after explicit dismissal; pointer exit alone
+  retains the menu and its working panel like Firefox's native context menu.
 - Complete native Firefox reveal paths for unsupported, security-sensitive, or
   recovery-only operations.
 
@@ -90,6 +108,11 @@ following remain explicitly pending in the current plans and testing document:
 - ADR-044 toolbar-widget mirror behavior in real Firefox;
 - ADR-045, ADR-047, and ADR-054 customize-mode, live drag-and-drop, and bounded
   interaction-setting behavior;
+- ADR-055 four-panel context-menu placement, native popup/Library ownership,
+  label rendering, and normal/second/private-window interaction behavior;
+- ADR-056/ADR-057 translation-widget placement, native AMO install/security
+  notification timing, bookmark/page-action, and other hidden-toolbox popup
+  behavior across normal/second/private windows and recovery cases;
 - ADR-050 cold-start flash, watchdog expiry, and failure-skeleton behavior;
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.

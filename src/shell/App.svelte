@@ -29,6 +29,7 @@
   } from "../app/toolbar-widgets-state";
   import type { BrowserWindowControlsStateAdapter } from "../app/window-controls-state";
   import CustomizePanel from "./CustomizePanel.svelte";
+  import EdgePanelContextMenu from "./features/context-menu/EdgePanelContextMenu.svelte";
   import BottomSurface from "./surfaces/BottomSurface.svelte";
   import EdgeProgressLight from "./surfaces/EdgeProgressLight.svelte";
   import LeftSurface from "./surfaces/LeftSurface.svelte";
@@ -78,6 +79,7 @@
       .shortcutHintDuration !== 0,
   );
   let customizeOpen = $state(false);
+  let panelElement: HTMLDivElement | undefined = $state();
   let panelDragCandidate = false;
   let focusReleaseTimer: DelayedFocusTimer | undefined;
 
@@ -150,7 +152,6 @@
     });
   });
 
-  // A forced dismissal of the top surface must not leave a floating editor.
   $effect(() => {
     if (props.edge !== "top" || surfaceState.visible || !customizeOpen) {
       return;
@@ -294,7 +295,6 @@
     if (panelDragCandidate) {
       props.shell.setWindowDragActive(false);
     }
-    panelDragCandidate = false;
     clearToolbarWidgetDrag();
     props.onDisposed(props.edge);
   });
@@ -330,6 +330,7 @@
   />
 
   <div
+    bind:this={panelElement}
     aria-hidden={!surfaceState.visible}
     aria-label={surfaceLabels[props.edge]}
     class="fennevia-edge-panel"
@@ -400,6 +401,23 @@
         toolbarWidgetsState={currentToolbarWidgets}
       />
     {/if}
+
+    <EdgePanelContextMenu
+      bookmarks={props.bookmarks}
+      browserTools={props.browserTools}
+      customizeSession={props.customizeSession}
+      edge={props.edge}
+      frame={props.frame}
+      {localeId}
+      onDismiss={props.onDismiss}
+      onFatalError={props.onFatalError}
+      onSetCustomizeOpen={setCustomizeOpen}
+      panel={panelElement}
+      shell={props.shell}
+      tabs={props.tabs}
+      toolbarWidgets={props.toolbarWidgets}
+      visible={surfaceState.visible}
+    />
 
     {#if shortcutHintsEnabled}
       <footer

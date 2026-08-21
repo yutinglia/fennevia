@@ -804,6 +804,7 @@ test("default snapshot mirrors nav-bar placements into the top zone", () => {
     const paletteLabels = snapshot.palette.map((entry) => entry.label);
     assert.ok(paletteLabels.includes("Show bookmarks panel"));
     assert.ok(paletteLabels.includes("Open Firefox downloads"));
+    assert.ok(paletteLabels.includes("Translate this page"));
     assert.ok(paletteLabels.includes("Print"));
     assert.ok(paletteLabels.includes("Save Page"));
     assert.ok(paletteLabels.includes("Find in This Page"));
@@ -1497,7 +1498,13 @@ test("fennevia widgets place into any zone and edits require fresh revisions", a
       (entry) =>
         entry.kind === "fennevia" && entry.label === "Show bookmarks panel",
     );
+    const translateWidget = snapshot.palette.find(
+      (entry) =>
+        entry.kind === "fennevia" && entry.label === "Translate this page",
+    );
     assert.ok(bookmarksWidget);
+    assert.ok(translateWidget);
+    assert.equal(translateWidget.icon, "translate");
     await pair.controller.toolbarWidgets.edit({
       index: 0,
       revision: pair.controller.snapshot().revision,
