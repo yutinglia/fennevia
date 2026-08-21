@@ -1,7 +1,7 @@
 # Current Project Status
 
 > Snapshot: 2026-08-22. This status review is based on the current development
-> worktree based on `3713ad7` plus the unified Trust-shield follow-up and the public
+> worktree based on `ffacf17` plus the native-shell-icon follow-up and the public
 > `v0.11.0-beta.1` prerelease. Historical
 > research records and milestone ADR context remain unchanged.
 
@@ -43,8 +43,8 @@ and testing documents retain the complete engineering contract.
 
 - Hidden-at-rest top, left, right, and bottom surfaces with a shared reveal,
   focus, popup-hold, collision, accessibility, and cleanup contract.
-- Left-edge vertical tabs with selected state, an animated loading icon, audio,
-  containers, attention/PiP, closed camera/microphone/screen-sharing and crash
+- Left-edge vertical tabs with selected state, Firefox's packaged loading icon,
+  audio, containers, attention/PiP, closed camera/microphone/screen-sharing and crash
   indicators, fixed trailing action positions, middle-click close,
   drag/keyboard reorder with a visible insertion preview, and Firefox-owned tab
   context-menu handoff with complete lazy Fluent labels and no original-toolbar
@@ -54,7 +54,8 @@ and testing documents retain the complete engineering contract.
   navigation, bounded connection/protection state, and the native Trust/Urlbar
   owners.
 - Top navigation, page status, Firefox tool handoffs, native-panel anchoring,
-  gutter activity indicators, and compact window controls.
+  packaged Firefox icons including the Settings gear, gutter activity
+  indicators, and compact project-owned window controls.
 - Generic relationship-based anchoring for non-security Firefox-owned XUL
   popups opened from the hidden toolbox; unsupported movement remains
   fail-open to original Firefox chrome. ADR-057 pre-anchors the shared security
@@ -104,6 +105,10 @@ The `v0.11.0-beta.1` release pull request records successful
 `git diff --check`, `npm run format:check`, and `npm run verify`. The verify gate
 covers linting, type checking, coverage floors, PowerShell static suites,
 dependency review, deterministic builds, and production-artifact checks.
+The 2026-08-22 ADR-060 native-shell-icon follow-up also passed the complete
+`npm run verify` gate with 296 Node tests, 87.60% line coverage, 95.33%
+function coverage, deterministic generated output, and all 14 production
+artifacts accepted.
 
 That automated evidence does **not** complete every real-browser claim. The
 following remain explicitly pending in the current plans and testing document:
@@ -124,6 +129,9 @@ following remain explicitly pending in the current plans and testing document:
   multi-window conditions;
 - ADR-059 unified Trust-shield rendering/state, leading in-launcher placement,
   and native panel handoff across HTTP, HTTPS, ETP exception/restore, errors,
+  forced colors, DPI, and multiple windows;
+- ADR-060 packaged Firefox icon rendering and alignment across top controls,
+  tabs, popups, bookmarks, downloads, customize UI, themes, reduced motion,
   forced colors, DPI, and multiple windows;
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.

@@ -111,7 +111,9 @@ ordered independent:
 
 Each of the four edge hosts and the address-overlay host contains exactly one
 project-owned XHTML mount target and one Svelte root. Structural descendants
-remain XHTML; only project-authored `svg[data-fennevia-icon]` subtrees use SVG.
+remain XHTML. Packaged Firefox icons render on decorative XHTML mask spans;
+only reviewed caption/generic `svg[data-fennevia-icon]` exception subtrees use
+SVG.
 Project ownership stops at the frame descendants. Firefox-native nodes are
 neither moved nor reconciled.
 
@@ -272,8 +274,8 @@ Issue #60 completes the remaining flat-list parity on that same strip:
   closed optional snapshot fields;
 - container color stripe and bounded label;
 - attention and picture-in-picture indicators;
-- project-authored semantic SVGs, fixed trailing action grid areas, and a
-  reduced-motion-safe loading-icon rotation;
+- packaged Firefox semantic icons, fixed trailing action grid areas, and the
+  native loading asset's built-in reduced-motion behavior;
 - drag reorder with a browser drag ghost/insertion marker and
   `Ctrl+Shift+ArrowUp/Down`;
 - Firefox-owned `#tabContextMenu` handoff with #31 popup hold, synchronous lazy
@@ -287,10 +289,11 @@ Deferred:
 - thumbnails/previews;
 - container icon loads from `resource://usercontext-content/`.
 
-Evidence: ADR-025, ADR-026, ADR-041, ADR-058, and
+Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, and
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
-`docs/research/firefox-153-154-tab-status-indicators.md`, plus ADR-055 and
+`docs/research/firefox-153-154-tab-status-indicators.md`,
+`docs/research/firefox-153-154-native-shell-icons.md`, plus ADR-055 and
 `docs/research/firefox-153-154-panel-context-actions.md`.
 
 ## Milestone F: Shared four-edge interaction and design frame — complete
@@ -727,7 +730,8 @@ Started from the Deferred "extension toolbar/action replacement" item with
 owner approval for the bounded ADR-037 privacy relaxation. Mirror the user's
 `CustomizableUI` nav-bar layout read-only in the Fennevia top row with
 project-owned components: extension action buttons (real icon, badge, name),
-pinned built-in buttons (curated `ShellIcon` tokens, generic fallback), and
+pinned built-in buttons (live or version-aware packaged Firefox icon, then a
+narrow generic fallback), and
 spacers as gaps. Native customize mode was the only editor in this milestone;
 listeners plus a bounded attribute observer republish revision snapshots.
 Extension popups anchor on the clicked project button through

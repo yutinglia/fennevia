@@ -154,10 +154,6 @@
     animation: none;
   }
 
-  #fennevia-shell-frame-host .fennevia-tab-strip__loading {
-    animation: none;
-  }
-
   #fennevia-shell-frame-host
     .fennevia-progress-light[data-fennevia-progress-mode="indeterminate"]
     .fennevia-progress-light__beam {

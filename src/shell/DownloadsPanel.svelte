@@ -11,6 +11,7 @@
     defaultFenneviaLocale,
     type FenneviaLocale,
   } from "../app/locale-state";
+  import FirefoxIcon, { type FirefoxIconName } from "./FirefoxIcon.svelte";
 
   type Props = Readonly<{
     downloads: BrowserDownloadsStateAdapter;
@@ -19,7 +20,7 @@
   }>;
 
   type DownloadPresentation = Readonly<{
-    icon: string;
+    icon: FirefoxIconName;
     label: string;
     tone: "danger" | "muted" | "positive" | "warning";
   }>;
@@ -37,32 +38,32 @@
   const presentations = $derived(
     Object.freeze({
       active: Object.freeze({
-        icon: "↓",
+        icon: "download",
         label: t("downloads.downloading"),
         tone: "positive",
       }),
       canceled: Object.freeze({
-        icon: "×",
+        icon: "close",
         label: t("downloads.canceled"),
         tone: "muted",
       }),
       failed: Object.freeze({
-        icon: "!",
+        icon: "error",
         label: t("downloads.failed"),
         tone: "danger",
       }),
       paused: Object.freeze({
-        icon: "Ⅱ",
+        icon: "pause",
         label: t("downloads.paused"),
         tone: "warning",
       }),
       queued: Object.freeze({
-        icon: "·",
+        icon: "loading",
         label: t("downloads.queued"),
         tone: "muted",
       }),
       succeeded: Object.freeze({
-        icon: "✓",
+        icon: "check",
         label: t("downloads.finished"),
         tone: "positive",
       }),
@@ -182,7 +183,9 @@
   tabindex="-1"
 >
   <div aria-live="polite" class="fennevia-downloads__summary">
-    <span aria-hidden="true" class="fennevia-downloads__summary-icon">↓</span>
+    <span aria-hidden="true" class="fennevia-downloads__summary-icon">
+      <FirefoxIcon name="download" />
+    </span>
     <span class="fennevia-downloads__summary-copy">
       <strong data-fennevia-download-summary="">{summary.title}</strong>
       <span>{summary.detail}</span>
@@ -225,10 +228,7 @@
     {/if}
   </div>
 
-  <ul
-    aria-label={t("downloads.itemsAria")}
-    class="fennevia-downloads__items"
-  >
+  <ul aria-label={t("downloads.itemsAria")} class="fennevia-downloads__items">
     {#each current.items as item, index (item.id)}
       <li
         aria-label={item.progressPercent === null
@@ -251,7 +251,7 @@
               percent: item.progressPercent,
             })}
       >
-        <span aria-hidden="true">{presentations[item.state].icon}</span>
+        <FirefoxIcon name={presentations[item.state].icon} />
         {#if item.progressPercent !== null && item.state !== "succeeded"}
           <span>{item.progressPercent}%</span>
         {:else}
@@ -260,11 +260,8 @@
       </li>
     {/each}
     {#if current.truncated}
-      <li
-        aria-label={t("downloads.moreAria")}
-        class="fennevia-downloads__more"
-      >
-        +
+      <li aria-label={t("downloads.moreAria")} class="fennevia-downloads__more">
+        <FirefoxIcon name="plus" />
       </li>
     {/if}
   </ul>

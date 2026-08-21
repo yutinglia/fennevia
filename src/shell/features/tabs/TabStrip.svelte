@@ -31,7 +31,7 @@
     resolveTabDropPreview,
     type TabDropPreview,
   } from "../../../app/tab-strip";
-  import ShellIcon, { type ShellIconName } from "../../ShellIcon.svelte";
+  import FirefoxIcon, { type FirefoxIconName } from "../../FirefoxIcon.svelte";
   import { createTabStripLabels } from "../../locale-ui";
 
   type Props = Readonly<{
@@ -68,14 +68,14 @@
 
   const getAudioIconName = (
     action: "mute" | "resume-media" | "unmute",
-  ): ShellIconName =>
+  ): FirefoxIconName =>
     action === "unmute"
-      ? ("audio-muted" as const)
+      ? ("tab-audio-muted" as const)
       : action === "resume-media"
-        ? ("media-blocked" as const)
-        : ("audio" as const);
+        ? ("tab-audio-blocked" as const)
+        : ("tab-audio-playing" as const);
 
-  const getSharingIconName = (sharing: TabSharingState): ShellIconName =>
+  const getSharingIconName = (sharing: TabSharingState): FirefoxIconName =>
     sharing === "screen" ? ("screen-share" as const) : sharing;
 
   const reportAsyncError = (work: Promise<unknown>): void => {
@@ -574,7 +574,7 @@
         >
           <span class="fennevia-tab-strip__visual" aria-hidden="true">
             <span class="fennevia-tab-strip__fallback">
-              <ShellIcon name="tab" />
+              <FirefoxIcon name="tab" />
             </span>
             {#if tab.faviconUrl}
               <img
@@ -588,7 +588,7 @@
             {/if}
             {#if tab.loading}
               <span class="fennevia-tab-strip__loading">
-                <ShellIcon name="reload" />
+                <FirefoxIcon name="loading" />
               </span>
             {/if}
           </span>
@@ -602,7 +602,7 @@
                   class="fennevia-tab-strip__status"
                   data-fennevia-tab-status="crashed"
                 >
-                  <ShellIcon name="crashed" />
+                  <FirefoxIcon name="crashed" />
                 </span>
               {/if}
               {#if tab.sharing}
@@ -610,7 +610,7 @@
                   class="fennevia-tab-strip__status"
                   data-fennevia-tab-status={tab.sharing}
                 >
-                  <ShellIcon name={getSharingIconName(tab.sharing)} />
+                  <FirefoxIcon name={getSharingIconName(tab.sharing)} />
                 </span>
               {/if}
               {#if tab.pictureInPicture}
@@ -618,7 +618,7 @@
                   class="fennevia-tab-strip__status"
                   data-fennevia-tab-status="picture-in-picture"
                 >
-                  <ShellIcon name="picture-in-picture" />
+                  <FirefoxIcon name="picture-in-picture" />
                 </span>
               {/if}
             </span>
@@ -635,7 +635,7 @@
             title={getTabActionAccessibleName(audioAction, tab, tabLabels)}
             type="button"
           >
-            <ShellIcon name={getAudioIconName(audioAction)} />
+            <FirefoxIcon name={getAudioIconName(audioAction)} />
           </button>
         {/if}
 
@@ -654,7 +654,7 @@
           }}
           tabindex={rovingTabId === tab.id ? 0 : -1}
           title={tab.pinned ? t("tab.unpinTab") : t("tab.pinTab")}
-          type="button"><ShellIcon name="pin" /></button
+          type="button"><FirefoxIcon name="pin" /></button
         >
 
         <button
@@ -667,7 +667,7 @@
           }}
           tabindex={rovingTabId === tab.id ? 0 : -1}
           title={t("tab.closeTab")}
-          type="button"><ShellIcon name="close" /></button
+          type="button"><FirefoxIcon name="tab-close" /></button
         >
       </div>
     {/each}
@@ -681,7 +681,7 @@
     title={t("tab.newTab")}
     type="button"
   >
-    <span aria-hidden="true"><ShellIcon name="plus" /></span>
+    <span aria-hidden="true"><FirefoxIcon name="plus" /></span>
     <span>{t("tab.newTab")}</span>
   </button>
 </div>

@@ -122,6 +122,21 @@
   box-sizing: border-box;
 }
 
+#fennevia-shell-frame-host .fennevia-firefox-icon {
+  display: inline-block;
+  inline-size: 16px;
+  block-size: 16px;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  pointer-events: none;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+
 #fennevia-shell-frame-host .fennevia-edge-root {
   position: absolute;
   inset: 0;

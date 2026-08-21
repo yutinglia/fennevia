@@ -56,8 +56,10 @@ Completed:
 - #11: accessible custom tab UI, now rendered vertically in the left edge;
 - #60: left-edge flat-list native parity (audio, container, attention,
   middle-click close, drag/keyboard reorder, Firefox `#tabContextMenu`);
-- ADR-058: fixed tab action placement, animated loading icon, and closed
-  camera/microphone/screen-sharing plus crash indicators;
+- ADR-058: fixed tab action placement and closed camera/microphone/screen-sharing
+  plus crash indicators; ADR-060 supersedes its custom icon-animation clause;
+- ADR-060: exact native-equivalent shell controls use installed Firefox icon
+  resources, including the Settings gear and the complete tab icon family;
 - #31: zero-layout four-edge frame, shared reveal controller, corner/collision
   policy, glass tokens, accessibility fallbacks, and complete cleanup;
 - #12: event-driven selected-navigation bridge and top-edge Back, Forward,
@@ -79,7 +81,7 @@ Completed:
   executable Firefox stable-update rehearsal.
 
 Current fast branch enhancement under ADR-037, ADR-042, ADR-044 through
-ADR-047, and ADR-054 through ADR-059:
+ADR-047, and ADR-054 through ADR-060:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   Firefox tools, and progressive disclosure;
@@ -403,10 +405,11 @@ Evidence: ADR-026 and
 - ordinary bridge contracts only;
 - native tab strip retained.
 
-Evidence: ADR-025, ADR-026, ADR-041, ADR-058,
+Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060,
 `docs/research/firefox-153-tab-strip.md`, and
 `docs/research/firefox-153-tab-strip-parity.md`,
-`docs/research/firefox-153-154-tab-status-indicators.md`, plus ADR-055 and
+`docs/research/firefox-153-154-tab-status-indicators.md`,
+`docs/research/firefox-153-154-native-shell-icons.md`, plus ADR-055 and
 `docs/research/firefox-153-154-panel-context-actions.md`.
 
 #### Top primary controls — complete (#12)
@@ -522,8 +525,9 @@ Evidence: ADR-031 and
   Trust label and shield remain a summary;
 - Firefox-owned caption buttons retained and styled in place, with empty panel
   chrome draggable and every interactive descendant excluded from dragging;
-- independently authored SVG glyphs and no copied code/design/assets from
-  `my-firefox-custom`.
+- fixed packaged Firefox resources for exact native-equivalent icons,
+  independently authored caption/ambiguous fallback glyphs, and no copied
+  code/design/assets from `my-firefox-custom`.
 
 Focused source, adapter/controller, type, build, static CSS/native-UI, artifact,
 and privacy checks are required before push. Real cold start, native panel

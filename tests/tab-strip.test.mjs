@@ -297,9 +297,9 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /data-fennevia-tab-status="crashed"/u);
   assert.match(source, /data-fennevia-tab-status=\{tab\.sharing\}/u);
   assert.match(source, /data-fennevia-tab-status="picture-in-picture"/u);
-  assert.match(source, /<ShellIcon name="reload" \/>/u);
-  assert.match(source, /<ShellIcon name="pin" \/>/u);
-  assert.match(source, /<ShellIcon name="close" \/>/u);
+  assert.match(source, /<FirefoxIcon name="loading" \/>/u);
+  assert.match(source, /<FirefoxIcon name="pin" \/>/u);
+  assert.match(source, /<FirefoxIcon name="tab-close" \/>/u);
   assert.doesNotMatch(tabSource, /[□↻▭ø■♪◆◇×]/u);
   assert.match(
     source,
@@ -335,18 +335,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
     styles,
     /\[data-fennevia-action="close-tab"\] \{\s*grid-area: close;/u,
   );
-  assert.match(
-    styles,
-    /\.fennevia-tab-strip__loading \{[\s\S]*?animation: fennevia-tab-loading 900ms linear infinite;/u,
-  );
-  assert.match(
-    styles,
-    /@keyframes fennevia-tab-loading \{[\s\S]*?transform: rotate\(1turn\);/u,
-  );
-  assert.match(
-    styles,
-    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.fennevia-tab-strip__loading \{\s*animation: none;/u,
-  );
+  assert.doesNotMatch(styles, /fennevia-tab-loading/u);
   assert.match(
     styles,
     /\.fennevia-tab-strip__status:is\([\s\S]*?data-fennevia-tab-status="microphone"[\s\S]*?color: var\(--fennevia-danger-color\);/u,
@@ -411,9 +400,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
       "fennevia-progress-light-pulse 1.4s ease-in-out infinite alternate",
       "fennevia-shortcut-tip var(--fennevia-shortcut-tip-duration) ease-out both",
       "fennevia-tab-opened 1600ms var(--fennevia-motion-easing) both",
-      "fennevia-tab-loading 900ms linear infinite",
       "fennevia-shortcut-tip-reduced-motion var(--fennevia-shortcut-tip-duration) step-end both",
-      "none",
       "none",
       "none",
     ],

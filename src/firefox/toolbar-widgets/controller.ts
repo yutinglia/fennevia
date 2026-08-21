@@ -56,7 +56,7 @@ import {
   builtinIconTokenByWidgetId,
   TOOLBAR_FLUENT_RESOURCE_IDS,
   builtinFluentIdByWidgetId,
-  builtinIconUrlByWidgetId,
+  resolvePinnedBuiltinIconUrl,
   fenneviaWidgetPresentation,
   isNativeRecord,
   isFunction,
@@ -540,7 +540,10 @@ export function createFirefoxToolbarWidgetsBridge({
     if (cached) {
       return cached;
     }
-    const pinned = builtinIconUrlByWidgetId.get(widgetId) ?? "";
+    const pinned = resolvePinnedBuiltinIconUrl(
+      widgetId,
+      boundary.snapshot().firefoxVersion,
+    );
     return isAllowedPresentationIconUrl(pinned, "builtin") ? pinned : "";
   };
 

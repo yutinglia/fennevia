@@ -156,8 +156,9 @@ export const builtinFluentIdByWidgetId: ReadonlyMap<string, string> = new Map([
   ["tab-groups-button", "toolbar-button-tab-groups"],
 ]);
 
-// Pinned 153 `toolbarbutton-icons.css` URLs for unused API widgets when CSSOM
-// cannot see the sheet (nested `&` / `@media -moz-pref`, or a blocked sheet).
+// Pinned Firefox 153/154 `toolbarbutton-icons.css` URLs for unused API widgets
+// when CSSOM cannot see the sheet (nested `&` / `@media -moz-pref`, or a
+// blocked sheet). Version-specific paths are resolved below.
 export const builtinIconUrlByWidgetId: ReadonlyMap<string, string> = new Map([
   ["bookmarks-menu-button", "chrome://browser/skin/bookmark-star-on-tray.svg"],
   ["characterencoding-button", "chrome://browser/skin/characterEncoding.svg"],
@@ -168,7 +169,7 @@ export const builtinIconUrlByWidgetId: ReadonlyMap<string, string> = new Map([
   ["fullscreen-button", "chrome://browser/skin/fullscreen.svg"],
   [
     "ipprotection-button",
-    "chrome://browser/content/logos/ipprotection-states.svg#off",
+    "chrome://browser/content/ipprotection/assets/states/ipprotection-off.svg",
   ],
   ["library-button", "chrome://browser/skin/library.svg"],
   ["logins-button", "chrome://browser/skin/login.svg"],
@@ -181,12 +182,27 @@ export const builtinIconUrlByWidgetId: ReadonlyMap<string, string> = new Map([
   ["reset-pbm-toolbar-button", "chrome://browser/skin/flame.svg"],
   ["save-page-button", "chrome://browser/skin/save.svg"],
   ["screenshot-button", "chrome://browser/skin/screenshot.svg"],
-  ["send-tab-button", "chrome://browser/skin/send-tab-20.svg"],
   ["share-tab-button", "chrome://browser/skin/share.svg"],
   ["sidebar-button", "chrome://browser/skin/sidebar-collapsed.svg"],
   ["sync-button", "chrome://browser/skin/synced-tabs.svg"],
   ["tab-groups-button", "chrome://browser/skin/tabbrowser/tab-groups.svg"],
 ]);
+
+export const resolvePinnedBuiltinIconUrl = (
+  widgetId: string,
+  firefoxVersion: string,
+): string => {
+  if (widgetId === "send-tab-button") {
+    const majorVersion = Number.parseInt(
+      firefoxVersion.split(".", 1)[0] ?? "",
+      10,
+    );
+    return majorVersion >= 154
+      ? "chrome://browser/skin/send-tab.svg"
+      : "chrome://browser/skin/send-tab-20.svg";
+  }
+  return builtinIconUrlByWidgetId.get(widgetId) ?? "";
+};
 
 // Fixed presentation for Fennevia-owned placeable widgets. The frontend
 // executes these actions itself; no Firefox owner is involved.
