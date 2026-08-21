@@ -67,16 +67,20 @@ test("tab labels preserve page text as text and expose bounded ordinary state", 
     getDisplayTabTitle(tab({ title: " \t " }), {
       allowMedia: "Allow media for",
       attention: "Attention",
+      cameraInUse: "Using camera",
       close: "Close",
+      crashed: "Crashed",
       indexOf: "{index} of {total}",
       loading: "Loading",
       mediaBlocked: "Media blocked",
+      microphoneInUse: "Using microphone",
       mute: "Mute",
       muted: "Muted",
       pin: "Pin",
       pinned: "Pinned",
       pip: "Picture in picture",
       playing: "Playing",
+      screenSharing: "Sharing screen",
       unmute: "Unmute",
       unpin: "Unpin",
       untitled: "未命名分頁",
@@ -85,17 +89,19 @@ test("tab labels preserve page text as text and expose bounded ordinary state", 
   );
 });
 
-test("accessible names include audio, attention, and container labels", () => {
+test("accessible names include audio, capture, crash, and other tab states", () => {
   const candidate = tab({
     attention: true,
     audio: "muted",
     container: { color: "blue", label: "Personal" },
+    crashed: true,
     pictureInPicture: true,
+    sharing: "microphone",
     title: "Example",
   });
   assert.equal(
     getTabAccessibleName(candidate, 0, 2),
-    "Example, 1 of 2, Muted, Attention, Picture in picture, Personal",
+    "Example, 1 of 2, Crashed, Muted, Using microphone, Attention, Picture in picture, Personal",
   );
   assert.equal(getTabAudioAction(candidate), "unmute");
   assert.equal(
@@ -105,6 +111,14 @@ test("accessible names include audio, attention, and container labels", () => {
   assert.equal(getTabAudioAction(tab({ audio: "playing" })), "mute");
   assert.equal(getTabAudioAction(tab({ audio: "blocked" })), "resume-media");
   assert.equal(getTabAudioAction(tab()), null);
+  assert.match(
+    getTabAccessibleName(tab({ sharing: "camera" }), 0, 1),
+    /Using camera/u,
+  );
+  assert.match(
+    getTabAccessibleName(tab({ sharing: "screen" }), 0, 1),
+    /Sharing screen/u,
+  );
 });
 
 test("move helpers stay inside the pinned partition and ignore no-op drops", () => {
@@ -280,6 +294,13 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /openContextMenu/u);
   assert.match(source, /draggable="true"/u);
   assert.match(source, /data-fennevia-action="toggle-mute"/u);
+  assert.match(source, /data-fennevia-tab-status="crashed"/u);
+  assert.match(source, /data-fennevia-tab-status=\{tab\.sharing\}/u);
+  assert.match(source, /data-fennevia-tab-status="picture-in-picture"/u);
+  assert.match(source, /<ShellIcon name="reload" \/>/u);
+  assert.match(source, /<ShellIcon name="pin" \/>/u);
+  assert.match(source, /<ShellIcon name="close" \/>/u);
+  assert.doesNotMatch(tabSource, /[□↻▭ø■♪◆◇×]/u);
   assert.match(
     source,
     /data-fennevia-container-color=\{tab\.container\?\.color\}/u,
@@ -294,6 +315,42 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /setPointerHeld\("left", true\)/u);
   assert.match(styles, /data-fennevia-drop-preview="before"/u);
   assert.match(styles, /data-fennevia-drop-preview="after"/u);
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__item \{[\s\S]*?grid-template-areas: "tab pin close";[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 30px 30px;/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__item\[data-fennevia-audio\] \{[\s\S]*?grid-template-areas: "tab audio pin close";[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 30px 30px 30px;/u,
+  );
+  assert.match(
+    styles,
+    /\[data-fennevia-action="toggle-mute"\] \{\s*grid-area: audio;/u,
+  );
+  assert.match(
+    styles,
+    /\[data-fennevia-action="unpin-tab"\][\s\S]*?\) \{\s*grid-area: pin;/u,
+  );
+  assert.match(
+    styles,
+    /\[data-fennevia-action="close-tab"\] \{\s*grid-area: close;/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__loading \{[\s\S]*?animation: fennevia-tab-loading 900ms linear infinite;/u,
+  );
+  assert.match(
+    styles,
+    /@keyframes fennevia-tab-loading \{[\s\S]*?transform: rotate\(1turn\);/u,
+  );
+  assert.match(
+    styles,
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.fennevia-tab-strip__loading \{\s*animation: none;/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__status:is\([\s\S]*?data-fennevia-tab-status="microphone"[\s\S]*?color: var\(--fennevia-danger-color\);/u,
+  );
   assert.match(styles, /@media \(forced-colors: active\)/u);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(styles, /@media \(prefers-reduced-transparency: reduce\)/u);
@@ -354,7 +411,9 @@ test("the component uses semantic sibling controls and property-safe rendering o
       "fennevia-progress-light-pulse 1.4s ease-in-out infinite alternate",
       "fennevia-shortcut-tip var(--fennevia-shortcut-tip-duration) ease-out both",
       "fennevia-tab-opened 1600ms var(--fennevia-motion-easing) both",
+      "fennevia-tab-loading 900ms linear infinite",
       "fennevia-shortcut-tip-reduced-motion var(--fennevia-shortcut-tip-duration) step-end both",
+      "none",
       "none",
       "none",
     ],

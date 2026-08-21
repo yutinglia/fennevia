@@ -7,7 +7,7 @@ short reviewed progress snapshot, see [Current project status](current-status.md
 
 ## Current engineering status
 
-As of 2026-08-21, Fennevia has a published Windows x64 prerelease,
+As of 2026-08-22, Fennevia has a published Windows x64 prerelease,
 `v0.11.0-beta.1`, tested on stock Firefox 153.0.4 release, Build ID
 `20260810162159`, with owner-confirmed ordinary runtime on Firefox 154.0
 Build ID `20260812182057`. The installer accepts Firefox 153 and newer after
@@ -22,13 +22,13 @@ The tested MVP and current post-MVP implementation include:
 | Window runtime and recovery | Complete | Existing and later normal/private windows, persisted multi-tab Session Restore across separate Firefox processes, health states, safe start, emergency fallback, and deterministic disposal |
 | Frontend and bridge foundation | Complete | Deterministic Svelte 5 build, root-scoped CSS, typed per-window Firefox boundary, and opaque native-handle ownership |
 | Four-edge frame | Complete | Independent top, left, right, and bottom XHTML surfaces, shared reveal/collision/focus policy, and accessibility fallbacks |
-| Tabs and address launcher | Complete | Event-driven vertical tabs with audio/container/attention state, drag/keyboard reorder, native tab context-menu handoff, compact committed address/status launcher, and centred address/search popup |
+| Tabs and address launcher | Complete; ADR-059 real-Firefox follow-up pending | Event-driven vertical tabs with loading animation, audio/container/attention/PiP, closed camera/microphone/screen-sharing and crash indicators, fixed trailing actions, drag/keyboard reorder, native tab context-menu handoff, compact committed address launcher with a leading Firefox Trust shield, and centred address/search popup |
 | Top controls | Complete | Native-synchronised Back, Forward, Reload/Stop, Home, New Tab, bounded page status, Firefox tool handoffs, and compact window-command controls |
 | Single-line toolbar and native handoffs | Focused implementation; real-Firefox matrix pending | One non-wrapping top row, fixed native tool/original-toolbar actions, project-owned control surfaces backed by retained Firefox/OS command owners, 7px gutter, drag regions, and transient shortcut hint |
 | Nav-bar widget mirror (ADR-044) | Focused implementation; superseded as sole model by ADR-045; real-Firefox matrix pending | Default top-zone layout from `CustomizableUI` nav-bar placements as project-styled buttons — extension actions with real icon/badge, pinned built-ins, spacers — with popups anchored on the project button |
 | Fennevia customize mode (ADR-045, ADR-046, ADR-047, ADR-054) | Focused implementation; real-Firefox matrix pending | Four-edge widget zones, full CustomizableUI inventory palette with localized names and native built-in icons (CSS mask), live-zone HTML5 drag-and-drop, bounded appearance and interaction settings, profile-local prefs, and owner-approved adopt/restore writes; native customize mode remains available from the Firefox application menu |
 | Appearance, interaction, and localization | Focused implementation; real-Firefox matrix pending | Firefox chrome design tokens provide the default theme; bounded panel/window appearance, motion, separate in-window/window-leave hide timing, temporary reveal timing, shortcut-tip timing, and edge trigger thickness are profile-local; shell strings follow Firefox UI locale with English and Traditional Chinese catalogs |
-| Urlbar coverage | Complete | Firefox-derived connection/protection/permission/action summaries and complete native Urlbar handoff |
+| Urlbar coverage | Complete; ADR-059 real-Firefox follow-up pending | One Firefox-style Trust shield and popup row derived from bounded connection/protection state, permission/action summaries, and complete native Trust/Urlbar handoff |
 | Bookmarks | Complete | Bounded lazy Places hierarchy with live updates and Firefox-owned opening behavior |
 | Downloads | Complete | Anonymous event-driven aggregate progress/status while Firefox retains safety and file management |
 | Content-only activation | Complete for durable hide; first-paint sheet implemented, real flash matrix `not run` | Exact health-gated native-surface hiding, transient native reveal, fullscreen/customize suspension, fail-open cleanup, and a self-expiring first-paint author sheet (ADR-050) |
@@ -40,7 +40,8 @@ The planned Windows MVP and first public prerelease are complete. ADR-037's
 single-line toolbar and native handoffs, ADR-044's nav-bar widget mirror,
 ADR-045's Fennevia-owned customize mode, ADR-046's localized names and native
 built-in widget icons, ADR-047's live-zone drag-and-drop, ADR-050's first-paint
-hide, and ADR-054's bounded interaction settings have focused automated
+hide, ADR-054's bounded interaction settings, ADR-058's tab indicators, and
+ADR-059's unified Trust shield have focused automated
 coverage. Their changed real-Firefox
 visual and interaction matrices remain pending and are not part of a completed
 real-Firefox validation claim for `v0.11.0-beta.1`.
@@ -64,8 +65,8 @@ Fennevia uses four independently owned floating surfaces:
 
 - **Top:** one-line primary browser controls, Firefox-native handoffs, a
   placeable widget zone, and compact window-command controls.
-- **Left:** vertical tabs, compact address/status launcher, and an optional
-  widget zone.
+- **Left:** vertical tabs, a compact address/status launcher with one Trust
+  shield embedded at the leading edge, and an optional widget zone.
 - **Right:** bookmarks and an optional widget zone.
 - **Bottom:** download progress/status and an optional widget zone.
 

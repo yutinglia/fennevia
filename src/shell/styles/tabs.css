@@ -38,13 +38,19 @@
 #fennevia-shell-frame-host .fennevia-tab-strip__item {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 30px 30px;
+  grid-template-areas: "tab pin close";
+  grid-template-columns: minmax(0, 1fr) 30px 30px;
   flex: none;
   min-block-size: 38px;
   overflow: hidden;
   background: color-mix(in srgb, currentColor 5%, transparent);
   border: 1px solid transparent;
   border-radius: var(--fennevia-control-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__item[data-fennevia-audio] {
+  grid-template-areas: "tab audio pin close";
+  grid-template-columns: minmax(0, 1fr) 30px 30px 30px;
 }
 
 #fennevia-shell-frame-host
@@ -173,6 +179,7 @@
 
 #fennevia-shell-frame-host .fennevia-tab-strip__tab {
   display: flex;
+  grid-area: tab;
   align-items: center;
   min-inline-size: 0;
   gap: var(--fennevia-space-2);
@@ -224,6 +231,14 @@
 #fennevia-shell-frame-host .fennevia-tab-strip__loading {
   color: var(--fennevia-focus-color);
   background: var(--fennevia-glass-surface);
+  animation: fennevia-tab-loading 900ms linear infinite;
+  transform-origin: center;
+}
+
+@keyframes fennevia-tab-loading {
+  to {
+    transform: rotate(1turn);
+  }
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip__title {
@@ -234,23 +249,69 @@
   white-space: nowrap;
 }
 
-#fennevia-shell-frame-host .fennevia-tab-strip__pip {
+#fennevia-shell-frame-host .fennevia-tab-strip__statuses {
+  display: flex;
   flex: none;
-  font-size: 0.75em;
-  opacity: 0.8;
+  align-items: center;
+  gap: 3px;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__status {
+  display: grid;
+  inline-size: 18px;
+  block-size: 18px;
+  place-items: center;
+  color: var(--fennevia-focus-color);
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  border-radius: var(--fennevia-chip-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__status .fennevia-icon {
+  inline-size: 14px;
+  block-size: 14px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__status:is(
+    [data-fennevia-tab-status="camera"],
+    [data-fennevia-tab-status="crashed"],
+    [data-fennevia-tab-status="microphone"],
+    [data-fennevia-tab-status="screen"]
+  ) {
+  color: var(--fennevia-danger-color);
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip__action {
+  display: grid;
   min-inline-size: 28px;
   padding: 0;
+  place-items: center;
   background: transparent;
   border-color: transparent;
   opacity: 0.56;
 }
 
+#fennevia-shell-frame-host .fennevia-tab-strip__action[aria-pressed="true"] {
+  color: var(--fennevia-focus-color);
+}
+
 #fennevia-shell-frame-host
   .fennevia-tab-strip__action[data-fennevia-action="toggle-mute"] {
+  grid-area: audio;
   opacity: 1;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__action:is(
+    [data-fennevia-action="pin-tab"],
+    [data-fennevia-action="unpin-tab"]
+  ) {
+  grid-area: pin;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__action[data-fennevia-action="close-tab"] {
+  grid-area: close;
 }
 
 #fennevia-shell-frame-host

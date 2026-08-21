@@ -23,9 +23,8 @@ Validated baseline as of 2026-08-19:
   #17, #18, #22, #31, #32, #37, #39, #57, and #60 complete;
 - functional vertical tabs and a compact address/status launcher in the left
   surface;
-- one centered address/search popup with detailed connection, protection,
-  permission, applicable-action, and native-handoff coverage in a fifth owned
-  root;
+- one centered address/search popup with a combined Trust summary, permission,
+  applicable-action, and native-handoff coverage in a fifth owned root;
 - one-line primary navigation/address/status plus fixed native Firefox handoffs
   in the top surface;
 - bounded lazy Firefox Places bookmarks in the right surface;
@@ -269,8 +268,12 @@ Issue #60 completes the remaining flat-list parity on that same strip:
 
 - middle-click close;
 - audio playing/muted/blocked plus a sibling mute toggle;
+- camera, microphone, and screen-sharing status plus crashed-tab state through
+  closed optional snapshot fields;
 - container color stripe and bounded label;
 - attention and picture-in-picture indicators;
+- project-authored semantic SVGs, fixed trailing action grid areas, and a
+  reduced-motion-safe loading-icon rotation;
 - drag reorder with a browser drag ghost/insertion marker and
   `Ctrl+Shift+ArrowUp/Down`;
 - Firefox-owned `#tabContextMenu` handoff with #31 popup hold, synchronous lazy
@@ -284,9 +287,10 @@ Deferred:
 - thumbnails/previews;
 - container icon loads from `resource://usercontext-content/`.
 
-Evidence: ADR-025, ADR-026, ADR-041, and
+Evidence: ADR-025, ADR-026, ADR-041, ADR-058, and
 `docs/research/firefox-153-tab-strip.md`,
-`docs/research/firefox-153-tab-strip-parity.md`, plus ADR-055 and
+`docs/research/firefox-153-tab-strip-parity.md`,
+`docs/research/firefox-153-154-tab-status-indicators.md`, plus ADR-055 and
 `docs/research/firefox-153-154-panel-context-actions.md`.
 
 ## Milestone F: Shared four-edge interaction and design frame — complete
@@ -437,8 +441,9 @@ allow-list, progress, command, and event objects stay private.
 
 ### UI work
 
-- compact launcher above the tab list with bounded committed location and real
-  Firefox connection/protection badges;
+- compact launcher above the tab list with bounded committed location and one
+  Firefox-style leading Trust shield derived from real connection/protection
+  state;
 - centered nonmodal popup with one independent draft and fuller status text;
 - `Ctrl+L` opens, focuses, and selects the popup only while the healthy custom
   shell accepts the command;
@@ -595,8 +600,8 @@ Evidence: ADR-030 and
 
 ### Detailed popup and retained access
 
-- short launcher remains bounded location plus real Firefox connection/HTTPS
-  and ETP status;
+- short launcher remains bounded location plus one combined Firefox Trust
+  shield for real connection/HTTPS and ETP status;
 - centered popup adds permission and applicable-action detail;
 - native identity/trust/protections/permission/extension/page-action panels,
   prompts, providers, suggestions, and one-offs remain Firefox-owned;

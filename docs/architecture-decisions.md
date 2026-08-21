@@ -1181,7 +1181,8 @@ Implementation and validation evidence are recorded in
 top-row address cluster and native caption island superseded by ADR-038;
 popup-action toolbar reveal superseded by ADR-042; the widget/identity
 enumeration prohibition partially superseded by ADR-044; the fixed
-browser-tools contract is extended by ADR-057
+browser-tools contract is extended by ADR-057; separate visible
+site-information and protections controls are superseded by ADR-059
 
 Render the top edge as one project-owned, non-wrapping toolbar row. Expose only
 nine fixed browser-tool availability booleans and nine fixed actions through a
@@ -1206,7 +1207,10 @@ For Firefox 153's enabled Trust Panel, site-information and protection entries
 call `gTrustPanelHandler.showPopup()` when that owner exists; collapsed-navbar
 `checkVisibility()` is not the feature-gate. ADR-042 then re-anchors the
 Firefox-owned panel to the clicked project host without revealing native
-chrome. Permission uses `gPermissionPanel.setAnchor`; Downloads initializes
+chrome. ADR-059 later presents those two retained bridge actions as one Trust
+control because both enter that same current panel on Firefox 153/154;
+the fixed actions remain independently available for fallback and tests.
+Permission uses `gPermissionPanel.setAnchor`; Downloads initializes
 then opens `#downloadsPanel` on the host; extensions and the application menu
 toggle or ensure-ready then `moveToAnchor`/`openPopup`. Settings and
 customization still invoke the current window owners. The complete-toolbar
@@ -2220,3 +2224,100 @@ policies preserve the native owner in both cases while choosing the least
 invasive safe placement for each class. Source evidence, rejected
 alternatives, and pending real rows are recorded in
 `docs/research/firefox-153-154-install-notification-and-translations-widget.md`.
+
+## ADR-058: Model native tab indicators as closed state and owned semantic SVGs
+
+**Status:** Accepted for the project-owner request on 2026-08-22; Firefox
+153.0.4/154.0 source and complete automated validation complete; real Firefox
+visual and capture-state validation pending
+
+Extend the existing ordinary tab snapshot with optional
+`sharing: "camera" | "microphone" | "screen"` and `crashed: true`. Read only
+the native tab's `sharing` and `crashed` attributes. Reconcile sharing through
+its exact `TabAttrModified` name; reconcile crash entry through Firefox's two
+top-frame crash events and crash removal through `TabRemotenessChange` plus the
+existing busy/image updates. Unknown sharing values are omitted. Never expose
+Firefox's private browser `_sharingState`, WebRTC records, origin, paused state,
+device identity, permission detail, or native objects.
+
+Render loading, fallback, audio, pin, close, picture-in-picture, capture, and
+crash visuals with project-authored current-color inline SVGs. Capture, crash,
+and picture-in-picture are read-only status badges inside the primary tab
+button; their localized state appears in that tab's accessible name. They are
+not controls. Audio mute/resume, pin/unpin, and close remain semantic sibling
+buttons. Give the optional audio action its own named grid area before fixed
+pin and close areas; status badges remain inside the flexible tab area. Animate
+only the existing `busy` loading icon and stop its rotation under reduced
+motion without removing the state.
+
+Do not copy Firefox's theme SVGs or native tab markup. Do not add tab notes,
+pending/discarded controls, tab groups, split view, or generic unknown-icon
+discovery through this decision. Firefox remains the owner of capture
+permissions, prompts, stop-sharing actions, and authoritative native UI.
+
+**Reasoning:** Firefox 153.0.4 and 154.0 already collapse active tab capture to
+three presentation values and publish changes through the existing tab event
+path. Reusing that narrow contract supplies the requested microphone and peer
+indicators without exporting a broader privacy-sensitive WebRTC record. Named
+grid areas keep true actions aligned, while owned SVGs provide a coherent,
+accessible visual language without a new runtime asset or upstream-theme
+dependency. Source pins, rejected alternatives, privacy limits, and pending
+real-browser rows are recorded in
+`docs/research/firefox-153-154-tab-status-indicators.md`.
+
+## ADR-059: Present connection and tracking protection as one Firefox Trust shield
+
+**Status:** Accepted for the project-owner request on 2026-08-22; Firefox
+153.0.4/154.0 source and focused automated validation complete; real Firefox
+visual and panel-handoff validation pending
+
+Replace the separate visible HTTPS/site-information and ETP/protections
+controls with one semantic Trust button. Embed the launcher instance at the
+leading edge inside its shared address frame, matching Firefox's Urlbar
+information architecture, and render one full-width Trust row in the centered
+address popup. Firefox 153.0.4 and 154.0 enable the Trust Panel that
+combines privacy/protection and connection information behind
+`#trust-icon-container`; both existing `site-information` and `protections`
+bridge actions already call the same `gTrustPanelHandler.showPopup()` owner.
+The combined button invokes `site-information` and remains unavailable unless
+both retained capabilities passed health. Keep both bridge actions, legacy
+identity/protections anchors, panel fallback order, and native recovery paths;
+this decision changes presentation, not privileged ownership.
+
+Render Firefox's packaged
+`chrome://browser/skin/trust-icon-active.svg`,
+`trust-icon-disabled.svg`, `trust-icon-insecure.svg`, and
+`trust-icon-warning.svg` as fixed CSS masks painted with `currentColor`. Do not
+copy the SVG bytes, put a `chrome://` URI in generated CSS, use a network
+resource, or render the context-fill assets as `<img>`. The exact URI map lives
+in one project component and remains subject to Firefox-update revalidation.
+
+Derive the four icon states only from the existing closed connection and
+tracking-protection enums. Network-error and certificate-override states use
+`warning`; associated, certificate-error, HTTPS-only-error, and not-secure
+states use `insecure`; a secure page with an ETP exception and unavailable connection
+state use `disabled`; remaining secure, internal, extension, local, qualified,
+and verified states use `active`. Warning and insecure connection meaning takes
+priority over an ETP exception, matching Firefox's class/CSS precedence. The
+button's icon is decorative and `aria-hidden`; its localized accessible name
+and popup summary include both complete bounded labels. The fixed footprint
+must not move adjacent controls.
+
+Firefox remains authoritative for certificates, tracker lists, ETP mutation,
+site data, breach alerts, HTTPS-only controls, panel text, and every action.
+The existing snapshot does not expose Firefox's asynchronous breach status, so
+Fennevia does not invent or claim a breach variant; complete current details
+remain in the native panel. No URL, origin, certificate, tracker, exception
+principal, native class, node, or handler is added to frontend state, logs,
+persistence, diagnostics, or a network request. Referencing Firefox's packaged
+MPL resource without copying it adds no project third-party artifact, so
+`THIRD_PARTY_NOTICES.md` remains unchanged.
+
+**Reasoning:** The supported Firefox versions already define one Trust entry,
+one panel owner, and one four-state icon family for connection plus tracking
+protection. Mirroring that information architecture removes duplicate controls
+and uses the browser's current visual vocabulary while retaining Fennevia's
+bounded state boundary, semantic naming, deterministic layout, and complete
+native fallback. Source pins, exact asset mapping, rejected alternatives,
+privacy limits, tests, and pending real-browser rows are recorded in
+`docs/research/firefox-153-154-unified-trust-shield.md`.

@@ -22,6 +22,7 @@ import {
 } from "../bridge-boundary.ts";
 import {
   TAB_EVENT_TYPES,
+  GBROWSER_TAB_EVENT_TYPES,
   MAXIMUM_SCREEN_COORDINATE,
   CONTEXTUAL_IDENTITY_URI,
   isNativeRecord,
@@ -35,6 +36,7 @@ import {
   snapshotsEqual,
   isRelevantAttributeEvent,
   resolveContainerColor,
+  resolveTabSharingState,
   isTabContextMenuEvent,
 } from "./support.ts";
 import type {
@@ -276,10 +278,12 @@ export function createFirefoxTabsBridge({
     const faviconUrl = sanitizeFaviconUrl(readAttribute(tab, "image"));
     const audio = readAudio(tab);
     const container = readContainer(tab);
+    const sharing = resolveTabSharingState(readAttribute(tab, "sharing"));
     return Object.freeze({
       ...(hasAttribute(tab, "attention") ? { attention: true } : {}),
       ...(audio === undefined ? {} : { audio }),
       ...(container === undefined ? {} : { container }),
+      ...(hasAttribute(tab, "crashed") ? { crashed: true } : {}),
       ...(faviconUrl === undefined ? {} : { faviconUrl }),
       ...(hasAttribute(tab, "pictureinpicture")
         ? { pictureInPicture: true }
@@ -288,6 +292,7 @@ export function createFirefoxTabsBridge({
       loading: hasAttribute(tab, "busy"),
       pinned: hasAttribute(tab, "pinned"),
       selected: selectedTab === tab,
+      ...(sharing === undefined ? {} : { sharing }),
       title,
     });
   };
@@ -726,7 +731,8 @@ export function createFirefoxTabsBridge({
     boundary.assertRequiredCapabilities();
     assertRequiredCapabilities();
     reconcile(false);
-    const tabContainer = requireGBrowser().tabContainer;
+    const browser = requireGBrowser();
+    const tabContainer = browser.tabContainer;
     for (const eventType of TAB_EVENT_TYPES) {
       listenerDisposers.push(
         boundary.subscribe(tabContainer, eventType, (event) => {
@@ -740,6 +746,20 @@ export function createFirefoxTabsBridge({
             ) {
               return;
             }
+            reconcile(true);
+          } catch (error) {
+            reportNativeEventFailure(error, eventType);
+          }
+        }),
+      );
+    }
+    for (const eventType of GBROWSER_TAB_EVENT_TYPES) {
+      listenerDisposers.push(
+        boundary.subscribe(browser, eventType, () => {
+          if (disposed || failedError) {
+            return;
+          }
+          try {
             reconcile(true);
           } catch (error) {
             reportNativeEventFailure(error, eventType);

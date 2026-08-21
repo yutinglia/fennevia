@@ -20,12 +20,10 @@
     BrowserToolbarWidgetsStateAdapter,
   } from "../../app/toolbar-widgets-state";
   import { resolveBrowserToolHost } from "../browser-tool-host";
+  import FirefoxTrustIcon from "../FirefoxTrustIcon.svelte";
   import TabStrip from "../features/tabs/TabStrip.svelte";
   import ToolbarWidgetZone from "../features/toolbar-widgets/ToolbarWidgetZone.svelte";
-  import {
-    getConnectionSecurityPresentation,
-    getTrackingProtectionPresentation,
-  } from "../navigation-labels";
+  import { getFirefoxTrustPresentation } from "../navigation-labels";
 
   type Props = Readonly<{
     addressPopup: AddressPopupController;
@@ -61,14 +59,9 @@
     }),
   );
   let browserToolsSnapshot = $derived(props.browserTools?.snapshot());
-  let connectionStatus = $derived(
-    getConnectionSecurityPresentation(
+  let trustStatus = $derived(
+    getFirefoxTrustPresentation(
       currentNavigation.snapshot.connectionSecurity,
-      props.localeId,
-    ),
-  );
-  let protectionStatus = $derived(
-    getTrackingProtectionPresentation(
       currentNavigation.snapshot.trackingProtection,
       props.localeId,
     ),
@@ -120,6 +113,29 @@
     class="fennevia-address-launcher__cluster"
     data-fennevia-address-launcher-cluster=""
   >
+    <div class="fennevia-address-launcher__indicators">
+      <button
+        aria-label={t("nav.openTrust", {
+          connection: trustStatus.connectionLabel,
+          protection: trustStatus.protectionLabel,
+        })}
+        class="fennevia-address-launcher__indicator"
+        data-fennevia-browser-tool="site-information"
+        data-fennevia-status-tone={trustStatus.tone}
+        data-fennevia-trust-status=""
+        disabled={!browserToolsSnapshot?.siteInformation ||
+          !browserToolsSnapshot.protections}
+        onclick={(event) =>
+          void runBrowserToolAction("site-information", event)}
+        title={t("nav.openTrust", {
+          connection: trustStatus.connectionLabel,
+          protection: trustStatus.protectionLabel,
+        })}
+        type="button"
+      >
+        <FirefoxTrustIcon state={trustStatus.iconState} />
+      </button>
+    </div>
     <button
       aria-controls="fennevia-address-popup"
       aria-expanded={addressPopupVisible}
@@ -132,44 +148,10 @@
       title={t("nav.openAddress")}
       type="button"
     >
-      <span aria-hidden="true" class="fennevia-address-launcher__glyph">⌁</span>
       <span class="fennevia-address-launcher__location" dir="auto">
         {currentNavigation.snapshot.addressValue || t("address.placeholder")}
       </span>
     </button>
-    <div class="fennevia-address-launcher__indicators">
-      <button
-        aria-label={t("nav.openSiteInformation", {
-          label: connectionStatus.label,
-        })}
-        class="fennevia-address-launcher__indicator"
-        data-fennevia-browser-tool="site-information"
-        data-fennevia-connection-status=""
-        data-fennevia-status-tone={connectionStatus.tone}
-        disabled={!browserToolsSnapshot?.siteInformation}
-        onclick={(event) =>
-          void runBrowserToolAction("site-information", event)}
-        title={t("nav.openSiteInformation", {
-          label: connectionStatus.label,
-        })}
-        type="button">{connectionStatus.badge}</button
-      >
-      <button
-        aria-label={t("nav.openTrackingProtection", {
-          label: protectionStatus.label,
-        })}
-        class="fennevia-address-launcher__indicator"
-        data-fennevia-browser-tool="protections"
-        data-fennevia-protection-status=""
-        data-fennevia-status-tone={protectionStatus.tone}
-        disabled={!browserToolsSnapshot?.protections}
-        onclick={(event) => void runBrowserToolAction("protections", event)}
-        title={t("nav.openTrackingProtection", {
-          label: protectionStatus.label,
-        })}
-        type="button">{protectionStatus.badge}</button
-      >
-    </div>
   </div>
 </section>
 

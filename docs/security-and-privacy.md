@@ -44,6 +44,8 @@ Implemented controls:
 - frame-scoped CSS and project-only XHTML ownership;
 - typed per-window Firefox boundary and context-scoped opaque IDs;
 - bounded tab titles and allowlisted property-only favicon values;
+- closed per-window tab capture/crash indicators without WebRTC or device
+  details;
 - bounded navigation title/display-URI text and explicit native command actions;
 - bounded address draft plus fixed Firefox-derived connection/protection enums;
 - fixed Urlbar permission/action availability with read-only owner-state
@@ -265,7 +267,8 @@ The tabs bridge/application/UI may expose:
 - selected, pinned, loading booleans;
 - optional bounded allowlisted favicon value;
 - optional closed audio enum (`playing` / `muted` / `blocked`);
-- optional attention and picture-in-picture booleans;
+- optional closed sharing enum (`camera` / `microphone` / `screen`);
+- optional attention, picture-in-picture, and crashed booleans;
 - optional container `{ color, label }` where `color` is a closed Firefox
   identity color name and `label` is at most 80 text characters.
 
@@ -286,8 +289,14 @@ Rules:
 - container labels follow the title rule: shown as text/accessible name, never
   logged, never placed in error text, and never stored as `userContextId`;
 - container colors are a closed enum mapped to CSS tokens, not page hex/URLs;
-- audio/attention/PiP are booleans or a closed enum; color names may appear in
-  `data-fennevia-container-color` because they are allowlisted tokens;
+- audio/sharing are closed enums and attention/PiP/crashed are booleans. Their
+  fixed visual tokens may exist only in the owning window's project tab
+  descendants and accessible name; they never enter logs, persistence, a frame
+  root dataset, or another window;
+- origins, permission records, paused state, device IDs/names, native
+  `_sharingState`, and WebRTC objects never cross the privileged boundary;
+- color names may appear in `data-fennevia-container-color` because they are
+  allowlisted tokens;
 - native `#tabContextMenu` remains the owner of Duplicate, Close others, Send
   tab, Reopen in container, and Undo close;
 - the required synchronous Firefox translation owner activates lazy Fluent IDs
@@ -343,10 +352,13 @@ Rules:
   current Firefox handler state. Unknown, transient, and non-handleable states
   are `unavailable`; URL inference and decorative fake security claims are
   prohibited;
+- ADR-059 combines those two labels into one accessible Trust summary and maps
+  only the same closed enums to active/disabled/insecure/warning presentation.
+  It does not read native Trust classes or add a privileged field;
 - no certificate material, permission record, exception principal, or native
   handler state crosses into Svelte;
-- the popup summarizes connection/protection state but does not replace
-  Firefox's authoritative identity or protections panels. Issue #37's fuller
+- the launcher and popup summarize combined connection/protection state but do
+  not replace Firefox's authoritative Trust/identity/protections panel. Issue #37's fuller
   permission/action summary follows the separate fixed-state policy below.
 
 The fifth address-overlay root remains inside the project frame. Popup activity
@@ -432,10 +444,12 @@ persistence, normal logs, and project network requests:
 - Firefox nodes, panels, handlers, preferences, principals, windows, and
   controller objects.
 
-Firefox initializes, populates, and owns each opened panel. The two custom
-security buttons and the popup permission row display only the already reviewed
-bounded connection, protection, and permission enums and explicitly open the
-authoritative native Trust/identity, protection, or permission owner. The native
+Firefox initializes, populates, and owns each opened panel. ADR-059's one custom
+Trust button, matching popup row, and the independent permission row display
+only the already reviewed bounded connection, protection, and permission enums
+and explicitly open the authoritative native Trust or permission owner. Both
+fixed security bridge actions remain intact even though the visible entries are
+merged. The native
 permission and Downloads panels retain their
 mutation, safety, and management behavior. Unified Extensions and the complete
 original-toolbar handoff preserve arbitrary extension access without exposing
@@ -451,7 +465,11 @@ drops the owner-window reference. Malformed input/result, missing owner, invalid
 host, or thrown native action uses only fixed
 code/phase/symbol/version/build/window-kind diagnostics and the existing
 per-window fail-open path. Project-authored toolbar SVGs contain no external
-asset, metadata, script, URL, or runtime load. See ADR-037, ADR-042, and
+asset, metadata, script, URL, or runtime load. The Trust component references
+only four fixed installed `chrome://browser/skin/trust-icon-*.svg` resources as
+inline masks; it copies no bytes, introduces no content mapping or network
+fallback, and keeps the accessible text on the semantic button. See ADR-037,
+ADR-042, ADR-059, and
 `docs/research/firefox-153-native-popup-anchoring.md`.
 
 Owner-approved ADR-044/ADR-045/ADR-046 widget-zone and customize flow: each managed

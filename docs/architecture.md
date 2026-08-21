@@ -262,8 +262,11 @@ unknown properties, owns frontend subscriptions, and releases the public bridge
 on unmount. Issue #11 renders that ordinary state as one accessible project-owned
 tab strip. Issue #60 extends the same strip with audio/container/attention
 indicators, middle-click close, drag and keyboard reorder, and Firefox-owned
-`#tabContextMenu` handoff. Primary tab buttons expose selected semantics and
-roving keyboard focus; pin, mute, and close remain sibling controls. Titles
+`#tabContextMenu` handoff. ADR-058 adds closed camera/microphone/screen-sharing
+and crash state plus project-authored SVG indicators. Primary tab buttons
+expose selected semantics and roving keyboard focus; capture/crash/PiP are
+read-only states inside that button, while pin, mute, and close remain sibling
+controls in fixed trailing grid areas. Titles
 stay bounded text, favicon values use a strict internal/raster allowlist with a
 property-only image and explicit fallback, and no browsing value enters logs or
 diagnostics. The bridge synchronously activates Firefox's lazy tab-menu Fluent
@@ -276,8 +279,9 @@ is in
 `docs/research/firefox-153-tabs-bridge.md`,
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
+`docs/research/firefox-153-154-tab-status-indicators.md`,
 `docs/research/firefox-153-154-panel-context-actions.md`, ADR-024, ADR-025, and
-ADR-041.
+ADR-041/ADR-058.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather
@@ -519,22 +523,24 @@ from the existing `loading` boolean; it is not a second chrome surface.
 
 Issue #13 replaces the old left address placeholder with a non-editable compact
 launcher above tabs and mounts `AddressPopup.svelte` in the fifth root. The
-launcher displays bounded committed location plus compact labels derived from
-real Firefox connection/protection enums. Those compact HTTPS and protection
-badges, and the matching popup connection, protection, and permission cards,
-are explicit native handoff buttons: they keep the matching edge or address
-overlay open, leave native chrome hidden, and open Firefox's current
-Trust/identity, protections, or permission panel beside the clicked project
-host. The popup owns the sole custom input,
+launcher displays bounded committed location plus one Firefox-style Trust
+shield embedded at the leading edge inside the shared address frame. ADR-059
+derives its active/disabled/insecure/warning presentation and combined label
+from the existing real Firefox connection/protection enums. That shield, the
+matching full-width popup Trust row, and the independent permission card are
+explicit native handoff buttons: they keep the matching edge or address
+overlay open, leave native chrome hidden, and open Firefox's current Trust or
+permission panel beside the clicked project host. The popup owns the sole custom input,
 an independent per-window draft, fuller labels, focus restoration, and
 popup-priority edge suppression. It never moves native Urlbar/identity/
 protections DOM or renders inferred security state.
 
 Issue #37 extends that same popup with a full-width site-permission card, fixed
 applicable Firefox-control labels, and one native Urlbar handoff button.
-ADR-037/ADR-042's Trust/identity, protections, and permission handoffs remain
-available from the left launcher badges and the centered popup cards rather
-than a second top-row launcher. The complete original-toolbar action remains
+ADR-037/ADR-042's Trust/identity, protections, and permission bridge actions
+remain available; ADR-059 presents the first two as one visible Trust control
+in the left launcher and centered popup rather than duplicate entries or a
+second top-row launcher. The complete original-toolbar action remains
 in the Firefox bridge for tests and recovery; the top row no longer shows a
 dedicated button. All complete security/permission/action panels and
 commands stay Firefox-owned, and no second popup, input, edge controller,

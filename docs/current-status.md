@@ -1,7 +1,8 @@
 # Current Project Status
 
 > Snapshot: 2026-08-22. This status review is based on the current development
-> worktree at `a8e44b3` and the public `v0.11.0-beta.1` prerelease. Historical
+> worktree based on `3713ad7` plus the unified Trust-shield follow-up and the public
+> `v0.11.0-beta.1` prerelease. Historical
 > research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
@@ -42,12 +43,16 @@ and testing documents retain the complete engineering contract.
 
 - Hidden-at-rest top, left, right, and bottom surfaces with a shared reveal,
   focus, popup-hold, collision, accessibility, and cleanup contract.
-- Left-edge vertical tabs with selected/loading state, audio, containers,
-  attention, middle-click close, drag/keyboard reorder with a visible insertion
-  preview, and Firefox-owned tab context-menu handoff with complete lazy Fluent
-  labels and no original-toolbar reveal.
-- Compact address/status launcher plus a centred address/search popup backed by
-  Firefox navigation and Urlbar behavior.
+- Left-edge vertical tabs with selected state, an animated loading icon, audio,
+  containers, attention/PiP, closed camera/microphone/screen-sharing and crash
+  indicators, fixed trailing action positions, middle-click close,
+  drag/keyboard reorder with a visible insertion preview, and Firefox-owned tab
+  context-menu handoff with complete lazy Fluent labels and no original-toolbar
+  reveal.
+- Compact address/status launcher with one Firefox-style Trust shield embedded
+  at the leading edge, plus a centred address/search popup backed by Firefox
+  navigation, bounded connection/protection state, and the native Trust/Urlbar
+  owners.
 - Top navigation, page status, Firefox tool handoffs, native-panel anchoring,
   gutter activity indicators, and compact window controls.
 - Generic relationship-based anchoring for non-security Firefox-owned XUL
@@ -114,6 +119,12 @@ following remain explicitly pending in the current plans and testing document:
   notification timing, bookmark/page-action, and other hidden-toolbox popup
   behavior across normal/second/private windows and recovery cases;
 - ADR-050 cold-start flash, watchdog expiry, and failure-skeleton behavior;
+- ADR-058 tab loading/capture/crash indicators and fixed action placement under
+  real WebRTC, crash, narrow-panel, reduced-motion, forced-color, DPI, and
+  multi-window conditions;
+- ADR-059 unified Trust-shield rendering/state, leading in-launcher placement,
+  and native panel handoff across HTTP, HTTPS, ETP exception/restore, errors,
+  forced colors, DPI, and multiple windows;
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.
 

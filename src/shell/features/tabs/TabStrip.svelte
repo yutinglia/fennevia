@@ -13,6 +13,7 @@
     createBrowserTabsState,
     type BrowserTabsState,
     type BrowserTabsStateAdapter,
+    type TabSharingState,
     type TabSnapshot,
   } from "../../../app/tab-state";
   import {
@@ -30,6 +31,7 @@
     resolveTabDropPreview,
     type TabDropPreview,
   } from "../../../app/tab-strip";
+  import ShellIcon, { type ShellIconName } from "../../ShellIcon.svelte";
   import { createTabStripLabels } from "../../locale-ui";
 
   type Props = Readonly<{
@@ -63,6 +65,18 @@
   }> = [];
 
   let tabLabels = $derived(createTabStripLabels(props.localeId));
+
+  const getAudioIconName = (
+    action: "mute" | "resume-media" | "unmute",
+  ): ShellIconName =>
+    action === "unmute"
+      ? ("audio-muted" as const)
+      : action === "resume-media"
+        ? ("media-blocked" as const)
+        : ("audio" as const);
+
+  const getSharingIconName = (sharing: TabSharingState): ShellIconName =>
+    sharing === "screen" ? ("screen-share" as const) : sharing;
 
   const reportAsyncError = (work: Promise<unknown>): void => {
     void work.catch(props.onFatalError);
@@ -559,7 +573,9 @@
           type="button"
         >
           <span class="fennevia-tab-strip__visual" aria-hidden="true">
-            <span class="fennevia-tab-strip__fallback">□</span>
+            <span class="fennevia-tab-strip__fallback">
+              <ShellIcon name="tab" />
+            </span>
             {#if tab.faviconUrl}
               <img
                 use:setFaviconSource={tab.faviconUrl}
@@ -571,14 +587,41 @@
               />
             {/if}
             {#if tab.loading}
-              <span class="fennevia-tab-strip__loading">↻</span>
+              <span class="fennevia-tab-strip__loading">
+                <ShellIcon name="reload" />
+              </span>
             {/if}
           </span>
           <span class="fennevia-tab-strip__title" dir="auto">
             {getDisplayTabTitle(tab, tabLabels)}
           </span>
-          {#if tab.pictureInPicture}
-            <span class="fennevia-tab-strip__pip" aria-hidden="true">▭</span>
+          {#if tab.crashed || tab.sharing || tab.pictureInPicture}
+            <span class="fennevia-tab-strip__statuses" aria-hidden="true">
+              {#if tab.crashed}
+                <span
+                  class="fennevia-tab-strip__status"
+                  data-fennevia-tab-status="crashed"
+                >
+                  <ShellIcon name="crashed" />
+                </span>
+              {/if}
+              {#if tab.sharing}
+                <span
+                  class="fennevia-tab-strip__status"
+                  data-fennevia-tab-status={tab.sharing}
+                >
+                  <ShellIcon name={getSharingIconName(tab.sharing)} />
+                </span>
+              {/if}
+              {#if tab.pictureInPicture}
+                <span
+                  class="fennevia-tab-strip__status"
+                  data-fennevia-tab-status="picture-in-picture"
+                >
+                  <ShellIcon name="picture-in-picture" />
+                </span>
+              {/if}
+            </span>
           {/if}
         </button>
 
@@ -591,12 +634,9 @@
             tabindex={rovingTabId === tab.id ? 0 : -1}
             title={getTabActionAccessibleName(audioAction, tab, tabLabels)}
             type="button"
-            >{audioAction === "unmute"
-              ? "ø"
-              : audioAction === "resume-media"
-                ? "■"
-                : "♪"}</button
           >
+            <ShellIcon name={getAudioIconName(audioAction)} />
+          </button>
         {/if}
 
         <button
@@ -614,7 +654,7 @@
           }}
           tabindex={rovingTabId === tab.id ? 0 : -1}
           title={tab.pinned ? t("tab.unpinTab") : t("tab.pinTab")}
-          type="button">{tab.pinned ? "◆" : "◇"}</button
+          type="button"><ShellIcon name="pin" /></button
         >
 
         <button
@@ -627,7 +667,7 @@
           }}
           tabindex={rovingTabId === tab.id ? 0 : -1}
           title={t("tab.closeTab")}
-          type="button">×</button
+          type="button"><ShellIcon name="close" /></button
         >
       </div>
     {/each}
@@ -641,7 +681,7 @@
     title={t("tab.newTab")}
     type="button"
   >
-    <span aria-hidden="true">+</span>
+    <span aria-hidden="true"><ShellIcon name="plus" /></span>
     <span>{t("tab.newTab")}</span>
   </button>
 </div>

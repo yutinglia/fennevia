@@ -28,10 +28,8 @@
     type FenneviaLocale,
   } from "../app/locale-state";
   import { resolveBrowserToolHost } from "./browser-tool-host";
-  import {
-    getConnectionSecurityPresentation,
-    getTrackingProtectionPresentation,
-  } from "./navigation-labels";
+  import FirefoxTrustIcon from "./FirefoxTrustIcon.svelte";
+  import { getFirefoxTrustPresentation } from "./navigation-labels";
   import {
     getBlockedPermissionIndicatorLabel,
     getSharingIndicatorLabel,
@@ -91,14 +89,9 @@
       },
     }),
   );
-  let connection = $derived(
-    getConnectionSecurityPresentation(
+  let trust = $derived(
+    getFirefoxTrustPresentation(
       currentNavigation.snapshot.connectionSecurity,
-      localeId,
-    ),
-  );
-  let protection = $derived(
-    getTrackingProtectionPresentation(
       currentNavigation.snapshot.trackingProtection,
       localeId,
     ),
@@ -343,49 +336,30 @@
       role="group"
     >
       <button
-        aria-label={t("address.openSiteInformation", {
-          label: connection.label,
+        aria-label={t("address.openTrust", {
+          connection: trust.connectionLabel,
+          protection: trust.protectionLabel,
         })}
-        class="fennevia-address-popup__detail"
+        class="fennevia-address-popup__detail fennevia-address-popup__detail--trust"
         data-fennevia-browser-tool="site-information"
-        data-fennevia-connection-detail=""
-        data-fennevia-status-tone={connection.tone}
-        disabled={handoffDisabled || !browserToolsSnapshot.siteInformation}
+        data-fennevia-status-tone={trust.tone}
+        data-fennevia-trust-detail=""
+        disabled={handoffDisabled ||
+          !browserToolsSnapshot.siteInformation ||
+          !browserToolsSnapshot.protections}
         onclick={(event) => void handleBrowserTool("site-information", event)}
-        title={t("address.openSiteInformation", {
-          label: connection.label,
+        title={t("address.openTrust", {
+          connection: trust.connectionLabel,
+          protection: trust.protectionLabel,
         })}
         type="button"
       >
-        <span aria-hidden="true" class="fennevia-address-popup__detail-mark"
-          >{connection.badge}</span
-        >
-        <span class="fennevia-address-popup__detail-copy">
-          <strong>{t("address.statusConnection")}</strong>
-          <span>{connection.label}</span>
+        <span aria-hidden="true" class="fennevia-address-popup__detail-mark">
+          <FirefoxTrustIcon state={trust.iconState} />
         </span>
-      </button>
-      <button
-        aria-label={t("address.openTrackingProtection", {
-          label: protection.label,
-        })}
-        class="fennevia-address-popup__detail"
-        data-fennevia-browser-tool="protections"
-        data-fennevia-protection-detail=""
-        data-fennevia-status-tone={protection.tone}
-        disabled={handoffDisabled || !browserToolsSnapshot.protections}
-        onclick={(event) => void handleBrowserTool("protections", event)}
-        title={t("address.openTrackingProtection", {
-          label: protection.label,
-        })}
-        type="button"
-      >
-        <span aria-hidden="true" class="fennevia-address-popup__detail-mark"
-          >{protection.badge}</span
-        >
         <span class="fennevia-address-popup__detail-copy">
-          <strong>{t("address.statusProtection")}</strong>
-          <span>{protection.label}</span>
+          <strong>{t("address.statusTrust")}</strong>
+          <span>{trust.label}</span>
         </span>
       </button>
       <div

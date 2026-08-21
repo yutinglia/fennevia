@@ -1750,12 +1750,6 @@ async function collectFrontendState(client) {
     }
     return {
       address: {
-        connectionDetailCount:
-          popupRoot?.querySelectorAll("[data-fennevia-connection-detail]")
-            .length ?? 0,
-        connectionIndicatorCount:
-          root?.querySelectorAll("[data-fennevia-connection-status]").length ??
-          0,
         edgeEditableCount:
           root?.querySelectorAll("input, textarea, [contenteditable]").length ??
           0,
@@ -1788,12 +1782,11 @@ async function collectFrontendState(client) {
         permissionDetailCount:
           popupRoot?.querySelectorAll("[data-fennevia-permission-detail]")
             .length ?? 0,
-        protectionDetailCount:
-          popupRoot?.querySelectorAll("[data-fennevia-protection-detail]")
-            .length ?? 0,
-        protectionIndicatorCount:
-          root?.querySelectorAll("[data-fennevia-protection-status]").length ??
+        trustDetailCount:
+          popupRoot?.querySelectorAll("[data-fennevia-trust-detail]").length ??
           0,
+        trustIndicatorCount:
+          root?.querySelectorAll("[data-fennevia-trust-status]").length ?? 0,
         urlbarCoverageCount:
           popupRoot?.querySelectorAll("[data-fennevia-urlbar-coverage]")
             .length ?? 0,
@@ -2043,8 +2036,6 @@ async function collectFrontendState(client) {
 
 function assertFrontendState(state, windowKind) {
   assert.deepEqual(state.address, {
-    connectionDetailCount: 1,
-    connectionIndicatorCount: 1,
     edgeEditableCount: 0,
     launcherCount: 1,
     labelText: "Enter an address or search",
@@ -2057,8 +2048,8 @@ function assertFrontendState(state, windowKind) {
     popupStatusCount: 1,
     nativeAccessCount: 1,
     permissionDetailCount: 1,
-    protectionDetailCount: 1,
-    protectionIndicatorCount: 1,
+    trustDetailCount: 1,
+    trustIndicatorCount: 1,
     urlbarCoverageCount: 1,
   });
   assert.ok(state.bookmarks.branchReadyCount >= 1);
@@ -3078,53 +3069,48 @@ async function exerciseAddressInput(client) {
           !nativeUrlbar.focused &&
           root.getAttribute("data-fennevia-visible") === "false";
 
-        const connectionBadgeByNativeState = {
-          associated: "Linked",
-          "cert-error-page": "Cert",
-          chrome: "Firefox",
-          extension: "Extension",
-          file: "Local",
-          "https-only-error-page": "HTTPS",
-          "net-error-page": "Error",
-          "not-secure": "HTTP",
-          secure: "HTTPS",
-          "secure-cert-user-overridden": "HTTPS",
-          "secure-etsi": "HTTPS",
-          "secure-ev": "HTTPS",
+        const nativeTrust = document.getElementById("trust-icon-container");
+        const nativeTrustState = () => {
+          if (nativeTrust?.classList.contains("breached")) {
+            return null;
+          }
+          if (nativeTrust?.classList.contains("warning")) {
+            return "warning";
+          }
+          if (nativeTrust?.classList.contains("insecure")) {
+            return "insecure";
+          }
+          if (nativeTrust?.classList.contains("inactive")) {
+            return "disabled";
+          }
+          return nativeTrust?.classList.contains("secure") ? "active" : null;
         };
-        const nativeConnectionState =
-          gIdentityHandler.getConnectionSecurityInformation();
-        const expectedConnectionBadge =
-          connectionBadgeByNativeState[nativeConnectionState] ?? "Info";
-        const expectedProtectionBadge = !ContentBlockingAllowList.canHandle(
-          gBrowser.selectedBrowser
-        )
-          ? "ETP —"
-          : gProtectionsHandler.hasException
-            ? "ETP off"
-            : "ETP";
-        const sideConnection = root.querySelector(
-          "[data-fennevia-connection-status]"
+        const sideTrust = root.querySelector("[data-fennevia-trust-status]");
+        const detailTrust = popupRoot.querySelector(
+          "[data-fennevia-trust-detail]"
         );
-        const sideProtection = root.querySelector(
-          "[data-fennevia-protection-status]"
+        const sideTrustIcon = sideTrust?.querySelector(
+          "[data-fennevia-firefox-trust-icon]"
         );
-        const detailConnection = popupRoot.querySelector(
-          "[data-fennevia-connection-detail] .fennevia-address-popup__detail-mark"
-        );
-        const detailProtection = popupRoot.querySelector(
-          "[data-fennevia-protection-detail] .fennevia-address-popup__detail-mark"
+        const detailTrustIcon = detailTrust?.querySelector(
+          "[data-fennevia-firefox-trust-icon]"
         );
         const detailPermission = popupRoot.querySelector(
           "[data-fennevia-permission-detail] .fennevia-address-popup__detail-mark"
         );
+        const expectedTrustState = nativeTrustState();
         const firefoxSiteStatusMatched =
-          sideConnection?.textContent?.trim() === expectedConnectionBadge &&
-          detailConnection?.textContent?.trim() === expectedConnectionBadge &&
-          sideProtection?.textContent?.trim() === expectedProtectionBadge &&
-          detailProtection?.textContent?.trim() === expectedProtectionBadge &&
-          Boolean(sideConnection?.getAttribute("aria-label")) &&
-          Boolean(sideProtection?.getAttribute("aria-label"));
+          expectedTrustState !== null &&
+          sideTrustIcon?.getAttribute(
+            "data-fennevia-firefox-trust-icon"
+          ) === expectedTrustState &&
+          detailTrustIcon?.getAttribute(
+            "data-fennevia-firefox-trust-icon"
+          ) === expectedTrustState &&
+          sideTrust?.getAttribute("aria-label")?.includes("Connection:") &&
+          sideTrust.getAttribute("aria-label")?.includes("Protection:") &&
+          detailTrust?.getAttribute("aria-label")?.includes("Connection:") &&
+          detailTrust.getAttribute("aria-label")?.includes("Protection:");
 
         const nativePermissionBox = document.getElementById(
           "identity-permission-box"
@@ -3592,26 +3578,26 @@ async function exerciseUrlbarCoverageMatrix(client) {
         const root = document.getElementById("fennevia-shell-left-root");
         const popupRoot = document.getElementById("fennevia-address-popup-root");
         const nativeUrlbar = window.gURLBar;
-        const sideConnection = root?.querySelector(
-          "[data-fennevia-connection-status]"
+        const nativeTrust = document.getElementById("trust-icon-container");
+        const sideTrust = root?.querySelector("[data-fennevia-trust-status]");
+        const detailTrust = popupRoot?.querySelector(
+          "[data-fennevia-trust-detail]"
         );
-        const sideProtection = root?.querySelector(
-          "[data-fennevia-protection-status]"
+        const sideTrustIcon = sideTrust?.querySelector(
+          "[data-fennevia-firefox-trust-icon]"
         );
-        const detailConnection = popupRoot?.querySelector(
-          "[data-fennevia-connection-detail] .fennevia-address-popup__detail-mark"
-        );
-        const detailProtection = popupRoot?.querySelector(
-          "[data-fennevia-protection-detail] .fennevia-address-popup__detail-mark"
+        const detailTrustIcon = detailTrust?.querySelector(
+          "[data-fennevia-firefox-trust-icon]"
         );
         if (
           !root ||
           !popupRoot ||
           !nativeUrlbar ||
-          !sideConnection ||
-          !sideProtection ||
-          !detailConnection ||
-          !detailProtection
+          !nativeTrust ||
+          !sideTrust ||
+          !detailTrust ||
+          !sideTrustIcon ||
+          !detailTrustIcon
         ) {
           throw new Error("FENNEVIA_FIREFOX_TEST_URLBAR_MATRIX_UI_MISSING");
         }
@@ -3676,12 +3662,27 @@ async function exerciseUrlbarCoverageMatrix(client) {
             "FENNEVIA_FIREFOX_TEST_URLBAR_MATRIX_POPUP_CLOSE_TIMEOUT"
           );
         };
-        const connectionMatches = badge =>
-          sideConnection.textContent?.trim() === badge &&
-          detailConnection.textContent?.trim() === badge;
-        const protectionMatches = badge =>
-          sideProtection.textContent?.trim() === badge &&
-          detailProtection.textContent?.trim() === badge;
+        const nativeTrustState = () => {
+          if (nativeTrust.classList.contains("breached")) {
+            return null;
+          }
+          if (nativeTrust.classList.contains("warning")) {
+            return "warning";
+          }
+          if (nativeTrust.classList.contains("insecure")) {
+            return "insecure";
+          }
+          if (nativeTrust.classList.contains("inactive")) {
+            return "disabled";
+          }
+          return nativeTrust.classList.contains("secure") ? "active" : null;
+        };
+        const trustMatches = state =>
+          nativeTrustState() === state &&
+          sideTrustIcon.getAttribute("data-fennevia-firefox-trust-icon") ===
+            state &&
+          detailTrustIcon.getAttribute("data-fennevia-firefox-trust-icon") ===
+            state;
         const renderedPermissions = () =>
           [...popupRoot.querySelectorAll(
             "[data-fennevia-permission-indicators] li"
@@ -3699,7 +3700,7 @@ async function exerciseUrlbarCoverageMatrix(client) {
           await waitFor(
             () =>
               gIdentityHandler.getConnectionSecurityInformation() ===
-                "not-secure" && connectionMatches("HTTP"),
+                "not-secure" && trustMatches("insecure"),
             "FENNEVIA_FIREFOX_TEST_URLBAR_HTTP_STATUS_TIMEOUT"
           );
           const httpStateMatched = true;
@@ -3752,7 +3753,7 @@ async function exerciseUrlbarCoverageMatrix(client) {
                 "secure-ev",
               ].includes(
                 gIdentityHandler.getConnectionSecurityInformation()
-              ) && connectionMatches("HTTPS"),
+              ) && trustMatches("active"),
             "FENNEVIA_FIREFOX_TEST_URLBAR_HTTPS_STATUS_TIMEOUT",
             30000
           );
@@ -3771,7 +3772,7 @@ async function exerciseUrlbarCoverageMatrix(client) {
           );
           await openPopup();
           await waitFor(
-            () => protectionMatches("ETP off"),
+            () => trustMatches("disabled"),
             "FENNEVIA_FIREFOX_TEST_URLBAR_PROTECTION_EXCEPTION_TIMEOUT"
           );
           const protectionExceptionMatched = true;
@@ -3788,7 +3789,7 @@ async function exerciseUrlbarCoverageMatrix(client) {
           );
           await openPopup();
           await waitFor(
-            () => protectionMatches("ETP"),
+            () => trustMatches("active"),
             "FENNEVIA_FIREFOX_TEST_URLBAR_PROTECTION_RESTORE_TIMEOUT"
           );
           const protectionStateMatched = true;
@@ -3799,7 +3800,7 @@ async function exerciseUrlbarCoverageMatrix(client) {
           await waitFor(
             () =>
               gIdentityHandler.getConnectionSecurityInformation() ===
-                "chrome" && connectionMatches("Firefox"),
+                "chrome" && trustMatches("active"),
             "FENNEVIA_FIREFOX_TEST_URLBAR_INTERNAL_STATUS_TIMEOUT"
           );
           const internalStateMatched = true;
@@ -3810,7 +3811,7 @@ async function exerciseUrlbarCoverageMatrix(client) {
           await waitFor(
             () =>
               gIdentityHandler.getConnectionSecurityInformation() ===
-                "net-error-page" && connectionMatches("Error"),
+                "net-error-page" && trustMatches("warning"),
             "FENNEVIA_FIREFOX_TEST_URLBAR_ERROR_STATUS_TIMEOUT"
           );
           const errorStateMatched = true;
