@@ -63,8 +63,10 @@ and testing documents retain the complete engineering contract.
   edge zones.
 - Localized widget names, Firefox-native built-in icons, spacers, separators,
   and flexible-space behavior.
-- Bounded profile-local appearance controls for panel/window backgrounds,
-  text, borders, saturation, shadow, and motion.
+- Bounded profile-local appearance and interaction controls for panel/window
+  backgrounds, text, borders, saturation, shadow, motion, separate
+  in-window/window-leave hide timing, temporary reveal timing, zero-disable
+  shortcut-tip timing, and edge trigger thickness.
 - Firefox chrome design tokens as the default color source, with solid,
   reduced-transparency, reduced-motion, and forced-colors fallbacks.
 - English and Traditional Chinese shell catalogs selected from Firefox's UI
@@ -86,7 +88,8 @@ following remain explicitly pending in the current plans and testing document:
 - ADR-037 single-line toolbar visual and interaction matrix;
 - ADR-042 host-anchored Firefox popup placement;
 - ADR-044 toolbar-widget mirror behavior in real Firefox;
-- ADR-045 and ADR-047 customize-mode and live drag-and-drop behavior;
+- ADR-045, ADR-047, and ADR-054 customize-mode, live drag-and-drop, and bounded
+  interaction-setting behavior;
 - ADR-050 cold-start flash, watchdog expiry, and failure-skeleton behavior;
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.

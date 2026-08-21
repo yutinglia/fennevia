@@ -117,8 +117,10 @@ only this frame and its descendants; the frame itself never moves a native node
 or participates in browser-content layout. ADR-032 adds one separate privileged
 controller that changes only source-validated native surfaces; ADR-037 extends
 that sheet with the explicitly selected 7px decorative browser gutter. Edge
-pointer strips stay on the #31 trigger contract and are independently 12px so
-the hit target is larger than the visible gutter.
+pointer strips stay on the #31 trigger contract. Their default is 12px, and
+ADR-054 lets the existing bounded customize preference select 6–24 CSS px so
+the hit target can remain distinct from the visible gutter without becoming an
+unbounded content overlay.
 
 Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
 owns the only root-state transition table: `created -> mounted -> healthy ->
@@ -406,10 +408,19 @@ list. The first edit materializes a Fennevia layout into
 `fennevia.customize.layout`; `fennevia.customize.style` stores bounded style
 tokens (theme, accent, panel surface, chrome background, text, border, blur,
 radius, density, surface opacity, saturation, shadow, motion, and font size).
-Both prefs are versioned JSON with a 16 KiB cap and fail safe to defaults.
-Glass tokens apply on the project frame root. Empty color tokens resolve to
-Firefox chrome design-system variables (ADR-051). The chrome background token is
-applied by NativeUi as `--fennevia-chrome-background` on `:root#main-window`.
+ADR-054 extends that same version-1 style object with bounded in-window and
+window-leave hide delays, temporary programmatic-reveal duration, shortcut-tip
+duration, and edge-trigger size. Existing values without those fields receive
+the 300 ms, 800 ms, 1,200 ms, 600 ms, and 12 CSS px defaults. A non-null
+`PointerEvent.relatedTarget` selects the in-window delay; a null target or the
+existing window-blur fallback selects the window-leave delay. A zero
+shortcut-tip duration omits the footer from rendering. Both prefs are versioned
+JSON with a 16 KiB cap and fail safe to defaults. Glass, trigger, and
+shortcut-animation tokens apply on the project frame root; the validated reveal
+timing values update the one shared edge controller. Empty color tokens resolve
+to Firefox chrome design-system variables (ADR-051). The chrome background
+token is applied by NativeUi as `--fennevia-chrome-background` on
+`:root#main-window`.
 Placing a widget
 with no live node performs the owner-approved `addWidgetToArea(id, "nav-bar")`
 adoption; removing the last Fennevia placement restores extensions to
@@ -846,6 +857,7 @@ src/
     locale-ui.ts
     toolbar-widget-icons.ts
     features/
+      customize/CustomizeInteractionSection.svelte
       customize/CustomizeStyleSection.svelte
       tabs/TabStrip.svelte
       toolbar-widgets/ToolbarWidgetZone.svelte

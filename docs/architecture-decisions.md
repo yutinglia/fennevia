@@ -538,7 +538,7 @@ matrix are recorded in `docs/research/firefox-153-tab-strip.md`.
 ## ADR-026: Use one zero-layout frame with four independently owned edge surfaces
 
 **Status:** Accepted and validated on Firefox 153.0.4; default color values
-amended by ADR-051
+amended by ADR-051 and interaction defaults made user-configurable by ADR-054
 
 Insert one project-owned XHTML frame as an absolute child of `#browser`
 immediately before `#tabbrowser-tabbox`. The frame reserves no layout space and
@@ -551,11 +551,13 @@ frame through the ADR-021 fail-open lifecycle.
 
 Keep reveal policy in the framework-independent `src/app/edge-surfaces.ts`
 contract. Pointer, focus, keyboard, popup, and bounded programmatic holds are
-explicit; there is one 160 ms anti-flicker hide timer per edge and no polling.
-Pointer reveal is exclusive, while legitimate non-pointer holds may keep
-multiple surfaces visible. Side edges own exact corners. Features call the
-controller API and must not manipulate visibility classes, attributes, or
-timers directly.
+explicit; there is one anti-flicker hide timer per edge and no polling. Its
+normal in-window default is 300 ms. ADR-054 may rearm that same timer with a
+validated profile-local delay, including a distinct 800 ms default after the
+pointer leaves the browser window; it does not add another timer. Pointer
+reveal is exclusive, while legitimate non-pointer holds may keep multiple
+surfaces visible. Side edges own exact corners. Features call the controller
+API and must not manipulate visibility classes, attributes, or timers directly.
 
 Expose keyboard access through exact
 `Ctrl+Alt+Shift+ArrowUp|Left|Right|Down` commands. A keyboard reveal moves focus
@@ -1446,9 +1448,9 @@ The gutter overlay, glass/focus tokens, 2px thickness, Stop/list-view sources,
 and activity pulse were independently selected for Fennevia.
 
 **Reasoning:** A thin overlay in an already-reserved gutter gives rest-state
-progress without revealing chrome or stealing pointer hits from the 12px #31
-triggers. Reusing current bridges avoids a second progress listener, polling,
-or a filename-bearing download widget. Live Firefox load/download light
+progress without revealing chrome or stealing pointer hits from the default
+12px #31 triggers. Reusing current bridges avoids a second progress listener,
+polling, or a filename-bearing download widget. Live Firefox load/download light
 painting is recorded as `not run`; mapping, rejected alternatives, health, and
 generated-artifact checks are in
 `docs/research/firefox-153-gutter-progress-lights.md`.
@@ -1519,7 +1521,8 @@ sequence are in `docs/research/firefox-153-toolbar-widget-mirror.md`.
 explicit project-owner approval (2026-08-18, planning conversation) for the two
 bounded rule relaxations below; partially supersedes ADR-044's
 mirror-as-sole-model and "native customize mode is the only editor" clauses;
-the "editor drawer performs all editing" clause is superseded by ADR-047
+the "editor drawer performs all editing" clause is superseded by ADR-047; the
+style preference schema is extended by ADR-054
 
 Deprecate the ADR-044 read-only nav-bar mirror as the only widget source and
 replace it with a Fennevia-owned customize mode. The `toolbar-widgets`
@@ -1551,6 +1554,8 @@ first edit materializes that layout into the `fennevia.customize.layout`
 string preference; `fennevia.customize.style` persists the bounded style
 tokens (theme, accent, panel surface, chrome background, text, border, blur,
 radius, density, surface opacity, saturation, shadow, motion, and font size).
+ADR-054 adds bounded edge interaction integers to that same preference; it does
+not create another preference or persistence owner.
 Both prefs are strict versioned JSON with a 16 KiB cap, fail safe to defaults
 when invalid, are shared across windows through one preference observer per
 controller, and contain widget ids and fixed tokens only — never URLs, titles,
@@ -1929,3 +1934,69 @@ two thousand lines. Feature folders make privileged ownership and disposal
 boundaries visible while compatibility facades avoid a repository-wide public
 API migration. Fixed CSS and installer inventories preserve deterministic and
 fail-closed behavior instead of replacing monoliths with discovery mechanisms.
+
+## ADR-054: Persist bounded edge-interaction settings through shared shell contracts
+
+**Status:** Accepted after the project owner's explicit configuration request
+(2026-08-21); amends ADR-026 and ADR-045 without relaxing keyboard, focus,
+popup-hold, fail-open, privacy, or native-UI ownership rules
+
+Extend the existing `fennevia.customize.style` version-1 JSON object with five
+optional bounded integers:
+
+| Setting | Default | Accepted range | Runtime meaning |
+| --- | ---: | ---: | --- |
+| `autoHideDelay` | 300 ms | 100–5,000 ms | Delay after the pointer moves from a panel into page content or another target inside the Firefox window; also the default after a non-pointer hold clears |
+| `windowLeaveHideDelay` | 800 ms | 100–5,000 ms | Delay after the pointer leaves the Firefox window or the window loses focus while a pointer hold remains |
+| `temporaryRevealDuration` | 1,200 ms | 400–10,000 ms | Default duration for a bounded programmatic reveal such as `show-bookmarks` |
+| `shortcutHintDuration` | 600 ms | 0–10,000 ms | Duration of the existing edge keyboard-shortcut tip animation; `0` omits the tip from the rendered shell |
+| `edgeTriggerSize` | 12 CSS px | 6–24 CSS px | Shared invisible pointer strip and corner-arbitration thickness |
+
+Older version-1 values omit these keys and receive the defaults. Any malformed,
+non-integer, or out-of-range value fails safe through the existing default-style
+path. The Fennevia customize drawer exposes the five values in an
+**Interaction** section together with the existing density and motion controls;
+all controls have visible labels, current values, helper text, and native
+keyboard-operable inputs. Resetting appearance and interaction clears the same
+style preference.
+
+The toolbar-widgets preference observer republishes the validated snapshot to
+each window. `mount-shell` applies it to the one shared edge controller and the
+project frame. A surface `pointerout` with a non-null `relatedTarget` is an
+in-window exit and uses `autoHideDelay`; a null target is treated as leaving the
+browser window and uses `windowLeaveHideDelay`. The window-level `pointerout`
+and `blur` listeners provide a fallback for an event that does not finish on the
+surface root. If both layers observe the same exit, the controller keeps and,
+only when the classification changes, rearms the one tracked hide timer.
+Changing the applicable setting while that timer is pending also cancels and
+rearms the same timer from the update moment. The temporary duration becomes
+the default for later programmatic reveals; an explicit feature duration
+remains explicit. Trigger size updates both the frame-scoped CSS variable and
+`resolveEdgeAtPoint()` input from the same controller snapshot, so painted hit
+geometry and corner arbitration cannot drift. Shortcut-tip duration updates the
+existing frame-scoped CSS animation. A zero value prevents the Svelte footer
+from rendering at all, including the initial frame; a non-zero value preserves
+the same animation and uses a discrete, non-fading expiry under reduced motion.
+
+Focus, keyboard, and popup holds remain authoritative regardless of the chosen
+duration. The four fixed keyboard reveal paths, `Escape`, focus restoration,
+modal/customize/DOM-fullscreen suspension, zero permanent layout, and complete
+disposal are unchanged. The bounds keep the target narrow and prevent a very
+large invisible overlay from consuming browser content.
+
+This change adds no preference name, observer, JavaScript timer, host, native
+Firefox symbol, network access, browsing-derived data, private-window activity,
+arbitrary CSS, or log field. Standard `PointerEvent.relatedTarget` and the
+existing window `blur` listener provide only ephemeral event classification;
+the result is not persisted or logged. The existing 16 KiB cap and fixed
+integer schema remain the persistence boundary. Focused validation covers
+old-pref migration, bounds, cross-window persistence, both pointer-exit paths,
+pending-timer rearming, default temporary duration, zero-disabled shortcut
+tips, trigger wiring, localization parity, and generated artifacts. The
+real-Firefox interaction rows remain release-matrix work.
+
+**Reasoning:** The fixed timings and 12px hit strip were safe defaults but made
+the shell unnecessarily rigid across pointer precision and work styles. Reusing
+the accepted customize preference, shared #31 controller, and existing
+shortcut-tip animation provides useful choice without creating per-surface
+behavior, a second timer, or an unrestricted geometry editor.

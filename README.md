@@ -66,9 +66,9 @@ Firefox from source.
 
 Fennevia has moved beyond the first four-edge MVP. The current prerelease also
 includes a Fennevia-owned widget editor with live drag-and-drop across all four
-edges, bounded appearance and motion controls, Firefox design-token defaults,
-English and Traditional Chinese shell catalogs, first-paint native-toolbox
-hiding, and the `FenneviaSetup.exe` Windows setup wizard.
+edges, bounded appearance and edge-interaction controls, Firefox design-token
+defaults, English and Traditional Chinese shell catalogs, first-paint
+native-toolbox hiding, and the `FenneviaSetup.exe` Windows setup wizard.
 
 The implementation has focused automated coverage, but the remaining
 real-Firefox visual, popup-placement, customize, first-paint, and complete GUI
@@ -218,8 +218,11 @@ an arbitrary layout system.
 The interface is no longer accurately described as non-configurable. Fennevia
 customize mode can place supported Firefox toolbar widgets on any edge and can
 adjust a bounded set of profile-local panel/window backgrounds, text, border,
-saturation, shadow, and motion values. It is intentionally not a general CSS
-editor, extension platform, or unlimited geometry builder.
+saturation, shadow, motion, separate in-window/window-leave hide timing,
+temporary reveal timing, zero-disable shortcut-tip timing, and edge trigger
+thickness. It is
+intentionally not a general CSS editor, extension platform, or unlimited
+geometry builder.
 
 ## Documentation
 

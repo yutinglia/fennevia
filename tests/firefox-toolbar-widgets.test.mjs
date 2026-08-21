@@ -1409,15 +1409,25 @@ test("style edits persist and external pref changes republish", async () => {
     await pair.controller.toolbarWidgets.edit({
       style: {
         accent: "#3b82f6",
+        autoHideDelay: 640,
         chromeBackground: "#141A23",
+        edgeTriggerSize: 20,
+        shortcutHintDuration: 0,
+        temporaryRevealDuration: 2_400,
         theme: "dark",
+        windowLeaveHideDelay: 1_600,
       },
       type: "set-style",
     });
     let snapshot = pair.controller.toolbarWidgets.snapshot();
     assert.equal(snapshot.style.accent, "#3b82f6");
+    assert.equal(snapshot.style.autoHideDelay, 640);
     assert.equal(snapshot.style.chromeBackground, "#141a23");
+    assert.equal(snapshot.style.edgeTriggerSize, 20);
+    assert.equal(snapshot.style.shortcutHintDuration, 0);
+    assert.equal(snapshot.style.temporaryRevealDuration, 2_400);
     assert.equal(snapshot.style.theme, "dark");
+    assert.equal(snapshot.style.windowLeaveHideDelay, 1_600);
     assert.equal(snapshot.style.blur, 18);
     assert.ok(
       native.getPrefValue("fennevia.customize.style").includes('"version":1'),
@@ -1428,21 +1438,31 @@ test("style edits persist and external pref changes republish", async () => {
       "fennevia.customize.style",
       JSON.stringify({
         accent: "",
+        autoHideDelay: 900,
         blur: 28,
         density: "compact",
+        edgeTriggerSize: 16,
         fontSize: 13,
         radius: 8,
+        shortcutHintDuration: 1_500,
         surfaceOpacity: 85,
+        temporaryRevealDuration: 3_000,
         theme: "light",
         version: 1,
+        windowLeaveHideDelay: 2_000,
       }),
     );
     native.runTimers();
     snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(snapshot.style.autoHideDelay, 900);
     assert.equal(snapshot.style.blur, 28);
     assert.equal(snapshot.style.density, "compact");
+    assert.equal(snapshot.style.edgeTriggerSize, 16);
     assert.equal(snapshot.style.chromeBackground, "");
     assert.equal(snapshot.style.saturation, 145);
+    assert.equal(snapshot.style.shortcutHintDuration, 1_500);
+    assert.equal(snapshot.style.temporaryRevealDuration, 3_000);
+    assert.equal(snapshot.style.windowLeaveHideDelay, 2_000);
 
     // Invalid persisted style falls back to the defaults.
     native.setPrefValue("fennevia.customize.style", "{not json");

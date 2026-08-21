@@ -85,6 +85,9 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "connection.unavailable.badge": "資訊",
   "connection.unavailable.label": "無法取得連線資訊",
   "customize.addWidgetAria": "將 {label} 加到{zone}面板",
+  "customize.autoHideDelay": "移入網頁後隱藏",
+  "customize.autoHideDelayHelp":
+    "指標從面板移入網頁內容或 Firefox 視窗內其他區域後，面板繼續顯示的時間。",
   "customize.closeAria": "關閉自訂面板",
   "customize.colorAccent": "強調色",
   "customize.colorBorder": "邊框顏色",
@@ -101,10 +104,16 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.density.compact": "緊湊",
   "customize.density.cozy": "適中",
   "customize.editFailed": "無法套用該變更。版面可能剛改變，請再試一次。",
+  "customize.edgeTriggerSize": "邊緣觸發區",
+  "customize.edgeTriggerSizeHelp":
+    "隱形邊緣目標的寬度。數值越大越容易觸發，但會覆蓋較多網頁邊緣。",
   "customize.emptyPalette":
     "所有可用元件都已放置。將元件拖到這裡可從面板移除。",
   "customize.followingFirefox":
     "在你做出變更之前會跟隨 Firefox 工具列。將元件拖到四個邊緣面板。",
+  "customize.interaction": "互動",
+  "customize.interactionHelp":
+    "這些設定會套用到四個邊緣面板。面板取得焦點、經鍵盤開啟或有彈出面板時，將一律保持顯示。",
   "customize.keyboardAdd":
     "鍵盤新增會放到{zone}面板。在已放置的元件上按 Delete 可移除。",
   "customize.labelAccent": "強調",
@@ -124,8 +133,12 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.paletteAria": "可用元件",
   "customize.panelAria": "自訂 Fennevia 介面",
   "customize.resetLayout": "重設版面",
-  "customize.resetStyle": "重設樣式",
-  "customize.style": "樣式",
+  "customize.resetStyle": "重設外觀與互動",
+  "customize.shortcutHintDuration": "快速鍵提示",
+  "customize.shortcutHintDurationHelp":
+    "邊緣面板開啟時，鍵盤快速鍵提示要顯示多久。設為 0 可完全隱藏提示。",
+  "customize.shortcutHintOff": "不顯示",
+  "customize.style": "外觀",
   "customize.styleBlur": "玻璃模糊",
   "customize.styleFontSize": "字型大小",
   "customize.styleMotion": "動畫時長",
@@ -133,10 +146,16 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.styleRadius": "圓角半徑",
   "customize.styleSaturation": "玻璃飽和度",
   "customize.styleShadow": "陰影強度",
+  "customize.temporaryRevealDuration": "暫時顯示",
+  "customize.temporaryRevealDurationHelp":
+    "「顯示書籤」等動作在沒有其他保持狀態時，讓面板顯示多久。",
   "customize.theme": "主題",
   "customize.theme.auto": "自動",
   "customize.theme.dark": "深色",
   "customize.theme.light": "淺色",
+  "customize.windowLeaveHideDelay": "離開視窗後隱藏",
+  "customize.windowLeaveHideDelayHelp":
+    "指標離開 Firefox 視窗後，面板繼續顯示的時間。",
   "customize.title": "自訂 Fennevia",
   "customize.unavailable":
     "此視窗無法自訂。固定的 Fennevia 控制項與原生 Firefox 自訂模式仍可使用。",

@@ -123,13 +123,25 @@ Requirements:
 
 - hidden surfaces reserve no permanent content geometry;
 - the frame is pointer-transparent except at narrow documented edge triggers
-  (12px hit strip) and currently visible owned surfaces;
-- trigger thickness is measured and bounded and is independent of the 7px
-  decorative content gutter;
+  (12 CSS px by default, user-bounded to 6–24 CSS px by ADR-054) and currently
+  visible owned surfaces;
+- trigger thickness is measured, validated, and independent of the 7px
+  decorative content gutter; the same value drives CSS hit geometry and corner
+  arbitration;
 - deterministic corner arbitration prevents ambiguous overlapping pointer
   targets;
 - feature modules use the shared #31 controller rather than private timers or
   CSS classes;
+- the same style preference may select separate 100–5,000 ms in-window and
+  window-leave hide delays plus a 400–10,000 ms default temporary reveal; these
+  values reconfigure only the existing tracked hide/programmatic timers;
+- standard `PointerEvent.relatedTarget` distinguishes a non-null destination
+  inside the Firefox window from a null window exit, with the existing window
+  `blur` listener as a stuck-pointer fallback; this classification is neither
+  persisted nor logged;
+- shortcut-tip duration is bounded to 0–10,000 ms and controls only the
+  existing frame-scoped CSS animation; zero omits the nonessential footer and
+  creates no JavaScript timer;
 - focus cannot remain inside a hidden, failed, or disposed surface;
 - a focused surface stays open until focus leaves or an explicit close action;
 - `Escape` respects higher-priority native/project popup handling;
@@ -462,10 +474,15 @@ layout pref contains Firefox widget ids — including extension widget ids — a
 the fixed Fennevia widget/special tokens; the style pref contains only the
 fixed style token set (theme, `#rrggbb` color tokens or empty defaults, and
 bounded integers for blur, radius, density, surface opacity, saturation,
-shadow, motion, and font size). Empty color tokens resolve through CSS `var()`
-to Firefox chrome design-system properties already on `browser.xhtml`; Fennevia
-does not persist or log those resolved colors. Neither pref may ever contain URLs, titles,
-text input, browsing data, or private-window state. Second, bounded
+shadow, motion, font size, in-window hide delay, window-leave hide delay,
+temporary reveal duration, shortcut-tip duration, and edge trigger size).
+ADR-054 keeps those interaction values at 100–5,000 ms, 100–5,000 ms,
+400–10,000 ms, 0–10,000 ms, and 6–24 CSS px respectively; old version-1 values
+receive the defaults. Empty color tokens resolve through CSS
+`var()` to Firefox chrome design-system properties already on `browser.xhtml`;
+Fennevia does not persist or log those resolved colors. Neither pref may ever
+contain URLs, titles, text input, browsing data, or private-window state.
+Second, bounded
 `CustomizableUI`
 writes: placing a widget that has no live node calls
 `addWidgetToArea(id, "nav-bar")` on the collapsed native nav-bar and records
@@ -495,6 +512,9 @@ preference observer, the attribute `MutationObserver`, popup listeners, pending
 waiters, handles, palette tokens, and any held panel exactly once. Style tokens
 are applied as the fixed CSS custom-property set on the project frame root,
 skip color overrides under forced colors, and are cleared on dispose. The
+interaction integers additionally update the same per-window #31 controller;
+they create no host, observer, timer, or process-global activity record. Focus,
+keyboard, and popup holds remain authoritative regardless of duration. The
 chrome background token is applied only by NativeUi as
 `--fennevia-chrome-background` on `:root#main-window`; the frontend never
 writes Firefox-owned documentElement styles. Forced colors and an empty token

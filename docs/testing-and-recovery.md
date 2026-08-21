@@ -255,8 +255,15 @@ For each edge:
 - popup hold where supported;
 - bounded programmatic hold where used;
 - delayed hide after the last hold clears;
+- default and minimum/maximum ADR-054 in-window and window-leave hide delays,
+  including changing each applicable value while the one hide timer is pending;
+- default and minimum/maximum temporary programmatic reveal durations;
+- zero/default/maximum shortcut-tip durations, including no initial footer at
+  zero and a timed non-fading expiry under reduced motion;
 - rapid exit/re-entry;
-- pointer leaving the Firefox window;
+- pointer moving into browser content uses the in-window delay; pointer leaving
+  the Firefox window uses the window-leave delay; a duplicate window-level
+  event does not create or restart a second timer;
 - `Escape` priority and dismissal;
 - focus transfer into the surface;
 - focus restoration to the prior valid target;
@@ -268,6 +275,8 @@ For each edge:
 - deterministic pointer arbitration;
 - rapid movement between adjacent edges;
 - no accidental double reveal from a corner;
+- default, minimum, and maximum trigger thickness with matching CSS hit geometry
+  and point/corner arbitration;
 - legitimate simultaneous non-pointer holds;
 - no overlap that makes a required control unreachable;
 - narrow/short window fallback.
@@ -633,9 +642,18 @@ ADR-045 adds focused unit/static/build coverage for:
   `removeWidgetFromArea` otherwise;
 - style tokens for theme, accent, panel surface, chrome background, text,
   border, blur, radius, density, surface opacity, saturation, shadow, motion,
-  and font size, including NativeUi `--fennevia-chrome-background` on
+  font size, in-window hide delay, window-leave hide delay, temporary reveal
+  duration, shortcut-tip duration, and trigger thickness,
+  including NativeUi `--fennevia-chrome-background` on
   `:root#main-window` and skip of color overrides under forced colors /
   motion duration under reduced motion;
+- ADR-054 interaction bounds and defaults (300 ms in-window and 800 ms
+  window-leave within 100–5,000 ms, 1,200 ms within 400–10,000 ms, 600 ms
+  within 0–10,000 ms, and 12 CSS px within 6–24 CSS px), additive loading of
+  older version-1 style prefs, null/non-null pointer-destination routing plus
+  window-blur fallback, zero-disabled shortcut tips, pending-hide timer
+  rearming, shared CSS/arbitration trigger input, and no second timer or
+  preference;
 - empty style colors resolving to Firefox chrome design-system tokens
   (ADR-051) rather than a private RGB palette;
 - missing `CustomizableUI` hiding zones and missing `Services.prefs` disabling
@@ -662,6 +680,7 @@ a collapsed navbar, four-edge placement round-trips, **live-zone drag from
 palette onto each edge and back**, adopt/restore of an
 installed extension, style tokens under forced colors and reduced motion,
 default Firefox Light/Dark design-token colors on owned surfaces,
+minimum/default/maximum trigger hit testing and live hide/reveal timings,
 multi-window pref observation, layout reset restoring native placements, and
 Escape/focus restoration while a widget popup is also held. Implementation/
 source evidence is in `docs/research/firefox-153-customize-mode.md` and

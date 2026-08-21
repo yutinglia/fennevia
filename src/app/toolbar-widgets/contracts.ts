@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
+import { edgeInteractionBounds } from "../edge-surfaces/contracts.ts";
+
 export const toolbarWidgetKinds = Object.freeze([
   "built-in",
   "extension-action",
@@ -53,13 +55,18 @@ export const toolbarStyleDensities = Object.freeze([
 export type ToolbarStyleDensity = (typeof toolbarStyleDensities)[number];
 
 export const toolbarStyleBounds = Object.freeze({
+  autoHideDelay: edgeInteractionBounds.hideDelayMs,
   blur: Object.freeze({ max: 32, min: 0 }),
+  edgeTriggerSize: edgeInteractionBounds.triggerThicknessCssPixels,
   fontSize: Object.freeze({ max: 14, min: 11 }),
   motion: Object.freeze({ max: 400, min: 0 }),
   radius: Object.freeze({ max: 16, min: 0 }),
   saturation: Object.freeze({ max: 180, min: 100 }),
   shadow: Object.freeze({ max: 100, min: 0 }),
+  shortcutHintDuration: Object.freeze({ max: 10_000, min: 0 }),
   surfaceOpacity: Object.freeze({ max: 100, min: 50 }),
+  temporaryRevealDuration: edgeInteractionBounds.programmaticRevealMs,
+  windowLeaveHideDelay: edgeInteractionBounds.windowLeaveHideDelayMs,
 });
 
 export const toolbarAccentPattern = /^#[0-9a-f]{6}$/u;
@@ -158,19 +165,24 @@ export type ToolbarPaletteEntrySnapshot = Readonly<{
 
 export type ToolbarStyleSnapshot = Readonly<{
   accent: string;
+  autoHideDelay: number;
   blur: number;
   border: string;
   chromeBackground: string;
   density: ToolbarStyleDensity;
+  edgeTriggerSize: number;
   fontSize: number;
   motion: number;
   radius: number;
   saturation: number;
   shadow: number;
+  shortcutHintDuration: number;
   surface: string;
   surfaceOpacity: number;
+  temporaryRevealDuration: number;
   text: string;
   theme: ToolbarStyleTheme;
+  windowLeaveHideDelay: number;
 }>;
 
 export type ToolbarWidgetZones = Readonly<

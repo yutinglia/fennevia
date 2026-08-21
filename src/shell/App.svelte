@@ -9,7 +9,6 @@
   import type { BrowserDownloadsStateAdapter } from "../app/download-state";
   import {
     edgeKeyboardBindings,
-    edgeTriggerThicknessCssPixels,
     resolveEdgeAtPoint,
     type EdgeName,
     type EdgeShellController,
@@ -74,6 +73,10 @@
     return props.surface.snapshot();
   });
   let currentToolbarWidgets: BrowserToolbarWidgetsState | null = $state(null);
+  let shortcutHintsEnabled = $derived(
+    (currentToolbarWidgets ?? props.toolbarWidgets?.snapshot())?.snapshot.style
+      .shortcutHintDuration !== 0,
+  );
   let customizeOpen = $state(false);
   let panelDragCandidate = false;
   let focusReleaseTimer: DelayedFocusTimer | undefined;
@@ -173,7 +176,7 @@
     const bounds = props.frame.getBoundingClientRect();
     const resolvedEdge = resolveEdgeAtPoint({
       height: bounds.height,
-      thickness: edgeTriggerThicknessCssPixels,
+      thickness: props.shell.snapshot().interaction.triggerThicknessCssPixels,
       width: bounds.width,
       x: event.clientX - bounds.left,
       y: event.clientY - bounds.top,
@@ -200,7 +203,10 @@
 
   const handleSurfacePointerOut = (event: PointerEvent) => {
     if (crossedPointerBoundary(event)) {
-      props.shell.setPointerHeld(props.edge, false);
+      props.shell.releasePointer(
+        props.edge,
+        event.relatedTarget === null ? "outside-window" : "inside-window",
+      );
     }
   };
 
@@ -387,12 +393,14 @@
       />
     {/if}
 
-    <footer
-      aria-label={t("nav.keyboardShortcut")}
-      class="fennevia-edge-panel__footer"
-    >
-      <kbd>{edgeKeyboardBindings[props.edge]}</kbd>
-    </footer>
+    {#if shortcutHintsEnabled}
+      <footer
+        aria-label={t("nav.keyboardShortcut")}
+        class="fennevia-edge-panel__footer"
+      >
+        <kbd>{edgeKeyboardBindings[props.edge]}</kbd>
+      </footer>
+    {/if}
 
     {#if props.edge === "top"}
       <template data-fennevia-template="">

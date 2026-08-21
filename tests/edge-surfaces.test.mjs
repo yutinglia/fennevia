@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   createEdgeShellController,
   createEdgeSurfaceController,
+  edgeInteractionDefaults,
   edgeKeyboardBindings,
   edgeNames,
   getKeyboardRevealEdge,
@@ -250,6 +251,101 @@ test("natural hide clears the active edge so an unrelated Escape remains availab
   clock.advance(10);
   assert.equal(shell.snapshot().activeEdge, null);
   assert.equal(shell.dismissActive(), null);
+});
+
+test("interaction settings rearm the one hide timer and set future temporary reveals", () => {
+  const clock = createScheduler();
+  const shell = createEdgeShellController({ scheduler: clock.scheduler });
+
+  assert.equal(edgeInteractionDefaults.hideDelayMs, 300);
+  assert.equal(edgeInteractionDefaults.windowLeaveHideDelayMs, 800);
+  assert.deepEqual(shell.snapshot().interaction, edgeInteractionDefaults);
+  shell.setPointerHeld("top", true);
+  shell.setPointerHeld("top", false);
+  clock.advance(80);
+
+  const config = Object.freeze({
+    hideDelayMs: 600,
+    programmaticRevealMs: 2_400,
+    triggerThicknessCssPixels: 20,
+    windowLeaveHideDelayMs: 1_000,
+  });
+  assert.equal(shell.setInteractionConfig(config), true);
+  assert.equal(shell.setInteractionConfig(config), false);
+  assert.deepEqual(shell.snapshot().interaction, config);
+  assert.equal(clock.size(), 1);
+  clock.advance(599);
+  assert.equal(shell.snapshot().surfaces.top.visible, true);
+  clock.advance(1);
+  assert.equal(shell.snapshot().surfaces.top.visible, false);
+
+  shell.revealProgrammatically("right");
+  clock.advance(2_399);
+  assert.equal(shell.snapshot().surfaces.right.visible, true);
+  clock.advance(1);
+  assert.equal(shell.snapshot().surfaces.right.phase, "pending-hide");
+  clock.advance(600);
+  assert.equal(shell.snapshot().surfaces.right.visible, false);
+
+  assert.throws(
+    () =>
+      shell.setInteractionConfig({
+        ...config,
+        triggerThicknessCssPixels: 25,
+      }),
+    /FENNEVIA_EDGE_INTERACTION_CONFIG_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      shell.setInteractionConfig({
+        ...config,
+        windowLeaveHideDelayMs: 5_001,
+      }),
+    /FENNEVIA_EDGE_INTERACTION_CONFIG_INVALID/u,
+  );
+  assert.deepEqual(shell.snapshot().interaction, config);
+});
+
+test("pointer exits inside and outside the browser use distinct delays on one timer", () => {
+  const clock = createScheduler();
+  const shell = createEdgeShellController({ scheduler: clock.scheduler });
+
+  shell.setPointerHeld("top", true);
+  assert.equal(shell.releasePointer("top", "inside-window"), true);
+  assert.equal(clock.size(), 1);
+  clock.advance(299);
+  assert.equal(shell.snapshot().surfaces.top.visible, true);
+  clock.advance(1);
+  assert.equal(shell.snapshot().surfaces.top.visible, false);
+
+  shell.setPointerHeld("top", true);
+  shell.setPointerHeld("top", false);
+  clock.advance(100);
+  assert.equal(shell.releasePointer("top", "outside-window"), true);
+  assert.equal(clock.size(), 1);
+  assert.equal(shell.releasePointer("top", "outside-window"), false);
+  clock.advance(799);
+  assert.equal(shell.snapshot().surfaces.top.visible, true);
+  clock.advance(1);
+  assert.equal(shell.snapshot().surfaces.top.visible, false);
+
+  shell.setPointerHeld("right", true);
+  shell.releasePointer("right", "outside-window");
+  clock.advance(80);
+  shell.setInteractionConfig({
+    ...edgeInteractionDefaults,
+    windowLeaveHideDelayMs: 1_200,
+  });
+  assert.equal(clock.size(), 1);
+  clock.advance(1_199);
+  assert.equal(shell.snapshot().surfaces.right.visible, true);
+  clock.advance(1);
+  assert.equal(shell.snapshot().surfaces.right.visible, false);
+
+  assert.throws(
+    () => shell.releasePointer("top", "somewhere-else"),
+    /FENNEVIA_EDGE_POINTER_EXIT_LOCATION_INVALID/u,
+  );
 });
 
 test("corner arbitration follows top, sides, then bottom priority", () => {

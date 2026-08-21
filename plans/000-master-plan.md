@@ -75,8 +75,8 @@ Completed:
   exact one-sided ownership repair, reconciled compatibility inventory, and an
   executable Firefox stable-update rehearsal.
 
-Current fast branch enhancement under ADR-037, ADR-042, ADR-044, ADR-045, and
-ADR-046:
+Current fast branch enhancement under ADR-037, ADR-042, ADR-044 through
+ADR-047, and ADR-054:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   Firefox tools, and progressive disclosure;
@@ -96,11 +96,15 @@ ADR-046:
   placements as the default top-zone layout, superseded as the only widget
   source by ADR-045: a Fennevia-owned customize mode with four-edge widget
   zones, the full current CustomizableUI inventory as an opaque-token palette,
-  bounded style tokens, profile-local prefs, and owner-approved adopt/restore
-  writes onto the collapsed nav-bar. ADR-046 restores localized widget names
+  bounded style and interaction settings, profile-local prefs, and
+  owner-approved adopt/restore writes onto the collapsed nav-bar. ADR-046
+  restores localized widget names
   and native built-in icons (CSS mask, not `<img>`) in that palette and in
   widget zones. ADR-047 makes placement a live four-edge HTML5 drag-and-drop
-  session (palette plus style stay in the top-host drawer). Native customize
+  session (palette plus appearance/interaction settings stay in the top-host
+  drawer). ADR-054 lets the user tune separate in-window and window-leave hide
+  delays, temporary reveal duration, shortcut-tip duration (including zero to
+  disable), and edge trigger thickness within fixed bounds. Native customize
   mode stays available
   through the Firefox application menu, complete native reveal, and fail-open;
   it is not a fixed top-row control.
@@ -358,7 +362,7 @@ Deliverables from #31:
 - hidden-at-rest state with no permanent content geometry;
 - framework-independent edge state controller;
 - pointer, keyboard, focus, popup, and bounded programmatic holds;
-- one tracked anti-flicker timer per edge;
+- one tracked anti-flicker timer per edge, with a bounded configurable delay;
 - deterministic corner ownership and overlap clearances;
 - suspension policy for native modal state, customize mode, and DOM fullscreen;
 - keyboard reveal, `Escape`, focus transfer, and focus restoration;
@@ -543,11 +547,17 @@ clauses are superseded by ADR-045 below. Evidence: ADR-044,
   `addWidgetToArea` / restore writes; extension identity still banned from
   logs, diagnostics, serialized frontend state, CSS variables, and root
   datasets;
+- ADR-054 bounded global interaction settings in the existing versioned style
+  preference: in-window and window-leave hide delays `100–5000 ms`, temporary
+  reveal duration `400–10000 ms`, shortcut-tip duration `0–10000 ms`, and edge
+  trigger thickness `6–24 CSS px`; these reconfigure the shared #31 controller
+  and existing frame CSS without adding JavaScript timers or triggers;
 - optional editing: missing `Services.prefs` disables the editor without
   joining activation health. Native customize mode remains available through
   the Firefox application menu, complete native reveal, and fail-open.
 
-Evidence: ADR-045, ADR-046, ADR-047, `plans/006-customize-mode.md`, and
+Evidence: ADR-045, ADR-046, ADR-047, ADR-054,
+`plans/006-customize-mode.md`, and
 `docs/research/firefox-153-customize-mode.md`. The real-Firefox customize
 matrix is recorded as pending in `docs/testing-and-recovery.md` §6.9.
 

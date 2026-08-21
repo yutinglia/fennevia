@@ -2,6 +2,9 @@
 
 export {
   edgeNames,
+  edgeInteractionBounds,
+  edgeInteractionDefaults,
+  pointerExitLocations,
   edgeSurfaceTiming,
   edgeInsetCssPixels,
   edgeTriggerThicknessCssPixels,
@@ -9,6 +12,8 @@ export {
 } from "./edge-surfaces/contracts.ts";
 export type {
   EdgeName,
+  EdgeInteractionConfig,
+  PointerExitLocation,
   EdgeSurfacePhase,
   EdgeSurfaceHolds,
   EdgeSurfaceSnapshot,

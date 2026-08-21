@@ -5,6 +5,7 @@ const CUSTOMIZE_STYLE_PROPERTIES = Object.freeze([
   "color-scheme",
   "font-size",
   "--fennevia-control-height",
+  "--fennevia-edge-trigger-thickness",
   "--fennevia-edge-top-height",
   "--fennevia-focus-color",
   "--fennevia-glass-blur",
@@ -17,8 +18,10 @@ const CUSTOMIZE_STYLE_PROPERTIES = Object.freeze([
   "--fennevia-glass-surface",
   "--fennevia-glass-text",
   "--fennevia-glass-tint",
+  "--fennevia-hide-delay",
   "--fennevia-motion-duration",
   "--fennevia-selected-surface",
+  "--fennevia-shortcut-tip-duration",
 ]);
 
 const HEX_COLOR_PATTERN = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/u;
@@ -68,6 +71,15 @@ export function applyCustomizeStyle(
   options: Readonly<{ forcedColors: boolean; reducedMotion: boolean }>,
 ): void {
   clearCustomizeStyle(frame);
+  frame.style.setProperty(
+    "--fennevia-edge-trigger-thickness",
+    `${style.edgeTriggerSize}px`,
+  );
+  frame.style.setProperty("--fennevia-hide-delay", `${style.autoHideDelay}ms`);
+  frame.style.setProperty(
+    "--fennevia-shortcut-tip-duration",
+    `${style.shortcutHintDuration}ms`,
+  );
   if (style.blur !== DEFAULT_GLASS_BLUR_PX) {
     frame.style.setProperty("--fennevia-glass-blur", `${style.blur}px`);
   }

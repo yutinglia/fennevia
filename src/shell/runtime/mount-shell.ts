@@ -27,8 +27,6 @@ import {
   createEdgeShellController,
   edgeInsetCssPixels,
   edgeNames,
-  edgeSurfaceTiming,
-  edgeTriggerThicknessCssPixels,
   getKeyboardRevealEdge,
   type EdgeName,
 } from "../../app/edge-surfaces";
@@ -266,7 +264,7 @@ export function mountShellApp({
       return;
     }
     for (const edge of edgeNames) {
-      shell.setPointerHeld(edge, false);
+      shell.releasePointer(edge, "outside-window");
     }
   };
 
@@ -472,6 +470,12 @@ export function mountShellApp({
           ? view.matchMedia("(prefers-reduced-motion: reduce)")
           : null;
       const applyStyleFromState = (state: BrowserToolbarWidgetsState): void => {
+        shell.setInteractionConfig({
+          hideDelayMs: state.snapshot.style.autoHideDelay,
+          programmaticRevealMs: state.snapshot.style.temporaryRevealDuration,
+          triggerThicknessCssPixels: state.snapshot.style.edgeTriggerSize,
+          windowLeaveHideDelayMs: state.snapshot.style.windowLeaveHideDelay,
+        });
         applyCustomizeStyle(frame, state.snapshot.style, {
           forcedColors: forcedColorsQuery?.matches === true,
           reducedMotion: reducedMotionQuery?.matches === true,
@@ -621,14 +625,6 @@ export function mountShellApp({
     view.addEventListener("blur", releaseWindowPointer);
     frame.addEventListener("focusin", surfaceFocus.onFrameFocusIn);
     listenersRegistered = true;
-    frame.style.setProperty(
-      "--fennevia-hide-delay",
-      `${edgeSurfaceTiming.hideDelayMs}ms`,
-    );
-    frame.style.setProperty(
-      "--fennevia-edge-trigger-thickness",
-      `${edgeTriggerThicknessCssPixels}px`,
-    );
     frame.style.setProperty("--fennevia-edge-inset", `${edgeInsetCssPixels}px`);
     frame.setAttribute(FRAME_READY_ATTRIBUTE, "");
 

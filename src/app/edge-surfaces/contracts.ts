@@ -4,6 +4,13 @@ export const edgeNames = ["top", "left", "right", "bottom"] as const;
 
 export type EdgeName = (typeof edgeNames)[number];
 
+export const pointerExitLocations = [
+  "inside-window",
+  "outside-window",
+] as const;
+
+export type PointerExitLocation = (typeof pointerExitLocations)[number];
+
 export type EdgeSurfacePhase =
   | "hidden"
   | "pointer-revealed"
@@ -32,6 +39,13 @@ export type EdgeSurfaceSnapshot = Readonly<{
   visible: boolean;
 }>;
 
+export type EdgeInteractionConfig = Readonly<{
+  hideDelayMs: number;
+  programmaticRevealMs: number;
+  triggerThicknessCssPixels: number;
+  windowLeaveHideDelayMs: number;
+}>;
+
 export type EdgeSurfaceController = Readonly<{
   dismiss: () => boolean;
   dispose: () => boolean;
@@ -40,8 +54,13 @@ export type EdgeSurfaceController = Readonly<{
   revealProgrammatically: (durationMs?: number) => boolean;
   setEnabled: (enabled: boolean) => boolean;
   setFocusHeld: (held: boolean) => boolean;
-  setPointerHeld: (held: boolean) => boolean;
+  setHideDelayMs: (delayMs: number) => boolean;
+  setPointerHeld: (
+    held: boolean,
+    releaseLocation?: PointerExitLocation,
+  ) => boolean;
   setPopupHeld: (held: boolean) => boolean;
+  setWindowLeaveHideDelayMs: (delayMs: number) => boolean;
   snapshot: () => EdgeSurfaceSnapshot;
   subscribe: (
     listener: (snapshot: EdgeSurfaceSnapshot) => void,
@@ -52,6 +71,7 @@ export type EdgeShellSnapshot = Readonly<{
   activeEdge: EdgeName | null;
   disposed: boolean;
   enabled: boolean;
+  interaction: EdgeInteractionConfig;
   interactionSuppressed: boolean;
   surfaces: Readonly<Record<EdgeName, EdgeSurfaceSnapshot>>;
 }>;
@@ -62,11 +82,13 @@ export type EdgeShellController = Readonly<{
   dispose: () => boolean;
   getSurface: (edge: EdgeName) => EdgeSurfaceController;
   releaseKeyboard: (edge: EdgeName) => boolean;
+  releasePointer: (edge: EdgeName, location: PointerExitLocation) => boolean;
   revealFromKeyboard: (edge: EdgeName) => boolean;
   revealFromPointer: (edge: EdgeName) => boolean;
   revealProgrammatically: (edge: EdgeName, durationMs?: number) => boolean;
   setEnabled: (enabled: boolean) => boolean;
   setFocusHeld: (edge: EdgeName, held: boolean) => boolean;
+  setInteractionConfig: (config: EdgeInteractionConfig) => boolean;
   setInteractionSuppressed: (suppressed: boolean) => boolean;
   setPointerHeld: (edge: EdgeName, held: boolean) => boolean;
   setPopupHeld: (edge: EdgeName, held: boolean) => boolean;
@@ -84,17 +106,33 @@ export type ControllerOptions = Readonly<{
   hideDelayMs?: number;
   onError?: (error: unknown) => void;
   scheduler?: Scheduler;
+  windowLeaveHideDelayMs?: number;
 }>;
 
 export const edgeSurfaceTiming = Object.freeze({
   defaultProgrammaticRevealMs: 1_200,
-  hideDelayMs: 160,
+  hideDelayMs: 300,
   maximumProgrammaticRevealMs: 10_000,
+  windowLeaveHideDelayMs: 800,
 });
 
 export const edgeInsetCssPixels = 7;
 export const edgeTriggerThicknessCssPixels = 12;
 export const progressLightThicknessCssPixels = 2;
+
+export const edgeInteractionBounds = Object.freeze({
+  hideDelayMs: Object.freeze({ max: 5_000, min: 100 }),
+  programmaticRevealMs: Object.freeze({ max: 10_000, min: 400 }),
+  triggerThicknessCssPixels: Object.freeze({ max: 24, min: 6 }),
+  windowLeaveHideDelayMs: Object.freeze({ max: 5_000, min: 100 }),
+});
+
+export const edgeInteractionDefaults: EdgeInteractionConfig = Object.freeze({
+  hideDelayMs: edgeSurfaceTiming.hideDelayMs,
+  programmaticRevealMs: edgeSurfaceTiming.defaultProgrammaticRevealMs,
+  triggerThicknessCssPixels: edgeTriggerThicknessCssPixels,
+  windowLeaveHideDelayMs: edgeSurfaceTiming.windowLeaveHideDelayMs,
+});
 
 export const holdNames = [
   "focus",

@@ -51,6 +51,8 @@
     0 18px 54px color-mix(in srgb, var(--color-black, black) 28%, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--color-white, white) 22%, transparent);
   --fennevia-edge-trigger-thickness: 12px;
+  --fennevia-hide-delay: 300ms;
+  --fennevia-shortcut-tip-duration: 600ms;
   --fennevia-edge-inset: 7px;
   --fennevia-progress-light-thickness: 2px;
   --fennevia-edge-gap: 8px;
@@ -424,7 +426,8 @@
 #fennevia-shell-frame-host
   .fennevia-edge-root[data-fennevia-visible="true"]
   .fennevia-edge-panel__footer {
-  animation: fennevia-shortcut-tip 2800ms ease-out both;
+  animation: fennevia-shortcut-tip var(--fennevia-shortcut-tip-duration)
+    ease-out both;
 }
 
 #fennevia-shell-frame-host
@@ -487,6 +490,16 @@
   }
 
   100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fennevia-shortcut-tip-reduced-motion {
+  from {
+    opacity: 1;
+  }
+
+  to {
     opacity: 0;
   }
 }

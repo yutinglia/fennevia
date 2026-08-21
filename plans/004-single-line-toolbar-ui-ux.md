@@ -121,7 +121,9 @@ Independently selected Fennevia direction:
       narrow-window, forced-colors, and reduced-motion states.
 - [x] Use progressive disclosure so the row stays usable without wrapping.
 - [x] Keep a short high-contrast shortcut hint as an overlay that reserves no
-      layout space.
+      layout space. ADR-054 later makes its existing CSS-animation duration
+      profile-configurable from 0–10,000 ms (600 ms default); zero omits the
+      hint from the Svelte render.
 - [x] Preserve `top > left/right > bottom` geometry and add no
       surface-dependent content clearance beyond the requested fixed 7px frame
       gutter.
@@ -218,7 +220,12 @@ run for this fast pass. They are not implied by the focused results above.
       drag does not leave the left panel open.
 - [ ] Left and right panels begin below a visible top row; bottom yields to both
       side panels; no panels overlap incorrectly.
-- [ ] Shortcut hint is readable, floats without taking space, and disappears.
+- [ ] Moving from a panel into page content uses the configured in-window hide
+      delay; leaving the Firefox window uses the configured window-leave delay,
+      and the window-level fallback does not start a second timer.
+- [ ] Shortcut hint is readable, floats without taking space, and disappears at
+      the configured duration; zero renders no hint, and reduced motion uses a
+      non-fading expiry.
 - [ ] Narrow, short, maximized, browser-fullscreen, DOM-fullscreen, private, and
       second-window layouts remain usable.
 - [ ] Reduced motion, forced colors, and reduced transparency remain readable.

@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { edgeNames } from "./contracts.ts";
+import {
+  edgeInteractionBounds,
+  edgeInteractionDefaults,
+  edgeNames,
+} from "./contracts.ts";
 import type {
+  EdgeInteractionConfig,
   EdgeName,
+  PointerExitLocation,
   EdgeSurfaceSnapshot,
   EdgeSurfaceController,
   EdgeShellController,
@@ -13,6 +19,44 @@ import {
   isEdgeName,
   createEdgeSurfaceController,
 } from "./surface-controller.ts";
+
+const isBoundedInteger = (
+  value: unknown,
+  bounds: Readonly<{ max: number; min: number }>,
+): value is number =>
+  Number.isSafeInteger(value) &&
+  (value as number) >= bounds.min &&
+  (value as number) <= bounds.max;
+
+function copyInteractionConfig(candidate: unknown): EdgeInteractionConfig {
+  if (!candidate || typeof candidate !== "object") {
+    throw createEdgeSurfaceError("FENNEVIA_EDGE_INTERACTION_CONFIG_INVALID");
+  }
+  const config = candidate as Record<string, unknown>;
+  if (
+    !isBoundedInteger(config.hideDelayMs, edgeInteractionBounds.hideDelayMs) ||
+    !isBoundedInteger(
+      config.programmaticRevealMs,
+      edgeInteractionBounds.programmaticRevealMs,
+    ) ||
+    !isBoundedInteger(
+      config.triggerThicknessCssPixels,
+      edgeInteractionBounds.triggerThicknessCssPixels,
+    ) ||
+    !isBoundedInteger(
+      config.windowLeaveHideDelayMs,
+      edgeInteractionBounds.windowLeaveHideDelayMs,
+    )
+  ) {
+    throw createEdgeSurfaceError("FENNEVIA_EDGE_INTERACTION_CONFIG_INVALID");
+  }
+  return Object.freeze({
+    hideDelayMs: config.hideDelayMs,
+    programmaticRevealMs: config.programmaticRevealMs,
+    triggerThicknessCssPixels: config.triggerThicknessCssPixels,
+    windowLeaveHideDelayMs: config.windowLeaveHideDelayMs,
+  });
+}
 
 function createSurfaceRecord(
   options: ControllerOptions,
@@ -29,6 +73,13 @@ export function createEdgeShellController(
   let activeEdge: EdgeName | null = null;
   let disposed = false;
   let enabled = true;
+  let interaction: EdgeInteractionConfig = Object.freeze({
+    ...edgeInteractionDefaults,
+    hideDelayMs: options.hideDelayMs ?? edgeInteractionDefaults.hideDelayMs,
+    windowLeaveHideDelayMs:
+      options.windowLeaveHideDelayMs ??
+      edgeInteractionDefaults.windowLeaveHideDelayMs,
+  });
   let interactionSuppressed = false;
 
   const requireEdge = (edge: EdgeName): EdgeSurfaceController => {
@@ -71,6 +122,11 @@ export function createEdgeShellController(
     }
     return markActive(edge, changed);
   };
+
+  const releasePointer = (
+    edge: EdgeName,
+    location: PointerExitLocation,
+  ): boolean => requireEdge(edge).setPointerHeld(false, location);
 
   const resolveActiveEdge = (): EdgeName | null => {
     if (activeEdge && surfaces[activeEdge].snapshot().visible) {
@@ -137,6 +193,11 @@ export function createEdgeShellController(
       return requireEdge(edge).releaseKeyboard();
     },
 
+    releasePointer(edge, location) {
+      requireUsable();
+      return releasePointer(edge, location);
+    },
+
     revealFromKeyboard(edge) {
       requireUsable();
       if (!interactionsEnabled()) {
@@ -158,7 +219,9 @@ export function createEdgeShellController(
       }
       return markActive(
         edge,
-        requireEdge(edge).revealProgrammatically(durationMs),
+        requireEdge(edge).revealProgrammatically(
+          durationMs ?? interaction.programmaticRevealMs,
+        ),
       );
     },
 
@@ -179,6 +242,32 @@ export function createEdgeShellController(
         return false;
       }
       return markActive(edge, requireEdge(edge).setFocusHeld(held));
+    },
+
+    setInteractionConfig(config) {
+      requireUsable();
+      const next = copyInteractionConfig(config);
+      if (
+        interaction.hideDelayMs === next.hideDelayMs &&
+        interaction.programmaticRevealMs === next.programmaticRevealMs &&
+        interaction.triggerThicknessCssPixels ===
+          next.triggerThicknessCssPixels &&
+        interaction.windowLeaveHideDelayMs === next.windowLeaveHideDelayMs
+      ) {
+        return false;
+      }
+      if (interaction.hideDelayMs !== next.hideDelayMs) {
+        for (const edge of edgeNames) {
+          surfaces[edge].setHideDelayMs(next.hideDelayMs);
+        }
+      }
+      if (interaction.windowLeaveHideDelayMs !== next.windowLeaveHideDelayMs) {
+        for (const edge of edgeNames) {
+          surfaces[edge].setWindowLeaveHideDelayMs(next.windowLeaveHideDelayMs);
+        }
+      }
+      interaction = next;
+      return true;
     },
 
     setInteractionSuppressed(nextSuppressed) {
@@ -204,7 +293,7 @@ export function createEdgeShellController(
         requireEdge(edge);
         return revealPointer(edge);
       }
-      return requireEdge(edge).setPointerHeld(false);
+      return releasePointer(edge, "inside-window");
     },
 
     setPopupHeld(edge, held) {
@@ -221,6 +310,7 @@ export function createEdgeShellController(
         activeEdge,
         disposed,
         enabled,
+        interaction,
         interactionSuppressed,
         surfaces: Object.freeze(
           Object.fromEntries(
