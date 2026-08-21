@@ -5,7 +5,7 @@ import vm from "node:vm";
 
 const configSource = readFileSync(
   new URL("../program/fennevia.cfg", import.meta.url),
-  "utf8"
+  "utf8",
 );
 
 const runAutoConfig = ({
@@ -110,18 +110,18 @@ const runAutoConfig = ({
   });
   return {
     calls,
-    records: messages.map(message =>
-      JSON.parse(message.replace(/^\[Fennevia bootstrap\] /u, ""))
+    records: messages.map((message) =>
+      JSON.parse(message.replace(/^\[Fennevia bootstrap\] /u, "")),
     ),
   };
 };
 
-test("the project safe-start preference exits before manifest or bundle access", async t => {
+test("the project safe-start preference exits before manifest or bundle access", async (t) => {
   for (const importMode of ["valid", "broken"]) {
     await t.test(`${importMode} installed bundle`, () => {
       const result = runAutoConfig({ safeStart: true, importMode });
       assert.deepEqual(
-        result.records.map(record => ({
+        result.records.map((record) => ({
           event: record.event,
           phase: record.phase,
           result: record.result,
@@ -134,17 +134,17 @@ test("the project safe-start preference exits before manifest or bundle access",
             result: "safe-start",
             code: "FENNEVIA_BOOTSTRAP_SAFE_START",
           },
-        ]
+        ],
       );
       assert.ok(
         result.calls.every(
-          call =>
+          (call) =>
             !call.startsWith("dirsvc.") &&
             !call.startsWith("manifest.") &&
             !call.startsWith("registrar.") &&
             !call.startsWith("chromeRegistry.") &&
-            !call.startsWith("ChromeUtils.")
-        )
+            !call.startsWith("ChromeUtils."),
+        ),
       );
       assert.deepEqual(result.calls, [
         "prefs.getBoolPref:fennevia.safeStart:false",
@@ -166,14 +166,14 @@ test("ordinary startup still registers and validates one privileged entry module
   assert.equal(result.records[0].event, "bootstrap.success");
   assert.equal(result.records[0].result, "ready");
   assert.equal(
-    result.calls.filter(call => call === "registrar.autoRegister").length,
-    1
+    result.calls.filter((call) => call === "registrar.autoRegister").length,
+    1,
   );
   assert.equal(
-    result.calls.filter(call =>
-      call.startsWith("ChromeUtils.importESModule:chrome://fennevia/")
+    result.calls.filter((call) =>
+      call.startsWith("ChromeUtils.importESModule:chrome://fennevia/"),
     ).length,
-    1
+    1,
   );
 });
 

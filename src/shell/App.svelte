@@ -128,23 +128,25 @@
       if (props.edge !== "top") {
         return;
       }
-      void tick().then(() => {
-        if (snapshot.open && !wasOpen) {
-          rootElement
-            ?.querySelector<HTMLButtonElement>(
-              "button[data-fennevia-customize-close]",
-            )
-            ?.focus();
-          return;
-        }
-        if (!snapshot.open && wasOpen) {
-          rootElement
-            ?.querySelector<HTMLButtonElement>(
-              'button[data-fennevia-action="customize-shell"]',
-            )
-            ?.focus();
-        }
-      });
+      void tick()
+        .then(() => {
+          if (snapshot.open && !wasOpen) {
+            rootElement
+              ?.querySelector<HTMLButtonElement>(
+                "button[data-fennevia-customize-close]",
+              )
+              ?.focus();
+            return;
+          }
+          if (!snapshot.open && wasOpen) {
+            rootElement
+              ?.querySelector<HTMLButtonElement>(
+                'button[data-fennevia-action="customize-shell"]',
+              )
+              ?.focus();
+          }
+        })
+        .catch(props.onFatalError);
     });
   });
 

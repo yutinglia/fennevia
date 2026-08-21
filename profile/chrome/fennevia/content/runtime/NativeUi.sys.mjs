@@ -946,7 +946,7 @@ export function createNativeUiController({ window, frame, onError }) {
         { domPath: `#${frame.id}>#${STYLE_ID}` },
       );
     }
-    let cssRuleCount = 0;
+    let cssRuleCount;
     try {
       cssRuleCount = style.sheet?.cssRules?.length ?? 0;
     } catch {

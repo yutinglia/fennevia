@@ -469,7 +469,10 @@ test("attaches four XHTML edge boundaries and one overlay without moving native 
   }
   const overlayHost = window.document.getElementById(shellHostIds.overlay);
   assert.equal(overlayHost.parentElement, frame);
-  assert.equal(overlayHost.getAttribute("data-fennevia-overlay-host"), "address");
+  assert.equal(
+    overlayHost.getAttribute("data-fennevia-overlay-host"),
+    "address",
+  );
   assert.equal(
     controller.getMountPoints().overlay.target.parentElement,
     overlayHost,
@@ -643,7 +646,10 @@ test("customize, DOM fullscreen, browser fullscreen, and native dialogs update t
   window.document.documentElement.setAttribute("window-modal-open", "");
   assert.equal(frame.getAttribute("data-fennevia-environment"), "normal");
   window.elements.modal.setAttribute("open", "");
-  assert.equal(frame.getAttribute("data-fennevia-environment"), "native-dialog");
+  assert.equal(
+    frame.getAttribute("data-fennevia-environment"),
+    "native-dialog",
+  );
   window.elements.modal.removeAttribute("open");
   assert.equal(frame.getAttribute("data-fennevia-environment"), "normal");
   window.document.documentElement.removeAttribute("window-modal-open");

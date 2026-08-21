@@ -27,11 +27,22 @@ const browserGlobals = {
 };
 
 const nodeGlobals = {
+  AbortController: "readonly",
   Buffer: "readonly",
   URL: "readonly",
+  clearTimeout: "readonly",
   console: "readonly",
   process: "readonly",
   setImmediate: "readonly",
+  setTimeout: "readonly",
+};
+
+const firefoxGlobals = {
+  AbortController: "readonly",
+  Cc: "readonly",
+  ChromeUtils: "readonly",
+  Ci: "readonly",
+  Services: "readonly",
 };
 
 export default defineConfig(
@@ -41,6 +52,7 @@ export default defineConfig(
       ".local-artifacts/**",
       "local-artifacts/**",
       "node_modules/**",
+      "profile/chrome/fennevia/content/firefox/**",
       "profile/chrome/fennevia/content/shell/**",
     ],
   },
@@ -68,28 +80,20 @@ export default defineConfig(
       "eslint.config.js",
       "scripts/*.mjs",
       "svelte.config.js",
-      "tests/bookmark-state.test.mjs",
-      "tests/download-state.test.mjs",
-      "tests/edge-surfaces.test.mjs",
-      "tests/firefox-bookmarks.test.mjs",
-      "tests/firefox-boundary.test.mjs",
-      "tests/firefox-downloads.test.mjs",
-      "tests/firefox-locale.test.mjs",
-      "tests/firefox-navigation.test.mjs",
-      "tests/firefox-tabs.test.mjs",
-      "tests/frontend-smoke.test.mjs",
-      "tests/i18n.test.mjs",
-      "tests/locale-state.test.mjs",
-      "tests/navigation-state.test.mjs",
-      "tests/progress-light.test.mjs",
-      "tests/tab-state.test.mjs",
-      "tests/customize-session.test.mjs",
-      "tests/tab-strip.test.mjs",
-      "tests/toolbar-widget-drag.test.mjs",
+      "tests/**/*.mjs",
       "vite*.config.ts",
     ],
     languageOptions: {
       globals: nodeGlobals,
+    },
+  },
+  {
+    files: [
+      "profile/chrome/fennevia/content/*.mjs",
+      "profile/chrome/fennevia/content/runtime/*.mjs",
+    ],
+    languageOptions: {
+      globals: firefoxGlobals,
     },
   },
   {
@@ -172,6 +176,21 @@ export default defineConfig(
       "no-implied-eval": "error",
       "no-new-func": "error",
       "@typescript-eslint/no-explicit-any": "error",
+    },
+  },
+  {
+    files: [
+      "tests/bootstrap-content-access.mjs",
+      "tests/firefox-window-lifecycle.mjs",
+    ],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
+    files: ["profile/chrome/fennevia/content/runtime/Logger.sys.mjs"],
+    rules: {
+      "no-control-regex": "off",
     },
   },
 );

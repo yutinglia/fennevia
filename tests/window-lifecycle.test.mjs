@@ -79,7 +79,7 @@ function createRecordingLogger() {
   const entries = [];
   const logger = {};
   for (const level of ["debug", "info", "warn", "error"]) {
-    logger[level] = fields => entries.push({ level, ...fields });
+    logger[level] = (fields) => entries.push({ level, ...fields });
   }
   return { entries, logger };
 }
@@ -119,7 +119,7 @@ class FakeWindow {
     const listeners = this.listeners.get(type) ?? [];
     this.listeners.set(
       type,
-      listeners.filter(entry => entry.listener !== listener)
+      listeners.filter((entry) => entry.listener !== listener),
     );
   }
 
@@ -195,8 +195,8 @@ test("manages existing, later, normal, and private browser windows exactly once"
   assert.equal(manager.start(), true);
   assert.equal(services.obs.count(DELAYED_STARTUP_TOPIC), 1);
   assert.deepEqual(
-    initialized.map(context => context.window),
-    [existing]
+    initialized.map((context) => context.window),
+    [existing],
   );
 
   services.obs.notify(existing, DELAYED_STARTUP_TOPIC);
@@ -214,22 +214,22 @@ test("manages existing, later, normal, and private browser windows exactly once"
   }
 
   assert.deepEqual(
-    initialized.map(context => context.window),
-    [existing, pending, secondNormal, privateWindow]
+    initialized.map((context) => context.window),
+    [existing, pending, secondNormal, privateWindow],
   );
   assert.deepEqual(
-    initialized.map(context => context.windowKind),
-    ["normal", "normal", "normal", "private"]
+    initialized.map((context) => context.windowKind),
+    ["normal", "normal", "normal", "private"],
   );
   assert.deepEqual(
-    initialized.map(context => context.isPrivate),
-    [false, false, false, true]
+    initialized.map((context) => context.isPrivate),
+    [false, false, false, true],
   );
-  assert.equal(new Set(initialized.map(context => context.opaqueId)).size, 4);
+  assert.equal(new Set(initialized.map((context) => context.opaqueId)).size, 4);
   for (const context of initialized) {
     assert.match(
       context.opaqueId,
-      /^window-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/u
+      /^window-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/u,
     );
     assert.equal(context.signal.aborted, false);
   }
@@ -239,19 +239,19 @@ test("manages existing, later, normal, and private browser windows exactly once"
   assert.equal(snapshot.managedWindowCount, 4);
   assert.equal(snapshot.initializingWindowCount, 0);
   assert.equal(
-    snapshot.windows.filter(window => window.windowKind === "private").length,
-    1
+    snapshot.windows.filter((window) => window.windowKind === "private").length,
+    1,
   );
   assert.equal(
-    entries.filter(entry => entry.event === "window.initialized").length,
-    4
+    entries.filter((entry) => entry.event === "window.initialized").length,
+    4,
   );
 
   assert.equal(manager.stop(), true);
   assert.equal(manager.stop(), false);
   assert.equal(services.obs.count(DELAYED_STARTUP_TOPIC), 0);
   assert.equal(disposed.length, 4);
-  assert.ok(initialized.every(context => context.signal.aborted));
+  assert.ok(initialized.every((context) => context.signal.aborted));
   assert.equal(manager.snapshot().managedWindowCount, 0);
 
   services.obs.notify(new FakeWindow(), DELAYED_STARTUP_TOPIC);
@@ -279,14 +279,14 @@ test("closing during asynchronous initialization aborts and neutralizes late com
       };
       context.window.addEventListener("activity", onActivity);
       context.addCleanup(() =>
-        context.window.removeEventListener("activity", onActivity)
+        context.window.removeEventListener("activity", onActivity),
       );
       context.signal.addEventListener(
         "abort",
         () => {
           abortCount += 1;
         },
-        { once: true }
+        { once: true },
       );
       return deferred.promise;
     },
@@ -316,8 +316,8 @@ test("closing during asynchronous initialization aborts and neutralizes late com
   assert.equal(lateDisposerCount, 1);
   assert.equal(entries.length, logCountAfterClose);
   assert.equal(
-    entries.some(entry => entry.event === "window.initialized"),
-    false
+    entries.some((entry) => entry.event === "window.initialized"),
+    false,
   );
   assert.equal(manager.stop(), true);
   assert.equal(abortCount, 1);
@@ -339,7 +339,7 @@ test("initialization failure disposes partial registrations without an unhandled
         throw new Error("sync failure with https://private.invalid/");
       }
       return Promise.reject(
-        new Error("async failure with C:\\Users\\Private Name\\profile")
+        new Error("async failure with C:\\Users\\Private Name\\profile"),
       );
     },
   });
@@ -352,8 +352,9 @@ test("initialization failure disposes partial registrations without an unhandled
   assert.equal(manager.snapshot().managedWindowCount, 0);
   assert.equal(manager.snapshot().initializingWindowCount, 0);
   assert.equal(
-    entries.filter(entry => entry.event === "window.initialization-failed").length,
-    2
+    entries.filter((entry) => entry.event === "window.initialization-failed")
+      .length,
+    2,
   );
   assert.equal(manager.stop(), true);
 });
@@ -383,8 +384,8 @@ test("all cleanups run once even when one cleanup throws", () => {
 
   assert.deepEqual(order, ["returned-disposer", "throwing", "first"]);
   assert.equal(
-    entries.filter(entry => entry.event === "window.cleanup-failed").length,
-    1
+    entries.filter((entry) => entry.event === "window.cleanup-failed").length,
+    1,
   );
   assert.equal(manager.stop(), true);
 });
@@ -455,12 +456,12 @@ test("process runtime start, shutdown, and stop are idempotent", () => {
   runtime.stop();
   assert.equal(managerStopCount, 1);
   assert.equal(
-    entries.filter(entry => entry.event === "runtime.started").length,
-    1
+    entries.filter((entry) => entry.event === "runtime.started").length,
+    1,
   );
   assert.equal(
-    entries.filter(entry => entry.event === "runtime.stopped").length,
-    1
+    entries.filter((entry) => entry.event === "runtime.stopped").length,
+    1,
   );
 });
 
@@ -539,13 +540,13 @@ test("a failed singleton startup is cleaned and cannot be mistaken for readiness
         createWindowManager: factory,
         targetGlobal,
       }),
-    /manager startup failed/u
+    /manager startup failed/u,
   );
   assert.equal(stopCount, 1);
   assert.equal(services.obs.count(SHUTDOWN_TOPIC), 0);
   assert.equal(
-    entries.some(entry => entry.event === "runtime.start-failed"),
-    true
+    entries.some((entry) => entry.event === "runtime.start-failed"),
+    true,
   );
   assert.throws(
     () =>
@@ -556,7 +557,7 @@ test("a failed singleton startup is cleaned and cannot be mistaken for readiness
         createWindowManager: factory,
         targetGlobal,
       }),
-    /FENNEVIA_RUNTIME_PREVIOUSLY_FAILED/u
+    /FENNEVIA_RUNTIME_PREVIOUSLY_FAILED/u,
   );
 });
 
@@ -575,7 +576,7 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
     projectCommit: "abcdef0",
   });
   const error = new Error(
-    "secret title https://private.invalid/page?q=secret-search"
+    "secret title https://private.invalid/page?q=secret-search",
   );
   error.stack = [
     "Error: secret title https://private.invalid/page?q=secret-search",
@@ -609,9 +610,7 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
 
   assert.equal(lines.length, 1);
   assert.match(lines[0], /^\[Fennevia runtime\] /u);
-  const record = JSON.parse(
-    lines[0].replace(/^\[Fennevia runtime\] /u, "")
-  );
+  const record = JSON.parse(lines[0].replace(/^\[Fennevia runtime\] /u, ""));
   assert.equal(record.schemaVersion, 1);
   assert.equal(record.windowKind, "private");
   assert.equal(record.errorName, "Error");
@@ -623,16 +622,16 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
   assert.equal(record.shellState, "failed");
   assert.equal(record.stack.length, 11);
   assert.ok(record.stack.includes("Error: <REDACTED_MESSAGE>"));
-  assert.ok(record.stack.some(line => line.includes("<REMOTE_URL>")));
-  assert.ok(record.stack.some(line => line.includes("<LOCAL_PATH>")));
-  assert.ok(record.stack.some(line => line.includes("<LOCAL_FILE>")));
-  assert.ok(record.stack.some(line => line.includes("<OPAQUE_URL>")));
-  assert.ok(record.stack.some(line => line.includes("<OTHER_URI>")));
-  assert.ok(record.stack.some(line => line.includes("<REDACTED_SUFFIX>")));
+  assert.ok(record.stack.some((line) => line.includes("<REMOTE_URL>")));
+  assert.ok(record.stack.some((line) => line.includes("<LOCAL_PATH>")));
+  assert.ok(record.stack.some((line) => line.includes("<LOCAL_FILE>")));
+  assert.ok(record.stack.some((line) => line.includes("<OPAQUE_URL>")));
+  assert.ok(record.stack.some((line) => line.includes("<OTHER_URI>")));
+  assert.ok(record.stack.some((line) => line.includes("<REDACTED_SUFFIX>")));
   assert.ok(
-    record.stack.some(line =>
-      line.includes("chrome://fennevia/content/runtime/Runtime.sys.mjs")
-    )
+    record.stack.some((line) =>
+      line.includes("chrome://fennevia/content/runtime/Runtime.sys.mjs"),
+    ),
   );
 
   for (const forbidden of [
@@ -662,13 +661,10 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
     error: firefoxError,
   });
   const firefoxRecord = JSON.parse(
-    lines[1].replace(/^\[Fennevia runtime\] /u, "")
+    lines[1].replace(/^\[Fennevia runtime\] /u, ""),
   );
   assert.equal(firefoxRecord.stack.length, 2);
-  assert.match(
-    firefoxRecord.stack[0],
-    /^beginInitialization@chrome:\/\//u
-  );
+  assert.match(firefoxRecord.stack[0], /^beginInitialization@chrome:\/\//u);
   assert.equal(firefoxRecord.stack[1].includes("private.invalid"), false);
 
   logger.info({
@@ -679,7 +675,7 @@ test("runtime logger allowlists fields and redacts browsing and local data", () 
     firefoxSymbol: "window.gBrowser.currentURI.spec?private",
   });
   const unsafePathRecord = JSON.parse(
-    lines[2].replace(/^\[Fennevia runtime\] /u, "")
+    lines[2].replace(/^\[Fennevia runtime\] /u, ""),
   );
   assert.equal(unsafePathRecord.domPath, undefined);
   assert.equal(unsafePathRecord.firefoxSymbol, undefined);

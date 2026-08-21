@@ -722,18 +722,29 @@ function Test-FenneviaInstallerProgramWritable {
     )
 
     $probePath = Join-Path $ProgramRoot (".fennevia-write-probe-" + [guid]::NewGuid().ToString("N"))
+    $stream = $null
+    $created = $false
     try {
         $stream = [IO.File]::Open($probePath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        $created = $true
         $stream.Dispose()
-        return $true
+        $stream = $null
+        Remove-Item -LiteralPath $probePath -Force -ErrorAction Stop
+        return -not (Test-Path -LiteralPath $probePath -ErrorAction Stop)
     }
     catch {
-        return $false
-    }
-    finally {
-        if (Test-Path -LiteralPath $probePath) {
-            Remove-Item -LiteralPath $probePath -Force -ErrorAction SilentlyContinue
+        if ($null -ne $stream) {
+            $stream.Dispose()
         }
+        if ($created -and (Test-Path -LiteralPath $probePath -PathType Leaf)) {
+            try {
+                Remove-Item -LiteralPath $probePath -Force -ErrorAction Stop
+            }
+            catch {
+                # The false result already prevents a non-elevated mutation attempt.
+            }
+        }
+        return $false
     }
 }
 

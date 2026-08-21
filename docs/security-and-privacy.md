@@ -673,8 +673,9 @@ Current state:
 
 ## 10. Production artifacts and debug policy
 
-The current installed profile inventory is the exact 12-file
-`expectedFiles` list in `package-manifest.json`.
+The current installed profile inventory is the closed, manifest-derived
+`expectedFiles` list in `package-manifest.json`; that machine-readable list is
+the source of truth rather than a duplicated prose count.
 
 Requirements:
 
@@ -704,6 +705,8 @@ Install, update, repair, disable, enable, and uninstall must:
 
 - require explicit Firefox program and profile targets;
 - resolve and validate canonical paths;
+- report a program directory writable only after an exact create-and-delete
+  probe succeeds without residue;
 - require mode-specific marker/registration/ownership evidence;
 - reject root, home, broad, profile-collection, mode-inappropriate,
   reparse-point, traversal, and ambiguous targets;
@@ -724,6 +727,9 @@ Install, update, repair, disable, enable, and uninstall must:
   enable, warn that only 153 and 154 are tested, and require enable to use
   ownership's exact source manifest;
 - remove only ownership-proven files/directories;
+- restrict GUI elevation continuation state to an exclusive, bounded,
+  owner-only non-reparse file directly under the OS temporary directory, and
+  surface cleanup failure without disclosing its path;
 - never silently choose a default or daily-use profile;
 - leave unrelated profile content untouched.
 

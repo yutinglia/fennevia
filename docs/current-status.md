@@ -1,7 +1,7 @@
 # Current Project Status
 
 > Snapshot: 2026-08-21. This status review is based on `main` at
-> `89238065233da4851a834e5f4b5712541349ee63` and the public
+> `63caf8de1dc70ed5f43636a492b92b35af75c3c0` and the public
 > `v0.11.0-beta.1` prerelease. Historical research records and milestone ADR
 > context remain unchanged.
 

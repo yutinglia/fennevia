@@ -1,6 +1,4 @@
-const MODULE_STATE_KEY = Symbol.for(
-  "fennevia.bootstrap-module.process-state"
-);
+const MODULE_STATE_KEY = Symbol.for("fennevia.bootstrap-module.process-state");
 
 if (typeof Services === "undefined" || !Services.appinfo) {
   throw new Error("FENNEVIA_BOOTSTRAP_SERVICES_UNAVAILABLE");
@@ -15,19 +13,19 @@ if (globalThis[MODULE_STATE_KEY]) {
 }
 
 const { PrivateBrowsingUtils } = ChromeUtils.importESModule(
-  "resource://gre/modules/PrivateBrowsingUtils.sys.mjs"
+  "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
 );
 const { createRuntimeLogger } = ChromeUtils.importESModule(
-  "chrome://fennevia/content/runtime/Logger.sys.mjs"
+  "chrome://fennevia/content/runtime/Logger.sys.mjs",
 );
 const { createWindowManager } = ChromeUtils.importESModule(
-  "chrome://fennevia/content/runtime/WindowManager.sys.mjs"
+  "chrome://fennevia/content/runtime/WindowManager.sys.mjs",
 );
 const { startProcessRuntime } = ChromeUtils.importESModule(
-  "chrome://fennevia/content/runtime/Runtime.sys.mjs"
+  "chrome://fennevia/content/runtime/Runtime.sys.mjs",
 );
 const { initializeWindowShell } = ChromeUtils.importESModule(
-  "chrome://fennevia/content/runtime/WindowShell.sys.mjs"
+  "chrome://fennevia/content/runtime/WindowShell.sys.mjs",
 );
 
 const logger = createRuntimeLogger({

@@ -166,7 +166,16 @@ export function createProcessRuntime({
         shutdownObserverRegistered = false;
       }
 
-      windowManager.stop();
+      try {
+        windowManager.stop();
+      } catch (error) {
+        logger.error({
+          event: "runtime.window-cleanup-failed",
+          phase,
+          code: "FENNEVIA_RUNTIME_WINDOW_CLEANUP_FAILED",
+          error,
+        });
+      }
       disposeStartupNativeHide(phase);
       state = "stopped";
       logger.info({

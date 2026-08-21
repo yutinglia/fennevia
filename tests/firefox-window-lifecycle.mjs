@@ -251,9 +251,13 @@ async function writeSessionRestoreState(statePath, preferences) {
     });
   } catch (error) {
     if (error?.code === "EEXIST") {
-      throw new Error("FENNEVIA_SESSION_RESTORE_STATE_STALE");
+      throw new Error("FENNEVIA_SESSION_RESTORE_STATE_STALE", {
+        cause: error,
+      });
     }
-    throw error;
+    throw new Error("FENNEVIA_SESSION_RESTORE_STATE_WRITE_FAILED", {
+      cause: error,
+    });
   }
 }
 
