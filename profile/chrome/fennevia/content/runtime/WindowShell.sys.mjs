@@ -2,7 +2,6 @@ import {
   annotateShellLifecycleError,
   createShellHealthState,
   createShellLifecycleError,
-  emergencyFallbackBinding,
   registerEmergencyFallback,
   runShellHealthCheck,
 } from "./HealthState.sys.mjs";
@@ -862,7 +861,7 @@ export function createShellHosts({
         );
       }
 
-      let cssRuleCount = 0;
+      let cssRuleCount;
       try {
         cssRuleCount = hosts.style.sheet?.cssRules?.length ?? 0;
       } catch {
@@ -1057,7 +1056,7 @@ const loadProductionFrontend = (target) => {
     },
   });
 
-  let removed = false;
+  let removed;
   let loadError;
   try {
     Services.scriptloader.loadSubScript(
@@ -1335,8 +1334,7 @@ const mountProductionShell = ({
           reportError(
             annotateShellLifecycleError(error, {
               code:
-                error?.fenneviaCode ??
-                "FENNEVIA_FIREFOX_LOCALE_RUNTIME_FAILED",
+                error?.fenneviaCode ?? "FENNEVIA_FIREFOX_LOCALE_RUNTIME_FAILED",
               phase: error?.fenneviaPhase ?? "firefox-locale-event",
             }),
           );
@@ -1347,8 +1345,7 @@ const mountProductionShell = ({
       localeBridge = undefined;
       reportError(
         annotateShellLifecycleError(error, {
-          code:
-            error?.fenneviaCode ?? "FENNEVIA_FIREFOX_LOCALE_UNAVAILABLE",
+          code: error?.fenneviaCode ?? "FENNEVIA_FIREFOX_LOCALE_UNAVAILABLE",
           phase: error?.fenneviaPhase ?? "firefox-locale-create",
         }),
       );
@@ -1680,7 +1677,7 @@ const checkProductionShell = async ({ mountPoints, windowKind }) => {
       "shell-frontend-health",
     );
   }
-  let cssRuleCount = 0;
+  let cssRuleCount;
   try {
     cssRuleCount = style.sheet?.cssRules?.length ?? 0;
   } catch {

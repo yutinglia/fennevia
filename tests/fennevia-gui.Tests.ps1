@@ -213,8 +213,46 @@ try {
         Remove-FenneviaGuiElevationState -Path $statePath
     }
 
-    $missing = Test-FenneviaGuiElevationState -Path (Join-Path $canonicalTestRoot "missing.json") -ExpectedPackageRoot $canonicalRelease
+    $missingStatePath = Join-Path ([IO.Path]::GetTempPath()) ("fennevia-setup-state-" + [guid]::NewGuid().ToString("N") + ".json")
+    $missing = Test-FenneviaGuiElevationState -Path $missingStatePath -ExpectedPackageRoot $canonicalRelease
     Assert-Equal -Actual $missing.Reason -Expected "missing-file" -Message "A missing elevation state should fail closed."
+
+    $outsideStatePath = Join-Path $canonicalTestRoot ("fennevia-setup-state-" + [guid]::NewGuid().ToString("N") + ".json")
+    [IO.File]::WriteAllText($outsideStatePath, "{}" + [Environment]::NewLine)
+    try {
+        $outside = Test-FenneviaGuiElevationState -Path $outsideStatePath -ExpectedPackageRoot $canonicalRelease
+        Assert-Equal -Actual $outside.Reason -Expected "invalid-path" -Message "Elevation state outside the direct OS temporary namespace must fail closed."
+        Assert-Throws -Message "The exported cleanup helper must reject paths outside its dedicated namespace." -Operation {
+            Remove-FenneviaGuiElevationState -Path $outsideStatePath
+        }
+        Assert-True -Condition (Test-Path -LiteralPath $outsideStatePath -PathType Leaf) -Message "Rejected cleanup paths must remain untouched."
+    }
+    finally {
+        [IO.File]::Delete($outsideStatePath)
+    }
+
+    $oversizedStatePath = New-FenneviaGuiElevationState -Session $session
+    try {
+        [IO.File]::WriteAllText($oversizedStatePath, ("x" * 65537))
+        $oversized = Test-FenneviaGuiElevationState -Path $oversizedStatePath -ExpectedPackageRoot $canonicalRelease
+        Assert-Equal -Actual $oversized.Reason -Expected "size" -Message "Oversized elevation state must be rejected before parsing."
+    }
+    finally {
+        Remove-FenneviaGuiElevationState -Path $oversizedStatePath
+    }
+
+    $lockedStatePath = New-FenneviaGuiElevationState -Session $session
+    $stateLock = [IO.File]::Open($lockedStatePath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+    try {
+        Assert-Throws -Message "Elevation state cleanup failures must not be silently suppressed." -Operation {
+            Remove-FenneviaGuiElevationState -Path $lockedStatePath
+        }
+        Assert-True -Condition (Test-Path -LiteralPath $lockedStatePath -PathType Leaf) -Message "A failed cleanup should leave an explicit file for the caller to handle."
+    }
+    finally {
+        $stateLock.Dispose()
+        Remove-FenneviaGuiElevationState -Path $lockedStatePath
+    }
 
     $script:InvokeCount = 0
     $script:LastRequest = $null

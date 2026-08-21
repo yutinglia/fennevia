@@ -10,6 +10,8 @@ Import-Module (Join-Path $PSScriptRoot "FenneviaConsole.psm1") -Force
 $script:GuiStateSchemaVersion = 1
 $script:GuiStateOwner = "fennevia-setup"
 $script:GuiStateTtlMinutes = 15
+$script:GuiStateFilePattern = "^fennevia-setup-state-[0-9a-f]{32}\.json$"
+$script:GuiStateMaximumBytes = 65536
 $script:GuiMutatingActions = @("Install", "Update", "Repair", "Disable", "Enable", "Uninstall")
 $script:GuiSupportWarningActions = @("Install", "Update", "Repair", "Enable")
 $script:FenneviaGuiUi = $null
@@ -30,6 +32,33 @@ function ConvertTo-FenneviaGuiCanonicalPath {
         return $pathRoot
     }
     return $fullPath.TrimEnd("\", "/")
+}
+
+function ConvertTo-FenneviaGuiElevationStatePath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $Path
+    )
+
+    try {
+        $canonical = ConvertTo-FenneviaGuiCanonicalPath -Path $Path
+        $parent = [IO.Path]::GetDirectoryName($canonical)
+        if ([string]::IsNullOrWhiteSpace($parent)) {
+            throw "invalid-parent"
+        }
+        $canonicalParent = ConvertTo-FenneviaGuiCanonicalPath -Path $parent
+        $temporaryRoot = ConvertTo-FenneviaGuiCanonicalPath -Path ([IO.Path]::GetTempPath())
+    }
+    catch {
+        throw "Fennevia Setup elevation state paths must use the dedicated temporary-file namespace."
+    }
+
+    $fileName = [IO.Path]::GetFileName($canonical)
+    if (-not [string]::Equals($canonicalParent, $temporaryRoot, [StringComparison]::OrdinalIgnoreCase) -or $fileName -cnotmatch $script:GuiStateFilePattern) {
+        throw "Fennevia Setup elevation state paths must use the dedicated temporary-file namespace."
+    }
+    return $canonical
 }
 
 function ConvertTo-FenneviaGuiSafeErrorMessage {
@@ -379,23 +408,24 @@ function Protect-FenneviaGuiElevationStateAcl {
         [string] $Path
     )
 
-    $acl = Get-Acl -LiteralPath $Path
+    $canonical = ConvertTo-FenneviaGuiElevationStatePath -Path $Path
+    $acl = Get-Acl -LiteralPath $canonical
     $acl.SetAccessRuleProtection($true, $false)
     foreach ($rule in @($acl.Access)) {
-        try {
-            [void] $acl.RemoveAccessRule($rule)
-        }
-        catch {
-        }
+        $acl.RemoveAccessRuleSpecific($rule)
     }
     $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+    $acl.SetOwner($sid)
     $access = New-Object Security.AccessControl.FileSystemAccessRule(
         $sid,
         "FullControl",
         "Allow"
     )
     $acl.SetAccessRule($access)
-    Set-Acl -LiteralPath $Path -AclObject $acl
+    Set-Acl -LiteralPath $canonical -AclObject $acl
+    if (-not (Test-FenneviaGuiElevationStateAcl -Path $canonical)) {
+        throw "Fennevia Setup could not protect the administrator continuation state."
+    }
 }
 
 function Test-FenneviaGuiElevationStateAcl {
@@ -405,15 +435,26 @@ function Test-FenneviaGuiElevationStateAcl {
         [string] $Path
     )
 
-    $acl = Get-Acl -LiteralPath $Path
+    try {
+        $canonical = ConvertTo-FenneviaGuiElevationStatePath -Path $Path
+        $acl = Get-Acl -LiteralPath $canonical
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $currentSid = $identity.User.Value
+        $ownerSid = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+    }
+    catch {
+        return $false
+    }
     if (-not $acl.AreAccessRulesProtected) {
         return $false
     }
-    $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    if ($ownerSid -cne $currentSid) {
+        return $false
+    }
     $rules = @(
         $acl.GetAccessRules($true, $false, [Security.Principal.SecurityIdentifier])
     )
-    if ($rules.Count -eq 0) {
+    if ($rules.Count -ne 1) {
         return $false
     }
     foreach ($rule in $rules) {
@@ -421,6 +462,13 @@ function Test-FenneviaGuiElevationStateAcl {
             return $false
         }
         if ([string] $rule.IdentityReference.Value -cne $currentSid) {
+            return $false
+        }
+        if ($rule.IsInherited) {
+            return $false
+        }
+        $requiredRights = [Security.AccessControl.FileSystemRights]::FullControl
+        if (($rule.FileSystemRights -band $requiredRights) -ne $requiredRights) {
             return $false
         }
     }
@@ -451,12 +499,46 @@ function New-FenneviaGuiElevationState {
         planConfirmed = $true
         createdUtcTicks = [long] [datetime]::UtcNow.Ticks
     }
-    $path = Join-Path ([IO.Path]::GetTempPath()) ("fennevia-setup-state-" + [guid]::NewGuid().ToString("N") + ".json")
+    $path = ConvertTo-FenneviaGuiElevationStatePath -Path (Join-Path ([IO.Path]::GetTempPath()) ("fennevia-setup-state-" + [guid]::NewGuid().ToString("N") + ".json"))
     $encoding = New-Object Text.UTF8Encoding $false
-    [IO.File]::WriteAllText($path, (($payload | ConvertTo-Json -Compress) + [Environment]::NewLine), $encoding)
-    Protect-FenneviaGuiElevationStateAcl -Path $path
-    $Session.ElevationStatePath = $path
-    return $path
+    $bytes = $encoding.GetBytes((($payload | ConvertTo-Json -Compress) + [Environment]::NewLine))
+    if ($bytes.Length -gt $script:GuiStateMaximumBytes) {
+        throw "Fennevia Setup administrator continuation state is too large."
+    }
+
+    $stream = $null
+    $created = $false
+    try {
+        $stream = New-Object IO.FileStream(
+            $path,
+            [IO.FileMode]::CreateNew,
+            [IO.FileAccess]::Write,
+            [IO.FileShare]::None
+        )
+        $created = $true
+        $stream.Write($bytes, 0, $bytes.Length)
+        $stream.Flush()
+        $stream.Dispose()
+        $stream = $null
+        Protect-FenneviaGuiElevationStateAcl -Path $path
+        $Session.ElevationStatePath = $path
+        return $path
+    }
+    catch {
+        $creationError = $_
+        if ($null -ne $stream) {
+            $stream.Dispose()
+        }
+        if ($created) {
+            try {
+                Remove-FenneviaGuiElevationState -Path $path
+            }
+            catch {
+                throw "Fennevia Setup could not securely clean up an administrator continuation state."
+            }
+        }
+        throw $creationError
+    }
 }
 
 function Remove-FenneviaGuiElevationState {
@@ -468,9 +550,15 @@ function Remove-FenneviaGuiElevationState {
     if ([string]::IsNullOrWhiteSpace($Path)) {
         return
     }
-    if (Test-Path -LiteralPath $Path -PathType Leaf) {
-        Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    $canonical = ConvertTo-FenneviaGuiElevationStatePath -Path $Path
+    if (-not (Test-Path -LiteralPath $canonical -PathType Leaf -ErrorAction Stop)) {
+        return
     }
+    $item = Get-Item -LiteralPath $canonical -Force -ErrorAction Stop
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Fennevia Setup refused to remove an administrator continuation reparse point."
+    }
+    Remove-Item -LiteralPath $canonical -Force -ErrorAction Stop
 }
 
 function Test-FenneviaGuiElevationState {
@@ -492,15 +580,36 @@ function Test-FenneviaGuiElevationState {
         }
     }
 
-    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    if ([string]::IsNullOrWhiteSpace($Path)) {
         return & $invalid "missing-file"
     }
-    if (-not (Test-FenneviaGuiElevationStateAcl -Path $Path)) {
+    try {
+        $canonical = ConvertTo-FenneviaGuiElevationStatePath -Path $Path
+    }
+    catch {
+        return & $invalid "invalid-path"
+    }
+    try {
+        if (-not (Test-Path -LiteralPath $canonical -PathType Leaf -ErrorAction Stop)) {
+            return & $invalid "missing-file"
+        }
+        $item = Get-Item -LiteralPath $canonical -Force -ErrorAction Stop
+    }
+    catch {
+        return & $invalid "missing-file"
+    }
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        return & $invalid "reparse"
+    }
+    if ([long] $item.Length -gt $script:GuiStateMaximumBytes) {
+        return & $invalid "size"
+    }
+    if (-not (Test-FenneviaGuiElevationStateAcl -Path $canonical)) {
         return & $invalid "acl"
     }
 
     try {
-        $raw = [IO.File]::ReadAllText($Path)
+        $raw = [IO.File]::ReadAllText($canonical)
         $state = $raw | ConvertFrom-Json
     }
     catch {
@@ -579,38 +688,46 @@ function Complete-FenneviaGuiResume {
     )
 
     $canonical = Assert-FenneviaGuiReleasePackage -PackageRoot $PackageRoot
-    $check = Test-FenneviaGuiElevationState -Path $ResumeStatePath -ExpectedPackageRoot $canonical
-    if (-not [bool] $check.Valid) {
-        throw "Fennevia Setup could not resume the administrator session."
-    }
-
-    $session = New-FenneviaGuiSession -PackageRoot $canonical
-    $session.Action = [string] $check.State.action
-    $session.FirefoxPath = [string] $check.State.firefoxPath
-    $session.ProfilePath = [string] $check.State.profilePath
-    $session.SupportWarningAcknowledged = [bool] $check.State.supportWarningAcknowledged
-    $session.PlanConfirmed = $true
-
     try {
-        $plan = Invoke-FenneviaGuiPreview -Session $session -Hooks $Hooks
-        if ([string] $plan.PlanSha256 -cne [string] $check.State.expectedPlanSha256) {
-            throw "The package or selected target state changed after preview; review a new dry-run plan."
-        }
-        $null = Invoke-FenneviaGuiStatusQuery -Session $session -Hooks $Hooks
-        $request = New-FenneviaGuiPackageRequest -Session $session
-        if (-not [bool] $request.Ready) {
-            throw "Fennevia Setup could not apply the confirmed plan ($($request.Reason))."
-        }
-        $null = Invoke-FenneviaGuiApply -Session $session -Hooks $Hooks
+        $canonicalStatePath = ConvertTo-FenneviaGuiElevationStatePath -Path $ResumeStatePath
     }
     catch {
-        $session.ErrorMessage = ConvertTo-FenneviaGuiSafeErrorMessage -InputObject $_
-        throw
+        throw "Fennevia Setup could not resume the administrator session."
+    }
+    try {
+        $check = Test-FenneviaGuiElevationState -Path $canonicalStatePath -ExpectedPackageRoot $canonical
+        if (-not [bool] $check.Valid) {
+            throw "Fennevia Setup could not resume the administrator session."
+        }
+
+        $session = New-FenneviaGuiSession -PackageRoot $canonical
+        $session.Action = [string] $check.State.action
+        $session.FirefoxPath = [string] $check.State.firefoxPath
+        $session.ProfilePath = [string] $check.State.profilePath
+        $session.SupportWarningAcknowledged = [bool] $check.State.supportWarningAcknowledged
+        $session.PlanConfirmed = $true
+
+        try {
+            $plan = Invoke-FenneviaGuiPreview -Session $session -Hooks $Hooks
+            if ([string] $plan.PlanSha256 -cne [string] $check.State.expectedPlanSha256) {
+                throw "The package or selected target state changed after preview; review a new dry-run plan."
+            }
+            $null = Invoke-FenneviaGuiStatusQuery -Session $session -Hooks $Hooks
+            $request = New-FenneviaGuiPackageRequest -Session $session
+            if (-not [bool] $request.Ready) {
+                throw "Fennevia Setup could not apply the confirmed plan ($($request.Reason))."
+            }
+            $null = Invoke-FenneviaGuiApply -Session $session -Hooks $Hooks
+        }
+        catch {
+            $session.ErrorMessage = ConvertTo-FenneviaGuiSafeErrorMessage -InputObject $_
+            throw
+        }
+        return $session
     }
     finally {
-        Remove-FenneviaGuiElevationState -Path $ResumeStatePath
+        Remove-FenneviaGuiElevationState -Path $canonicalStatePath
     }
-    return $session
 }
 
 function Start-FenneviaGuiElevatedHost {

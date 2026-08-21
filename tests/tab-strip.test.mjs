@@ -241,6 +241,12 @@ test("the component uses semantic sibling controls and property-safe rendering o
     source,
     /focusTab\(resolveRovingTabId\(currentTabs\.tabs, tabId\)\)\.then\(\s*releaseSurfaceFocus/u,
   );
+  assert.match(
+    tabSource,
+    /const reportAsyncError = \(work: Promise<unknown>\).*work\.catch\(props\.onFatalError\)/su,
+  );
+  assert.doesNotMatch(tabSource, /void (?:focusTab|revealOpenedTabs)\(/u);
+  assert.match(frameSource, /tick\(\)[\s\S]*\.catch\(props\.onFatalError\)/u);
   assert.match(source, /focusReleaseTimer !== timer/u);
   assert.match(source, /releaseSurfaceFocus\(\);\s*\}, 0\)/u);
   assert.match(tabSource, /onDestroy\(\(\) => \{\s*cancelDelayedFocus\(\)/u);

@@ -43,7 +43,7 @@ class RecordingEventTarget {
 
   removeEventListener(type, callback) {
     const index = this.listeners.findIndex(
-      listener => listener.type === type && listener.callback === callback
+      (listener) => listener.type === type && listener.callback === callback,
     );
     if (index !== -1) {
       this.listeners.splice(index, 1);
@@ -52,7 +52,7 @@ class RecordingEventTarget {
 
   dispatch(event) {
     for (const listener of this.listeners
-      .filter(candidate => candidate.type === event.type)
+      .filter((candidate) => candidate.type === event.type)
       .slice()) {
       listener.callback(event);
     }
@@ -75,12 +75,12 @@ const assertExactMarkers = (root, state, expectedMarkers) => {
       expectedMarkers.includes(marker),
       `${marker} should ${
         expectedMarkers.includes(marker) ? "be present" : "be absent"
-      } in ${state}`
+      } in ${state}`,
     );
   }
 };
 
-const createEmergencyEvent = overrides => ({
+const createEmergencyEvent = (overrides) => ({
   type: "keydown",
   code: "F12",
   key: "F12",
@@ -125,7 +125,9 @@ test("health states use validated cumulative root markers and clear every marker
   assert.equal(state.dispose(), true);
   assert.equal(state.dispose(), false);
   assert.deepEqual(state.snapshot(), { active: false, state: "disposed" });
-  assert.ok(allHealthAttributes.every(attribute => !root.hasAttribute(attribute)));
+  assert.ok(
+    allHealthAttributes.every((attribute) => !root.hasAttribute(attribute)),
+  );
 });
 
 test("an illegal transition fails open and removes the active gate", () => {
@@ -134,13 +136,13 @@ test("an illegal transition fails open and removes the active gate", () => {
 
   assert.throws(
     () => state.transition("healthy"),
-    /FENNEVIA_SHELL_STATE_TRANSITION_INVALID/u
+    /FENNEVIA_SHELL_STATE_TRANSITION_INVALID/u,
   );
   assert.deepEqual(state.snapshot(), { active: false, state: "failed" });
   assertExactMarkers(root, "failed", [shellHealthAttributes.failed]);
   assert.throws(
     () => state.transition("mounted"),
-    /FENNEVIA_SHELL_STATE_TRANSITION_INVALID/u
+    /FENNEVIA_SHELL_STATE_TRANSITION_INVALID/u,
   );
 });
 
@@ -151,9 +153,11 @@ test("stale project state is rejected and cleared without adopting it", () => {
 
   assert.throws(
     () => createShellHealthState({ rootElement: root }),
-    /FENNEVIA_SHELL_STATE_ATTRIBUTE_COLLISION/u
+    /FENNEVIA_SHELL_STATE_ATTRIBUTE_COLLISION/u,
   );
-  assert.ok(allHealthAttributes.every(attribute => !root.hasAttribute(attribute)));
+  assert.ok(
+    allHealthAttributes.every((attribute) => !root.hasAttribute(attribute)),
+  );
 });
 
 test("the emergency binding is exact, privileged, synchronous, and removable", () => {
@@ -179,11 +183,11 @@ test("the emergency binding is exact, privileged, synchronous, and removable", (
   assert.equal(isEmergencyFallbackEvent(createEmergencyEvent()), true);
   assert.equal(
     isEmergencyFallbackEvent(createEmergencyEvent({ shiftKey: false })),
-    false
+    false,
   );
   assert.equal(
     isEmergencyFallbackEvent(createEmergencyEvent({ metaKey: true })),
-    false
+    false,
   );
 
   eventTarget.dispatch(createEmergencyEvent({ shiftKey: false }));
@@ -198,7 +202,7 @@ test("the emergency binding is exact, privileged, synchronous, and removable", (
       stopImmediatePropagation() {
         stopped = true;
       },
-    })
+    }),
   );
   assert.equal(fallbackCount, 1);
   assert.equal(errorCount, 0);
@@ -252,7 +256,10 @@ test("health checks require literal success and clear timeout and abort resource
   });
 
   assert.equal(result, true);
-  assert.deepEqual(scheduled.map(entry => entry.timeoutMs), [50]);
+  assert.deepEqual(
+    scheduled.map((entry) => entry.timeoutMs),
+    [50],
+  );
   assert.deepEqual(cleared, ["timer-1"]);
   await assert.rejects(
     runShellHealthCheck({
@@ -260,7 +267,7 @@ test("health checks require literal success and clear timeout and abort resource
       signal: new AbortController().signal,
       timeoutMs: 50,
     }),
-    /FENNEVIA_SHELL_HEALTH_CHECK_FAILED/u
+    /FENNEVIA_SHELL_HEALTH_CHECK_FAILED/u,
   );
   await assert.rejects(
     runShellHealthCheck({
@@ -268,7 +275,7 @@ test("health checks require literal success and clear timeout and abort resource
       signal: new AbortController().signal,
       timeoutMs: 50,
     }),
-    /FENNEVIA_SHELL_HEALTH_RESULT_INVALID/u
+    /FENNEVIA_SHELL_HEALTH_RESULT_INVALID/u,
   );
 });
 
@@ -279,7 +286,7 @@ test("health checks fail deterministically on timeout and disposal abort", async
       signal: new AbortController().signal,
       timeoutMs: 5,
     }),
-    /FENNEVIA_SHELL_HEALTH_TIMEOUT/u
+    /FENNEVIA_SHELL_HEALTH_TIMEOUT/u,
   );
 
   const abortController = new AbortController();

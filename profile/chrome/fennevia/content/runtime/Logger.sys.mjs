@@ -4,7 +4,7 @@ const STABLE_TOKEN_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{0,95}$/u;
 const ERROR_CODE_PATTERN = /^FENNEVIA_[A-Z0-9_]{1,95}$/u;
 const OPAQUE_ID_PATTERN = /^window-[a-z0-9-]{1,64}$/u;
 const PROJECT_URI_PATTERN =
-  /^chrome:\/\/fennevia\/[A-Za-z0-9._~!$&'()*+,;=:@\/-]{1,240}$/u;
+  /^chrome:\/\/fennevia\/[A-Za-z0-9._~!$&'()*+,;=:@/-]{1,240}$/u;
 const PROJECT_COMMIT_PATTERN = /^(?:[0-9a-f]{7,40}|unknown)$/u;
 const APP_METADATA_PATTERN = /^[A-Za-z0-9._+-]{1,64}$/u;
 const DOM_PATH_PATTERN = /^[A-Za-z0-9#._>:-]{1,192}$/u;
@@ -15,19 +15,19 @@ const normalizeStableToken = (value, fallback) => {
   return STABLE_TOKEN_PATTERN.test(candidate) ? candidate : fallback;
 };
 
-const normalizeErrorCode = value => {
+const normalizeErrorCode = (value) => {
   const candidate = typeof value === "string" ? value : "";
   return ERROR_CODE_PATTERN.test(candidate)
     ? candidate
     : "FENNEVIA_RUNTIME_INVALID_CODE";
 };
 
-const safeErrorName = error => {
+const safeErrorName = (error) => {
   const name = typeof error?.name === "string" ? error.name : "Error";
   return STABLE_TOKEN_PATTERN.test(name) ? name : "UnsafeErrorName";
 };
 
-const redactStackLine = line =>
+const redactStackLine = (line) =>
   String(line)
     .replace(/[\u0000-\u001f\u007f]/gu, "")
     .replace(/\b(?:https?|wss?|ftp):\/\/.*$/giu, "<REMOTE_URL>")
@@ -35,26 +35,23 @@ const redactStackLine = line =>
     .replace(/\b(?:data|blob):.*$/giu, "<OPAQUE_URL>")
     .replace(/\\\\.*$/gu, "<UNC_PATH>")
     .replace(/\b[A-Za-z]:[\\/].*$/gu, "<LOCAL_PATH>")
-    .replace(
-      /(^|[\s(@])\/(?!\/)[^\s)>\]]+(?=[)>\]]?\s*$)/gu,
-      "$1<LOCAL_PATH>"
-    )
+    .replace(/(^|[\s(@])\/(?!\/)[^\s)>\]]+(?=[)>\]]?\s*$)/gu, "$1<LOCAL_PATH>")
     .replace(
       /\b((?:chrome|resource):\/\/[^\s?#)>\]]+)[?#][^\s)>\]]*/giu,
-      "$1<REDACTED_SUFFIX>"
+      "$1<REDACTED_SUFFIX>",
     )
     .replace(
       /(^|[\s(@])(?!(?:chrome|resource):)[A-Za-z][A-Za-z0-9+.-]*:.*$/giu,
-      "$1<OTHER_URI>"
+      "$1<OTHER_URI>",
     )
     .slice(0, 1000);
 
-const isStackFrame = line =>
+const isStackFrame = (line) =>
   /(?:^\s*at\s+.*(?:\(|\s)|@)(?:(?:https?|file|chrome|resource|data|blob):|[A-Za-z]:[\\/]|\\\\|\/(?:Users|home|tmp|var|opt|private|Applications)\/)/iu.test(
-    String(line)
+    String(line),
   );
 
-const safeStack = error => {
+const safeStack = (error) => {
   const rawStack = typeof error?.stack === "string" ? error.stack : "";
   if (!rawStack) {
     return ["<NO_STACK_AVAILABLE>"];
@@ -69,12 +66,12 @@ const safeStack = error => {
   });
 };
 
-const normalizeWindowKind = value =>
+const normalizeWindowKind = (value) =>
   value === "normal" || value === "private" || value === "unsupported"
     ? value
     : undefined;
 
-const normalizeShellState = value =>
+const normalizeShellState = (value) =>
   value === "created" ||
   value === "mounted" ||
   value === "healthy" ||

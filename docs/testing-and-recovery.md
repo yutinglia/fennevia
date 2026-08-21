@@ -13,8 +13,9 @@ review, and documentation work uses the Windows CI job in
 unit tests with 80% line and function coverage floors on loaded `src/app` and
 `src/firefox` modules, fixed-list static PowerShell suites, dependency audit,
 deterministic build, committed generated artifacts, and the production-artifact
-scan. Locally, `npm run verify` is the CI-equivalent command. Do not add tests
-whose only purpose is to satisfy the coverage floor.
+scan. Locally, `npm run verify` exercises the shared gate; on Windows, repeat
+the fixed-list suite under Windows PowerShell 5.1 to match the final CI row.
+Do not add tests whose only purpose is to satisfy the coverage floor.
 
 The matrices in sections 4–7 and 12, plus the real Firefox harnesses, are the
 **release mass-test contract**. They prove a tagged package. They are not a
@@ -125,6 +126,8 @@ npm ci --ignore-scripts --no-fund
 npm run dependencies:audit
 npm run test:powershell
 npm run verify
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\tests\run-static-powershell-tests.ps1
 ```
 
 `npm run verify` covers:
@@ -153,7 +156,7 @@ pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -InventoryPath .\package-manifest.json
 ```
 
-The current profile inventory contains exactly the 12 paths in
+The current profile inventory is the closed `expectedFiles` list in
 `package-manifest.json`. The gate rejects unplanned files/chunks, endpoints,
 runtime networking APIs, HMR/dev-server markers, bare or dynamic imports, source
 maps, development source, executable binaries, symlinks/junctions, and unsafe
@@ -172,7 +175,11 @@ without restart) is a real-Firefox release check and is `not run`.
 Release packaging has additional fixed-list coverage in
 `fennevia-gui.Tests.ps1`, `release-packaging.Tests.ps1`, and
 `release-installer.Tests.ps1`. They run under PowerShell 7 and Windows
-PowerShell 5.1. They require two byte-identical ZIPs, a compiled
+PowerShell 5.1. GUI coverage includes the dedicated elevation-state namespace,
+exclusive creation, bounded input, owner-only ACL, explicit cleanup failure,
+and plan-digest revalidation. Installer discovery also requires a successful
+writability probe to leave no temporary residue. Release checks require two
+byte-identical ZIPs, a compiled
 `FenneviaSetup.exe`, module-scoped button/list/checkbox event-flow,
 localized system-font, DPI/responsive-layout, and confirmation/elevation-state
 coverage without `ShowDialog`, fixed/sorted entries, a strict extracted tree

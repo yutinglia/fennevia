@@ -37,7 +37,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/Bootstrap.sys.mjs",
-      "sha256": "6d58d7d26fd060b2fe464be203dd1c3afd2d222a9e5172fd90dda8db6bfc4320"
+      "sha256": "51c83891b6f01cd00ceafdfa53ca7f5a1a25465c442a31a30483394e05528192"
     },
     {
       "scope": "profile",
@@ -47,22 +47,22 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/HealthState.sys.mjs",
-      "sha256": "d117019a8b457b41af6e771339f0dcc6aad1459f2b5e2b47564e399a25e2f14a"
+      "sha256": "448008aefac5e835aa59b3b0bd68b0c9ac479f085779179170a12dda8f17b647"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/Logger.sys.mjs",
-      "sha256": "292791f26fe0d1c06c9ba384a99db91d2f3e8c186a5f337b0f0c3ab98f8bbf31"
+      "sha256": "1a488580150c6ca691116b01277d70cb252230f749b21264b265c60c7db4da62"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/NativeUi.sys.mjs",
-      "sha256": "c064fb3f7902d4fca30366a8b5e392c7d9553afc252c3246aadf06ecfaa61d50"
+      "sha256": "74d350a9a12abba7694c613121d0e278e5a5de3d584230b69b425d1df63e9b89"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/Runtime.sys.mjs",
-      "sha256": "dc6045487681e0afc8ecc5da7942abcf663273a969ebbe59d2acfaefa466ccc8"
+      "sha256": "087bec8e665494a4ee3731fc77744274bbde3e15673b43752b8dc3ea063654c4"
     },
     {
       "scope": "profile",
@@ -77,17 +77,17 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/WindowManager.sys.mjs",
-      "sha256": "2f510629430ce7c1f893343adb0aa9d7070b305c5749bfc9c75e5b2993c3d8b7"
+      "sha256": "34c50a9fce44f033387f6891e63124f7bf436006aa75889d413d11fb4fb3b8f9"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
-      "sha256": "6f2cafe4f51862e7c165d1cbb43402bb0e7e627f641e30b1beb048ff453e4543"
+      "sha256": "82e905c6c5288b189723191f351163da86917a73aaca87e168b24bf1277d54e5"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/shell/ShellApp.js",
-      "sha256": "2d57fe4950b60c62cfc40a37f0f6ae54276c98e648ab4de6c842dc26d207bf21"
+      "sha256": "6f32c0a3eaecce7d04c28f554f51bd9468fe3a73ba7c2c8411a284d135cc02c0"
     },
     {
       "scope": "profile",

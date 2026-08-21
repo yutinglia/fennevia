@@ -49,9 +49,7 @@ const defineErrorContext = (error, { code, phase, capability }) => {
   for (const [property, value] of [
     ["fenneviaCode", code],
     ["fenneviaPhase", phase],
-    ...(capability
-      ? [["fenneviaCapability", capability]]
-      : []),
+    ...(capability ? [["fenneviaCapability", capability]] : []),
   ]) {
     if (!Object.hasOwn(error, property)) {
       Object.defineProperty(error, property, {
@@ -66,7 +64,7 @@ const defineErrorContext = (error, { code, phase, capability }) => {
 export function createShellLifecycleError(
   code,
   phase,
-  { cause, capability } = {}
+  { cause, capability } = {},
 ) {
   const error = new Error(code);
   error.name = "FenneviaShellLifecycleError";
@@ -81,14 +79,15 @@ export function createShellLifecycleError(
 
 export function annotateShellLifecycleError(
   value,
-  { code, phase, capability }
+  { code, phase, capability },
 ) {
-  const error = value instanceof Error
-    ? value
-    : createShellLifecycleError(code, phase, {
-        cause: value,
-        capability,
-      });
+  const error =
+    value instanceof Error
+      ? value
+      : createShellLifecycleError(code, phase, {
+          cause: value,
+          capability,
+        });
   try {
     return defineErrorContext(error, { code, phase, capability });
   } catch {
@@ -99,7 +98,7 @@ export function annotateShellLifecycleError(
   }
 }
 
-const validateRootElement = rootElement => {
+const validateRootElement = (rootElement) => {
   if (
     typeof rootElement?.hasAttribute !== "function" ||
     typeof rootElement?.setAttribute !== "function" ||
@@ -107,12 +106,12 @@ const validateRootElement = rootElement => {
   ) {
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_STATE_ROOT_INVALID",
-      "shell-state-create"
+      "shell-state-create",
     );
   }
 };
 
-const removeStateAttributes = rootElement => {
+const removeStateAttributes = (rootElement) => {
   let firstError;
   for (const attribute of ALL_STATE_ATTRIBUTES) {
     try {
@@ -137,8 +136,8 @@ const applyStateAttributes = (rootElement, state) => {
 export function createShellHealthState({ rootElement }) {
   validateRootElement(rootElement);
 
-  const collision = ALL_STATE_ATTRIBUTES.find(attribute =>
-    rootElement.hasAttribute(attribute)
+  const collision = ALL_STATE_ATTRIBUTES.find((attribute) =>
+    rootElement.hasAttribute(attribute),
   );
   if (collision) {
     try {
@@ -153,7 +152,7 @@ export function createShellHealthState({ rootElement }) {
     }
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_STATE_ATTRIBUTE_COLLISION",
-      "shell-state-create"
+      "shell-state-create",
     );
   }
 
@@ -180,7 +179,7 @@ export function createShellHealthState({ rootElement }) {
       if (state === "disposed") {
         throw createShellLifecycleError(
           "FENNEVIA_SHELL_STATE_DISPOSED",
-          "shell-state-transition"
+          "shell-state-transition",
         );
       }
       if (nextState === "failed") {
@@ -189,7 +188,7 @@ export function createShellHealthState({ rootElement }) {
       if (NEXT_STATE[state] !== nextState) {
         const error = createShellLifecycleError(
           "FENNEVIA_SHELL_STATE_TRANSITION_INVALID",
-          "shell-state-transition"
+          "shell-state-transition",
         );
         try {
           controller.fail();
@@ -301,15 +300,13 @@ export function createShellHealthState({ rootElement }) {
 
 export function isEmergencyFallbackEvent(event) {
   const isF12 =
-    event?.code === "F12" ||
-    event?.key === "F12" ||
-    event?.keyCode === 0x7b;
+    event?.code === "F12" || event?.key === "F12" || event?.keyCode === 0x7b;
   return Boolean(
     isF12 &&
-      event.altKey === true &&
-      event.ctrlKey === true &&
-      event.shiftKey === true &&
-      event.metaKey !== true
+    event.altKey === true &&
+    event.ctrlKey === true &&
+    event.shiftKey === true &&
+    event.metaKey !== true,
   );
 }
 
@@ -324,19 +321,19 @@ export function registerEmergencyFallback({
   ) {
     throw createShellLifecycleError(
       "FENNEVIA_EMERGENCY_EVENT_TARGET_INVALID",
-      "shell-emergency-register"
+      "shell-emergency-register",
     );
   }
   if (typeof onFallback !== "function" || typeof onError !== "function") {
     throw createShellLifecycleError(
       "FENNEVIA_EMERGENCY_CALLBACK_INVALID",
-      "shell-emergency-register"
+      "shell-emergency-register",
     );
   }
 
   let registered = false;
   let invocationCount = 0;
-  const onKeyDown = event => {
+  const onKeyDown = (event) => {
     if (!isEmergencyFallbackEvent(event)) {
       return;
     }
@@ -353,7 +350,7 @@ export function registerEmergencyFallback({
       if (result && typeof result.then === "function") {
         throw createShellLifecycleError(
           "FENNEVIA_EMERGENCY_FALLBACK_ASYNC",
-          "shell-emergency-fallback"
+          "shell-emergency-fallback",
         );
       }
     } catch (error) {
@@ -361,7 +358,7 @@ export function registerEmergencyFallback({
         annotateShellLifecycleError(error, {
           code: "FENNEVIA_EMERGENCY_FALLBACK_FAILED",
           phase: "shell-emergency-fallback",
-        })
+        }),
       );
     }
   };
@@ -369,7 +366,7 @@ export function registerEmergencyFallback({
   eventTarget.addEventListener(
     "keydown",
     onKeyDown,
-    EMERGENCY_LISTENER_OPTIONS
+    EMERGENCY_LISTENER_OPTIONS,
   );
   registered = true;
 
@@ -382,7 +379,7 @@ export function registerEmergencyFallback({
       eventTarget.removeEventListener(
         "keydown",
         onKeyDown,
-        EMERGENCY_LISTENER_OPTIONS
+        EMERGENCY_LISTENER_OPTIONS,
       );
       return true;
     },
@@ -407,7 +404,7 @@ export async function runShellHealthCheck({
   if (typeof check !== "function") {
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_HEALTH_CHECK_INVALID",
-      "shell-health-check"
+      "shell-health-check",
     );
   }
   if (
@@ -417,7 +414,7 @@ export async function runShellHealthCheck({
   ) {
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_HEALTH_SIGNAL_INVALID",
-      "shell-health-check"
+      "shell-health-check",
     );
   }
   if (
@@ -429,13 +426,13 @@ export async function runShellHealthCheck({
   ) {
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_HEALTH_TIMEOUT_INVALID",
-      "shell-health-check"
+      "shell-health-check",
     );
   }
   if (signal.aborted) {
     throw createShellLifecycleError(
       "FENNEVIA_SHELL_HEALTH_ABORTED",
-      "shell-health-check"
+      "shell-health-check",
     );
   }
 
@@ -446,8 +443,8 @@ export async function runShellHealthCheck({
       reject(
         createShellLifecycleError(
           "FENNEVIA_SHELL_HEALTH_TIMEOUT",
-          "shell-health-timeout"
-        )
+          "shell-health-timeout",
+        ),
       );
     }, timeoutMs);
   });
@@ -456,8 +453,8 @@ export async function runShellHealthCheck({
       reject(
         createShellLifecycleError(
           "FENNEVIA_SHELL_HEALTH_ABORTED",
-          "shell-health-check"
-        )
+          "shell-health-check",
+        ),
       );
     };
     signal.addEventListener("abort", onAbort, { once: true });
@@ -471,7 +468,7 @@ export async function runShellHealthCheck({
         result === false
           ? "FENNEVIA_SHELL_HEALTH_CHECK_FAILED"
           : "FENNEVIA_SHELL_HEALTH_RESULT_INVALID",
-        "shell-health-check"
+        "shell-health-check",
       );
     }
     return true;

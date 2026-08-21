@@ -61,6 +61,10 @@
 
   let tabLabels = $derived(createTabStripLabels(props.localeId));
 
+  const reportAsyncError = (work: Promise<unknown>): void => {
+    void work.catch(props.onFatalError);
+  };
+
   $effect(() => {
     const initialTabs = props.tabs.snapshot();
     currentTabs = initialTabs;
@@ -73,7 +77,7 @@
       currentTabs = nextState;
       rovingTabId = resolveRovingTabId(nextState.tabs, rovingTabId);
       if (openedTabIds.length > 0) {
-        void revealOpenedTabs(openedTabIds);
+        reportAsyncError(revealOpenedTabs(openedTabIds));
       }
     });
   });
@@ -182,7 +186,7 @@
 
   const restoreFocusAfterClose = (tabId: string | null) => {
     cancelDelayedFocus();
-    void focusTab(tabId);
+    reportAsyncError(focusTab(tabId));
     const view = tabStripElement?.ownerDocument.defaultView;
     if (!view || !tabId) {
       return;
@@ -193,8 +197,10 @@
         return;
       }
       delayedFocusTimer = undefined;
-      void focusTab(resolveRovingTabId(currentTabs.tabs, tabId)).then(
-        releaseSurfaceFocus,
+      reportAsyncError(
+        focusTab(resolveRovingTabId(currentTabs.tabs, tabId)).then(
+          releaseSurfaceFocus,
+        ),
       );
     }, closeFocusRetryDelayMs);
     delayedFocusTimer = timer;
@@ -204,13 +210,13 @@
     cancelDelayedFocus();
     rovingTabId = tabId;
     props.tabs.select(tabId);
-    void focusTab(tabId);
+    reportAsyncError(focusTab(tabId));
   };
 
   const openTab = () => {
     cancelDelayedFocus();
     const openedTabId = props.tabs.open({ selected: true });
-    void focusTab(openedTabId);
+    reportAsyncError(focusTab(openedTabId));
   };
 
   const closeTab = (tabId: string) => {
@@ -229,7 +235,7 @@
     } else {
       props.tabs.pin(tab.id);
     }
-    void focusTab(tab.id);
+    reportAsyncError(focusTab(tab.id));
   };
 
   const handleTabKeydown = (event: KeyboardEvent, tabId: string) => {
@@ -257,7 +263,7 @@
         props.onFatalError(error);
         return;
       }
-      void focusTab(tabId);
+      reportAsyncError(focusTab(tabId));
       return;
     }
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
@@ -313,7 +319,7 @@
       props.onFatalError(error);
       return;
     }
-    void focusTab(tabId);
+    reportAsyncError(focusTab(tabId));
   };
 
   const handleTabDragStart = (event: DragEvent, tabId: string) => {

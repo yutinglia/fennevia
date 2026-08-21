@@ -164,6 +164,59 @@ test("runtime start registers the startup hide sheet before windows and stop unr
   assert.deepEqual(styleSheetService.snapshot(), []);
 });
 
+test("runtime stop fails open when window cleanup throws", () => {
+  const styleSheetService = createStyleSheetService();
+  const errors = [];
+  const runtime = createProcessRuntime({
+    services: {
+      obs: {
+        addObserver() {},
+        removeObserver() {},
+      },
+    },
+    windowManager: {
+      start() {},
+      stop() {
+        throw new Error("window cleanup failed");
+      },
+      snapshot() {
+        return { managedWindowCount: 0, initializingWindowCount: 0 };
+      },
+    },
+    logger: {
+      info() {},
+      error(record) {
+        errors.push(record);
+      },
+    },
+    registerStartupNativeHide: () =>
+      registerStartupNativeHide({
+        styleSheetService,
+        io: {
+          newURI(spec) {
+            return { spec };
+          },
+        },
+      }),
+  });
+
+  runtime.start();
+  const stopped = runtime.stop("test-stop");
+
+  assert.equal(stopped.state, "stopped");
+  assert.deepEqual(styleSheetService.snapshot(), []);
+  assert.deepEqual(
+    errors.map(({ event, phase, code }) => ({ event, phase, code })),
+    [
+      {
+        event: "runtime.window-cleanup-failed",
+        phase: "test-stop",
+        code: "FENNEVIA_RUNTIME_WINDOW_CLEANUP_FAILED",
+      },
+    ],
+  );
+});
+
 test("runtime start failure unregisters the startup hide sheet", () => {
   const styleSheetService = createStyleSheetService();
   const services = {

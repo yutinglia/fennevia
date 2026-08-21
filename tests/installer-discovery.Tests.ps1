@@ -115,6 +115,8 @@ try {
     Assert-Equal -Actual $status.Program -Expected "<FIREFOX_PROGRAM>" -Message "Status must keep the program path redacted."
     Assert-Equal -Actual $status.Profile -Expected "<FENNEVIA_PROFILE>" -Message "Status must keep the profile path redacted."
     Assert-True -Condition ([bool] $status.ProgramWritable) -Message "A test program directory should be writable."
+    $writeProbeResidue = @(Get-ChildItem -Force -LiteralPath $programRoot -Filter ".fennevia-write-probe-*")
+    Assert-Equal -Actual $writeProbeResidue.Count -Expected 0 -Message "A successful writability probe must also prove cleanup and leave no residue."
 
     $statusLines = ConvertTo-FenneviaInstallerStatusLines -Status $status
     $statusText = $statusLines -join [Environment]::NewLine

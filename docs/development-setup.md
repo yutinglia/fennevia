@@ -74,11 +74,14 @@ npm --version
 npm ci --ignore-scripts --no-fund
 npm run dependencies:audit
 npm run verify
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\tests\run-static-powershell-tests.ps1
 ```
 
-`npm run verify` is the CI-equivalent ordinary development gate. The complete
-real-Firefox matrices in `docs/testing-and-recovery.md` are a release check,
-not a per-change requirement during rapid development.
+`npm run verify` exercises the shared ordinary development gate. The additional
+Windows PowerShell 5.1 command matches the final Windows CI row. The complete
+real-Firefox matrices in `docs/testing-and-recovery.md` are a release check, not
+a per-change requirement during rapid development.
 
 Do not install a separate standalone Node.js. `.npmrc` enforces the engine,
 exact lockfile, and scripts-disabled policy. The accepted graph and build-host

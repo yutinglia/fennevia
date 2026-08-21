@@ -8,7 +8,7 @@ function createCleanupRegistry(onCleanupError) {
   let disposed = false;
   const callbacks = [];
 
-  const runCleanup = callback => {
+  const runCleanup = (callback) => {
     try {
       callback();
     } catch (error) {
@@ -59,17 +59,17 @@ function createCleanupRegistry(onCleanupError) {
   });
 }
 
-const isExactBrowserWindow = window => {
+const isExactBrowserWindow = (window) => {
   try {
     return Boolean(
-        window &&
-        !window.closed &&
-        window.isChromeWindow === true &&
-        window.top === window &&
-        window.document?.documentURI === BROWSER_DOCUMENT_URI &&
-        window.document?.documentElement?.getAttribute("windowtype") ===
-          BROWSER_WINDOW_TYPE &&
-        window.gBrowserInit?.delayedStartupFinished === true
+      window &&
+      !window.closed &&
+      window.isChromeWindow === true &&
+      window.top === window &&
+      window.document?.documentURI === BROWSER_DOCUMENT_URI &&
+      window.document?.documentElement?.getAttribute("windowtype") ===
+        BROWSER_WINDOW_TYPE &&
+      window.gBrowserInit?.delayedStartupFinished === true,
     );
   } catch {
     return false;
@@ -173,7 +173,7 @@ export function createWindowManager({
     disposeRecord(
       record,
       "window-initialize-failed",
-      "FENNEVIA_WINDOW_FAILED_OPEN"
+      "FENNEVIA_WINDOW_FAILED_OPEN",
     );
   };
 
@@ -183,7 +183,7 @@ export function createWindowManager({
     } else if (disposer !== undefined && disposer !== null) {
       failRecord(
         record,
-        new TypeError("FENNEVIA_WINDOW_INITIALIZER_RESULT_INVALID")
+        new TypeError("FENNEVIA_WINDOW_INITIALIZER_RESULT_INVALID"),
       );
       return;
     }
@@ -202,7 +202,7 @@ export function createWindowManager({
     });
   };
 
-  const beginInitialization = window => {
+  const beginInitialization = (window) => {
     if (state !== "starting" && state !== "started") {
       return;
     }
@@ -249,24 +249,18 @@ export function createWindowManager({
       abortController: new AbortController(),
       cleanup: null,
     };
-    record.cleanup = createCleanupRegistry(error =>
-      logCleanupError(record, error)
+    record.cleanup = createCleanupRegistry((error) =>
+      logCleanupError(record, error),
     );
     records.set(window, record);
 
     const onUnload = () => {
-      disposeRecord(
-        record,
-        "window-unload",
-        "FENNEVIA_WINDOW_UNLOADED"
-      );
+      disposeRecord(record, "window-unload", "FENNEVIA_WINDOW_UNLOADED");
     };
 
     try {
       window.addEventListener("unload", onUnload, { once: true });
-      record.cleanup.add(() =>
-        window.removeEventListener("unload", onUnload)
-      );
+      record.cleanup.add(() => window.removeEventListener("unload", onUnload));
 
       const context = Object.freeze({
         opaqueId,
@@ -283,13 +277,10 @@ export function createWindowManager({
       });
       const initialization = initializeWindow(context);
 
-      if (
-        initialization &&
-        typeof initialization.then === "function"
-      ) {
+      if (initialization && typeof initialization.then === "function") {
         Promise.resolve(initialization).then(
-          disposer => completeInitialization(record, disposer),
-          error => failRecord(record, error)
+          (disposer) => completeInitialization(record, disposer),
+          (error) => failRecord(record, error),
         );
       } else {
         completeInitialization(record, initialization);
@@ -313,10 +304,7 @@ export function createWindowManager({
 
       state = "starting";
       try {
-        services.obs.addObserver(
-          delayedStartupObserver,
-          DELAYED_STARTUP_TOPIC
-        );
+        services.obs.addObserver(delayedStartupObserver, DELAYED_STARTUP_TOPIC);
         observerRegistered = true;
 
         for (const window of services.wm.getEnumerator(BROWSER_WINDOW_TYPE)) {
@@ -331,7 +319,7 @@ export function createWindowManager({
           try {
             services.obs.removeObserver(
               delayedStartupObserver,
-              DELAYED_STARTUP_TOPIC
+              DELAYED_STARTUP_TOPIC,
             );
           } catch (removeError) {
             logger.error({
@@ -348,7 +336,7 @@ export function createWindowManager({
           disposeRecord(
             record,
             "window-manager-start-failed",
-            "FENNEVIA_WINDOW_MANAGER_START_FAILED"
+            "FENNEVIA_WINDOW_MANAGER_START_FAILED",
           );
         }
         records.clear();
@@ -366,7 +354,7 @@ export function createWindowManager({
         try {
           services.obs.removeObserver(
             delayedStartupObserver,
-            DELAYED_STARTUP_TOPIC
+            DELAYED_STARTUP_TOPIC,
           );
         } catch (error) {
           logger.error({
@@ -383,7 +371,7 @@ export function createWindowManager({
         disposeRecord(
           record,
           "runtime-stop",
-          "FENNEVIA_WINDOW_RUNTIME_STOPPED"
+          "FENNEVIA_WINDOW_RUNTIME_STOPPED",
         );
       }
 
@@ -396,19 +384,19 @@ export function createWindowManager({
       return Object.freeze({
         state,
         managedWindowCount: Array.from(records.values()).filter(
-          record => record.status === "managed"
+          (record) => record.status === "managed",
         ).length,
         initializingWindowCount: Array.from(records.values()).filter(
-          record => record.status === "initializing"
+          (record) => record.status === "initializing",
         ).length,
         windows: Object.freeze(
-          Array.from(records.values(), record =>
+          Array.from(records.values(), (record) =>
             Object.freeze({
               opaqueId: record.opaqueId,
               windowKind: record.windowKind,
               status: record.status,
-            })
-          )
+            }),
+          ),
         ),
       });
     },
