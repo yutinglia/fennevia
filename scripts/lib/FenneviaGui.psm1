@@ -12,6 +12,7 @@ $script:GuiStateOwner = "fennevia-setup"
 $script:GuiStateTtlMinutes = 15
 $script:GuiMutatingActions = @("Install", "Update", "Repair", "Disable", "Enable", "Uninstall")
 $script:GuiSupportWarningActions = @("Install", "Update", "Repair", "Enable")
+$script:FenneviaGuiUi = $null
 
 function ConvertTo-FenneviaGuiCanonicalPath {
     [CmdletBinding()]
@@ -39,17 +40,36 @@ function ConvertTo-FenneviaGuiSafeErrorMessage {
     )
 
     $message = ""
+    $exception = $null
     if ($InputObject -is [System.Management.Automation.ErrorRecord]) {
+        $exception = $InputObject.Exception
         $message = [string] $InputObject.Exception.Message
     }
     elseif ($InputObject -is [Exception]) {
+        $exception = $InputObject
         $message = [string] $InputObject.Message
     }
     else {
         $message = [string] $InputObject
     }
     if ($message -match '[A-Za-z]:\\' -or $message -match '\\\\') {
-        return "An unexpected local failure occurred; details are omitted from normal output to avoid path disclosure."
+        $errorClass = "Exception"
+        if ($null -ne $exception) {
+            $candidate = [string] $exception.GetType().Name
+            if ($candidate -in @(
+                    "CommandNotFoundException",
+                    "DirectoryNotFoundException",
+                    "FileLoadException",
+                    "FileNotFoundException",
+                    "IOException",
+                    "RuntimeException",
+                    "SecurityException",
+                    "UnauthorizedAccessException"
+                )) {
+                $errorClass = $candidate
+            }
+        }
+        return "Fennevia Setup could not continue (FENNEVIA_GUI_LOCAL_PATH_ERROR; $errorClass). Local path details were omitted. Verify that the complete release was extracted, then retry."
     }
     if ([string]::IsNullOrWhiteSpace($message)) {
         return "Fennevia Setup failed."
@@ -772,19 +792,39 @@ function Show-FenneviaGuiResultWindow {
     [System.Windows.Forms.Application]::EnableVisualStyles()
 
     $form = New-Object System.Windows.Forms.Form
+    $form.SuspendLayout()
     $form.Text = "Fennevia Setup"
     $form.StartPosition = "CenterScreen"
     $form.FormBorderStyle = "FixedDialog"
     $form.MaximizeBox = $false
     $form.MinimizeBox = $false
     $form.ShowInTaskbar = $true
-    $form.Width = 720
-    $form.Height = 520
-    $form.Padding = New-Object System.Windows.Forms.Padding(16)
+    $form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
+    $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96, 96)
+    $form.Font = [System.Drawing.SystemFonts]::MessageBoxFont
+    $form.ClientSize = Get-FenneviaGuiInitialClientSize `
+        -Form $form `
+        -DesiredWidth 680 `
+        -DesiredHeight 460 `
+        -MinimumWidth 520 `
+        -MinimumHeight 360
+
+    $layout = New-Object System.Windows.Forms.TableLayoutPanel
+    $layout.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $layout.Padding = New-Object System.Windows.Forms.Padding(16)
+    $layout.Margin = New-Object System.Windows.Forms.Padding(0)
+    $layout.ColumnCount = 1
+    $layout.RowCount = 3
+    $layout.ColumnStyles.Add((New-FenneviaGuiColumnStyle -SizeType Percent -Size 100)) | Out-Null
+    $layout.RowStyles.Add((New-FenneviaGuiRowStyle -SizeType AutoSize)) | Out-Null
+    $layout.RowStyles.Add((New-FenneviaGuiRowStyle -SizeType Percent -Size 100)) | Out-Null
+    $layout.RowStyles.Add((New-FenneviaGuiRowStyle -SizeType AutoSize)) | Out-Null
 
     $label = New-Object System.Windows.Forms.Label
-    $label.Dock = "Top"
-    $label.Height = 48
+    $label.AutoSize = $true
+    $label.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $label.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 12)
+    $label.UseMnemonic = $false
     $label.Text = if (-not [string]::IsNullOrWhiteSpace([string] $Session.ErrorMessage)) {
         $Session.ErrorMessage
     }
@@ -796,35 +836,56 @@ function Show-FenneviaGuiResultWindow {
     $box.Multiline = $true
     $box.ReadOnly = $true
     $box.ScrollBars = "Vertical"
-    $box.Dock = "Fill"
+    $box.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $box.Margin = New-Object System.Windows.Forms.Padding(0)
     $box.Font = New-Object System.Drawing.Font("Consolas", 9)
     $box.Text = [string]::Join([Environment]::NewLine, @($Session.CopyableLines))
 
-    $ok = New-Object System.Windows.Forms.Button
-    $ok.Text = "Close"
-    $ok.Dock = "Bottom"
-    $ok.Height = 32
+    $buttonRow = New-Object System.Windows.Forms.TableLayoutPanel
+    $buttonRow.AutoSize = $true
+    $buttonRow.AutoSizeMode = [System.Windows.Forms.AutoSizeMode]::GrowAndShrink
+    $buttonRow.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $buttonRow.Margin = New-Object System.Windows.Forms.Padding(0, 12, 0, 0)
+    $buttonRow.ColumnCount = 2
+    $buttonRow.RowCount = 1
+    $buttonRow.ColumnStyles.Add((New-FenneviaGuiColumnStyle -SizeType Percent -Size 100)) | Out-Null
+    $buttonRow.ColumnStyles.Add((New-FenneviaGuiColumnStyle -SizeType AutoSize)) | Out-Null
+
+    $ok = New-FenneviaGuiButton -Text "Close"
     $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
     $form.AcceptButton = $ok
     $form.CancelButton = $ok
 
-    $form.Controls.Add($box)
-    $form.Controls.Add($ok)
-    $form.Controls.Add($label)
-    [void] $form.ShowDialog()
-    $form.Dispose()
+    $buttonRow.Controls.Add($ok, 1, 0)
+    $layout.Controls.Add($label, 0, 0)
+    $layout.Controls.Add($box, 0, 1)
+    $layout.Controls.Add($buttonRow, 0, 2)
+    $form.Controls.Add($layout)
+    $form.ResumeLayout($false)
+    $form.PerformLayout()
+    try {
+        [void] $form.ShowDialog()
+    }
+    finally {
+        $form.Dispose()
+    }
 }
 
 function New-FenneviaGuiBodyLabel {
     param(
-        [string] $Text,
-        [int] $Height = 120
+        [string] $Text
     )
-    $item = New-Object System.Windows.Forms.Label
-    $item.Left = 0
-    $item.Top = 0
-    $item.Width = 700
-    $item.Height = $Height
+    $item = New-Object System.Windows.Forms.RichTextBox
+    $item.BackColor = [System.Drawing.SystemColors]::Control
+    $item.BorderStyle = [System.Windows.Forms.BorderStyle]::None
+    $item.DetectUrls = $false
+    $item.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $item.Margin = New-Object System.Windows.Forms.Padding(0)
+    $item.ReadOnly = $true
+    $item.ScrollBars = [System.Windows.Forms.RichTextBoxScrollBars]::Vertical
+    $item.ShortcutsEnabled = $true
+    $item.TabStop = $true
+    $item.WordWrap = $true
     $item.Text = $Text
     return $item
 }
@@ -832,20 +893,141 @@ function New-FenneviaGuiBodyLabel {
 function New-FenneviaGuiMultilineBox {
     param(
         [string] $Text,
-        [switch] $ReadOnly,
-        [int] $Height = 320
+        [switch] $ReadOnly
     )
     $item = New-Object System.Windows.Forms.TextBox
     $item.Multiline = $true
     $item.ScrollBars = "Vertical"
-    $item.Left = 0
-    $item.Top = 0
-    $item.Width = 700
-    $item.Height = $Height
+    $item.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $item.Margin = New-Object System.Windows.Forms.Padding(0)
     $item.Text = $Text
     $item.ReadOnly = [bool] $ReadOnly
     $item.Font = New-Object System.Drawing.Font("Consolas", 9)
     return $item
+}
+
+function New-FenneviaGuiColumnStyle {
+    param(
+        [Parameter(Mandatory)]
+        [System.Windows.Forms.SizeType] $SizeType,
+
+        [single] $Size = 0
+    )
+
+    $style = New-Object System.Windows.Forms.ColumnStyle
+    $style.SizeType = $SizeType
+    $style.Width = $Size
+    return $style
+}
+
+function New-FenneviaGuiRowStyle {
+    param(
+        [Parameter(Mandatory)]
+        [System.Windows.Forms.SizeType] $SizeType,
+
+        [single] $Size = 0
+    )
+
+    $style = New-Object System.Windows.Forms.RowStyle
+    $style.SizeType = $SizeType
+    $style.Height = $Size
+    return $style
+}
+
+function New-FenneviaGuiPageLayout {
+    param(
+        [Parameter(Mandatory)]
+        [System.Windows.Forms.SizeType[]] $RowSizeTypes,
+
+        [single[]] $RowSizes = @()
+    )
+
+    $layout = New-Object System.Windows.Forms.TableLayoutPanel
+    $layout.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $layout.Margin = New-Object System.Windows.Forms.Padding(0)
+    $layout.Padding = New-Object System.Windows.Forms.Padding(0)
+    $layout.ColumnCount = 1
+    $layout.RowCount = $RowSizeTypes.Count
+    $layout.ColumnStyles.Add((New-FenneviaGuiColumnStyle -SizeType Percent -Size 100)) | Out-Null
+    for ($index = 0; $index -lt $RowSizeTypes.Count; $index++) {
+        $size = 0
+        if ($index -lt $RowSizes.Count) {
+            $size = $RowSizes[$index]
+        }
+        $layout.RowStyles.Add((New-FenneviaGuiRowStyle -SizeType $RowSizeTypes[$index] -Size $size)) | Out-Null
+    }
+    return $layout
+}
+
+function Get-FenneviaGuiUiScale {
+    $dpi = 96
+    if ($null -ne $script:FenneviaGuiUi -and $null -ne $script:FenneviaGuiUi.Form -and -not $script:FenneviaGuiUi.Form.IsDisposed) {
+        $dpi = [Math]::Max(96, [int] $script:FenneviaGuiUi.Form.DeviceDpi)
+    }
+    return ([double] $dpi / 96.0)
+}
+
+function ConvertTo-FenneviaGuiDeviceValue {
+    param(
+        [Parameter(Mandatory)]
+        [int] $Value
+    )
+
+    return [int] [Math]::Round($Value * (Get-FenneviaGuiUiScale), [MidpointRounding]::AwayFromZero)
+}
+
+function New-FenneviaGuiScaledPadding {
+    param(
+        [int] $Left,
+        [int] $Top,
+        [int] $Right,
+        [int] $Bottom
+    )
+
+    return New-Object System.Windows.Forms.Padding(
+        (ConvertTo-FenneviaGuiDeviceValue -Value $Left),
+        (ConvertTo-FenneviaGuiDeviceValue -Value $Top),
+        (ConvertTo-FenneviaGuiDeviceValue -Value $Right),
+        (ConvertTo-FenneviaGuiDeviceValue -Value $Bottom)
+    )
+}
+
+function Get-FenneviaGuiInitialClientSize {
+    param(
+        [Parameter(Mandatory)]
+        [System.Windows.Forms.Form] $Form,
+
+        [int] $DesiredWidth,
+        [int] $DesiredHeight,
+        [int] $MinimumWidth,
+        [int] $MinimumHeight
+    )
+
+    $dpiScale = [Math]::Max(1.0, ([double] $Form.DeviceDpi / 96.0))
+    $workingArea = [System.Windows.Forms.Screen]::FromPoint([System.Windows.Forms.Cursor]::Position).WorkingArea
+    $availableWidth = [int] [Math]::Floor(([double] $workingArea.Width / $dpiScale) - 48)
+    $availableHeight = [int] [Math]::Floor(([double] $workingArea.Height / $dpiScale) - 72)
+    $width = [Math]::Max($MinimumWidth, [Math]::Min($DesiredWidth, $availableWidth))
+    $height = [Math]::Max($MinimumHeight, [Math]::Min($DesiredHeight, $availableHeight))
+    return New-Object System.Drawing.Size($width, $height)
+}
+
+function New-FenneviaGuiButton {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Text
+    )
+
+    $button = New-Object System.Windows.Forms.Button
+    $button.Text = $Text
+    $button.AutoSize = $true
+    $button.AutoSizeMode = [System.Windows.Forms.AutoSizeMode]::GrowAndShrink
+    $button.MinimumSize = New-Object System.Drawing.Size(
+        (ConvertTo-FenneviaGuiDeviceValue -Value 96),
+        (ConvertTo-FenneviaGuiDeviceValue -Value 34)
+    )
+    $button.Padding = New-FenneviaGuiScaledPadding -Left 12 -Top 0 -Right 12 -Bottom 0
+    return $button
 }
 
 function Update-FenneviaGuiWizardPage {
@@ -856,7 +1038,11 @@ function Update-FenneviaGuiWizardPage {
     $back = $ui.Back
     $next = $ui.Next
     $page = [string] $ui.Page
-    $body.Controls.Clear()
+    while ($body.Controls.Count -gt 0) {
+        $control = $body.Controls[0]
+        $body.Controls.RemoveAt(0)
+        $control.Dispose()
+    }
     $back.Enabled = $page -ne "welcome" -and $page -ne "result"
     $next.Text = "Next"
     $next.Enabled = $true
@@ -864,7 +1050,7 @@ function Update-FenneviaGuiWizardPage {
     switch ($page) {
         "welcome" {
             $header.Text = "Welcome"
-            [void] $body.Controls.Add((New-FenneviaGuiBodyLabel -Text (Get-FenneviaGuiWelcomeText) -Height 220))
+            [void] $body.Controls.Add((New-FenneviaGuiBodyLabel -Text (Get-FenneviaGuiWelcomeText)))
         }
         "license" {
             $header.Text = "License"
@@ -872,7 +1058,7 @@ function Update-FenneviaGuiWizardPage {
         }
         "prepare" {
             $header.Text = "Before you continue"
-            [void] $body.Controls.Add((New-FenneviaGuiBodyLabel -Text (Get-FenneviaGuiPrepareText) -Height 180))
+            [void] $body.Controls.Add((New-FenneviaGuiBodyLabel -Text (Get-FenneviaGuiPrepareText)))
         }
         "firefox" {
             $header.Text = "Select firefox.exe"
@@ -881,11 +1067,11 @@ function Update-FenneviaGuiWizardPage {
                     [void] $ui.FirefoxChoices.Add($candidate)
                 }
             }
+            $pageLayout = New-FenneviaGuiPageLayout -RowSizeTypes @("Percent", "AutoSize") -RowSizes @(100, 0)
             $list = New-Object System.Windows.Forms.ListBox
-            $list.Left = 0
-            $list.Top = 0
-            $list.Width = 700
-            $list.Height = 280
+            $list.Dock = [System.Windows.Forms.DockStyle]::Fill
+            $list.IntegralHeight = $false
+            $list.Margin = New-Object System.Windows.Forms.Padding(0)
             $index = 0
             foreach ($candidate in $ui.FirefoxChoices) {
                 $label = ConvertTo-FenneviaGuiFirefoxChoiceLabel -Candidate $candidate
@@ -896,44 +1082,51 @@ function Update-FenneviaGuiWizardPage {
                 $index++
             }
             $list.Add_SelectedIndexChanged({
-                if ($list.SelectedIndex -ge 0) {
-                    $script:FenneviaGuiUi.Session.FirefoxPath = [string] $script:FenneviaGuiUi.FirefoxChoices[$list.SelectedIndex].FirefoxPath
-                    $script:FenneviaGuiUi.Session.FirefoxLabel = [string] $list.SelectedItem
+                param($sender, $eventArgs)
+                if ($sender.SelectedIndex -ge 0) {
+                    $script:FenneviaGuiUi.Session.FirefoxPath = [string] $script:FenneviaGuiUi.FirefoxChoices[$sender.SelectedIndex].FirefoxPath
+                    $script:FenneviaGuiUi.Session.FirefoxLabel = [string] $sender.SelectedItem
                 }
-            }.GetNewClosure())
-            $browse = New-Object System.Windows.Forms.Button
-            $browse.Text = "Browse..."
-            $browse.Left = 0
-            $browse.Top = 292
-            $browse.Width = 120
-            $browse.Height = 28
+            })
+            $browse = New-FenneviaGuiButton -Text "Browse..."
+            $browse.Anchor = [System.Windows.Forms.AnchorStyles]::Left
+            $browse.Margin = New-FenneviaGuiScaledPadding -Left 0 -Top 12 -Right 0 -Bottom 0
+            $browse.Tag = $list
             $browse.Add_Click({
+                param($sender, $eventArgs)
+                $targetList = [System.Windows.Forms.ListBox] $sender.Tag
                 $dialog = New-Object System.Windows.Forms.OpenFileDialog
                 $dialog.Filter = "firefox.exe|firefox.exe"
                 $dialog.Title = "Select firefox.exe"
-                if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                    $script:FenneviaGuiUi.Session.FirefoxPath = [string] $dialog.FileName
-                    $script:FenneviaGuiUi.Session.FirefoxLabel = "Selected firefox.exe"
-                    [void] $script:FenneviaGuiUi.FirefoxChoices.Add([pscustomobject]@{
-                            FirefoxPath = $script:FenneviaGuiUi.Session.FirefoxPath
-                            Label = $script:FenneviaGuiUi.Session.FirefoxLabel
-                            BuildID = ""
-                        })
-                    [void] $list.Items.Add($script:FenneviaGuiUi.Session.FirefoxLabel)
-                    $list.SelectedIndex = $list.Items.Count - 1
+                try {
+                    if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                        $script:FenneviaGuiUi.Session.FirefoxPath = [string] $dialog.FileName
+                        $script:FenneviaGuiUi.Session.FirefoxLabel = "Selected firefox.exe"
+                        [void] $script:FenneviaGuiUi.FirefoxChoices.Add([pscustomobject]@{
+                                FirefoxPath = $script:FenneviaGuiUi.Session.FirefoxPath
+                                Label = $script:FenneviaGuiUi.Session.FirefoxLabel
+                                BuildID = ""
+                            })
+                        [void] $targetList.Items.Add($script:FenneviaGuiUi.Session.FirefoxLabel)
+                        $targetList.SelectedIndex = $targetList.Items.Count - 1
+                    }
                 }
-            }.GetNewClosure())
-            [void] $body.Controls.Add($list)
-            [void] $body.Controls.Add($browse)
+                finally {
+                    $dialog.Dispose()
+                }
+            })
+            $pageLayout.Controls.Add($list, 0, 0)
+            $pageLayout.Controls.Add($browse, 0, 1)
+            [void] $body.Controls.Add($pageLayout)
         }
         "profile" {
             $header.Text = "Select a registered Firefox profile"
             $ui.ProfileChoices = @(& $ui.Hooks["GetProfileChoices"])
+            $pageLayout = New-FenneviaGuiPageLayout -RowSizeTypes @("Percent", "AutoSize") -RowSizes @(100, 0)
             $list = New-Object System.Windows.Forms.ListBox
-            $list.Left = 0
-            $list.Top = 0
-            $list.Width = 700
-            $list.Height = 260
+            $list.Dock = [System.Windows.Forms.DockStyle]::Fill
+            $list.IntegralHeight = $false
+            $list.Margin = New-Object System.Windows.Forms.Padding(0)
             $index = 0
             foreach ($choice in $ui.ProfileChoices) {
                 [void] $list.Items.Add((ConvertTo-FenneviaGuiProfileChoiceLabel -Choice $choice))
@@ -943,44 +1136,47 @@ function Update-FenneviaGuiWizardPage {
                 $index++
             }
             $confirmDefault = New-Object System.Windows.Forms.CheckBox
-            $confirmDefault.Left = 0
-            $confirmDefault.Top = 272
-            $confirmDefault.Width = 700
-            $confirmDefault.Height = 28
+            $confirmDefault.AutoSize = $true
+            $confirmDefault.Dock = [System.Windows.Forms.DockStyle]::Fill
+            $confirmDefault.Margin = New-FenneviaGuiScaledPadding -Left 0 -Top 12 -Right 0 -Bottom 0
             $confirmDefault.Text = "Use Firefox's default profile anyway"
             $confirmDefault.Enabled = $false
             $confirmDefault.Checked = [bool] $session.DefaultProfileConfirmed
             $confirmDefault.Add_CheckedChanged({
-                $script:FenneviaGuiUi.Session.DefaultProfileConfirmed = [bool] $confirmDefault.Checked
-            }.GetNewClosure())
+                param($sender, $eventArgs)
+                $script:FenneviaGuiUi.Session.DefaultProfileConfirmed = [bool] $sender.Checked
+            })
+            $list.Tag = $confirmDefault
             $list.Add_SelectedIndexChanged({
-                if ($list.SelectedIndex -ge 0) {
-                    $choice = $script:FenneviaGuiUi.ProfileChoices[$list.SelectedIndex]
+                param($sender, $eventArgs)
+                if ($sender.SelectedIndex -ge 0) {
+                    $defaultCheckBox = [System.Windows.Forms.CheckBox] $sender.Tag
+                    $choice = $script:FenneviaGuiUi.ProfileChoices[$sender.SelectedIndex]
                     $selection = Resolve-FenneviaConsoleProfileSelection -Choices $script:FenneviaGuiUi.ProfileChoices -SelectedName ([string] $choice.Name)
                     $script:FenneviaGuiUi.Session.ProfileName = [string] $choice.Name
                     $script:FenneviaGuiUi.Session.ProfilePath = [string] $choice.Path
                     $script:FenneviaGuiUi.Session.ProfileIsDefault = [bool] $choice.IsDefault
                     if ($selection.Status -eq "confirm-default") {
-                        $confirmDefault.Enabled = $true
-                        $script:FenneviaGuiUi.Session.DefaultProfileConfirmed = [bool] $confirmDefault.Checked
+                        $defaultCheckBox.Enabled = $true
+                        $script:FenneviaGuiUi.Session.DefaultProfileConfirmed = [bool] $defaultCheckBox.Checked
                     }
                     else {
-                        $confirmDefault.Enabled = $false
-                        $confirmDefault.Checked = $false
+                        $defaultCheckBox.Enabled = $false
+                        $defaultCheckBox.Checked = $false
                         $script:FenneviaGuiUi.Session.DefaultProfileConfirmed = $false
                     }
                 }
-            }.GetNewClosure())
-            [void] $body.Controls.Add($list)
-            [void] $body.Controls.Add($confirmDefault)
+            })
+            $pageLayout.Controls.Add($list, 0, 0)
+            $pageLayout.Controls.Add($confirmDefault, 0, 1)
+            [void] $body.Controls.Add($pageLayout)
         }
         "action" {
             $header.Text = "Choose an action"
             $list = New-Object System.Windows.Forms.ListBox
-            $list.Left = 0
-            $list.Top = 0
-            $list.Width = 700
-            $list.Height = 280
+            $list.Dock = [System.Windows.Forms.DockStyle]::Fill
+            $list.IntegralHeight = $false
+            $list.Margin = New-Object System.Windows.Forms.Padding(0)
             $actions = @(Get-FenneviaConsoleMenuItems -Kind Release | Where-Object { $_.Id -ne "quit" })
             $ui.Actions = $actions
             foreach ($item in $actions) {
@@ -990,29 +1186,32 @@ function Update-FenneviaGuiWizardPage {
                 }
             }
             $list.Add_SelectedIndexChanged({
-                if ($list.SelectedIndex -ge 0) {
-                    $script:FenneviaGuiUi.Session.Action = ConvertTo-FenneviaGuiActionName -Id ([string] $script:FenneviaGuiUi.Actions[$list.SelectedIndex].Id)
+                param($sender, $eventArgs)
+                if ($sender.SelectedIndex -ge 0) {
+                    $script:FenneviaGuiUi.Session.Action = ConvertTo-FenneviaGuiActionName -Id ([string] $script:FenneviaGuiUi.Actions[$sender.SelectedIndex].Id)
                 }
-            }.GetNewClosure())
+            })
             [void] $body.Controls.Add($list)
         }
         "support" {
             $header.Text = "Firefox support warning"
             $warning = Get-FenneviaConsoleFirefoxSupportWarning -Plan $session.Plan
-            $label = New-FenneviaGuiBodyLabel -Text $warning.Warning -Height 160
+            $pageLayout = New-FenneviaGuiPageLayout -RowSizeTypes @("Percent", "AutoSize") -RowSizes @(100, 0)
+            $label = New-FenneviaGuiBodyLabel -Text $warning.Warning
             $check = New-Object System.Windows.Forms.CheckBox
-            $check.Left = 0
-            $check.Top = 180
-            $check.Width = 700
-            $check.Height = 40
+            $check.AutoSize = $true
+            $check.Dock = [System.Windows.Forms.DockStyle]::Fill
+            $check.Margin = New-FenneviaGuiScaledPadding -Left 0 -Top 12 -Right 0 -Bottom 0
             $check.Text = $warning.Title
             $check.Checked = [bool] $session.SupportWarningAcknowledged
             $check.Add_CheckedChanged({
-                $script:FenneviaGuiUi.Session.SupportWarningAcknowledged = [bool] $check.Checked
-            }.GetNewClosure())
+                param($sender, $eventArgs)
+                $script:FenneviaGuiUi.Session.SupportWarningAcknowledged = [bool] $sender.Checked
+            })
             Add-FenneviaGuiCopyableLines -Session $session -Lines $warning.Lines
-            [void] $body.Controls.Add($label)
-            [void] $body.Controls.Add($check)
+            $pageLayout.Controls.Add($label, 0, 0)
+            $pageLayout.Controls.Add($check, 0, 1)
+            [void] $body.Controls.Add($pageLayout)
         }
         "plan" {
             $header.Text = "Review the plan"
@@ -1020,12 +1219,12 @@ function Update-FenneviaGuiWizardPage {
             if ($null -ne $session.Plan) {
                 $text = [string]::Join([Environment]::NewLine, @(ConvertTo-FenneviaInstallerResultLines -Result $session.Plan))
             }
-            $box = New-FenneviaGuiMultilineBox -Text $text -ReadOnly -Height 280
+            $pageLayout = New-FenneviaGuiPageLayout -RowSizeTypes @("Percent", "AutoSize") -RowSizes @(100, 0)
+            $box = New-FenneviaGuiMultilineBox -Text $text -ReadOnly
             $check = New-Object System.Windows.Forms.CheckBox
-            $check.Left = 0
-            $check.Top = 292
-            $check.Width = 700
-            $check.Height = 36
+            $check.AutoSize = $true
+            $check.Dock = [System.Windows.Forms.DockStyle]::Fill
+            $check.Margin = New-FenneviaGuiScaledPadding -Left 0 -Top 12 -Right 0 -Bottom 0
             $check.Text = "Apply the displayed $($session.Action) plan"
             if ($null -ne $session.Plan -and [int] $session.Plan.PlannedMutationCount -eq 0) {
                 $check.Enabled = $false
@@ -1036,16 +1235,18 @@ function Update-FenneviaGuiWizardPage {
             else {
                 $check.Checked = [bool] $session.PlanConfirmed
                 $check.Add_CheckedChanged({
-                    $script:FenneviaGuiUi.Session.PlanConfirmed = [bool] $check.Checked
-                }.GetNewClosure())
+                    param($sender, $eventArgs)
+                    $script:FenneviaGuiUi.Session.PlanConfirmed = [bool] $sender.Checked
+                })
                 $next.Text = "Install"
             }
-            [void] $body.Controls.Add($box)
-            [void] $body.Controls.Add($check)
+            $pageLayout.Controls.Add($box, 0, 0)
+            $pageLayout.Controls.Add($check, 0, 1)
+            [void] $body.Controls.Add($pageLayout)
         }
         "elevation" {
             $header.Text = "Administrator permission"
-            [void] $body.Controls.Add((New-FenneviaGuiBodyLabel -Text (Get-FenneviaGuiElevationText) -Height 180))
+            [void] $body.Controls.Add((New-FenneviaGuiBodyLabel -Text (Get-FenneviaGuiElevationText)))
             $next.Text = "Continue as administrator"
         }
         "result" {
@@ -1054,15 +1255,19 @@ function Update-FenneviaGuiWizardPage {
             if (-not [string]::IsNullOrWhiteSpace([string] $session.ErrorMessage)) {
                 $summary = $session.ErrorMessage
             }
-            $label = New-FenneviaGuiBodyLabel -Text $summary -Height 64
-            $box = New-FenneviaGuiMultilineBox -Text ([string]::Join([Environment]::NewLine, @($session.CopyableLines))) -ReadOnly -Height 280
-            $box.Top = 72
+            $pageLayout = New-FenneviaGuiPageLayout -RowSizeTypes @("Percent", "Percent") -RowSizes @(24, 76)
+            $label = New-FenneviaGuiBodyLabel -Text $summary
+            $label.Margin = New-FenneviaGuiScaledPadding -Left 0 -Top 0 -Right 0 -Bottom 12
+            $box = New-FenneviaGuiMultilineBox -Text ([string]::Join([Environment]::NewLine, @($session.CopyableLines))) -ReadOnly
             $next.Text = "Close"
             $back.Enabled = $false
-            [void] $body.Controls.Add($label)
-            [void] $body.Controls.Add($box)
+            $pageLayout.Controls.Add($label, 0, 0)
+            $pageLayout.Controls.Add($box, 0, 1)
+            [void] $body.Controls.Add($pageLayout)
         }
     }
+    $body.PerformLayout()
+    $ui.Form.PerformLayout()
 }
 
 function Invoke-FenneviaGuiWizardBack {
@@ -1202,7 +1407,7 @@ function Invoke-FenneviaGuiWizardNext {
     }
 }
 
-function Show-FenneviaGuiWizard {
+function New-FenneviaGuiWizardWindow {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -1219,64 +1424,90 @@ function Show-FenneviaGuiWizard {
 
     $session = New-FenneviaGuiSession -PackageRoot $PackageRoot
     $form = New-Object System.Windows.Forms.Form
+    $form.SuspendLayout()
     $form.Text = "Fennevia Setup"
     $form.StartPosition = "CenterScreen"
-    $form.FormBorderStyle = "FixedDialog"
-    $form.MaximizeBox = $false
+    $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable
+    $form.MaximizeBox = $true
     $form.MinimizeBox = $false
     $form.ShowInTaskbar = $true
-    $form.Width = 740
-    $form.Height = 560
+    $form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
+    $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96, 96)
+    $form.Font = [System.Drawing.SystemFonts]::MessageBoxFont
+    $form.ClientSize = Get-FenneviaGuiInitialClientSize `
+        -Form $form `
+        -DesiredWidth 680 `
+        -DesiredHeight 480 `
+        -MinimumWidth 520 `
+        -MinimumHeight 380
+    $form.MinimumSize = New-Object System.Drawing.Size(520, 380)
+
+    $layout = New-Object System.Windows.Forms.TableLayoutPanel
+    $layout.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $layout.Padding = New-Object System.Windows.Forms.Padding(20, 16, 20, 16)
+    $layout.Margin = New-Object System.Windows.Forms.Padding(0)
+    $layout.ColumnCount = 1
+    $layout.RowCount = 3
+    $layout.ColumnStyles.Add((New-FenneviaGuiColumnStyle -SizeType Percent -Size 100)) | Out-Null
+    $layout.RowStyles.Add((New-FenneviaGuiRowStyle -SizeType AutoSize)) | Out-Null
+    $layout.RowStyles.Add((New-FenneviaGuiRowStyle -SizeType Percent -Size 100)) | Out-Null
+    $layout.RowStyles.Add((New-FenneviaGuiRowStyle -SizeType AutoSize)) | Out-Null
 
     $header = New-Object System.Windows.Forms.Label
-    $header.Left = 16
-    $header.Top = 12
-    $header.Width = 700
-    $header.Height = 28
-    $header.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+    $header.AutoSize = $true
+    $header.AutoEllipsis = $false
+    $header.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $header.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 12)
+    $header.MinimumSize = New-Object System.Drawing.Size(0, 34)
+    $header.Font = New-Object System.Drawing.Font($form.Font.FontFamily, 14, [System.Drawing.FontStyle]::Bold)
+    $header.UseMnemonic = $false
 
     $body = New-Object System.Windows.Forms.Panel
-    $body.Left = 16
-    $body.Top = 48
-    $body.Width = 700
-    $body.Height = 400
+    $body.AutoScroll = $true
+    $body.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $body.Margin = New-Object System.Windows.Forms.Padding(0)
 
-    $back = New-Object System.Windows.Forms.Button
-    $back.Text = "Back"
-    $back.Left = 16
-    $back.Top = 464
-    $back.Width = 96
-    $back.Height = 32
+    $buttonRow = New-Object System.Windows.Forms.TableLayoutPanel
+    $buttonRow.AutoSize = $true
+    $buttonRow.AutoSizeMode = [System.Windows.Forms.AutoSizeMode]::GrowAndShrink
+    $buttonRow.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $buttonRow.Margin = New-Object System.Windows.Forms.Padding(0, 12, 0, 0)
+    $buttonRow.ColumnCount = 4
+    $buttonRow.RowCount = 1
+    $buttonRow.ColumnStyles.Add((New-FenneviaGuiColumnStyle -SizeType AutoSize)) | Out-Null
+    $buttonRow.ColumnStyles.Add((New-FenneviaGuiColumnStyle -SizeType Percent -Size 100)) | Out-Null
+    $buttonRow.ColumnStyles.Add((New-FenneviaGuiColumnStyle -SizeType AutoSize)) | Out-Null
+    $buttonRow.ColumnStyles.Add((New-FenneviaGuiColumnStyle -SizeType AutoSize)) | Out-Null
 
-    $next = New-Object System.Windows.Forms.Button
-    $next.Text = "Next"
-    $next.Left = 520
-    $next.Top = 464
-    $next.Width = 96
-    $next.Height = 32
+    $back = New-FenneviaGuiButton -Text "Back"
+    $back.Margin = New-Object System.Windows.Forms.Padding(0)
 
-    $cancel = New-Object System.Windows.Forms.Button
-    $cancel.Text = "Cancel"
-    $cancel.Left = 624
-    $cancel.Top = 464
-    $cancel.Width = 96
-    $cancel.Height = 32
+    $next = New-FenneviaGuiButton -Text "Next"
+    $next.Margin = New-Object System.Windows.Forms.Padding(8, 0, 0, 0)
+
+    $cancel = New-FenneviaGuiButton -Text "Cancel"
+    $cancel.Margin = New-Object System.Windows.Forms.Padding(8, 0, 0, 0)
     $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
     $form.CancelButton = $cancel
     $form.AcceptButton = $next
 
-    $form.Controls.Add($header)
-    $form.Controls.Add($body)
-    $form.Controls.Add($back)
-    $form.Controls.Add($next)
-    $form.Controls.Add($cancel)
+    $buttonRow.Controls.Add($back, 0, 0)
+    $buttonRow.Controls.Add($next, 2, 0)
+    $buttonRow.Controls.Add($cancel, 3, 0)
+    $layout.Controls.Add($header, 0, 0)
+    $layout.Controls.Add($body, 0, 1)
+    $layout.Controls.Add($buttonRow, 0, 2)
+    $form.Controls.Add($layout)
 
-    $script:FenneviaGuiUi = @{
+    $ui = @{
         Form = $form
+        Layout = $layout
         Header = $header
         Body = $body
+        ButtonRow = $buttonRow
         Back = $back
         Next = $next
+        Cancel = $cancel
         Session = $session
         Hooks = $Hooks
         Page = "welcome"
@@ -1285,14 +1516,41 @@ function Show-FenneviaGuiWizard {
         Actions = @()
     }
 
-    $back.Add_Click({ Invoke-FenneviaGuiWizardBack }.GetNewClosure())
-    $next.Add_Click({ Invoke-FenneviaGuiWizardNext }.GetNewClosure())
-    Update-FenneviaGuiWizardPage
-    [void] $form.ShowDialog()
-    $form.Dispose()
-    $finished = $script:FenneviaGuiUi.Session
-    $script:FenneviaGuiUi = $null
-    return $finished
+    $script:FenneviaGuiUi = $ui
+    try {
+        $back.Add_Click({ Invoke-FenneviaGuiWizardBack })
+        $next.Add_Click({ Invoke-FenneviaGuiWizardNext })
+        Update-FenneviaGuiWizardPage
+        $form.ResumeLayout($false)
+        $form.PerformLayout()
+        return $ui
+    }
+    catch {
+        $script:FenneviaGuiUi = $null
+        $form.Dispose()
+        throw
+    }
+}
+
+function Show-FenneviaGuiWizard {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $PackageRoot,
+
+        [Parameter(Mandatory)]
+        [hashtable] $Hooks
+    )
+
+    $ui = New-FenneviaGuiWizardWindow -PackageRoot $PackageRoot -Hooks $Hooks
+    try {
+        [void] $ui.Form.ShowDialog()
+        return $ui.Session
+    }
+    finally {
+        $script:FenneviaGuiUi = $null
+        $ui.Form.Dispose()
+    }
 }
 
 function Invoke-FenneviaGui {
