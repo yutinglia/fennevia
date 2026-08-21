@@ -126,9 +126,14 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
     ]);
   assert.match(
     component,
-    /handlePanelPointerDown[\s\S]*?setPointerHeld\(props\.edge, false\)/u,
+    /handlePanelPointerDown[\s\S]*?setWindowDragActive\(true\)/u,
   );
   assert.match(component, /handlePanelPointerRelease/u);
+  assert.match(
+    component,
+    /handlePanelPointerRelease[\s\S]*?setWindowDragActive\(false\)/u,
+  );
+  assert.match(component, /handleTriggerPointer[\s\S]*?event\.buttons !== 0/u);
   assert.match(component, /onpointercancel=\{handlePanelPointerRelease\}/u);
   assert.match(component, /onpointerup=\{handlePanelPointerRelease\}/u);
   assert.match(component, /<EdgeProgressLight/u);
@@ -143,6 +148,32 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   );
   assert.match(mountShell, /shell\.setInteractionConfig/u);
   assert.match(mountShell, /shell\.releasePointer\(edge, "outside-window"\)/u);
+  assert.match(mountShell, /shell\.setWindowDragActive\(false\)/u);
+  assert.match(
+    mountShell,
+    /WINDOW_DRAG_START_EVENT = "draggableregionleftmousedown"/u,
+  );
+  assert.match(
+    mountShell,
+    /addEventListener\(WINDOW_DRAG_START_EVENT, beginWindowDrag\)/u,
+  );
+  assert.match(mountShell, /addEventListener\("mouseup", releaseWindowDrag\)/u);
+  assert.match(
+    mountShell,
+    /addEventListener\("pointerup", releaseWindowDrag\)/u,
+  );
+  assert.match(
+    mountShell,
+    /addEventListener\("pointercancel", releaseWindowDrag\)/u,
+  );
+  assert.match(
+    mountShell,
+    /removeEventListener\(WINDOW_DRAG_START_EVENT, beginWindowDrag\)/u,
+  );
+  assert.match(
+    mountShell,
+    /removeEventListener\("mouseup", releaseWindowDrag\)/u,
+  );
   assert.match(mountShell, /windowLeaveHideDelayMs/u);
   assert.match(customizeStyle, /--fennevia-edge-trigger-thickness/u);
   assert.match(customizeStyle, /--fennevia-hide-delay/u);
