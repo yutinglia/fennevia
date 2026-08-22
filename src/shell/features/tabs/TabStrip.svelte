@@ -53,6 +53,11 @@
     view: Window;
   };
 
+  type PointerPosition = Readonly<{
+    clientX: number;
+    clientY: number;
+  }>;
+
   const closeFocusRetryDelayMs = 200;
   const props: Props = $props();
   const t = (key: MessageKey, vars?: MessageVars): string =>
@@ -264,6 +269,39 @@
     delayedFocusTimer = timer;
   };
 
+  const pointerPositionFromMouseEvent = (
+    event: MouseEvent,
+  ): PointerPosition | null => {
+    const pointerType = (event as PointerEvent).pointerType;
+    if (
+      pointerType === "touch" ||
+      (event.button !== 0 && event.button !== 1) ||
+      (event.button === 0 && event.detail === 0) ||
+      !Number.isFinite(event.clientX) ||
+      !Number.isFinite(event.clientY)
+    ) {
+      return null;
+    }
+    return Object.freeze({ clientX: event.clientX, clientY: event.clientY });
+  };
+
+  const restorePointerHoldAfterClose = async (position: PointerPosition) => {
+    await tick();
+    const surfacePanel = tabStripElement?.closest<HTMLElement>(
+      '[data-fennevia-edge-panel="left"]',
+    );
+    if (!surfacePanel?.isConnected) {
+      return;
+    }
+    const pointerTarget = surfacePanel.ownerDocument.elementFromPoint(
+      position.clientX,
+      position.clientY,
+    );
+    if (pointerTarget && surfacePanel.contains(pointerTarget)) {
+      props.shell.setPointerHeld("left", true);
+    }
+  };
+
   const selectTab = (tabId: string) => {
     cancelDelayedFocus();
     rovingTabId = tabId;
@@ -277,12 +315,18 @@
     reportAsyncError(focusTab(openedTabId));
   };
 
-  const closeTab = (tabId: string) => {
+  const closeTab = (
+    tabId: string,
+    pointerPosition: PointerPosition | null = null,
+  ) => {
     cancelDelayedFocus();
     const focusTarget = findCloseFocusTarget(currentTabs.tabs, tabId);
     rovingTabId = focusTarget;
     props.tabs.close(tabId);
     restoreFocusAfterClose(resolveRovingTabId(currentTabs.tabs, focusTarget));
+    if (pointerPosition) {
+      reportAsyncError(restorePointerHoldAfterClose(pointerPosition));
+    }
   };
 
   const togglePinned = (tab: TabSnapshot) => {
@@ -365,7 +409,7 @@
     }
     event.preventDefault();
     event.stopPropagation();
-    closeTab(tabId);
+    closeTab(tabId, pointerPositionFromMouseEvent(event));
   };
 
   const handleTabContextMenu = (event: MouseEvent, tabId: string) => {
@@ -1193,7 +1237,7 @@
           data-fennevia-action="close-tab"
           onclick={(event) => {
             event.stopPropagation();
-            closeTab(tab.id);
+            closeTab(tab.id, pointerPositionFromMouseEvent(event));
           }}
           tabindex={rovingTabId === tab.id ? 0 : -1}
           title={t("tab.closeTab")}

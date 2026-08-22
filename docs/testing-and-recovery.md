@@ -333,6 +333,10 @@ Validate:
 - rejected/failed favicon;
 - Up/Down, Home/End, Enter/Space, Delete, sibling pin/close/mute controls;
 - middle-click close without autoscroll;
+- mouse-initiated close by middle button or the close control keeps the left
+  surface held when the pointer remains inside the panel after the tab row is
+  removed; a real pointer exit still uses the shared delayed-hide path, while
+  keyboard and touch activation do not synthesize a pointer hold;
 - drag reorder and `Ctrl+Shift+ArrowUp/Down` within the pinned partition;
 - pointer-aligned full-row browser drag image, an actual source row that follows
   the pointer without transform lag while inside its strip, stable pre-transform
@@ -484,6 +488,8 @@ Validate:
 - Home through `BrowserCommands.home()` without reading the homepage URL;
 - middle-click Back/Forward/Home/Reload opening through Firefox
   `whereToOpenLink` / `reloadOrDuplicate`;
+- one physical middle click invokes exactly one navigation action even if
+  browser chrome dispatches both `click` and `auxclick`;
 - New Tab;
 - left-edge programmatic reveal and a short new-tab highlight after `TabOpen`;
 - selected-browser handoff;

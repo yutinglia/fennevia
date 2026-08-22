@@ -555,7 +555,9 @@ right of that row. The primary cluster is Back, Forward, Reload/Stop, and
 Home. Home calls the current window's `BrowserCommands.home()` and does not
 read the configured homepage URL. Middle-click on Back, Forward, Home, and
 Reload copies only pointer modifiers and lets Firefox open the result in a
-new tab. New-tab remains on the left tab strip, not
+new tab. Primary `click` and middle-button `auxclick` are disjoint at the
+component boundary, so one physical middle click invokes the Firefox command
+exactly once. New-tab remains on the left tab strip, not
 the top row. Opening a tab after the left surface has its initial snapshot
 uses the shared programmatic reveal to show the left edge briefly and
 highlights only the newly added tab IDs.

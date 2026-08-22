@@ -124,6 +124,16 @@
     runNavigationAction((navigation) => action(navigation, gesture));
   };
 
+  const handlePrimaryNavigationClick = (
+    event: MouseEvent,
+    action: (navigation: BrowserNavigationStateAdapter) => unknown,
+  ) => {
+    if (event.button !== 0) {
+      return;
+    }
+    runNavigationAction(action);
+  };
+
   const runBrowserToolAction = async (
     action: BrowserToolAction,
     event?: MouseEvent,
@@ -187,7 +197,7 @@
             navigation.back(gesture),
           )}
         onclick={(event) =>
-          runNavigationAction((navigation) =>
+          handlePrimaryNavigationClick(event, (navigation) =>
             navigation.back(pointerGestureFromMouseEvent(event)),
           )}
         onmousedown={preventMiddleAutoscroll}
@@ -206,7 +216,7 @@
             navigation.forward(gesture),
           )}
         onclick={(event) =>
-          runNavigationAction((navigation) =>
+          handlePrimaryNavigationClick(event, (navigation) =>
             navigation.forward(pointerGestureFromMouseEvent(event)),
           )}
         onmousedown={preventMiddleAutoscroll}
@@ -227,8 +237,10 @@
           handleNavigationAuxClick(event, (navigation, gesture) =>
             navigation.reload(gesture),
           )}
-        onclick={() =>
-          runNavigationAction((navigation) => navigation.reloadOrStop())}
+        onclick={(event) =>
+          handlePrimaryNavigationClick(event, (navigation) =>
+            navigation.reloadOrStop(),
+          )}
         onmousedown={preventMiddleAutoscroll}
         title={currentNavigation.snapshot.loading
           ? t("nav.stop")
@@ -248,7 +260,7 @@
             navigation.home(gesture),
           )}
         onclick={(event) =>
-          runNavigationAction((navigation) =>
+          handlePrimaryNavigationClick(event, (navigation) =>
             navigation.home(pointerGestureFromMouseEvent(event)),
           )}
         onmousedown={preventMiddleAutoscroll}
