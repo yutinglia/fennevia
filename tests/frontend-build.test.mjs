@@ -309,6 +309,14 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
     topSurface,
     /<FirefoxIcon\s+name=\{currentNavigation\.snapshot\.loading \? "stop" : "reload"\}/u,
   );
+  assert.match(
+    topSurface,
+    /data-fennevia-action="home"\s+data-fennevia-default-focus=""/u,
+  );
+  assert.doesNotMatch(
+    topSurface,
+    /data-fennevia-action="back"\s+data-fennevia-default-focus=""/u,
+  );
   assert.match(firefoxIcon, /aria-hidden="true"/u);
   assert.match(firefoxIcon, /style:mask-image=\{maskImage\}/u);
   assert.match(firefoxIcon, /style:-webkit-mask-image=\{maskImage\}/u);

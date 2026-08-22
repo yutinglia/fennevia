@@ -47,7 +47,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/HealthState.sys.mjs",
-      "sha256": "448008aefac5e835aa59b3b0bd68b0c9ac479f085779179170a12dda8f17b647"
+      "sha256": "84a03687cfbccb63c498842caaefaa97c10cf775bf09d21c502eada9d460df38"
     },
     {
       "scope": "profile",
@@ -87,7 +87,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/shell/ShellApp.js",
-      "sha256": "f5ee0fbc28f73cd81502700d49e6b72a29f3298996db9a4d3accdc9dd3913eb4"
+      "sha256": "ac3e2b19489c1a8493d710afa2cc15734cab3f0fbdbb0f84fb3fad84ba39d02b"
     },
     {
       "scope": "profile",

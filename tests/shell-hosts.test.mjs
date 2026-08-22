@@ -384,16 +384,22 @@ const appInfo = Object.freeze({
 
 const allHealthAttributes = Object.values(shellHealthAttributes);
 
-const assertNoShellOwnership = (window) => {
+const assertNoShellOwnership = (window, { failed = false } = {}) => {
   assert.ok(
     Object.values(shellHostIds).every(
       (id) => !window.document.getElementById(id),
     ),
   );
+  assert.equal(
+    window.document.documentElement.hasAttribute(shellHealthAttributes.failed),
+    failed,
+  );
   assert.ok(
-    allHealthAttributes.every(
-      (attribute) => !window.document.documentElement.hasAttribute(attribute),
-    ),
+    allHealthAttributes
+      .filter((attribute) => attribute !== shellHealthAttributes.failed)
+      .every(
+        (attribute) => !window.document.documentElement.hasAttribute(attribute),
+      ),
   );
   assert.equal(
     window.listenerSnapshot().filter((listener) => listener.type === "keydown")
@@ -940,7 +946,7 @@ test("mount, health, stylesheet, capability, and timeout failures all fail open"
         return true;
       });
       configuration.verify?.();
-      assertNoShellOwnership(window);
+      assertNoShellOwnership(window, { failed: true });
       assert.strictEqual(
         window.elements.toolbox.parentElement,
         window.document.body,
@@ -1002,7 +1008,7 @@ test("emergency fallback disposes mounted, healthy, and active states independen
 
       dispatchEmergencyFallback(window);
       await start;
-      assertNoShellOwnership(window);
+      assertNoShellOwnership(window, { failed: true });
       assert.equal(lifecycle.snapshot().state, "disposed");
       assert.equal(
         entries.filter(

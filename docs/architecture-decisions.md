@@ -1869,6 +1869,15 @@ never registered. Runtime start failure unregisters the sheet if it was
 registered. Registration failure does not fail the runtime; the native
 toolbox may flash rather than leave the browser unusable.
 
+Firefox 154 release validation on 2026-08-23 confirmed that clearing
+`data-fennevia-failed` during same-task lifecycle disposal makes the
+process-scoped selector match again and restarts the pending animation in a
+new browser window. Failed lifecycle disposal therefore clears the root state
+and every other health marker but retains `data-fennevia-failed` for the
+remaining lifetime of that failed browser document. This is the fail-open
+gate already selected by this ADR, not durable native-UI hiding or reusable
+runtime state.
+
 **Reasoning:** Delayed-startup NativeUi cannot beat first paint. A document-
 scoped author sheet registered at AutoConfig import time can. A CSS timeout
 that does not depend on JavaScript is the only fail-open that still works

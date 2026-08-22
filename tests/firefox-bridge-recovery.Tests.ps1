@@ -38,6 +38,32 @@ function Write-Utf8NoBom {
     [IO.File]::WriteAllText($Path, $Content, (New-Object Text.UTF8Encoding($false)))
 }
 
+function Complete-BridgeFixture {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Content,
+
+        [Parameter(Mandatory)]
+        [string[]] $ArtifactExportNames,
+
+        [Parameter(Mandatory)]
+        [string] $SourceModuleName
+    )
+
+    $fixtureExports = @(
+        [regex]::Matches($Content, '(?m)^\s*export\s+function\s+([A-Za-z_$][A-Za-z0-9_$]*)') |
+            ForEach-Object { [string] $_.Groups[1].Value }
+    )
+    $passthroughExports = @(
+        $ArtifactExportNames |
+            Where-Object { $fixtureExports -cnotcontains $_ } |
+            Sort-Object
+    )
+    Assert-True -Condition ($passthroughExports.Count -gt 0) -Message "The bridge fixture must retain non-target production exports."
+    $exportStatement = "export { $($passthroughExports -join ', ') } from `"./$SourceModuleName`";"
+    return $Content + [Environment]::NewLine + $exportStatement + [Environment]::NewLine
+}
+
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $canonicalFirefox = [IO.Path]::GetFullPath($FirefoxPath)
 $canonicalProfile = [IO.Path]::GetFullPath($ProfilePath).TrimEnd("\", "/")
@@ -81,769 +107,144 @@ Assert-True -Condition $tempRoot.StartsWith($tempBase + [IO.Path]::DirectorySepa
 New-Item -ItemType Directory -Path $tempRoot | Out-Null
 $bridgeBackupPath = Join-Path $tempRoot "BridgeBoundary.sys.mjs"
 Copy-Item -LiteralPath $targetPath -Destination $bridgeBackupPath
+$artifactContent = Get-Content -Raw -LiteralPath $bridgeBackupPath
+$artifactExportBlock = [regex]::Match($artifactContent, '(?s)export\s*\{(?<body>[^{}]+)\};\s*$')
+Assert-True -Condition $artifactExportBlock.Success -Message "The generated bridge artifact has no terminal static export block."
+$artifactExportNames = @(
+    $artifactExportBlock.Groups['body'].Value.Split(',') |
+        ForEach-Object {
+            $entry = $_.Trim()
+            $alias = [regex]::Match($entry, '\bas\s+([A-Za-z_$][A-Za-z0-9_$]*)$')
+            if ($alias.Success) {
+                [string] $alias.Groups[1].Value
+            }
+            elseif ($entry -match '^[A-Za-z_$][A-Za-z0-9_$]*$') {
+                $entry
+            }
+        } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Sort-Object -Unique
+)
+Assert-True -Condition ($artifactExportNames.Count -gt 0) -Message "The generated bridge export allowlist is empty."
+$sourceModuleName = "BridgeBoundary.recovery-source.sys.mjs"
+$sourceModulePath = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $targetPath) $sourceModuleName))
+Assert-True -Condition $sourceModulePath.StartsWith($canonicalProfile + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -Message "The bridge recovery source module escaped the managed profile."
+Assert-True -Condition (-not (Test-Path -LiteralPath $sourceModulePath)) -Message "A stale bridge recovery source module already exists."
+Copy-Item -LiteralPath $bridgeBackupPath -Destination $sourceModulePath
 
 $node = Get-Command node -ErrorAction Stop
 $harnessPath = Join-Path $repositoryRoot "tests\firefox-window-lifecycle.mjs"
 $testFailure = $null
-$missingCapabilityBridge = @'
-export function createFirefoxBridgeBoundary({
-  buildId,
-  contextId,
-  firefoxVersion,
-  windowKind,
-}) {
-  let disposed = false;
+
+function New-RecoveryCapabilityBridgeFixture {
+    param(
+        [Parameter(Mandatory)]
+        [string] $FactoryName,
+
+        [Parameter(Mandatory)]
+        [string] $Code,
+
+        [Parameter(Mandatory)]
+        [string] $Phase,
+
+        [Parameter(Mandatory)]
+        [string] $Symbol,
+
+        [Parameter(Mandatory)]
+        [string] $SourceModuleName
+    )
+
+    return @"
+import { $FactoryName as createRecoverySourceBridge } from "./$SourceModuleName";
+
+function createRecoveryCapabilityError(boundary) {
+  const context = boundary.snapshot();
+  const error = new Error("$Code");
+  Object.defineProperties(error, {
+    fenneviaBuildId: { value: context.buildId, enumerable: false },
+    fenneviaCode: { value: "$Code", enumerable: false },
+    fenneviaFirefoxVersion: { value: context.firefoxVersion, enumerable: false },
+    fenneviaPhase: { value: "$Phase", enumerable: false },
+    fenneviaSymbol: { value: "$Symbol", enumerable: false },
+    fenneviaWindowKind: { value: context.windowKind, enumerable: false },
+    name: { value: "FenneviaFirefoxRecoveryCapabilityError", enumerable: false },
+  });
+  return error;
+}
+
+export function $FactoryName(options) {
+  const bridge = createRecoverySourceBridge(options);
   return Object.freeze({
+    ...bridge,
     assertRequiredCapabilities() {
+      throw createRecoveryCapabilityError(options.boundary);
+    },
+  });
+}
+"@
+}
+
+$missingCapabilityBridge = @"
+import { createFirefoxBridgeBoundary as createRecoverySourceBridge } from "./$sourceModuleName";
+
+export function createFirefoxBridgeBoundary(options) {
+  const bridge = createRecoverySourceBridge(options);
+  return Object.freeze({
+    ...bridge,
+    assertRequiredCapabilities() {
+      const context = bridge.snapshot();
       const error = new Error("FENNEVIA_FIREFOX_CAPABILITY_MISSING");
       Object.defineProperties(error, {
-        fenneviaBuildId: { value: String(buildId), enumerable: false },
-        fenneviaCode: {
-          value: "FENNEVIA_FIREFOX_CAPABILITY_MISSING",
-          enumerable: false,
-        },
-        fenneviaFirefoxVersion: {
-          value: String(firefoxVersion),
-          enumerable: false,
-        },
-        fenneviaPhase: {
-          value: "firefox-bridge-capability",
-          enumerable: false,
-        },
+        fenneviaBuildId: { value: context.buildId, enumerable: false },
+        fenneviaCode: { value: "FENNEVIA_FIREFOX_CAPABILITY_MISSING", enumerable: false },
+        fenneviaFirefoxVersion: { value: context.firefoxVersion, enumerable: false },
+        fenneviaPhase: { value: "firefox-bridge-capability", enumerable: false },
         fenneviaSymbol: { value: "window.gBrowser", enumerable: false },
-        fenneviaWindowKind: { value: windowKind, enumerable: false },
-        name: {
-          value: "FenneviaFirefoxBridgeTestError",
-          enumerable: false,
-        },
+        fenneviaWindowKind: { value: context.windowKind, enumerable: false },
+        name: { value: "FenneviaFirefoxBridgeRecoveryError", enumerable: false },
       });
       throw error;
     },
-    dispose() {
-      if (disposed) {
-        return false;
-      }
-      disposed = true;
-      return true;
-    },
-    getCapabilities() {
-      return Object.freeze([]);
-    },
-    snapshot() {
-      return Object.freeze({
-        buildId: String(buildId),
-        contextId,
-        disposed,
-        firefoxVersion: String(firefoxVersion),
-        windowKind,
-      });
-    },
   });
 }
+"@
+$missingBookmarksCapabilityBridge = New-RecoveryCapabilityBridgeFixture `
+    -FactoryName "createFirefoxBookmarksBridge" `
+    -Code "FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING" `
+    -Phase "firefox-bookmarks-capability" `
+    -Symbol "PlacesUtils.bookmarks.fetch" `
+    -SourceModuleName $sourceModuleName
+$missingDownloadsCapabilityBridge = New-RecoveryCapabilityBridgeFixture `
+    -FactoryName "createFirefoxDownloadsBridge" `
+    -Code "FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING" `
+    -Phase "firefox-downloads-capability" `
+    -Symbol "DownloadList.addView" `
+    -SourceModuleName $sourceModuleName
+$missingTabsCapabilityBridge = New-RecoveryCapabilityBridgeFixture `
+    -FactoryName "createFirefoxTabsBridge" `
+    -Code "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING" `
+    -Phase "firefox-tabs-capability" `
+    -Symbol "window.gBrowser.openTabs" `
+    -SourceModuleName $sourceModuleName
+$missingNavigationCapabilityBridge = New-RecoveryCapabilityBridgeFixture `
+    -FactoryName "createFirefoxNavigationBridge" `
+    -Code "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING" `
+    -Phase "firefox-navigation-capability" `
+    -Symbol "window.gBrowser.removeTabsProgressListener" `
+    -SourceModuleName $sourceModuleName
+$missingUrlbarCoverageCapabilityBridge = New-RecoveryCapabilityBridgeFixture `
+    -FactoryName "createFirefoxUrlbarCoverageBridge" `
+    -Code "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING" `
+    -Phase "firefox-urlbar-coverage-capability" `
+    -Symbol "window.openLocation" `
+    -SourceModuleName $sourceModuleName
 
-export function createFirefoxNavigationBridge() {
-  let disposed = false;
-  const navigation = Object.freeze({
-    back() { return false; },
-    focusContent() { return true; },
-    forward() { return false; },
-    home() { return true; },
-    newTab() { return true; },
-    reload() { return true; },
-    reloadOrStop() { return "reload"; },
-    snapshot() {
-      return Object.freeze({
-        addressValue: "",
-        canGoBack: false,
-        canGoForward: false,
-        connectionSecurity: "unavailable",
-        displayUri: "about:blank",
-        loading: false,
-        title: "",
-        trackingProtection: "unavailable",
-      });
-    },
-    stop() { return false; },
-    submitAddress() { return Object.freeze({ status: "accepted" }); },
-    subscribe() {
-      let active = true;
-      return () => {
-        if (!active) {
-          return false;
-        }
-        active = false;
-        return true;
-      };
-    },
-    subscribeAddressPopupOpen() {
-      let active = true;
-      return () => {
-        if (!active) {
-          return false;
-        }
-        active = false;
-        return true;
-      };
-    },
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    dispose() {
-      if (disposed) {
-        return false;
-      }
-      disposed = true;
-      return true;
-    },
-    navigation,
-  });
-}
-
-export function createFirefoxBookmarksBridge() {
-  let disposed = false;
-  const roots = Object.freeze([
-    Object.freeze({ hasChildren: false, id: "root-toolbar", kind: "folder", title: "Toolbar" }),
-    Object.freeze({ hasChildren: false, id: "root-menu", kind: "folder", title: "Menu" }),
-    Object.freeze({ hasChildren: false, id: "root-unfiled", kind: "folder", title: "Other" }),
-    Object.freeze({ hasChildren: false, id: "root-mobile", kind: "folder", title: "Mobile" }),
-  ]);
-  const bookmarks = Object.freeze({
-    async children(parentId, { offset = 0 } = {}) {
-      return Object.freeze({ items: Object.freeze([]), offset, parentId, status: "ok", totalCount: 0, truncated: false });
-    },
-    async open() { return Object.freeze({ reason: "stale", status: "rejected" }); },
-    manage() { return true; },
-    async roots() { return roots; },
-    subscribe() { return () => true; },
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    bookmarks,
-    dispose() {
-      if (disposed) { return false; }
-      disposed = true;
-      return true;
-    },
-  });
-}
-
-export function createFirefoxDownloadsBridge() {
-  let disposed = false;
-  const state = Object.freeze({
-    activeCount: 0,
-    aggregatePercent: null,
-    canceledCount: 0,
-    countOverflow: false,
-    failedCount: 0,
-    items: Object.freeze([]),
-    pausedCount: 0,
-    phase: "ready",
-    progressMode: "none",
-    queuedCount: 0,
-    revision: 1,
-    succeededCount: 0,
-    truncated: false,
-  });
-  const downloads = Object.freeze({
-    async ready() { return true; },
-    snapshot() { return state; },
-    subscribe() { return () => true; },
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    dispose() {
-      if (disposed) { return false; }
-      disposed = true;
-      return true;
-    },
-    downloads,
-    async ready() { return true; },
-  });
-}
-
-export function createFirefoxTabDragCoordinator() { return Object.freeze({}); }
-
-export function createFirefoxTabsBridge() {
-  let disposed = false;
-  const tabs = Object.freeze({
-    beginDrag() { return "tab-transfer-00000001"; },
-    close() {},
-    dropDrag(index) { return { index, kind: "moved", tabId: "tab-registry-1-handle-1" }; },
-    endDrag() { return "consumed"; },
-    inspectDrag() { return null; },
-    move() {},
-    open() { return "tab-registry-1-handle-1"; },
-    openContextMenu() {},
-    pin() {},
-    select() {},
-    snapshot() { return Object.freeze([]); },
-    subscribe() {
-      let active = true;
-      return () => {
-        if (!active) {
-          return false;
-        }
-        active = false;
-        return true;
-      };
-    },
-    toggleMute() {},
-    unpin() {},
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    dispose() {
-      if (disposed) {
-        return false;
-      }
-      disposed = true;
-      return true;
-    },
-    tabs,
-  });
-}
-'@
-
-$missingBookmarksCapabilityBridge = @'
-export function createFirefoxBridgeBoundary({
-  buildId,
-  contextId,
-  firefoxVersion,
-  windowKind,
-}) {
-  let disposed = false;
-  return Object.freeze({
-    dispose() {
-      if (disposed) {
-        return false;
-      }
-      disposed = true;
-      return true;
-    },
-    snapshot() {
-      return Object.freeze({
-        buildId: String(buildId),
-        contextId,
-        disposed,
-        firefoxVersion: String(firefoxVersion),
-        windowKind,
-      });
-    },
-  });
-}
-
-export function createFirefoxBookmarksBridge({ boundary }) {
-  const context = boundary.snapshot();
-  const error = new Error("FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING");
-  Object.defineProperties(error, {
-    fenneviaBuildId: { value: context.buildId, enumerable: false },
-    fenneviaCode: {
-      value: "FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING",
-      enumerable: false,
-    },
-    fenneviaFirefoxVersion: {
-      value: context.firefoxVersion,
-      enumerable: false,
-    },
-    fenneviaPhase: {
-      value: "firefox-bookmarks-capability",
-      enumerable: false,
-    },
-    fenneviaSymbol: {
-      value: "PlacesUtils.bookmarks.fetch",
-      enumerable: false,
-    },
-    fenneviaWindowKind: { value: context.windowKind, enumerable: false },
-    name: {
-      value: "FenneviaFirefoxBookmarksBridgeTestError",
-      enumerable: false,
-    },
-  });
-  throw error;
-}
-
-export function createFirefoxDownloadsBridge() {
-  throw new Error("FENNEVIA_TEST_DOWNLOADS_SHOULD_NOT_INITIALIZE");
-}
-
-export function createFirefoxNavigationBridge() {
-  throw new Error("FENNEVIA_TEST_NAVIGATION_SHOULD_NOT_INITIALIZE");
-}
-
-export function createFirefoxTabDragCoordinator() { return Object.freeze({}); }
-
-export function createFirefoxTabsBridge() {
-  throw new Error("FENNEVIA_TEST_TABS_SHOULD_NOT_INITIALIZE");
-}
-'@
-
-$missingDownloadsCapabilityBridge = @'
-export function createFirefoxBridgeBoundary({
-  buildId,
-  contextId,
-  firefoxVersion,
-  windowKind,
-}) {
-  let disposed = false;
-  return Object.freeze({
-    dispose() {
-      if (disposed) {
-        return false;
-      }
-      disposed = true;
-      return true;
-    },
-    snapshot() {
-      return Object.freeze({
-        buildId: String(buildId),
-        contextId,
-        disposed,
-        firefoxVersion: String(firefoxVersion),
-        windowKind,
-      });
-    },
-  });
-}
-
-export function createFirefoxBookmarksBridge() {
-  let disposed = false;
-  const roots = Object.freeze([
-    Object.freeze({ hasChildren: false, id: "root-toolbar", kind: "folder", title: "Toolbar" }),
-    Object.freeze({ hasChildren: false, id: "root-menu", kind: "folder", title: "Menu" }),
-    Object.freeze({ hasChildren: false, id: "root-unfiled", kind: "folder", title: "Other" }),
-    Object.freeze({ hasChildren: false, id: "root-mobile", kind: "folder", title: "Mobile" }),
-  ]);
-  const bookmarks = Object.freeze({
-    async children(parentId, { offset = 0 } = {}) {
-      return Object.freeze({ items: Object.freeze([]), offset, parentId, status: "ok", totalCount: 0, truncated: false });
-    },
-    async open() { return Object.freeze({ reason: "stale", status: "rejected" }); },
-    manage() { return true; },
-    async roots() { return roots; },
-    subscribe() { return () => true; },
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    bookmarks,
-    dispose() {
-      if (disposed) { return false; }
-      disposed = true;
-      return true;
-    },
-  });
-}
-
-export function createFirefoxDownloadsBridge({ boundary }) {
-  const context = boundary.snapshot();
-  const error = new Error("FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING");
-  Object.defineProperties(error, {
-    fenneviaBuildId: { value: context.buildId, enumerable: false },
-    fenneviaCode: {
-      value: "FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING",
-      enumerable: false,
-    },
-    fenneviaFirefoxVersion: {
-      value: context.firefoxVersion,
-      enumerable: false,
-    },
-    fenneviaPhase: {
-      value: "firefox-downloads-capability",
-      enumerable: false,
-    },
-    fenneviaSymbol: {
-      value: "DownloadList.addView",
-      enumerable: false,
-    },
-    fenneviaWindowKind: { value: context.windowKind, enumerable: false },
-    name: {
-      value: "FenneviaFirefoxDownloadsBridgeTestError",
-      enumerable: false,
-    },
-  });
-  throw error;
-}
-
-export function createFirefoxNavigationBridge() {
-  throw new Error("FENNEVIA_TEST_NAVIGATION_SHOULD_NOT_INITIALIZE");
-}
-
-export function createFirefoxTabDragCoordinator() { return Object.freeze({}); }
-
-export function createFirefoxTabsBridge() {
-  throw new Error("FENNEVIA_TEST_TABS_SHOULD_NOT_INITIALIZE");
-}
-'@
-
-$missingTabsCapabilityBridge = @'
-export function createFirefoxBridgeBoundary({
-  buildId,
-  contextId,
-  firefoxVersion,
-  windowKind,
-}) {
-  let disposed = false;
-  return Object.freeze({
-    dispose() {
-      if (disposed) {
-        return false;
-      }
-      disposed = true;
-      return true;
-    },
-    snapshot() {
-      return Object.freeze({
-        buildId: String(buildId),
-        contextId,
-        disposed,
-        firefoxVersion: String(firefoxVersion),
-        windowKind,
-      });
-    },
-  });
-}
-
-export function createFirefoxNavigationBridge() {
-  throw new Error("FENNEVIA_TEST_NAVIGATION_SHOULD_NOT_INITIALIZE");
-}
-
-export function createFirefoxBookmarksBridge() {
-  let disposed = false;
-  const roots = Object.freeze([
-    Object.freeze({ hasChildren: false, id: "root-toolbar", kind: "folder", title: "Toolbar" }),
-    Object.freeze({ hasChildren: false, id: "root-menu", kind: "folder", title: "Menu" }),
-    Object.freeze({ hasChildren: false, id: "root-unfiled", kind: "folder", title: "Other" }),
-    Object.freeze({ hasChildren: false, id: "root-mobile", kind: "folder", title: "Mobile" }),
-  ]);
-  const bookmarks = Object.freeze({
-    async children(parentId, { offset = 0 } = {}) {
-      return Object.freeze({ items: Object.freeze([]), offset, parentId, status: "ok", totalCount: 0, truncated: false });
-    },
-    async open() { return Object.freeze({ reason: "stale", status: "rejected" }); },
-    manage() { return true; },
-    async roots() { return roots; },
-    subscribe() { return () => true; },
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    bookmarks,
-    dispose() {
-      if (disposed) { return false; }
-      disposed = true;
-      return true;
-    },
-  });
-}
-
-export function createFirefoxDownloadsBridge() {
-  let disposed = false;
-  const state = Object.freeze({
-    activeCount: 0,
-    aggregatePercent: null,
-    canceledCount: 0,
-    countOverflow: false,
-    failedCount: 0,
-    items: Object.freeze([]),
-    pausedCount: 0,
-    phase: "ready",
-    progressMode: "none",
-    queuedCount: 0,
-    revision: 1,
-    succeededCount: 0,
-    truncated: false,
-  });
-  const downloads = Object.freeze({
-    async ready() { return true; },
-    snapshot() { return state; },
-    subscribe() { return () => true; },
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    dispose() {
-      if (disposed) { return false; }
-      disposed = true;
-      return true;
-    },
-    downloads,
-    async ready() { return true; },
-  });
-}
-export function createFirefoxTabDragCoordinator() { return Object.freeze({}); }
-
-export function createFirefoxTabsBridge({ boundary }) {
-  const context = boundary.snapshot();
-  const error = new Error("FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING");
-  Object.defineProperties(error, {
-    fenneviaBuildId: { value: context.buildId, enumerable: false },
-    fenneviaCode: {
-      value: "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
-      enumerable: false,
-    },
-    fenneviaFirefoxVersion: {
-      value: context.firefoxVersion,
-      enumerable: false,
-    },
-    fenneviaPhase: {
-      value: "firefox-tabs-capability",
-      enumerable: false,
-    },
-    fenneviaSymbol: {
-      value: "window.gBrowser.openTabs",
-      enumerable: false,
-    },
-    fenneviaWindowKind: { value: context.windowKind, enumerable: false },
-    name: {
-      value: "FenneviaFirefoxTabsBridgeTestError",
-      enumerable: false,
-    },
-  });
-  throw error;
-}
-'@
-
-$missingNavigationCapabilityBridge = @'
-export function createFirefoxBridgeBoundary({
-  buildId,
-  contextId,
-  firefoxVersion,
-  windowKind,
-}) {
-  let disposed = false;
-  return Object.freeze({
-    dispose() {
-      if (disposed) {
-        return false;
-      }
-      disposed = true;
-      return true;
-    },
-    snapshot() {
-      return Object.freeze({
-        buildId: String(buildId),
-        contextId,
-        disposed,
-        firefoxVersion: String(firefoxVersion),
-        windowKind,
-      });
-    },
-  });
-}
-
-export function createFirefoxNavigationBridge({ boundary }) {
-  const context = boundary.snapshot();
-  const error = new Error("FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING");
-  Object.defineProperties(error, {
-    fenneviaBuildId: { value: context.buildId, enumerable: false },
-    fenneviaCode: {
-      value: "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING",
-      enumerable: false,
-    },
-    fenneviaFirefoxVersion: {
-      value: context.firefoxVersion,
-      enumerable: false,
-    },
-    fenneviaPhase: {
-      value: "firefox-navigation-capability",
-      enumerable: false,
-    },
-    fenneviaSymbol: {
-      value: "window.gBrowser.removeTabsProgressListener",
-      enumerable: false,
-    },
-    fenneviaWindowKind: { value: context.windowKind, enumerable: false },
-    name: {
-      value: "FenneviaFirefoxNavigationBridgeTestError",
-      enumerable: false,
-    },
-  });
-  throw error;
-}
-
-export function createFirefoxDownloadsBridge() {
-  let disposed = false;
-  const state = Object.freeze({
-    activeCount: 0,
-    aggregatePercent: null,
-    canceledCount: 0,
-    countOverflow: false,
-    failedCount: 0,
-    items: Object.freeze([]),
-    pausedCount: 0,
-    phase: "ready",
-    progressMode: "none",
-    queuedCount: 0,
-    revision: 1,
-    succeededCount: 0,
-    truncated: false,
-  });
-  const downloads = Object.freeze({
-    async ready() { return true; },
-    snapshot() { return state; },
-    subscribe() { return () => true; },
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    dispose() {
-      if (disposed) { return false; }
-      disposed = true;
-      return true;
-    },
-    downloads,
-    async ready() { return true; },
-  });
-}
-
-export function createFirefoxBookmarksBridge() {
-  let disposed = false;
-  const roots = Object.freeze([
-    Object.freeze({ hasChildren: false, id: "root-toolbar", kind: "folder", title: "Toolbar" }),
-    Object.freeze({ hasChildren: false, id: "root-menu", kind: "folder", title: "Menu" }),
-    Object.freeze({ hasChildren: false, id: "root-unfiled", kind: "folder", title: "Other" }),
-    Object.freeze({ hasChildren: false, id: "root-mobile", kind: "folder", title: "Mobile" }),
-  ]);
-  const bookmarks = Object.freeze({
-    async children(parentId, { offset = 0 } = {}) {
-      return Object.freeze({ items: Object.freeze([]), offset, parentId, status: "ok", totalCount: 0, truncated: false });
-    },
-    async open() { return Object.freeze({ reason: "stale", status: "rejected" }); },
-    manage() { return true; },
-    async roots() { return roots; },
-    subscribe() { return () => true; },
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    bookmarks,
-    dispose() {
-      if (disposed) { return false; }
-      disposed = true;
-      return true;
-    },
-  });
-}
-
-export function createFirefoxTabDragCoordinator() { return Object.freeze({}); }
-
-export function createFirefoxTabsBridge() {
-  let disposed = false;
-  const tabs = Object.freeze({
-    beginDrag() { return "tab-transfer-00000001"; },
-    close() {},
-    dropDrag(index) { return { index, kind: "moved", tabId: "tab-registry-1-handle-1" }; },
-    endDrag() { return "consumed"; },
-    inspectDrag() { return null; },
-    move() {},
-    open() { return "tab-registry-1-handle-1"; },
-    openContextMenu() {},
-    pin() {},
-    select() {},
-    snapshot() { return Object.freeze([]); },
-    subscribe() {
-      let active = true;
-      return () => {
-        if (!active) {
-          return false;
-        }
-        active = false;
-        return true;
-      };
-    },
-    toggleMute() {},
-    unpin() {},
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    dispose() {
-      if (disposed) {
-        return false;
-      }
-      disposed = true;
-      return true;
-    },
-    tabs,
-  });
-}
-'@
-
-$urlbarCoverageBridgeStub = @'
-export function createFirefoxUrlbarCoverageBridge() {
-  let disposed = false;
-  const state = Object.freeze({
-    items: Object.freeze([]),
-    permissions: Object.freeze({
-      available: false,
-      blocked: Object.freeze([]),
-      hasPermissions: false,
-      sharing: Object.freeze([]),
-    }),
-  });
-  const urlbarCoverage = Object.freeze({
-    openNativeUrlbar() { return true; },
-    snapshot() { return state; },
-    subscribe() {
-      let active = true;
-      return () => {
-        if (!active) { return false; }
-        active = false;
-        return true;
-      };
-    },
-  });
-  return Object.freeze({
-    assertRequiredCapabilities() { return Object.freeze([]); },
-    dispose() {
-      if (disposed) { return false; }
-      disposed = true;
-      return true;
-    },
-    snapshot() {
-      return Object.freeze({
-        disposed,
-        failed: false,
-        revision: 1,
-        subscriberCount: 0,
-      });
-    },
-    urlbarCoverage,
-  });
-}
-'@
-
-$missingUrlbarCoverageCapabilityBridge = $missingCapabilityBridge + [Environment]::NewLine + @'
-export function createFirefoxUrlbarCoverageBridge({ boundary }) {
-  const context = boundary.snapshot();
-  const error = new Error("FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING");
-  Object.defineProperties(error, {
-    fenneviaBuildId: { value: context.buildId, enumerable: false },
-    fenneviaCode: {
-      value: "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING",
-      enumerable: false,
-    },
-    fenneviaFirefoxVersion: {
-      value: context.firefoxVersion,
-      enumerable: false,
-    },
-    fenneviaPhase: {
-      value: "firefox-urlbar-coverage-capability",
-      enumerable: false,
-    },
-    fenneviaSymbol: {
-      value: "window.openLocation",
-      enumerable: false,
-    },
-    fenneviaWindowKind: { value: context.windowKind, enumerable: false },
-    name: {
-      value: "FenneviaFirefoxUrlbarCoverageBridgeTestError",
-      enumerable: false,
-    },
-  });
-  throw error;
-}
-'@
-
-$missingCapabilityBridge = $missingCapabilityBridge + [Environment]::NewLine + $urlbarCoverageBridgeStub
-$missingBookmarksCapabilityBridge = $missingBookmarksCapabilityBridge + [Environment]::NewLine + $urlbarCoverageBridgeStub
-$missingDownloadsCapabilityBridge = $missingDownloadsCapabilityBridge + [Environment]::NewLine + $urlbarCoverageBridgeStub
-$missingTabsCapabilityBridge = $missingTabsCapabilityBridge + [Environment]::NewLine + $urlbarCoverageBridgeStub
-$missingNavigationCapabilityBridge = $missingNavigationCapabilityBridge + [Environment]::NewLine + $urlbarCoverageBridgeStub
+$missingCapabilityBridge = Complete-BridgeFixture -Content $missingCapabilityBridge -ArtifactExportNames $artifactExportNames -SourceModuleName $sourceModuleName
+$missingBookmarksCapabilityBridge = Complete-BridgeFixture -Content $missingBookmarksCapabilityBridge -ArtifactExportNames $artifactExportNames -SourceModuleName $sourceModuleName
+$missingDownloadsCapabilityBridge = Complete-BridgeFixture -Content $missingDownloadsCapabilityBridge -ArtifactExportNames $artifactExportNames -SourceModuleName $sourceModuleName
+$missingTabsCapabilityBridge = Complete-BridgeFixture -Content $missingTabsCapabilityBridge -ArtifactExportNames $artifactExportNames -SourceModuleName $sourceModuleName
+$missingNavigationCapabilityBridge = Complete-BridgeFixture -Content $missingNavigationCapabilityBridge -ArtifactExportNames $artifactExportNames -SourceModuleName $sourceModuleName
+$missingUrlbarCoverageCapabilityBridge = Complete-BridgeFixture -Content $missingUrlbarCoverageCapabilityBridge -ArtifactExportNames $artifactExportNames -SourceModuleName $sourceModuleName
 
 try {
     Write-Utf8NoBom -Path $targetPath -Content $missingCapabilityBridge
@@ -880,6 +281,10 @@ catch {
 finally {
     Copy-Item -LiteralPath $bridgeBackupPath -Destination $targetPath -Force
     Assert-True -Condition ((Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant() -ceq $expectedHash) -Message "Bridge recovery cleanup did not restore the exact committed artifact."
+    if (Test-Path -LiteralPath $sourceModulePath -PathType Leaf) {
+        Remove-Item -LiteralPath $sourceModulePath -Force
+    }
+    Assert-True -Condition (-not (Test-Path -LiteralPath $sourceModulePath)) -Message "The temporary bridge recovery source module remains installed."
     Remove-Item -LiteralPath $bridgeBackupPath -Force
     Assert-True -Condition (@(Get-ChildItem -LiteralPath $tempRoot -Force).Count -eq 0) -Message "The temporary bridge recovery directory is not empty."
     Remove-Item -LiteralPath $tempRoot -Force

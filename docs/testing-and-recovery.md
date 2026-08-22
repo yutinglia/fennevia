@@ -648,6 +648,14 @@ native view closed with zero rows, and restored the controller before and after
 execution. Both runs shut down cleanly with zero first-party script errors and
 emitted only fixed enums, counts, and booleans.
 
+The 2026-08-23 release-candidate suggestions rerun additionally observed two
+real Firefox Urlbar coverage items. The optional second footer row was present,
+the primary copy remained 14.85px high, the complete footer remained 69.90px
+high, the native-access target remained 32px, and the trust/permission row
+remained two columns and 48.65px high. The probe accepts no empty second row;
+when real items exist it instead requires that row and the ordinary-width 72px
+footer bound.
+
 The final production-artifact rerun initially exposed a real incremental batch
 race: a later batch for the same query reset the active option after Arrow Down,
 and the probe timed out. The current UI preserves a bounded active index within
@@ -1152,7 +1160,10 @@ If any step fails:
 7. report the privacy-safe first causal phase/stack;
 8. leave core native Firefox UI unchanged. The ADR-050 startup sheet stops
    matching when `failed` or `suspended` is set, and otherwise self-expires at
-   2,000 ms even if JavaScript never runs again.
+   2,000 ms even if JavaScript never runs again. A failed window keeps only
+   `data-fennevia-failed` after lifecycle disposal so the process-scoped sheet
+   cannot rematch and restart its animation; the marker contains no data and
+   disappears with that browser document.
 
 ### 8.1.1 First-paint native hide
 
@@ -1425,13 +1436,22 @@ separate profile mutation command is required. The same harness accepts
 `--expect-disabled` after an exact package `Disable` action and verifies native
 UI, zero project hosts, and zero Fennevia records before re-enable.
 
+Each bridge failure fixture wraps the exact hash-validated installed production
+factory and overrides only the target capability assertion. All non-target
+exports come from a temporary sibling copy of that same artifact, which the
+wrapper removes after exact restoration. This prevents unrelated bridge API
+growth from turning a capability test into an early import or adapter failure.
+
 The SessionStore wrapper is a test-only four-process-boundary transaction:
 
 1. `prepare` creates four fixed local fixtures, snapshots seven allowlisted
    preference user-value states, and performs a normal Firefox shutdown;
 2. `verify` starts a new process, waits for Firefox's all-windows-restored
-   promise, compares native and Fennevia order/selection/pinning, verifies the
-   exact lazy pending set before interaction, and exercises native reveal;
+   promise, settles any physical-cursor edge reveal through the ordinary
+   window-leave/Escape paths, compares native and Fennevia order/selection/
+   pinning, verifies the exact lazy pending set before interaction, and
+   exercises the supported address-overlay-to-native-Urlbar reveal/release
+   handoff;
 3. `fail-open` temporarily removes the exact hash-validated installed frontend
    bundle, starts another process, verifies zero project hosts and a usable
    native restored session, activates one fixed pending tab, and restores the

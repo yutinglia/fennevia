@@ -400,10 +400,10 @@ data flow, or native-panel ownership described above.
       audit, deterministic build, and 14/14 production-artifact checks pass.
 - [x] Run the Windows PowerShell 5.1 fixed-list static suite; all listed suites
       pass.
-- [ ] Run the extended Firefox 154 production-panel layout probe. The harness
-      now checks two computed status columns, same-row geometry, bounded row and
-      footer heights, and the 32px native-access target, but this run is
-      recorded as `not run` because the dedicated development profile is
-      currently open. Do not close that user-visible window or claim runtime
-      layout evidence without a later explicit run. The wider release and
-      accessibility/layout matrices in section 6.3 remain pending.
+- [x] Run the extended Firefox 154 production-panel layout probe. The 2026-08-23
+      release-candidate run proved two computed status columns, same-row
+      geometry, a 48.65px status row, a 32px native-access target, and a
+      69.90px compact footer with two real Firefox Urlbar coverage items in its
+      conditional second row. The wider provider/account-dependent rows in
+      section 6.3 remain release-recorded as `not run` where they could not be
+      reproduced safely.

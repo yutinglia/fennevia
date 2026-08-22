@@ -190,7 +190,6 @@
         aria-label={t("nav.backAria")}
         class="fennevia-control fennevia-navigation__button"
         data-fennevia-action="back"
-        data-fennevia-default-focus=""
         disabled={!currentNavigation.snapshot.canGoBack}
         onauxclick={(event) =>
           handleNavigationAuxClick(event, (navigation, gesture) =>
@@ -255,6 +254,7 @@
         aria-label={t("nav.homeAria")}
         class="fennevia-control fennevia-navigation__button"
         data-fennevia-action="home"
+        data-fennevia-default-focus=""
         onauxclick={(event) =>
           handleNavigationAuxClick(event, (navigation, gesture) =>
             navigation.home(gesture),

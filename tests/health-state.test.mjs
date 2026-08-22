@@ -144,6 +144,15 @@ test("an illegal transition fails open and removes the active gate", () => {
     () => state.transition("mounted"),
     /FENNEVIA_SHELL_STATE_TRANSITION_INVALID/u,
   );
+  assert.equal(state.dispose(), true);
+  assert.deepEqual(state.snapshot(), { active: false, state: "disposed" });
+  assert.equal(root.hasAttribute(shellHealthAttributes.rootState), false);
+  assert.equal(root.hasAttribute(shellHealthAttributes.failed), true);
+  assert.ok(
+    allHealthAttributes
+      .filter((attribute) => attribute !== shellHealthAttributes.failed)
+      .every((attribute) => !root.hasAttribute(attribute)),
+  );
 });
 
 test("stale project state is rejected and cleared without adopting it", () => {

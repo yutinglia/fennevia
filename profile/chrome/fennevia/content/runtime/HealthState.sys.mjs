@@ -263,6 +263,7 @@ export function createShellHealthState({ rootElement }) {
         return false;
       }
 
+      const preserveFailedMarker = state === "failed";
       let firstError;
       try {
         rootElement.removeAttribute(STATE_MARKER_ATTRIBUTES.active);
@@ -273,9 +274,15 @@ export function createShellHealthState({ rootElement }) {
         removeStateAttributes(rootElement);
       } catch (error) {
         firstError ??= error;
-      } finally {
-        state = "disposed";
       }
+      if (preserveFailedMarker) {
+        try {
+          rootElement.setAttribute(STATE_MARKER_ATTRIBUTES.failed, "");
+        } catch (error) {
+          firstError ??= error;
+        }
+      }
+      state = "disposed";
       if (firstError) {
         throw annotateShellLifecycleError(firstError, {
           code: "FENNEVIA_SHELL_STATE_CLEANUP_FAILED",

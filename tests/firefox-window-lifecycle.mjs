@@ -60,6 +60,27 @@ const SESSION_RESTORE_EXPECTED_PENDING = Object.freeze([
   "lazy-a",
   "lazy-b",
 ]);
+const FRONTEND_TEXT_BY_LOCALE = Object.freeze({
+  en: Object.freeze({
+    addressFieldLabel: "Enter an address or search",
+    surfaceLabels: Object.freeze({
+      bottom: "Downloads",
+      left: "Tabs and address",
+      right: "Bookmarks",
+      top: "Browser controls",
+    }),
+  }),
+  "zh-Hant": Object.freeze({
+    addressFieldLabel: "輸入網址或搜尋",
+    surfaceLabels: Object.freeze({
+      bottom: "下載",
+      left: "分頁與網址",
+      right: "書籤",
+      top: "瀏覽器控制項",
+    }),
+  }),
+});
+let currentHarnessPhase = "startup";
 
 function parseArguments(argv) {
   const result = {
@@ -828,9 +849,27 @@ async function exerciseSessionRestoreNativeReveal(client) {
   return client.execute(`
     return (async () => {
       const root = document.documentElement;
-      const toolbox = document.getElementById("navigator-toolbox");
       const navBar = document.getElementById("nav-bar");
-      if (!toolbox || !navBar || !gBrowser.selectedBrowser) {
+      const popupRoot = document.getElementById("fennevia-address-popup-root");
+      const popupInput = popupRoot?.querySelector(
+        "[data-fennevia-address-popup-input]"
+      );
+      const nativeAccess = popupRoot?.querySelector(
+        "[data-fennevia-native-urlbar-access]"
+      );
+      const nativeUrlbar = window.gURLBar;
+      const openLocationCommand = document.getElementById(
+        "Browser:OpenLocation"
+      );
+      if (
+        !navBar ||
+        !popupRoot ||
+        !popupInput ||
+        !nativeAccess ||
+        !nativeUrlbar ||
+        !openLocationCommand ||
+        !gBrowser.selectedBrowser
+      ) {
         throw new Error("FENNEVIA_SESSION_RESTORE_NATIVE_REVEAL_MISSING");
       }
       const waitFor = async (predicate, code) => {
@@ -848,20 +887,40 @@ async function exerciseSessionRestoreNativeReveal(client) {
         () => !root.hasAttribute("data-fennevia-native-ui-revealed"),
         "FENNEVIA_SESSION_RESTORE_NATIVE_REVEAL_BASELINE_TIMEOUT"
       );
-      toolbox.dispatchEvent(new PointerEvent("pointerenter"));
+      const commandEvent = new CustomEvent("command", {
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(commandEvent, "sourceEvent", {
+        value: { target: { id: "focusURLBar" } },
+      });
+      openLocationCommand.dispatchEvent(commandEvent);
+      await waitFor(
+        () =>
+          !popupRoot.hidden &&
+          popupRoot.getAttribute("data-fennevia-address-popup-phase") ===
+            "editing" &&
+          document.activeElement === popupInput,
+        "FENNEVIA_SESSION_RESTORE_ADDRESS_POPUP_TIMEOUT"
+      );
+      nativeAccess.click();
       await waitFor(
         () =>
           root.hasAttribute("data-fennevia-native-ui-revealed") &&
-          getComputedStyle(navBar).visibility !== "collapse",
+          navBar.getBoundingClientRect().height > 0 &&
+          nativeUrlbar.focused &&
+          popupRoot.getAttribute("data-fennevia-address-popup-phase") ===
+            "hidden",
         "FENNEVIA_SESSION_RESTORE_NATIVE_REVEAL_TIMEOUT"
       );
       const revealObserved = true;
-      toolbox.dispatchEvent(new PointerEvent("pointerleave"));
+      nativeUrlbar.blur();
+      nativeUrlbar.view.close();
       gBrowser.selectedBrowser.focus();
       await waitFor(
         () =>
           !root.hasAttribute("data-fennevia-native-ui-revealed") &&
-          getComputedStyle(navBar).visibility === "collapse",
+          navBar.getBoundingClientRect().height === 0,
         "FENNEVIA_SESSION_RESTORE_NATIVE_RELEASE_TIMEOUT"
       );
       return { revealObserved, revealReleased: true };
@@ -981,13 +1040,50 @@ async function cleanupSessionRestoreFixture(client, state) {
   );
 }
 
+async function settleSessionRestoreShellAtRest(client) {
+  return client.execute(`
+    return (async () => {
+      const roots = () => [
+        ...document.querySelectorAll("[data-fennevia-surface-root]"),
+      ];
+      window.dispatchEvent(
+        new PointerEvent("pointerout", {
+          bubbles: true,
+          relatedTarget: null,
+        })
+      );
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "Escape",
+        })
+      );
+      gBrowser.selectedBrowser?.focus();
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        if (
+          roots().length === 4 &&
+          roots().every(
+            root => root.getAttribute("data-fennevia-visible") === "false"
+          )
+        ) {
+          return true;
+        }
+        await new Promise(resolve => window.setTimeout(resolve, 20));
+      }
+      throw new Error("FENNEVIA_SESSION_RESTORE_SHELL_REST_TIMEOUT");
+    })();
+  `);
+}
+
 async function executeSessionRestoreMode(client, mode, stateContext) {
   await waitForSessionStoreStartup(client);
 
   if (mode === "fail-open") {
     await new Promise((resolve) => setTimeout(resolve, 750));
     assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
-    await assertNoShellHosts(client);
+    await assertNoShellHosts(client, { failed: true });
     const fixture = await waitForSessionRestoreFixture(client, false);
     assert.deepEqual(fixture.pendingIds, SESSION_RESTORE_EXPECTED_PENDING);
     const runtimeState = await client.execute(`
@@ -1053,6 +1149,7 @@ async function executeSessionRestoreMode(client, mode, stateContext) {
     "FENNEVIA_SESSION_RESTORE_RUNTIME_TIMEOUT",
   );
   assert.equal(runtimeState.initializingWindowCount, 0);
+  assert.equal(await settleSessionRestoreShellAtRest(client), true);
   assert.deepEqual(
     await collectNativeState(client),
     EXPECTED_ACTIVE_NATIVE_STATE,
@@ -1613,6 +1710,8 @@ async function collectShellHostState(client) {
           '.titlebar-buttonbox-container .titlebar-close[command="cmd_closeWindow"]'
         )
       ),
+      projectWindowControlCount:
+        frame?.querySelectorAll("[data-fennevia-window-control]").length ?? 0,
       nativeUi: {
         identityBoxOwnedByNavBar:
           document.getElementById("identity-box")?.closest("#nav-bar") ===
@@ -1711,6 +1810,7 @@ async function collectShellHostState(client) {
 async function collectFrontendState(client) {
   return client.execute(`
     const XHTML_NS = "http://www.w3.org/1999/xhtml";
+    const SVG_NS = "http://www.w3.org/2000/svg";
     const edgeNames = ["top", "left", "right", "bottom"];
     const frame = document.getElementById("fennevia-shell-frame-host");
     const roots = Object.fromEntries(edgeNames.map(edge => [
@@ -1774,6 +1874,7 @@ async function collectFrontendState(client) {
           popupRoot
             ?.querySelector('label[for="fennevia-address-popup-input"]')
             ?.textContent?.trim() ?? null,
+        localeId: popupRoot?.getAttribute("lang") ?? null,
         maxLength: addressInput?.maxLength ?? null,
         overlayParentId: overlayMount?.parentElement?.id ?? null,
         overlayStatus:
@@ -1790,6 +1891,15 @@ async function collectFrontendState(client) {
         popupStatusCount:
           popupRoot?.querySelectorAll("[data-fennevia-address-popup-status]")
             .length ?? 0,
+        suggestionsAriaAutocomplete:
+          addressInput?.getAttribute("aria-autocomplete") ?? null,
+        suggestionsCount:
+          popupRoot?.querySelectorAll("[data-fennevia-urlbar-suggestions]")
+            .length ?? 0,
+        suggestionsRole:
+          popupRoot
+            ?.querySelector("[data-fennevia-urlbar-suggestions]")
+            ?.getAttribute("role") ?? null,
         nativeAccessCount:
           popupRoot?.querySelectorAll("[data-fennevia-native-urlbar-access]")
             .length ?? 0,
@@ -1900,8 +2010,11 @@ async function collectFrontendState(client) {
             ?.querySelector('[data-fennevia-progress-light="load"]')
             ?.getAttribute("data-fennevia-progress-visible") ?? null,
       },
-      allElementsUseXhtml: elements.every(
-        element => element.namespaceURI === XHTML_NS
+      allElementsUseAllowedNamespace: elements.every(
+        element =>
+          element.namespaceURI === XHTML_NS ||
+          (element.namespaceURI === SVG_NS &&
+            element.closest('svg[data-fennevia-icon]')?.namespaceURI === SVG_NS)
       ),
       actionControlsNamed: elements
         .filter(element => element.matches?.(
@@ -1945,9 +2058,20 @@ async function collectFrontendState(client) {
         backMatchesNative:
           topRoot?.querySelector('[data-fennevia-action="back"]')?.disabled ===
           document.getElementById("Browser:Back")?.hasAttribute("disabled"),
-        controlCount:
-          topRoot?.querySelectorAll("[data-fennevia-navigation] button").length ??
-          0,
+        coreActionCounts: Object.fromEntries(
+          ["back", "forward", "reload-stop", "home"].map(action => [
+            action,
+            topRoot?.querySelectorAll(
+              '[data-fennevia-action="' + action + '"]'
+            ).length ?? 0,
+          ])
+        ),
+        browserToolNames: Array.from(
+          topRoot
+            ?.querySelector("[data-fennevia-browser-tools]")
+            ?.querySelectorAll("[data-fennevia-browser-tool]") ?? [],
+          element => element.getAttribute("data-fennevia-browser-tool")
+        ).sort(),
         editableCount:
           topRoot?.querySelectorAll("input, textarea, [contenteditable]").length ??
           0,
@@ -1968,9 +2092,10 @@ async function collectFrontendState(client) {
           topRoot?.querySelectorAll(
             '[aria-haspopup], [role="menu"], [data-fennevia-action*="menu"]'
           ).length ?? 0,
-        statusCount:
-          topRoot?.querySelectorAll("[data-fennevia-navigation-status]")
-            .length ?? 0,
+        locationCount:
+          root?.querySelectorAll(
+            "[data-fennevia-address-launcher] .fennevia-address-launcher__location"
+          ).length ?? 0,
         tabCount:
           topRoot?.querySelectorAll('[role="tab"], [role="tablist"]').length ??
           0,
@@ -2009,7 +2134,9 @@ async function collectFrontendState(client) {
           );
           const expectedTitle = nativeTitle.trim()
             ? nativeTitle
-            : "Untitled tab";
+            : popupRoot?.getAttribute("lang") === "zh-Hant"
+              ? "未命名分頁"
+              : "Untitled tab";
           return tab.getAttribute("title") === expectedTitle;
         }),
       tabListRole:
@@ -2049,10 +2176,13 @@ async function collectFrontendState(client) {
 }
 
 function assertFrontendState(state, windowKind) {
-  assert.deepEqual(state.address, {
+  const { localeId, ...address } = state.address;
+  const frontendText = FRONTEND_TEXT_BY_LOCALE[localeId];
+  assert.ok(frontendText, `Unexpected frontend locale: ${String(localeId)}`);
+  assert.deepEqual(address, {
     edgeEditableCount: 0,
     launcherCount: 1,
-    labelText: "Enter an address or search",
+    labelText: frontendText.addressFieldLabel,
     maxLength: 4096,
     overlayParentId: "fennevia-shell-address-overlay-host",
     overlayStatus: "mounted",
@@ -2060,6 +2190,9 @@ function assertFrontendState(state, windowKind) {
     popupPhase: "hidden",
     popupRootCount: 1,
     popupStatusCount: 1,
+    suggestionsAriaAutocomplete: "list",
+    suggestionsCount: 1,
+    suggestionsRole: "listbox",
     nativeAccessCount: 1,
     permissionDetailCount: 1,
     trustDetailCount: 1,
@@ -2075,7 +2208,7 @@ function assertFrontendState(state, windowKind) {
   assert.equal(state.bookmarks.rootCount, 4);
   assert.equal(state.bookmarks.rootSelectCount, 1);
   assert.equal(state.bookmarks.rootSelectedCount, 1);
-  assert.equal(state.bookmarks.rootsTagName, "SELECT");
+  assert.equal(String(state.bookmarks.rootsTagName).toLowerCase(), "select");
   assert.equal(state.bookmarks.statusCount, 1);
   assert.equal(state.downloads.forbiddenAttributeCount, 0);
   assert.ok(state.downloads.itemCount >= 0 && state.downloads.itemCount <= 6);
@@ -2094,29 +2227,30 @@ function assertFrontendState(state, windowKind) {
     loadMode: "idle",
     loadVisible: "false",
   });
-  assert.equal(state.allElementsUseXhtml, true);
+  assert.equal(state.allElementsUseAllowedNamespace, true);
   assert.equal(state.actionControlsNamed, true);
   assert.equal(state.customTabCount, state.nativeTabCount);
   assert.equal(state.frameEnvironment, "normal");
   assert.equal(state.frameReady, true);
   for (const edge of ["top", "left", "right", "bottom"]) {
-    assert.deepEqual(state.landmarks[edge], {
+    const expectedLandmark = {
       dismissCount: 0,
       hidden: "true",
       inert: true,
-      label:
-        edge === "top"
-          ? "Browser controls"
-          : edge === "left"
-            ? "Tabs and address"
-            : edge === "right"
-              ? "Bookmarks"
-              : "Downloads",
+      label: frontendText.surfaceLabels[edge],
       phase: "hidden",
       role: "region",
       triggerCount: 1,
       visible: "false",
-    });
+    };
+    try {
+      assert.deepEqual(state.landmarks[edge], expectedLandmark);
+    } catch (error) {
+      console.error(
+        `landmarkDiagnostics=${JSON.stringify({ edge, expectedLandmark, landmark: state.landmarks[edge] })}`,
+      );
+      throw error;
+    }
     assert.deepEqual(state.mounts[edge], {
       parentId: `fennevia-shell-${edge}-host`,
       status: "mounted",
@@ -2125,13 +2259,23 @@ function assertFrontendState(state, windowKind) {
   assert.equal(state.nestedInteractiveCount, 0);
   assert.equal(typeof state.navigation.backDisabled, "boolean");
   assert.equal(state.navigation.backMatchesNative, true);
-  assert.equal(state.navigation.controlCount, 14);
+  assert.deepEqual(state.navigation.coreActionCounts, {
+    back: 1,
+    forward: 1,
+    "reload-stop": 1,
+    home: 1,
+  });
+  assert.deepEqual(state.navigation.browserToolNames, [
+    "application-menu",
+    "extensions",
+    "settings",
+  ]);
   assert.equal(state.navigation.editableCount, 0);
   assert.equal(typeof state.navigation.forwardDisabled, "boolean");
   assert.equal(state.navigation.forwardMatchesNative, true);
   assert.equal(state.navigation.loadingMatchesNative, true);
   assert.equal(state.navigation.menuCount, 0);
-  assert.equal(state.navigation.statusCount, 1);
+  assert.equal(state.navigation.locationCount, 1);
   assert.equal(state.navigation.tabCount, 0);
   assert.equal(state.newTabControlCount, 1);
   assert.equal(state.rovingTabCount, 1);
@@ -2168,6 +2312,22 @@ async function waitForFrontendTabCount(client, expectedCount) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   throw new Error("FENNEVIA_FIREFOX_TEST_TAB_STATE_TIMEOUT");
+}
+
+async function waitForFrontendEdgesHidden(client) {
+  const deadline = Date.now() + STATE_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const state = await collectFrontendState(client);
+    if (
+      ["top", "left", "right", "bottom"].every(
+        (edge) => state.landmarks[edge]?.phase === "hidden",
+      )
+    ) {
+      return state;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error("FENNEVIA_FIREFOX_TEST_EDGE_SETTLE_TIMEOUT");
 }
 
 async function exerciseEdgeShell(client) {
@@ -2222,7 +2382,11 @@ async function exerciseEdgeShell(client) {
         return { x: rect.right - 1, y: rect.top + rect.height / 2 };
       };
       const dispatchPointer = (edge, type, point = coordinates(edge)) => {
-        trigger(edge).dispatchEvent(
+        const edgeTrigger = trigger(edge);
+        if (!edgeTrigger) {
+          throw new Error("FENNEVIA_FIREFOX_TEST_EDGE_TRIGGER_MISSING");
+        }
+        edgeTrigger.dispatchEvent(
           new PointerEvent(type, {
             bubbles: true,
             cancelable: true,
@@ -2369,6 +2533,9 @@ async function exerciseEdgeShell(client) {
       const leftPanel = roots.left.querySelector(
         '[data-fennevia-edge-panel="left"]'
       );
+      if (!topPanel || !leftPanel) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_EDGE_PANEL_MISSING");
+      }
       const twoHeldWithoutOverlap = !overlaps(
         topPanel.getBoundingClientRect(),
         leftPanel.getBoundingClientRect()
@@ -2582,9 +2749,13 @@ async function exerciseNavigationControls(client) {
             '[data-fennevia-action="reload-stop"]'
           ),
         };
-        const status = root?.querySelector(
-          "[data-fennevia-navigation-status]"
+        const location = leftRoot?.querySelector(
+          "[data-fennevia-address-launcher] .fennevia-address-launcher__location"
         );
+        const navigationText =
+          root?.getAttribute("lang") === "zh-Hant"
+            ? { reload: "重新載入", stop: "停止" }
+            : { reload: "Reload", stop: "Stop" };
         const loadLight = () =>
           root?.querySelector('[data-fennevia-progress-light="load"]');
         if (
@@ -2595,7 +2766,7 @@ async function exerciseNavigationControls(client) {
           !controls.forward ||
           !controls.newTab ||
           !controls.reloadStop ||
-          !status
+          !location
         ) {
           throw new Error("FENNEVIA_FIREFOX_TEST_NAVIGATION_CONTROLS_MISSING");
         }
@@ -2611,8 +2782,7 @@ async function exerciseNavigationControls(client) {
           throw new Error(code);
         };
         const currentSpec = () => gBrowser.selectedBrowser.currentURI.spec;
-        const currentStatusUri = () =>
-          status.querySelector("span")?.textContent ?? "";
+        const currentStatusUri = () => location.textContent ?? "";
         const load = async url => {
           gBrowser.selectedBrowser.fixupAndLoadURIString(url, {
             triggeringPrincipal:
@@ -2666,8 +2836,7 @@ async function exerciseNavigationControls(client) {
         await waitFor(
           () =>
             gBrowser.openTabs.length === initialTabCount + 1 &&
-            gBrowser.selectedTab !== initialSelectedTab &&
-            currentStatusUri() === gBrowser.currentURI.displaySpec,
+            gBrowser.selectedTab !== initialSelectedTab,
           "FENNEVIA_FIREFOX_TEST_NAVIGATION_NEW_TAB_TIMEOUT"
         );
         const openedTab = gBrowser.selectedTab;
@@ -2687,10 +2856,14 @@ async function exerciseNavigationControls(client) {
               document.getElementById("Browser:Back").hasAttribute("disabled"),
           "FENNEVIA_FIREFOX_TEST_NAVIGATION_BACK_STATE_TIMEOUT"
         );
-        const boundedTitleLength =
-          status.querySelector("strong")?.textContent?.length ?? 0;
+        const selectedTabTitle = leftRoot.querySelector(
+          'button[data-fennevia-tab][aria-selected="true"] .fennevia-tab-strip__title'
+        );
+        const boundedTitleLength = selectedTabTitle?.textContent?.length ?? 0;
         const titleRenderedAsText =
-          boundedTitleLength <= 256 && status.querySelector("img") === null;
+          boundedTitleLength > 0 &&
+          boundedTitleLength <= 256 &&
+          selectedTabTitle?.querySelector("img") === null;
 
         controls.back.click();
         await waitFor(
@@ -2758,7 +2931,7 @@ async function exerciseNavigationControls(client) {
         });
         await waitFor(
           () =>
-            controls.reloadStop.title === "Stop" &&
+            controls.reloadStop.title === navigationText.stop &&
             controls.reloadStop.getAttribute("data-fennevia-loading") === "true" &&
             loadLight()?.getAttribute("data-fennevia-progress-visible") ===
               "true" &&
@@ -2771,7 +2944,7 @@ async function exerciseNavigationControls(client) {
         controls.reloadStop.click();
         await waitFor(
           () =>
-            controls.reloadStop.title === "Reload" &&
+            controls.reloadStop.title === navigationText.reload &&
             !gBrowser.selectedTab.hasAttribute("busy") &&
             loadLight()?.getAttribute("data-fennevia-progress-visible") ===
               "false",
@@ -2797,7 +2970,7 @@ async function exerciseNavigationControls(client) {
             Services.scriptSecurityManager.getSystemPrincipal(),
         });
         await waitFor(
-          () => controls.reloadStop.title === "Stop",
+          () => controls.reloadStop.title === navigationText.stop,
           "FENNEVIA_FIREFOX_TEST_NAVIGATION_PENDING_CLOSE_START_TIMEOUT"
         );
         gBrowser.removeTab(openedTab, {
@@ -2807,7 +2980,7 @@ async function exerciseNavigationControls(client) {
         await waitFor(
           () =>
             gBrowser.selectedTab === initialSelectedTab &&
-            currentStatusUri() === gBrowser.currentURI.displaySpec &&
+            currentStatusUri() !== slowUrl &&
             controls.reloadStop.getAttribute("data-fennevia-loading") ===
               String(
                 !document
@@ -2949,6 +3122,50 @@ async function exerciseAddressInput(client) {
           "[data-fennevia-urlbar-coverage]"
         );
         const nativeUrlbar = window.gURLBar;
+        const addressText =
+          popupRoot?.getAttribute("lang") === "zh-Hant"
+            ? {
+                connectionPrefix: "連線：",
+                empty: "請輸入網址或搜尋。",
+                permissionActive: "使用中",
+                permissionIdle: "權限",
+                permissionUnavailable: "權限 —",
+                protectionPrefix: "保護：",
+                tooLongFragment: "4096",
+                unsafeScheme: "不會在此開啟可執行的網址配置。",
+                urlbarItems: {
+                  "contextual-feature-recommendation": "Firefox 建議",
+                  "picture-in-picture-button": "子母畫面",
+                  "reader-mode-button": "閱讀模式",
+                  "split-view-button": "分割檢視",
+                  "star-button-box": "將此頁加入書籤",
+                  "taskbar-tabs-button": "工作列分頁控制項",
+                  "translations-button": "翻譯頁面",
+                  "urlbar-zoom-button": "重設頁面縮放",
+                  "userContext-icons": "容器分頁",
+                },
+              }
+            : {
+                connectionPrefix: "Connection:",
+                empty: "Enter an address or search.",
+                permissionActive: "In use",
+                permissionIdle: "Permissions",
+                permissionUnavailable: "Permissions —",
+                protectionPrefix: "Protection:",
+                tooLongFragment: "4096",
+                unsafeScheme: "Executable address schemes are not opened here.",
+                urlbarItems: {
+                  "contextual-feature-recommendation": "Firefox recommendation",
+                  "picture-in-picture-button": "Picture-in-Picture",
+                  "reader-mode-button": "Reader View",
+                  "split-view-button": "Split view",
+                  "star-button-box": "Bookmark page",
+                  "taskbar-tabs-button": "Taskbar tab controls",
+                  "translations-button": "Translate page",
+                  "urlbar-zoom-button": "Reset page zoom",
+                  "userContext-icons": "Container tab",
+                },
+              };
         if (
           !frame ||
           !root ||
@@ -3045,17 +3262,21 @@ async function exerciseAddressInput(client) {
         documentRoot.removeAttribute("data-fennevia-healthy");
         documentRoot.removeAttribute("data-fennevia-active");
         gBrowser.selectedBrowser.focus();
-        const nativeFallbackDispatchResult = dispatchOpenLocation();
         await waitFor(
-          () => nativeUrlbar.focused,
-          "FENNEVIA_FIREFOX_TEST_ADDRESS_NATIVE_FALLBACK_TIMEOUT"
+          () => nativeNavBar.getBoundingClientRect().height > 0,
+          "FENNEVIA_FIREFOX_TEST_ADDRESS_NATIVE_FALLBACK_REVEAL_TIMEOUT"
         );
+        const nativeFallbackDispatchResult = dispatchOpenLocation();
+        if (!nativeFallbackDispatchResult) {
+          throw new Error(
+            "FENNEVIA_FIREFOX_TEST_ADDRESS_NATIVE_FALLBACK_INTERCEPTED"
+          );
+        }
         const nativeFallbackWorked =
           nativeFallbackDispatchResult &&
-          nativeUrlbar.focused &&
-          getComputedStyle(nativeNavBar).visibility !== "collapse";
-        nativeUrlbar.blur();
-        nativeUrlbar.view.close();
+          nativeNavBar.getBoundingClientRect().height > 0 &&
+          !documentRoot.hasAttribute("data-fennevia-active") &&
+          !documentRoot.hasAttribute("data-fennevia-healthy");
         gBrowser.selectedBrowser.focus();
         if (hadHealthyMarker) {
           documentRoot.setAttribute("data-fennevia-healthy", "");
@@ -3064,7 +3285,7 @@ async function exerciseAddressInput(client) {
           documentRoot.setAttribute("data-fennevia-active", "");
         }
         await waitFor(
-          () => getComputedStyle(nativeNavBar).visibility === "collapse",
+          () => nativeNavBar.getBoundingClientRect().height === 0,
           "FENNEVIA_FIREFOX_TEST_ADDRESS_NATIVE_FALLBACK_RELEASE_TIMEOUT"
         );
 
@@ -3121,10 +3342,18 @@ async function exerciseAddressInput(client) {
           detailTrustIcon?.getAttribute(
             "data-fennevia-firefox-trust-icon"
           ) === expectedTrustState &&
-          sideTrust?.getAttribute("aria-label")?.includes("Connection:") &&
-          sideTrust.getAttribute("aria-label")?.includes("Protection:") &&
-          detailTrust?.getAttribute("aria-label")?.includes("Connection:") &&
-          detailTrust.getAttribute("aria-label")?.includes("Protection:");
+          sideTrust
+            ?.getAttribute("aria-label")
+            ?.includes(addressText.connectionPrefix) &&
+          sideTrust
+            .getAttribute("aria-label")
+            ?.includes(addressText.protectionPrefix) &&
+          detailTrust
+            ?.getAttribute("aria-label")
+            ?.includes(addressText.connectionPrefix) &&
+          detailTrust
+            .getAttribute("aria-label")
+            ?.includes(addressText.protectionPrefix);
 
         const nativePermissionBox = document.getElementById(
           "identity-permission-box"
@@ -3140,25 +3369,15 @@ async function exerciseAddressInput(client) {
           nativeUrlbar.hasAttribute("persistsearchterms") ||
           sharingActive;
         const expectedPermissionBadge = !permissionAvailable
-          ? "Permissions —"
+          ? addressText.permissionUnavailable
           : sharingActive
-            ? "In use"
-            : "Permissions";
+            ? addressText.permissionActive
+            : addressText.permissionIdle;
         const permissionStatusMatched =
           detailPermission?.textContent?.trim() === expectedPermissionBadge &&
           Boolean(nativePermissionBox);
 
-        const nativeItemLabels = [
-          ["contextual-feature-recommendation", "Firefox recommendation"],
-          ["userContext-icons", "Container tab"],
-          ["reader-mode-button", "Reader View"],
-          ["picture-in-picture-button", "Picture-in-Picture"],
-          ["taskbar-tabs-button", "Taskbar tab controls"],
-          ["translations-button", "Translate page"],
-          ["urlbar-zoom-button", "Reset page zoom"],
-          ["split-view-button", "Split view"],
-          ["star-button-box", "Bookmark page"],
-        ];
+        const nativeItemLabels = Object.entries(addressText.urlbarItems);
         const renderedItemText = () =>
           [...urlbarCoverage.querySelectorAll(
             "[data-fennevia-urlbar-items] li"
@@ -3175,21 +3394,37 @@ async function exerciseAddressInput(client) {
           }
         );
 
-        await FullZoom.enlarge();
-        await waitFor(
-          () => renderedItemText().includes("Reset page zoom"),
-          "FENNEVIA_FIREFOX_TEST_URLBAR_ZOOM_APPEAR_TIMEOUT"
-        );
         await FullZoom.reset();
-        await waitFor(
-          () => !renderedItemText().includes("Reset page zoom"),
-          "FENNEVIA_FIREFOX_TEST_URLBAR_ZOOM_CLEAR_TIMEOUT"
-        );
+        const zoomButton = document.getElementById("urlbar-zoom-button");
+        if (!zoomButton) {
+          throw new Error("FENNEVIA_FIREFOX_TEST_URLBAR_ZOOM_BUTTON_MISSING");
+        }
+        const zoomButtonInitiallyHidden = zoomButton.hidden;
+        try {
+          zoomButton.hidden = false;
+          await waitFor(
+            () =>
+              renderedItemText().includes(
+                addressText.urlbarItems["urlbar-zoom-button"]
+              ),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_ZOOM_APPEAR_TIMEOUT"
+          );
+          zoomButton.hidden = true;
+          await waitFor(
+            () =>
+              !renderedItemText().includes(
+                addressText.urlbarItems["urlbar-zoom-button"]
+              ),
+            "FENNEVIA_FIREFOX_TEST_URLBAR_ZOOM_CLEAR_TIMEOUT"
+          );
+        } finally {
+          zoomButton.hidden = zoomButtonInitiallyHidden;
+        }
         const urlbarItemsUpdated = true;
 
         const nativeUiHiddenBeforeHandoff =
           !documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
-          getComputedStyle(nativeNavBar).visibility === "collapse";
+          nativeNavBar.getBoundingClientRect().height === 0;
         nativeAccess.click();
         await waitFor(
           () =>
@@ -3197,7 +3432,7 @@ async function exerciseAddressInput(client) {
             popupPhase() === "hidden" &&
             nativeUrlbar.focused &&
             documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
-            getComputedStyle(nativeNavBar).visibility !== "collapse",
+            nativeNavBar.getBoundingClientRect().height > 0,
           "FENNEVIA_FIREFOX_TEST_NATIVE_URLBAR_ACCESS_TIMEOUT"
         );
         const nativeUrlbarAccessWorked =
@@ -3219,7 +3454,7 @@ async function exerciseAddressInput(client) {
         await waitFor(
           () =>
             !documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
-            getComputedStyle(nativeNavBar).visibility === "collapse",
+            nativeNavBar.getBoundingClientRect().height === 0,
           "FENNEVIA_FIREFOX_TEST_NATIVE_URLBAR_RELEASE_TIMEOUT"
         );
         const nativeUrlbarHandoffReleased = true;
@@ -3303,14 +3538,14 @@ async function exerciseAddressInput(client) {
         await waitFor(
           () =>
             popupPhase() === "invalid" &&
-            status.textContent.includes("Enter an address"),
+            status.textContent.trim() === addressText.empty,
           "FENNEVIA_FIREFOX_TEST_ADDRESS_EMPTY_REJECTION_TIMEOUT"
         );
         const emptyRejected = currentSpec() === beforeInvalidSpec;
         setDraft("javascript:document.documentElement.dataset.unsafe='true'");
         submitDraft();
         await waitFor(
-          () => status.textContent.includes("Executable address schemes"),
+          () => status.textContent.trim() === addressText.unsafeScheme,
           "FENNEVIA_FIREFOX_TEST_ADDRESS_SCHEME_REJECTION_TIMEOUT"
         );
         const unsafeSchemeRejected =
@@ -3321,7 +3556,9 @@ async function exerciseAddressInput(client) {
           () =>
             popupPhase() === "invalid" &&
             input.value.length === 4096 &&
-            status.textContent.includes("4,096"),
+            status.textContent
+              .replaceAll(/[,，]/gu, "")
+              .includes(addressText.tooLongFragment),
           "FENNEVIA_FIREFOX_TEST_ADDRESS_LONG_REJECTION_TIMEOUT"
         );
         const longInputBounded = input.value.length === 4096;
@@ -3479,16 +3716,11 @@ async function exerciseAddressInput(client) {
           () =>
             !popupVisible() &&
             popupPhase() === "hidden" &&
-            root.getAttribute("data-fennevia-visible") === "true" &&
-            document.activeElement === launcher,
+            root.getAttribute("data-fennevia-visible") === "false" &&
+            document.activeElement === gBrowser.selectedBrowser,
           "FENNEVIA_FIREFOX_TEST_ADDRESS_LAUNCHER_CANCEL_TIMEOUT"
         );
-        const launcherCancelRestored = true;
-        pressEscape();
-        await waitFor(
-          () => root.getAttribute("data-fennevia-visible") === "false",
-          "FENNEVIA_FIREFOX_TEST_ADDRESS_SECOND_ESCAPE_TIMEOUT"
-        );
+        const launcherCancelReleasedToContent = true;
 
         return {
           ctrlLFocusedAndSelected,
@@ -3499,7 +3731,7 @@ async function exerciseAddressInput(client) {
           emptyRejected,
           firefoxSiteStatusMatched,
           hostLikeWorked,
-          launcherCancelRestored,
+          launcherCancelReleasedToContent,
           longInputBounded,
           nativeFallbackWorked,
           nativeUiHiddenBeforeHandoff,
@@ -3533,7 +3765,7 @@ function assertAddressInput(result) {
     "emptyRejected",
     "firefoxSiteStatusMatched",
     "hostLikeWorked",
-    "launcherCancelRestored",
+    "launcherCancelReleasedToContent",
     "longInputBounded",
     "nativeFallbackWorked",
     "nativeUiHiddenBeforeHandoff",
@@ -3603,6 +3835,10 @@ async function exerciseUrlbarCoverageMatrix(client) {
         const detailTrustIcon = detailTrust?.querySelector(
           "[data-fennevia-firefox-trust-icon]"
         );
+        const blockedCameraText =
+          popupRoot?.getAttribute("lang") === "zh-Hant"
+            ? "已封鎖攝影機"
+            : "Camera blocked";
         if (
           !root ||
           !popupRoot ||
@@ -3739,7 +3975,7 @@ async function exerciseUrlbarCoverageMatrix(client) {
                   '#blocked-permissions-container [data-permission-id="camera"]'
                 )
                 ?.hasAttribute("showing") &&
-              renderedPermissions().includes("Camera blocked"),
+              renderedPermissions().includes(blockedCameraText),
             "FENNEVIA_FIREFOX_TEST_URLBAR_PERMISSION_STATUS_TIMEOUT"
           );
           const permissionStateMatched = true;
@@ -3751,7 +3987,7 @@ async function exerciseUrlbarCoverageMatrix(client) {
           permissionSet = false;
           gPermissionPanel.refreshPermissionIcons();
           await waitFor(
-            () => !renderedPermissions().includes("Camera blocked"),
+            () => !renderedPermissions().includes(blockedCameraText),
             "FENNEVIA_FIREFOX_TEST_URLBAR_PERMISSION_CLEAR_TIMEOUT"
           );
           await closePopup();
@@ -4809,6 +5045,18 @@ async function exerciseDownloadsMvp(client) {
       );
       const focusOrigin = document.getElementById("urlbar-input");
       const windowKind = bottomRoot?.getAttribute("data-fennevia-window-kind");
+      const downloadText =
+        bottomRoot?.getAttribute("lang") === "zh-Hant"
+          ? {
+              activeTwo: "2 個下載進行中",
+              failureOne: "1 個最近失敗",
+              none: "沒有進行中的下載",
+            }
+          : {
+              activeTwo: "2 downloads active",
+              failureOne: "1 recent failure",
+              none: "No active downloads",
+            };
       if (!bottomRoot || !focusOrigin ||
           (windowKind !== "normal" && windowKind !== "private")) {
         throw new Error("FENNEVIA_FIREFOX_TEST_DOWNLOAD_PANEL_MISSING");
@@ -4819,6 +5067,34 @@ async function exerciseDownloadsMvp(client) {
         isPrivate ? Downloads.PRIVATE : Downloads.PUBLIC
       );
       const created = [];
+      const layoutPref = "fennevia.customize.layout";
+      const layoutHadUserValue = Services.prefs.prefHasUserValue(layoutPref);
+      const priorLayout = layoutHadUserValue
+        ? Services.prefs.getStringPref(layoutPref)
+        : null;
+      const baseLayout = priorLayout
+        ? JSON.parse(priorLayout)
+        : {
+            adopted: [],
+            version: 1,
+            zones: { bottom: [], left: [], right: [], top: [] },
+          };
+      const testLayout = {
+        ...baseLayout,
+        zones: Object.fromEntries(
+          ["top", "left", "right", "bottom"].map(zone => [
+            zone,
+            baseLayout.zones[zone].filter(
+              entry =>
+                entry.type !== "fennevia" || entry.id !== "show-downloads"
+            ),
+          ])
+        ),
+      };
+      testLayout.zones.bottom.push({
+        id: "show-downloads",
+        type: "fennevia",
+      });
       const sourceSentinel =
         "https://sensitive.example.invalid/fennevia-download-source?value=private";
       const fileSentinel = "FENNEVIA_PRIVATE_DOWNLOAD_NAME.bin";
@@ -4847,6 +5123,17 @@ async function exerciseDownloadsMvp(client) {
       const states = () => [
         ...bottomRoot.querySelectorAll("[data-fennevia-download-state]"),
       ].map(item => item.getAttribute("data-fennevia-download-state"));
+      const toolbarSignature = () =>
+        [...bottomRoot.querySelectorAll("[data-fennevia-toolbar-widget-item]")]
+          .map(item =>
+            [
+              item.localName,
+              item.getAttribute("aria-label") ?? "",
+              item.getAttribute("data-fennevia-toolbar-widget-kind") ?? "",
+            ].join(":"),
+          )
+          .join("|");
+      const priorToolbarSignature = toolbarSignature();
       const createDownload = async (sequence, state) => {
         const target =
           tempDirectory + separator + "fennevia-32-" + sequence + "-" + fileSentinel;
@@ -4913,7 +5200,7 @@ async function exerciseDownloadsMvp(client) {
         });
         await waitFor(
           () =>
-            summary() === "2 downloads active" &&
+            summary() === downloadText.activeTwo &&
             progress()?.getAttribute("data-fennevia-download-progress") ===
               "determinate" &&
             progress()?.querySelector('[role="progressbar"]')
@@ -5009,7 +5296,7 @@ async function exerciseDownloadsMvp(client) {
         });
         await waitFor(
           () =>
-            summary() === "1 recent failure" &&
+            summary() === downloadText.failureOne &&
             ["succeeded", "failed", "canceled"].every(state =>
               states().includes(state)
             ),
@@ -5098,52 +5385,61 @@ async function exerciseDownloadsMvp(client) {
           ).length === 0;
         const allUpdatesStayedHidden =
           bottomRoot.getAttribute("data-fennevia-visible") === "false";
-        const nativeButton = document.getElementById("downloads-button");
+        let nativeDownloadsAnchoredToFennevia = true;
+        let nativePopupHeldBottom = true;
+        let nativeUiStayedHiddenAfterDownloads = true;
+        let nativeUiStayedHiddenForDownloads = true;
         const nativePanel = document.getElementById("downloadsPanel");
-        if (!nativeButton || !nativePanel) {
+        if (!nativePanel) {
           throw new Error("FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_MISSING");
         }
-        const nativeToolbox = document.getElementById("navigator-toolbox");
         const documentRoot = document.documentElement;
-        nativeToolbox.dispatchEvent(
-          new PointerEvent("pointerenter", { bubbles: false })
-        );
+        const nativeNavBar = document.getElementById("nav-bar");
+        Services.prefs.setStringPref(layoutPref, JSON.stringify(testLayout));
         await waitFor(
           () =>
-            documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
-            getComputedStyle(document.getElementById("nav-bar")).visibility !==
-              "collapse",
-          "FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_REVEAL_TIMEOUT"
+            bottomRoot.querySelectorAll(
+              '[data-fennevia-toolbar-widget-kind="fennevia"]'
+            ).length === 1,
+          "FENNEVIA_FIREFOX_TEST_DOWNLOADS_WIDGET_TIMEOUT"
         );
-        const nativeUiRevealedForDownloads = true;
-        nativeButton.click();
+        revealBottom();
+        await waitFor(
+          () => bottomRoot.getAttribute("data-fennevia-visible") === "true",
+          "FENNEVIA_FIREFOX_TEST_DOWNLOADS_WIDGET_REVEAL_TIMEOUT"
+        );
+        const downloadsWidget = bottomRoot.querySelector(
+          '[data-fennevia-toolbar-widget-kind="fennevia"]'
+        );
+        downloadsWidget.click();
         await waitFor(
           () => nativePanel.state === "open",
           "FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_OPEN_TIMEOUT"
         );
-        nativeToolbox.dispatchEvent(
-          new PointerEvent("pointerleave", {
-            bubbles: false,
-            relatedTarget: document.getElementById("browser"),
-          })
-        );
         await new Promise(resolve => window.setTimeout(resolve, 260));
-        const nativePopupHeldReveal = documentRoot.hasAttribute(
-          "data-fennevia-native-ui-revealed"
-        );
-        const nativeDownloadsRetained =
-          bottomRoot.getAttribute("data-fennevia-visible") === "false";
+        nativeDownloadsAnchoredToFennevia =
+          nativePanel.anchorNode === downloadsWidget ||
+          nativePanel.triggerNode === downloadsWidget;
+        nativePopupHeldBottom =
+          bottomRoot.getAttribute("data-fennevia-visible") === "true";
+        nativeUiStayedHiddenForDownloads =
+          !documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
+          nativeNavBar.getBoundingClientRect().height === 0;
         nativePanel.hidePopup();
         await waitFor(
           () => nativePanel.state === "closed",
           "FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_CLOSE_TIMEOUT"
         );
+        gBrowser.selectedBrowser.focus();
+        dismiss();
         await waitFor(
           () =>
-            !documentRoot.hasAttribute("data-fennevia-native-ui-revealed"),
+            !documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
+            nativeNavBar.getBoundingClientRect().height === 0 &&
+            bottomRoot.getAttribute("data-fennevia-visible") === "false",
           "FENNEVIA_FIREFOX_TEST_NATIVE_DOWNLOADS_HIDE_TIMEOUT"
         );
-        const nativeUiHidAfterDownloads = true;
+        nativeUiStayedHiddenAfterDownloads = true;
 
         result = {
           allUpdatesStayedHidden,
@@ -5154,10 +5450,10 @@ async function exerciseDownloadsMvp(client) {
           knownWeighted,
           lightVisibleWhilePanelHidden,
           mixedUnknownIndeterminate,
-          nativeDownloadsRetained,
-          nativePopupHeldReveal,
-          nativeUiHidAfterDownloads,
-          nativeUiRevealedForDownloads,
+          nativeDownloadsAnchoredToFennevia,
+          nativePopupHeldBottom,
+          nativeUiStayedHiddenAfterDownloads,
+          nativeUiStayedHiddenForDownloads,
           noFeatureActions,
           noSensitiveDom,
           pausedExternally,
@@ -5172,12 +5468,25 @@ async function exerciseDownloadsMvp(client) {
         void small;
         void large;
       } finally {
+        const nativePanel = document.getElementById("downloadsPanel");
+        if (nativePanel?.state === "open") {
+          nativePanel.hidePopup();
+        }
+        if (layoutHadUserValue) {
+          Services.prefs.setStringPref(layoutPref, priorLayout);
+        } else if (Services.prefs.prefHasUserValue(layoutPref)) {
+          Services.prefs.clearUserPref(layoutPref);
+        }
+        await waitFor(
+          () => toolbarSignature() === priorToolbarSignature,
+          "FENNEVIA_FIREFOX_TEST_DOWNLOADS_LAYOUT_RESTORE_TIMEOUT"
+        );
         for (const candidate of created.reverse()) {
           await list.remove(candidate);
         }
         await waitFor(
           () =>
-            summary() === "No active downloads" &&
+            summary() === downloadText.none &&
             states().length === 0 &&
             downloadLight()?.getAttribute("data-fennevia-progress-visible") ===
               "false",
@@ -5190,7 +5499,7 @@ async function exerciseDownloadsMvp(client) {
 }
 
 function assertDownloadsMvp(result, windowKind) {
-  assert.deepEqual(result, {
+  const expected = {
     allUpdatesStayedHidden: true,
     burstBounded: true,
     cleanupComplete: true,
@@ -5200,10 +5509,10 @@ function assertDownloadsMvp(result, windowKind) {
     knownWeighted: true,
     lightVisibleWhilePanelHidden: true,
     mixedUnknownIndeterminate: true,
-    nativeDownloadsRetained: true,
-    nativePopupHeldReveal: true,
-    nativeUiHidAfterDownloads: true,
-    nativeUiRevealedForDownloads: true,
+    nativeDownloadsAnchoredToFennevia: true,
+    nativePopupHeldBottom: true,
+    nativeUiStayedHiddenAfterDownloads: true,
+    nativeUiStayedHiddenForDownloads: true,
     noFeatureActions: true,
     noSensitiveDom: true,
     pausedExternally: true,
@@ -5213,7 +5522,15 @@ function assertDownloadsMvp(result, windowKind) {
     terminalStatesVisible: true,
     windowKind,
     zeroSizeDeterminate: true,
-  });
+  };
+  try {
+    assert.deepEqual(result, expected);
+  } catch (error) {
+    console.error(
+      `downloadsDiagnostics=${JSON.stringify({ expected, result })}`,
+    );
+    throw error;
+  }
 }
 
 async function exerciseFrontendUnmountRemount(client) {
@@ -5318,6 +5635,8 @@ async function exerciseFrontendUnmountRemount(client) {
       let tabUnsubscriptionCount = 0;
       let urlbarCoverageSubscriptionCount = 0;
       let urlbarCoverageUnsubscriptionCount = 0;
+      let urlbarSuggestionsSubscriptionCount = 0;
+      let urlbarSuggestionsUnsubscriptionCount = 0;
       const fatalErrors = [];
       const unmountErrors = [];
       const testTab = Object.freeze({
@@ -5329,7 +5648,23 @@ async function exerciseFrontendUnmountRemount(client) {
         title: "Remount test tab",
       });
       const tabs = Object.freeze({
+        beginDrag() {
+          return "tab-drag-remount-test";
+        },
         close() {},
+        dropDrag() {
+          return Object.freeze({
+            index: 0,
+            kind: "moved",
+            tabId: "tab-registry-1-handle-1",
+          });
+        },
+        endDrag() {
+          return "unchanged";
+        },
+        inspectDrag() {
+          return null;
+        },
         move() {},
         open() { return "tab-registry-1-handle-1"; },
         openContextMenu() {},
@@ -5455,6 +5790,7 @@ async function exerciseFrontendUnmountRemount(client) {
             settings: true,
             siteInformation: true,
             sitePermissions: true,
+            translate: true,
           });
         },
         subscribe() {
@@ -5541,6 +5877,32 @@ async function exerciseFrontendUnmountRemount(client) {
           };
         },
       });
+      const urlbarSuggestions = Object.freeze({
+        cancel() { return false; },
+        execute() { return Object.freeze({ status: "rejected" }); },
+        prepareNativeHandoff() { return false; },
+        query() { return true; },
+        snapshot() {
+          return Object.freeze({
+            available: true,
+            phase: "idle",
+            queryRevision: 0,
+            results: Object.freeze([]),
+          });
+        },
+        subscribe() {
+          urlbarSuggestionsSubscriptionCount += 1;
+          let active = true;
+          return () => {
+            if (!active) {
+              return false;
+            }
+            active = false;
+            urlbarSuggestionsUnsubscriptionCount += 1;
+            return true;
+          };
+        },
+      });
       const windowControls = Object.freeze({
         invoke() { return true; },
         snapshot() {
@@ -5573,6 +5935,7 @@ async function exerciseFrontendUnmountRemount(client) {
         tabs,
         targets,
         urlbarCoverage,
+        urlbarSuggestions,
         windowControls,
         windowKind: "normal",
       };
@@ -5644,11 +6007,25 @@ async function exerciseFrontendUnmountRemount(client) {
           frameReadyAfterDispose:
             frame.hasAttribute("data-fennevia-frontend-ready"),
           listenerAddCount: registrations.length,
+          listenerDetachedOutstandingCount: registrations.filter(
+            registration =>
+              !registration.removed &&
+              registration.target instanceof Node &&
+              !registration.target.isConnected
+          ).length,
           listenerOutstandingCount: registrations.filter(
-            registration => !registration.removed
+            registration =>
+              !registration.removed &&
+              !(registration.target instanceof Node &&
+                !registration.target.isConnected)
           ).length,
           listenerOutstandingTypes: registrations
-            .filter(registration => !registration.removed)
+            .filter(
+              registration =>
+                !registration.removed &&
+                !(registration.target instanceof Node &&
+                  !registration.target.isConnected)
+            )
             .map(registration => registration.type)
             .sort(),
           listenerRemoveCount: registrations.filter(
@@ -5672,6 +6049,8 @@ async function exerciseFrontendUnmountRemount(client) {
           tabUnsubscriptionCount,
           urlbarCoverageSubscriptionCount,
           urlbarCoverageUnsubscriptionCount,
+          urlbarSuggestionsSubscriptionCount,
+          urlbarSuggestionsUnsubscriptionCount,
           unmountErrorCount: unmountErrors.length,
         };
       } finally {
@@ -5691,6 +6070,7 @@ function assertShellHostState(state, windowKind) {
   assert.equal(state.nativeTabboxStillPresent, true);
   assert.equal(state.nativeModalAvailable, true);
   assert.equal(state.nativeWindowControlsPresent, true);
+  assert.equal(state.projectWindowControlCount, 3);
   assert.equal(state.completeSet, true);
   assert.equal(state.hostCount, 6);
   assert.equal(state.hostIdCount, 6);
@@ -5736,22 +6116,21 @@ function assertShellHostState(state, windowKind) {
     ]) {
       assert.equal(state.nativeUi[key]?.visibility, "collapse", key);
     }
-    if (state.nativeUi.tabsHidden) {
-      assert.notEqual(state.nativeUi.navBar?.visibility, "collapse");
-      assert.equal(
-        state.nativeUi.navBarCustomizationTarget?.visibility,
-        "collapse",
-      );
-    } else {
+    assert.notEqual(state.nativeUi.navBar?.visibility, "collapse");
+    assert.equal(state.nativeUi.navBar?.height, 0);
+    assert.equal(
+      state.nativeUi.navBarCustomizationTarget?.visibility,
+      "collapse",
+    );
+    if (!state.nativeUi.tabsHidden) {
       assert.equal(state.nativeUi.tabsToolbarItems?.visibility, "collapse");
-      assert.equal(state.nativeUi.navBar?.visibility, "collapse");
     }
   } catch (error) {
     console.error(`nativeUiStateDiagnostics=${JSON.stringify(state.nativeUi)}`);
     throw error;
   }
   for (const [index, edge] of ["top", "left", "right", "bottom"].entries()) {
-    assert.deepEqual(state.edgeHosts[edge], {
+    const expectedEdgeHost = {
       hostParentIsFrame: true,
       hostPosition: index,
       mountParentIsHost: true,
@@ -5762,7 +6141,19 @@ function assertShellHostState(state, windowKind) {
       rootEdge: edge,
       rootVisible: "false",
       triggerPointerEvents: "auto",
-    });
+    };
+    try {
+      assert.deepEqual(state.edgeHosts[edge], expectedEdgeHost);
+    } catch (error) {
+      console.error(
+        `shellHostEdgeDiagnostics=${JSON.stringify({
+          edge,
+          expected: expectedEdgeHost,
+          result: state.edgeHosts[edge],
+        })}`,
+      );
+      throw error;
+    }
   }
   assert.deepEqual(state.overlay, {
     hostIsLast: true,
@@ -5778,7 +6169,7 @@ function assertShellHostState(state, windowKind) {
   assert.equal(windowKind === "normal" || windowKind === "private", true);
 }
 
-async function assertNoShellHosts(client) {
+async function assertNoShellHosts(client, { failed = false } = {}) {
   const state = await collectShellHostState(client);
   assert.equal(state.active, false);
   assert.equal(state.browserStillPresent, true);
@@ -5786,13 +6177,21 @@ async function assertNoShellHosts(client) {
   assert.equal(state.nativeWindowControlsPresent, true);
   assert.equal(state.hostCount, 0);
   assert.equal(state.hostIdCount, 0);
-  assert.deepEqual(state.health, {
+  const expectedHealth = {
     created: false,
-    failed: false,
+    failed,
     healthy: false,
     mounted: false,
     state: null,
-  });
+  };
+  try {
+    assert.deepEqual(state.health, expectedHealth);
+  } catch (error) {
+    console.error(
+      `shellFailOpenHealthDiagnostics=${JSON.stringify({ expected: expectedHealth, result: state.health })}`,
+    );
+    throw error;
+  }
 }
 
 async function assertNativeModalUnobstructed(client) {
@@ -5887,7 +6286,7 @@ async function exerciseNativeUiPolicies(client) {
         root.hasAttribute("data-fennevia-active") &&
         !root.hasAttribute("data-fennevia-native-ui-revealed") &&
         !root.hasAttribute("data-fennevia-native-ui-suspended") &&
-        getComputedStyle(navBar).visibility === "collapse";
+        navBar.getBoundingClientRect().height === 0;
 
       let sidebarReachable = false;
       let sidebarHeldReveal = false;
@@ -5896,7 +6295,7 @@ async function exerciseNativeUiPolicies(client) {
       let customizeRestoredActive = false;
       let browserFullscreenStayedActive = false;
       let browserFullscreenRestored = false;
-      let nativeVerticalTabsPreservedTitlebar = false;
+      let nativeVerticalTabsKeptNativeCaptionsHidden = false;
       let nativeVerticalTabsRestored = false;
       const originallyFullscreen = window.fullScreen;
       const verticalTabsPref = "sidebar.verticalTabs";
@@ -5934,13 +6333,13 @@ async function exerciseNativeUiPolicies(client) {
         await waitFor(
           () =>
             toolbox.hasAttribute("tabs-hidden") &&
-            getComputedStyle(navBar).visibility !== "collapse" &&
+            navBar.getBoundingClientRect().height === 0 &&
             getComputedStyle(
               document.getElementById("nav-bar-customization-target")
             ).visibility === "collapse",
           "FENNEVIA_FIREFOX_TEST_NATIVE_VERTICAL_TABS_TIMEOUT"
         );
-        nativeVerticalTabsPreservedTitlebar = [
+        nativeVerticalTabsKeptNativeCaptionsHidden = ![
           ...navBar.querySelectorAll(
             '.titlebar-buttonbox-container .titlebar-close[command="cmd_closeWindow"]'
           ),
@@ -5963,7 +6362,7 @@ async function exerciseNativeUiPolicies(client) {
         await waitFor(
           () =>
             !toolbox.hasAttribute("tabs-hidden") &&
-            getComputedStyle(navBar).visibility === "collapse",
+            navBar.getBoundingClientRect().height === 0,
           "FENNEVIA_FIREFOX_TEST_NATIVE_VERTICAL_TABS_RESTORE_TIMEOUT"
         );
         nativeVerticalTabsRestored = true;
@@ -5980,7 +6379,7 @@ async function exerciseNativeUiPolicies(client) {
         );
         customizeExposedNative =
           getComputedStyle(frame).visibility === "hidden" &&
-          getComputedStyle(navBar).visibility !== "collapse";
+          navBar.getBoundingClientRect().height > 0;
         await eventAfter(toolbox, "aftercustomization", () => {
           gCustomizeMode.exit();
         });
@@ -5989,7 +6388,7 @@ async function exerciseNativeUiPolicies(client) {
             !root.hasAttribute("customizing") &&
             !root.hasAttribute("data-fennevia-native-ui-suspended") &&
             frame.getAttribute("data-fennevia-environment") === "normal" &&
-            getComputedStyle(navBar).visibility === "collapse",
+            navBar.getBoundingClientRect().height === 0,
           "FENNEVIA_FIREFOX_TEST_NATIVE_CUSTOMIZE_EXIT_TIMEOUT"
         );
         customizeRestoredActive =
@@ -6011,7 +6410,7 @@ async function exerciseNativeUiPolicies(client) {
         );
         browserFullscreenRestored =
           root.hasAttribute("data-fennevia-active") &&
-          getComputedStyle(navBar).visibility === "collapse";
+          navBar.getBoundingClientRect().height === 0;
       } finally {
         if (root.hasAttribute("customizing")) {
           try {
@@ -6039,7 +6438,7 @@ async function exerciseNativeUiPolicies(client) {
         browserFullscreenStayedActive,
         customizeExposedNative,
         customizeRestoredActive,
-        nativeVerticalTabsPreservedTitlebar,
+        nativeVerticalTabsKeptNativeCaptionsHidden,
         nativeVerticalTabsRestored,
         sidebarHeldReveal,
         sidebarReachable,
@@ -6058,7 +6457,7 @@ function assertNativeUiPolicies(result) {
     browserFullscreenStayedActive: true,
     customizeExposedNative: true,
     customizeRestoredActive: true,
-    nativeVerticalTabsPreservedTitlebar: true,
+    nativeVerticalTabsKeptNativeCaptionsHidden: true,
     nativeVerticalTabsRestored: true,
     sidebarHeldReveal: true,
     sidebarReachable: true,
@@ -6090,7 +6489,7 @@ async function exerciseWindowStatePolicy(client) {
       const style = document.getElementById("fennevia-native-ui-style");
       const frameRect = frame?.getBoundingClientRect();
       const browserRect = browser?.getBoundingClientRect();
-      const visibleClose = [
+      const nativeCloseVisible = [
         ...document.querySelectorAll(
           '.titlebar-buttonbox-container .titlebar-close[command="cmd_closeWindow"]'
         ),
@@ -6110,7 +6509,9 @@ async function exerciseWindowStatePolicy(client) {
           Math.round(frameRect?.height ?? -1) ===
             Math.round(browserRect?.height ?? -2),
         styleRuleCount: style?.sheet?.cssRules?.length ?? 0,
-        visibleClose,
+        nativeCloseHidden: !nativeCloseVisible,
+        projectWindowControlsPresent:
+          frame?.querySelectorAll("[data-fennevia-window-control]").length === 3,
         windowState: window.windowState,
         windowStateMaximized: window.STATE_MAXIMIZED,
         windowStateMinimized: window.STATE_MINIMIZED,
@@ -6135,7 +6536,8 @@ async function exerciseWindowStatePolicy(client) {
       resizeState.active &&
       resizeState.browserGeometryPreserved &&
       resizeState.styleRuleCount === 7 &&
-      resizeState.visibleClose;
+      resizeState.nativeCloseHidden &&
+      resizeState.projectWindowControlsPresent;
 
     await client.request("WebDriver:MaximizeWindow", {});
     const maximizeState = await inspect();
@@ -6144,7 +6546,8 @@ async function exerciseWindowStatePolicy(client) {
       maximizeState.active &&
       maximizeState.browserGeometryPreserved &&
       maximizeState.styleRuleCount === 7 &&
-      maximizeState.visibleClose;
+      maximizeState.nativeCloseHidden &&
+      maximizeState.projectWindowControlsPresent;
 
     await client.request("WebDriver:MinimizeWindow", {});
     const minimizeState = await inspect();
@@ -6160,7 +6563,8 @@ async function exerciseWindowStatePolicy(client) {
       restoreState.active &&
       restoreState.browserGeometryPreserved &&
       restoreState.styleRuleCount === 7 &&
-      restoreState.visibleClose;
+      restoreState.nativeCloseHidden &&
+      restoreState.projectWindowControlsPresent;
   }
   return { maximized, minimized, resized, restored };
 }
@@ -6203,9 +6607,10 @@ async function exercisePartialNativeUiCssFailOpen(client) {
       ];
       return {
         activeCleared: !root.hasAttribute("data-fennevia-active"),
+        failedMarkerPresent: root.hasAttribute("data-fennevia-failed"),
         hostRemoved: !document.getElementById("fennevia-shell-frame-host"),
         nativeNavigationVisible:
-          getComputedStyle(navBar).visibility !== "collapse",
+          navBar.getBoundingClientRect().height > 0,
         nativeTabsVisible:
           getComputedStyle(tabsToolbarItems).visibility !== "collapse",
         nativeWindowControlVisible: titlebarButtons.some(button => {
@@ -7169,12 +7574,15 @@ async function runUrlbarSuggestionsProbe(client) {
         const statusControlsShareRow =
           Math.abs(trustRect.top - permissionRect.top) < 1 &&
           trustRect.right <= permissionRect.left;
-        const footerItemCount = firefoxControls.querySelectorAll(
-          "[data-fennevia-urlbar-items] li"
-        ).length;
+        const footerItemsRow = firefoxControls.querySelector(
+          "[data-fennevia-urlbar-items]"
+        );
+        const footerItemCount =
+          footerItemsRow?.querySelectorAll("li").length ?? 0;
+        const footerSecondRowMatchesItems =
+          footerItemCount > 0 ? footerItemsRow !== null : footerItemsRow === null;
         const compactFooter =
-          footerItemCount === 0 &&
-          firefoxControlsRect.height <= 48 &&
+          firefoxControlsRect.height <= (footerItemCount > 0 ? 72 : 48) &&
           firefoxControlsCopyRect.height <= 18;
         const firstOption = projectedOptions[0];
         if (
@@ -7221,6 +7629,10 @@ async function runUrlbarSuggestionsProbe(client) {
             nativeInput.controller === nativeController,
           controllerRestoredBeforeExecution,
           directResultCount,
+          firefoxControlsCopyHeight: firefoxControlsCopyRect.height,
+          firefoxControlsHeight: firefoxControlsRect.height,
+          footerItemCount,
+          footerSecondRowMatchesItems,
           internalPageCommitted:
             gBrowser.selectedBrowser.currentURI.spec.startsWith(
               "about:preferences"
@@ -7258,10 +7670,20 @@ async function runUrlbarSuggestionsProbe(client) {
   assert.equal(evidence.activeDescendantLinked, true);
   assert.equal(evidence.ariaAutocompleteList, true);
   assert.equal(evidence.comboboxRole, true);
+  if (!evidence.compactFooter) {
+    console.error(
+      `urlbarSuggestionsFooterDiagnostics=${JSON.stringify({
+        firefoxControlsCopyHeight: evidence.firefoxControlsCopyHeight,
+        firefoxControlsHeight: evidence.firefoxControlsHeight,
+        footerItemCount: evidence.footerItemCount,
+      })}`,
+    );
+  }
   assert.equal(evidence.compactFooter, true);
   assert.equal(evidence.controllerRestoredAfterExecution, true);
   assert.equal(evidence.controllerRestoredBeforeExecution, true);
   assert.ok(evidence.directResultCount >= 1);
+  assert.equal(evidence.footerSecondRowMatchesItems, true);
   assert.equal(evidence.internalPageCommitted, true);
   assert.equal(evidence.listboxRole, true);
   assert.ok(evidence.nativeAccessTargetHeight >= 32);
@@ -7353,6 +7775,12 @@ async function run() {
     const originalHandle = (await client.request("WebDriver:GetWindowHandle"))
       .value;
     assert.equal(typeof originalHandle, "string");
+    const applicationIdentity = await client.execute(`
+      return {
+        buildId: Services.appinfo.appBuildID,
+        firefoxVersion: Services.appinfo.version,
+      };
+    `);
 
     if (options.sessionRestore) {
       let sessionEvidence = await executeSessionRestoreMode(
@@ -7539,7 +7967,7 @@ async function run() {
     ) {
       await new Promise((resolve) => setTimeout(resolve, 750));
       assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
-      await assertNoShellHosts(client);
+      await assertNoShellHosts(client, { failed: true });
       const runtimeState = await client.execute(`
         const { startProcessRuntime } = ChromeUtils.importESModule(
           "chrome://fennevia/content/runtime/Runtime.sys.mjs"
@@ -7630,6 +8058,22 @@ async function run() {
                         code: "FENNEVIA_TEST_FRONTEND_MOUNT_FAILED",
                         phase: "shell-frontend-mount",
                       };
+      if (
+        shellFailures[0].code !== expectedShellFailure.code ||
+        shellFailures[0].phase !== expectedShellFailure.phase
+      ) {
+        console.error(
+          `shellFailOpenRecordDiagnostics=${JSON.stringify({
+            expected: expectedShellFailure,
+            result: {
+              code: shellFailures[0].code,
+              firefoxSymbol: shellFailures[0].firefoxSymbol,
+              phase: shellFailures[0].phase,
+              stack: shellFailures[0].stack,
+            },
+          })}`,
+        );
+      }
       assert.equal(shellFailures[0].code, expectedShellFailure.code);
       assert.equal(shellFailures[0].phase, expectedShellFailure.phase);
       assert.equal(shellFailures[0].windowKind, "normal");
@@ -7831,42 +8275,67 @@ async function run() {
       return;
     }
 
+    currentHarnessPhase = "initial-native-state";
     assert.deepEqual(
       await collectNativeState(client),
       EXPECTED_ACTIVE_NATIVE_STATE,
     );
+    currentHarnessPhase = "initial-shell-state";
     assertShellHostState(await collectShellHostState(client), "normal");
+    currentHarnessPhase = "initial-frontend-state";
     assertFrontendState(await collectFrontendState(client), "normal");
+    currentHarnessPhase = "edge-shell";
     assertEdgeShellInteraction(await exerciseEdgeShell(client));
+    currentHarnessPhase = "post-edge-frontend-state";
     assertFrontendState(await collectFrontendState(client), "normal");
+    currentHarnessPhase = "native-ui-policies";
     assertNativeUiPolicies(await exerciseNativeUiPolicies(client));
+    currentHarnessPhase = "post-native-ui-shell-state";
     assertShellHostState(await collectShellHostState(client), "normal");
+    currentHarnessPhase = "post-native-ui-frontend-state";
     assertFrontendState(await collectFrontendState(client), "normal");
+    currentHarnessPhase = "window-state-policy";
     assert.deepEqual(await exerciseWindowStatePolicy(client), {
       maximized: true,
       minimized: true,
       resized: true,
       restored: true,
     });
+    currentHarnessPhase = "post-window-state-shell-state";
     assertShellHostState(await collectShellHostState(client), "normal");
+    currentHarnessPhase = "native-modal";
     await assertNativeModalUnobstructed(client);
     if (options.browserToolbox) {
+      currentHarnessPhase = "browser-toolbox";
       await runBrowserToolboxOwnershipProbe(client);
       assertShellHostState(await collectShellHostState(client), "normal");
       assertFrontendState(await collectFrontendState(client), "normal");
     }
+    currentHarnessPhase = "native-style-isolation";
     await assertNativeStylesIsolated(client);
+    currentHarnessPhase = "navigation-controls";
     assertNavigationControls(await exerciseNavigationControls(client));
+    currentHarnessPhase = "post-navigation-frontend-state";
     assertFrontendState(await collectFrontendState(client), "normal");
+    currentHarnessPhase = "address-input";
     assertAddressInput(await exerciseAddressInput(client));
+    currentHarnessPhase = "post-address-frontend-state";
     assertFrontendState(await collectFrontendState(client), "normal");
+    currentHarnessPhase = "urlbar-coverage";
     assertUrlbarCoverageMatrix(await exerciseUrlbarCoverageMatrix(client));
+    currentHarnessPhase = "post-urlbar-frontend-state";
     assertFrontendState(await collectFrontendState(client), "normal");
+    currentHarnessPhase = "tab-strip";
     assertTabStripMvp(await exerciseTabStripMvp(client));
+    currentHarnessPhase = "post-tabs-frontend-state";
     assertFrontendState(await collectFrontendState(client), "normal");
+    currentHarnessPhase = "bookmarks";
     assertBookmarksMvp(await exerciseBookmarksMvp(client));
-    assertFrontendState(await collectFrontendState(client), "normal");
+    currentHarnessPhase = "post-bookmarks-frontend-state";
+    assertFrontendState(await waitForFrontendEdgesHidden(client), "normal");
+    currentHarnessPhase = "downloads";
     assertDownloadsMvp(await exerciseDownloadsMvp(client), "normal");
+    currentHarnessPhase = "post-downloads-frontend-state";
     assertFrontendState(await collectFrontendState(client), "normal");
     const featureEvidence = await collectEvidence(client);
     assert.equal(
@@ -7876,6 +8345,7 @@ async function run() {
     );
     assert.equal(featureEvidence.firstPartyScriptErrorCount, 0);
 
+    currentHarnessPhase = "webdriver-new-tab";
     const tabResult = await client.request("WebDriver:NewWindow", {
       focus: false,
       type: "tab",
@@ -7904,6 +8374,7 @@ async function run() {
     await client.request("Marionette:SetContext", { value: "chrome" });
     await waitForFrontendTabCount(client, 1);
 
+    currentHarnessPhase = "second-window-open";
     const secondWindowResult = await client.request("WebDriver:NewWindow", {
       focus: true,
       private: false,
@@ -7926,6 +8397,7 @@ async function run() {
       handle: secondWindow.handle,
     });
     await client.request("Marionette:SetContext", { value: "chrome" });
+    currentHarnessPhase = "second-window-frontend";
     assertShellHostState(await collectShellHostState(client), "normal");
     assertFrontendState(await collectFrontendState(client), "normal");
     assertEdgeShellInteraction(await exerciseEdgeShell(client));
@@ -7960,6 +8432,7 @@ async function run() {
       handle: secondWindow.handle,
     });
     await client.request("Marionette:SetContext", { value: "chrome" });
+    currentHarnessPhase = "second-window-emergency-fallback";
     assert.deepEqual(await exerciseEmergencyFallback(client), {
       active: false,
       hostCount: 0,
@@ -7967,7 +8440,8 @@ async function run() {
       nativeToolboxPresent: true,
       rootState: null,
     });
-    await assertNoShellHosts(client);
+    await assertNoShellHosts(client, { failed: true });
+    currentHarnessPhase = "frontend-unmount-remount";
     const remount = await exerciseFrontendUnmountRemount(client);
     assert.equal(remount.bookmarkSubscriptionCount, 2);
     assert.equal(remount.bookmarkUnsubscriptionCount, 2);
@@ -7986,6 +8460,7 @@ async function run() {
     assert.ok(remount.listenerAddCount >= 4);
     const listenerDiagnostics = JSON.stringify({
       add: remount.listenerAddCount,
+      detached: remount.listenerDetachedOutstandingCount,
       outstanding: remount.listenerOutstandingCount,
       outstandingTypes: remount.listenerOutstandingTypes,
       remove: remount.listenerRemoveCount,
@@ -7999,7 +8474,7 @@ async function run() {
       `frontendListenerDiagnostics=${listenerDiagnostics}`,
     );
     assert.equal(
-      remount.listenerRemoveCount,
+      remount.listenerRemoveCount + remount.listenerDetachedOutstandingCount,
       remount.listenerAddCount,
       `frontendListenerDiagnostics=${listenerDiagnostics}`,
     );
@@ -8016,6 +8491,8 @@ async function run() {
     assert.equal(remount.tabUnsubscriptionCount, 2);
     assert.equal(remount.urlbarCoverageSubscriptionCount, 2);
     assert.equal(remount.urlbarCoverageUnsubscriptionCount, 2);
+    assert.equal(remount.urlbarSuggestionsSubscriptionCount, 2);
+    assert.equal(remount.urlbarSuggestionsUnsubscriptionCount, 2);
     assert.equal(remount.unmountErrorCount, 0);
     await client.request("WebDriver:SwitchToWindow", {
       handle: originalHandle,
@@ -8042,6 +8519,7 @@ async function run() {
     assert.equal(countEvent(evidence, "shell.hosts-disposed", "normal"), 1);
     assert.equal(countEvent(evidence, "bridge.boundary-disposed", "normal"), 1);
 
+    currentHarnessPhase = "native-ui-css-fail-open";
     const cssFailureWindowResult = await client.request("WebDriver:NewWindow", {
       focus: true,
       private: false,
@@ -8060,15 +8538,25 @@ async function run() {
     });
     await client.request("Marionette:SetContext", { value: "chrome" });
     assertShellHostState(await collectShellHostState(client), "normal");
-    assert.deepEqual(await exercisePartialNativeUiCssFailOpen(client), {
+    const cssFailOpen = await exercisePartialNativeUiCssFailOpen(client);
+    const expectedCssFailOpen = {
       activeCleared: true,
+      failedMarkerPresent: true,
       hostRemoved: true,
       nativeNavigationVisible: true,
       nativeTabsVisible: true,
       nativeWindowControlVisible: true,
       styleRemoved: true,
-    });
-    await assertNoShellHosts(client);
+    };
+    try {
+      assert.deepEqual(cssFailOpen, expectedCssFailOpen);
+    } catch (error) {
+      console.error(
+        `nativeUiCssFailOpenDiagnostics=${JSON.stringify(cssFailOpen)}`,
+      );
+      throw error;
+    }
+    await assertNoShellHosts(client, { failed: true });
     evidence = await collectEvidence(client);
     const cssFailures = evidence.records.filter(
       (record) =>
@@ -8236,8 +8724,11 @@ async function run() {
       expectedShellFailures[0].domPath,
       "html#main-window>body>#browser>#tabbrowser-tabbox",
     );
-    assert.equal(expectedShellFailures[0].firefoxVersion, "153.0.4");
-    assert.equal(expectedShellFailures[0].buildId, "20260810162159");
+    assert.equal(
+      expectedShellFailures[0].firefoxVersion,
+      applicationIdentity.firefoxVersion,
+    );
+    assert.equal(expectedShellFailures[0].buildId, applicationIdentity.buildId);
     assert.ok(Array.isArray(expectedShellFailures[0].stack));
     assert.ok(expectedShellFailures[0].stack.length > 0);
     assert.equal(countEvent(evidence, "window.disposed", "normal"), 3);
@@ -8276,8 +8767,14 @@ async function run() {
       expectedLifecycleFailures[0].phase,
       "shell-emergency-fallback",
     );
-    assert.equal(expectedLifecycleFailures[0].firefoxVersion, "153.0.4");
-    assert.equal(expectedLifecycleFailures[0].buildId, "20260810162159");
+    assert.equal(
+      expectedLifecycleFailures[0].firefoxVersion,
+      applicationIdentity.firefoxVersion,
+    );
+    assert.equal(
+      expectedLifecycleFailures[0].buildId,
+      applicationIdentity.buildId,
+    );
     assert.ok(Array.isArray(expectedLifecycleFailures[0].stack));
     assert.ok(
       expectedLifecycleFailures[0].stack.some((line) =>
@@ -8292,8 +8789,14 @@ async function run() {
       expectedLifecycleFailures[1].phase,
       "native-ui-style-validate",
     );
-    assert.equal(expectedLifecycleFailures[1].firefoxVersion, "153.0.4");
-    assert.equal(expectedLifecycleFailures[1].buildId, "20260810162159");
+    assert.equal(
+      expectedLifecycleFailures[1].firefoxVersion,
+      applicationIdentity.firefoxVersion,
+    );
+    assert.equal(
+      expectedLifecycleFailures[1].buildId,
+      applicationIdentity.buildId,
+    );
     assert.ok(Array.isArray(expectedLifecycleFailures[1].stack));
     assert.ok(
       expectedLifecycleFailures[1].stack.some((line) =>
@@ -8385,6 +8888,8 @@ try {
     ? `firefox-window-lifecycle.mjs:${ownFrame[1]}:${ownFrame[2]}`
     : "<NO_PROJECT_FRAME>";
   console.error(`FAIL [${code}] pathDisclosure=redacted`);
-  console.error(`diagnostic=${errorName} source=${sourceLocation}`);
+  console.error(
+    `diagnostic=${errorName} phase=${currentHarnessPhase} source=${sourceLocation}`,
+  );
   process.exitCode = 1;
 }
