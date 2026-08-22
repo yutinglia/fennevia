@@ -15,9 +15,10 @@
   `21e81150981619a4b3bc83072df0064c191e8697`
 - Validation target: marker-owned copied Firefox program and marker-owned
   development profile; no registered or daily profile was used
-- Status before tagging: source/static, real-Firefox candidate, exact extracted
-  archive, and marker-owned installer lifecycle checks complete; annotated tag,
-  CI, and public-asset evidence are recorded in section 8 after they run
+- Final status: published prerelease; source/static, real-Firefox candidate,
+  exact extracted archive, marker-owned installer lifecycle, annotated tag,
+  CI, public-asset, independently downloaded checksum, and post-publication
+  recovery evidence complete within the explicit unrun boundaries in section 9
 
 This is a release record, not a wider support claim. The package remains a
 Windows x64 prerelease tested on stock Firefox 153.0.4 BuildID
@@ -196,9 +197,74 @@ are therefore observed after this commit and recorded in section 8.
 
 ## 8. Tag, CI, and public prerelease
 
-Pending at record creation. The annotated tag object, tag target, `main` CI,
-tag-triggered release workflow, public prerelease URL, exact asset names,
-sizes, and SHA-256 verification will be recorded only after observed success.
+Annotated tag `v0.12.0-beta.1` has tag-object ID
+`9212e8c4c00e0615483fa10779428b69a13c0812` and resolves exactly to source
+commit `6c2942496a14df1baad2e1ab1b02acaf181beb82`. The local and remote tag
+objects agree.
+
+Before the tag was pushed:
+
+- [`main` CI run 32599921646](https://github.com/yutinglia/fennevia/actions/runs/32599921646)
+  passed the complete Windows job in 4 minutes 17 seconds, including both
+  PowerShell 7 and Windows PowerShell 5.1 fixed lists;
+- [CodeQL run 32599921186](https://github.com/yutinglia/fennevia/actions/runs/32599921186)
+  passed its Actions, C#, and JavaScript/TypeScript analyses;
+- the annotated-tag preflight resolved the tag to the same source commit and
+  reproduced the local fallback-compiler archive digest recorded below.
+
+[Release workflow run 32600158020](https://github.com/yutinglia/fennevia/actions/runs/32600158020)
+then checked out the annotated tag in two independent `windows-latest` jobs.
+`Rehearse exact release` passed in 3 minutes 32 seconds. `Verify draft assets
+and publish` independently reran the complete preflight, created the private
+draft, verified both GitHub-reported asset digests, published the numeric
+release ID, and passed in 3 minutes 13 seconds.
+
+Public prerelease ID `375047234` was published at `2026-08-22T21:44:54Z`
+(`2026-08-23T05:44:54+08:00`):
+<https://github.com/yutinglia/fennevia/releases/tag/v0.12.0-beta.1>. It is not a
+draft, is marked prerelease, and contains exactly:
+
+- asset ID `525480187`, `fennevia-0.12.0-beta.1-windows.zip`, 1,182,959 bytes,
+  GitHub and independently downloaded SHA-256
+  `3fa1ebcb072b7a7475a83d141b7586e4371cfb17f5ccf65871d8927aafece0bc`;
+- asset ID `525480188`,
+  `fennevia-0.12.0-beta.1-windows.zip.sha256`, 101 bytes, GitHub and
+  independently downloaded SHA-256
+  `dcecac82de2b17d51a105a6f9abdb1e34a32deff3fa64d97647ecd83c82c2474`.
+
+The downloaded checksum content names the exact archive and reproduces its
+hash. Extraction beneath `unicode public 測試` passed the public package's own
+strict verifier: version `0.12.0-beta.1`, tag `v0.12.0-beta.1`, 39 files,
+source commit equal to the tag target, and package-manifest SHA-256
+`22820467602eaee13ced8a6c2e500dacfdbdcf35bde9a6c959b3c5fbeafcd61f`.
+The downloaded public package then passed hard disable, native cold start,
+update repair, enable, and recovered full lifecycle on the marker-owned Firefox
+154 target.
+
+### Compiler-specific reproducibility boundary
+
+The final local Windows preflight used ADR-049's .NET Framework `csc.exe`
+fallback because Roslyn was not installed. It deterministically produced a
+1,182,447-byte archive with SHA-256
+`822ecdd21930f58ca705639e4e41ae0bfb0928fb64c799034714bf1f18d8e8e3`.
+The two GitHub `windows-latest` jobs used ADR-049's preferred Roslyn
+`/deterministic` path and independently agreed on the published digest above.
+
+Entry-by-entry comparison found identical names, timestamps, attributes, and
+content except for `FenneviaSetup.exe` and the release manifest field that
+records its hash. The normalized fallback executable was 6,144 bytes with
+SHA-256 `e104e0dcd83ae76183d7ae8d06866c5948dd25cf702f8b9f241938310621c0f3`;
+the published deterministic Roslyn executable is 6,656 bytes with SHA-256
+`4488f42d429ea9ef5f60c984edaaeaa2317ae86fc746dd045fc40abed3ef928b`.
+This is the documented two-compiler output boundary, not a mismatch between the
+two publishing jobs or between the public asset and its checksum. The project
+does not claim byte identity across different C# compiler implementations.
+
+The final marker-owned test installation is enabled at `0.12.0-beta.1`, its
+ownership pair is byte-identical, an extracted-public-package Update preview is
+`already-current` with zero mutations, and Firefox process, installer
+transaction, bridge-recovery sibling, and session-rehearsal residue counts are
+all zero.
 
 ## 9. Explicitly unrun or unsupported rows
 
@@ -216,10 +282,11 @@ sizes, and SHA-256 verification will be recorded only after observed success.
 - Linux, macOS, ESR, Beta, Nightly, and Firefox versions after 154 are not
   supported or inferred.
 
-## 10. Release decision boundary
+## 10. Release decision
 
-Publication is permitted only after sections 7 and 8 contain observed passing
-evidence, the worktree is clean, the installed marker-owned target is enabled
-with exact candidate bytes, no Firefox test process or recovery residue remains,
-and GitHub has no conflicting tag, draft, or public release. Any failure remains
-a blocker rather than an omitted matrix row.
+The prerelease decision boundary was satisfied: sections 7 and 8 contain
+observed passing evidence; the tag target was clean and matched pushed `main`;
+the marker-owned test target ended enabled with exact package bytes and no
+process/recovery residue; and the fail-closed workflow independently verified
+both remote asset digests before publication. Section 9 remains the explicit
+limit on compatibility, manual GUI, device, account, and platform claims.
