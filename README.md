@@ -99,13 +99,16 @@ per-window Urlbar provider manager into the centred combobox. Firefox still
 owns engines, provider selection, ranking, search-suggestion/private policy,
 and result execution. Ordinary rows delegate to Firefox's `pickResult`; rich or
 unknown rows open the complete native address bar. This work has focused tests
-and two Firefox 154 probes, while its complete provider and release matrix is
-still pending and is not a new public release claim.
+and Firefox 154 provider-contract, production-panel, failure-injection, and
+release-candidate probes, while its representative provider matrix remains
+pending.
 
-The implementation has focused automated coverage, but the remaining
-real-Firefox visual, popup-placement, customize, first-paint, and complete GUI
-installer matrices, plus the representative Urlbar-provider matrix, are still
-pending. The main remaining work is therefore
+The `0.12.0-beta.1` candidate also passed the automated Firefox 154 lifecycle,
+recovery, performance-control, deterministic archive, and extracted-package
+installer matrix. The remaining real-Firefox visual, assistive-technology,
+account/device, popup-placement, customize, first-paint, complete GUI installer,
+and representative Urlbar-provider rows are still pending. The main remaining
+work is therefore
 compatibility and release validation rather than a missing core shell feature.
 See [Current project status](docs/current-status.md) for the reviewed capability
 inventory, evidence boundary, known risks, and recommended priorities.

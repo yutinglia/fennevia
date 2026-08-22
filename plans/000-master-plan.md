@@ -734,11 +734,16 @@ fail open, update, disable, and uninstall Fennevia from repository documentation
 Gate passed on the Firefox 153.0.4 same-build rehearsal. The first real
 stock-stable transition to Firefox 154.0 BuildID 20260812182057 is recorded in
 `docs/research/firefox-154-stable-transition.md` from owner-confirmed ordinary
-runtime on 2026-08-19; the full update-workflow mass matrix remains `not run`.
-ADR-048 relaxes Install/Update/Repair/Enable to Firefox 153 and newer with an
-explicit no-promise warning. Evidence: ADR-033/ADR-034/ADR-048,
+runtime on 2026-08-19. The `0.12.0-beta.1` release candidate subsequently
+passed the automated Firefox 154 lifecycle/recovery, performance plus disabled
+control, and exact extracted-package install/uninstall matrix on 2026-08-23;
+the current candidate was not rerun on Firefox 153 and the explicit manual rows
+remain recorded as `not run`. ADR-048 relaxes
+Install/Update/Repair/Enable to Firefox 153 and newer with an explicit
+no-promise warning. Evidence: ADR-033/ADR-034/ADR-048,
 `docs/research/firefox-153-mvp-hardening-update-rehearsal.md`, and
-`docs/research/firefox-154-stable-transition.md`.
+`docs/research/firefox-154-stable-transition.md`, plus
+`docs/research/firefox-154-0.12.0-beta.1-release-validation.md`.
 
 Post-gate issue #46 additionally passed a real clean-shutdown SessionStore
 rehearsal across separate Firefox processes. One fixed selected tab, one pinned

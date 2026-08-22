@@ -15,9 +15,9 @@
   `21e81150981619a4b3bc83072df0064c191e8697`
 - Validation target: marker-owned copied Firefox program and marker-owned
   development profile; no registered or daily profile was used
-- Status at record creation: source/static and real-Firefox candidate checks
-  complete; exact extracted archive, installer lifecycle, annotated tag, CI,
-  and public-asset evidence are recorded in later sections after they run
+- Status before tagging: source/static, real-Firefox candidate, exact extracted
+  archive, and marker-owned installer lifecycle checks complete; annotated tag,
+  CI, and public-asset evidence are recorded in section 8 after they run
 
 This is a release record, not a wider support claim. The package remains a
 Windows x64 prerelease tested on stock Firefox 153.0.4 BuildID
@@ -160,12 +160,39 @@ claim a general Firefox performance result.
 
 ## 7. Exact release archive and installer lifecycle
 
-Pending at record creation. Before tagging, the final clean commit must pass
-the release preflight into a new empty output directory, produce two
-byte-identical archives, validate the Unicode/space extraction, and run the
-exact extracted package through update, recovery, hard-disable, uninstall,
-stock cold start, install, and final full-lifecycle checks. Exact results and
-the archive digest will replace this paragraph.
+Clean candidate commit `4df47a80bc1836866ca952fb3e44f468b504ed24`
+passed `scripts/release-preflight.ps1` in a new empty output directory. The
+preflight ran `npm ci`, the complete `npm run verify` gate, two independent
+release builds, byte comparison, strict release-tree validation, and extraction
+beneath `unicode path 測試`. Both builds produced
+`fennevia-0.12.0-beta.1-windows.zip`; the candidate archive SHA-256 was
+`7b39bb723e36a38b8810dddee5a2c03b75fbd3bafc0a98f3876a4dcc1d645528`.
+
+The exact Unicode-path extraction then passed the marker-owned Firefox 154
+release lifecycle:
+
+1. `Update -WhatIf` and applied `Update` both returned `already-current` with
+   zero mutations.
+2. `tests/firefox-release-recovery.ps1` passed hard disable, native-only cold
+   start, update repair, enable, exact-byte restoration, and full lifecycle.
+3. `Uninstall -WhatIf` identified 18 ownership-proven files and eight
+   remove-if-empty directory operations. Applied Uninstall completed all 26
+   operations.
+4. `--expect-stock` cold start proved native Firefox UI, zero Fennevia records,
+   and no owned-file residue.
+5. `Install -WhatIf` and applied Install used the same extracted package and
+   completed the expected 26 directory/file/ownership operations.
+6. A post-install full lifecycle passed existing, second, and private windows,
+   interaction/layout/fallback checks, and first-party error assertions.
+7. A final extracted-package Update preview returned `already-current` with
+   zero mutations. The ownership pair was byte-identical, the active preference
+   existed with no disabled alternate, and there was no Firefox process,
+   transaction directory, bridge-recovery sibling, or session-rehearsal state.
+
+The candidate preflight digest above is not presented as the tag archive digest:
+this evidence record changes the source commit embedded in
+`RELEASE-MANIFEST.json`. The exact tag-target preflight and public asset digest
+are therefore observed after this commit and recorded in section 8.
 
 ## 8. Tag, CI, and public prerelease
 

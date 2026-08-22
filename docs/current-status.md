@@ -1,7 +1,8 @@
 # Current Project Status
 
-> Snapshot: 2026-08-23. This status review is based on `main` through PR #98,
-> alongside the public `v0.12.0-beta.1` prerelease.
+> Snapshot: 2026-08-23. This status review is based on `main` through PR #98
+> plus the `0.12.0-beta.1` release-hardening commits, alongside the public
+> `v0.12.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
@@ -17,8 +18,8 @@ and testing documents retain the complete engineering contract.
 | Installer compatibility gate    | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested                                                                                |
 | Core four-edge MVP              | Implemented and released                                                                                                                                    |
 | Post-MVP shell work             | Included in `v0.12.0-beta.1` with focused automated coverage                                                                                                |
-| Native Urlbar result projection | Included in `v0.12.0-beta.1`; Firefox 154 provider-contract and production-panel probes pass; representative-provider/release matrix pending                  |
-| Real-Firefox validation         | Several visual, interaction, popup, customize, and first-paint matrices remain pending                                                                      |
+| Native Urlbar result projection | Included in `v0.12.0-beta.1`; Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes pass; representative-provider matrix pending |
+| Real-Firefox validation         | The automated Firefox 154 release/recovery and extracted-package matrix passes; several manual visual, assistive, account/device, and GUI installer rows remain pending |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                             |
 
 ## Implemented product surface
@@ -148,6 +149,16 @@ function coverage, all fixed PowerShell 7 suites, dependency review,
 deterministic frontend/bridge output, and 14/14 accepted production artifacts.
 The same fixed suite passed under Windows PowerShell 5.1. The real Firefox
 multi-window and external-application rows remain pending.
+
+The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
+the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and
+failure-injection wrappers, SessionStore rehearsal, Urlbar provider/production
+panel probes, three enabled performance samples with a three-run hard-disabled
+control, deterministic dual-archive preflight, Unicode-path extraction, and the
+extracted package's update/disable/recovery/uninstall/stock-start/install
+lifecycle. See
+[`docs/research/firefox-154-0.12.0-beta.1-release-validation.md`](research/firefox-154-0.12.0-beta.1-release-validation.md).
+This does not convert the manual rows below into observed evidence.
 
 That automated evidence does **not** complete every real-browser claim. The
 following remain explicitly pending in the current plans and testing document:
