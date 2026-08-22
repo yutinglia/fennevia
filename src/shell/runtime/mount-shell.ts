@@ -53,6 +53,10 @@ import {
   type BrowserUrlbarCoverageStateAdapter,
 } from "../../app/urlbar-coverage-state";
 import {
+  createBrowserUrlbarSuggestionsStateAdapter,
+  type BrowserUrlbarSuggestionsStateAdapter,
+} from "../../app/urlbar-suggestions-state";
+import {
   createBrowserWindowControlsStateAdapter,
   type BrowserWindowControlsStateAdapter,
 } from "../../app/window-controls-state";
@@ -94,6 +98,7 @@ export function mountShellApp({
   targets,
   toolbarWidgets,
   urlbarCoverage,
+  urlbarSuggestions,
   windowControls,
   windowKind,
 }: MountOptions): () => boolean {
@@ -125,6 +130,7 @@ export function mountShellApp({
   let tabsState: BrowserTabsStateAdapter | undefined;
   let toolbarWidgetsState: BrowserToolbarWidgetsStateAdapter | undefined;
   let urlbarCoverageState: BrowserUrlbarCoverageStateAdapter | undefined;
+  let urlbarSuggestionsState: BrowserUrlbarSuggestionsStateAdapter | undefined;
   let windowControlsState: BrowserWindowControlsStateAdapter | undefined;
   const components: MountedComponent[] = [];
   const controllerSubscriptions: Array<() => boolean> = [];
@@ -375,6 +381,11 @@ export function mountShellApp({
       firstError ??= error;
     }
     try {
+      urlbarSuggestionsState?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
       urlbarCoverageState?.dispose();
     } catch (error) {
       firstError ??= error;
@@ -429,6 +440,8 @@ export function mountShellApp({
       : undefined;
     urlbarCoverageState =
       createBrowserUrlbarCoverageStateAdapter(urlbarCoverage);
+    urlbarSuggestionsState =
+      createBrowserUrlbarSuggestionsStateAdapter(urlbarSuggestions);
     windowControlsState =
       createBrowserWindowControlsStateAdapter(windowControls);
     localeState = createBrowserLocaleStateAdapter(
@@ -454,6 +467,7 @@ export function mountShellApp({
       tabs: tabsState,
       targets,
       urlbarCoverage: urlbarCoverageState,
+      urlbarSuggestions: urlbarSuggestionsState,
       view,
     });
     const addressPopup = addressPopupCoordinator.controller;
@@ -619,6 +633,7 @@ export function mountShellApp({
         onFatalError,
         locale: localeState,
         popup: addressPopup,
+        suggestions: urlbarSuggestionsState,
         windowKind,
       },
       target: overlayTarget,
@@ -669,6 +684,7 @@ export function mountShellApp({
       tabs: tabsState,
       toolbarWidgets: toolbarWidgetsState,
       urlbarCoverage: urlbarCoverageState,
+      urlbarSuggestions: urlbarSuggestionsState,
       windowControls: windowControlsState,
     });
     mountedFrames.set(frame, record);

@@ -29,6 +29,7 @@ The tested MVP and current post-MVP implementation include:
 | Fennevia customize mode (ADR-045, ADR-046, ADR-047, ADR-054) | Focused implementation; real-Firefox matrix pending | Four-edge widget zones, full CustomizableUI inventory palette with localized names and native built-in icons (CSS mask), live-zone HTML5 drag-and-drop, bounded appearance and interaction settings, profile-local prefs, and owner-approved adopt/restore writes; native customize mode remains available from the Firefox application menu |
 | Appearance, interaction, and localization | Focused implementation; real-Firefox matrix pending | Firefox chrome design tokens provide the default theme; bounded panel/window appearance, motion, separate in-window/window-leave hide timing, temporary reveal timing, shortcut-tip timing, and edge trigger thickness are profile-local; shell strings follow Firefox UI locale with English and Traditional Chinese catalogs |
 | Urlbar coverage | Complete; ADR-059 real-Firefox follow-up pending | One Firefox-style Trust shield and popup row derived from bounded connection/protection state, permission/action summaries, and complete native Trust/Urlbar handoff |
+| Urlbar suggestions/providers (ADR-061) | Focused implementation complete; Firefox 154 contract and production-panel probes passed; full provider/release matrix pending | The centred combobox projects bounded results from Firefox's existing per-window provider manager, executes ordinary rows through Firefox `pickResult`, and hands rich/unknown rows to the complete native Urlbar; no Fennevia engine, provider, ranking, persistence, or network endpoint exists |
 | Bookmarks | Complete | Bounded lazy Places hierarchy with live updates and Firefox-owned opening behavior |
 | Downloads | Complete | Anonymous event-driven aggregate progress/status while Firefox retains safety and file management |
 | Content-only activation | Complete for durable hide; first-paint sheet implemented, real flash matrix `not run` | Exact health-gated native-surface hiding, transient native reveal, fullscreen/customize suspension, fail-open cleanup, and a self-expiring first-paint author sheet (ADR-050) |
@@ -104,7 +105,7 @@ authoritative defaults. This is not an arbitrary CSS or geometry editor.
 
 The retained Firefox toolbar is transient in active mode. **Original Firefox
 toolbar** in the custom top row reveals pinned extension widgets and any
-unmodeled control; **Open full Firefox address bar** reveals and focuses the
+unmodeled control; **Open Firefox address bar** reveals and focuses the
 complete Urlbar. Fixed top-row actions open Firefox's authoritative native
 panels. Returning focus to web content and closing native panels restores the
 content-only resting view.
@@ -122,6 +123,7 @@ Stock Firefox
               │   ├─ tabs
               │   ├─ navigation and address state
               │   ├─ Urlbar permission/action coverage
+              │   ├─ native Urlbar result projection and opaque execution
               │   ├─ fixed native browser-tool handoffs
               │   ├─ Places/bookmarks
               │   ├─ Downloads
@@ -140,7 +142,10 @@ Places, Downloads, commands, principals, permissions, dialogs, notifications,
 native popups, DevTools, security-sensitive prompts, and the OS window command
 implementation. Fennevia owns only its frame, descendants, bounded profile-local
 layout/style preferences, and the accepted `CustomizableUI` adopt/restore
-operations.
+operations. ADR-061 permits only bounded per-window result presentation fields
+and opaque action tokens to enter project memory while the popup is active;
+Firefox still owns query contexts, engines, registered providers, ranking,
+private/search-suggestion policy, telemetry, principals, and destinations.
 
 Native UI is never deleted during startup. Durable visibility changes only
 after every required host, stylesheet, controller, bridge capability, and
@@ -204,9 +209,11 @@ failed, or disposed state removes the active gate and exposes native Firefox UI.
 
 - A general-purpose userChrome/userscript loader.
 - Compatibility branches for historical Firefox versions.
-- A complete replacement for Firefox's Urlbar providers, Firefox View,
+- A reimplementation or replacement of Firefox's Urlbar providers, ranking,
+  search-suggestion engine, Firefox View,
   permissions, bookmark management, Downloads management, SessionStore, or
-  extension actions.
+  extension actions. ADR-061 only projects results from Firefox's existing
+  provider pipeline and delegates execution back to Firefox.
 - Replacement of Firefox/OS window-command ownership or removal of the retained
   native caption nodes. Project-owned controls may invoke those native command
   owners under ADR-037 and must preserve fail-open access.

@@ -2378,3 +2378,83 @@ mapping, so `THIRD_PARTY_NOTICES.md` remains unchanged. Source pins, the full
 project audit, exceptions, security review, validation, and remaining risk are
 recorded in
 `docs/research/firefox-153-154-native-shell-icons.md`.
+
+## ADR-061: Project Firefox's native Urlbar provider results through opaque per-window actions
+
+**Status:** Accepted for the project-owner request on 2026-08-22; Firefox 154.0
+query-contract and production-panel probes passed; focused implementation is
+complete; the representative-provider and release interaction matrices remain
+pending
+
+Extend the existing centered address/search popup with the current results
+produced by Firefox's own Urlbar provider pipeline. This is an explicit owner
+approval for bounded result title/description text and source-validated icon
+references to exist in only the owning window's frontend memory while the popup
+is active. It narrowly supersedes ADR-031's prohibition on provider results
+crossing the bridge and its native-only ownership of suggestion rendering.
+ADR-031's fixed security/permission summary, complete native handoff, retained
+native DOM, and Firefox-owned command/prompt/security behavior remain in force.
+
+Resolve each window's existing `gURLBar` input, child/parent controller, and the
+parent's shared `ProvidersManager`. Do not construct or register a search
+engine, provider, manager, parent controller, or native view. For a project
+query, synchronously substitute only `gURLBar.controller` with a narrow proxy,
+call the existing `gURLBar.startQuery()`, and restore the exact original
+controller identity on every success and throw path before returning from the
+synchronous call. This deliberately keeps Firefox's private
+`UrlbarQueryContext` construction and input state. The proxy sends that context
+to the existing manager with a proxy of the native parent controller that
+overrides only `receiveResults` and `view`; all other values and methods remain
+bound to the native owner. The native view receives no callback and opens no
+row. Replacement, close, fallback, and disposal cancel the exact active context
+through the shared manager; Fennevia never owns or tears down shared native
+objects.
+
+Publish immutable, bounded snapshots containing only closed result/source
+enums, title, description, validated local Firefox/extension/data-image icon,
+heuristic state, direct/native execution class, and a current-query opaque
+token. Keep the native result in a per-window registry behind that token. Raw
+payloads, provider names, result URLs as navigation authority, engine objects,
+controllers, browsers, windows, events, principals, native rows, and private
+state never cross into `src/app` or Svelte. Unknown and rich row-dependent
+tip/dynamic results are labelled as requiring the complete native Urlbar; they
+must not become silent or guessed actions.
+
+Execute direct rows by resolving the current token and invoking that window's
+existing `gURLBar.pickResult()` with only a bounded activation gesture. Apply
+the same synchronous input-controller proxy around the call so a
+Firefox-owned search-mode transition can issue its follow-up query in the
+project view. Enter with no selected result retains ADR-028's raw native
+submission. Native-class results preserve the draft, close the owned popup,
+reveal/focus the retained native Urlbar, and run the native query path.
+
+Firefox remains the sole owner of query contexts, registered providers,
+tokenization, source selection, ranking/muxing, autofill, deduplication,
+history/bookmarks/open tabs, search engines and remote suggestions, private
+preferences/policy, telemetry, destinations, principals, result actions, and
+prompts. Fennevia adds no query/result telemetry, persistence, clipboard,
+diagnostic, log, or network sink. Query/result strings, URLs, titles, icon
+references, and tokens never enter error metadata, datasets, or CSS variables.
+Projected result strings/icons/tokens clear on close, tab switch, handoff,
+failure, and disposal. The existing popup draft remains only while editing or
+for raw submission/native handoff; ordinary close/disposal reverts the native
+input.
+
+Missing or renamed input/controller/manager/result/pick capabilities fail shell
+health open to native Firefox. Runtime query or pick failure clears the project
+result registry while retaining raw submission and complete native handoff.
+Every synchronous proxy call performs guarded exact-identity restoration before
+propagating its callback or restoration error; late callbacks are rejected by
+per-window query revision even when provider completion timing drifts.
+
+**Reasoning:** Firefox already implements the full suggestion/provider system,
+and the owner wants that system in Fennevia's sole custom editable panel. The
+shared-manager contract is the smallest path that retains Firefox policy and
+execution while avoiding native view ownership. A direct listener was rejected
+because Firefox opens its view and closing it cancels the query. A new parent
+controller was rejected because it owns preference-observer lifetime without a
+public teardown. Custom providers/endpoints, hidden native rows, native DOM
+movement, payload serialization, direct frontend navigation, and reconstructed
+rich results were also rejected. Exact source pins, compatibility-canary review,
+probe evidence, privacy boundary, and remaining test rows are recorded in
+`docs/research/firefox-153-154-native-urlbar-suggestions.md`.

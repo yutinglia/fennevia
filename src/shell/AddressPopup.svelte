@@ -21,6 +21,13 @@
     type BrowserUrlbarCoverageState,
     type BrowserUrlbarCoverageStateAdapter,
   } from "../app/urlbar-coverage-state";
+  import {
+    createBrowserUrlbarSuggestionsState,
+    type BrowserUrlbarSuggestionsState,
+    type BrowserUrlbarSuggestionsStateAdapter,
+    type UrlbarSuggestionGesture,
+    type UrlbarSuggestionResult,
+  } from "../app/urlbar-suggestions-state";
   import { translate, type MessageKey, type MessageVars } from "../app/i18n";
   import {
     defaultFenneviaLocale,
@@ -38,6 +45,7 @@
     getUrlbarItemLabel,
     getUrlbarItemTone,
   } from "./urlbar-coverage-labels";
+  import { getUrlbarSuggestionSourceLabel } from "./urlbar-suggestions-labels";
 
   type Props = Readonly<{
     browserTools: BrowserToolsStateAdapter;
@@ -52,6 +60,7 @@
     onDisposed: () => void;
     onFatalError: (error: unknown) => void;
     popup: AddressPopupController;
+    suggestions: BrowserUrlbarSuggestionsStateAdapter;
     windowKind: "normal" | "private";
   }>;
 
@@ -90,6 +99,17 @@
       },
     }),
   );
+  let currentSuggestions: BrowserUrlbarSuggestionsState = $state(
+    createBrowserUrlbarSuggestionsState({
+      available: true,
+      phase: "idle",
+      queryRevision: 0,
+      results: [],
+    }),
+  );
+  let activeSuggestionIndex = $state(-1);
+  let addressInput: HTMLInputElement | undefined = $state();
+  let suggestionsListbox: HTMLDivElement | undefined = $state();
   let trust = $derived(
     getFirefoxTrustPresentation(
       currentNavigation.snapshot.connectionSecurity,
@@ -109,6 +129,14 @@
   );
   let visible = $derived(
     popupState.phase !== "hidden" && popupState.phase !== "disposed",
+  );
+  const suggestionOptionId = (index: number): string =>
+    `fennevia-urlbar-suggestion-${currentSuggestions.snapshot.queryRevision}-${index}`;
+  let activeSuggestionId = $derived(
+    activeSuggestionIndex >= 0 &&
+      activeSuggestionIndex < currentSuggestions.snapshot.results.length
+      ? suggestionOptionId(activeSuggestionIndex)
+      : undefined,
   );
 
   $effect(() => {
@@ -134,29 +162,160 @@
   });
 
   $effect(() => {
+    currentSuggestions = props.suggestions.snapshot();
+    return props.suggestions.subscribe((state) => {
+      const previousQueryRevision = currentSuggestions.snapshot.queryRevision;
+      const previousActiveIndex = activeSuggestionIndex;
+      currentSuggestions = state;
+      activeSuggestionIndex =
+        state.snapshot.phase !== "results" ||
+        state.snapshot.queryRevision !== previousQueryRevision
+          ? -1
+          : Math.min(previousActiveIndex, state.snapshot.results.length - 1);
+    });
+  });
+
+  $effect(() => {
     currentNavigation = props.navigation.snapshot();
     return props.navigation.subscribe((state) => {
       currentNavigation = state;
     });
   });
 
+  $effect(() => {
+    const index = activeSuggestionIndex;
+    const resultCount = currentSuggestions.snapshot.results.length;
+    if (index < 0 || index >= resultCount) {
+      return;
+    }
+    const option = suggestionsListbox?.children.item(index);
+    if (option instanceof HTMLElement) {
+      option.scrollIntoView({ block: "nearest" });
+    }
+  });
+
   const requestClose = (reason: AddressPopupCloseReason) => {
     props.popup.requestClose(reason);
   };
 
+  const queryDraft = (value: string, composing = false) => {
+    props.popup.updateDraft(value);
+    const snapshot = props.popup.snapshot();
+    if (snapshot.error === "too-long") {
+      props.suggestions.cancel();
+      return;
+    }
+    if (!composing) {
+      props.suggestions.query(snapshot.draftValue);
+    }
+  };
+
   const handleInput = (event: Event & { currentTarget: HTMLInputElement }) => {
-    props.popup.updateDraft(event.currentTarget.value);
+    queryDraft(
+      event.currentTarget.value,
+      "isComposing" in event && event.isComposing === true,
+    );
+  };
+
+  const handleCompositionEnd = (
+    event: Event & { currentTarget: HTMLInputElement },
+  ) => {
+    props.suggestions.query(event.currentTarget.value);
+  };
+
+  const handleSuggestionIconError = (event: Event): void => {
+    if (event.currentTarget instanceof HTMLImageElement) {
+      event.currentTarget.hidden = true;
+    }
+  };
+
+  const moveActiveSuggestion = (index: number): void => {
+    const count = currentSuggestions.snapshot.results.length;
+    activeSuggestionIndex =
+      count > 0 ? Math.max(0, Math.min(index, count - 1)) : -1;
+  };
+
+  const createGesture = (
+    event: KeyboardEvent | MouseEvent,
+  ): UrlbarSuggestionGesture =>
+    Object.freeze({
+      altKey: event.altKey,
+      button: event instanceof MouseEvent && event.button === 1 ? 1 : 0,
+      ctrlKey: event.ctrlKey,
+      kind: event instanceof MouseEvent ? "pointer" : "keyboard",
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+    });
+
+  const executeSuggestion = (
+    result: UrlbarSuggestionResult,
+    event: KeyboardEvent | MouseEvent,
+  ): void => {
+    try {
+      const execution = props.suggestions.execute(
+        result.token,
+        createGesture(event),
+      );
+      if (execution.status === "committed") {
+        requestClose("committed");
+      } else if (execution.status === "native-required") {
+        handleNativeAccess();
+      } else if (execution.status === "continued") {
+        activeSuggestionIndex = -1;
+        addressInput?.focus({ preventScroll: true });
+      } else {
+        props.suggestions.query(popupState.draftValue);
+        addressInput?.focus({ preventScroll: true });
+      }
+    } catch (error) {
+      props.onFatalError(error);
+    }
   };
 
   const handleInputKeydown = (event: KeyboardEvent) => {
     if (event.isComposing) {
       return;
     }
+    const results = currentSuggestions.snapshot.results;
+    if (!event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+      let nextIndex: number | null = null;
+      if (event.key === "ArrowDown") {
+        nextIndex = activeSuggestionIndex < 0 ? 0 : activeSuggestionIndex + 1;
+      } else if (event.key === "ArrowUp") {
+        nextIndex =
+          activeSuggestionIndex < 0
+            ? results.length - 1
+            : activeSuggestionIndex - 1;
+      } else if (event.key === "Home" && results.length > 0) {
+        nextIndex = 0;
+      } else if (event.key === "End" && results.length > 0) {
+        nextIndex = results.length - 1;
+      } else if (event.key === "PageDown" && results.length > 0) {
+        nextIndex = activeSuggestionIndex < 0 ? 0 : activeSuggestionIndex + 5;
+      } else if (event.key === "PageUp" && results.length > 0) {
+        nextIndex =
+          activeSuggestionIndex < 0
+            ? results.length - 1
+            : activeSuggestionIndex - 5;
+      }
+      if (nextIndex !== null && results.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        moveActiveSuggestion(nextIndex);
+        return;
+      }
+    }
     if (event.key === "Enter") {
       event.preventDefault();
       event.stopPropagation();
       try {
-        props.popup.submit();
+        const selected = results[activeSuggestionIndex];
+        if (selected) {
+          executeSuggestion(selected, event);
+        } else {
+          props.suggestions.cancel();
+          props.popup.submit();
+        }
       } catch (error) {
         props.onFatalError(error);
       }
@@ -202,6 +361,44 @@
     }
   };
 
+  const handleSuggestionPointer = (
+    result: UrlbarSuggestionResult,
+    event: MouseEvent,
+  ): void => {
+    if (event.button !== 0 && event.button !== 1) {
+      return;
+    }
+    event.preventDefault();
+    executeSuggestion(result, event);
+  };
+
+  const suggestionFallbackIcon = (
+    result: UrlbarSuggestionResult,
+  ):
+    | "bookmark-item"
+    | "extensions"
+    | "history"
+    | "open-in-new"
+    | "search"
+    | "tab" => {
+    if (result.execution === "native") {
+      return "open-in-new";
+    }
+    if (result.source === "bookmarks") {
+      return "bookmark-item";
+    }
+    if (result.source === "history") {
+      return "history";
+    }
+    if (result.source === "tabs" || result.type === "remote-tab") {
+      return "tab";
+    }
+    if (result.source === "addon") {
+      return "extensions";
+    }
+    return "search";
+  };
+
   const handleNativeAccessKeydown = (event: KeyboardEvent) => {
     if (
       event.key === "Tab" &&
@@ -232,6 +429,20 @@
     }
     if (popupState.phase === "submitting") {
       return t("address.submitting");
+    }
+    if (currentSuggestions.snapshot.phase === "querying") {
+      return t("suggestions.loading");
+    }
+    if (currentSuggestions.snapshot.phase === "results") {
+      return t("suggestions.count", {
+        count: String(currentSuggestions.snapshot.results.length),
+      });
+    }
+    if (currentSuggestions.snapshot.phase === "empty") {
+      return t("suggestions.empty");
+    }
+    if (currentSuggestions.snapshot.phase === "failed") {
+      return t("suggestions.failed");
     }
     if (currentNavigation.snapshot.loading) {
       return t("address.loading");
@@ -302,22 +513,31 @@
         <FirefoxIcon name="search" />
       </span>
       <input
-        aria-busy={popupState.phase === "submitting"}
+        aria-activedescendant={activeSuggestionId}
+        aria-autocomplete="list"
+        aria-busy={popupState.phase === "submitting" ||
+          currentSuggestions.snapshot.phase === "querying"}
+        aria-controls="fennevia-urlbar-suggestions"
         aria-describedby="fennevia-address-popup-status"
+        aria-expanded={currentSuggestions.snapshot.results.length > 0}
+        aria-haspopup="listbox"
         aria-invalid={popupState.phase === "invalid"}
         autocapitalize="none"
         autocomplete="off"
+        bind:this={addressInput}
         class="fennevia-address-popup__input"
         data-fennevia-address-popup-input=""
         dir="auto"
         enterkeyhint="go"
         id="fennevia-address-popup-input"
         maxlength={maximumNavigationAddressLength}
+        oncompositionend={handleCompositionEnd}
         oninput={handleInput}
         onkeydown={handleInputKeydown}
         placeholder={t("address.placeholder")}
         readonly={popupState.phase === "submitting" ||
           popupState.phase === "closing"}
+        role="combobox"
         spellcheck="false"
         type="text"
         value={popupState.draftValue}
@@ -331,6 +551,66 @@
       data-fennevia-address-popup-status=""
       id="fennevia-address-popup-status">{statusText()}</output
     >
+
+    <div
+      aria-label={t("suggestions.listAria")}
+      aria-multiselectable="false"
+      class="fennevia-address-popup__suggestions"
+      bind:this={suggestionsListbox}
+      data-fennevia-urlbar-suggestions=""
+      id="fennevia-urlbar-suggestions"
+      role="listbox"
+    >
+      {#each currentSuggestions.snapshot.results as result, index (result.token)}
+        <button
+          aria-selected={activeSuggestionIndex === index}
+          class="fennevia-address-popup__suggestion"
+          data-fennevia-suggestion-execution={result.execution}
+          data-fennevia-suggestion-source={result.source}
+          id={suggestionOptionId(index)}
+          onauxclick={(event) => handleSuggestionPointer(result, event)}
+          onclick={(event) => handleSuggestionPointer(result, event)}
+          onpointermove={() => (activeSuggestionIndex = index)}
+          role="option"
+          tabindex="-1"
+          type="button"
+        >
+          <span
+            aria-hidden="true"
+            class="fennevia-address-popup__suggestion-icon"
+          >
+            <FirefoxIcon name={suggestionFallbackIcon(result)} />
+            {#if result.icon}
+              <img
+                alt=""
+                decoding="async"
+                onerror={handleSuggestionIconError}
+                src={result.icon}
+              />
+            {/if}
+          </span>
+          <span class="fennevia-address-popup__suggestion-copy">
+            <strong dir="auto"
+              >{result.title || t("suggestions.nativeResult")}</strong
+            >
+            {#if result.description}
+              <span dir="auto">{result.description}</span>
+            {/if}
+          </span>
+          <span class="fennevia-address-popup__suggestion-meta">
+            <span
+              >{getUrlbarSuggestionSourceLabel(result.source, localeId)}</span
+            >
+            {#if result.heuristic}
+              <span>{t("suggestions.heuristicBadge")}</span>
+            {/if}
+            {#if result.execution === "native"}
+              <span>{t("suggestions.nativeBadge")}</span>
+            {/if}
+          </span>
+        </button>
+      {/each}
+    </div>
 
     <div
       aria-label={t("permission.statusAria")}
@@ -434,10 +714,6 @@
             </li>
           {/each}
         </ul>
-      {:else}
-        <span class="fennevia-address-popup__urlbar-empty"
-          >{t("address.noPageActions")}</span
-        >
       {/if}
 
       <button

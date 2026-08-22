@@ -304,6 +304,134 @@
   unicode-bidi: plaintext;
 }
 
+#fennevia-shell-frame-host .fennevia-address-popup__suggestions {
+  display: grid;
+  max-block-size: clamp(148px, 34vh, 292px);
+  min-block-size: 0;
+  padding: 3px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: color-mix(
+    in srgb,
+    var(--fennevia-glass-surface) 76%,
+    transparent
+  );
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+  scrollbar-width: thin;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__suggestions:empty {
+  display: none;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__suggestion {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  min-inline-size: 0;
+  gap: var(--fennevia-space-2);
+  padding: 7px 9px;
+  appearance: none;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--fennevia-control-radius) - 3px);
+  font: inherit;
+  text-align: start;
+  cursor: default;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-address-popup__suggestion:is(:hover, [aria-selected="true"]) {
+  background: color-mix(in srgb, var(--fennevia-focus-color) 14%, transparent);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-address-popup__suggestion[aria-selected="true"] {
+  outline: 1px solid
+    color-mix(in srgb, var(--fennevia-focus-color) 52%, transparent);
+  outline-offset: -1px;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__suggestion-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  overflow: hidden;
+  color: var(--fennevia-glass-muted);
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border-radius: 7px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-address-popup__suggestion-icon
+  :is(.fennevia-firefox-icon, img) {
+  position: absolute;
+  inline-size: 16px;
+  block-size: 16px;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__suggestion-icon img {
+  object-fit: contain;
+  background: var(--fennevia-glass-surface);
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__suggestion-copy {
+  display: grid;
+  min-inline-size: 0;
+  gap: 1px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-address-popup__suggestion-copy
+  :is(strong, span) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__suggestion-copy strong {
+  font-size: 12px;
+  font-weight: 620;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__suggestion-copy span {
+  color: var(--fennevia-glass-muted);
+  font-size: 10px;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__suggestion-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  max-inline-size: 160px;
+  gap: 4px;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__suggestion-meta span {
+  padding: 2px 5px;
+  overflow: hidden;
+  color: var(--fennevia-glass-muted);
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-chip-radius);
+  font-size: 9px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-address-popup__suggestion[data-fennevia-suggestion-execution="native"]
+  .fennevia-address-popup__suggestion-meta
+  span:last-child {
+  color: var(--fennevia-focus-color);
+}
+
 #fennevia-shell-frame-host
   .fennevia-address-popup-root:is(
     [data-fennevia-address-popup-phase="invalid"],
@@ -316,6 +444,7 @@
 #fennevia-shell-frame-host .fennevia-address-popup__details {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   gap: var(--fennevia-space-2);
 }
 
@@ -325,7 +454,7 @@
   align-items: center;
   min-inline-size: 0;
   gap: var(--fennevia-space-2);
-  padding: 10px;
+  padding: 8px 10px;
   color: inherit;
   background: color-mix(in srgb, currentColor 5%, transparent);
   border: 1px solid var(--fennevia-glass-separator);
@@ -378,11 +507,6 @@
 #fennevia-shell-frame-host .fennevia-address-popup__detail-copy span {
   color: var(--fennevia-glass-muted);
   font-size: 11px;
-}
-
-#fennevia-shell-frame-host .fennevia-address-popup__detail--trust,
-#fennevia-shell-frame-host .fennevia-address-popup__detail--permissions {
-  grid-column: 1 / -1;
 }
 
 #fennevia-shell-frame-host .fennevia-address-popup__detail--permissions {
@@ -463,27 +587,37 @@
 #fennevia-shell-frame-host .fennevia-address-popup__firefox-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
+  align-items: center;
   min-inline-size: 0;
-  gap: var(--fennevia-space-2) var(--fennevia-space-3);
-  padding-block-start: var(--fennevia-space-3);
+  gap: var(--fennevia-space-2);
+  padding-block-start: var(--fennevia-space-2);
   border-block-start: 1px solid var(--fennevia-glass-separator);
 }
 
 #fennevia-shell-frame-host .fennevia-address-popup__firefox-controls-copy {
-  display: grid;
+  display: flex;
+  align-items: baseline;
   min-inline-size: 0;
-  gap: 2px;
+  gap: var(--fennevia-space-2);
 }
 
-#fennevia-shell-frame-host .fennevia-address-popup__firefox-controls-copy span,
-#fennevia-shell-frame-host .fennevia-address-popup__urlbar-empty {
+#fennevia-shell-frame-host
+  .fennevia-address-popup__firefox-controls-copy
+  strong {
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+#fennevia-shell-frame-host .fennevia-address-popup__firefox-controls-copy span {
+  min-inline-size: 0;
   color: var(--fennevia-glass-muted);
   font-size: 11px;
+  line-height: 1.35;
 }
 
-#fennevia-shell-frame-host .fennevia-address-popup__urlbar-items,
-#fennevia-shell-frame-host .fennevia-address-popup__urlbar-empty {
+#fennevia-shell-frame-host .fennevia-address-popup__urlbar-items {
   grid-column: 1 / -1;
   grid-row: 2;
 }
@@ -493,6 +627,7 @@
   grid-row: 1;
   min-inline-size: auto;
   gap: 6px;
-  padding-inline: 10px;
+  padding-inline: 8px;
+  font-size: 11px;
   white-space: nowrap;
 }

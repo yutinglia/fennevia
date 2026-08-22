@@ -1,9 +1,9 @@
 # Current Project Status
 
 > Snapshot: 2026-08-22. This status review is based on the current development
-> worktree based on `ffacf17` plus the native-shell-icon follow-up and the public
-> `v0.11.0-beta.1` prerelease. Historical
-> research records and milestone ADR context remain unchanged.
+> worktree based on `ea24c75` plus the native-shell-icon and ADR-061 native
+> Urlbar-provider follow-ups, alongside the public `v0.11.0-beta.1` prerelease.
+> Historical research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
 READMEs remain user-facing, while the master plan, shell roadmap, architecture,
@@ -17,7 +17,8 @@ and testing documents retain the complete engineering contract.
 | Tested Firefox | Stock Firefox 153.0.4 BuildID `20260810162159` and 154.0 BuildID `20260812182057`, release channel |
 | Installer compatibility gate | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested |
 | Core four-edge MVP | Implemented and released |
-| Post-MVP shell work | Implemented on `main` with focused automated coverage |
+| Post-MVP shell work | Implemented in the current development tree with focused automated coverage |
+| Native Urlbar result projection | Implemented in the current development tree; Firefox 154 provider-contract and production-panel probes pass; representative-provider/release matrix pending |
 | Real-Firefox validation | Several visual, interaction, popup, customize, and first-paint matrices remain pending |
 | Stability claim | Experimental prerelease; not a stable daily-driver or long-term-support promise |
 
@@ -52,7 +53,11 @@ and testing documents retain the complete engineering contract.
 - Compact address/status launcher with one Firefox-style Trust shield embedded
   at the leading edge, plus a centred address/search popup backed by Firefox
   navigation, bounded connection/protection state, and the native Trust/Urlbar
-  owners.
+  owners. ADR-061 adds an accessible bounded result list fed by Firefox's own
+  per-window Urlbar provider manager: ordinary rows execute through native
+  `pickResult`, while rich/unknown rows retain the complete native-Urlbar
+  handoff. Fennevia adds no search engine, provider, ranking, persistence, or
+  suggestion endpoint.
 - Top navigation, page status, Firefox tool handoffs, native-panel anchoring,
   packaged Firefox icons including the Settings gear, gutter activity
   indicators, and compact project-owned window controls.
@@ -110,6 +115,14 @@ The 2026-08-22 ADR-060 native-shell-icon follow-up also passed the complete
 function coverage, deterministic generated output, and all 14 production
 artifacts accepted.
 
+The ADR-061 Urlbar-provider follow-up passed the complete `npm run verify` gate
+with 316 Node tests, 87.45% line coverage, 95.10% function coverage, all fixed
+PowerShell 7 suites, deterministic generated output, dependency review, and all
+14 production artifacts accepted. The same fixed PowerShell list also passed
+under Windows PowerShell 5.1. Its latest installed Firefox 154 focused probes
+passed after one real incremental-result selection race was found and fixed;
+the broader rows below remain pending.
+
 That automated evidence does **not** complete every real-browser claim. The
 following remain explicitly pending in the current plans and testing document:
 
@@ -133,6 +146,10 @@ following remain explicitly pending in the current plans and testing document:
 - ADR-060 packaged Firefox icon rendering and alignment across top controls,
   tabs, popups, bookmarks, downloads, customize UI, themes, reduced motion,
   forced colors, DPI, and multiple windows;
+- ADR-061 representative Urlbar providers, Firefox search-suggestion setting
+  combinations, Firefox 153, one-offs/rich rows, rapid replacement/close,
+  pointer/assistive-technology behavior, second/private windows, Browser
+  Toolbox ownership, failure injection, and release matrix;
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.
 

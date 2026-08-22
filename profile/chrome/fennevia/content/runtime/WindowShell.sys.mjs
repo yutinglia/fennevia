@@ -15,6 +15,7 @@ import {
   createFirefoxTabsBridge,
   createFirefoxToolbarWidgetsBridge,
   createFirefoxUrlbarCoverageBridge,
+  createFirefoxUrlbarSuggestionsBridge,
   createFirefoxWindowControlsBridge,
   createStaticLocaleBridge,
   getShellChromeHostLabel,
@@ -1194,6 +1195,7 @@ const mountProductionShell = ({
   let toolbarWidgetsBridge;
   let unsubscribeChromeStyle;
   let urlbarCoverageBridge;
+  let urlbarSuggestionsBridge;
   let windowControlsBridge;
   let localeBridge;
   let unsubscribeLocaleLabels;
@@ -1319,6 +1321,20 @@ const mountProductionShell = ({
       },
       window: browserWindow,
     });
+    urlbarSuggestionsBridge = createFirefoxUrlbarSuggestionsBridge({
+      boundary: bridge,
+      onError(error) {
+        reportError(
+          annotateShellLifecycleError(error, {
+            code:
+              error?.fenneviaCode ??
+              "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_RUNTIME_FAILED",
+            phase: error?.fenneviaPhase ?? "firefox-urlbar-suggestions-event",
+          }),
+        );
+      },
+      window: browserWindow,
+    });
     windowControlsBridge = createFirefoxWindowControlsBridge({
       boundary: bridge,
       onError(error) {
@@ -1440,6 +1456,7 @@ const mountProductionShell = ({
       tabs: tabsBridge.tabs,
       toolbarWidgets: toolbarWidgetsBridge?.toolbarWidgets,
       urlbarCoverage: urlbarCoverageBridge.urlbarCoverage,
+      urlbarSuggestions: urlbarSuggestionsBridge.urlbarSuggestions,
       locale: localeApi,
       windowControls: windowControlsBridge.windowControls,
       windowKind,
@@ -1481,6 +1498,7 @@ const mountProductionShell = ({
       tabsBridge,
       toolbarWidgetsBridge,
       urlbarCoverageBridge,
+      urlbarSuggestionsBridge,
       windowControlsBridge,
       localeBridge,
     });
@@ -1499,6 +1517,11 @@ const mountProductionShell = ({
     }
     try {
       downloadsBridge?.dispose();
+    } catch (cleanupError) {
+      reportError(cleanupError);
+    }
+    try {
+      urlbarSuggestionsBridge?.dispose();
     } catch (cleanupError) {
       reportError(cleanupError);
     }
@@ -1594,6 +1617,11 @@ const mountProductionShell = ({
     }
     try {
       downloadsBridge?.dispose();
+    } catch (error) {
+      firstError ??= error;
+    }
+    try {
+      urlbarSuggestionsBridge?.dispose();
     } catch (error) {
       firstError ??= error;
     }
@@ -1703,6 +1731,7 @@ const checkProductionShell = async ({ mountPoints, windowKind }) => {
   record.nativeUi.verifyHealth();
   record.tabsBridge.assertRequiredCapabilities();
   record.urlbarCoverageBridge.assertRequiredCapabilities();
+  record.urlbarSuggestionsBridge.assertRequiredCapabilities();
   record.windowControlsBridge.assertRequiredCapabilities();
   record.localeBridge?.assertRequiredCapabilities();
   return record.frontend.verifyShellAppHealth({
@@ -1735,6 +1764,8 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
   const tabsCapabilities = record.tabsBridge.assertRequiredCapabilities();
   const urlbarCoverageCapabilities =
     record.urlbarCoverageBridge.assertRequiredCapabilities();
+  const urlbarSuggestionsCapabilities =
+    record.urlbarSuggestionsBridge.assertRequiredCapabilities();
   const windowControlsCapabilities =
     record.windowControlsBridge.assertRequiredCapabilities();
   const localeCapabilities =
@@ -1768,6 +1799,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
     ...tabsCapabilities,
     ...toolbarWidgetsCapabilities,
     ...urlbarCoverageCapabilities,
+    ...urlbarSuggestionsCapabilities,
     ...windowControlsCapabilities,
     ...localeCapabilities,
     ...frontendCapabilities,

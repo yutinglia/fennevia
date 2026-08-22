@@ -482,11 +482,12 @@ Validate:
   search one-offs, prompt anchors, and all native panels remain available
   through Firefox rather than a custom replica;
 - dynamic native zoom visibility appears and clears without polling;
-- **Open full Firefox address bar** closes the custom popup and focuses the
+- **Open Firefox address bar** closes the custom popup and focuses the
   current native `gURLBar`;
 - no URL, origin, certificate, permission record/scope, extension identity,
-  action ID, localized native label, or provider result enters Svelte, normal
-  diagnostics, datasets, CSS variables, or persistence;
+  action ID, localized native label, or provider result enters Svelte through
+  the Urlbar-coverage adapter, normal diagnostics, datasets, CSS variables, or
+  persistence;
 - one per-window observer is disconnected exactly once across normal, second,
   private, unmount/remount, fallback, window close, and runtime disposal;
 - missing owner root, observer, or native-handoff capability fails open and
@@ -508,6 +509,71 @@ network-error states. That updated real-Firefox run is **not run**.
 Evidence: ADR-031, ADR-059,
 `docs/research/firefox-153-urlbar-coverage.md`, and
 `docs/research/firefox-153-154-unified-trust-shield.md`.
+
+### 6.4.1 Native Urlbar suggestions/providers — focused automation and Firefox 154 probes complete; release matrix pending
+
+ADR-061 reuses Firefox's existing per-window `gURLBar` query-context builder,
+parent controller, shared provider manager, result objects, and `pickResult`
+execution. The focused matrix validates:
+
+- no project search engine, provider, endpoint, ranking, provider-name export,
+  payload serialization, or direct frontend navigation path;
+- bounded immutable result snapshots, closed type/source enums, validated local
+  icon schemes, and text/property-only rendering;
+- exact native-controller restoration on success and synchronous throw;
+- incremental and empty replacement batches, exact-context cancellation, query
+  replacement, late-callback rejection, same-query active-selection retention,
+  and deterministic handle/native-input disposal;
+- current-query opaque action tokens plus malformed, stale, removed,
+  foreign-query, and normal/private cross-window rejection;
+- direct `pickResult` execution, search-mode follow-up queries, conservative
+  rich/unknown native handoff, and raw Enter submission with no selection;
+- one ARIA combobox/listbox, stable active descendant, Arrow Up/Down, Home/End,
+  Page Up/Down, Enter, pointer hover, left/middle click, one polite status
+  output, active-option nearest scrolling, bounded list geometry, forced-colors,
+  and responsive rules;
+- modified navigation keys do not consume `Shift+Arrow`, `Shift+Home`, or
+  `Shift+End` text-selection gestures;
+- ordinary close, tab/environment close, explicit native handoff, failure, and
+  unmount cleanup without logging or persisting query/result text.
+
+Two focused Firefox 154.0 BuildID `20260812182057` runs use installed production
+artifacts. `--urlbar-provider-probe` observed one complete
+`started -> results -> finished` lifecycle, at least one result/type/source,
+exact controller restoration, a closed native view, and zero native/selectable
+rows. `--urlbar-suggestions-probe` opened Fennevia's panel, projected one fixed
+`about:preferences` direct result, linked `aria-activedescendant`, executed it
+with Arrow Down plus Enter through `pickResult`, closed the popup, kept the
+native view closed with zero rows, and restored the controller before and after
+execution. Both runs shut down cleanly with zero first-party script errors and
+emitted only fixed enums, counts, and booleans.
+
+The final production-artifact rerun initially exposed a real incremental batch
+race: a later batch for the same query reset the active option after Arrow Down,
+and the probe timed out. The current UI preserves a bounded active index within
+the same query revision and resets only for a new query/non-result state; the
+harness resolves the current keyed option. The rebuilt artifact then passed the
+same probe. This is recorded as a found-and-fixed failure, not a retroactive
+first-pass success.
+
+The ordinary gate for this change passed with 316 Node tests, 87.45% line and
+95.10% function coverage, the fixed PowerShell suites under both PowerShell 7
+and Windows PowerShell 5.1, deterministic builds, dependency audit, and all 14
+production artifacts accepted.
+
+Those runs do not prove every enabled provider. Search suggestions appear only
+when Firefox's own Search Suggestions provider, engine, prefs, private policy,
+and current network conditions publish them; Fennevia adds no fallback engine
+or request. The release matrix still must cover Firefox 153, history,
+bookmarks, open/switch tabs, autofill, keyword, extension/omnibox, actions,
+search suggestions enabled/disabled and remote allowed/denied, one-offs/search
+modes, rich results/native handoff, rapid replacement/close, pointer and
+assistive-technology operation, second/private windows, responsive/a11y
+environments, Browser Toolbox ownership, and failure injection. Record each as
+passed, blocked, or not run rather than inferring it from the focused probes.
+
+Evidence: ADR-061 and
+`docs/research/firefox-153-154-native-urlbar-suggestions.md`.
 
 ### 6.5 Right bookmarks — validated for #14
 
@@ -934,6 +1000,8 @@ the health phase requires:
 - a ready PUBLIC/PRIVATE Downloads list view and valid bottom-panel state;
 - a valid Urlbar-coverage snapshot, one owner-state observer, and native
   `openLocation()` handoff capability;
+- a valid Urlbar-suggestions snapshot, required input/controller/shared-manager
+  and execution capabilities, and one project combobox/listbox;
 - a valid browser-tools snapshot, all fixed native-panel/tool actions, and
   host-anchored popup placement plus synchronous original-toolbar reveal
   capability;
@@ -1128,12 +1196,15 @@ Maintain controlled tests for:
 - edge-controller construction/hold/timer/corner/disposal failure;
 - health false and timeout;
 - missing base bridge capability;
-- missing tabs/navigation/address/Urlbar-coverage/Places/Downloads capability;
+- missing tabs/navigation/address/Urlbar-coverage/Urlbar-suggestions/Places/
+  Downloads capability;
 - malformed/stale/foreign snapshots and IDs;
+- Urlbar query/result/start/pick failure, empty replacement batch, late
+  callback, foreign result token, or controller-restore failure;
 - feature component failure;
 - disposal during a pending hide, focus/popup hold, navigation event, address
-  submission, Urlbar owner mutation/native handoff, Places query/observer
-  callback, or Downloads callback;
+  submission, Urlbar provider query/result/native handoff, Places query/
+  observer callback, or Downloads callback;
 - emergency fallback while Svelte is absent or visually broken.
 
 Each case must produce a fixed privacy-safe first causal record, clean partial
@@ -1187,6 +1258,16 @@ node .\tests\firefox-window-lifecycle.mjs `
   --profile '<FENNEVIA_DEV_PROFILE>' `
   --performance-baseline
 
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --urlbar-provider-probe
+
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --urlbar-suggestions-probe
+
 pwsh -NoProfile -File .\tests\firefox-frontend-recovery.Tests.ps1 `
   -FirefoxPath '<FIREFOX_PROGRAM>\firefox.exe' `
   -ProfilePath '<FENNEVIA_DEV_PROFILE>'
@@ -1207,6 +1288,13 @@ normal-window lifecycle cycles. It discards process/window IDs, origins, URIs,
 titles, threads, and all browsing-derived fields. Repeat it three times on the
 same hardware and apply the investigation thresholds in
 `docs/firefox-update-workflow.md`; it is not a noisy CI pass/fail benchmark.
+
+The two Urlbar modes are focused compatibility checks. The provider mode proves
+the selected shared-manager contract without constructing native rows. The
+suggestions mode proves the built project combobox and one fixed internal direct
+result through Firefox execution. Neither mode logs query/result text or
+substitutes for the provider, private-window, accessibility, or release matrix
+in §6.4.1.
 
 The bridge recovery command includes a dedicated
 `FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING` and
@@ -1276,6 +1364,7 @@ of the installed package.
 | Top navigation                 | `docs/research/firefox-153-navigation-controls.md`            |
 | Address launcher and popup     | `docs/research/firefox-153-address-popup.md`                  |
 | Urlbar coverage                | `docs/research/firefox-153-urlbar-coverage.md`                |
+| Native Urlbar suggestions      | `docs/research/firefox-153-154-native-urlbar-suggestions.md`  |
 | Right-edge bookmarks           | `docs/research/firefox-153-bookmarks-surface.md`              |
 | Bottom-edge downloads          | `docs/research/firefox-153-downloads-surface.md`              |
 | Content-only activation        | `docs/research/firefox-153-content-only-activation.md`        |

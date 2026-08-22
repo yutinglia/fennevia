@@ -8,4 +8,5 @@ export * from "./navigation";
 export * from "./tabs";
 export * from "./toolbar-widgets";
 export * from "./urlbar-coverage";
+export * from "./urlbar-suggestions";
 export * from "./window-controls";

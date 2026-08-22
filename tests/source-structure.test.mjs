@@ -17,6 +17,7 @@ test("stable facades keep feature implementations out of public entry files", as
     "tabs",
     "toolbar-widgets",
     "urlbar-coverage",
+    "urlbar-suggestions",
   ];
   for (const feature of firefoxFeatures) {
     const facade = await readProjectFile(`src/firefox/${feature}.ts`);

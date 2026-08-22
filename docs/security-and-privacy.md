@@ -386,9 +386,10 @@ Only these ordinary values cross the bridge:
 URLs, origins, principals, certificates, permission records/scopes, policy or
 private markers, extension IDs/names/icons/objects, page-action IDs/commands,
 localized Firefox labels, provider results, search terms, browsers, windows,
-and native nodes remain privileged. Unknown permission IDs are omitted and
-unknown actions become generic presence only. None of these values enters
-normal logs, persistence, CSS variables, or root datasets.
+and native nodes remain privileged within this coverage bridge. Unknown
+permission IDs are omitted and unknown actions become generic presence only.
+None of these values enters normal logs, persistence, CSS variables, or root
+datasets.
 
 The detailed popup renders fixed project labels from the bundled en / zh-Hant
 catalogs (ADR-052). It still does not receive Firefox Fluent labels across the
@@ -406,7 +407,57 @@ Source inventory and real HTTP/HTTPS/internal/error/permission/protection/
 normal/second/private/fail-open evidence are in ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-### 7.4 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, widget zones and customize mode ADR-044/ADR-045/ADR-046/ADR-047
+### 7.4 Native Urlbar provider projection — implemented ADR-061
+
+The project owner explicitly approved the minimum additional frontend exposure
+needed to render Firefox's own Urlbar results. Each managed window owns one
+focused suggestions controller, one application adapter, one active Firefox
+query context at most, and one boundary-scoped native-result registry. It
+reuses the owning window's current input, controllers, and shared provider
+manager; it creates no Fennevia search engine, provider, ranking model, history
+index, suggestion service, telemetry, or network request.
+
+The bridge publishes at most 20 immutable rows. Each row contains only a closed
+type/source enum, heuristic boolean, direct/native execution enum, title up to
+512 code units, description up to 1,024, source-validated icon reference up to
+2,048, and opaque token up to 160. Allowed icons are current local Firefox or
+extension schemes (`chrome:`, `resource:`, `moz-extension:`, `page-icon:`, and
+`moz-page-thumb:`) or bounded base64 PNG/GIF/JPEG/WebP data. HTTP(S), file,
+SVG-data, CSS interpolation, arbitrary attributes, provider names, and raw
+payload serialization are rejected. Titles and descriptions render only as
+Svelte text; icon references are assigned only to an image `src` property.
+
+Native results, URLs as navigation authority, payload objects, engines,
+controllers, browsers, windows, events, principals, and query contexts never
+cross the privileged boundary. The existing popup already owns the bounded
+draft; the suggestions snapshot does not copy query text. Ordinary result
+execution resolves the current token back to the retained native result and
+calls Firefox's own `pickResult`. Rich, dynamic, tip, unknown, and other
+row-dependent results preserve the draft and use the complete native Urlbar.
+Malformed, stale, removed, foreign-query, and foreign-window tokens are
+rejected.
+
+Replacement, empty incremental batches, ordinary close, selected-tab change,
+failure, fallback, unmount, and disposal release projected strings/icons,
+tokens, retained results, and the exact active context. Explicit native handoff
+clears the project snapshot without reverting the draft Firefox must receive.
+No query/result value or token enters normal logs, errors, diagnostics,
+preferences, disk, clipboard, project telemetry, datasets, CSS variables, or a
+project network sink. Fixed error metadata contains only code, phase,
+allowlisted symbol, Firefox version/build, and window kind. Firefox's own
+normal/private suggestion prefs, search modes, allowed sources, provider
+filtering, and remote-result policy remain unchanged.
+
+Focused tests prove bounds, immutable copying, stale/foreign token rejection,
+normal/private registry isolation, replacement and late callback behavior,
+failure redaction, controller restoration, rich-result handoff, search-mode
+continuation, cleanup, ARIA structure, and property/text-only rendering. The
+Firefox 154 provider-contract and production-panel probes contain only fixed
+counts/enums/booleans. Representative providers, remote-suggestion preference
+combinations, second/private real windows, and the release matrix remain not
+run. See `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
+
+### 7.5 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, widget zones and customize mode ADR-044/ADR-045/ADR-046/ADR-047
 
 Each managed window owns one `browser-tools` Firefox controller and one ordinary
 application adapter. The controller validates twenty required current
@@ -562,7 +613,7 @@ node, private-window activity, or preference is added to menu state, datasets,
 logs, or persistence. Per-edge popup holds and document/window listeners exist
 only while a menu is open and are removed on every close or disposal path.
 
-### 7.5 Bookmarks — implemented #14
+### 7.6 Bookmarks — implemented #14
 
 The Places controller is per window and holds native modules, records, GUIDs,
 URL objects, observers, node-like opening values, and the owner window only in
@@ -622,7 +673,7 @@ Source evidence and real hostile-title/private/fail-open tests are in
 `docs/research/firefox-153-bookmarks-surface.md`,
 `docs/research/firefox-153-154-panel-context-actions.md`, ADR-029, and ADR-055.
 
-### 7.6 Downloads — implemented #32
+### 7.7 Downloads — implemented #32
 
 Each managed window owns one typed controller and exact Firefox list view.
 Normal windows select `Downloads.PUBLIC`; private windows select
@@ -942,23 +993,27 @@ Implemented:
 
 - base lifecycle, health, frame, edge controller, tabs bridge, vertical tab UI,
   navigation/address bridge, compact launcher, centered popup, top controls,
-  Urlbar-coverage bridge/details/native handoff, bookmarks bridge/right panel,
-  Downloads bridge/bottom panel, and native visibility controller have isolated
-  normal, second-normal, and private instances;
+  Urlbar-coverage bridge/details/native handoff, Urlbar-suggestions controller
+  and registry, bookmarks bridge/right panel, Downloads bridge/bottom panel,
+  and native visibility controller have isolated normal, second-normal, and
+  private instances;
 - opaque IDs include context/registry generation;
 - controllers, roots, holds, timers, listeners, mappings, and state are removed
   per window;
 - one window's emergency fallback does not mutate another.
 
-Issues #12–#15, #32, #37, and ADR-037 give each window its own navigation,
-Urlbar coverage, browser-tools, bookmarks, and Downloads controllers; selected snapshots;
-navigation, popup, Urlbar, bookmark, and download subscriber sets; popup
+Issues #12–#15, #32, #37, ADR-037, and ADR-061 give each window its own
+navigation, Urlbar coverage, Urlbar suggestions, browser-tools, bookmarks, and
+Downloads controllers; selected snapshots; navigation, popup, Urlbar result,
+bookmark, and download subscriber sets; popup
 controller/draft; two tab listeners; one tabs progress listener; one command
-observer; one Urlbar owner-state observer; one Places observer; one Downloads
-list view; application adapters; five roots; and text output. Title, display
-URI, address text, draft, bookmark titles, and anonymous download progress may
-describe private browsing, so they are never process-global, persisted, logged,
-placed in datasets/errors, or copied to another window. Background and
+observer; one Urlbar owner-state observer; at most one active Urlbar query and
+one context-bound result registry; one Places observer; one Downloads list
+view; application adapters; five roots; and text output. Title, display URI,
+address text, draft, projected result text/icons, bookmark titles, and anonymous
+download progress may describe private browsing, so they are never
+process-global, persisted, logged, placed in datasets/errors, or copied to
+another window. Background and
 non-top-level navigation progress is ignored.
 Frontend unmount, emergency fallback, window close, runtime stop, capability
 failure, and startup rollback remove all listeners/observers/subscribers and
@@ -971,6 +1026,11 @@ evidence is in `docs/research/firefox-153-navigation-controls.md`,
 `docs/research/firefox-153-urlbar-coverage.md`,
 `docs/research/firefox-153-bookmarks-surface.md`, and
 `docs/research/firefox-153-downloads-surface.md`.
+
+ADR-061's focused tests prove normal/private token and registry isolation, but
+its real second-normal/private provider matrix is not run. The Firefox 154
+focused probes used one normal development window only and do not expand the
+historical private-window validation claim.
 
 ADR-037/ADR-042's browser-tools unit/build boundary is per-window by
 construction, but the real second/private-window native-panel placement matrix

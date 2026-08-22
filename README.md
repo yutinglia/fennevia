@@ -29,7 +29,9 @@ use the keyboard, to reveal:
 - **Right:** bookmarks, plus any widgets placed there.
 - **Bottom:** download progress and status, plus any widgets placed there.
 - **Centre:** an address/search popup opened from the launcher or with
-  <kbd>Ctrl</kbd>+<kbd>L</kbd>.
+  <kbd>Ctrl</kbd>+<kbd>L</kbd>. In the current development tree, its accessible
+  result list comes from Firefox's own enabled Urlbar providers and search
+  suggestions; Fennevia does not add a search engine or suggestion service.
 
 Right-click works across all four edge panels. It offers a useful action for
 that edge plus available Fennevia/Firefox customization and original-toolbar
@@ -81,9 +83,18 @@ context actions, tab drag preview, native-safe extension-install prompts, a
 placeable Firefox built-in translation widget, and the `FenneviaSetup.exe`
 Windows setup wizard.
 
+The current development tree also projects bounded results from Firefox's own
+per-window Urlbar provider manager into the centred combobox. Firefox still
+owns engines, provider selection, ranking, search-suggestion/private policy,
+and result execution. Ordinary rows delegate to Firefox's `pickResult`; rich or
+unknown rows open the complete native address bar. This work has focused tests
+and two Firefox 154 probes, while its complete provider and release matrix is
+still pending and is not a new public release claim.
+
 The implementation has focused automated coverage, but the remaining
 real-Firefox visual, popup-placement, customize, first-paint, and complete GUI
-installer matrices are still pending. The main remaining work is therefore
+installer matrices, plus the representative Urlbar-provider matrix, are still
+pending. The main remaining work is therefore
 compatibility and release validation rather than a missing core shell feature.
 See [Current project status](docs/current-status.md) for the reviewed capability
 inventory, evidence boundary, known risks, and recommended priorities.
@@ -180,9 +191,9 @@ For update, disable, repair, enable, and uninstall commands, read:
 
 Move the pointer to the corresponding window edge to reveal a panel.
 <kbd>Ctrl</kbd>+<kbd>L</kbd> opens Fennevia's centred address/search popup when
-the shell is healthy. Use **Open full Firefox address bar** when you need the
-complete native address bar, search providers, extension actions, or Firefox
-panels.
+the shell is healthy. Use **Open Firefox address bar** when you need the
+complete native address bar, a rich/unsupported provider row, search one-offs,
+extension actions, or Firefox panels.
 
 If the custom interface becomes unusable while Firefox is running, press
 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F12</kbd> to request the

@@ -12,7 +12,7 @@ collision system, glass token set, or window-global coordination layer.
 
 ## Current status
 
-Validated baseline as of 2026-08-19:
+Validated baseline as of 2026-08-22:
 
 - public package `0.11.0-beta.1` prerelease on Windows x64;
 - tested Firefox majors 153.0.4 BuildID 20260810162159 and 154.0 BuildID
@@ -24,7 +24,8 @@ Validated baseline as of 2026-08-19:
 - functional vertical tabs and a compact address/status launcher in the left
   surface;
 - one centered address/search popup with a combined Trust summary, permission,
-  applicable-action, and native-handoff coverage in a fifth owned root;
+  applicable-action, native Firefox provider-result list, and native-handoff
+  coverage in a fifth owned root;
 - one-line primary navigation/address/status plus fixed native Firefox handoffs
   in the top surface;
 - bounded lazy Firefox Places bookmarks in the right surface;
@@ -51,6 +52,16 @@ shortcut-tip timing, and edge trigger thickness. These have focused automated
 evidence;
 the real Firefox matrices in `docs/testing-and-recovery.md` §6.8 and §6.9
 remain pending.
+
+ADR-061 adds a focused per-window Urlbar-suggestions bridge and accessible
+combobox/listbox to the existing address overlay. It reuses Firefox's current
+query-context builder, shared provider manager, search engines/suggestions,
+ranking, and `pickResult` execution; no project provider or network endpoint is
+added. Focused tests and Firefox 154 provider-contract/production-panel probes
+pass. The representative-provider, Firefox 153, second/private, full
+accessibility/layout, failure-injection, and release matrices remain pending in
+`plans/008-native-urlbar-suggestions.md` and
+`docs/testing-and-recovery.md` §6.4.1.
 
 The project is currently under rapid development. Ordinary shell work uses CI
 as the required gate; the complete real-Firefox matrices run at release. See
@@ -458,8 +469,9 @@ allow-list, progress, command, and event objects stay private.
   overwrite an active draft;
 - popup priority suppresses the four edge surfaces without creating another
   edge controller;
-- no suggestions, rich results, search modes, moved native DOM, fake security
-  icon, or arbitrary `loadURI` helper.
+- initial #13 shipped no custom suggestion/result stack, moved native DOM, fake
+  security icon, or arbitrary `loadURI` helper; ADR-061 later adds only the
+  bounded native-provider projection described below.
 
 Gate:
 
@@ -478,6 +490,33 @@ native permission/page-action coverage and retained access.
 
 Evidence: ADR-028 and
 `docs/research/firefox-153-address-popup.md`.
+
+### ADR-061 native provider-result extension — focused implementation complete
+
+- query through the current window's existing `gURLBar.startQuery()` context
+  builder and shared parent `ProvidersManager`;
+- restore the exact native controller identity before asynchronous provider
+  work; keep the native view closed and build no native row;
+- project at most 20 immutable bounded rows with closed type/source enums,
+  validated local icon references, direct/native class, and per-window opaque
+  action token;
+- execute ordinary URL/search/keyword/switch-tab/omnibox/remote-tab rows through
+  native `pickResult`, including Firefox-owned search-mode follow-up queries;
+- route tip/dynamic/restrict/AI/unknown or other row-dependent results to the
+  complete native Urlbar with the draft preserved;
+- retain raw Enter submission when no row is selected and keep complete native
+  handoff available on every failure;
+- use one ARIA combobox/listbox with keyboard, pointer, polite status,
+  responsive, forced-color, and deterministic cleanup behavior;
+- add no Fennevia engine, provider, provider policy, ranking, persistence,
+  telemetry, or network request.
+
+Focused bridge/state/UI tests and Firefox 154 provider-contract plus
+production-panel probes pass. The complete provider/settings, Firefox 153,
+second/private, one-off/rich, accessibility/layout, Browser Toolbox,
+failure-injection, and release rows remain not run. Evidence: ADR-061,
+`plans/008-native-urlbar-suggestions.md`, and
+`docs/research/firefox-153-154-native-urlbar-suggestions.md`.
 
 ## Milestone I: Right-edge bookmarks — complete (#14)
 
@@ -598,7 +637,8 @@ Evidence: ADR-030 and
 - generic extension/unknown-action presence without extension identity or
   action IDs;
 - no URL, origin, principal, certificate, permission record/scope, native
-  label, provider result, browser/window object, or native node crossing;
+  label, provider result, browser/window object, or native node crossing the
+  #37 coverage bridge;
 - deterministic observer/subscriber/application cleanup and fail-open.
 
 ### Detailed popup and retained access
@@ -618,6 +658,11 @@ evidence.
 
 Evidence: ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
+
+ADR-061 narrowly supersedes the provider-result rendering ban through its own
+focused bounded projection and opaque-action bridge. This does not change the
+#37 owner-state observer, fixed permission/action summary, or complete native
+security/action handoff.
 
 ## Milestone L: Content-only active mode — complete (#15)
 
@@ -789,7 +834,8 @@ coverage.
 
 The following require separate plans and issues:
 
-- complete Urlbar suggestions/providers and search modes;
+- the complete real-Firefox Urlbar provider/search-mode matrix and any future
+  project-owned rich-row UI beyond ADR-061's explicit native handoff;
 - Firefox View replacement;
 - identity and permission panel replacement;
 - extension toolbar/action replacement beyond the ADR-045 Fennevia customize
