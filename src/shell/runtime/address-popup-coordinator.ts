@@ -3,6 +3,7 @@ import { flushSync } from "svelte";
 
 import {
   createAddressPopupController,
+  getAddressPopupCloseFocusDestination,
   type AddressPopupController,
   type AddressPopupInvocationSource,
   type AddressPopupSnapshot,
@@ -101,12 +102,11 @@ export function createAddressPopupCoordinator({
   };
 
   const restoreFocus = (snapshot: AddressPopupSnapshot): void => {
-    if (
-      frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) !== "normal" ||
-      snapshot.closeReason === "environment" ||
-      snapshot.closeReason === "native-handoff" ||
-      snapshot.closeReason === "focus-failed"
-    ) {
+    const destination = getAddressPopupCloseFocusDestination(
+      snapshot,
+      frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) === "normal",
+    );
+    if (destination === "none") {
       const active = getFocusableOrigin(frame.ownerDocument.activeElement);
       if (active && overlayTarget.contains(active)) {
         active.blur?.();
@@ -114,29 +114,7 @@ export function createAddressPopupCoordinator({
       return;
     }
 
-    if (
-      snapshot.closeReason === "committed" ||
-      snapshot.closeReason === "tab-changed"
-    ) {
-      focusSelectedContent();
-      return;
-    }
-
-    if (
-      snapshot.invocationSource === "left-launcher" ||
-      snapshot.invocationSource === "top-launcher"
-    ) {
-      shell.revealProgrammatically("left");
-      flushSync();
-      const launcher = targets.left.querySelector<FocusableElement>(
-        "[data-fennevia-address-launcher]",
-      );
-      if (launcher?.isConnected) {
-        launcher.focus({ preventScroll: true });
-        if (targets.left.contains(frame.ownerDocument.activeElement)) {
-          return;
-        }
-      }
+    if (destination === "content") {
       focusSelectedContent();
       return;
     }

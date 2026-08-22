@@ -439,6 +439,9 @@ Validate:
   disposed;
 - focus restoration to a valid prior project/native control or selected
   content;
+- cancel, backdrop, or focus-boundary close after launcher activation returns
+  focus to selected content instead of re-revealing the launcher, so the left
+  focus hold clears and auto-hide does not require another content click;
 - all four edge surfaces suppressed while popup state has priority;
 - no input/complete URL in normal diagnostics or project persistence;
 - no native Urlbar, identity/protections panel, permission, or page-action DOM

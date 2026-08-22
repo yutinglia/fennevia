@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAddressPopupController } from "../src/app/address-popup.ts";
+import {
+  createAddressPopupController,
+  getAddressPopupCloseFocusDestination,
+} from "../src/app/address-popup.ts";
 import {
   copyNavigationPointerGesture,
   createBrowserNavigationState,
@@ -372,6 +375,61 @@ test("navigation adapter validates and disposes its complete public contract", (
     subscriberCount: 0,
   });
   assert.throws(() => adapter.back(), /FENNEVIA_NAVIGATION_STATE_DISPOSED/u);
+});
+
+test("address popup cancellation releases launcher focus back to content", () => {
+  const closingSnapshot = Object.freeze({
+    closeReason: "cancelled",
+    draftValue: initialSnapshot.addressValue,
+    error: null,
+    invocationSource: "left-launcher",
+    phase: "closing",
+    revision: 3,
+  });
+
+  for (const invocationSource of ["left-launcher", "top-launcher"]) {
+    for (const closeReason of ["cancelled", "focus-left", "outside"]) {
+      assert.equal(
+        getAddressPopupCloseFocusDestination(
+          { ...closingSnapshot, closeReason, invocationSource },
+          true,
+        ),
+        "content",
+      );
+    }
+  }
+  assert.equal(
+    getAddressPopupCloseFocusDestination(
+      { ...closingSnapshot, invocationSource: "ctrl-l" },
+      true,
+    ),
+    "origin",
+  );
+  assert.equal(
+    getAddressPopupCloseFocusDestination(
+      { ...closingSnapshot, closeReason: "committed" },
+      true,
+    ),
+    "content",
+  );
+  assert.equal(
+    getAddressPopupCloseFocusDestination(closingSnapshot, false),
+    "none",
+  );
+  assert.equal(
+    getAddressPopupCloseFocusDestination(
+      { ...closingSnapshot, closeReason: "native-handoff" },
+      true,
+    ),
+    "none",
+  );
+  assert.equal(
+    getAddressPopupCloseFocusDestination(
+      { ...closingSnapshot, phase: "editing" },
+      true,
+    ),
+    "none",
+  );
 });
 
 test("address popup owns one draft, preserves it through updates, and discards it on tab change", () => {
