@@ -327,6 +327,14 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(frameSource, /onDestroy\(\(\) => \{\s*cancelFocusRelease\(\)/u);
   assert.match(source, /data-fennevia-action="home"/u);
   assert.match(source, /handleNavigationAuxClick/u);
+  assert.match(
+    topSource,
+    /const handlePrimaryNavigationClick = \([\s\S]*?if \(event\.button !== 0\) \{\s*return;[\s\S]*?runNavigationAction\(action\);/u,
+  );
+  assert.equal(
+    topSource.match(/handlePrimaryNavigationClick\(event,/gu)?.length,
+    4,
+  );
   assert.match(source, /preventMiddleAutoscroll/u);
   assert.match(source, /navigation\.reload\(gesture\)/u);
   assert.match(
@@ -339,6 +347,18 @@ test("the component uses semantic sibling controls and property-safe rendering o
   );
   assert.match(source, /"ltr",\s*"vertical"/u);
   assert.match(source, /handleTabAuxClick/u);
+  assert.match(
+    tabSource,
+    /const restorePointerHoldAfterClose = async \([\s\S]*?await tick\(\);[\s\S]*?elementFromPoint\([\s\S]*?surfacePanel\.contains\(pointerTarget\)[\s\S]*?setPointerHeld\("left", true\);/u,
+  );
+  assert.match(tabSource, /pointerType === "touch"/u);
+  assert.match(tabSource, /event\.button !== 0 && event\.button !== 1/u);
+  assert.equal(
+    tabSource.match(
+      /closeTab\([^\n]+, pointerPositionFromMouseEvent\(event\)\)/gu,
+    )?.length,
+    2,
+  );
   assert.match(source, /openContextMenu/u);
   assert.match(source, /draggable="true"/u);
   assert.match(source, /data-fennevia-action="toggle-mute"/u);
