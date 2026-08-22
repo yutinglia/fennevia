@@ -1,8 +1,7 @@
 # Current Project Status
 
-> Snapshot: 2026-08-22. This status review is based on the current development
-> worktree based on `ea24c75` plus the native-shell-icon and ADR-061 native
-> Urlbar-provider follow-ups, alongside the public `v0.11.0-beta.1` prerelease.
+> Snapshot: 2026-08-23. This status review is based on `main` through PR #98,
+> alongside the public `v0.12.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
@@ -13,12 +12,12 @@ and testing documents retain the complete engineering contract.
 
 | Area                            | Current state                                                                                                                                               |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public release                  | `v0.11.0-beta.1`, Windows x64 prerelease                                                                                                                    |
+| Public release                  | `v0.12.0-beta.1`, Windows x64 prerelease                                                                                                                    |
 | Tested Firefox                  | Stock Firefox 153.0.4 BuildID `20260810162159` and 154.0 BuildID `20260812182057`, release channel                                                          |
 | Installer compatibility gate    | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested                                                                                |
 | Core four-edge MVP              | Implemented and released                                                                                                                                    |
-| Post-MVP shell work             | Implemented in the current development tree with focused automated coverage                                                                                 |
-| Native Urlbar result projection | Implemented in the current development tree; Firefox 154 provider-contract and production-panel probes pass; representative-provider/release matrix pending |
+| Post-MVP shell work             | Included in `v0.12.0-beta.1` with focused automated coverage                                                                                                |
+| Native Urlbar result projection | Included in `v0.12.0-beta.1`; Firefox 154 provider-contract and production-panel probes pass; representative-provider/release matrix pending                  |
 | Real-Firefox validation         | Several visual, interaction, popup, customize, and first-paint matrices remain pending                                                                      |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                             |
 
@@ -107,7 +106,7 @@ and testing documents retain the complete engineering contract.
 
 ## Validation status
 
-The `v0.11.0-beta.1` release pull request records successful
+The `v0.12.0-beta.1` release candidate records successful
 `git diff --check`, `npm run format:check`, and `npm run verify`. The verify gate
 covers linting, type checking, coverage floors, PowerShell static suites,
 dependency review, deterministic builds, and production-artifact checks.
@@ -189,7 +188,7 @@ following remain explicitly pending in the current plans and testing document:
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.
 
-Accordingly, `v0.11.0-beta.1` should be described as an implemented experimental
+Accordingly, `v0.12.0-beta.1` should be described as an implemented experimental
 prerelease with validation debt, not as a stable product. The largest remaining
 risk is Firefox-internal compatibility and real-environment coverage rather
 than absence of the core shell.

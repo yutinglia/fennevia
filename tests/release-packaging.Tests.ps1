@@ -91,19 +91,19 @@ try {
         -RepositoryRoot $repositoryRoot `
         -OutputDirectory (Join-Path $canonicalTestRoot "first output") `
         -SourceCommit $sourceCommit `
-        -ExpectedTag "v0.11.0-beta.1" `
+        -ExpectedTag "v0.12.0-beta.1" `
         -TestAllowDirtySource
     $second = New-FenneviaReleaseArtifacts `
         -RepositoryRoot $repositoryRoot `
         -OutputDirectory (Join-Path $canonicalTestRoot "second output") `
         -SourceCommit $sourceCommit `
-        -ExpectedTag "v0.11.0-beta.1" `
+        -ExpectedTag "v0.12.0-beta.1" `
         -TestAllowDirtySource
 
-    Assert-Equal -Actual $first.Version -Expected "0.11.0-beta.1" -Message "The canonical package version must drive release staging."
-    Assert-Equal -Actual $first.Tag -Expected "v0.11.0-beta.1" -Message "The exact tag must be derived from the package version."
+    Assert-Equal -Actual $first.Version -Expected "0.12.0-beta.1" -Message "The canonical package version must drive release staging."
+    Assert-Equal -Actual $first.Tag -Expected "v0.12.0-beta.1" -Message "The exact tag must be derived from the package version."
     Assert-True -Condition $first.Prerelease -Message "The public package must remain marked as a prerelease."
-    Assert-Equal -Actual $first.ArchiveName -Expected "fennevia-0.11.0-beta.1-windows.zip" -Message "The archive name must be deterministic and versioned."
+    Assert-Equal -Actual $first.ArchiveName -Expected "fennevia-0.12.0-beta.1-windows.zip" -Message "The archive name must be deterministic and versioned."
     Assert-Equal -Actual $first.ArchiveSha256 -Expected $second.ArchiveSha256 -Message "Two clean builds must produce byte-identical ZIP archives."
     Assert-Equal -Actual (Get-TestSha256 -Path $first.ManifestPath) -Expected (Get-TestSha256 -Path $second.ManifestPath) -Message "Two clean builds must produce byte-identical release manifests."
 
@@ -121,7 +121,7 @@ try {
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\lib\installer\Transaction.ps1") -PathType Leaf) -Message "The release tree must include the installer transaction implementation."
     Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $first.PackageRoot "scripts\lib\FirefoxDevProfile.psm1"))) -Message "The development-profile helper must not ship in the release ZIP."
     Assert-Equal -Actual ([string] $validation.Manifest.source.commit) -Expected $sourceCommit -Message "The release manifest must record the complete source commit."
-    Assert-Equal -Actual ([string] $validation.Manifest.source.archive) -Expected "https://github.com/yutinglia/fennevia/archive/refs/tags/v0.11.0-beta.1.zip" -Message "The release manifest must identify corresponding preferred source."
+    Assert-Equal -Actual ([string] $validation.Manifest.source.archive) -Expected "https://github.com/yutinglia/fennevia/archive/refs/tags/v0.12.0-beta.1.zip" -Message "The release manifest must identify corresponding preferred source."
     Assert-Equal -Actual @($validation.Manifest.firefoxCompatibility).Count -Expected 2 -Message "The release must carry the tested Firefox 153 and 154 compatibility records."
     Assert-Equal -Actual ([string] $validation.Manifest.firefoxCompatibility[0].buildId) -Expected "20260810162159" -Message "Compatibility must still record the Firefox 153.0.4 BuildID."
     Assert-Equal -Actual ([string] $validation.Manifest.firefoxCompatibility[1].version) -Expected "154.0" -Message "Compatibility must record the owner-confirmed Firefox 154.0 version."
@@ -162,7 +162,7 @@ try {
         $sortedNames = [string[]] @($entryNames)
         [Array]::Sort($sortedNames, [StringComparer]::Ordinal)
         Assert-Equal -Actual ([string]::Join("|", $entryNames)) -Expected ([string]::Join("|", $sortedNames)) -Message "ZIP entries must use deterministic ordinal-style order."
-        Assert-True -Condition (@($entryNames | Where-Object { -not $_.StartsWith("fennevia-0.11.0-beta.1/", [StringComparison]::Ordinal) }).Count -eq 0) -Message "Every ZIP entry must remain under one versioned top-level directory."
+        Assert-True -Condition (@($entryNames | Where-Object { -not $_.StartsWith("fennevia-0.12.0-beta.1/", [StringComparison]::Ordinal) }).Count -eq 0) -Message "Every ZIP entry must remain under one versioned top-level directory."
         Assert-True -Condition (@($entryNames | Where-Object { $_.EndsWith("/", [StringComparison]::Ordinal) }).Count -eq 0) -Message "The deterministic ZIP must not contain platform-dependent directory entries."
         Assert-True -Condition (@($archive.Entries | Where-Object { $_.LastWriteTime.Year -ne 1980 -or $_.LastWriteTime.Month -ne 1 -or $_.LastWriteTime.Day -ne 1 }).Count -eq 0) -Message "Every ZIP entry must use the fixed 1980-01-01 timestamp."
     }
@@ -172,7 +172,7 @@ try {
 
     $extractRoot = Join-Path $canonicalTestRoot "unicode and spaces 測試"
     [IO.Compression.ZipFile]::ExtractToDirectory($first.ArchivePath, $extractRoot)
-    $extractedRoot = Join-Path $extractRoot "fennevia-0.11.0-beta.1"
+    $extractedRoot = Join-Path $extractRoot "fennevia-0.12.0-beta.1"
     $extractedValidation = Test-FenneviaReleaseTree -PackageRoot $extractedRoot
     Assert-True -Condition $extractedValidation.Passed -Message "The exact extracted ZIP must validate from a Unicode and spaces path."
 

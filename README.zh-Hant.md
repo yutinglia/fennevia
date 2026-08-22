@@ -15,7 +15,7 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 - **左方：**帶有載入、媒體分享及崩潰狀態圖示的垂直分頁、精簡的網址／狀態啟動器，以及放在此處的 widget。
 - **右方：**書籤，以及放在此處的 widget。
 - **下方：**下載進度及狀態，以及放在此處的 widget。
-- **中央：**從左方啟動器或按 <kbd>Ctrl</kbd>+<kbd>L</kbd> 開啟的網址／搜尋彈出面板。目前開發版本的無障礙結果清單直接使用 Firefox 已啟用的 Urlbar 供應器與搜尋建議；Fennevia 不會另建搜尋引擎或建議服務。
+- **中央：**從左方啟動器或按 <kbd>Ctrl</kbd>+<kbd>L</kbd> 開啟的網址／搜尋彈出面板。無障礙結果清單直接使用 Firefox 已啟用的 Urlbar 供應器與搜尋建議；Fennevia 不會另建搜尋引擎或建議服務。
 
 分頁拖曳時，實際分頁列會在原本的 tab bar 內跟著游標移動，相鄰分頁則讓出預計落點。進入另一個相同視窗類型的 Fennevia 視窗時，目標分頁列會立即顯示並保持開啟；可插入指定位置，放到該 Firefox 視窗的瀏覽內容區則附加到列尾，放到 Firefox 以外則交由 Firefox 分離成視窗。目標列會用實際版面預留新分頁位置，少量分頁時不會因拖曳位移誤顯捲軸；拖曳沿用 Firefox 的一般游標。拖曳資料不含文字或網址格式，視窗事件與來源分頁狀態同步會在所有結束路徑釋放左側面板的顯示 hold。
 
@@ -23,14 +23,14 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 ## 目前版本
 
-目前公開預發行版本是 [`v0.11.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.11.0-beta.1)，接續首個公開套件 [`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1)。測試範圍刻意限制得很窄：
+目前公開預發行版本是 [`v0.12.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.12.0-beta.1)，接續 [`v0.11.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.11.0-beta.1)。測試範圍刻意限制得很窄：
 
 | 要求             | 已測試值                                               |
 | ---------------- | ------------------------------------------------------ |
 | 作業系統         | Windows x64                                            |
 | Firefox          | 原版 Firefox 153.0.4 與 154.0，Release channel         |
 | Firefox Build ID | `20260810162159`（153.0.4）、`20260812182057`（154.0） |
-| 套件             | `fennevia-0.11.0-beta.1-windows.zip`                   |
+| 套件             | `fennevia-0.12.0-beta.1-windows.zip`                   |
 
 Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用。153、154 以及更新的主版本可在安裝程式警告後安裝：目前只測試過 153 與 154，較新版本可能故障，確認安裝並不保證一切都能運作。Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta 及 Nightly。
 
@@ -40,7 +40,7 @@ Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用�
 
 Fennevia 已經超越首個四邊介面 MVP。目前預發行版亦包括 Fennevia 自有的 widget 編輯器，可把 widget 即時拖放到四個邊緣；具可見跨視窗落點預覽、跨視窗轉移及 Firefox 原生分離視窗路徑的空間式分頁拖曳；有限度的外觀與邊緣互動設定；預設跟隨 Firefox 設計 token；英文與繁體中文介面；啟動首幀隱藏原生工具列；以及 Windows 的 `FenneviaSetup.exe` 安裝精靈。
 
-目前開發版本亦會把 Firefox 自己每個視窗的 Urlbar provider manager 所產生、經限制的結果投影到中央 combobox。搜尋引擎、供應器選擇、排序、搜尋建議／私密視窗政策及結果執行仍由 Firefox 負責。一般結果會交回 Firefox 的 `pickResult`；豐富或未知結果則開啟完整原生網址列。這項工作已有針對性測試及兩次 Firefox 154 探針，但完整供應器與發行測試矩陣仍未完成，也不代表已有新的公開發行版。
+目前預發行版亦會把 Firefox 自己每個視窗的 Urlbar provider manager 所產生、經限制的結果投影到中央 combobox。搜尋引擎、供應器選擇、排序、搜尋建議／私密視窗政策及結果執行仍由 Firefox 負責。一般結果會交回 Firefox 的 `pickResult`；豐富或未知結果則開啟完整原生網址列。這項工作已有針對性測試及兩次 Firefox 154 探針；完整供應器與發行測試矩陣的狀態以測試紀錄為準。
 
 這些實作已有針對性的自動化測試，但完整的 Firefox 實機視覺、原生彈出面板定位、自訂模式、啟動首幀、GUI 安裝流程及具代表性的 Urlbar 供應器測試矩陣仍未完成。因此目前主要欠缺的是相容性與發行驗證，而不是核心瀏覽器介面功能。詳情請參閱[目前專案狀態（英文）](docs/current-status.md)，當中整理了已完成能力、證據邊界、已知風險及建議優先次序。
 
@@ -60,14 +60,14 @@ Fennevia 已經超越首個四邊介面 MVP。目前預發行版亦包括 Fennev
 
 從同一個 GitHub Release 下載：
 
-- `fennevia-0.11.0-beta.1-windows.zip`
-- `fennevia-0.11.0-beta.1-windows.zip.sha256`
+- `fennevia-0.12.0-beta.1-windows.zip`
+- `fennevia-0.12.0-beta.1-windows.zip.sha256`
 
 解壓縮前，在下載目錄開啟 PowerShell 並執行：
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.11.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.11.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.12.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.12.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 

@@ -29,7 +29,7 @@ use the keyboard, to reveal:
 - **Right:** bookmarks, plus any widgets placed there.
 - **Bottom:** download progress and status, plus any widgets placed there.
 - **Centre:** an address/search popup opened from the launcher or with
-  <kbd>Ctrl</kbd>+<kbd>L</kbd>. In the current development tree, its accessible
+  <kbd>Ctrl</kbd>+<kbd>L</kbd>. Its accessible
   result list comes from Firefox's own enabled Urlbar providers and search
   suggestions; Fennevia does not add a search engine or suggestion service.
 
@@ -38,7 +38,7 @@ that edge plus available Fennevia/Firefox customization and original-toolbar
 access; tab rows keep Firefox's complete translated tab menu, bookmark rows
 offer bounded open/folder/Library actions, and the actual dragged tab follows
 the pointer inside its strip while neighboring tabs move aside to preview the
-final order. In the current development tree, entering another same-kind
+final order. Entering another same-kind
 Fennevia window also reveals and holds that window's tab strip; the tab can be
 dropped at an insertion point there, dropped on that window's browser area to
 append it, or released outside Firefox to let Firefox detach it into a window.
@@ -59,9 +59,9 @@ fallback; this is an accepted safety behavior rather than a custom prompt.
 ## Current release
 
 The current public prerelease is
+[`v0.12.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.12.0-beta.1).
+It follows
 [`v0.11.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.11.0-beta.1).
-It follows the first public package
-[`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1).
 Its tested environment is intentionally narrow:
 
 | Requirement      | Tested value                                         |
@@ -69,7 +69,7 @@ Its tested environment is intentionally narrow:
 | Operating system | Windows x64                                          |
 | Firefox          | Stock Firefox 153.0.4 and 154.0, release channel     |
 | Firefox Build ID | `20260810162159` (153.0.4), `20260812182057` (154.0) |
-| Package          | `fennevia-0.11.0-beta.1-windows.zip`                 |
+| Package          | `fennevia-0.12.0-beta.1-windows.zip`                 |
 
 Install, update, repair, and re-enable reject Firefox older than 153. Firefox
 153, 154, and newer majors may be installed after the installer warning: only
@@ -94,7 +94,7 @@ prompts, a placeable
 Firefox built-in translation widget, and the `FenneviaSetup.exe` Windows setup
 wizard.
 
-The current development tree also projects bounded results from Firefox's own
+The current prerelease also projects bounded results from Firefox's own
 per-window Urlbar provider manager into the centred combobox. Firefox still
 owns engines, provider selection, ranking, search-suggestion/private policy,
 and result execution. Ordinary rows delegate to Firefox's `pickResult`; rich or
@@ -132,14 +132,14 @@ the wizard.
 
 Download both files from the same GitHub Release:
 
-- `fennevia-0.11.0-beta.1-windows.zip`
-- `fennevia-0.11.0-beta.1-windows.zip.sha256`
+- `fennevia-0.12.0-beta.1-windows.zip`
+- `fennevia-0.12.0-beta.1-windows.zip.sha256`
 
 Before extracting the ZIP, run this in PowerShell from the download directory:
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.11.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.11.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.12.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.12.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 
