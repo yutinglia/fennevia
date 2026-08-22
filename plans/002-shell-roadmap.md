@@ -66,6 +66,26 @@ accessibility/layout, failure-injection, and release matrices remain pending in
 `plans/008-native-urlbar-suggestions.md` and
 `docs/testing-and-recovery.md` §6.4.1.
 
+ADR-062 upgrades the existing tab reorder presentation without changing its
+bridge: a pointer-aligned full-row ghost and transform-only neighboring-row gap
+show the final order, while the keyboard path exposes its shortcut and
+announces a successful move. Focused automation is complete; the real Firefox
+visual and assistive-technology rows remain pending in
+`docs/testing-and-recovery.md` §6.1.
+
+ADR-063 adds the owner-requested terminal drag behavior: marker-only OS data,
+same-kind target-strip adoption, another Firefox window's content-area append,
+Firefox-owned detach outside Firefox, normal/private rejection, and
+capture-phase plus source-snapshot cleanup of the shared left hold. Its
+external target preview reserves one real row-height layout slot so short lists
+grow without a false
+overflow scrollbar, overlays a visible generic tab row at the accepted point,
+and clears both on a no-drop target-window exit. It uses one ephemeral
+privileged coordinator and the current `adoptTab`/`replaceTabWithWindow`
+boundaries. Focused automation is complete and the ordinary gate passes; the
+real multi-window/content/external-drop matrix remains pending in
+`docs/testing-and-recovery.md` §6.1.
+
 The project is currently under rapid development. Ordinary shell work uses CI
 as the required gate; the complete real-Firefox matrices run at release. See
 ADR-039 and `AGENTS.md` section 8.
@@ -290,8 +310,11 @@ Issue #60 completes the remaining flat-list parity on that same strip:
 - attention and picture-in-picture indicators;
 - packaged Firefox semantic icons, fixed trailing action grid areas, and the
   native loading asset's built-in reduced-motion behavior;
-- drag reorder with a browser drag ghost/insertion marker and
-  `Ctrl+Shift+ArrowUp/Down`;
+- drag reorder with a live pointer-following source row, pointer-aligned full-row
+  browser ghost, transform-only neighbor gap, insertion marker, target-window
+  left-surface reveal/hold, row-height target layout reservation with a visible
+  generic landing row and no-drop exit cleanup, ordinary default cursor, and
+  `Ctrl+Shift+ArrowUp/Down` with a polite move announcement;
 - Firefox-owned `#tabContextMenu` handoff with #31 popup hold, synchronous lazy
   Fluent activation, and the NativeUi token that prevents original chrome from
   revealing around its native-tab anchor.
@@ -303,11 +326,12 @@ Deferred:
 - thumbnails/previews;
 - container icon loads from `resource://usercontext-content/`.
 
-Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, and
+Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063, and
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,
-`docs/research/firefox-153-154-native-shell-icons.md`, plus ADR-055 and
+`docs/research/firefox-153-154-native-shell-icons.md`,
+`docs/research/firefox-154-tab-drag-spatial-preview.md`, plus ADR-055 and
 `docs/research/firefox-153-154-panel-context-actions.md`.
 
 ## Milestone F: Shared four-edge interaction and design frame — complete

@@ -261,10 +261,16 @@ export function createFirefoxDownloadsBridge() {
   });
 }
 
+export function createFirefoxTabDragCoordinator() { return Object.freeze({}); }
+
 export function createFirefoxTabsBridge() {
   let disposed = false;
   const tabs = Object.freeze({
+    beginDrag() { return "tab-transfer-00000001"; },
     close() {},
+    dropDrag(index) { return { index, kind: "moved", tabId: "tab-registry-1-handle-1" }; },
+    endDrag() { return "consumed"; },
+    inspectDrag() { return null; },
     move() {},
     open() { return "tab-registry-1-handle-1"; },
     openContextMenu() {},
@@ -364,6 +370,8 @@ export function createFirefoxNavigationBridge() {
   throw new Error("FENNEVIA_TEST_NAVIGATION_SHOULD_NOT_INITIALIZE");
 }
 
+export function createFirefoxTabDragCoordinator() { return Object.freeze({}); }
+
 export function createFirefoxTabsBridge() {
   throw new Error("FENNEVIA_TEST_TABS_SHOULD_NOT_INITIALIZE");
 }
@@ -458,6 +466,8 @@ export function createFirefoxDownloadsBridge({ boundary }) {
 export function createFirefoxNavigationBridge() {
   throw new Error("FENNEVIA_TEST_NAVIGATION_SHOULD_NOT_INITIALIZE");
 }
+
+export function createFirefoxTabDragCoordinator() { return Object.freeze({}); }
 
 export function createFirefoxTabsBridge() {
   throw new Error("FENNEVIA_TEST_TABS_SHOULD_NOT_INITIALIZE");
@@ -557,6 +567,8 @@ export function createFirefoxDownloadsBridge() {
     async ready() { return true; },
   });
 }
+export function createFirefoxTabDragCoordinator() { return Object.freeze({}); }
+
 export function createFirefoxTabsBridge({ boundary }) {
   const context = boundary.snapshot();
   const error = new Error("FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING");
@@ -708,10 +720,16 @@ export function createFirefoxBookmarksBridge() {
   });
 }
 
+export function createFirefoxTabDragCoordinator() { return Object.freeze({}); }
+
 export function createFirefoxTabsBridge() {
   let disposed = false;
   const tabs = Object.freeze({
+    beginDrag() { return "tab-transfer-00000001"; },
     close() {},
+    dropDrag(index) { return { index, kind: "moved", tabId: "tab-registry-1-handle-1" }; },
+    endDrag() { return "consumed"; },
+    inspectDrag() { return null; },
     move() {},
     open() { return "tab-registry-1-handle-1"; },
     openContextMenu() {},

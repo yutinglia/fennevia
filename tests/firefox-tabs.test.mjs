@@ -5,10 +5,24 @@ import {
   createFirefoxBridgeBoundary,
   isFirefoxBridgeError,
 } from "../src/firefox/bridge-boundary.ts";
-import { createFirefoxTabsBridge } from "../src/firefox/tabs.ts";
+import {
+  createFirefoxTabDragCoordinator,
+  createFirefoxTabsBridge,
+} from "../src/firefox/tabs.ts";
 
 const BROWSER_URI = "chrome://browser/content/browser.xhtml";
 let nextContextSequence = 0;
+let nextDragSequence = 0;
+const nativeTabOwners = new WeakMap();
+
+function createTestDragCoordinator() {
+  return createFirefoxTabDragCoordinator({
+    createToken() {
+      nextDragSequence += 1;
+      return `tab-transfer-${String(nextDragSequence).padStart(8, "0")}`;
+    },
+  });
+}
 
 function createEventTarget() {
   const listeners = [];
@@ -90,8 +104,30 @@ function createNativeWindow({ privateWindow = false } = {}) {
       actionCalls.push(["addTrustedTab", uri, options]);
       const tab = createTab("New Tab");
       tabs.push(tab);
+      nativeTabOwners.set(tab, { gBrowser: this, tabContainer, tabs });
       tabContainer.dispatch("TabOpen", tab, {});
       if (!options?.inBackground) {
+        this.selectedTab = tab;
+      }
+      return tab;
+    },
+    adoptTab(tab, options) {
+      actionCalls.push(["adoptTab", tab, options]);
+      const source = nativeTabOwners.get(tab);
+      if (!source || source.gBrowser === this) {
+        return null;
+      }
+      const sourceIndex = source.tabs.indexOf(tab);
+      if (sourceIndex < 0) {
+        return null;
+      }
+      source.tabs.splice(sourceIndex, 1);
+      source.tabContainer.dispatch("TabClose", tab, {});
+      const targetIndex = Math.min(Math.max(options.tabIndex, 0), tabs.length);
+      tabs.splice(targetIndex, 0, tab);
+      nativeTabOwners.set(tab, { gBrowser: this, tabContainer, tabs });
+      tabContainer.dispatch("TabOpen", tab, {});
+      if (options.selectTab) {
         this.selectedTab = tab;
       }
       return tab;
@@ -143,6 +179,17 @@ function createNativeWindow({ privateWindow = false } = {}) {
       tab.closing = true;
       tabContainer.dispatch("TabClose", tab, {});
       tabs.splice(tabs.indexOf(tab), 1);
+    },
+    replaceTabWithWindow(tab, options) {
+      actionCalls.push(["replaceTabWithWindow", tab, options]);
+      const index = tabs.indexOf(tab);
+      if (index < 0 || tabs.length === 1) {
+        return null;
+      }
+      tabs.splice(index, 1);
+      tabContainer.dispatch("TabClose", tab, {});
+      nativeTabOwners.delete(tab);
+      return { detachedTab: tab };
     },
     selectedBrowser,
     tabContainer,
@@ -202,6 +249,9 @@ function createNativeWindow({ privateWindow = false } = {}) {
       },
     },
   });
+  for (const tab of tabs) {
+    nativeTabOwners.set(tab, { gBrowser, tabContainer, tabs });
+  }
 
   const tabContextMenu = {
     ...createEventTarget(),
@@ -249,6 +299,7 @@ function createController(
   errors = [],
   moduleLoader,
   handoffOverrides = {},
+  dragOptions = {},
 ) {
   const contextId = `window-00000000-0000-4000-8000-${String(
     ++nextContextSequence,
@@ -263,15 +314,21 @@ function createController(
       : "normal",
   });
   const handoffCalls = [];
+  const dragCoordinator =
+    dragOptions.dragCoordinator ?? createTestDragCoordinator();
   const controller = createFirefoxTabsBridge({
     beginNativePopupHandoff(panelId) {
       handoffCalls.push(["begin", panelId]);
       return handoffOverrides.begin?.(panelId) ?? true;
     },
     boundary,
+    dragCoordinator,
     endNativePopupHandoff(panelId) {
       handoffCalls.push(["end", panelId]);
       handoffOverrides.end?.(panelId);
+    },
+    isTabDetachAllowed() {
+      return dragOptions.detachAllowed ?? true;
     },
     ...(moduleLoader === undefined ? {} : { moduleLoader }),
     onError(error) {
@@ -279,7 +336,7 @@ function createController(
     },
     window: native.window,
   });
-  return { boundary, controller, handoffCalls };
+  return { boundary, controller, dragCoordinator, handoffCalls };
 }
 
 function disposePair(pair) {
@@ -557,7 +614,11 @@ test("missing required tabs capabilities fail with typed current-build diagnosti
             return true;
           },
           boundary,
+          dragCoordinator: createTestDragCoordinator(),
           endNativePopupHandoff() {},
+          isTabDetachAllowed() {
+            return true;
+          },
           onError() {},
           window: native.window,
         }),
@@ -590,7 +651,11 @@ test("missing tab context-menu translation fails before the native popup opens",
             return true;
           },
           boundary,
+          dragCoordinator: createTestDragCoordinator(),
           endNativePopupHandoff() {},
+          isTabDetachAllowed() {
+            return true;
+          },
           onError() {},
           window: native.window,
         }),
@@ -804,6 +869,203 @@ test("move, mute, and native context-menu handoff stay inside the bridge", () =>
   }
 });
 
+test("same-window tab drag reorders once and records the transfer as consumed", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    const secondId = pair.controller.tabs.snapshot()[1].id;
+    const dragId = pair.controller.tabs.beginDrag(secondId);
+    assert.deepEqual(pair.controller.tabs.inspectDrag(), {
+      id: dragId,
+      pinned: false,
+      source: "same-window",
+    });
+    assert.deepEqual(pair.controller.tabs.dropDrag(0), {
+      index: 0,
+      kind: "moved",
+      tabId: secondId,
+    });
+    assert.equal(
+      pair.controller.tabs.endDrag(dragId, {
+        cancelled: false,
+        screenX: 20,
+        screenY: 30,
+      }),
+      "consumed",
+    );
+    assert.deepEqual(
+      pair.controller.tabs.snapshot().map((tab) => tab.title),
+      ["Second", "First"],
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("a shared drag coordinator adopts a tab into another same-kind window", () => {
+  const coordinator = createTestDragCoordinator();
+  const sourceNative = createNativeWindow();
+  const targetNative = createNativeWindow();
+  const sourcePair = createController(
+    sourceNative,
+    [],
+    undefined,
+    {},
+    {
+      dragCoordinator: coordinator,
+    },
+  );
+  const targetPair = createController(
+    targetNative,
+    [],
+    undefined,
+    {},
+    {
+      dragCoordinator: coordinator,
+    },
+  );
+  try {
+    const sourceId = sourcePair.controller.tabs.snapshot()[1].id;
+    const dragId = sourcePair.controller.tabs.beginDrag(sourceId);
+    assert.deepEqual(targetPair.controller.tabs.inspectDrag(), {
+      id: dragId,
+      pinned: false,
+      source: "other-window",
+    });
+    const result = targetPair.controller.tabs.dropDrag(2);
+    assert.equal(result.kind, "adopted");
+    assert.equal(result.index, 2);
+    assert.notEqual(result.tabId, sourceId);
+    assert.deepEqual(
+      targetPair.controller.tabs.snapshot().map((tab) => tab.title),
+      ["First", "Second", "Second"],
+    );
+    assert.equal(sourcePair.controller.tabs.snapshot().length, 1);
+    assert.equal(
+      sourcePair.controller.tabs.endDrag(dragId, {
+        cancelled: false,
+        screenX: 40,
+        screenY: 50,
+      }),
+      "consumed",
+    );
+    assert.equal(
+      sourceNative.gBrowser.actionCalls.some(
+        ([action]) => action === "replaceTabWithWindow",
+      ),
+      false,
+    );
+  } finally {
+    disposePair(targetPair);
+    disposePair(sourcePair);
+  }
+});
+
+test("normal and private windows cannot inspect or adopt each other's drag", () => {
+  const coordinator = createTestDragCoordinator();
+  const sourcePair = createController(
+    createNativeWindow(),
+    [],
+    undefined,
+    {},
+    {
+      dragCoordinator: coordinator,
+    },
+  );
+  const privatePair = createController(
+    createNativeWindow({ privateWindow: true }),
+    [],
+    undefined,
+    {},
+    { dragCoordinator: coordinator },
+  );
+  try {
+    const sourceId = sourcePair.controller.tabs.snapshot()[0].id;
+    const dragId = sourcePair.controller.tabs.beginDrag(sourceId);
+    assert.equal(privatePair.controller.tabs.inspectDrag(), null);
+    assert.throws(
+      () => privatePair.controller.tabs.dropDrag(0),
+      /FENNEVIA_FIREFOX_TAB_DRAG_UNAVAILABLE/u,
+    );
+    assert.equal(
+      sourcePair.controller.tabs.endDrag(dragId, {
+        cancelled: true,
+        screenX: 0,
+        screenY: 0,
+      }),
+      "cancelled",
+    );
+  } finally {
+    disposePair(privatePair);
+    disposePair(sourcePair);
+  }
+});
+
+test("unhandled drag end detaches a tab while cancellation and policy keep it", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    const firstId = pair.controller.tabs.snapshot()[0].id;
+    const firstNativeTab = native.tabs[0];
+    const cancelledId = pair.controller.tabs.beginDrag(firstId);
+    assert.equal(
+      pair.controller.tabs.endDrag(cancelledId, {
+        cancelled: true,
+        screenX: 200,
+        screenY: 300,
+      }),
+      "cancelled",
+    );
+    assert.equal(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "replaceTabWithWindow",
+      ),
+      false,
+    );
+
+    const detachedId = pair.controller.tabs.beginDrag(firstId);
+    assert.equal(
+      pair.controller.tabs.endDrag(detachedId, {
+        cancelled: false,
+        screenX: 200,
+        screenY: 300,
+      }),
+      "detached",
+    );
+    assert.deepEqual(native.gBrowser.actionCalls.at(-1), [
+      "replaceTabWithWindow",
+      firstNativeTab,
+      { screenX: 200, screenY: 300, suppressanimation: 1 },
+    ]);
+  } finally {
+    disposePair(pair);
+  }
+
+  const blockedNative = createNativeWindow();
+  const blockedPair = createController(
+    blockedNative,
+    [],
+    undefined,
+    {},
+    { detachAllowed: false },
+  );
+  try {
+    const tabId = blockedPair.controller.tabs.snapshot()[0].id;
+    const dragId = blockedPair.controller.tabs.beginDrag(tabId);
+    assert.equal(
+      blockedPair.controller.tabs.endDrag(dragId, {
+        cancelled: false,
+        screenX: 20,
+        screenY: 30,
+      }),
+      "blocked",
+    );
+    assert.equal(blockedNative.tabs.length, 2);
+  } finally {
+    disposePair(blockedPair);
+  }
+});
+
 test("context-menu open failures and disposal release native UI handoffs", () => {
   const failedNative = createNativeWindow();
   failedNative.tabContextMenu.openPopup = () => {
@@ -885,7 +1147,11 @@ test("missing moveTabTo fails health with a typed current-build diagnostic", () 
             return true;
           },
           boundary,
+          dragCoordinator: createTestDragCoordinator(),
           endNativePopupHandoff() {},
+          isTabDetachAllowed() {
+            return true;
+          },
           onError() {},
           window: native.window,
         }),
@@ -897,6 +1163,47 @@ test("missing moveTabTo fails health with a typed current-build diagnostic", () 
     );
   } finally {
     boundary.dispose();
+  }
+});
+
+test("missing cross-window tab APIs fail health at their exact symbols", () => {
+  for (const methodName of ["adoptTab", "replaceTabWithWindow"]) {
+    const native = createNativeWindow();
+    native.gBrowser[methodName] = undefined;
+    const boundary = createFirefoxBridgeBoundary({
+      buildId: "20260812182057",
+      contextId: `window-00000000-0000-4000-8000-${String(
+        ++nextContextSequence,
+      ).padStart(12, "0")}`,
+      firefoxVersion: "154.0",
+      window: native.window,
+      windowKind: "normal",
+    });
+    try {
+      assert.throws(
+        () =>
+          createFirefoxTabsBridge({
+            beginNativePopupHandoff() {
+              return true;
+            },
+            boundary,
+            dragCoordinator: createTestDragCoordinator(),
+            endNativePopupHandoff() {},
+            isTabDetachAllowed() {
+              return true;
+            },
+            onError() {},
+            window: native.window,
+          }),
+        (error) =>
+          isFirefoxBridgeError(error) &&
+          error.fenneviaCode === "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING" &&
+          error.fenneviaSymbol === `window.gBrowser.${methodName}` &&
+          error.fenneviaBuildId === "20260812182057",
+      );
+    } finally {
+      boundary.dispose();
+    }
   }
 });
 
@@ -918,7 +1225,11 @@ test("missing gBrowser event-target capability fails before crash listeners atta
             return true;
           },
           boundary,
+          dragCoordinator: createTestDragCoordinator(),
           endNativePopupHandoff() {},
+          isTabDetachAllowed() {
+            return true;
+          },
           onError() {},
           window: native.window,
         }),

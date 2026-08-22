@@ -15,8 +15,13 @@ import {
   getTabActionAccessibleName,
   getTabAudioAction,
   getTabStripKeyAction,
+  isDraggedTabMissing,
   newTabHighlightDurationMs,
+  resolveDraggedTabTranslateY,
   resolveRovingTabId,
+  resolveExternalTabDragShift,
+  resolveExternalTabDropIndex,
+  resolveTabDragShift,
   resolveTabDropIndex,
   resolveTabDropPreview,
 } from "../src/app/tab-strip.ts";
@@ -143,8 +148,51 @@ test("move helpers stay inside the pinned partition and ignore no-op drops", () 
     index: 1,
     position: "after",
   });
+  assert.equal(resolveTabDragShift(tabs, "open-b", 2, 2), "down");
+  assert.equal(resolveTabDragShift(tabs, "open-b", 2, 3), null);
+  assert.equal(resolveTabDragShift(tabs, "pinned-a", 1, 1), "up");
+  assert.equal(resolveTabDragShift(tabs, "pinned-a", 1, 2), null);
+  assert.equal(resolveTabDragShift(tabs, "open-a", 2, 3), null);
+  assert.equal(resolveTabDragShift(tabs, "missing", 1, 0), null);
+  assert.equal(resolveTabDragShift(tabs, "open-b", 8, 2), null);
+  assert.equal(resolveTabDragShift(tabs, "open-b", 2, -1), null);
   assert.equal(resolveTabDropPreview(tabs, "open-a", 2), null);
   assert.equal(resolveTabDropPreview(tabs, "missing", 1), null);
+  assert.equal(
+    resolveExternalTabDropIndex(tabs, [10, 30, 50, 70], 20, false),
+    2,
+  );
+  assert.equal(
+    resolveExternalTabDropIndex(tabs, [10, 30, 50, 70], 60, false),
+    3,
+  );
+  assert.equal(
+    resolveExternalTabDropIndex(tabs, [10, 30, 50, 70], 80, true),
+    2,
+  );
+  assert.equal(resolveExternalTabDropIndex([], [], 20, false), 0);
+  assert.equal(resolveExternalTabDropIndex(tabs, [10], 20, false), null);
+  assert.equal(resolveExternalTabDragShift(tabs, 2, 2), "down");
+  assert.equal(resolveExternalTabDragShift(tabs, 2, 1), null);
+  assert.equal(resolveExternalTabDragShift(tabs, 4, 3), null);
+  assert.equal(resolveExternalTabDragShift(tabs, 8, 1), null);
+});
+
+test("source drag cleanup distinguishes adoption from an in-window reorder", () => {
+  const reorderedTabs = [tab({ id: "tab-2" }), tab({ id: "tab-1" })];
+
+  assert.equal(isDraggedTabMissing(reorderedTabs, null), false);
+  assert.equal(isDraggedTabMissing(reorderedTabs, "tab-1"), false);
+  assert.equal(isDraggedTabMissing(reorderedTabs, "transferred-tab"), true);
+});
+
+test("dragged tab translation follows the pointer and clamps to its partition", () => {
+  assert.equal(resolveDraggedTabTranslateY(100, 145, 15, 60, 220), 30);
+  assert.equal(resolveDraggedTabTranslateY(100, 10, 15, 60, 220), -40);
+  assert.equal(resolveDraggedTabTranslateY(100, 400, 15, 60, 220), 120);
+  assert.equal(resolveDraggedTabTranslateY(100, Number.NaN, 15, 60, 220), null);
+  assert.equal(resolveDraggedTabTranslateY(100, 145, -1, 60, 220), null);
+  assert.equal(resolveDraggedTabTranslateY(100, 145, 15, 220, 60), null);
 });
 
 test("roving focus prefers a live target, then the selected tab, then native order", () => {
@@ -309,12 +357,127 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /resolveTabDropIndex/u);
   assert.match(source, /resolveTabDropPreview/u);
   assert.match(source, /transfer\.setDragImage/u);
+  assert.match(tabSource, /transfer\.clearData\(\)/u);
+  assert.match(tabSource, /transfer\.setData\(TAB_DRAG_MIME_TYPE, "1"\)/u);
+  assert.doesNotMatch(tabSource, /setData\("text\/plain"|getData\(/u);
+  assert.match(tabSource, /props\.tabs\.beginDrag/u);
+  assert.match(tabSource, /props\.tabs\.inspectDrag/u);
+  assert.match(tabSource, /props\.tabs\.dropDrag/u);
+  assert.match(tabSource, /props\.tabs\.endDrag/u);
+  assert.match(
+    tabSource,
+    /if \(targetIndex === null\)[\s\S]*?drag\.source === "same-window"[\s\S]*?endSourceDrag\(undefined, true\)/u,
+  );
+  assert.match(
+    tabSource,
+    /closest<HTMLElement>\(\s*"\[data-fennevia-tab-item\]"/u,
+  );
+  assert.match(tabSource, /event\.clientX - bounds\.left/u);
+  assert.match(tabSource, /event\.clientY - bounds\.top/u);
+  assert.match(tabSource, /dragGeometry\.itemMids/u);
+  assert.match(tabSource, /dragGeometry\.itemHeights/u);
+  assert.match(tabSource, /dragGeometry\.itemTops/u);
+  assert.match(tabSource, /dragGeometry\.listScrollTop -\s*list\.scrollTop/u);
+  assert.match(tabSource, /const geometryMatches/u);
+  assert.match(source, /aria-keyshortcuts=/u);
+  assert.match(source, /aria-live="polite"/u);
+  assert.match(source, /data-fennevia-drag-active/u);
+  assert.match(source, /data-fennevia-drag-following/u);
+  assert.match(source, /data-fennevia-drag-shift/u);
+  assert.match(source, /resolveDraggedTabTranslateY/u);
+  assert.match(source, /style:transform/u);
+  assert.match(source, /resolveTabDragShift/u);
+  assert.match(source, /resolveExternalTabDragShift/u);
+  assert.match(source, /resolveExternalTabDropIndex/u);
   assert.match(source, /data-fennevia-drop-preview/u);
+  assert.match(
+    tabSource,
+    /\{#if externalDrag && dragTargetIndex !== null\}[\s\S]*?class="fennevia-tab-strip__external-drop-slot"[\s\S]*?data-fennevia-external-drop-slot=""[\s\S]*?\{\/if\}/u,
+  );
+  assert.match(
+    tabSource,
+    /\{#if externalDrag && externalPreviewTransform\}[\s\S]*?class="fennevia-tab-strip__external-preview"[\s\S]*?data-fennevia-external-preview=""[\s\S]*?style:transform=\{externalPreviewTransform\}[\s\S]*?<FirefoxIcon name="tab" \/>[\s\S]*?t\("tab\.dragPreview"\)[\s\S]*?\{\/if\}/u,
+  );
   assert.match(source, /ondragleave=\{handleTabListDragLeave\}/u);
   assert.match(source, /clearTabDrag\(\)/u);
-  assert.match(source, /setPointerHeld\("left", true\)/u);
-  assert.match(styles, /data-fennevia-drop-preview="before"/u);
-  assert.match(styles, /data-fennevia-drop-preview="after"/u);
+  assert.match(source, /setPointerHeld\("left", active\)/u);
+  assert.match(
+    tabSource,
+    /props\.tabs\.subscribe[\s\S]*?sourceDragId !== null[\s\S]*?isDraggedTabMissing\(nextState\.tabs, draggingTabId\)[\s\S]*?if \(sourceTabLeftWindow\) \{\s*clearTabDrag\(\);\s*reportAsyncError\(tick\(\)\.then\(releaseSurfaceFocus\)\);/u,
+  );
+  assert.match(source, /use:manageTabDragWindow/u);
+  assert.match(source, /holdExternalDrag\(drag\)/u);
+  assert.match(source, /const previewExternalDragAtEnd/u);
+  assert.match(
+    tabSource,
+    /handleWindowDragEnter[\s\S]*?!isInsideProjectFrame\(event\)[\s\S]*?previewExternalDragAtEnd\(drag\)/u,
+  );
+  assert.match(
+    tabSource,
+    /handleWindowDragOver[\s\S]*?isInsideProjectFrame\(event\)[\s\S]*?!isInsideTabList\(event\)[\s\S]*?clearDropTarget\(\)[\s\S]*?previewExternalDragAtEnd\(drag\)/u,
+  );
+  assert.match(
+    tabSource,
+    /handleWindowDragLeave = \(event: DragEvent\)[\s\S]*?event\.relatedTarget !== null[\s\S]*?clearTabDrag\(\)/u,
+  );
+  assert.doesNotMatch(source, /targetWindowDragDepth/u);
+  assert.match(source, /view\.addEventListener\("dragenter"[^]*true\)/u);
+  assert.match(source, /view\.removeEventListener\("dragenter"[^]*true\)/u);
+  assert.match(source, /view\.addEventListener\("dragleave"[^]*true\)/u);
+  assert.match(source, /view\.removeEventListener\("dragleave"[^]*true\)/u);
+  assert.match(source, /dataTransfer[\s\S]*mozUserCancelled/u);
+  assert.match(source, /view\.addEventListener\("dragend"[^]*true\)/u);
+  assert.match(source, /view\.removeEventListener\("dragend"[^]*true\)/u);
+  assert.match(source, /#fennevia-shell-frame-host/u);
+  assert.match(source, /class="fennevia-tab-strip__drop-indicator"/u);
+  assert.match(source, /style:inset-block-start/u);
+  assert.match(
+    styles,
+    /data-fennevia-drag-shift="up"[\s\S]*?translateY\(calc\(-100% - var\(--fennevia-space-1\)\)\)/u,
+  );
+  assert.match(
+    styles,
+    /data-fennevia-drag-shift="down"[\s\S]*?translateY\(calc\(100% \+ var\(--fennevia-space-1\)\)\)/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__external-drop-slot \{[\s\S]*?flex: none;[\s\S]*?block-size: 38px;[\s\S]*?visibility: hidden;[\s\S]*?pointer-events: none;/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__external-preview \{[\s\S]*?position: absolute;[\s\S]*?block-size: 38px;[\s\S]*?pointer-events: none;[\s\S]*?transition: transform var\(--fennevia-motion-duration\)/u,
+  );
+  assert.match(styles, /\.fennevia-tab-strip__tab \{[\s\S]*?cursor: default;/u);
+  assert.doesNotMatch(
+    styles,
+    /\.fennevia-tab-strip[^{}]*\{[^{}]*cursor: (?:grab|grabbing);/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__item \{[\s\S]*?transition:[\s\S]*?transform var\(--fennevia-motion-duration\)/u,
+  );
+  assert.match(
+    styles,
+    /data-fennevia-dragging="true"[\s\S]*?border-style: dashed;[\s\S]*?opacity: 0\.16;[\s\S]*?pointer-events: none;/u,
+  );
+  assert.match(
+    styles,
+    /data-fennevia-dragging="true"\]\[data-fennevia-drag-following="true"\][\s\S]*?z-index: 2;[\s\S]*?border-style: solid;[\s\S]*?opacity: 0\.94;[\s\S]*?transition:[\s\S]*?opacity 100ms ease-out/u,
+  );
+  assert.match(styles, /\.fennevia-tab-strip__drop-indicator/u);
+  assert.match(styles, /\.fennevia-tab-strip__announcement/u);
+  assert.match(
+    styles,
+    /forced-colors: active[\s\S]*?\.fennevia-tab-strip__drop-indicator[\s\S]*?background: Highlight;/u,
+  );
+  assert.match(
+    styles,
+    /prefers-reduced-motion: reduce[\s\S]*?\.fennevia-tab-strip__external-preview[\s\S]*?transition-duration: 1ms;/u,
+  );
+  assert.match(
+    styles,
+    /forced-colors: active[\s\S]*?\.fennevia-tab-strip__external-preview[\s\S]*?background: Highlight;/u,
+  );
   assert.match(
     styles,
     /\.fennevia-tab-strip__item \{[\s\S]*?grid-template-areas: "tab pin close";[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 30px 30px;/u,

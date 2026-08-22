@@ -11,16 +11,16 @@ and testing documents retain the complete engineering contract.
 
 ## At a glance
 
-| Area | Current state |
-| --- | --- |
-| Public release | `v0.11.0-beta.1`, Windows x64 prerelease |
-| Tested Firefox | Stock Firefox 153.0.4 BuildID `20260810162159` and 154.0 BuildID `20260812182057`, release channel |
-| Installer compatibility gate | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested |
-| Core four-edge MVP | Implemented and released |
-| Post-MVP shell work | Implemented in the current development tree with focused automated coverage |
+| Area                            | Current state                                                                                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public release                  | `v0.11.0-beta.1`, Windows x64 prerelease                                                                                                                    |
+| Tested Firefox                  | Stock Firefox 153.0.4 BuildID `20260810162159` and 154.0 BuildID `20260812182057`, release channel                                                          |
+| Installer compatibility gate    | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested                                                                                |
+| Core four-edge MVP              | Implemented and released                                                                                                                                    |
+| Post-MVP shell work             | Implemented in the current development tree with focused automated coverage                                                                                 |
 | Native Urlbar result projection | Implemented in the current development tree; Firefox 154 provider-contract and production-panel probes pass; representative-provider/release matrix pending |
-| Real-Firefox validation | Several visual, interaction, popup, customize, and first-paint matrices remain pending |
-| Stability claim | Experimental prerelease; not a stable daily-driver or long-term-support promise |
+| Real-Firefox validation         | Several visual, interaction, popup, customize, and first-paint matrices remain pending                                                                      |
+| Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                             |
 
 ## Implemented product surface
 
@@ -47,7 +47,8 @@ and testing documents retain the complete engineering contract.
 - Left-edge vertical tabs with selected state, Firefox's packaged loading icon,
   audio, containers, attention/PiP, closed camera/microphone/screen-sharing and crash
   indicators, fixed trailing action positions, middle-click close,
-  drag/keyboard reorder with a visible insertion preview, and Firefox-owned tab
+  drag/keyboard reorder with a pointer-aligned full-row ghost, animated neighbor
+  gap, insertion marker, and polite move announcement, plus Firefox-owned tab
   context-menu handoff with complete lazy Fluent labels and no original-toolbar
   reveal.
 - Compact address/status launcher with one Firefox-style Trust shield embedded
@@ -123,6 +124,32 @@ under Windows PowerShell 5.1. Its latest installed Firefox 154 focused probes
 passed after one real incremental-result selection race was found and fixed;
 the broader rows below remain pending.
 
+The ADR-062 tab-drag spatial-preview follow-up passed the complete
+`npm run verify` gate with 318 Node tests, 87.49% line coverage, 95.11%
+function coverage, all fixed PowerShell 7 suites, deterministic frontend and
+bridge output, dependency review, and all 14 production artifacts accepted.
+The same fixed PowerShell list passed under Windows PowerShell 5.1. Its real
+Firefox visual and assistive-technology rows remain pending.
+
+ADR-063 implements the owner-requested cross-window/content/external-drop
+terminal behavior with a marker-only transferable payload, one ephemeral
+same-kind privileged coordinator, native `adoptTab`/`replaceTabWithWindow`, and
+capture-level plus source-snapshot left-hold cleanup. The target preview
+reserves one real row so a
+short list grows without a transform-induced scrollbar, overlays a visible
+generic tab row at the accepted position, and clears both after a no-drop
+target-window exit; source snapshot reconciliation also releases the original
+window's pointer hold if adoption removes its tab before source `dragend` is
+observed, then conditionally releases stale focus/keyboard holds after the DOM
+update without confusing an in-window reorder or intentional remaining focus.
+Tab drag retains Firefox's ordinary cursor. The latest
+complete `npm run verify` gate passed
+with 331/331 Node tests, 87.27% line coverage, 79.19% branch coverage, 95.23%
+function coverage, all fixed PowerShell 7 suites, dependency review,
+deterministic frontend/bridge output, and 14/14 accepted production artifacts.
+The same fixed suite passed under Windows PowerShell 5.1. The real Firefox
+multi-window and external-application rows remain pending.
+
 That automated evidence does **not** complete every real-browser claim. The
 following remain explicitly pending in the current plans and testing document:
 
@@ -150,6 +177,15 @@ following remain explicitly pending in the current plans and testing document:
   combinations, Firefox 153, one-offs/rich rows, rapid replacement/close,
   pointer/assistive-technology behavior, second/private windows, Browser
   Toolbox ownership, failure injection, and release matrix;
+- ADR-062 full-row tab-drag ghost alignment, spatial gap behavior during rapid
+  direction changes and overflow scrolling, reduced motion, forced colors,
+  screen-reader announcements, multiple windows, and disposal during drag;
+- ADR-063 target-strip insertion, target-content append, source-content and
+  non-Firefox detach, visible target-row placement, no-drop target-window exit,
+  Escape and sole-tab behavior, pinned partitions, overlapping windows,
+  source and target left-edge auto-hide (including missing source `dragend`),
+  normal/private rejection, source/target closure, and
+  Browser Console/Toolbox ownership;
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.
 

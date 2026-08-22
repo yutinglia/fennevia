@@ -1,5 +1,6 @@
 export const maximumTabTitleLength = 256;
 export const maximumContainerLabelLength = 80;
+export const TAB_DRAG_MIME_TYPE = "application/x-fennevia-tab-transfer";
 
 export const tabAudioStates = Object.freeze([
   "playing",
@@ -75,8 +76,41 @@ export type TabContextMenuPoint = Readonly<{
   screenY: number;
 }>;
 
+export type TabDragSnapshot = Readonly<{
+  id: string;
+  pinned: boolean;
+  source: "other-window" | "same-window";
+}>;
+
+export type TabDragDropResult = Readonly<{
+  index: number;
+  kind: "adopted" | "moved";
+  tabId: string;
+}>;
+
+export type TabDragEndOptions = Readonly<{
+  cancelled: boolean;
+  screenX: number;
+  screenY: number;
+}>;
+
+export const tabDragEndResults = Object.freeze([
+  "blocked",
+  "cancelled",
+  "consumed",
+  "detached",
+  "unchanged",
+] as const);
+export type TabDragEndResult = (typeof tabDragEndResults)[number];
+
+const tabDragEndResultSet = new Set<string>(tabDragEndResults);
+
 export type BrowserTabsBridge = Readonly<{
+  beginDrag: (tabId: string) => string;
   close: (tabId: string) => void;
+  dropDrag: (index: number) => TabDragDropResult;
+  endDrag: (dragId: string, options: TabDragEndOptions) => TabDragEndResult;
+  inspectDrag: () => TabDragSnapshot | null;
   move: (tabId: string, index: number) => void;
   open: (options?: OpenTabOptions) => string;
   openContextMenu: (tabId: string, point: TabContextMenuPoint) => void;
@@ -94,8 +128,12 @@ export type BrowserTabsState = Readonly<{
 }>;
 
 export type BrowserTabsStateAdapter = Readonly<{
+  beginDrag: (tabId: string) => string;
   close: (tabId: string) => void;
   dispose: () => boolean;
+  dropDrag: (index: number) => TabDragDropResult;
+  endDrag: (dragId: string, options: TabDragEndOptions) => TabDragEndResult;
+  inspectDrag: () => TabDragSnapshot | null;
   move: (tabId: string, index: number) => void;
   open: (options?: OpenTabOptions) => string;
   openContextMenu: (tabId: string, point: TabContextMenuPoint) => void;
@@ -137,6 +175,58 @@ export function isTabContainerColor(
 export function isTabSharingState(value: unknown): value is TabSharingState {
   return typeof value === "string" && tabSharingStateSet.has(value);
 }
+
+export function isTabDragEndResult(value: unknown): value is TabDragEndResult {
+  return typeof value === "string" && tabDragEndResultSet.has(value);
+}
+
+const copyTabDragSnapshot = (candidate: unknown): TabDragSnapshot | null => {
+  if (candidate === null) {
+    return null;
+  }
+  if (
+    !candidate ||
+    typeof candidate !== "object" ||
+    !("id" in candidate) ||
+    typeof candidate.id !== "string" ||
+    candidate.id.length === 0 ||
+    candidate.id.length > 160 ||
+    !("pinned" in candidate) ||
+    typeof candidate.pinned !== "boolean" ||
+    !("source" in candidate) ||
+    (candidate.source !== "same-window" && candidate.source !== "other-window")
+  ) {
+    throw createStateError("FENNEVIA_TAB_STATE_DRAG_INVALID");
+  }
+  return Object.freeze({
+    id: candidate.id,
+    pinned: candidate.pinned,
+    source: candidate.source,
+  });
+};
+
+const copyTabDragDropResult = (candidate: unknown): TabDragDropResult => {
+  if (
+    !candidate ||
+    typeof candidate !== "object" ||
+    !("index" in candidate) ||
+    !Number.isSafeInteger(candidate.index) ||
+    (candidate.index as number) < 0 ||
+    !("kind" in candidate) ||
+    (candidate.kind !== "adopted" && candidate.kind !== "moved") ||
+    !("tabId" in candidate) ||
+    typeof candidate.tabId !== "string" ||
+    candidate.tabId.length === 0 ||
+    candidate.tabId.length > 160
+  ) {
+    throw createStateError("FENNEVIA_TAB_STATE_DRAG_DROP_INVALID");
+  }
+  return Object.freeze({
+    index: candidate.index as number,
+    kind: candidate.kind,
+    tabId: candidate.tabId,
+  });
+};
 
 const copyTabContainer = (
   candidate: TabContainerSnapshot | undefined,
@@ -252,7 +342,11 @@ export function createBrowserTabsStateAdapter(
   if (
     !bridge ||
     typeof bridge !== "object" ||
+    typeof bridge.beginDrag !== "function" ||
     typeof bridge.close !== "function" ||
+    typeof bridge.dropDrag !== "function" ||
+    typeof bridge.endDrag !== "function" ||
+    typeof bridge.inspectDrag !== "function" ||
     typeof bridge.move !== "function" ||
     typeof bridge.open !== "function" ||
     typeof bridge.openContextMenu !== "function" ||
@@ -306,6 +400,18 @@ export function createBrowserTabsStateAdapter(
   };
 
   return Object.freeze({
+    beginDrag(tabId: string): string {
+      const dragId = requireBridge().beginDrag(tabId);
+      if (
+        typeof dragId !== "string" ||
+        dragId.length === 0 ||
+        dragId.length > 160
+      ) {
+        throw createStateError("FENNEVIA_TAB_STATE_DRAG_INVALID");
+      }
+      return dragId;
+    },
+
     close(tabId: string): void {
       requireBridge().close(tabId);
     },
@@ -320,6 +426,22 @@ export function createBrowserTabsStateAdapter(
       contextMenuListeners.clear();
       unsubscribeBridge();
       return true;
+    },
+
+    dropDrag(index: number): TabDragDropResult {
+      return copyTabDragDropResult(requireBridge().dropDrag(index));
+    },
+
+    endDrag(dragId: string, options: TabDragEndOptions): TabDragEndResult {
+      const result = requireBridge().endDrag(dragId, options);
+      if (!isTabDragEndResult(result)) {
+        throw createStateError("FENNEVIA_TAB_STATE_DRAG_END_INVALID");
+      }
+      return result;
+    },
+
+    inspectDrag(): TabDragSnapshot | null {
+      return copyTabDragSnapshot(requireBridge().inspectDrag());
     },
 
     move(tabId: string, index: number): void {
