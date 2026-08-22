@@ -589,9 +589,12 @@ The event is never serialized, logged, persisted, or copied into frontend
 state. Wrapper views open through `PanelUI.showSubView`; Account, Library, and
 All Tabs retain their fixed Firefox owners; native menu popups use
 `XULPopupElement.openPopup`; compound parts invoke only their registered native
-child; remaining simple widgets dispatch the native node command. Any temporary
-per-window owner-anchor substitution is restored immediately after the call,
-and resulting Firefox-owned panels use the existing ADR-042 hold/release and
+child. The Zoom reset part's visible `valueText` may only equal its existing
+bounded Firefox-derived label; it is kept in the in-memory snapshot and is not
+logged, persisted, or copied to a root dataset or CSS property. Remaining
+simple widgets dispatch the native node command. Any temporary per-window
+owner-anchor substitution is restored immediately after the call, and
+resulting Firefox-owned panels use the existing ADR-042 hold/release and
 re-anchor path. Fennevia-owned widgets run fixed frontend actions (reveal
 bookmarks/downloads panels) without touching the bridge. Edit operations accept
 only the validated fixed operation set with a revision guard.

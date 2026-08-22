@@ -339,14 +339,22 @@ export function copyToolbarWidgetPartSnapshot(
       "FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_URL_INVALID",
     );
   }
+  const label = requireBoundedString(candidate.label, LABEL_MAX_LENGTH);
+  const valueText = requireBoundedString(candidate.valueText, LABEL_MAX_LENGTH);
+  if (valueText !== "" && valueText !== label) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_WIDGET_INVALID",
+    );
+  }
   return Object.freeze({
     disabled: candidate.disabled,
     handle: candidate.handle,
     icon,
     iconUrl,
     kind: "built-in" as const,
-    label: requireBoundedString(candidate.label, LABEL_MAX_LENGTH),
+    label,
     tooltip: requireBoundedString(candidate.tooltip, TOOLTIP_MAX_LENGTH),
+    valueText,
   });
 }
 

@@ -52,7 +52,8 @@ shortcut-tip timing, and edge trigger thickness. These have focused automated
 evidence. The 2026-08-22 activation correction preserves Firefox's delegated
 Account/Library/All Tabs owners, opens native menu widgets on the project host,
 and projects compound Zoom/Edit/Profiler placements into their independently
-actionable native parts. Focused automation passes; the corresponding live
+actionable native parts. The Zoom reset part also displays Firefox's live
+localized percentage. Focused automation passes; the corresponding live
 Firefox rows remain pending. The complete real Firefox matrices in
 `docs/testing-and-recovery.md` §6.8 and §6.9 remain pending.
 

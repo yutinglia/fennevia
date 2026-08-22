@@ -655,6 +655,12 @@ export function createFirefoxToolbarWidgetsBridge({
     }
     return Object.freeze(
       resolved.map(({ node: partNode, specification }) => {
+        const nodeLabel = readPresentationText(
+          readAttribute(partNode, "label") ||
+            readRecordString(partNode, "label"),
+          LABEL_MAX_LENGTH,
+          specification.nodeId,
+        );
         const label =
           resolveWidgetLabel(
             customizableUi,
@@ -676,6 +682,7 @@ export function createFirefoxToolbarWidgetsBridge({
             partNode,
             label,
           ),
+          valueText: specification.displayLabel ? nodeLabel : "",
         });
       }),
     );

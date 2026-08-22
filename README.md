@@ -248,7 +248,8 @@ geometry builder.
 
 Mirrored Account, Library, All Tabs, and native menu widgets delegate to their
 Firefox owners. Compound Zoom, Edit, and Profiler placements stay grouped but
-expose their independently actionable controls.
+expose their independently actionable controls; Zoom displays the current
+percentage on its reset button.
 
 ## Documentation
 

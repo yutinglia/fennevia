@@ -4176,6 +4176,7 @@ var Gr = "nav-bar", Kr = "unified-extensions-area", qr = "fennevia.customize.lay
 			nodeId: "zoom-out-button"
 		}),
 		Object.freeze({
+			displayLabel: !0,
 			fallbackLabel: "Reset zoom",
 			icon: "zoom",
 			nodeId: "zoom-reset-button"
@@ -5049,15 +5050,16 @@ function da({ boundary: e, frame: t, window: n }) {
 			}));
 		}
 		return Object.freeze(i.map(({ node: t, specification: r }) => {
-			let i = P(e, r.nodeId, null, t, !1) || r.fallbackLabel;
+			let i = Zi(Ii(t, "label") || Ni(t, "label"), 200, r.nodeId), a = P(e, r.nodeId, null, t, !1) || r.fallbackLabel;
 			return Object.freeze({
 				disabled: ra(n) || ra(t),
 				handle: ee.register(t),
 				icon: r.icon,
 				iconUrl: ue(r.nodeId, t),
 				kind: "built-in",
-				label: i,
-				tooltip: oe(r.nodeId, null, t, i)
+				label: a,
+				tooltip: oe(r.nodeId, null, t, a),
+				valueText: r.displayLabel ? i : ""
 			});
 		}));
 	}, he = (e, t) => {

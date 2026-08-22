@@ -223,6 +223,17 @@
   border-radius: 0;
 }
 
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__compound-value {
+  display: inline-block;
+  min-inline-size: 4ch;
+  padding-inline: var(--fennevia-space-2);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 #fennevia-shell-frame-host
   .fennevia-toolbar-widgets__compound-button:focus-visible {
   outline-offset: -3px;
