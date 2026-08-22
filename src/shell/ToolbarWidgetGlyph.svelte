@@ -1,6 +1,7 @@
 <script lang="ts">
   import type {
     ToolbarPaletteEntrySnapshot,
+    ToolbarWidgetPartSnapshot,
     ToolbarWidgetSnapshot,
   } from "../app/toolbar-widgets-state";
   import FirefoxIcon from "./FirefoxIcon.svelte";
@@ -11,7 +12,10 @@
   } from "./toolbar-widget-icons";
 
   type Props = Readonly<{
-    widget: ToolbarPaletteEntrySnapshot | ToolbarWidgetSnapshot;
+    widget:
+      | ToolbarPaletteEntrySnapshot
+      | ToolbarWidgetPartSnapshot
+      | ToolbarWidgetSnapshot;
   }>;
 
   const { widget }: Props = $props();

@@ -533,17 +533,18 @@ current `CustomizableUI` nav-bar placements in the top zone) and sends the
 frontend an immutable snapshot per placed widget of opaque handle, fixed kind,
 bounded label and tooltip text, a bounded `moz-extension://` icon URL for
 extension actions, a bounded `chrome://` or `resource://` icon URL for
-rendered as a CSS mask with `currentColor`, not `<img>`), bounded rgba-only
+built-ins (rendered as a CSS mask with `currentColor`, not `<img>`), bounded rgba-only
 badge text/colors, a fixed curated presentation token whose exact meanings now
-prefer ADR-060's packaged Firefox map, and disabled/missing
-flags, plus a widget palette of every remaining current `CustomizableUI` widget
+prefer ADR-060's packaged Firefox map, disabled/missing flags, and at most eight
+built-in compound-part records with separate opaque handles and the same
+bounded presentation fields, plus a widget palette of every remaining current `CustomizableUI` widget
 (placed areas and the unused palette), Fennevia-owned optional widgets, and the
 fixed specials, each behind an opaque palette token. Extension name, icon, and
 badge are extension identity and may exist only in that window's in-memory
 frontend state and rendered DOM (`img src`, button label/tooltip, badge chip).
 Built-in chrome/resource icon URLs follow the same in-memory-only rule via
-per-element `mask-image` (ADR-046). Widget ids and native nodes stay in the
-privileged handle/token registries.
+per-element `mask-image` (ADR-046). Widget ids, compound child ids, and native
+nodes stay in the privileged handle/token registries.
 Extension identity never enters logs, diagnostics, serialized frontend state,
 CSS custom properties on shared roots, root datasets, clipboard, or network
 requests; diagnostics stay at widget counts, revisions, and fixed codes.
@@ -582,18 +583,25 @@ That payload never includes Firefox widget ids, extension identity, URLs, or
 labels. The session is not persisted; the frame marker
 `data-fennevia-customize-active` is a boolean presence attribute.
 
-Activation resolves only registry handles, validates the project host, opens
-`PanelUI.showSubView` view panels or dispatches the native node command, and
-re-anchors resulting Firefox-owned panels on the host with the existing
-ADR-042 hold/release path; Fennevia-owned widgets run fixed frontend actions
-(reveal bookmarks/downloads panels) without touching the bridge. Edit
-operations accept only the validated fixed operation set with a revision guard.
+Activation resolves only registry handles, validates the project host, and
+uses the transient in-process button event only while invoking a Firefox owner.
+The event is never serialized, logged, persisted, or copied into frontend
+state. Wrapper views open through `PanelUI.showSubView`; Account, Library, and
+All Tabs retain their fixed Firefox owners; native menu popups use
+`XULPopupElement.openPopup`; compound parts invoke only their registered native
+child; remaining simple widgets dispatch the native node command. Any temporary
+per-window owner-anchor substitution is restored immediately after the call,
+and resulting Firefox-owned panels use the existing ADR-042 hold/release and
+re-anchor path. Fennevia-owned widgets run fixed frontend actions (reveal
+bookmarks/downloads panels) without touching the bridge. Edit operations accept
+only the validated fixed operation set with a revision guard.
 The capability is optional: a missing `CustomizableUI`/`PanelUI` hides the
-zones and a missing `Services.prefs` disables editing, in both cases without
-joining activation health. Disposal detaches the CustomizableUI listener, the
+zones, a drifted compound child marks that placement missing, and a missing
+`Services.prefs` disables editing, in every case without joining activation
+health. Disposal detaches the CustomizableUI listener, the
 preference observer, the attribute `MutationObserver`, popup listeners, pending
-waiters, handles, palette tokens, and any held panel exactly once. Style tokens
-are applied as the fixed CSS custom-property set on the project frame root,
+waiters, widget/part handles, palette tokens, and any held panel exactly once.
+Style tokens are applied as the fixed CSS custom-property set on the project frame root,
 skip color overrides under forced colors, and are cleared on dispose. The
 interaction integers additionally update the same per-window #31 controller;
 they create no host, observer, timer, or process-global activity record. Focus,

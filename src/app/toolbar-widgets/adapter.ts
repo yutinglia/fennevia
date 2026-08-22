@@ -108,7 +108,11 @@ export function createBrowserToolbarWidgetsStateAdapter(
       return result;
     },
 
-    async invoke(handle: string, host: unknown): Promise<boolean> {
+    async invoke(
+      handle: string,
+      host: unknown,
+      triggerEvent?: unknown,
+    ): Promise<boolean> {
       if (typeof handle !== "string" || handle === "") {
         throw createToolbarWidgetsStateError(
           "FENNEVIA_TOOLBAR_WIDGETS_STATE_HANDLE_INVALID",
@@ -119,7 +123,7 @@ export function createBrowserToolbarWidgetsStateAdapter(
           "FENNEVIA_TOOLBAR_WIDGETS_STATE_HOST_INVALID",
         );
       }
-      const result = await requireBridge().invoke(handle, host);
+      const result = await requireBridge().invoke(handle, host, triggerEvent);
       if (typeof result !== "boolean") {
         throw createToolbarWidgetsStateError(
           "FENNEVIA_TOOLBAR_WIDGETS_STATE_RESULT_INVALID",

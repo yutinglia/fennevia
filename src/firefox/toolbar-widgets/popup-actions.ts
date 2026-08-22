@@ -10,11 +10,16 @@ import {
   WIDGET_VIEW_PANEL_ID,
   createToolbarWidgetsError,
   isFunction,
+  isMenuPopupElement,
   isNativeRecord,
   isNodeConnected,
   isPanelElement,
   readCustomizableUi,
+  readAttribute,
   readShowSubView,
+  querySelectorOn,
+  type NativeMenuPopup,
+  type NativeNode,
   type NativePanel,
   type NativeRecord,
   type PendingPanelWaiter,
@@ -24,9 +29,20 @@ type ToolbarWidgetRegistry = Readonly<{
   resolve: (handle: string) => object;
 }>;
 
+const ACCOUNT_WIDGET_ID = "fxa-toolbar-menu-button";
+const ACCOUNT_VIEW_ID = "PanelUI-fxa";
+const ALL_TABS_WIDGET_ID = "alltabs-button";
+const ALL_TABS_ENTRYPOINT = "alltabs-button";
+const LIBRARY_WIDGET_ID = "library-button";
+const LIBRARY_VIEW_ID = "appMenu-libraryView";
+
 export type ToolbarWidgetPopupActions = Readonly<{
   dispose: () => void;
-  invoke: (handle: string, host: unknown) => Promise<boolean>;
+  invoke: (
+    handle: string,
+    host: unknown,
+    triggerEvent?: unknown,
+  ) => Promise<boolean>;
   onPopupHidden: (event: unknown) => void;
   onPopupShown: (event: unknown) => void;
 }>;
@@ -55,9 +71,10 @@ export function createToolbarWidgetPopupActions({
   let pendingViewWaiter: PendingPanelWaiter | null = null;
   let pendingViewHandle = "";
   let pendingNodeInvoke: Readonly<{
+    anchor: NativeRecord;
     handle: string;
     host: NativeRecord;
-    node: NativeRecord;
+    reanchor: boolean;
     resolve: (opened: boolean) => void;
     timeoutHandle: unknown;
   }> | null = null;
@@ -173,17 +190,19 @@ export function createToolbarWidgetPopupActions({
 
     if (pendingNodeInvoke) {
       const anchor = popup.anchorNode;
-      if (nodeContains(pendingNodeInvoke.node, anchor)) {
-        const { handle, host } = pendingNodeInvoke;
-        try {
-          Reflect.apply(popup.moveToAnchor, popup, [
-            host,
-            ADOPTED_PANEL_POSITION,
-            0,
-            0,
-          ]);
-        } catch {
-          // The panel stays Firefox-owned at its original geometry.
+      if (nodeContains(pendingNodeInvoke.anchor, anchor)) {
+        const { handle, host, reanchor } = pendingNodeInvoke;
+        if (reanchor) {
+          try {
+            Reflect.apply(popup.moveToAnchor, popup, [
+              host,
+              ADOPTED_PANEL_POSITION,
+              0,
+              0,
+            ]);
+          } catch {
+            // The panel stays Firefox-owned at its original geometry.
+          }
         }
         adoptPanel(popup, handle);
         clearPendingNodeInvoke(true);
@@ -244,15 +263,17 @@ export function createToolbarWidgetPopupActions({
   const waitForNodePanel = (
     handle: string,
     host: NativeRecord,
-    node: NativeRecord,
+    anchor: NativeRecord,
+    reanchor = true,
   ): Promise<boolean> => {
     const ownerWindow = requireWindow();
     clearPendingNodeInvoke(false);
     return new Promise((resolve) => {
       const invokeRecord = {
+        anchor,
         handle,
         host,
-        node,
+        reanchor,
         resolve,
         timeoutHandle: undefined as unknown,
       };
@@ -286,6 +307,259 @@ export function createToolbarWidgetPopupActions({
     } catch {
       releaseHeldPanel();
     }
+  };
+
+  const clearProjectHostOpenState = (host: NativeRecord): void => {
+    try {
+      if (host.open === true) {
+        host.open = false;
+      }
+    } catch {
+      // The Firefox owner revalidates the host and reports any failed open.
+    }
+  };
+
+  const resolveTriggerEvent = (
+    candidate: unknown,
+    host: NativeRecord,
+  ): NativeRecord => {
+    if (
+      isNativeRecord(candidate) &&
+      isFunction(candidate.stopPropagation) &&
+      (candidate.type === "click" ||
+        candidate.type === "keypress" ||
+        candidate.type === "mousedown")
+    ) {
+      return candidate;
+    }
+    const ownerWindow = requireWindow();
+    const MouseEventConstructor = ownerWindow.MouseEvent;
+    if (isFunction(MouseEventConstructor)) {
+      try {
+        const event = Reflect.construct(MouseEventConstructor, [
+          "click",
+          Object.freeze({
+            bubbles: true,
+            button: 0,
+            cancelable: true,
+            view: ownerWindow,
+          }),
+        ]);
+        if (isNativeRecord(event) && isFunction(event.stopPropagation)) {
+          return event;
+        }
+      } catch {
+        // The bounded event-shaped fallback below still uses the native owner.
+      }
+    }
+    return Object.freeze({
+      button: 0,
+      stopPropagation() {},
+      target: host,
+      type: "click",
+      view: ownerWindow,
+    });
+  };
+
+  const showWidgetView = async (
+    handle: string,
+    host: NativeRecord,
+    viewId: string,
+    triggerEvent: NativeRecord,
+    symbol = "window.PanelUI.showSubView",
+  ): Promise<boolean> => {
+    const ownerWindow = requireWindow();
+    const showSubView = readShowSubView(ownerWindow);
+    if (!showSubView || !isNativeRecord(ownerWindow.PanelUI)) {
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING",
+        "firefox-toolbar-widgets-action",
+        symbol,
+      );
+    }
+    const shown = waitForViewPanel(handle);
+    try {
+      const result = Reflect.apply(showSubView, ownerWindow.PanelUI, [
+        viewId,
+        host,
+        triggerEvent,
+      ]);
+      void Promise.resolve(result).catch(() => {
+        // Open failures settle through the popup listeners or timeout.
+      });
+    } catch (error) {
+      clearPendingViewWaiter(false);
+      pendingViewHandle = "";
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED",
+        "firefox-toolbar-widgets-action",
+        symbol,
+        error,
+      );
+    }
+    return await shown;
+  };
+
+  const readOwnedMenuPopup = (node: NativeNode): NativeMenuPopup | null => {
+    if (readAttribute(node, "type") !== "menu") {
+      return null;
+    }
+    const popup = querySelectorOn(node, "menupopup");
+    return isMenuPopupElement(popup) ? popup : null;
+  };
+
+  const openOwnedMenu = async (
+    handle: string,
+    host: NativeRecord,
+    popup: NativeMenuPopup,
+    triggerEvent: NativeRecord,
+  ): Promise<boolean> => {
+    const shown = waitForNodePanel(handle, host, host, false);
+    try {
+      Reflect.apply(popup.openPopup, popup, [
+        host,
+        Object.freeze({
+          position: ADOPTED_PANEL_POSITION,
+          triggerEvent,
+        }),
+      ]);
+    } catch (error) {
+      clearPendingNodeInvoke(false);
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED",
+        "firefox-toolbar-widgets-action",
+        "XULPopupElement.openPopup",
+        error,
+      );
+    }
+    return await shown;
+  };
+
+  const openAccountView = async (
+    handle: string,
+    host: NativeRecord,
+    node: NativeRecord,
+    triggerEvent: NativeRecord,
+  ): Promise<boolean> => {
+    const ownerWindow = requireWindow();
+    const syncOwner = ownerWindow.gSync;
+    const panelUi = ownerWindow.PanelUI;
+    const originalShowSubView = readShowSubView(ownerWindow);
+    if (
+      !isNativeRecord(syncOwner) ||
+      !isFunction(syncOwner.toggleAccountPanel) ||
+      !isNativeRecord(panelUi) ||
+      !originalShowSubView
+    ) {
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING",
+        "firefox-toolbar-widgets-action",
+        "window.gSync.toggleAccountPanel.PanelUI.showSubView",
+      );
+    }
+    const routedShowSubView = (...args: unknown[]): unknown => {
+      const routedArgs = [...args];
+      if (routedArgs[0] === ACCOUNT_VIEW_ID && routedArgs[1] === node) {
+        routedArgs[1] = host;
+      }
+      return Reflect.apply(originalShowSubView, panelUi, routedArgs);
+    };
+    try {
+      panelUi.showSubView = routedShowSubView;
+    } catch (error) {
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED",
+        "firefox-toolbar-widgets-action",
+        "window.PanelUI.showSubView.route-account-anchor",
+        error,
+      );
+    }
+    const shown = waitForViewPanel(handle);
+    try {
+      const result = Reflect.apply(syncOwner.toggleAccountPanel, syncOwner, [
+        node,
+        triggerEvent,
+      ]);
+      await Promise.resolve(result);
+    } catch (error) {
+      clearPendingViewWaiter(false);
+      pendingViewHandle = "";
+      if (isFirefoxBridgeError(error)) {
+        throw error;
+      }
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED",
+        "firefox-toolbar-widgets-action",
+        "window.gSync.toggleAccountPanel",
+        error,
+      );
+    } finally {
+      if (panelUi.showSubView === routedShowSubView) {
+        panelUi.showSubView = originalShowSubView;
+      }
+    }
+    return await shown;
+  };
+
+  const openAllTabsView = async (
+    handle: string,
+    host: NativeRecord,
+    triggerEvent: NativeRecord,
+  ): Promise<boolean> => {
+    const ownerWindow = requireWindow();
+    const tabsOwner = ownerWindow.gTabsPanel;
+    if (
+      !isNativeRecord(tabsOwner) ||
+      !isFunction(tabsOwner.init) ||
+      !isFunction(tabsOwner.showAllTabsPanel)
+    ) {
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING",
+        "firefox-toolbar-widgets-action",
+        "window.gTabsPanel.init.showAllTabsPanel",
+      );
+    }
+    let originalAnchor: unknown;
+    try {
+      Reflect.apply(tabsOwner.init, tabsOwner, []);
+      originalAnchor = tabsOwner.allTabsButton;
+      tabsOwner.allTabsButton = host;
+    } catch (error) {
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED",
+        "firefox-toolbar-widgets-action",
+        "window.gTabsPanel.init.allTabsButton",
+        error,
+      );
+    }
+    const shown = waitForViewPanel(handle);
+    try {
+      Reflect.apply(tabsOwner.showAllTabsPanel, tabsOwner, [
+        triggerEvent,
+        ALL_TABS_ENTRYPOINT,
+      ]);
+    } catch (error) {
+      clearPendingViewWaiter(false);
+      pendingViewHandle = "";
+      throw createToolbarWidgetsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED",
+        "firefox-toolbar-widgets-action",
+        "window.gTabsPanel.showAllTabsPanel",
+        error,
+      );
+    } finally {
+      tabsOwner.allTabsButton = originalAnchor;
+    }
+    return await shown;
   };
 
   const activateNode = (node: NativeRecord): void => {
@@ -333,13 +607,36 @@ export function createToolbarWidgetPopupActions({
       if (isNativeRecord(wrapper) && typeof wrapper.viewId === "string") {
         return wrapper.viewId;
       }
+      const parent = node.parentElement;
+      const parentId =
+        isNativeRecord(parent) && typeof parent.id === "string"
+          ? parent.id
+          : "";
+      if (parentId && widgetId === `${parentId}-dropmarker`) {
+        const parentWrapper = Reflect.apply(
+          customizableUi.getWidget as (...args: unknown[]) => unknown,
+          customizableUi,
+          [parentId],
+        );
+        if (
+          isNativeRecord(parentWrapper) &&
+          parentWrapper.type === "button-and-view" &&
+          typeof parentWrapper.viewId === "string"
+        ) {
+          return parentWrapper.viewId;
+        }
+      }
     } catch {
       return "";
     }
     return "";
   };
 
-  const invoke = async (handle: string, host: unknown): Promise<boolean> => {
+  const invoke = async (
+    handle: string,
+    host: unknown,
+    triggerEvent?: unknown,
+  ): Promise<boolean> => {
     if (typeof handle !== "string" || handle === "") {
       throw createToolbarWidgetsError(
         boundary,
@@ -349,7 +646,7 @@ export function createToolbarWidgetPopupActions({
       );
     }
     const resolvedHost = requireProjectHost(host);
-    const node = registry.resolve(handle) as NativeRecord;
+    const node = registry.resolve(handle) as NativeNode;
     if (!isNodeConnected(node)) {
       throw createToolbarWidgetsError(
         boundary,
@@ -358,6 +655,10 @@ export function createToolbarWidgetPopupActions({
         "toolbar-widgets.native-node",
       );
     }
+    const resolvedTriggerEvent = resolveTriggerEvent(
+      triggerEvent,
+      resolvedHost,
+    );
 
     onActionDelta(1);
     try {
@@ -367,40 +668,51 @@ export function createToolbarWidgetPopupActions({
         return true;
       }
       hideHeldPanel();
+      clearProjectHostOpenState(resolvedHost);
 
-      const ownerWindow = requireWindow();
+      const widgetId = typeof node.id === "string" ? node.id : "";
+      if (widgetId === ACCOUNT_WIDGET_ID) {
+        return await openAccountView(
+          handle,
+          resolvedHost,
+          node,
+          resolvedTriggerEvent,
+        );
+      }
+      if (widgetId === LIBRARY_WIDGET_ID) {
+        return await showWidgetView(
+          handle,
+          resolvedHost,
+          LIBRARY_VIEW_ID,
+          resolvedTriggerEvent,
+        );
+      }
+      if (widgetId === ALL_TABS_WIDGET_ID) {
+        return await openAllTabsView(
+          handle,
+          resolvedHost,
+          resolvedTriggerEvent,
+        );
+      }
+
       const viewId = readWidgetViewId(node);
-      const showSubView = readShowSubView(ownerWindow);
-      if (viewId && showSubView) {
-        // A stale `open` expando left by a failed open blocks showSubView.
-        try {
-          if (resolvedHost.open === true) {
-            resolvedHost.open = false;
-          }
-        } catch {
-          // showSubView revalidates the anchor itself.
-        }
-        const shown = waitForViewPanel(handle);
-        try {
-          const result = Reflect.apply(showSubView, ownerWindow.PanelUI, [
-            viewId,
-            resolvedHost,
-          ]);
-          void Promise.resolve(result).catch(() => {
-            // Open failures settle through the popup listeners or timeout.
-          });
-        } catch (error) {
-          clearPendingViewWaiter(false);
-          pendingViewHandle = "";
-          throw createToolbarWidgetsError(
-            boundary,
-            "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED",
-            "firefox-toolbar-widgets-action",
-            "window.PanelUI.showSubView",
-            error,
-          );
-        }
-        return await shown;
+      if (viewId) {
+        return await showWidgetView(
+          handle,
+          resolvedHost,
+          viewId,
+          resolvedTriggerEvent,
+        );
+      }
+
+      const menuPopup = readOwnedMenuPopup(node);
+      if (menuPopup) {
+        return await openOwnedMenu(
+          handle,
+          resolvedHost,
+          menuPopup,
+          resolvedTriggerEvent,
+        );
       }
 
       const settled = waitForNodePanel(handle, resolvedHost, node);

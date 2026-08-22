@@ -11,6 +11,7 @@ import {
   type FenneviaToolbarAction,
   type ToolbarPaletteEntrySnapshot,
   type ToolbarWidgetKind,
+  type ToolbarWidgetPartSnapshot,
   type ToolbarWidgetSnapshot,
   type ToolbarWidgetZones,
   type ToolbarWidgetsEditOperation,
@@ -54,6 +55,7 @@ import {
   LISTENER_OPTIONS,
   skippedWidgetIdSet,
   builtinIconTokenByWidgetId,
+  compoundToolbarWidgetPartsByWidgetId,
   TOOLBAR_FLUENT_RESOURCE_IDS,
   builtinFluentIdByWidgetId,
   resolvePinnedBuiltinIconUrl,
@@ -562,6 +564,7 @@ export function createFirefoxToolbarWidgetsBridge({
       kind,
       label: "",
       missing: false,
+      parts: Object.freeze([]),
       tooltip: "",
     });
 
@@ -581,6 +584,7 @@ export function createFirefoxToolbarWidgetsBridge({
       kind: "fennevia" as const,
       label: presentation?.label ?? "Fennevia control",
       missing: false,
+      parts: Object.freeze([]),
       tooltip: presentation?.tooltip ?? presentation?.label ?? "",
     });
   };
@@ -622,8 +626,59 @@ export function createFirefoxToolbarWidgetsBridge({
       kind: isExtension ? ("extension-action" as const) : ("built-in" as const),
       label,
       missing: true,
+      parts: Object.freeze([]),
       tooltip: resolveWidgetTooltip(widgetId, wrapper, presentationNode, label),
     });
+  };
+
+  const readCompoundWidgetParts = (
+    customizableUi: NativeRecord,
+    widgetId: string,
+    node: NativeNode,
+  ): readonly ToolbarWidgetPartSnapshot[] | null => {
+    const specifications = compoundToolbarWidgetPartsByWidgetId.get(widgetId);
+    if (!specifications) {
+      return Object.freeze([]);
+    }
+    const resolved: Array<
+      Readonly<{
+        node: NativeNode;
+        specification: (typeof specifications)[number];
+      }>
+    > = [];
+    for (const specification of specifications) {
+      const candidate = querySelectorOn(node, `#${specification.nodeId}`);
+      if (!isNativeNode(candidate) || !isNodeConnected(candidate)) {
+        return null;
+      }
+      resolved.push(Object.freeze({ node: candidate, specification }));
+    }
+    return Object.freeze(
+      resolved.map(({ node: partNode, specification }) => {
+        const label =
+          resolveWidgetLabel(
+            customizableUi,
+            specification.nodeId,
+            null,
+            partNode,
+            false,
+          ) || specification.fallbackLabel;
+        return Object.freeze({
+          disabled: readNodeDisabled(node) || readNodeDisabled(partNode),
+          handle: registry.register(partNode),
+          icon: specification.icon,
+          iconUrl: readBuiltinIconUrl(specification.nodeId, partNode),
+          kind: "built-in" as const,
+          label,
+          tooltip: resolveWidgetTooltip(
+            specification.nodeId,
+            null,
+            partNode,
+            label,
+          ),
+        });
+      }),
+    );
   };
 
   const readWidgetEntryForId = (
@@ -642,6 +697,15 @@ export function createFirefoxToolbarWidgetsBridge({
     const isExtension =
       wrapper?.webExtension === true ||
       isExtensionWidgetId(customizableUi, widgetId);
+    const compoundParts = isExtension
+      ? Object.freeze([])
+      : readCompoundWidgetParts(customizableUi, widgetId, node);
+    if (compoundParts === null) {
+      return Object.freeze({
+        node,
+        widget: widgetSnapshotForMissing(customizableUi, widgetId),
+      });
+    }
     const handle = registry.register(node);
 
     if (isExtension) {
@@ -668,6 +732,7 @@ export function createFirefoxToolbarWidgetsBridge({
           kind: "extension-action" as const,
           label,
           missing: false,
+          parts: Object.freeze([]),
           tooltip: resolveWidgetTooltip(widgetId, wrapper, node, label),
         }),
       });
@@ -694,6 +759,7 @@ export function createFirefoxToolbarWidgetsBridge({
         kind: "built-in" as const,
         label,
         missing: false,
+        parts: compoundParts,
         tooltip: resolveWidgetTooltip(widgetId, wrapper, node, label),
       }),
     });
@@ -1070,6 +1136,9 @@ export function createFirefoxToolbarWidgetsBridge({
         nodes.push(built.node);
         if (built.widget.handle !== "") {
           nextHandleIds.add(built.widget.handle);
+        }
+        for (const part of built.widget.parts) {
+          nextHandleIds.add(part.handle);
         }
       }
       zoneEntries.push([zone, Object.freeze(widgets)]);

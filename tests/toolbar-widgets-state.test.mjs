@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   copyToolbarStylePartial,
   copyToolbarPaletteEntrySnapshot,
+  copyToolbarWidgetPartSnapshot,
   copyToolbarWidgetSnapshot,
   copyToolbarWidgetsEditOperation,
   copyToolbarWidgetsSnapshot,
@@ -29,6 +30,7 @@ const extensionWidget = Object.freeze({
   kind: "extension-action",
   label: "Test Extension",
   missing: false,
+  parts: Object.freeze([]),
   tooltip: "Test Extension tooltip",
 });
 
@@ -44,6 +46,7 @@ const springWidget = Object.freeze({
   kind: "spring",
   label: "",
   missing: false,
+  parts: Object.freeze([]),
   tooltip: "",
 });
 
@@ -59,6 +62,7 @@ const fenneviaWidget = Object.freeze({
   kind: "fennevia",
   label: "Show bookmarks panel",
   missing: false,
+  parts: Object.freeze([]),
   tooltip: "Reveal the Fennevia bookmarks panel",
 });
 
@@ -74,7 +78,32 @@ const missingWidget = Object.freeze({
   kind: "built-in",
   label: "Toolbar item",
   missing: true,
+  parts: Object.freeze([]),
   tooltip: "Toolbar item",
+});
+
+const zoomOutPart = Object.freeze({
+  disabled: false,
+  handle: "toolbar-widget-registry-1-handle-3",
+  icon: "zoom-out",
+  iconUrl: "chrome://global/skin/icons/minus.svg",
+  kind: "built-in",
+  label: "Zoom out",
+  tooltip: "Zoom out (Ctrl+-)",
+});
+
+const compoundWidget = Object.freeze({
+  ...extensionWidget,
+  badgeBackground: "",
+  badgeText: "",
+  badgeTextColor: "",
+  handle: "toolbar-widget-registry-1-handle-2",
+  icon: "zoom",
+  iconUrl: "",
+  kind: "built-in",
+  label: "Zoom",
+  parts: Object.freeze([zoomOutPart]),
+  tooltip: "Zoom controls",
 });
 
 const paletteEntry = Object.freeze({
@@ -110,8 +139,8 @@ function createFakeBridge(overrides = {}) {
       calls.push(["edit", operation]);
       return true;
     },
-    async invoke(handle, host) {
-      calls.push(["invoke", handle, host]);
+    async invoke(handle, host, triggerEvent) {
+      calls.push(["invoke", handle, host, triggerEvent]);
       return true;
     },
     snapshot() {
@@ -150,6 +179,39 @@ test("copyToolbarWidgetSnapshot enforces bounded privacy-safe fields", () => {
   assert.ok(Object.isFrozen(copy));
   assert.deepEqual(copyToolbarWidgetSnapshot(fenneviaWidget), fenneviaWidget);
   assert.deepEqual(copyToolbarWidgetSnapshot(missingWidget), missingWidget);
+  const compoundCopy = copyToolbarWidgetSnapshot(compoundWidget);
+  assert.deepEqual(compoundCopy, compoundWidget);
+  assert.ok(Object.isFrozen(compoundCopy.parts));
+  assert.deepEqual(copyToolbarWidgetPartSnapshot(zoomOutPart), zoomOutPart);
+
+  assert.throws(
+    () =>
+      copyToolbarWidgetSnapshot({
+        ...extensionWidget,
+        parts: [zoomOutPart],
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_WIDGET_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarWidgetSnapshot({
+        ...compoundWidget,
+        parts: [zoomOutPart, zoomOutPart],
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_HANDLE_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarWidgetSnapshot({
+        ...compoundWidget,
+        parts: [{ ...zoomOutPart, handle: compoundWidget.handle }],
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_HANDLE_INVALID/u,
+  );
+  assert.throws(
+    () => copyToolbarWidgetPartSnapshot({ ...zoomOutPart, handle: "" }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_WIDGET_INVALID/u,
+  );
 
   assert.throws(
     () => copyToolbarWidgetSnapshot({ ...extensionWidget, kind: "custom" }),
@@ -596,14 +658,20 @@ test("adapter invoke validates handle, host, and bridge result", async () => {
   const adapter = createBrowserToolbarWidgetsStateAdapter(fake.bridge);
   try {
     const host = { getBoundingClientRect() {} };
+    const triggerEvent = { type: "click" };
     assert.equal(
-      await adapter.invoke("toolbar-widget-registry-1-handle-1", host),
+      await adapter.invoke(
+        "toolbar-widget-registry-1-handle-1",
+        host,
+        triggerEvent,
+      ),
       true,
     );
     assert.deepEqual(fake.calls.at(-1), [
       "invoke",
       "toolbar-widget-registry-1-handle-1",
       host,
+      triggerEvent,
     ]);
 
     await assert.rejects(
