@@ -129,8 +129,28 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
   const actions = [];
   let bridgeUnsubscribeCount = 0;
   const bridge = Object.freeze({
+    beginDrag(tabId) {
+      actions.push(["beginDrag", tabId]);
+      return "tab-transfer-00000001";
+    },
     close(tabId) {
       actions.push(["close", tabId]);
+    },
+    dropDrag(index) {
+      actions.push(["dropDrag", index]);
+      return { index, kind: "adopted", tabId: "tab-registry-1-handle-3" };
+    },
+    endDrag(dragId, options) {
+      actions.push(["endDrag", dragId, options]);
+      return "consumed";
+    },
+    inspectDrag() {
+      actions.push(["inspectDrag"]);
+      return {
+        id: "tab-transfer-00000001",
+        pinned: false,
+        source: "same-window",
+      };
     },
     open(options) {
       actions.push(["open", options]);
@@ -192,6 +212,25 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
   assert.deepEqual(menuEvents, [true]);
 
   const openedId = adapter.open({ selected: false });
+  const dragId = adapter.beginDrag(openedId);
+  assert.deepEqual(adapter.inspectDrag(), {
+    id: dragId,
+    pinned: false,
+    source: "same-window",
+  });
+  assert.deepEqual(adapter.dropDrag(1), {
+    index: 1,
+    kind: "adopted",
+    tabId: "tab-registry-1-handle-3",
+  });
+  assert.equal(
+    adapter.endDrag(dragId, {
+      cancelled: false,
+      screenX: 30,
+      screenY: 40,
+    }),
+    "consumed",
+  );
   adapter.select(openedId);
   adapter.pin(openedId);
   adapter.unpin(openedId);
@@ -201,6 +240,14 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
   adapter.close(openedId);
   assert.deepEqual(actions, [
     ["open", { selected: false }],
+    ["beginDrag", openedId],
+    ["inspectDrag"],
+    ["dropDrag", 1],
+    [
+      "endDrag",
+      "tab-transfer-00000001",
+      { cancelled: false, screenX: 30, screenY: 40 },
+    ],
     ["select", openedId],
     ["pin", openedId],
     ["unpin", openedId],

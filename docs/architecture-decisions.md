@@ -1375,10 +1375,16 @@ does not reveal original chrome. Release that token on open failure,
 
 HTML5 drag keeps the existing opaque tab ID and pinned-partition move action.
 Use the current project tab button as `setDragImage()` and render one
-calculated before/after insertion marker for the accepted move index. Clear the
-marker and existing left pointer hold on drag leave, invalid/mismatched payload,
-drop, drag end, and disposal. The existing Ctrl+Shift+Arrow reorder path remains
+calculated before/after insertion marker for the accepted move index. Drag
+leave clears the marker while preserving the active drag for re-entry;
+invalid/mismatched payload, drop, drag end, and disposal clear the marker and
+existing left pointer hold. The existing Ctrl+Shift+Arrow reorder path remains
 the keyboard equivalent.
+
+ADR-062 supersedes only the current-button drag image and marker-only visual
+presentation in the preceding paragraph. This decision's opaque payload,
+pinned-partition action, terminal cleanup, keyboard path, bridge ownership, and
+non-goals remain in force.
 
 Do not reimplement Duplicate, Close others, Send tab, Reopen in container, or
 Undo close in Svelte. Do not put native tab, menu, identity, or principal
@@ -1878,17 +1884,17 @@ current chrome design system instead of a private slate/blue RGB palette.
 
 Default mapping (runtime `var()` only; token JSON is not copied):
 
-| Fennevia token | Firefox chrome token |
-| --- | --- |
-| `--fennevia-glass-surface` | `--panel-background-color` mixed to 94% |
-| `--fennevia-glass-tint` | `--toolbar-background-color` mixed to 82% |
-| `--fennevia-glass-text` | `--toolbar-text-color` / `--panel-text-color` |
-| `--fennevia-glass-muted` | `--toolbarbutton-icon-fill` |
-| `--fennevia-glass-border` | `--panel-border-color` |
-| `--fennevia-glass-separator` | `--chrome-content-separator-color` |
-| `--fennevia-focus-color` | `--focus-outline-color` / `--color-accent-primary` |
-| `--fennevia-danger-color` | `--text-color-error` |
-| `--fennevia-selected-surface` | `--color-accent-primary` at 20% |
+| Fennevia token                | Firefox chrome token                               |
+| ----------------------------- | -------------------------------------------------- |
+| `--fennevia-glass-surface`    | `--panel-background-color` mixed to 94%            |
+| `--fennevia-glass-tint`       | `--toolbar-background-color` mixed to 82%          |
+| `--fennevia-glass-text`       | `--toolbar-text-color` / `--panel-text-color`      |
+| `--fennevia-glass-muted`      | `--toolbarbutton-icon-fill`                        |
+| `--fennevia-glass-border`     | `--panel-border-color`                             |
+| `--fennevia-glass-separator`  | `--chrome-content-separator-color`                 |
+| `--fennevia-focus-color`      | `--focus-outline-color` / `--color-accent-primary` |
+| `--fennevia-danger-color`     | `--text-color-error`                               |
+| `--fennevia-selected-surface` | `--color-accent-primary` at 20%                    |
 
 Those symbols exist on `browser.xhtml` through
 `toolkit/themes/shared/design-system/dist/tokens-platform.css`,
@@ -2006,13 +2012,13 @@ popup-hold, fail-open, privacy, or native-UI ownership rules
 Extend the existing `fennevia.customize.style` version-1 JSON object with five
 optional bounded integers:
 
-| Setting | Default | Accepted range | Runtime meaning |
-| --- | ---: | ---: | --- |
-| `autoHideDelay` | 300 ms | 100–5,000 ms | Delay after the pointer moves from a panel into page content or another target inside the Firefox window; also the default after a non-pointer hold clears |
-| `windowLeaveHideDelay` | 800 ms | 100–5,000 ms | Delay after the pointer leaves the Firefox window or the window loses focus while a pointer hold remains |
-| `temporaryRevealDuration` | 1,200 ms | 400–10,000 ms | Default duration for a bounded programmatic reveal such as `show-bookmarks` |
-| `shortcutHintDuration` | 600 ms | 0–10,000 ms | Duration of the existing edge keyboard-shortcut tip animation; `0` omits the tip from the rendered shell |
-| `edgeTriggerSize` | 12 CSS px | 6–24 CSS px | Shared invisible pointer strip and corner-arbitration thickness |
+| Setting                   |   Default | Accepted range | Runtime meaning                                                                                                                                            |
+| ------------------------- | --------: | -------------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `autoHideDelay`           |    300 ms |   100–5,000 ms | Delay after the pointer moves from a panel into page content or another target inside the Firefox window; also the default after a non-pointer hold clears |
+| `windowLeaveHideDelay`    |    800 ms |   100–5,000 ms | Delay after the pointer leaves the Firefox window or the window loses focus while a pointer hold remains                                                   |
+| `temporaryRevealDuration` |  1,200 ms |  400–10,000 ms | Default duration for a bounded programmatic reveal such as `show-bookmarks`                                                                                |
+| `shortcutHintDuration`    |    600 ms |    0–10,000 ms | Duration of the existing edge keyboard-shortcut tip animation; `0` omits the tip from the rendered shell                                                   |
+| `edgeTriggerSize`         | 12 CSS px |    6–24 CSS px | Shared invisible pointer strip and corner-arbitration thickness                                                                                            |
 
 Older version-1 values omit these keys and receive the defaults. Any malformed,
 non-integer, or out-of-range value fails safe through the existing default-style
@@ -2471,3 +2477,188 @@ movement, payload serialization, direct frontend navigation, and reconstructed
 rich results were also rejected. Exact source pins, compatibility-canary review,
 probe evidence, privacy boundary, and remaining test rows are recorded in
 `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
+
+## ADR-062: Preview tab reordering with spatial continuity inside the owned strip
+
+**Status:** Accepted for the project-owner request on 2026-08-22; Firefox 154.0
+source review and the complete ordinary gate are finished; the real Firefox
+visual/assistive-technology matrix remains pending
+
+Keep ADR-041's HTML5 drag, opaque tab ID, pinned-partition `move` action, and
+existing left-edge hold. Use the complete existing Fennevia-owned tab row as
+`setDragImage()` and align its hotspot to the pointer's position within that
+row. The browser ghost may visually mirror only title/favicon content already
+rendered in the same owning window. Do not capture a page thumbnail, construct
+a bitmap, copy native tab DOM, or add a second drag owner.
+
+For each accepted final index, derive only a closed `up` or `down` presentation
+token for intervening project rows. While the pointer remains in the source
+list, move the actual project-owned source row with an immediate inline
+`translateY`, preserving the initial pointer-to-row offset and clamping it to
+the pinned or unpinned partition. Transform intervening rows by exactly one
+owned row plus the shared gap, exposing a destination-sized gap. The source row
+is solid and raised while following the pointer; after list leave it returns to
+a low-opacity dashed origin while the browser drag ghost continues outside.
+Keep ADR-041's insertion marker at the visible gap. Capture row midpoints and
+heights before transforms begin and compensate them for list movement and
+scrolling during drag, so animated rows never change their own hit-test
+thresholds. Drag leave clears the live transform, shifts, and marker while
+preserving geometry and the shared hold for valid re-entry. Mismatched payload,
+drop, drag end, and disposal clear geometry, transforms, marker, and the hold.
+
+Use the existing 180 ms shell motion token and easing for interruptible
+background-row transforms; the established reduced-motion token reduces that
+duration to 1 ms. The direct-manipulation source row never delays its pointer
+transform. Forced-colors mode must retain a visible source treatment. Expose
+the ordinary default cursor, matching Firefox's native tab drag, give
+unselected rows a restrained hover response, and keep fixed secondary-action
+slots while showing non-audio actions on row hover/focus or selected state.
+Under ADR-063, a target window overlays an aria-hidden generic tab-shaped row
+at its accepted gap, using only a fixed localized label and packaged tab icon;
+it does not clone the source row or copy source identity. This preserves
+Firefox's same-document animation boundary while making the target landing
+space visible. This changes presentation only; it adds no new Firefox bridge,
+observer, timer, native DOM mutation, surface controller, or health capability.
+
+Retain `Ctrl+Shift+ArrowUp/Down`, declare it with `aria-keyshortcuts`, and use
+one visually hidden polite output to announce a successful pointer or keyboard
+move as bounded title plus final ordinal. The announcement is text only and is
+cleared at component disposal. No title, URL, favicon value, geometry, or
+announcement enters drag data, a root dataset, logs, diagnostics, persistence,
+clipboard, telemetry, or a network request.
+
+**Reasoning:** Firefox 154's
+[`drag-and-drop.js`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/components/tabbrowser/content/drag-and-drop.js)
+moves the same-document source tab directly under the pointer while
+intervening native tabs move aside, and its
+[`tabs.css`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/themes/shared/tabbrowser/tabs.css)
+animates those transforms unless reduced motion is requested. Fennevia adopts
+that spatial relationship independently within its own vertical XHTML list;
+it does not copy Firefox selectors, code, timing, or native-DOM strategy. The
+project's full-row ghost gives better identity than the former primary-button
+ghost, while shifting siblings communicates the prospective order more clearly
+than a marker alone. Exact source pins, rejected alternatives, privacy review,
+validation, and remaining real-browser rows are recorded in
+`docs/research/firefox-154-tab-drag-spatial-preview.md`.
+
+## ADR-063: Coordinate cross-window tab transfer and native-style detach
+
+**Status:** Accepted for the project-owner request on 2026-08-22; Firefox
+154.0 source review and the complete ordinary gate are finished; the real Firefox
+multi-window, content-drop, external-application, and recovery matrix remains
+pending
+
+Supersede ADR-041's same-window-only drag payload and ADR-062's corresponding
+terminal cleanup assumptions without changing ADR-062's spatial preview. A
+tab drag now begins at the typed Firefox boundary and registers exactly one
+short-lived process-owned transfer containing the source context, normal or
+private window kind, pinned state, active-state predicate, and native tab. The
+frontend receives only a bounded random drag ID for its own source lifecycle;
+the native tab never leaves `src/firefox/`, and the drag ID never enters the OS
+transfer payload.
+
+Clear `DataTransfer` at drag start and add only the fixed
+`application/x-fennevia-tab-transfer` type with the constant value `1`. Do not
+add `text/plain`, a URL, title, favicon, opaque tab-registry ID, random drag ID,
+or native value. Target Fennevia tab strips use the custom type only as a
+presence marker and inspect the one active transfer through their own typed
+bridge. This prevents browser content or another application from treating an
+internal handle such as `tab-registry-3-handle-2` as a navigable URL.
+
+Use `gBrowser.moveTabTo` for a drop in the source strip and
+`gBrowser.adoptTab` for a same-kind target Firefox window, clamped to the
+target's pinned or unpinned partition. A target-strip drop uses the indicated
+insertion point. A drop over another Firefox window's content uses that
+window's end position. The target browser window's capture listener handles
+the parent chrome event before Firefox's post-dispatch forwarding to the remote
+content process, then prevents that content drop and invokes the target bridge.
+No screen-coordinate hit test guesses which application owns the release
+point. Normal and private windows cannot inspect, accept, or resolve each
+other's transfer.
+
+On same-kind target-window `dragenter` or `dragover`, activate the target's
+existing shared left pointer hold before project-frame routing so its hidden
+tab surface reveals even when the first event lands over browser content. Keep
+that hold while the pointer crosses between target content and the target list.
+Firefox emits internal chrome-target `dragleave` events with a non-null
+`relatedTarget`, but its actual window `eDragExit` produces `dragleave` with a
+null `relatedTarget`. Ignore the former and clear on the latter, so crossing
+nested descendants cannot leave an unbalanced counter or stale target row.
+Actual window leave, target drop, observed drag end, setup failure, component
+disposal, or window disposal clears target preview state and releases the
+hold. Do not add a target-only hide timer: the #31 edge controller remains the
+sole delayed-hide owner.
+
+While an external drag has a valid target index, append one aria-hidden,
+non-interactive project-owned layout slot with the existing tab-row height to
+the target list. The slot participates in flex layout but remains visually
+hidden. It reserves the destination row consumed by the transform-only
+preview, so a short target list grows naturally instead of reporting
+transformed overflow and showing a spurious scrollbar. Overlay a visible,
+pointer-transparent generic preview row at the exact insertion geometry; it
+uses a fixed localized “Moving tab” label and packaged tab icon, never a title,
+URL, favicon value, or copied source DOM. Browser-content dragover previews the
+append position, list dragover previews the resolved pinned-aware position,
+and project-frame space outside the list has no landing preview. A genuinely
+height-constrained list keeps its ordinary scroll behavior. Clear both slot
+and visible preview on every terminal path, including a no-drop target-window
+exit.
+
+If no Fennevia target consumes a non-cancelled drag, honor
+`browser.tabs.allowTabDetach` and call `gBrowser.replaceTabWithWindow` with
+the bounded release point. A sole-tab source remains unchanged because it is
+already its own browser window. `Escape`/`mozUserCancelled`, disabled detach,
+stale source state, component disposal, and window disposal cancel without
+creating a window. A window-capture `dragend` listener owns the ordinary
+frontend cleanup path. Cross-window adoption can remove the project-owned
+source row before that event traverses the source window, so source snapshot
+reconciliation is a second, idempotent completion signal: when the active
+dragged ID no longer exists in that window, clear only local spatial state and
+the shared left-edge pointer hold, then release focus/keyboard holds after DOM
+reconciliation only when focus is no longer inside that source surface. Do not
+call source `endDrag` from this fallback while the target is consuming the
+transfer. Same-window reorder keeps the ID and cannot trigger it; intentional
+focus elsewhere in the source surface remains held; a later `dragend`
+converges on the already-cleared state. Exact listeners, native handle, and
+completed token are removed or replaced deterministically.
+
+The owner's explicit cross-window request approves a narrow revision to the
+former blanket prohibition on a process-global or cross-window native tab
+handle: one native tab may exist only in this privileged, ephemeral,
+single-active-drag coordinator. It is never serialized, copied into another
+window's reactive state, logged, persisted, exposed to content, or shared
+across normal/private boundaries. No browsing-derived process-global snapshot,
+history, URL, title, favicon, principal, browser, or page data is added. This
+exception does not authorize a general cross-window registry or relaxation for
+any other feature.
+
+`adoptTab` and `replaceTabWithWindow` are required current-version
+capabilities. Missing or renamed methods fail health open to retained native
+Firefox tabs; a failed target adoption leaves the source transfer available
+for safe cancellation or detach. No native tab DOM is copied, mounted,
+reparented, or removed by Fennevia.
+
+**Reasoning:** Firefox 154's
+[`drag-and-drop.js`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/components/tabbrowser/content/drag-and-drop.js)
+adopts a native tab into a target window and detaches an unconsumed tab after
+drag end. Its vertical expand-on-hover path waits for
+`SidebarController.expandOnHoverComplete` before final moving-tab sizing, while
+[`tabbrowser.js`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/components/tabbrowser/content/tabbrowser.js)
+owns `adoptTab` and `replaceTabWithWindow`. Firefox's
+[`EventStateManager.cpp`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/dom/events/EventStateManager.cpp)
+forwards a remote-target drag only from `PostHandleEvent`, after parent chrome
+DOM dispatch, records whether chrome alone accepted `dragover`, and separates
+internal target changes from a real `eDragExit` through the generated
+`dragleave.relatedTarget`. Fennevia needs a minimal
+process-level rendezvous because its project tab strips are independent Svelte
+roots and native tab objects cannot enter HTML drag data. The selected design
+keeps Firefox's tab-transfer policy at the privileged boundary, avoids a
+navigable fallback payload, avoids mistaking a covered background Firefox
+window for the foreground non-Firefox drop target, and preserves native-style
+detach for drops outside Firefox. The target drop handler's synchronous
+adoption and the separate source drag-end handler also support the conservative
+source-snapshot fallback above; the missing source-window event path remains a
+project inference confirmed by the owner's report, not a claimed Firefox
+guarantee. Exact source evidence, rejected alternatives,
+privacy analysis, validation, and pending real-browser rows are recorded in
+`docs/research/firefox-154-cross-window-tab-drag.md`.

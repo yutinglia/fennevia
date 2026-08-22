@@ -167,6 +167,12 @@
     animation: none;
   }
 
+  #fennevia-shell-frame-host .fennevia-tab-strip__item,
+  #fennevia-shell-frame-host .fennevia-tab-strip__external-preview,
+  #fennevia-shell-frame-host .fennevia-tab-strip__action {
+    transition-duration: 1ms;
+  }
+
   #fennevia-shell-frame-host
     .fennevia-progress-light[data-fennevia-progress-mode="indeterminate"]
     .fennevia-progress-light__beam {
@@ -290,6 +296,27 @@
   #fennevia-shell-frame-host
     .fennevia-tab-strip__item[data-fennevia-container-color] {
     box-shadow: inset 3px 0 0 Highlight;
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-tab-strip__item[data-fennevia-dragging="true"] {
+    color: CanvasText;
+    background: Canvas;
+    border-color: Highlight;
+    opacity: 1;
+  }
+
+  #fennevia-shell-frame-host .fennevia-tab-strip__drop-indicator {
+    background: Highlight;
+    box-shadow: none;
+  }
+
+  #fennevia-shell-frame-host .fennevia-tab-strip__external-preview {
+    color: HighlightText;
+    background: Highlight;
+    border-color: Highlight;
+    box-shadow: none;
+    opacity: 1;
   }
 
   #fennevia-shell-frame-host .fennevia-bookmarks__root-select {
