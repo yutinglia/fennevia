@@ -12,6 +12,7 @@ import {
   COLOR_MAX_LENGTH,
   ICON_URL_MAX_LENGTH,
   PALETTE_MAX_ENTRIES,
+  WIDGET_PART_MAX_ENTRIES,
   ZONE_MAX_ENTRIES,
   ICON_TOKEN_PATTERN,
   PALETTE_TOKEN_PATTERN,
@@ -33,6 +34,7 @@ import type {
   ToolbarStyleDensity,
   ToolbarStyleColorKey,
   ToolbarWidgetSnapshot,
+  ToolbarWidgetPartSnapshot,
   ToolbarPaletteEntrySnapshot,
   ToolbarStyleSnapshot,
   ToolbarWidgetZones,
@@ -310,6 +312,44 @@ const requireBoundedString = (value: unknown, maxLength: number): string => {
   return value;
 };
 
+export function copyToolbarWidgetPartSnapshot(
+  candidate: ToolbarWidgetPartSnapshot,
+): ToolbarWidgetPartSnapshot {
+  if (
+    !candidate ||
+    typeof candidate !== "object" ||
+    typeof candidate.disabled !== "boolean" ||
+    typeof candidate.handle !== "string" ||
+    candidate.handle === "" ||
+    candidate.kind !== "built-in"
+  ) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_WIDGET_INVALID",
+    );
+  }
+  const icon = requireBoundedString(candidate.icon, 32);
+  if (icon !== "" && !ICON_TOKEN_PATTERN.test(icon)) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_INVALID",
+    );
+  }
+  const iconUrl = requireBoundedString(candidate.iconUrl, ICON_URL_MAX_LENGTH);
+  if (!isAllowedToolbarWidgetIconUrl(iconUrl)) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_ICON_URL_INVALID",
+    );
+  }
+  return Object.freeze({
+    disabled: candidate.disabled,
+    handle: candidate.handle,
+    icon,
+    iconUrl,
+    kind: "built-in" as const,
+    label: requireBoundedString(candidate.label, LABEL_MAX_LENGTH),
+    tooltip: requireBoundedString(candidate.tooltip, TOOLTIP_MAX_LENGTH),
+  });
+}
+
 export function copyToolbarWidgetSnapshot(
   candidate: ToolbarWidgetSnapshot,
 ): ToolbarWidgetSnapshot {
@@ -320,7 +360,9 @@ export function copyToolbarWidgetSnapshot(
     typeof candidate.disabled !== "boolean" ||
     typeof candidate.missing !== "boolean" ||
     typeof candidate.handle !== "string" ||
-    typeof candidate.fenneviaAction !== "string"
+    typeof candidate.fenneviaAction !== "string" ||
+    !Array.isArray(candidate.parts) ||
+    candidate.parts.length > WIDGET_PART_MAX_ENTRIES
   ) {
     throw createToolbarWidgetsStateError(
       "FENNEVIA_TOOLBAR_WIDGETS_STATE_WIDGET_INVALID",
@@ -360,6 +402,25 @@ export function copyToolbarWidgetSnapshot(
       "FENNEVIA_TOOLBAR_WIDGETS_STATE_WIDGET_INVALID",
     );
   }
+  if (
+    candidate.parts.length > 0 &&
+    (candidate.kind !== "built-in" || candidate.missing)
+  ) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_WIDGET_INVALID",
+    );
+  }
+  const parts = Object.freeze(
+    candidate.parts.map(copyToolbarWidgetPartSnapshot),
+  );
+  if (
+    new Set(parts.map((part) => part.handle)).size !== parts.length ||
+    parts.some((part) => part.handle === candidate.handle)
+  ) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_HANDLE_INVALID",
+    );
+  }
   const icon = requireBoundedString(candidate.icon, 32);
   if (icon !== "" && !ICON_TOKEN_PATTERN.test(icon)) {
     throw createToolbarWidgetsStateError(
@@ -390,6 +451,7 @@ export function copyToolbarWidgetSnapshot(
     kind: candidate.kind,
     label: requireBoundedString(candidate.label, LABEL_MAX_LENGTH),
     missing: candidate.missing,
+    parts,
     tooltip: requireBoundedString(candidate.tooltip, TOOLTIP_MAX_LENGTH),
   });
 }

@@ -18,6 +18,10 @@ export type NativePanel = NativeRecord & {
   moveToAnchor: (...args: unknown[]) => unknown;
 };
 
+export type NativeMenuPopup = NativePanel & {
+  openPopup: (...args: unknown[]) => unknown;
+};
+
 export type ToolbarWidgetCapabilityEvaluation = Readonly<{
   cause?: unknown;
   snapshot: FirefoxCapabilitySnapshot;
@@ -29,6 +33,12 @@ export type ToolbarWidgetCapabilitySpecification = Readonly<{
   read: (window: NativeRecord) => unknown;
   requirement: "optional" | "required";
   symbol: string;
+}>;
+
+export type CompoundToolbarWidgetPartSpecification = Readonly<{
+  fallbackLabel: string;
+  icon: string;
+  nodeId: string;
 }>;
 
 export type PendingPanelWaiter = {
@@ -91,6 +101,70 @@ export const SKIPPED_WIDGET_IDS = Object.freeze([
 
 export const skippedWidgetIdSet = new Set<string>(SKIPPED_WIDGET_IDS);
 
+// Firefox exposes these compound CustomizableUI entries as one toolbaritem
+// whose children are independently actionable. Fennevia keeps each placement
+// grouped while projecting opaque handles for its current Firefox-owned parts.
+export const compoundToolbarWidgetPartsByWidgetId: ReadonlyMap<
+  string,
+  readonly CompoundToolbarWidgetPartSpecification[]
+> = new Map<string, readonly CompoundToolbarWidgetPartSpecification[]>([
+  [
+    "zoom-controls",
+    Object.freeze([
+      Object.freeze({
+        fallbackLabel: "Zoom out",
+        icon: "zoom-out",
+        nodeId: "zoom-out-button",
+      }),
+      Object.freeze({
+        fallbackLabel: "Reset zoom",
+        icon: "zoom",
+        nodeId: "zoom-reset-button",
+      }),
+      Object.freeze({
+        fallbackLabel: "Zoom in",
+        icon: "zoom-in",
+        nodeId: "zoom-in-button",
+      }),
+    ]),
+  ],
+  [
+    "edit-controls",
+    Object.freeze([
+      Object.freeze({
+        fallbackLabel: "Cut",
+        icon: "cut",
+        nodeId: "cut-button",
+      }),
+      Object.freeze({
+        fallbackLabel: "Copy",
+        icon: "copy",
+        nodeId: "copy-button",
+      }),
+      Object.freeze({
+        fallbackLabel: "Paste",
+        icon: "paste",
+        nodeId: "paste-button",
+      }),
+    ]),
+  ],
+  [
+    "profiler-button",
+    Object.freeze([
+      Object.freeze({
+        fallbackLabel: "Profiler",
+        icon: "developer",
+        nodeId: "profiler-button-button",
+      }),
+      Object.freeze({
+        fallbackLabel: "Open the profiler panel",
+        icon: "arrow-down",
+        nodeId: "profiler-button-dropmarker",
+      }),
+    ]),
+  ],
+]);
+
 // Curated icon tokens for known built-in widget ids. The raw widget id never
 // crosses the bridge; only the fixed token does.
 export const builtinIconTokenByWidgetId: ReadonlyMap<string, string> = new Map([
@@ -105,6 +179,7 @@ export const builtinIconTokenByWidgetId: ReadonlyMap<string, string> = new Map([
   ["library-button", "library"],
   ["new-window-button", "new-window"],
   ["print-button", "print"],
+  ["profiler-button", "developer"],
   ["privatebrowsing-button", "private"],
   ["reset-pbm-toolbar-button", "private"],
   ["screenshot-button", "screenshot"],
@@ -162,6 +237,8 @@ export const builtinFluentIdByWidgetId: ReadonlyMap<string, string> = new Map([
 export const builtinIconUrlByWidgetId: ReadonlyMap<string, string> = new Map([
   ["bookmarks-menu-button", "chrome://browser/skin/bookmark-star-on-tray.svg"],
   ["characterencoding-button", "chrome://browser/skin/characterEncoding.svg"],
+  ["copy-button", "chrome://global/skin/icons/edit-copy.svg"],
+  ["cut-button", "chrome://browser/skin/edit-cut.svg"],
   ["developer-button", "chrome://global/skin/icons/developer.svg"],
   ["email-link-button", "chrome://browser/skin/mail.svg"],
   ["find-button", "chrome://global/skin/icons/search-glass.svg"],
@@ -176,8 +253,11 @@ export const builtinIconUrlByWidgetId: ReadonlyMap<string, string> = new Map([
   ["new-window-button", "chrome://browser/skin/window.svg"],
   ["open-file-button", "chrome://browser/skin/open.svg"],
   ["panic-button", "chrome://browser/skin/forget.svg"],
+  ["paste-button", "chrome://browser/skin/edit-paste.svg"],
   ["preferences-button", "chrome://global/skin/icons/settings.svg"],
   ["print-button", "chrome://global/skin/icons/print.svg"],
+  ["profiler-button-button", "chrome://devtools/skin/images/tool-profiler.svg"],
+  ["profiler-button-dropmarker", "chrome://global/skin/icons/arrow-down.svg"],
   ["privatebrowsing-button", "chrome://browser/skin/privateBrowsing.svg"],
   ["reset-pbm-toolbar-button", "chrome://browser/skin/flame.svg"],
   ["save-page-button", "chrome://browser/skin/save.svg"],
@@ -186,6 +266,8 @@ export const builtinIconUrlByWidgetId: ReadonlyMap<string, string> = new Map([
   ["sidebar-button", "chrome://browser/skin/sidebar-collapsed.svg"],
   ["sync-button", "chrome://browser/skin/synced-tabs.svg"],
   ["tab-groups-button", "chrome://browser/skin/tabbrowser/tab-groups.svg"],
+  ["zoom-in-button", "chrome://global/skin/icons/plus.svg"],
+  ["zoom-out-button", "chrome://global/skin/icons/minus.svg"],
 ]);
 
 export const resolvePinnedBuiltinIconUrl = (
@@ -253,6 +335,9 @@ export const isPanelElement = (value: unknown): value is NativePanel =>
   isNativeRecord(value) &&
   isFunction(value.hidePopup) &&
   isFunction(value.moveToAnchor);
+
+export const isMenuPopupElement = (value: unknown): value is NativeMenuPopup =>
+  isPanelElement(value) && isFunction(value.openPopup);
 
 export const boundString = (value: unknown, maxLength: number): string =>
   typeof value === "string" ? value.slice(0, maxLength) : "";

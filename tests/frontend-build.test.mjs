@@ -141,6 +141,15 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(progressLight, /resolveDownloadProgressLight/u);
   assert.match(progressLight, /<ProgressLight \{presentation\} \/>/u);
   assert.match(toolbarWidgets, /<ToolbarWidgetGlyph \{widget\} \/>/u);
+  assert.match(toolbarWidgets, /widget\.parts\.length > 0/u);
+  assert.match(
+    toolbarWidgets,
+    /data-fennevia-browser-tool="toolbar-widget-part"/u,
+  );
+  assert.match(
+    toolbarWidgets,
+    /toolbarWidgets\.invoke\([\s\S]*?resolveBrowserToolHost\(event\),[\s\S]*?event/u,
+  );
   assert.match(toolbarWidgets, /toolbarWidgetDragMimeType/u);
   assert.match(
     component,

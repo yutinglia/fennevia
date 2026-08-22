@@ -208,3 +208,28 @@
 #fennevia-shell-frame-host .fennevia-toolbar-widgets__button {
   position: relative;
 }
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__compound {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-toolbar-widgets__compound-button {
+  border: 0;
+  border-radius: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-toolbar-widgets__compound-button:focus-visible {
+  outline-offset: -3px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-toolbar-widgets__compound-button
+  + .fennevia-toolbar-widgets__compound-button {
+  border-inline-start: 1px solid var(--fennevia-glass-separator);
+}

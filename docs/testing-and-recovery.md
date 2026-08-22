@@ -746,25 +746,43 @@ ADR-044 (#64) adds focused unit/static/build coverage for:
   no-change suppression;
 - missing `CustomizableUI` degrading to an unavailable **optional** capability
   (`available: false`, empty widgets) without failing creation or health;
-- extension activation through `PanelUI.showSubView(viewId, host)` anchored on
-  the project host, popup hold publication, and same-widget toggle-close;
-- built-in activation through the native node command with `moveToAnchor`
-  re-anchoring of node panels and bounded-timeout `false` settlement when no
-  panel appears;
+- extension and built-in wrapper-view activation through
+  `PanelUI.showSubView(viewId, host, event)` anchored on the project host,
+  popup hold publication, and same-widget toggle-close;
+- delegated static-widget activation: Account preserves
+  `gSync.toggleAccountPanel` state/CTA work while routing `PanelUI-fxa` to the
+  project host, Library opens `appMenu-libraryView` on that host, and All Tabs
+  initializes and invokes `gTabsPanel.showAllTabsPanel` through a temporary
+  visible host before restoring the original owner anchor;
+- native Bookmarks Menu / Share Tab / Send Tab `type="menu"` shape opening its
+  existing Firefox-owned `menupopup` through `openPopup(host, options)`;
+- compound Zoom, Edit, and Profiler snapshots with bounded unique child
+  handles, semantic grouped buttons, parent/child disabled mapping, missing
+  child degradation, native child commands, and Profiler main/dropmarker
+  command-versus-view routing;
+- remaining simple built-in activation through the native node command with
+  `moveToAnchor` re-anchoring of node panels and bounded-timeout `false`
+  settlement when no panel appears;
 - stale-handle, foreign-host, and empty-handle rejection with privacy-safe
   typed diagnostics;
 - deterministic disposal of the CustomizableUI listener, MutationObserver,
   popup listeners, pending waiters, handle registry, and any held panel;
-- adapter validation, revision reduction, popup forwarding, listener/dispose
-  idempotence, and invoke result checks.
+- adapter validation (including bounded part arrays), trigger-event forwarding,
+  revision reduction, popup forwarding, listener/dispose idempotence, and
+  invoke result checks.
 
 The following are `not run`, not passed: real mirroring of an installed
 extension (icon, badge, popup), customize-mode pin/unpin round-trips,
 extension install/removal/disable while a window is open, private-window
 presentation of non-private-allowed extensions, second-window independence,
 badge updates from live extensions, and overflow scrolling inside the
-flexible top widget zone on narrow layouts. Implementation/source evidence is in
+flexible top widget zone on narrow layouts. Also `not run`: Account in
+signed-out/unverified/signed-in states, Library and All Tabs placement,
+Bookmarks/Share/Send native menus, Zoom/Edit child commands, Profiler
+main/dropmarker behavior, and popup placement for each from all four edges in
+Firefox 153/154. Implementation/source evidence is in
 `docs/research/firefox-153-toolbar-widget-mirror.md` and
+`docs/research/firefox-153-154-toolbar-widget-activation.md` and
 `plans/005-topbar-widget-mirror.md`.
 
 ### 6.9 Fennevia-owned customize mode — focused automation complete, real Firefox pending

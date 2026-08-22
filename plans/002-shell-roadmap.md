@@ -49,9 +49,12 @@ owner-approved adopt/restore writes. ADR-047 makes that editor a live four-edge
 HTML5 drag-and-drop session. ADR-054 adds bounded global interaction controls
 for separate in-window/window-leave hide timing, temporary reveal timing,
 shortcut-tip timing, and edge trigger thickness. These have focused automated
-evidence;
-the real Firefox matrices in `docs/testing-and-recovery.md` §6.8 and §6.9
-remain pending.
+evidence. The 2026-08-22 activation correction preserves Firefox's delegated
+Account/Library/All Tabs owners, opens native menu widgets on the project host,
+and projects compound Zoom/Edit/Profiler placements into their independently
+actionable native parts. Focused automation passes; the corresponding live
+Firefox rows remain pending. The complete real Firefox matrices in
+`docs/testing-and-recovery.md` §6.8 and §6.9 remain pending.
 
 ADR-061 adds a focused per-window Urlbar-suggestions bridge and accessible
 combobox/listbox to the existing address overlay. It reuses Firefox's current
@@ -787,7 +790,8 @@ panel-content cloning, and overflow mirroring stay deferred to ADR-045.
 Gate: CI passes with focused bridge/adapter coverage; the real Firefox rows in
 `docs/testing-and-recovery.md` §6.8 are recorded honestly (currently
 `not run`). Plan: `plans/005-topbar-widget-mirror.md`; evidence:
-`docs/research/firefox-153-toolbar-widget-mirror.md`.
+`docs/research/firefox-153-toolbar-widget-mirror.md` and
+`docs/research/firefox-153-154-toolbar-widget-activation.md`.
 
 ## Milestone O: Fennevia-owned customize mode — implementation complete, real Firefox smoke pending (ADR-045)
 

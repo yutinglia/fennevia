@@ -32,6 +32,7 @@
     isInteractiveToolbarWidget,
     type BrowserToolbarWidgetsState,
     type BrowserToolbarWidgetsStateAdapter,
+    type ToolbarWidgetPartSnapshot,
     type ToolbarWidgetSnapshot,
     type ToolbarWidgetsEditOperation,
     type ToolbarZoneName,
@@ -137,11 +138,23 @@
     if (!props.toolbarWidgets || !isInteractiveToolbarWidget(widget)) {
       return;
     }
+    await invokeToolbarWidgetHandle(widget.handle, event);
+  };
+
+  const invokeToolbarWidgetHandle = async (
+    handle: string,
+    event: MouseEvent,
+  ) => {
+    const toolbarWidgets = props.toolbarWidgets;
+    if (!toolbarWidgets) {
+      return;
+    }
     props.shell.setPopupHeld(props.edge, true);
     try {
-      const opened = await props.toolbarWidgets.invoke(
-        widget.handle,
+      const opened = await toolbarWidgets.invoke(
+        handle,
         resolveBrowserToolHost(event),
+        event,
       );
       if (!opened) {
         props.shell.setPopupHeld(props.edge, false);
@@ -151,6 +164,20 @@
       // Extensions remain available when an invocation goes stale.
       props.shell.setPopupHeld(props.edge, false);
     }
+  };
+
+  const runToolbarWidgetPartAction = async (
+    part: ToolbarWidgetPartSnapshot,
+    event: MouseEvent,
+  ) => {
+    if (
+      props.customizeSession?.isOpen() ||
+      !props.toolbarWidgets ||
+      part.disabled
+    ) {
+      return;
+    }
+    await invokeToolbarWidgetHandle(part.handle, event);
   };
 
   const widgetDisplayLabel = (widget: ToolbarWidgetSnapshot): string =>
@@ -367,6 +394,32 @@
             class={`fennevia-toolbar-widgets__item fennevia-toolbar-widgets__${widget.kind}`}
           ></span>
         {/if}
+      {:else if widget.parts.length > 0 && !props.customizeOpen}
+        <div
+          aria-label={widgetDisplayLabel(widget)}
+          class="fennevia-toolbar-widgets__compound fennevia-toolbar-widgets__item"
+          data-fennevia-toolbar-widget-item=""
+          role="group"
+        >
+          {#each widget.parts as part (part.handle)}
+            <button
+              aria-label={part.label}
+              class="fennevia-control fennevia-toolbar-widgets__button fennevia-toolbar-widgets__compound-button"
+              data-fennevia-browser-tool="toolbar-widget-part"
+              disabled={part.disabled}
+              onclick={(event) =>
+                void runToolbarWidgetPartAction(part, event)}
+              title={localizeWidgetTooltip(
+                props.localeId,
+                part.tooltip,
+                part.label,
+              )}
+              type="button"
+            >
+              <ToolbarWidgetGlyph widget={part} />
+            </button>
+          {/each}
+        </div>
       {:else}
         <button
           aria-label={widgetDisplayLabel(widget)}

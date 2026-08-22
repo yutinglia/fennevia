@@ -1531,16 +1531,27 @@ exit, pin/unpin, install/removal, badge, and icon changes.
 
 The per-window `src/firefox/toolbar-widgets.ts` controller keeps widget ids and
 native nodes in a privileged opaque-handle registry; the frontend receives only
-`{ handle, kind, label, tooltip, iconUrl, badge, icon, disabled }` with
+`{ handle, kind, label, tooltip, iconUrl, badge, icon, disabled, parts }` with
 validated bounds (bounded `moz-extension://`, `chrome://`, and `resource://`
-icon URLs per ADR-046, rgba-only badge colors, fixed icon tokens, bounded
-text). Activation passes the clicked project host
-back through the handle: widgets with a `viewId` open through
-`PanelUI.showSubView(viewId, host)` (the transient
-`customizationui-widget-panel` anchors on the host directly); other widgets
-dispatch the native node command and re-anchor any panel that appears with
-`moveToAnchor(host)`. Panel holds, toggle-close, popup release, and disposal
-reuse the ADR-042 pattern.
+icon URLs per ADR-046, rgba-only badge colors, fixed icon tokens, bounded text,
+and at most eight built-in compound parts). Every part has its own opaque
+handle, label, tooltip, icon presentation, and disabled state; no child id
+crosses the bridge.
+
+Activation passes the clicked project host and transient trigger event back
+through the handle. Widgets with a `viewId` open through
+`PanelUI.showSubView(viewId, host, event)` (the transient
+`customizationui-widget-panel` anchors on the host directly). Static delegated
+Firefox widgets retain their exact owner: Account uses
+`gSync.toggleAccountPanel`, Library uses its native subview, and All Tabs uses
+`gTabsPanel.showAllTabsPanel` with a temporary visible project anchor. Native
+`type="menu"` widgets open their existing `menupopup` through
+`XULPopupElement.openPopup`; Zoom, Edit, and Profiler retain grouped placement
+while exposing their independently actionable native children. Remaining
+simple widgets dispatch the native node command and re-anchor any panel that
+appears with `moveToAnchor(host)`. Panel holds, toggle-close, popup release,
+temporary owner substitution, and disposal reuse the ADR-042 deterministic
+per-window pattern.
 
 This owner-approved decision partially supersedes ADR-037's prohibition:
 read-only nav-bar placement enumeration and extension identity (name, icon,
@@ -1560,8 +1571,10 @@ that the collapsed navbar removed. Curated icon tokens keep widget ids
 privileged-side as a fallback, and the ADR-042 host-anchoring path keeps
 extension popup contents Firefox-owned. ADR-046 amends the built-in icon
 rendering path. Live Firefox mirroring and popup anchoring are recorded
-per-row in `docs/testing-and-recovery.md`; source pins and the selected minimum
-sequence are in `docs/research/firefox-153-toolbar-widget-mirror.md`.
+per-row in `docs/testing-and-recovery.md`; original mirror source pins are in
+`docs/research/firefox-153-toolbar-widget-mirror.md`, and the 153/154 activation
+correction is in
+`docs/research/firefox-153-154-toolbar-widget-activation.md`.
 
 ## ADR-045: Fennevia-owned customize mode with four-panel widget zones and bounded style tokens
 

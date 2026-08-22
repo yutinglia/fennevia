@@ -102,6 +102,7 @@ function createEventTarget() {
 }
 
 function createNativeWindow({
+  extraAreaWidgetIds = [],
   withCustomizableUi = true,
   withPrefs = true,
 } = {}) {
@@ -267,6 +268,17 @@ function createNativeWindow({
     return panel;
   }
 
+  function createMenuPanel(id) {
+    const panel = createNodePanel(id);
+    panel.openPopup = function (anchor, options) {
+      calls.push(["openPopup", id, anchor, options]);
+      this.anchorNode = anchor;
+      this.state = "open";
+      documentEvents.dispatch("popupshown", panel);
+    };
+    return panel;
+  }
+
   const extensionActionButton = {
     badge: "3",
     badgeStyle: "background-color: rgb(217, 0, 0); color: rgb(255, 255, 255);",
@@ -347,6 +359,169 @@ function createNativeWindow({
   };
   targets.set(historyNode.id, historyNode);
 
+  const accountNode = {
+    contains(candidate) {
+      return candidate === accountNode;
+    },
+    getAttribute(name) {
+      if (name === "label") {
+        return "Account";
+      }
+      if (name === "tooltiptext") {
+        return "Manage account";
+      }
+      return null;
+    },
+    id: "fxa-toolbar-menu-button",
+    isConnected: true,
+  };
+  targets.set(accountNode.id, accountNode);
+
+  const libraryNode = {
+    contains(candidate) {
+      return candidate === libraryNode;
+    },
+    getAttribute(name) {
+      return name === "label" ? "Library" : null;
+    },
+    id: "library-button",
+    isConnected: true,
+  };
+  targets.set(libraryNode.id, libraryNode);
+
+  const allTabsNode = {
+    contains(candidate) {
+      return candidate === allTabsNode;
+    },
+    getAttribute(name) {
+      return name === "label" ? "List all tabs" : null;
+    },
+    id: "alltabs-button",
+    isConnected: true,
+  };
+  targets.set(allTabsNode.id, allTabsNode);
+
+  const bookmarksPopup = createMenuPanel("BMB_bookmarksPopup");
+  const bookmarksMenuNode = {
+    contains(candidate) {
+      return candidate === bookmarksMenuNode || candidate === bookmarksPopup;
+    },
+    getAttribute(name) {
+      if (name === "type") {
+        return "menu";
+      }
+      return name === "label" ? "Bookmarks Menu" : null;
+    },
+    id: "bookmarks-menu-button",
+    isConnected: true,
+    querySelector(selector) {
+      return selector === "menupopup" ? bookmarksPopup : null;
+    },
+  };
+  targets.set(bookmarksMenuNode.id, bookmarksMenuNode);
+
+  function createCompoundPart(id, label, tooltip) {
+    return {
+      doCommand() {
+        calls.push(["doCommand", id]);
+      },
+      getAttribute(name) {
+        if (name === "label") {
+          return label;
+        }
+        if (name === "tooltiptext") {
+          return tooltip;
+        }
+        return null;
+      },
+      id,
+      isConnected: true,
+    };
+  }
+
+  const compoundParts = new Map([
+    [
+      "zoom-out-button",
+      createCompoundPart("zoom-out-button", "Zoom out", "Zoom out (Ctrl+-)"),
+    ],
+    [
+      "zoom-reset-button",
+      createCompoundPart(
+        "zoom-reset-button",
+        "100%",
+        "Reset zoom level (Ctrl+0)",
+      ),
+    ],
+    [
+      "zoom-in-button",
+      createCompoundPart("zoom-in-button", "Zoom in", "Zoom in (Ctrl++)"),
+    ],
+    ["cut-button", createCompoundPart("cut-button", "Cut", "Cut (Ctrl+X)")],
+    ["copy-button", createCompoundPart("copy-button", "Copy", "Copy (Ctrl+C)")],
+    [
+      "paste-button",
+      createCompoundPart("paste-button", "Paste", "Paste (Ctrl+V)"),
+    ],
+    [
+      "profiler-button-button",
+      createCompoundPart(
+        "profiler-button-button",
+        "Profiler",
+        "Start or capture a profile",
+      ),
+    ],
+    [
+      "profiler-button-dropmarker",
+      createCompoundPart(
+        "profiler-button-dropmarker",
+        "Open the profiler panel",
+        "Open the profiler panel",
+      ),
+    ],
+  ]);
+  for (const [id, part] of compoundParts) {
+    targets.set(id, part);
+  }
+  const createCompoundNode = (id, label, partIds) => {
+    const node = {
+      contains(candidate) {
+        return partIds.some(
+          (partId) => compoundParts.get(partId) === candidate,
+        );
+      },
+      getAttribute(name) {
+        return name === "label" ? label : null;
+      },
+      id,
+      isConnected: true,
+      querySelector(selector) {
+        const partId = selector.startsWith("#") ? selector.slice(1) : "";
+        return partIds.includes(partId) ? compoundParts.get(partId) : null;
+      },
+    };
+    for (const partId of partIds) {
+      compoundParts.get(partId).parentElement = node;
+    }
+    return node;
+  };
+  const zoomControlsNode = createCompoundNode("zoom-controls", "Zoom", [
+    "zoom-out-button",
+    "zoom-reset-button",
+    "zoom-in-button",
+  ]);
+  const editControlsNode = createCompoundNode("edit-controls", "Edit", [
+    "cut-button",
+    "copy-button",
+    "paste-button",
+  ]);
+  const profilerNode = createCompoundNode("profiler-button", "Profiler", [
+    "profiler-button-button",
+    "profiler-button-dropmarker",
+  ]);
+  targets.set(zoomControlsNode.id, zoomControlsNode);
+  targets.set(editControlsNode.id, editControlsNode);
+  targets.set(profilerNode.id, profilerNode);
+
   let areaWidgetIds = [
     "back-button",
     "urlbar-container",
@@ -357,6 +532,7 @@ function createNativeWindow({
     "extension-widget_example_com-browser-action",
     "customizableui-special-spacer7",
     "history-panelmenu",
+    ...extraAreaWidgetIds,
   ];
   let addonsWidgetIds = ["extension-addons_example_com-browser-action"];
 
@@ -472,6 +648,15 @@ function createNativeWindow({
       },
     ],
     [
+      "profiler-button",
+      {
+        label: "Profiler",
+        tooltiptext: "Profiler",
+        type: "button-and-view",
+        viewId: "PanelUI-profiler",
+      },
+    ],
+    [
       "reset-pbm-toolbar-button",
       {
         forWindow() {
@@ -495,6 +680,7 @@ function createNativeWindow({
     "screenshot-button",
     "zoom-controls",
     "edit-controls",
+    "profiler-button",
     "reset-pbm-toolbar-button",
   ];
 
@@ -671,8 +857,8 @@ function createNativeWindow({
       }
     },
     PanelUI: {
-      showSubView(viewId, anchor) {
-        calls.push(["showSubView", viewId, anchor]);
+      showSubView(viewId, anchor, triggerEvent) {
+        calls.push(["showSubView", viewId, anchor, triggerEvent]);
         const panel = createWidgetPanel();
         panel.anchorNode = anchor;
         documentEvents.dispatch("popupshown", panel);
@@ -687,6 +873,31 @@ function createNativeWindow({
       selectedBrowser: { webNavigation: {} },
       tabContainer: createEventTarget(),
       tabs: [],
+    },
+    gSync: {
+      async toggleAccountPanel(anchor, triggerEvent) {
+        calls.push(["toggleAccountPanel", anchor, triggerEvent]);
+        await window.PanelUI.showSubView("PanelUI-fxa", anchor, triggerEvent);
+      },
+    },
+    gTabsPanel: {
+      allTabsButton: allTabsNode,
+      init() {
+        calls.push(["all-tabs-init"]);
+      },
+      showAllTabsPanel(triggerEvent, entrypoint) {
+        calls.push([
+          "showAllTabsPanel",
+          this.allTabsButton,
+          triggerEvent,
+          entrypoint,
+        ]);
+        return window.PanelUI.showSubView(
+          "allTabsMenu-allTabsView",
+          this.allTabsButton,
+          triggerEvent,
+        );
+      },
     },
     gNavToolbox: { palette: navToolboxPalette },
     setTimeout(callback) {
@@ -704,6 +915,7 @@ function createNativeWindow({
   window.document.defaultView = window;
 
   return {
+    accountNode,
     addHost() {
       const host = {
         getBoundingClientRect() {
@@ -715,6 +927,9 @@ function createNativeWindow({
       return host;
     },
     calls,
+    bookmarksMenuNode,
+    bookmarksPopup,
+    compoundParts,
     customizableUiListeners,
     documentEvents,
     extensionActionButton,
@@ -730,11 +945,13 @@ function createNativeWindow({
       return prefValues.get(name);
     },
     historyNode,
+    libraryNode,
     observers,
     pendingTimerCount() {
       return timers.size;
     },
     prefObservers,
+    profilerNode,
     removeAreaWidget(id) {
       areaWidgetIds = areaWidgetIds.filter((candidate) => candidate !== id);
     },
@@ -750,7 +967,9 @@ function createNativeWindow({
     },
     sidebarNode,
     targets,
+    allTabsNode,
     window,
+    zoomControlsNode,
   };
 }
 
@@ -1104,13 +1323,22 @@ test("extension invoke anchors the widget subview on the project host", async ()
   pair.controller.toolbarWidgets.subscribePopup((event) =>
     popupEvents.push(event.open),
   );
+  const triggerEvent = {
+    button: 0,
+    stopPropagation() {},
+    type: "click",
+  };
   try {
     const snapshot = pair.controller.toolbarWidgets.snapshot();
     const extension = snapshot.zones.top.find(
       (widget) => widget.kind === "extension-action",
     );
     assert.equal(
-      await pair.controller.toolbarWidgets.invoke(extension.handle, host),
+      await pair.controller.toolbarWidgets.invoke(
+        extension.handle,
+        host,
+        triggerEvent,
+      ),
       true,
     );
     const showCall = native.calls.find(([name]) => name === "showSubView");
@@ -1118,12 +1346,17 @@ test("extension invoke anchors the widget subview on the project host", async ()
       "showSubView",
       "PanelUI-webext-widget_example_com-browser-action-view",
       host,
+      triggerEvent,
     ]);
     assert.deepEqual(popupEvents, [true]);
 
     // Activating the same widget while its popup is open toggles it closed.
     assert.equal(
-      await pair.controller.toolbarWidgets.invoke(extension.handle, host),
+      await pair.controller.toolbarWidgets.invoke(
+        extension.handle,
+        host,
+        triggerEvent,
+      ),
       true,
     );
     assert.deepEqual(popupEvents, [true, false]);
@@ -1131,6 +1364,245 @@ test("extension invoke anchors the widget subview on the project host", async ()
       native.calls.some(
         ([name, id]) =>
           name === "hidePopup" && id === "customizationui-widget-panel",
+      ),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("delegated account, Library, and All Tabs widgets use their Firefox owners", async () => {
+  const native = createNativeWindow({
+    extraAreaWidgetIds: [
+      "fxa-toolbar-menu-button",
+      "library-button",
+      "alltabs-button",
+    ],
+  });
+  const pair = createController(native);
+  const host = native.addHost();
+  const triggerEvent = {
+    button: 0,
+    stopPropagation() {},
+    type: "click",
+  };
+  const originalShowSubView = native.window.PanelUI.showSubView;
+  try {
+    const snapshot = pair.controller.toolbarWidgets.snapshot();
+    const account = snapshot.zones.top.find(
+      (widget) => widget.label === "Account",
+    );
+    const library = snapshot.zones.top.find(
+      (widget) => widget.label === "Library",
+    );
+    const allTabs = snapshot.zones.top.find(
+      (widget) => widget.label === "List all tabs",
+    );
+
+    host.open = true;
+    assert.equal(
+      await pair.controller.toolbarWidgets.invoke(
+        account.handle,
+        host,
+        triggerEvent,
+      ),
+      true,
+    );
+    assert.equal(host.open, false);
+    assert.ok(
+      native.calls.some(
+        ([name, anchor, event]) =>
+          name === "toggleAccountPanel" &&
+          anchor === native.accountNode &&
+          event === triggerEvent,
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        ([name, viewId, anchor, event]) =>
+          name === "showSubView" &&
+          viewId === "PanelUI-fxa" &&
+          anchor === host &&
+          event === triggerEvent,
+      ),
+    );
+    assert.equal(native.window.PanelUI.showSubView, originalShowSubView);
+
+    assert.equal(
+      await pair.controller.toolbarWidgets.invoke(
+        library.handle,
+        host,
+        triggerEvent,
+      ),
+      true,
+    );
+    assert.ok(
+      native.calls.some(
+        ([name, viewId, anchor, event]) =>
+          name === "showSubView" &&
+          viewId === "appMenu-libraryView" &&
+          anchor === host &&
+          event === triggerEvent,
+      ),
+    );
+
+    assert.equal(
+      await pair.controller.toolbarWidgets.invoke(
+        allTabs.handle,
+        host,
+        triggerEvent,
+      ),
+      true,
+    );
+    assert.ok(
+      native.calls.some(
+        ([name, anchor, event, entrypoint]) =>
+          name === "showAllTabsPanel" &&
+          anchor === host &&
+          event === triggerEvent &&
+          entrypoint === "alltabs-button",
+      ),
+    );
+    assert.equal(native.window.gTabsPanel.allTabsButton, native.allTabsNode);
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("native menu widgets open their Firefox-owned menupopup on the project host", async () => {
+  const native = createNativeWindow({
+    extraAreaWidgetIds: ["bookmarks-menu-button"],
+  });
+  const pair = createController(native);
+  const host = native.addHost();
+  const popupEvents = [];
+  const triggerEvent = {
+    button: 0,
+    stopPropagation() {},
+    type: "click",
+  };
+  pair.controller.toolbarWidgets.subscribePopup((event) =>
+    popupEvents.push(event.open),
+  );
+  try {
+    const widget = pair.controller.toolbarWidgets
+      .snapshot()
+      .zones.top.find((candidate) => candidate.label === "Bookmarks Menu");
+    assert.equal(
+      await pair.controller.toolbarWidgets.invoke(
+        widget.handle,
+        host,
+        triggerEvent,
+      ),
+      true,
+    );
+    const openCall = native.calls.find(([name]) => name === "openPopup");
+    assert.equal(openCall[1], "BMB_bookmarksPopup");
+    assert.equal(openCall[2], host);
+    assert.equal(openCall[3].position, "after_start");
+    assert.equal(openCall[3].triggerEvent, triggerEvent);
+    assert.deepEqual(popupEvents, [true]);
+
+    assert.equal(
+      await pair.controller.toolbarWidgets.invoke(
+        widget.handle,
+        host,
+        triggerEvent,
+      ),
+      true,
+    );
+    assert.deepEqual(popupEvents, [true, false]);
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("compound Zoom, Edit, and Profiler widgets expose every native child action", async () => {
+  const native = createNativeWindow({
+    extraAreaWidgetIds: ["zoom-controls", "edit-controls", "profiler-button"],
+  });
+  const pair = createController(native);
+  const host = native.addHost();
+  try {
+    const snapshot = pair.controller.toolbarWidgets.snapshot();
+    const zoom = snapshot.zones.top.find((widget) => widget.label === "Zoom");
+    const edit = snapshot.zones.top.find((widget) => widget.label === "Edit");
+    const profiler = snapshot.zones.top.find(
+      (widget) => widget.label === "Profiler",
+    );
+    assert.deepEqual(
+      zoom.parts.map((part) => part.label),
+      ["Zoom out", "100%", "Zoom in"],
+    );
+    assert.deepEqual(
+      edit.parts.map((part) => part.label),
+      ["Cut", "Copy", "Paste"],
+    );
+    assert.deepEqual(
+      profiler.parts.map((part) => part.label),
+      ["Profiler", "Open the profiler panel"],
+    );
+    assert.equal(zoom.parts[0].iconUrl, "chrome://global/skin/icons/minus.svg");
+    assert.equal(
+      edit.parts[1].iconUrl,
+      "chrome://global/skin/icons/edit-copy.svg",
+    );
+
+    const zoomPending = pair.controller.toolbarWidgets.invoke(
+      zoom.parts[0].handle,
+      host,
+    );
+    native.runTimers();
+    assert.equal(await zoomPending, false);
+    const editPending = pair.controller.toolbarWidgets.invoke(
+      edit.parts[1].handle,
+      host,
+    );
+    native.runTimers();
+    assert.equal(await editPending, false);
+    assert.ok(
+      native.calls.some(
+        ([name, id]) => name === "doCommand" && id === "zoom-out-button",
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        ([name, id]) => name === "doCommand" && id === "copy-button",
+      ),
+    );
+
+    const profilerPending = pair.controller.toolbarWidgets.invoke(
+      profiler.parts[0].handle,
+      host,
+    );
+    native.runTimers();
+    assert.equal(await profilerPending, false);
+    assert.ok(
+      native.calls.some(
+        ([name, id]) => name === "doCommand" && id === "profiler-button-button",
+      ),
+    );
+
+    const triggerEvent = {
+      button: 0,
+      stopPropagation() {},
+      type: "click",
+    };
+    assert.equal(
+      await pair.controller.toolbarWidgets.invoke(
+        profiler.parts[1].handle,
+        host,
+        triggerEvent,
+      ),
+      true,
+    );
+    assert.ok(
+      native.calls.some(
+        ([name, viewId, anchor, event]) =>
+          name === "showSubView" &&
+          viewId === "PanelUI-profiler" &&
+          anchor === host &&
+          event === triggerEvent,
       ),
     );
   } finally {

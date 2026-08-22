@@ -1,5 +1,6 @@
 import type {
   ToolbarPaletteEntrySnapshot,
+  ToolbarWidgetPartSnapshot,
   ToolbarWidgetSnapshot,
 } from "../app/toolbar-widgets-state";
 import type { FirefoxIconName } from "./FirefoxIcon.svelte";
@@ -8,6 +9,7 @@ import type { ShellIconName } from "./ShellIcon.svelte";
 const firefoxToolbarWidgetIconNames: ReadonlyMap<string, FirefoxIconName> =
   new Map<string, FirefoxIconName>([
     ["account", "account"],
+    ["arrow-down", "arrow-down"],
     ["bookmark", "bookmark"],
     ["developer", "developer"],
     ["download", "download"],
@@ -34,13 +36,19 @@ const toolbarWidgetIconNames: ReadonlyMap<string, ShellIconName> = new Map<
 ]);
 
 export function resolveFirefoxToolbarWidgetIcon(
-  widget: ToolbarWidgetSnapshot | ToolbarPaletteEntrySnapshot,
+  widget:
+    | ToolbarWidgetSnapshot
+    | ToolbarWidgetPartSnapshot
+    | ToolbarPaletteEntrySnapshot,
 ): FirefoxIconName | null {
   return firefoxToolbarWidgetIconNames.get(widget.icon) ?? null;
 }
 
 export function resolveToolbarWidgetIcon(
-  widget: ToolbarWidgetSnapshot | ToolbarPaletteEntrySnapshot,
+  widget:
+    | ToolbarWidgetSnapshot
+    | ToolbarWidgetPartSnapshot
+    | ToolbarPaletteEntrySnapshot,
 ): ShellIconName {
   return toolbarWidgetIconNames.get(widget.icon) ?? "generic";
 }

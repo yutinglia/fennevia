@@ -90,6 +90,7 @@ export const COLOR_MAX_LENGTH = 64;
 export const ICON_URL_MAX_LENGTH = 512;
 export const PALETTE_MAX_ENTRIES = 256;
 export const ZONE_MAX_ENTRIES = 48;
+export const WIDGET_PART_MAX_ENTRIES = 8;
 export const ICON_TOKEN_PATTERN = /^[a-z][a-z0-9-]{0,31}$/u;
 export const PALETTE_TOKEN_PATTERN = /^[a-z][a-z0-9-]{0,63}$/u;
 export const MOZ_EXTENSION_URL_PREFIX = "moz-extension://";
@@ -153,6 +154,17 @@ export type ToolbarWidgetSnapshot = Readonly<{
   kind: ToolbarWidgetKind;
   label: string;
   missing: boolean;
+  parts: readonly ToolbarWidgetPartSnapshot[];
+  tooltip: string;
+}>;
+
+export type ToolbarWidgetPartSnapshot = Readonly<{
+  disabled: boolean;
+  handle: string;
+  icon: string;
+  iconUrl: string;
+  kind: "built-in";
+  label: string;
   tooltip: string;
 }>;
 
@@ -241,7 +253,11 @@ export type ToolbarWidgetsPopupEvent = Readonly<{
 
 export type BrowserToolbarWidgetsBridge = Readonly<{
   edit: (operation: ToolbarWidgetsEditOperation) => Promise<boolean>;
-  invoke: (handle: string, host: unknown) => Promise<boolean>;
+  invoke: (
+    handle: string,
+    host: unknown,
+    triggerEvent?: unknown,
+  ) => Promise<boolean>;
   snapshot: () => ToolbarWidgetsSnapshot;
   subscribe: (
     listener: (event: ToolbarWidgetsStateEvent) => void,
@@ -259,7 +275,11 @@ export type BrowserToolbarWidgetsState = Readonly<{
 export type BrowserToolbarWidgetsStateAdapter = Readonly<{
   dispose: () => boolean;
   edit: (operation: ToolbarWidgetsEditOperation) => Promise<boolean>;
-  invoke: (handle: string, host: unknown) => Promise<boolean>;
+  invoke: (
+    handle: string,
+    host: unknown,
+    triggerEvent?: unknown,
+  ) => Promise<boolean>;
   snapshot: () => BrowserToolbarWidgetsState;
   status: () => Readonly<{
     disposed: boolean;

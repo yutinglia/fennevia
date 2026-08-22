@@ -246,6 +246,10 @@ thickness. It is
 intentionally not a general CSS editor, extension platform, or unlimited
 geometry builder.
 
+Mirrored Account, Library, All Tabs, and native menu widgets delegate to their
+Firefox owners. Compound Zoom, Edit, and Profiler placements stay grouped but
+expose their independently actionable controls.
+
 ## Documentation
 
 The root README is intentionally limited to public, user-facing information.
