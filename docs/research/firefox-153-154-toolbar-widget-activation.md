@@ -111,6 +111,30 @@ Firefox-derived label, tooltip, disabled state, and bounded icon presentation.
 If an expected child is missing or disconnected on a supported build, the
 whole placement is published as missing instead of displaying a silent no-op.
 
+### Follow-up: visible Zoom percentage
+
+The owner follow-up reported that the corrected Zoom group still omitted its
+percentage. The follow-up base is project commit `f2f2bb3`; the supported
+Firefox 154.0 release/build and official commit remain those recorded above.
+
+Firefox 153/154
+[`ZoomUI.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/modules/ZoomUI.sys.mjs)
+calculates the selected page's `ZoomManager.zoom * 100`, formats it with
+`zoom-button.label`, and writes the localized percentage to
+`#zoom-reset-button[label]` after zoom and location changes. The existing
+toolbar-widget subtree observer already watches `label`, but the shell rendered
+every compound part through its glyph component, so the changing value never
+became visible.
+
+The minimum correction marks only the Zoom reset specification as a textual
+value part. Its bounded Firefox-derived label is copied to `valueText`, which
+must be empty or exactly equal to the already-validated label. The shell shows
+that value with tabular figures, gives the project button an accessible name
+that includes both percentage and reset tooltip, and continues to invoke the
+same opaque native reset handle. No direct `ZoomManager` read, duplicate zoom
+listener, timer, native-node exposure, persistence, logging, or new dependency
+is introduced.
+
 ## Compatibility canaries checked
 
 The required current canary heads were inspected for the same owner symbols:
@@ -178,6 +202,23 @@ ownership and cleanup boundaries.
   change.
 
 ## Validation record
+
+Visible-percentage follow-up:
+
+- `node --test tests/firefox-toolbar-widgets.test.mjs tests/toolbar-widgets-state.test.mjs tests/frontend-build.test.mjs`
+  — **passed**, 40/40 tests, including all three Zoom child commands and a
+  `100%` to `110%` native-label republish.
+- `npm run typecheck` — **passed**, including zero Svelte errors or warnings.
+- `npm run verify` — **passed**: formatting, ESLint, typecheck, 321/321 Node
+  tests, 87.36% line / 95.08% function coverage, the complete fixed-list
+  PowerShell suite, dependency audit, deterministic frontend/bridge build,
+  16-file package manifest sync, and all 14 production-artifact
+  inventory/security checks.
+- Live percentage rendering and clicking in Firefox 153/154 — **not run**, not
+  passed. The implementation uses the pinned Firefox 154 source contract and
+  focused automation; the real-Firefox row remains in the release matrix.
+
+Original activation correction:
 
 - `node --test tests/firefox-toolbar-widgets.test.mjs tests/toolbar-widgets-state.test.mjs tests/frontend-build.test.mjs`
   — **passed**, 40/40 tests.

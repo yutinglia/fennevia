@@ -36,6 +36,7 @@ export type ToolbarWidgetCapabilitySpecification = Readonly<{
 }>;
 
 export type CompoundToolbarWidgetPartSpecification = Readonly<{
+  displayLabel?: true;
   fallbackLabel: string;
   icon: string;
   nodeId: string;
@@ -117,6 +118,7 @@ export const compoundToolbarWidgetPartsByWidgetId: ReadonlyMap<
         nodeId: "zoom-out-button",
       }),
       Object.freeze({
+        displayLabel: true,
         fallbackLabel: "Reset zoom",
         icon: "zoom",
         nodeId: "zoom-reset-button",

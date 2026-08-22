@@ -166,6 +166,7 @@ export type ToolbarWidgetPartSnapshot = Readonly<{
   kind: "built-in";
   label: string;
   tooltip: string;
+  valueText: string;
 }>;
 
 export type ToolbarPaletteEntrySnapshot = Readonly<{

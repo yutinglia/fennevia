@@ -1541,8 +1541,10 @@ native nodes in a privileged opaque-handle registry; the frontend receives only
 validated bounds (bounded `moz-extension://`, `chrome://`, and `resource://`
 icon URLs per ADR-046, rgba-only badge colors, fixed icon tokens, bounded text,
 and at most eight built-in compound parts). Every part has its own opaque
-handle, label, tooltip, icon presentation, and disabled state; no child id
-crosses the bridge.
+handle, label, tooltip, icon presentation, disabled state, and an optional
+`valueText` that must equal its already-bounded label; no child id crosses the
+bridge. The Zoom reset part uses that value text to show Firefox's current
+localized percentage while retaining reset as the button action.
 
 Activation passes the clicked project host and transient trigger event back
 through the handle. Widgets with a `viewId` open through
@@ -1553,9 +1555,11 @@ Firefox widgets retain their exact owner: Account uses
 `gTabsPanel.showAllTabsPanel` with a temporary visible project anchor. Native
 `type="menu"` widgets open their existing `menupopup` through
 `XULPopupElement.openPopup`; Zoom, Edit, and Profiler retain grouped placement
-while exposing their independently actionable native children. Remaining
-simple widgets dispatch the native node command and re-anchor any panel that
-appears with `moveToAnchor(host)`. Panel holds, toggle-close, popup release,
+while exposing their independently actionable native children. The existing
+bounded attribute observer republishes Zoom's visible reset percentage when
+Firefox changes that child's `label`. Remaining simple widgets dispatch the
+native node command and re-anchor any panel that appears with
+`moveToAnchor(host)`. Panel holds, toggle-close, popup release,
 temporary owner substitution, and disposal reuse the ADR-042 deterministic
 per-window pattern.
 

@@ -849,8 +849,9 @@ ADR-044 (#64) adds focused unit/static/build coverage for:
   existing Firefox-owned `menupopup` through `openPopup(host, options)`;
 - compound Zoom, Edit, and Profiler snapshots with bounded unique child
   handles, semantic grouped buttons, parent/child disabled mapping, missing
-  child degradation, native child commands, and Profiler main/dropmarker
-  command-versus-view routing;
+  child degradation, all three native Zoom child commands, live reset-label
+  percentage republishing, and Profiler main/dropmarker command-versus-view
+  routing;
 - remaining simple built-in activation through the native node command with
   `moveToAnchor` re-anchoring of node panels and bounded-timeout `false`
   settlement when no panel appears;
@@ -870,8 +871,9 @@ badge updates from live extensions, and overflow scrolling inside the
 flexible top widget zone on narrow layouts. Also `not run`: Account in
 signed-out/unverified/signed-in states, Library and All Tabs placement,
 Bookmarks/Share/Send native menus, Zoom/Edit child commands, Profiler
-main/dropmarker behavior, and popup placement for each from all four edges in
-Firefox 153/154. Implementation/source evidence is in
+main/dropmarker behavior, live Zoom percentage rendering after zoom and tab
+changes, and popup placement for each from all four edges in Firefox 153/154.
+Implementation/source evidence is in
 `docs/research/firefox-153-toolbar-widget-mirror.md` and
 `docs/research/firefox-153-154-toolbar-widget-activation.md` and
 `plans/005-topbar-widget-mirror.md`.

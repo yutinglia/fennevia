@@ -90,6 +90,7 @@ const zoomOutPart = Object.freeze({
   kind: "built-in",
   label: "Zoom out",
   tooltip: "Zoom out (Ctrl+-)",
+  valueText: "",
 });
 
 const compoundWidget = Object.freeze({
@@ -210,6 +211,14 @@ test("copyToolbarWidgetSnapshot enforces bounded privacy-safe fields", () => {
   );
   assert.throws(
     () => copyToolbarWidgetPartSnapshot({ ...zoomOutPart, handle: "" }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_WIDGET_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarWidgetPartSnapshot({
+        ...zoomOutPart,
+        valueText: "100%",
+      }),
     /FENNEVIA_TOOLBAR_WIDGETS_STATE_WIDGET_INVALID/u,
   );
 

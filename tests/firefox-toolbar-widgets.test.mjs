@@ -421,21 +421,22 @@ function createNativeWindow({
   targets.set(bookmarksMenuNode.id, bookmarksMenuNode);
 
   function createCompoundPart(id, label, tooltip) {
+    const attributes = new Map([
+      ["label", label],
+      ["tooltiptext", tooltip],
+    ]);
     return {
       doCommand() {
         calls.push(["doCommand", id]);
       },
       getAttribute(name) {
-        if (name === "label") {
-          return label;
-        }
-        if (name === "tooltiptext") {
-          return tooltip;
-        }
-        return null;
+        return attributes.get(name) ?? null;
       },
       id,
       isConnected: true,
+      setAttribute(name, value) {
+        attributes.set(name, String(value));
+      },
     };
   }
 
@@ -1535,6 +1536,10 @@ test("compound Zoom, Edit, and Profiler widgets expose every native child action
       ["Zoom out", "100%", "Zoom in"],
     );
     assert.deepEqual(
+      zoom.parts.map((part) => part.valueText),
+      ["", "100%", ""],
+    );
+    assert.deepEqual(
       edit.parts.map((part) => part.label),
       ["Cut", "Copy", "Paste"],
     );
@@ -1554,6 +1559,18 @@ test("compound Zoom, Edit, and Profiler widgets expose every native child action
     );
     native.runTimers();
     assert.equal(await zoomPending, false);
+    const zoomResetPending = pair.controller.toolbarWidgets.invoke(
+      zoom.parts[1].handle,
+      host,
+    );
+    native.runTimers();
+    assert.equal(await zoomResetPending, false);
+    const zoomInPending = pair.controller.toolbarWidgets.invoke(
+      zoom.parts[2].handle,
+      host,
+    );
+    native.runTimers();
+    assert.equal(await zoomInPending, false);
     const editPending = pair.controller.toolbarWidgets.invoke(
       edit.parts[1].handle,
       host,
@@ -1563,6 +1580,16 @@ test("compound Zoom, Edit, and Profiler widgets expose every native child action
     assert.ok(
       native.calls.some(
         ([name, id]) => name === "doCommand" && id === "zoom-out-button",
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        ([name, id]) => name === "doCommand" && id === "zoom-reset-button",
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        ([name, id]) => name === "doCommand" && id === "zoom-in-button",
       ),
     );
     assert.ok(
@@ -1605,6 +1632,24 @@ test("compound Zoom, Edit, and Profiler widgets expose every native child action
           event === triggerEvent,
       ),
     );
+
+    const events = [];
+    const unsubscribe = pair.controller.toolbarWidgets.subscribe((event) =>
+      events.push(event),
+    );
+    native.compoundParts.get("zoom-reset-button").setAttribute("label", "110%");
+    const activeObserver = native.observers.findLast(
+      (observer) => !observer.disconnected,
+    );
+    assert.ok(activeObserver);
+    activeObserver.trigger();
+    native.runTimers();
+    assert.equal(events.length, 1);
+    const updatedZoom = events[0].snapshot.zones.top.find(
+      (widget) => widget.label === "Zoom",
+    );
+    assert.equal(updatedZoom.parts[1].valueText, "110%");
+    assert.equal(unsubscribe(), true);
   } finally {
     disposePair(pair);
   }

@@ -183,6 +183,18 @@
   const widgetDisplayLabel = (widget: ToolbarWidgetSnapshot): string =>
     localizeWidgetLabel(props.localeId, widget);
 
+  const toolbarWidgetPartTooltip = (part: ToolbarWidgetPartSnapshot): string =>
+    localizeWidgetTooltip(props.localeId, part.tooltip, part.label);
+
+  const toolbarWidgetPartAccessibleLabel = (
+    part: ToolbarWidgetPartSnapshot,
+  ): string => {
+    const tooltip = toolbarWidgetPartTooltip(part);
+    return part.valueText === "" || tooltip === part.valueText
+      ? part.label
+      : `${part.valueText}, ${tooltip}`;
+  };
+
   const runToolbarWidgetEdit = async (
     operation: ToolbarWidgetsEditOperation,
   ) => {
@@ -403,20 +415,23 @@
         >
           {#each widget.parts as part (part.handle)}
             <button
-              aria-label={part.label}
+              aria-label={toolbarWidgetPartAccessibleLabel(part)}
               class="fennevia-control fennevia-toolbar-widgets__button fennevia-toolbar-widgets__compound-button"
               data-fennevia-browser-tool="toolbar-widget-part"
               disabled={part.disabled}
-              onclick={(event) =>
-                void runToolbarWidgetPartAction(part, event)}
-              title={localizeWidgetTooltip(
-                props.localeId,
-                part.tooltip,
-                part.label,
-              )}
+              onclick={(event) => void runToolbarWidgetPartAction(part, event)}
+              title={toolbarWidgetPartTooltip(part)}
               type="button"
             >
-              <ToolbarWidgetGlyph widget={part} />
+              {#if part.valueText}
+                <span
+                  aria-hidden="true"
+                  class="fennevia-toolbar-widgets__compound-value"
+                  >{part.valueText}</span
+                >
+              {:else}
+                <ToolbarWidgetGlyph widget={part} />
+              {/if}
             </button>
           {/each}
         </div>

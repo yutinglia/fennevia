@@ -112,6 +112,10 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   assert.match(css, /--toolbar-background-color/u);
   assert.match(css, /--color-accent-primary/u);
   assert.match(css, /--focus-outline-color/u);
+  assert.match(
+    css,
+    /\.fennevia-toolbar-widgets__compound-value \{[\s\S]*?min-inline-size: 4ch;[\s\S]*?font-variant-numeric: tabular-nums;/u,
+  );
   assert.doesNotMatch(css, /247 250 252/u);
 
   const [component, progressLight, toolbarWidgets, mountShell, customizeStyle] =
@@ -146,6 +150,9 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
     toolbarWidgets,
     /data-fennevia-browser-tool="toolbar-widget-part"/u,
   );
+  assert.match(toolbarWidgets, /part\.valueText/u);
+  assert.match(toolbarWidgets, /fennevia-toolbar-widgets__compound-value/u);
+  assert.match(toolbarWidgets, /toolbarWidgetPartAccessibleLabel/u);
   assert.match(
     toolbarWidgets,
     /toolbarWidgets\.invoke\([\s\S]*?resolveBrowserToolHost\(event\),[\s\S]*?event/u,
