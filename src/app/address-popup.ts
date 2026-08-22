@@ -45,6 +45,8 @@ export type AddressPopupSnapshot = Readonly<{
   revision: number;
 }>;
 
+export type AddressPopupCloseFocusDestination = "content" | "none" | "origin";
+
 export type AddressPopupOpenResult = "opened" | "refocus";
 
 export type AddressPopupController = Readonly<{
@@ -108,6 +110,30 @@ function selectedTabId(state: BrowserTabsState): string | null {
 
 function freezeSnapshot(snapshot: AddressPopupSnapshot): AddressPopupSnapshot {
   return Object.freeze({ ...snapshot });
+}
+
+export function getAddressPopupCloseFocusDestination(
+  snapshot: AddressPopupSnapshot,
+  environmentIsNormal: boolean,
+): AddressPopupCloseFocusDestination {
+  if (
+    !environmentIsNormal ||
+    snapshot.phase !== "closing" ||
+    snapshot.closeReason === "environment" ||
+    snapshot.closeReason === "focus-failed" ||
+    snapshot.closeReason === "native-handoff"
+  ) {
+    return "none";
+  }
+  if (
+    snapshot.closeReason === "committed" ||
+    snapshot.closeReason === "tab-changed" ||
+    snapshot.invocationSource === "left-launcher" ||
+    snapshot.invocationSource === "top-launcher"
+  ) {
+    return "content";
+  }
+  return "origin";
 }
 
 export function createAddressPopupController({

@@ -259,6 +259,9 @@ the minimum design below.
 - [x] Popup open/input/close/tab-switch/navigation/disposal state transitions.
 - [x] Keyboard selection, active descendant, pointer selection, Enter/Escape,
       empty/loading/error announcement, and focus restoration behavior.
+- [x] Launcher-origin cancel, backdrop, and focus-boundary close return focus
+      to selected content and release the left focus hold; `Ctrl+L` from a
+      valid non-launcher origin retains the prior-origin restoration path.
 - [x] Result text/icon rendering uses properties/text interpolation only.
 - [x] Boundary tests reject Firefox imports/globals from app/Svelte modules.
 - [x] Source/static privacy tests reject provider payload logging, persistence,
