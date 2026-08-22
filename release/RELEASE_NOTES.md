@@ -35,6 +35,9 @@ This minor collects the shell, interaction, and installer work added after
 - fixes for duplicate middle-click navigation, address-popup focus release,
   side-drag reveal suppression, and tab-panel hold restoration after closing a
   row under the pointer
+- release hardening that keeps native Firefox visible after a failed window is
+  disposed and makes top-edge keyboard reveal land on the enabled Home control
+  when Back is unavailable
 - WinForms installer event-flow/scaling fixes plus stricter fail-open,
   ownership, and cleanup boundaries
 - an internal source-layout modularization that preserves the existing bridge,
