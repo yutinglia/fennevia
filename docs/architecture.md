@@ -275,17 +275,43 @@ property-only image and explicit fallback, and no browsing value enters logs or
 diagnostics. The bridge synchronously activates Firefox's lazy tab-menu Fluent
 IDs before opening and acquires a NativeUi handoff token for the popup lifetime,
 so the real native-tab trigger neither produces blank static labels nor reveals
-the original toolbar. Dragging uses the current tab button as the browser drag
-image and one calculated before/after insertion marker; every terminal path
-clears it and the shared left pointer hold. Current source and runtime evidence
-is in
+the original toolbar. ADR-062 keeps the existing move bridge but uses the whole
+project-owned tab row as a pointer-aligned browser drag image. A pure final-index
+mapping moves intervening rows one slot to expose the landing gap while a
+before/after marker remains at that gap; hit testing uses the pre-transform row
+geometry with scroll compensation so the preview does not feed back into its
+own thresholds. Every terminal path clears the transforms, marker, captured
+geometry, and shared left pointer hold. The existing
+`Ctrl+Shift+ArrowUp/Down` path is exposed through `aria-keyshortcuts`, and one
+text-only polite output announces successful pointer or keyboard moves.
+ADR-063 extends the terminal drag path without putting an identifier in the OS
+payload: a single ephemeral privileged coordinator retains the active native
+tab, while `DataTransfer` carries only a fixed custom-type marker. Same-window
+drops still move through `moveTabTo`; same-kind target windows adopt through
+their own `gBrowser.adoptTab`. A target window capture listener handles content
+drops before Firefox forwards them to the remote page and previews that append
+position with one fixed-label, packaged-icon tab-shaped row over a real layout
+slot. List drops move the same generic preview to the resolved insertion point;
+no source title, URL, or favicon is copied into the target window. A null
+window-capture `dragleave.relatedTarget` clears a no-drop target exit, while
+non-null internal transitions preserve the shared hold. An otherwise
+unconsumed drag delegates to Firefox's `replaceTabWithWindow`. No window is
+inferred from screen geometry, normal/private transfer is rejected, and every
+terminal cleanup releases the shared left-edge hold. If adoption removes the
+source row before `dragend` traverses that window, the next source tab snapshot
+detects the missing active ID and performs the same local cleanup without
+ending the transfer ahead of the target; after the DOM update it releases
+focus/keyboard holds only when focus has actually left that surface.
+Current source and runtime evidence is in
 `docs/research/firefox-153-tabs-bridge.md`,
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,
 `docs/research/firefox-153-154-panel-context-actions.md`,
-`docs/research/firefox-153-154-native-shell-icons.md`, ADR-024, ADR-025, and
-ADR-041/ADR-058/ADR-060.
+`docs/research/firefox-153-154-native-shell-icons.md`,
+`docs/research/firefox-154-tab-drag-spatial-preview.md`,
+`docs/research/firefox-154-cross-window-tab-drag.md`, ADR-024, ADR-025, and
+ADR-041/ADR-058/ADR-060/ADR-062/ADR-063.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather

@@ -57,6 +57,8 @@ export type TabDropPreview = Readonly<{
   position: "after" | "before";
 }> | null;
 
+export type TabDragShift = "down" | "up" | null;
+
 export function getDisplayTabTitle(
   tab: TabSnapshot,
   labels: TabStripLabels = defaultTabStripLabels,
@@ -158,6 +160,16 @@ export function findOpenedTabIds(
   );
 }
 
+export function isDraggedTabMissing(
+  tabs: readonly TabSnapshot[],
+  draggingTabId: string | null,
+): boolean {
+  return (
+    draggingTabId !== null &&
+    !tabs.some((candidate) => candidate.id === draggingTabId)
+  );
+}
+
 export function findCloseFocusTarget(
   tabs: readonly TabSnapshot[],
   tabId: string,
@@ -244,6 +256,114 @@ export function resolveTabDropPreview(
     index: targetIndex,
     position: targetIndex < draggingIndex ? "before" : "after",
   });
+}
+
+export function resolveTabDragShift(
+  tabs: readonly TabSnapshot[],
+  draggingTabId: string,
+  targetIndex: number | null,
+  itemIndex: number,
+): TabDragShift {
+  const draggingIndex = tabs.findIndex((tab) => tab.id === draggingTabId);
+  if (
+    draggingIndex < 0 ||
+    targetIndex === null ||
+    !Number.isSafeInteger(targetIndex) ||
+    targetIndex < 0 ||
+    targetIndex >= tabs.length ||
+    targetIndex === draggingIndex ||
+    !Number.isSafeInteger(itemIndex) ||
+    itemIndex < 0 ||
+    itemIndex >= tabs.length
+  ) {
+    return null;
+  }
+  if (
+    targetIndex < draggingIndex &&
+    itemIndex >= targetIndex &&
+    itemIndex < draggingIndex
+  ) {
+    return "down";
+  }
+  if (
+    targetIndex > draggingIndex &&
+    itemIndex > draggingIndex &&
+    itemIndex <= targetIndex
+  ) {
+    return "up";
+  }
+  return null;
+}
+
+export function resolveExternalTabDropIndex(
+  tabs: readonly TabSnapshot[],
+  itemMids: readonly number[],
+  pointerY: number,
+  pinned: boolean,
+): number | null {
+  if (itemMids.length !== tabs.length || !Number.isFinite(pointerY)) {
+    return null;
+  }
+
+  let insertBefore = tabs.length;
+  for (const [index, midpoint] of itemMids.entries()) {
+    if (!Number.isFinite(midpoint)) {
+      return null;
+    }
+    if (pointerY < midpoint) {
+      insertBefore = index;
+      break;
+    }
+  }
+
+  const pinnedCount = tabs.filter((tab) => tab.pinned).length;
+  return pinned
+    ? Math.min(Math.max(insertBefore, 0), pinnedCount)
+    : Math.min(Math.max(insertBefore, pinnedCount), tabs.length);
+}
+
+export function resolveExternalTabDragShift(
+  tabs: readonly TabSnapshot[],
+  targetIndex: number | null,
+  itemIndex: number,
+): TabDragShift {
+  if (
+    targetIndex === null ||
+    !Number.isSafeInteger(targetIndex) ||
+    targetIndex < 0 ||
+    targetIndex > tabs.length ||
+    !Number.isSafeInteger(itemIndex) ||
+    itemIndex < 0 ||
+    itemIndex >= tabs.length
+  ) {
+    return null;
+  }
+  return itemIndex >= targetIndex ? "down" : null;
+}
+
+export function resolveDraggedTabTranslateY(
+  originalTop: number,
+  pointerY: number,
+  pointerOffsetY: number,
+  minimumTop: number,
+  maximumTop: number,
+): number | null {
+  if (
+    !Number.isFinite(originalTop) ||
+    !Number.isFinite(pointerY) ||
+    !Number.isFinite(pointerOffsetY) ||
+    pointerOffsetY < 0 ||
+    !Number.isFinite(minimumTop) ||
+    !Number.isFinite(maximumTop) ||
+    minimumTop > maximumTop
+  ) {
+    return null;
+  }
+  const desiredTop = Math.min(
+    Math.max(pointerY - pointerOffsetY, minimumTop),
+    maximumTop,
+  );
+  return desiredTop - originalTop;
 }
 
 export function getTabStripKeyAction(

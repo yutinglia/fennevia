@@ -334,9 +334,20 @@ Validate:
 - Up/Down, Home/End, Enter/Space, Delete, sibling pin/close/mute controls;
 - middle-click close without autoscroll;
 - drag reorder and `Ctrl+Shift+ArrowUp/Down` within the pinned partition;
-- immediate browser drag image, valid before/after insertion marker, pinned
-  boundary clamp, drag-leave/drop/end/disposal preview cleanup, and exact
-  release of the existing left pointer hold;
+- pointer-aligned full-row browser drag image, an actual source row that follows
+  the pointer without transform lag while inside its strip, stable pre-transform
+  midpoint hit testing with scroll compensation, pinned-partition movement
+  bounds, one-slot neighboring-row shifts, and a valid before/after marker that
+  remains at the exposed landing gap;
+- pinned boundary clamp, drag-leave shift/marker cleanup with valid re-entry,
+  and drop/end/disposal cleanup of geometry, transforms, marker, and the
+  existing left pointer hold;
+- ordinary default tab-drag cursor, hover/focus disclosure of secondary
+  actions, declared reorder shortcuts, and one polite successful-move
+  announcement;
+- reduced-motion suppression of meaningful background-row transition duration
+  without delaying direct pointer tracking, plus a visible forced-colors drag
+  source;
 - native `#tabContextMenu` on a background tab, including complete static and
   dynamic localized labels, translation before open, left-edge popup hold, and
   NativeUi handoff that does not reveal original Firefox chrome;
@@ -356,6 +367,35 @@ Validate:
 - selected item remains reachable;
 - direct frontend unmount/remount;
 - stale/foreign ID rejection;
+- marker-only tab drag data after `clearData()`, with no `text/plain`, URL,
+  opaque tab ID, or random drag ID in `DataTransfer`;
+- same-window drag move, target-strip cross-window adoption at a pinned-aware
+  insertion point, and target-browser-content append at the tab-list end;
+- target-window entry over either browser content or the project frame reveals
+  and holds that window's left tab surface before list hit testing; moving
+  between target content and list keeps it visible;
+- an external target preview reserves one real row-height layout slot only for
+  a valid target index, so a short target list extends without a
+  transformed-overflow scrollbar while a genuinely height-constrained list
+  remains scrollable;
+- the accepted target index also shows one pointer-transparent, aria-hidden
+  tab-shaped row at the exact insertion point, using only a fixed localized
+  label and packaged tab icon; target-content dragover shows the append
+  position, while project-frame space outside the list shows no false preview;
+- leaving the target browser window again without dropping clears the visible
+  preview, hidden layout slot, marker, external drag state, and left hold;
+  nested/internal `dragleave` events with non-null `relatedTarget` do not clear
+  a still-active target;
+- an unconsumed source drag delegates to Firefox window detach, while Escape,
+  disabled detach, stale state, and a sole-tab source do not create a window;
+- normal/private cross-window inspection and adoption rejection;
+- capture-phase source `dragend`, source-snapshot disappearance after adoption,
+  null-related-target true target-window leave, target drop, setup failure,
+  component disposal, and window disposal release local drag state and the left
+  pointer hold through the shared edge hide owner; after source DOM
+  reconciliation, stale focus/keyboard holds are released only if focus is no
+  longer inside that surface, and an in-window reorder does not trigger the
+  snapshot fallback;
 - bridge-capability failure;
 - no title, URL, or favicon value in normal diagnostics;
 - native tab strip remains attached and unchanged; active rest may collapse its
@@ -368,7 +408,42 @@ Evidence:
 - `docs/research/firefox-153-tab-strip.md`;
 - `docs/research/firefox-153-tab-strip-parity.md`;
 - `docs/research/firefox-153-four-edge-shell.md`;
-- `docs/research/firefox-153-154-native-shell-icons.md`.
+- `docs/research/firefox-153-154-native-shell-icons.md`;
+- `docs/research/firefox-154-tab-drag-spatial-preview.md`;
+- `docs/research/firefox-154-cross-window-tab-drag.md`.
+
+ADR-062 focused validation passed the complete `npm run verify` gate with
+318/318 Node tests, 87.49% line coverage, 95.11% function coverage, all fixed
+PowerShell 7 suites, deterministic generated output, dependency review, and
+14/14 accepted production artifacts. The same fixed suite also passed under
+Windows PowerShell 5.1.
+
+ADR-063 focused coordinator, bridge, adapter, external-index, payload-source,
+capability, and disposal tests pass. The complete `npm run verify` gate passed
+with 326/326 Node tests, 87.36% line coverage, 79.08% branch coverage, 95.24%
+function coverage, all fixed PowerShell 7 suites, dependency audit,
+deterministic frontend/bridge builds, and 14/14 accepted production artifacts.
+The same fixed suite passed under Windows PowerShell 5.1. Real Firefox results
+are not inferred from that automation.
+
+The latest combined ADR-062/ADR-063 refinement adds live source-row movement,
+target-window reveal/hold, a row-height external target layout slot, a visible
+generic target row, true-window-exit cleanup, and the ordinary Firefox cursor.
+Its complete `npm run verify` gate passed with 327/327 Node tests, 87.38% line
+coverage, 79.12% branch coverage, 95.24% function coverage, all fixed
+PowerShell 7 suites, dependency audit, deterministic frontend/bridge builds,
+and 14/14 accepted production artifacts. The fixed suite also passed under
+Windows PowerShell 5.1.
+
+The source-window auto-hide follow-up adds active-dragged-ID disappearance as
+an idempotent cleanup signal, plus a post-DOM focus/keyboard release guarded by
+actual remaining surface focus. `tests/tab-strip.test.mjs` passed 9/9 after the
+change. The complete `npm run verify` gate passed with 331/331 Node tests,
+87.27% line coverage, 79.19% branch coverage, 95.23% function coverage, all
+fixed PowerShell 7 suites, dependency audit, deterministic frontend/bridge
+builds, and 14/14 accepted production artifacts. The fixed suite also passed
+under Windows PowerShell 5.1. Real Firefox results are not inferred from this
+automation.
 
 Issue #60 real Firefox rows (middle-click, audio/mute, container stripe,
 background-tab native menu, drag/keyboard reorder, menu popup hold, private
@@ -383,6 +458,22 @@ ADR-060 real Firefox rows (native Settings gear and all other fixed shell
 resources, normal/second/private windows, light/dark/system themes, native
 loading animation, reduced motion, forced colors, high DPI, missing-resource
 fail-open, sizing, color, and optical alignment): **not run**.
+
+ADR-062 real Firefox rows (full-row drag ghost alignment, live source-row
+pointer tracking, stable upward and downward landing gaps, fast direction
+reversal, overflow autoscroll, pinned boundary behavior, reduced motion, forced
+colors, screen reader announcement, normal/second/private isolation, and
+disposal during drag): **not run**.
+
+ADR-063 real Firefox rows (target-strip insertion, target-content append,
+source-content detach, non-Firefox application detach, Escape cancellation,
+sole-tab behavior, pinned partitions, overlapping windows, left-edge auto-hide,
+target-window reveal/hold while crossing content and list, visible target-row
+placement and cleanup after leaving the target again without dropping,
+source left-panel auto-hide after adoption even when source `dragend` is not
+observed, normal/second/private rejection/isolation, source/target window
+closure, missing-capability fail-open, and Browser Console/Toolbox ownership):
+**not run**.
 
 ### 6.2 Top navigation — implemented
 
@@ -1070,12 +1161,12 @@ Until `WindowShell` registers `Ctrl+Alt+Shift+F12`, the CSS deadline is the
 fail-open path for a hung privileged runtime. Safe start and Firefox safe mode
 never import the runtime, so the sheet is never registered.
 
-| Check | Current result |
-| --- | --- |
-| Unit/static register, unregister, timeout lock, fail-open selectors | Implemented |
-| Real Firefox cold-start native toolbox flash | `not run` |
-| Real Firefox CSS 2 s watchdog restore of toolbox geometry | `not run` |
-| Real Firefox Windows pre-XUL skeleton with the pref disabled | `not run` |
+| Check                                                                             | Current result                                                                        |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Unit/static register, unregister, timeout lock, fail-open selectors               | Implemented                                                                           |
+| Real Firefox cold-start native toolbox flash                                      | `not run`                                                                             |
+| Real Firefox CSS 2 s watchdog restore of toolbox geometry                         | `not run`                                                                             |
+| Real Firefox Windows pre-XUL skeleton with the pref disabled                      | `not run`                                                                             |
 | Real Firefox safe-start / broken AutoConfig still shows native chrome immediately | `not run` for this sheet; historical safe-start evidence remains in the health record |
 
 Evidence: `docs/research/firefox-153-startup-native-hide.md`.

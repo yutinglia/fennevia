@@ -12,6 +12,7 @@ import {
   createFirefoxDownloadsBridge,
   createFirefoxLocaleBridge,
   createFirefoxNavigationBridge,
+  createFirefoxTabDragCoordinator,
   createFirefoxTabsBridge,
   createFirefoxToolbarWidgetsBridge,
   createFirefoxUrlbarCoverageBridge,
@@ -31,6 +32,13 @@ const BROWSER_DOCUMENT_URI = "chrome://browser/content/browser.xhtml";
 const PROJECT_URI = "chrome://fennevia/content/runtime/WindowShell.sys.mjs";
 const BRIDGE_PROJECT_URI =
   "chrome://fennevia/content/firefox/BridgeBoundary.sys.mjs";
+
+const tabDragCoordinator = createFirefoxTabDragCoordinator({
+  createToken() {
+    const uuid = String(Services.uuid.generateUUID()).replace(/[{}]/gu, "");
+    return `tab-transfer-${uuid}`;
+  },
+});
 
 const EDGE_NAMES = Object.freeze(["top", "left", "right", "bottom"]);
 const HOST_IDS = Object.freeze({
@@ -1281,8 +1289,12 @@ const mountProductionShell = ({
         return nativeUi.beginPopupHandoff(panelId);
       },
       boundary: bridge,
+      dragCoordinator: tabDragCoordinator,
       endNativePopupHandoff(panelId) {
         nativeUi.endPopupHandoff(panelId);
+      },
+      isTabDetachAllowed() {
+        return Services.prefs.getBoolPref("browser.tabs.allowTabDetach", true);
       },
       moduleLoader(uri) {
         return ChromeUtils.importESModule(uri);

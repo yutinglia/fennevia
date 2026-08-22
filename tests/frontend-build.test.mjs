@@ -548,7 +548,7 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
   );
   assert.match(
     runtime,
-    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxBookmarksBridge,[\s\S]*createFirefoxBrowserToolsBridge,[\s\S]*createFirefoxDownloadsBridge,[\s\S]*createFirefoxNavigationBridge,[\s\S]*createFirefoxTabsBridge,[\s\S]*createFirefoxUrlbarCoverageBridge,[\s\S]*createFirefoxWindowControlsBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
+    /createFirefoxBridgeBoundary,[\s\S]*createFirefoxBookmarksBridge,[\s\S]*createFirefoxBrowserToolsBridge,[\s\S]*createFirefoxDownloadsBridge,[\s\S]*createFirefoxNavigationBridge,[\s\S]*createFirefoxTabDragCoordinator,[\s\S]*createFirefoxTabsBridge,[\s\S]*createFirefoxUrlbarCoverageBridge,[\s\S]*createFirefoxWindowControlsBridge,[\s\S]*from "\.\.\/firefox\/BridgeBoundary\.sys\.mjs";/u,
   );
   assert.match(runtime, /Reflect\.deleteProperty\(/u);
   assert.doesNotMatch(runtime, /ShellApp\.sys\.mjs|import\s*\(/u);
@@ -582,6 +582,7 @@ test("the generated Firefox boundary is one deterministic private ESM artifact",
   assert.match(bridge, /createFirefoxDownloadsBridge/u);
   assert.match(bridge, /createFirefoxNavigationBridge/u);
   assert.match(bridge, /createFirefoxTabsBridge/u);
+  assert.match(bridge, /createFirefoxTabDragCoordinator/u);
   assert.match(bridge, /createFirefoxUrlbarCoverageBridge/u);
   assert.match(bridge, /createFirefoxWindowControlsBridge/u);
   assert.match(bridge, /createFirefoxLocaleBridge/u);

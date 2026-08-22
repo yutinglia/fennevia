@@ -10,9 +10,11 @@
   } from "../../../app/i18n";
   import type { FenneviaLocale } from "../../../app/locale-state";
   import {
+    TAB_DRAG_MIME_TYPE,
     createBrowserTabsState,
     type BrowserTabsState,
     type BrowserTabsStateAdapter,
+    type TabDragSnapshot,
     type TabSharingState,
     type TabSnapshot,
   } from "../../../app/tab-state";
@@ -25,8 +27,13 @@
     getTabActionAccessibleName,
     getTabAudioAction,
     getTabStripKeyAction,
+    isDraggedTabMissing,
     newTabHighlightDurationMs,
+    resolveDraggedTabTranslateY,
     resolveRovingTabId,
+    resolveExternalTabDragShift,
+    resolveExternalTabDropIndex,
+    resolveTabDragShift,
     resolveTabDropIndex,
     resolveTabDropPreview,
     type TabDropPreview,
@@ -55,16 +62,43 @@
   let rovingTabId: string | null = $state(null);
   let highlightedTabIds: readonly string[] = $state([]);
   let draggingTabId: string | null = $state(null);
+  let sourceDragId: string | null = $state(null);
+  let externalDrag: TabDragSnapshot | null = $state(null);
+  let dragTargetIndex: number | null = $state(null);
+  let draggedTabTranslateY: number | null = $state(null);
   let dropPreview: TabDropPreview = $state(null);
+  let dropMarkerTop: number | null = $state(null);
+  let reorderAnnouncement = $state("");
   let tabStripElement: HTMLDivElement | undefined = $state();
   let delayedFocusTimer: DelayedTimer | undefined;
   let highlightTimer: DelayedTimer | undefined;
+  let dragHoldActive = false;
+  const dragGeometry = {
+    appendTop: 0,
+    dragId: null as string | null,
+    itemHeights: [] as readonly number[],
+    itemMids: [] as readonly number[],
+    itemTops: [] as readonly number[],
+    listScrollTop: 0,
+    listTop: 0,
+    pointerOffsetY: null as number | null,
+    tabIds: [] as readonly string[],
+  };
   const tabButtons: Array<{
     node: HTMLButtonElement;
     tabId: string;
   }> = [];
 
   let tabLabels = $derived(createTabStripLabels(props.localeId));
+  let externalPreviewTransform = $derived.by(() => {
+    if (!externalDrag || dragTargetIndex === null || dropMarkerTop === null) {
+      return undefined;
+    }
+    return dragTargetIndex === currentTabs.tabs.length &&
+      currentTabs.tabs.length > 0
+      ? `translateY(calc(${dropMarkerTop}px + var(--fennevia-space-1)))`
+      : `translateY(${dropMarkerTop}px)`;
+  });
 
   const getAudioIconName = (
     action: "mute" | "resume-media" | "unmute",
@@ -91,8 +125,15 @@
     );
     return props.tabs.subscribe((nextState) => {
       const openedTabIds = findOpenedTabIds(currentTabs.tabs, nextState.tabs);
+      const sourceTabLeftWindow =
+        sourceDragId !== null &&
+        isDraggedTabMissing(nextState.tabs, draggingTabId);
       currentTabs = nextState;
       rovingTabId = resolveRovingTabId(nextState.tabs, rovingTabId);
+      if (sourceTabLeftWindow) {
+        clearTabDrag();
+        reportAsyncError(tick().then(releaseSurfaceFocus));
+      }
       if (openedTabIds.length > 0) {
         reportAsyncError(revealOpenedTabs(openedTabIds));
       }
@@ -255,6 +296,18 @@
     reportAsyncError(focusTab(tab.id));
   };
 
+  const announceTabMove = (tabId: string, targetIndex: number) => {
+    const tab = currentTabs.tabs.find((candidate) => candidate.id === tabId);
+    if (!tab) {
+      return;
+    }
+    reorderAnnouncement = t("tab.reordered", {
+      index: targetIndex + 1,
+      title: getDisplayTabTitle(tab, tabLabels),
+      total: currentTabs.tabs.length,
+    });
+  };
+
   const handleTabKeydown = (event: KeyboardEvent, tabId: string) => {
     if (
       event.ctrlKey &&
@@ -276,6 +329,7 @@
       cancelDelayedFocus();
       try {
         props.tabs.move(tabId, targetIndex);
+        announceTabMove(tabId, targetIndex);
       } catch (error) {
         props.onFatalError(error);
         return;
@@ -339,79 +393,393 @@
     reportAsyncError(focusTab(tabId));
   };
 
-  const handleTabDragStart = (event: DragEvent, tabId: string) => {
-    const transfer = event.dataTransfer;
-    if (!transfer) {
+  const setDragHold = (active: boolean) => {
+    if (dragHoldActive === active) {
       return;
     }
-    transfer.effectAllowed = "move";
-    transfer.setData("application/x-fennevia-tab", tabId);
-    transfer.setData("text/plain", tabId);
-    const dragImage = event.currentTarget;
-    if (dragImage instanceof HTMLElement) {
-      const bounds = dragImage.getBoundingClientRect();
-      transfer.setDragImage(
-        dragImage,
-        Math.min(24, Math.max(0, bounds.width / 2)),
-        Math.max(0, bounds.height / 2),
-      );
-    }
-    draggingTabId = tabId;
-    dropPreview = null;
-    props.shell.setPointerHeld("left", true);
+    dragHoldActive = active;
+    props.shell.setPointerHeld("left", active);
   };
 
-  const clearTabDrag = () => {
-    const wasDragging = draggingTabId !== null;
+  const clearDragGeometry = () => {
+    dragGeometry.appendTop = 0;
+    dragGeometry.dragId = null;
+    dragGeometry.itemHeights = [];
+    dragGeometry.itemMids = [];
+    dragGeometry.itemTops = [];
+    dragGeometry.listScrollTop = 0;
+    dragGeometry.listTop = 0;
+    dragGeometry.pointerOffsetY = null;
+    dragGeometry.tabIds = [];
+  };
+
+  const clearDropTarget = () => {
+    dragTargetIndex = null;
+    draggedTabTranslateY = null;
+    dropPreview = null;
+    dropMarkerTop = null;
+  };
+
+  function clearTabDrag() {
     draggingTabId = null;
-    dropPreview = null;
-    if (wasDragging) {
-      props.shell.setPointerHeld("left", false);
-    }
-  };
+    sourceDragId = null;
+    externalDrag = null;
+    clearDropTarget();
+    clearDragGeometry();
+    setDragHold(false);
+  }
 
-  const handleTabDragEnd = () => {
-    clearTabDrag();
-  };
-
-  const resolveDragTargetIndex = (
+  const captureDragGeometry = (
     list: HTMLElement,
-    tabId: string,
-    pointerY: number,
-  ): number | null => {
+    dragId: string,
+    localDrag?: Readonly<{ pointerY: number; tabId: string }>,
+  ): boolean => {
+    const listBounds = list.getBoundingClientRect();
     const items = Array.from(
       list.querySelectorAll<HTMLElement>("[data-fennevia-tab-item]"),
     );
-    const mids = items.map((item) => {
-      const bounds = item.getBoundingClientRect();
-      return bounds.top + bounds.height / 2;
-    });
-    return resolveTabDropIndex(currentTabs.tabs, tabId, mids, pointerY);
+    if (items.length !== currentTabs.tabs.length) {
+      clearDragGeometry();
+      return false;
+    }
+    const itemBounds = items.map((item) => item.getBoundingClientRect());
+    const localDragIndex = localDrag
+      ? currentTabs.tabs.findIndex((tab) => tab.id === localDrag.tabId)
+      : -1;
+    if (
+      localDrag &&
+      (localDragIndex < 0 || !Number.isFinite(localDrag.pointerY))
+    ) {
+      clearDragGeometry();
+      return false;
+    }
+    dragGeometry.appendTop =
+      (itemBounds.at(-1)?.bottom ?? listBounds.top) -
+      listBounds.top +
+      list.scrollTop;
+    dragGeometry.dragId = dragId;
+    dragGeometry.itemHeights = itemBounds.map((bounds) => bounds.height);
+    dragGeometry.itemMids = itemBounds.map(
+      (bounds) => bounds.top + bounds.height / 2,
+    );
+    dragGeometry.itemTops = itemBounds.map(
+      (bounds) => bounds.top - listBounds.top + list.scrollTop,
+    );
+    dragGeometry.listScrollTop = list.scrollTop;
+    dragGeometry.listTop = listBounds.top;
+    const localDragBounds = itemBounds[localDragIndex];
+    dragGeometry.pointerOffsetY =
+      localDrag && localDragBounds
+        ? Math.min(
+            localDragBounds.height,
+            Math.max(0, localDrag.pointerY - localDragBounds.top),
+          )
+        : null;
+    dragGeometry.tabIds = currentTabs.tabs.map((tab) => tab.id);
+    return true;
+  };
+
+  const geometryMatches = (dragId: string): boolean =>
+    dragGeometry.dragId === dragId &&
+    dragGeometry.itemHeights.length === currentTabs.tabs.length &&
+    dragGeometry.itemMids.length === currentTabs.tabs.length &&
+    dragGeometry.itemTops.length === currentTabs.tabs.length &&
+    dragGeometry.tabIds.length === currentTabs.tabs.length &&
+    dragGeometry.tabIds.every(
+      (dragTabId, index) => dragTabId === currentTabs.tabs[index]?.id,
+    );
+
+  const adjustedItemMids = (list: HTMLElement): readonly number[] => {
+    const listOffset =
+      list.getBoundingClientRect().top -
+      dragGeometry.listTop +
+      dragGeometry.listScrollTop -
+      list.scrollTop;
+    return dragGeometry.itemMids.map((midpoint) => midpoint + listOffset);
+  };
+
+  const resolveLocalDraggedTranslateY = (
+    list: HTMLElement,
+    tabId: string,
+    dragId: string,
+    pointerY: number,
+  ): number | null => {
+    if (!geometryMatches(dragId) || dragGeometry.pointerOffsetY === null) {
+      return null;
+    }
+    const draggingIndex = currentTabs.tabs.findIndex((tab) => tab.id === tabId);
+    const dragging = currentTabs.tabs[draggingIndex];
+    const draggedHeight = dragGeometry.itemHeights[draggingIndex];
+    const originalTop = dragGeometry.itemTops[draggingIndex];
+    if (!dragging || draggedHeight === undefined || originalTop === undefined) {
+      return null;
+    }
+    const pinnedCount = currentTabs.tabs.filter((tab) => tab.pinned).length;
+    const partitionStart = dragging.pinned ? 0 : pinnedCount;
+    const partitionEnd = dragging.pinned
+      ? pinnedCount - 1
+      : currentTabs.tabs.length - 1;
+    const minimumTop = dragGeometry.itemTops[partitionStart];
+    const finalTop = dragGeometry.itemTops[partitionEnd];
+    const finalHeight = dragGeometry.itemHeights[partitionEnd];
+    if (
+      minimumTop === undefined ||
+      finalTop === undefined ||
+      finalHeight === undefined
+    ) {
+      return null;
+    }
+    const maximumTop = Math.max(
+      minimumTop,
+      finalTop + finalHeight - draggedHeight,
+    );
+    const pointerContentY =
+      pointerY - list.getBoundingClientRect().top + list.scrollTop;
+    return resolveDraggedTabTranslateY(
+      originalTop,
+      pointerContentY,
+      dragGeometry.pointerOffsetY,
+      minimumTop,
+      maximumTop,
+    );
+  };
+
+  const hasTabDragMarker = (transfer: DragEvent["dataTransfer"]): boolean =>
+    Boolean(
+      transfer && Array.from(transfer.types).includes(TAB_DRAG_MIME_TYPE),
+    );
+
+  const inspectActiveDrag = (): TabDragSnapshot | null => {
+    try {
+      return props.tabs.inspectDrag();
+    } catch (error) {
+      props.onFatalError(error);
+      return null;
+    }
+  };
+
+  const boundedScreenCoordinate = (coordinate: number): number =>
+    Number.isFinite(coordinate)
+      ? Math.min(100_000, Math.max(-100_000, coordinate))
+      : 0;
+
+  const endSourceDrag = (event?: DragEvent, cancelled = false) => {
+    const dragId = sourceDragId;
+    if (!dragId) {
+      clearTabDrag();
+      return;
+    }
+    const firefoxTransfer = event?.dataTransfer as
+      | (NonNullable<DragEvent["dataTransfer"]> & {
+          mozUserCancelled?: boolean;
+        })
+      | null
+      | undefined;
+    try {
+      props.tabs.endDrag(dragId, {
+        cancelled: cancelled || firefoxTransfer?.mozUserCancelled === true,
+        screenX: boundedScreenCoordinate(event?.screenX ?? 0),
+        screenY: boundedScreenCoordinate(event?.screenY ?? 0),
+      });
+    } catch (error) {
+      props.onFatalError(error);
+    } finally {
+      clearTabDrag();
+    }
+  };
+
+  const handleTabDragStart = (event: DragEvent, tabId: string) => {
+    const transfer = event.dataTransfer;
+    if (!transfer) {
+      event.preventDefault();
+      return;
+    }
+
+    let dragId: string | null = null;
+    try {
+      dragId = props.tabs.beginDrag(tabId);
+      transfer.effectAllowed = "move";
+      transfer.clearData();
+      transfer.setData(TAB_DRAG_MIME_TYPE, "1");
+      sourceDragId = dragId;
+      draggingTabId = tabId;
+      externalDrag = null;
+      clearDropTarget();
+      const dragImage =
+        event.currentTarget instanceof HTMLElement
+          ? event.currentTarget.closest<HTMLElement>("[data-fennevia-tab-item]")
+          : null;
+      if (dragImage instanceof HTMLElement) {
+        const bounds = dragImage.getBoundingClientRect();
+        transfer.setDragImage(
+          dragImage,
+          Math.min(bounds.width, Math.max(0, event.clientX - bounds.left)),
+          Math.min(bounds.height, Math.max(0, event.clientY - bounds.top)),
+        );
+        const list = dragImage.closest<HTMLElement>("[data-fennevia-tab-list]");
+        if (list) {
+          captureDragGeometry(list, dragId, {
+            pointerY: event.clientY,
+            tabId,
+          });
+        }
+      }
+      setDragHold(true);
+    } catch (error) {
+      event.preventDefault();
+      if (dragId) {
+        try {
+          props.tabs.endDrag(dragId, {
+            cancelled: true,
+            screenX: 0,
+            screenY: 0,
+          });
+        } catch (cleanupError) {
+          props.onFatalError(cleanupError);
+        }
+      }
+      clearTabDrag();
+      props.onFatalError(error);
+    }
+  };
+
+  const resolveLocalDragTargetIndex = (
+    list: HTMLElement,
+    tabId: string,
+    dragId: string,
+    pointerY: number,
+  ): number | null => {
+    if (!geometryMatches(dragId)) {
+      return null;
+    }
+    return resolveTabDropIndex(
+      currentTabs.tabs,
+      tabId,
+      adjustedItemMids(list),
+      pointerY,
+    );
+  };
+
+  const resolveExternalDragTargetIndex = (
+    list: HTMLElement,
+    drag: TabDragSnapshot,
+    pointerY: number,
+  ): number | null => {
+    if (!geometryMatches(drag.id) && !captureDragGeometry(list, drag.id)) {
+      return null;
+    }
+    return resolveExternalTabDropIndex(
+      currentTabs.tabs,
+      adjustedItemMids(list),
+      pointerY,
+      drag.pinned,
+    );
+  };
+
+  const updateDropPreview = (
+    drag: TabDragSnapshot,
+    targetIndex: number | null,
+  ) => {
+    dragTargetIndex = targetIndex;
+    if (drag.source === "same-window" && draggingTabId) {
+      dropPreview = resolveTabDropPreview(
+        currentTabs.tabs,
+        draggingTabId,
+        targetIndex,
+      );
+      dropMarkerTop =
+        dropPreview === null
+          ? null
+          : (dragGeometry.itemTops[dropPreview.index] ?? null);
+      return;
+    }
+    if (targetIndex === null) {
+      dropPreview = null;
+      dropMarkerTop = null;
+      return;
+    }
+    const append = targetIndex === currentTabs.tabs.length;
+    dropPreview =
+      currentTabs.tabs.length === 0
+        ? null
+        : Object.freeze({
+            index: append ? currentTabs.tabs.length - 1 : targetIndex,
+            position: append ? "after" : "before",
+          });
+    dropMarkerTop = append
+      ? dragGeometry.appendTop
+      : (dragGeometry.itemTops[targetIndex] ?? null);
+  };
+
+  const holdExternalDrag = (drag: TabDragSnapshot): boolean => {
+    if (drag.source !== "other-window") {
+      return false;
+    }
+    if (externalDrag?.id !== drag.id) {
+      clearDropTarget();
+      clearDragGeometry();
+    }
+    externalDrag = drag;
+    setDragHold(true);
+    return true;
+  };
+
+  const previewExternalDragAtEnd = (drag: TabDragSnapshot): void => {
+    if (drag.source !== "other-window") {
+      clearDropTarget();
+      return;
+    }
+    const list = tabStripElement?.querySelector<HTMLElement>(
+      "[data-fennevia-tab-list]",
+    );
+    if (
+      !list ||
+      (!geometryMatches(drag.id) && !captureDragGeometry(list, drag.id))
+    ) {
+      clearDropTarget();
+      return;
+    }
+    updateDropPreview(drag, currentTabs.tabs.length);
   };
 
   const handleTabListDragOver = (event: DragEvent) => {
-    if (!draggingTabId) {
+    if (!hasTabDragMarker(event.dataTransfer)) {
       return;
     }
-    event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "move";
+    const drag = inspectActiveDrag();
+    if (!drag) {
+      return;
     }
     const list = event.currentTarget;
     if (!(list instanceof HTMLElement)) {
-      dropPreview = null;
+      clearDropTarget();
       return;
     }
-    const targetIndex = resolveDragTargetIndex(
-      list,
-      draggingTabId,
-      event.clientY,
-    );
-    dropPreview = resolveTabDropPreview(
-      currentTabs.tabs,
-      draggingTabId,
-      targetIndex,
-    );
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+    holdExternalDrag(drag);
+    draggedTabTranslateY =
+      drag.source === "same-window" && draggingTabId
+        ? resolveLocalDraggedTranslateY(
+            list,
+            draggingTabId,
+            drag.id,
+            event.clientY,
+          )
+        : null;
+    const targetIndex =
+      drag.source === "same-window" && draggingTabId
+        ? resolveLocalDragTargetIndex(
+            list,
+            draggingTabId,
+            drag.id,
+            event.clientY,
+          )
+        : resolveExternalDragTargetIndex(list, drag, event.clientY);
+    updateDropPreview(drag, targetIndex);
   };
 
   const handleTabListDragLeave = (event: DragEvent) => {
@@ -424,36 +792,171 @@
     ) {
       return;
     }
-    dropPreview = null;
+    clearDropTarget();
   };
 
   const handleTabListDrop = (event: DragEvent) => {
-    if (!draggingTabId) {
+    if (!hasTabDragMarker(event.dataTransfer)) {
       return;
     }
-    const tabId =
-      event.dataTransfer?.getData("application/x-fennevia-tab") ||
-      event.dataTransfer?.getData("text/plain") ||
-      draggingTabId;
-    if (tabId !== draggingTabId) {
-      clearTabDrag();
+    const drag = inspectActiveDrag();
+    const list = event.currentTarget;
+    if (!drag || !(list instanceof HTMLElement)) {
       return;
     }
     event.preventDefault();
-    const list = event.currentTarget;
+    event.stopPropagation();
     const targetIndex =
-      list instanceof HTMLElement
-        ? resolveDragTargetIndex(list, tabId, event.clientY)
-        : null;
-    clearTabDrag();
+      drag.source === "same-window" && draggingTabId
+        ? resolveLocalDragTargetIndex(
+            list,
+            draggingTabId,
+            drag.id,
+            event.clientY,
+          )
+        : resolveExternalDragTargetIndex(list, drag, event.clientY);
     if (targetIndex === null) {
+      clearDropTarget();
+      if (drag.source === "same-window") {
+        endSourceDrag(undefined, true);
+      } else {
+        clearTabDrag();
+      }
       return;
     }
     try {
-      props.tabs.move(tabId, targetIndex);
+      const result = props.tabs.dropDrag(targetIndex);
+      clearTabDrag();
+      announceTabMove(result.tabId, result.index);
     } catch (error) {
+      if (drag.source === "same-window") {
+        endSourceDrag(undefined, true);
+      } else {
+        clearTabDrag();
+      }
       props.onFatalError(error);
     }
+  };
+
+  const manageTabDragWindow = (node: HTMLElement) => {
+    const view = node.ownerDocument.defaultView;
+    if (!view) {
+      return {};
+    }
+    const isInsideProjectFrame = (event: DragEvent): boolean =>
+      event
+        .composedPath()
+        .some(
+          (target) =>
+            target instanceof Element &&
+            (target.id === "fennevia-shell-frame-host" ||
+              target.closest("#fennevia-shell-frame-host") !== null),
+        );
+    const isInsideTabList = (event: DragEvent): boolean =>
+      event
+        .composedPath()
+        .some(
+          (target) =>
+            target instanceof Element &&
+            target.closest("[data-fennevia-tab-list]") !== null,
+        );
+
+    const handleWindowDragEnter = (event: DragEvent) => {
+      if (!hasTabDragMarker(event.dataTransfer)) {
+        return;
+      }
+      const drag = inspectActiveDrag();
+      if (!drag || !holdExternalDrag(drag)) {
+        return;
+      }
+      if (!isInsideProjectFrame(event)) {
+        previewExternalDragAtEnd(drag);
+      }
+    };
+
+    const handleWindowDragOver = (event: DragEvent) => {
+      if (!hasTabDragMarker(event.dataTransfer)) {
+        return;
+      }
+      const drag = inspectActiveDrag();
+      if (!drag) {
+        return;
+      }
+      holdExternalDrag(drag);
+      if (isInsideProjectFrame(event)) {
+        if (!isInsideTabList(event)) {
+          clearDropTarget();
+        }
+        return;
+      }
+      if (drag.source === "same-window") {
+        clearDropTarget();
+      } else {
+        previewExternalDragAtEnd(drag);
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move";
+      }
+    };
+
+    const handleWindowDragLeave = (event: DragEvent) => {
+      if (!externalDrag || event.relatedTarget !== null) {
+        return;
+      }
+      clearTabDrag();
+    };
+
+    const handleWindowDrop = (event: DragEvent) => {
+      if (
+        isInsideProjectFrame(event) ||
+        !hasTabDragMarker(event.dataTransfer)
+      ) {
+        return;
+      }
+      const drag = inspectActiveDrag();
+      if (!drag) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (drag.source === "same-window") {
+        clearDropTarget();
+        return;
+      }
+      try {
+        const result = props.tabs.dropDrag(currentTabs.tabs.length);
+        clearTabDrag();
+        announceTabMove(result.tabId, result.index);
+      } catch (error) {
+        clearTabDrag();
+        props.onFatalError(error);
+      }
+    };
+
+    const handleWindowDragEnd = (event: DragEvent) => {
+      if (sourceDragId) {
+        endSourceDrag(event);
+      } else if (externalDrag) {
+        clearTabDrag();
+      }
+    };
+
+    view.addEventListener("dragenter", handleWindowDragEnter, true);
+    view.addEventListener("dragover", handleWindowDragOver, true);
+    view.addEventListener("dragleave", handleWindowDragLeave, true);
+    view.addEventListener("drop", handleWindowDrop, true);
+    view.addEventListener("dragend", handleWindowDragEnd, true);
+    return {
+      destroy() {
+        view.removeEventListener("dragenter", handleWindowDragEnter, true);
+        view.removeEventListener("dragover", handleWindowDragOver, true);
+        view.removeEventListener("dragleave", handleWindowDragLeave, true);
+        view.removeEventListener("drop", handleWindowDrop, true);
+        view.removeEventListener("dragend", handleWindowDragEnd, true);
+      },
+    };
   };
 
   const setFaviconSource = (node: HTMLImageElement, source: string) => {
@@ -498,8 +1001,13 @@
     cancelDelayedFocus();
     cancelHighlight();
     highlightedTabIds = [];
+    reorderAnnouncement = "";
     tabButtons.length = 0;
-    clearTabDrag();
+    if (sourceDragId) {
+      endSourceDrag(undefined, true);
+    } else {
+      clearTabDrag();
+    }
   });
 </script>
 
@@ -512,6 +1020,7 @@
 </div>
 
 <div
+  use:manageTabDragWindow
   bind:this={tabStripElement}
   class="fennevia-tab-strip"
   onfocusout={handleFocusOut}
@@ -520,6 +1029,7 @@
     aria-label={t("tab.openHeading")}
     aria-orientation="vertical"
     class="fennevia-tab-strip__list"
+    data-fennevia-drag-active={sourceDragId !== null || externalDrag !== null}
     data-fennevia-tab-list=""
     ondragleave={handleTabListDragLeave}
     ondragover={handleTabListDragOver}
@@ -529,12 +1039,29 @@
   >
     {#each currentTabs.tabs as tab, index (tab.id)}
       {@const audioAction = getTabAudioAction(tab)}
+      {@const isDraggedTab = draggingTabId === tab.id}
       <div
         class="fennevia-tab-strip__item"
         data-fennevia-attention={tab.attention === true}
         data-fennevia-audio={tab.audio}
         data-fennevia-container-color={tab.container?.color}
-        data-fennevia-dragging={draggingTabId === tab.id}
+        data-fennevia-drag-following={isDraggedTab &&
+          draggedTabTranslateY !== null}
+        data-fennevia-dragging={isDraggedTab}
+        data-fennevia-drag-shift={externalDrag
+          ? (resolveExternalTabDragShift(
+              currentTabs.tabs,
+              dragTargetIndex,
+              index,
+            ) ?? undefined)
+          : draggingTabId
+            ? (resolveTabDragShift(
+                currentTabs.tabs,
+                draggingTabId,
+                dragTargetIndex,
+                index,
+              ) ?? undefined)
+            : undefined}
         data-fennevia-drop-preview={dropPreview?.index === index
           ? dropPreview.position
           : undefined}
@@ -548,10 +1075,14 @@
         oncontextmenu={(event) => handleTabContextMenu(event, tab.id)}
         onmousedown={preventMiddleAutoscroll}
         role="presentation"
+        style:transform={isDraggedTab && draggedTabTranslateY !== null
+          ? `translateY(${draggedTabTranslateY}px)`
+          : undefined}
       >
         <button
           use:registerTabButton={tab.id}
           aria-busy={tab.loading}
+          aria-keyshortcuts="Control+Shift+ArrowUp Control+Shift+ArrowDown"
           aria-label={getTabAccessibleName(
             tab,
             index,
@@ -563,7 +1094,6 @@
           data-fennevia-tab=""
           draggable="true"
           onclick={() => selectTab(tab.id)}
-          ondragend={handleTabDragEnd}
           ondragstart={(event) => handleTabDragStart(event, tab.id)}
           onfocus={() => (rovingTabId = tab.id)}
           onkeydown={(event) => handleTabKeydown(event, tab.id)}
@@ -671,7 +1201,47 @@
         >
       </div>
     {/each}
+
+    {#if externalDrag && dragTargetIndex !== null}
+      <span
+        aria-hidden="true"
+        class="fennevia-tab-strip__external-drop-slot"
+        data-fennevia-external-drop-slot=""
+      ></span>
+    {/if}
+
+    {#if externalDrag && externalPreviewTransform}
+      <span
+        aria-hidden="true"
+        class="fennevia-tab-strip__external-preview"
+        data-fennevia-external-preview=""
+        data-fennevia-pinned={externalDrag.pinned}
+        style:transform={externalPreviewTransform}
+      >
+        <span class="fennevia-tab-strip__visual">
+          <span class="fennevia-tab-strip__fallback">
+            <FirefoxIcon name="tab" />
+          </span>
+        </span>
+        <span class="fennevia-tab-strip__title">{t("tab.dragPreview")}</span>
+      </span>
+    {/if}
+
+    {#if dropMarkerTop !== null}
+      <span
+        aria-hidden="true"
+        class="fennevia-tab-strip__drop-indicator"
+        data-fennevia-drop-preview={dropPreview?.position ?? "before"}
+        style:inset-block-start={`${dropMarkerTop}px`}
+      ></span>
+    {/if}
   </div>
+
+  <output
+    aria-atomic="true"
+    aria-live="polite"
+    class="fennevia-tab-strip__announcement">{reorderAnnouncement}</output
+  >
 
   <button
     aria-label={t("tab.newTabAria")}

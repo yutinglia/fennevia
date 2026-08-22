@@ -36,8 +36,17 @@ use the keyboard, to reveal:
 Right-click works across all four edge panels. It offers a useful action for
 that edge plus available Fennevia/Firefox customization and original-toolbar
 access; tab rows keep Firefox's complete translated tab menu, bookmark rows
-offer bounded open/folder/Library actions, and tab dragging shows its insertion
-point before drop.
+offer bounded open/folder/Library actions, and the actual dragged tab follows
+the pointer inside its strip while neighboring tabs move aside to preview the
+final order. In the current development tree, entering another same-kind
+Fennevia window also reveals and holds that window's tab strip; the tab can be
+dropped at an insertion point there, dropped on that window's browser area to
+append it, or released outside Firefox to let Firefox detach it into a window.
+The target strip reserves the prospective row in real layout, avoiding a false
+scrollbar when it contains only a few tabs, and tab dragging keeps Firefox's
+ordinary cursor. The transfer contains no text/URL flavor, and window-level
+drag cleanup plus source-tab reconciliation releases the left panel after every
+terminal path.
 
 Firefox still owns security prompts, permissions, certificates, extension
 installation, download safety, DevTools, the full native address bar, and the
@@ -55,12 +64,12 @@ It follows the first public package
 [`v0.10.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.10.0-beta.1).
 Its tested environment is intentionally narrow:
 
-| Requirement      | Tested value                           |
-| ---------------- | -------------------------------------- |
-| Operating system | Windows x64                            |
-| Firefox          | Stock Firefox 153.0.4 and 154.0, release channel |
+| Requirement      | Tested value                                         |
+| ---------------- | ---------------------------------------------------- |
+| Operating system | Windows x64                                          |
+| Firefox          | Stock Firefox 153.0.4 and 154.0, release channel     |
 | Firefox Build ID | `20260810162159` (153.0.4), `20260812182057` (154.0) |
-| Package          | `fennevia-0.11.0-beta.1-windows.zip`   |
+| Package          | `fennevia-0.11.0-beta.1-windows.zip`                 |
 
 Install, update, repair, and re-enable reject Firefox older than 153. Firefox
 153, 154, and newer majors may be installed after the installer warning: only
@@ -79,9 +88,11 @@ includes a Fennevia-owned widget editor with live drag-and-drop across all four
 edges, bounded appearance and edge-interaction controls, Firefox design-token
 defaults, English and Traditional Chinese shell catalogs, first-paint
 native-toolbox hiding, generic Firefox-owned popup proxy anchoring, four-panel
-context actions, tab drag preview, native-safe extension-install prompts, a
-placeable Firefox built-in translation widget, and the `FenneviaSetup.exe`
-Windows setup wizard.
+context actions, spatial tab drag preview with a visible cross-window target,
+same-kind transfer and Firefox-owned detach, native-safe extension-install
+prompts, a placeable
+Firefox built-in translation widget, and the `FenneviaSetup.exe` Windows setup
+wizard.
 
 The current development tree also projects bounded results from Firefox's own
 per-window Urlbar provider manager into the centred combobox. Firefox still

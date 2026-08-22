@@ -5,6 +5,10 @@ import type {
   TabAudioState,
   TabContainerSnapshot,
   TabContextMenuPoint,
+  TabDragDropResult,
+  TabDragEndOptions,
+  TabDragEndResult,
+  TabDragSnapshot,
   TabSnapshot,
   TabStateEvent,
 } from "../../app/tab-state.ts";
@@ -45,6 +49,8 @@ import type {
   NativeTab,
   NativeIdentityService,
 } from "./support.ts";
+import type { FirefoxTabDragCoordinator } from "./drag-coordinator.ts";
+export { createFirefoxTabDragCoordinator } from "./drag-coordinator.ts";
 
 export type FirefoxTabsBridgeController = Readonly<{
   assertRequiredCapabilities: () => readonly FirefoxCapabilitySnapshot[];
@@ -65,6 +71,8 @@ export function createFirefoxTabsBridge({
   beginNativePopupHandoff,
   boundary,
   endNativePopupHandoff,
+  dragCoordinator,
+  isTabDetachAllowed,
   moduleLoader,
   onError,
   window,
@@ -72,6 +80,8 @@ export function createFirefoxTabsBridge({
   beginNativePopupHandoff: (panelId: string) => boolean;
   boundary: FirefoxBridgeBoundary;
   endNativePopupHandoff: (panelId: string) => void;
+  dragCoordinator: FirefoxTabDragCoordinator;
+  isTabDetachAllowed: () => boolean;
   moduleLoader?: NativeModuleLoader;
   onError: (error: unknown) => void;
   window: unknown;
@@ -81,6 +91,15 @@ export function createFirefoxTabsBridge({
     !isNativeRecord(window) ||
     typeof beginNativePopupHandoff !== "function" ||
     typeof endNativePopupHandoff !== "function" ||
+    !dragCoordinator ||
+    typeof dragCoordinator.begin !== "function" ||
+    typeof dragCoordinator.cancel !== "function" ||
+    typeof dragCoordinator.cancelContext !== "function" ||
+    typeof dragCoordinator.consume !== "function" ||
+    typeof dragCoordinator.inspect !== "function" ||
+    typeof dragCoordinator.resolve !== "function" ||
+    typeof dragCoordinator.resolveForEnd !== "function" ||
+    typeof isTabDetachAllowed !== "function" ||
     typeof onError !== "function"
   ) {
     throw createTabsError(
@@ -103,6 +122,9 @@ export function createFirefoxTabsBridge({
   let identityService: NativeIdentityService | null = null;
   let tabContextMenu: NativeRecord | null = null;
   let tabContextMenuHandoffActive = false;
+  const boundarySnapshot = boundary.snapshot();
+  const contextId = boundarySnapshot.contextId;
+  const windowKind = boundarySnapshot.windowKind;
 
   if (typeof moduleLoader === "function") {
     try {
@@ -452,6 +474,48 @@ export function createFirefoxTabsBridge({
     });
   };
 
+  const normalizeDragEndOptions = (
+    options: TabDragEndOptions,
+  ): TabDragEndOptions => {
+    if (
+      !isNativeRecord(options) ||
+      Object.keys(options).some(
+        (key) => key !== "cancelled" && key !== "screenX" && key !== "screenY",
+      ) ||
+      typeof options.cancelled !== "boolean" ||
+      typeof options.screenX !== "number" ||
+      typeof options.screenY !== "number" ||
+      !Number.isFinite(options.screenX) ||
+      !Number.isFinite(options.screenY) ||
+      Math.abs(options.screenX) > MAXIMUM_SCREEN_COORDINATE ||
+      Math.abs(options.screenY) > MAXIMUM_SCREEN_COORDINATE
+    ) {
+      throw createTabsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TAB_DRAG_END_OPTIONS_INVALID",
+        "firefox-tabs-drag",
+        "tabs.endDrag.options",
+      );
+    }
+    return Object.freeze({
+      cancelled: options.cancelled,
+      screenX: options.screenX,
+      screenY: options.screenY,
+    });
+  };
+
+  const normalizeDragDropIndex = (index: number, tabCount: number): number => {
+    if (!Number.isSafeInteger(index) || index < 0 || index > tabCount) {
+      throw createTabsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TAB_DRAG_DROP_INDEX_INVALID",
+        "firefox-tabs-drag",
+        "tabs.dropDrag.index",
+      );
+    }
+    return index;
+  };
+
   const requireTabContextMenu = (): NativeRecord => {
     requireWindow();
     if (!tabContextMenu || !isNativeTabContextMenu(tabContextMenu)) {
@@ -512,6 +576,36 @@ export function createFirefoxTabsBridge({
   };
 
   const publicBridge: BrowserTabsBridge = Object.freeze({
+    beginDrag(tabId: string): string {
+      const tab = requireOwnedTab(tabId);
+      try {
+        return dragCoordinator.begin({
+          isActive() {
+            if (disposed || !nativeWindow) {
+              return false;
+            }
+            try {
+              return readOpenTabs().includes(tab);
+            } catch {
+              return false;
+            }
+          },
+          pinned: hasAttribute(tab, "pinned"),
+          sourceContextId: contextId,
+          sourceWindowKind: windowKind,
+          tab,
+        });
+      } catch (error) {
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TAB_DRAG_BEGIN_REJECTED",
+          "firefox-tabs-drag",
+          "tabs.beginDrag",
+          error,
+        );
+      }
+    },
+
     close(tabId: string): void {
       const tab = requireOwnedTab(tabId);
       callTabMethod("removeTab", [
@@ -519,6 +613,191 @@ export function createFirefoxTabsBridge({
         { animate: true, isUserTriggered: true },
       ]);
       reconcile(true);
+    },
+
+    dropDrag(index: number): TabDragDropResult {
+      const nativeTabs = readOpenTabs();
+      const requestedIndex = normalizeDragDropIndex(index, nativeTabs.length);
+      const transfer = dragCoordinator.resolve({ contextId, windowKind });
+      if (!transfer) {
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TAB_DRAG_UNAVAILABLE",
+          "firefox-tabs-drag",
+          "tabs.dropDrag.transfer",
+        );
+      }
+
+      const pinnedCount = nativeTabs.filter((tab) =>
+        hasAttribute(tab, "pinned"),
+      ).length;
+      if (transfer.sourceContextId === contextId) {
+        if (!nativeTabs.includes(transfer.tab)) {
+          dragCoordinator.cancel(transfer.id, contextId);
+          throw createTabsError(
+            boundary,
+            "FENNEVIA_FIREFOX_TAB_STALE",
+            "firefox-tabs-drag",
+            "tabs.dropDrag.source-tab",
+          );
+        }
+        const finalMaximum = Math.max(nativeTabs.length - 1, 0);
+        const boundedIndex = transfer.pinned
+          ? Math.min(Math.max(requestedIndex, 0), Math.max(pinnedCount - 1, 0))
+          : Math.min(Math.max(requestedIndex, pinnedCount), finalMaximum);
+        callTabMethod("moveTabTo", [
+          transfer.tab,
+          { isUserTriggered: true, tabIndex: boundedIndex },
+        ]);
+        const actualIndex = readOpenTabs().indexOf(transfer.tab);
+        if (actualIndex < 0) {
+          throw createTabsError(
+            boundary,
+            "FENNEVIA_FIREFOX_TAB_MOVE_REJECTED",
+            "firefox-tabs-drag",
+            "window.gBrowser.moveTabTo",
+          );
+        }
+        const tabId = registry.register(transfer.tab);
+        dragCoordinator.consume(transfer.id);
+        reconcile(true);
+        return Object.freeze({
+          index: actualIndex,
+          kind: "moved",
+          tabId,
+        });
+      }
+
+      const boundedIndex = transfer.pinned
+        ? Math.min(Math.max(requestedIndex, 0), pinnedCount)
+        : Math.min(Math.max(requestedIndex, pinnedCount), nativeTabs.length);
+      let adoptedCandidate: unknown;
+      try {
+        adoptedCandidate = callTabMethod("adoptTab", [
+          transfer.tab,
+          {
+            selectTab: true,
+            tabIndex: boundedIndex,
+          },
+        ]);
+      } catch (error) {
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TAB_ADOPT_REJECTED",
+          "firefox-tabs-drag",
+          "window.gBrowser.adoptTab",
+          error,
+        );
+      }
+      const adoptedTab = asNativeTab(boundary, adoptedCandidate);
+      const adoptedTabs = readOpenTabs();
+      const actualIndex = adoptedTabs.indexOf(adoptedTab);
+      if (actualIndex < 0) {
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TAB_ADOPT_REJECTED",
+          "firefox-tabs-drag",
+          "window.gBrowser.adoptTab",
+        );
+      }
+      const tabId = registry.register(adoptedTab);
+      dragCoordinator.consume(transfer.id);
+      reconcile(true);
+      return Object.freeze({
+        index: actualIndex,
+        kind: "adopted",
+        tabId,
+      });
+    },
+
+    endDrag(dragId: string, options: TabDragEndOptions): TabDragEndResult {
+      requireWindow();
+      if (
+        typeof dragId !== "string" ||
+        dragId.length === 0 ||
+        dragId.length > 160
+      ) {
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TAB_DRAG_ID_INVALID",
+          "firefox-tabs-drag",
+          "tabs.endDrag.id",
+        );
+      }
+      const normalized = normalizeDragEndOptions(options);
+      const resolution = dragCoordinator.resolveForEnd(dragId, contextId);
+      if (resolution.status === "consumed") {
+        return "consumed";
+      }
+      if (resolution.status === "cancelled") {
+        return "cancelled";
+      }
+      if (resolution.status === "missing") {
+        return "unchanged";
+      }
+      if (resolution.status !== "active") {
+        return "unchanged";
+      }
+      if (normalized.cancelled) {
+        dragCoordinator.cancel(dragId, contextId);
+        return "cancelled";
+      }
+
+      let detachAllowed: boolean;
+      try {
+        detachAllowed = isTabDetachAllowed() === true;
+      } catch (error) {
+        dragCoordinator.cancel(dragId, contextId);
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TAB_DETACH_POLICY_FAILED",
+          "firefox-tabs-drag",
+          "browser.tabs.allowTabDetach",
+          error,
+        );
+      }
+      if (!detachAllowed) {
+        dragCoordinator.cancel(dragId, contextId);
+        return "blocked";
+      }
+
+      const sourceTabs = readOpenTabs();
+      if (!sourceTabs.includes(resolution.transfer.tab)) {
+        dragCoordinator.cancel(dragId, contextId);
+        return "unchanged";
+      }
+      if (sourceTabs.length === 1) {
+        dragCoordinator.consume(dragId);
+        return "unchanged";
+      }
+
+      let replacement: unknown;
+      try {
+        replacement = callTabMethod("replaceTabWithWindow", [
+          resolution.transfer.tab,
+          {
+            screenX: normalized.screenX,
+            screenY: normalized.screenY,
+            suppressanimation: 1,
+          },
+        ]);
+      } catch (error) {
+        throw createTabsError(
+          boundary,
+          "FENNEVIA_FIREFOX_TAB_DETACH_REJECTED",
+          "firefox-tabs-drag",
+          "window.gBrowser.replaceTabWithWindow",
+          error,
+        );
+      } finally {
+        dragCoordinator.consume(dragId);
+      }
+      return replacement == null ? "unchanged" : "detached";
+    },
+
+    inspectDrag(): TabDragSnapshot | null {
+      requireWindow();
+      return dragCoordinator.inspect({ contextId, windowKind });
     },
 
     move(tabId: string, index: number): void {
@@ -804,6 +1083,11 @@ export function createFirefoxTabsBridge({
     disposed = true;
     nativeWindow = null;
     let cleanupError: unknown;
+    try {
+      dragCoordinator.cancelContext(contextId);
+    } catch (candidate) {
+      cleanupError ??= candidate;
+    }
     for (const disposeListener of listenerDisposers.reverse()) {
       try {
         disposeListener();
@@ -838,8 +1122,13 @@ export function createFirefoxTabsBridge({
         return false;
       }
       disposed = true;
-      nativeWindow = null;
       let firstError: unknown;
+      try {
+        dragCoordinator.cancelContext(contextId);
+      } catch (error) {
+        firstError ??= error;
+      }
+      nativeWindow = null;
       const hidePopup = tabContextMenu?.hidePopup;
       if (tabContextMenu && isFunction(hidePopup)) {
         try {

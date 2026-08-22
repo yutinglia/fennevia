@@ -303,9 +303,45 @@ Rules:
   before direct popup open; Fennevia stores or logs no native label;
 - a fixed NativeUi `tabContextMenu` token suppresses original-chrome reveal and
   is released on open failure, popup close, or bridge disposal;
-- drag preview uses the existing project tab button plus one CSS insertion
-  marker and carries only the opaque tab ID, never a title, URL, thumbnail, or
-  favicon bytes.
+- drag preview uses an immediate bounded transform on the complete existing
+  project-owned source row, closed `up`/`down` background presentation tokens,
+  and one CSS insertion marker. ADR-063 clears
+  the transferable payload and adds only a fixed custom MIME marker with the
+  constant value `1`: it carries no `text/plain`, URL, opaque tab ID, random
+  drag ID, title, favicon, or native value. The browser-rendered ghost may
+  mirror title/favicon pixels already visible in the same owning window, but
+  Fennevia creates no page screenshot or bitmap and exposes no title, URL,
+  thumbnail, or favicon bytes through drag data. One process coordinator may
+  temporarily retain only the active native tab plus source context/window
+  kind, pinned state, and liveness callback; target windows inspect only a
+  bounded random ID, pinned boolean, and same/other-window enum. The native
+  value never reaches Svelte, another window's reactive state, DOM, logs,
+  persistence, clipboard, telemetry, or a network sink. A successful move may
+  interpolate the existing bounded title into one text-only live output under
+  the same restrictions. A target window's visible tab-shaped preview uses
+  only a fixed localized label and packaged tab icon; it is aria-hidden and
+  receives no source title, URL, favicon value, native DOM, or transferable ID;
+- ADR-063's coordinator has one active transfer, rejects normal/private
+  crossing, and retains no completed native object. Each window removes its
+  capture listeners and cancels its owned source transfer on disposal. This is
+  the owner's explicit narrow exception for tab drag only; it does not permit a
+  general cross-window registry or any browsing-derived process-global
+  snapshot;
+- `gBrowser.adoptTab` and `replaceTabWithWindow` remain privileged named
+  actions. Missing capabilities fail health open, and no native tab DOM is
+  copied, moved, or mounted by Svelte;
+- capture-phase browser-window `dragenter`, true-window `dragleave` identified
+  by null `relatedTarget`, `dragend` when observed, target/source drop,
+  cancellation, setup failure, and component/window disposal all clear
+  geometry, visible target row, hidden layout slot, marker, transfer state, and
+  the existing shared left pointer hold. Source snapshot disappearance after
+  adoption is a second frontend-only hold-release signal; it compares only the
+  already-bounded opaque tab ID, does not copy browsing data, and does not call
+  source `endDrag` during target consumption. After DOM reconciliation it also
+  releases focus/keyboard holds only when focus is no longer within the source
+  surface. Non-null `relatedTarget` transitions stay inside the window.
+  Target-window reveal uses that hold and adds no private timer or browsing
+  data.
 
 ### 7.2 Navigation and address/status popup — implemented (#12 and #13)
 
@@ -994,8 +1030,10 @@ Global rules:
 
 - no browsing-derived persistence;
 - no private URL/title/query/bookmark/download data in diagnostics;
-- no process-global copy of private feature state;
-- no cross-window native handle;
+- no process-global copy of private browsing-derived feature state;
+- no persistent or general cross-window native handle. ADR-063 permits only
+  one short-lived active native tab in its privileged drag coordinator, keyed
+  by window kind and invisible across the normal/private boundary;
 - no profile preference reflecting private activity;
 - exact per-window cleanup on close/fallback/disposal;
 - uncertainty means complete native fallback.
@@ -1009,6 +1047,9 @@ Implemented:
   and native visibility controller have isolated normal, second-normal, and
   private instances;
 - opaque IDs include context/registry generation;
+- ADR-063 normal/private drag inspection and adoption are mutually rejected;
+  disposing the source owner cancels its ephemeral transfer state, and every
+  target removes its capture listeners;
 - controllers, roots, holds, timers, listeners, mappings, and state are removed
   per window;
 - one window's emergency fallback does not mutate another.
