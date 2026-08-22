@@ -15,6 +15,7 @@ import {
   type EdgeShellController,
 } from "../../app/edge-surfaces";
 import type { BrowserUrlbarCoverageStateAdapter } from "../../app/urlbar-coverage-state";
+import type { BrowserUrlbarSuggestionsStateAdapter } from "../../app/urlbar-suggestions-state";
 import {
   ADDRESS_POPUP_CLOSE_DELAY_MS,
   FRAME_ENVIRONMENT_ATTRIBUTE,
@@ -44,6 +45,7 @@ export function createAddressPopupCoordinator({
   tabs,
   targets,
   urlbarCoverage,
+  urlbarSuggestions,
   view,
 }: Readonly<{
   closeCustomizeSession: () => boolean;
@@ -55,6 +57,7 @@ export function createAddressPopupCoordinator({
   tabs: BrowserTabsStateAdapter;
   targets: EdgeMountTargets;
   urlbarCoverage: BrowserUrlbarCoverageStateAdapter;
+  urlbarSuggestions: BrowserUrlbarSuggestionsStateAdapter;
   view: Window;
 }>): AddressPopupCoordinator {
   const controller = createAddressPopupController({ navigation, tabs });
@@ -101,6 +104,7 @@ export function createAddressPopupCoordinator({
     if (
       frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) !== "normal" ||
       snapshot.closeReason === "environment" ||
+      snapshot.closeReason === "native-handoff" ||
       snapshot.closeReason === "focus-failed"
     ) {
       const active = getFocusableOrigin(frame.ownerDocument.activeElement);
@@ -174,17 +178,6 @@ export function createAddressPopupCoordinator({
     return true;
   };
 
-  const closeForNativeHandoff = (): boolean => {
-    if (
-      frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) !== "normal" ||
-      !closeForEnvironment()
-    ) {
-      return false;
-    }
-    flushSync();
-    return true;
-  };
-
   return Object.freeze({
     closeForEnvironment,
     controller,
@@ -195,6 +188,7 @@ export function createAddressPopupCoordinator({
       }
       disposed = true;
       cancelCloseTimer();
+      urlbarSuggestions.cancel();
       focusOrigin = null;
       originEdge = null;
       return controller.dispose();
@@ -231,6 +225,7 @@ export function createAddressPopupCoordinator({
           return false;
         }
         controller.confirmOpen();
+        urlbarSuggestions.query(controller.snapshot().draftValue);
         closeCustomizeSession();
         shell.setInteractionSuppressed(true);
         return true;
@@ -241,14 +236,35 @@ export function createAddressPopupCoordinator({
     },
 
     openNativeUrlbar(): boolean {
-      if (!closeForNativeHandoff()) {
+      if (
+        disposed ||
+        frame.getAttribute(FRAME_ENVIRONMENT_ATTRIBUTE) !== "normal" ||
+        !isVisible()
+      ) {
+        return false;
+      }
+      urlbarSuggestions.prepareNativeHandoff();
+      controller.requestClose("native-handoff");
+      const closingSnapshot = controller.snapshot();
+      if (closingSnapshot.phase !== "closing") {
+        return false;
+      }
+      completeClose(closingSnapshot);
+      flushSync();
+      if (isVisible()) {
         return false;
       }
       return urlbarCoverage.openNativeUrlbar();
     },
 
     scheduleClose(snapshot: AddressPopupSnapshot): void {
-      if (snapshot.phase !== "closing" || closeTimer !== undefined) {
+      if (snapshot.phase !== "closing") {
+        return;
+      }
+      if (snapshot.closeReason !== "native-handoff") {
+        urlbarSuggestions.cancel();
+      }
+      if (closeTimer !== undefined) {
         return;
       }
       closeTimer = view.setTimeout(() => {

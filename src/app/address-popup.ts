@@ -32,6 +32,7 @@ export type AddressPopupCloseReason =
   | "environment"
   | "focus-failed"
   | "focus-left"
+  | "native-handoff"
   | "outside"
   | "tab-changed";
 
@@ -86,6 +87,7 @@ const closeReasons = new Set<AddressPopupCloseReason>([
   "environment",
   "focus-failed",
   "focus-left",
+  "native-handoff",
   "outside",
   "tab-changed",
 ]);

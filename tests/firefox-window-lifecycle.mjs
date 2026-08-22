@@ -79,6 +79,8 @@ function parseArguments(argv) {
     browserToolbox: false,
     performanceBaseline: false,
     sessionRestore: null,
+    urlbarProviderProbe: false,
+    urlbarSuggestionsProbe: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -151,6 +153,14 @@ function parseArguments(argv) {
       result.performanceBaseline = true;
       continue;
     }
+    if (argument === "--urlbar-provider-probe") {
+      result.urlbarProviderProbe = true;
+      continue;
+    }
+    if (argument === "--urlbar-suggestions-probe") {
+      result.urlbarSuggestionsProbe = true;
+      continue;
+    }
     if (argument === "--session-restore") {
       const value = argv[index + 1];
       if (!sessionRestoreModes.includes(value)) {
@@ -182,6 +192,8 @@ function parseArguments(argv) {
       result.expectStock,
       result.inspectDom,
       result.performanceBaseline,
+      result.urlbarProviderProbe,
+      result.urlbarSuggestionsProbe,
       result.sessionRestore !== null,
     ].filter(Boolean).length > 1
   ) {
@@ -203,6 +215,8 @@ function parseArguments(argv) {
       result.expectStock ||
       result.inspectDom ||
       result.performanceBaseline ||
+      result.urlbarProviderProbe ||
+      result.urlbarSuggestionsProbe ||
       result.sessionRestore !== null)
   ) {
     throw new Error("FENNEVIA_FIREFOX_TEST_MODE_CONFLICT");
@@ -6803,6 +6817,466 @@ function countEvent(evidence, event, windowKind) {
   ).length;
 }
 
+async function runUrlbarProviderProbe(client) {
+  const evidence = await client.execute(
+    `
+    return (async () => {
+      const input = window.gURLBar;
+      const controller = input?.controller;
+      const parentController = controller?.parentController ?? controller;
+      const manager = parentController?.manager;
+      const view = input?.view;
+      if (
+        !input ||
+        !controller ||
+        !parentController ||
+        !manager ||
+        !view ||
+        typeof input.startQuery !== "function" ||
+        typeof input.pickResult !== "function" ||
+        typeof input.handleRevert !== "function" ||
+        typeof manager.startQuery !== "function" ||
+        typeof manager.cancelQuery !== "function" ||
+        typeof view.close !== "function"
+      ) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_URLBAR_PROVIDER_CAPABILITY_MISSING");
+      }
+
+      const lifecycle = [];
+      const resultTypes = new Set();
+      const resultSources = new Set();
+      let batchCount = 0;
+      let maximumResultCount = 0;
+      let maximumRowCount = 0;
+      let rowBackedResultCount = 0;
+      let selectableRowCount = 0;
+      let activeContext = null;
+      const projectView = {
+        get visibleResults() {
+          return activeContext?.results ?? [];
+        },
+      };
+      const queryController = new Proxy(parentController, {
+        get(target, property) {
+          if (property === "receiveResults") {
+            return context => {
+              if (context !== activeContext) {
+                return;
+              }
+              lifecycle.push("results");
+              batchCount += 1;
+              const results = Array.isArray(context?.results)
+                ? context.results
+                : [];
+              maximumResultCount = Math.max(
+                maximumResultCount,
+                results.length
+              );
+              for (const result of results) {
+                resultTypes.add(
+                  Number.isInteger(result?.type) ? result.type : -1
+                );
+                resultSources.add(
+                  Number.isInteger(result?.source) ? result.source : -1
+                );
+              }
+              const rows = Array.from(view._rows?.children ?? []);
+              maximumRowCount = Math.max(maximumRowCount, rows.length);
+              rowBackedResultCount = Math.max(
+                rowBackedResultCount,
+                rows.filter(row => row?.result).length
+              );
+              selectableRowCount = Math.max(
+                selectableRowCount,
+                rows.filter(row => row?.hasAttribute?.("row-selectable")).length
+              );
+            };
+          }
+          if (property === "view") {
+            return projectView;
+          }
+          const value = Reflect.get(target, property, target);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+      const inputController = new Proxy(controller, {
+        get(target, property) {
+          if (property === "cancelQuery") {
+            return () => {
+              if (activeContext) {
+                manager.cancelQuery(activeContext);
+              }
+            };
+          }
+          if (property === "startQuery") {
+            return async context => {
+              if (activeContext && activeContext !== context) {
+                manager.cancelQuery(activeContext);
+              }
+              activeContext = context;
+              lifecycle.push("started");
+              try {
+                await manager.startQuery(context, queryController);
+                return context;
+              } finally {
+                manager.cancelQuery(context);
+                if (activeContext === context) {
+                  lifecycle.push("finished");
+                }
+              }
+            };
+          }
+          const value = Reflect.get(target, property, target);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+
+      const originalValue = String(input.value ?? "");
+      try {
+        view.close();
+        view.clear?.();
+        input.value = "fennevia provider contract probe";
+        input.controller = inputController;
+        try {
+          if (input.controller !== inputController) {
+            throw new Error(
+              "FENNEVIA_FIREFOX_TEST_URLBAR_PROVIDER_CONTROLLER_SWAP_FAILED"
+            );
+          }
+          input.startQuery({
+            allowAutofill: false,
+            searchString: "fennevia provider contract probe",
+          });
+        } finally {
+          input.controller = controller;
+        }
+        let timeoutHandle;
+        try {
+          await Promise.race([
+            input.lastQueryContextPromise,
+            new Promise((_, reject) => {
+              timeoutHandle = window.setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      "FENNEVIA_FIREFOX_TEST_URLBAR_PROVIDER_QUERY_TIMEOUT"
+                    )
+                  ),
+                15000
+              );
+            }),
+          ]);
+        } finally {
+          if (timeoutHandle !== undefined) {
+            window.clearTimeout(timeoutHandle);
+          }
+        }
+        return {
+          batchCount,
+          controllerRestored: input.controller === controller,
+          lifecycle,
+          maximumResultCount,
+          maximumRowCount,
+          nativeViewClosed: !view.isOpen,
+          resultSourceCount: resultSources.size,
+          resultTypeCount: resultTypes.size,
+          rowBackedResultCount,
+          selectableRowCount,
+          valueWasSet: input.value.length > 0,
+        };
+      } finally {
+        input.controller = controller;
+        if (activeContext) {
+          manager.cancelQuery(activeContext);
+        }
+        view.close();
+        input.handleRevert();
+        if (String(input.value ?? "") !== originalValue) {
+          input.value = originalValue;
+        }
+      }
+    })();
+  `,
+    STATE_TIMEOUT_MS,
+  );
+
+  assert.ok(evidence.lifecycle.includes("started"));
+  assert.ok(evidence.lifecycle.includes("results"));
+  assert.ok(evidence.lifecycle.includes("finished"));
+  assert.equal(evidence.controllerRestored, true);
+  assert.ok(evidence.batchCount >= 1);
+  assert.ok(evidence.maximumResultCount >= 1);
+  assert.ok(evidence.resultTypeCount >= 1);
+  assert.ok(evidence.resultSourceCount >= 1);
+  assert.equal(evidence.rowBackedResultCount, 0);
+  assert.equal(evidence.selectableRowCount, 0);
+  assert.equal(evidence.maximumRowCount, 0);
+  assert.equal(evidence.nativeViewClosed, true);
+  assert.equal(evidence.valueWasSet, true);
+  return evidence;
+}
+
+async function runUrlbarSuggestionsProbe(client) {
+  const evidence = await client.execute(
+    `
+    return (async () => {
+      const popupRoot = document.getElementById("fennevia-address-popup-root");
+      const input = popupRoot?.querySelector(
+        "[data-fennevia-address-popup-input]"
+      );
+      const listbox = popupRoot?.querySelector(
+        "[data-fennevia-urlbar-suggestions]"
+      );
+      const details = popupRoot?.querySelector(
+        "[data-fennevia-address-popup-details]"
+      );
+      const trustDetail = popupRoot?.querySelector(
+        "[data-fennevia-trust-detail]"
+      );
+      const permissionDetail = popupRoot?.querySelector(
+        "[data-fennevia-permission-detail]"
+      )?.closest(".fennevia-address-popup__detail");
+      const firefoxControls = popupRoot?.querySelector(
+        "[data-fennevia-urlbar-coverage]"
+      );
+      const firefoxControlsCopy = firefoxControls?.querySelector(
+        ".fennevia-address-popup__firefox-controls-copy"
+      );
+      const nativeAccess = popupRoot?.querySelector(
+        "[data-fennevia-native-urlbar-access]"
+      );
+      const nativeInput = window.gURLBar;
+      const nativeController = nativeInput?.controller;
+      const nativeView = nativeInput?.view;
+      if (
+        !popupRoot ||
+        !input ||
+        !listbox ||
+        !details ||
+        !trustDetail ||
+        !permissionDetail ||
+        !firefoxControls ||
+        !firefoxControlsCopy ||
+        !nativeAccess ||
+        !nativeInput ||
+        !nativeController ||
+        !nativeView ||
+        typeof nativeView.close !== "function"
+      ) {
+        throw new Error(
+          "FENNEVIA_FIREFOX_TEST_URLBAR_SUGGESTIONS_CAPABILITY_MISSING"
+        );
+      }
+
+      const waitFor = async (predicate, code, timeoutMs = 15000) => {
+        const deadline = Date.now() + timeoutMs;
+        while (Date.now() < deadline) {
+          if (predicate()) {
+            return;
+          }
+          await new Promise(resolve => window.setTimeout(resolve, 20));
+        }
+        throw new Error(code);
+      };
+      const options = () =>
+        Array.from(listbox.querySelectorAll('[role="option"]'));
+      const popupPhase = () =>
+        popupRoot.getAttribute("data-fennevia-address-popup-phase");
+      const popupVisible = () => !popupRoot.hidden && popupPhase() !== "hidden";
+      const dispatchOpenLocation = () => {
+        const command = document.getElementById("Browser:OpenLocation");
+        if (!command) {
+          throw new Error(
+            "FENNEVIA_FIREFOX_TEST_URLBAR_SUGGESTIONS_COMMAND_MISSING"
+          );
+        }
+        const commandEvent = new CustomEvent("command", {
+          bubbles: true,
+          cancelable: true,
+        });
+        Object.defineProperty(commandEvent, "sourceEvent", {
+          value: { target: { id: "focusURLBar" } },
+        });
+        command.dispatchEvent(commandEvent);
+      };
+      const dispatchInputKey = key =>
+        input.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            key,
+          })
+        );
+
+      try {
+        nativeView.close();
+        nativeView.clear?.();
+        dispatchOpenLocation();
+        await waitFor(
+          () =>
+            popupVisible() &&
+            popupPhase() === "editing" &&
+            document.activeElement === input,
+          "FENNEVIA_FIREFOX_TEST_URLBAR_SUGGESTIONS_FOCUS_TIMEOUT"
+        );
+
+        input.value = "about:preferences";
+        input.dispatchEvent(
+          new InputEvent("input", {
+            bubbles: true,
+            composed: true,
+            inputType: "insertText",
+          })
+        );
+        await waitFor(
+          () => options().length > 0,
+          "FENNEVIA_FIREFOX_TEST_URLBAR_SUGGESTIONS_RESULT_TIMEOUT"
+        );
+
+        const projectedOptions = options();
+        const directResultCount = projectedOptions.filter(
+          option =>
+            option.getAttribute("data-fennevia-suggestion-execution") ===
+            "direct"
+        ).length;
+        const nativeResultCount = projectedOptions.filter(
+          option =>
+            option.getAttribute("data-fennevia-suggestion-execution") ===
+            "native"
+        ).length;
+        const sourceKinds = new Set(
+          projectedOptions.map(option =>
+            option.getAttribute("data-fennevia-suggestion-source")
+          )
+        );
+        const nativeRowsBeforeExecution = Array.from(
+          nativeView._rows?.children ?? []
+        );
+        const controllerRestoredBeforeExecution =
+          nativeInput.controller === nativeController;
+        const nativeViewClosedBeforeExecution = !nativeView.isOpen;
+        const detailsRect = details.getBoundingClientRect();
+        const trustRect = trustDetail.getBoundingClientRect();
+        const permissionRect = permissionDetail.getBoundingClientRect();
+        const firefoxControlsRect = firefoxControls.getBoundingClientRect();
+        const firefoxControlsCopyRect =
+          firefoxControlsCopy.getBoundingClientRect();
+        const nativeAccessRect = nativeAccess.getBoundingClientRect();
+        const statusColumnCount = getComputedStyle(details).gridTemplateColumns
+          .trim()
+          .split(" ")
+          .filter(Boolean).length;
+        const statusControlsShareRow =
+          Math.abs(trustRect.top - permissionRect.top) < 1 &&
+          trustRect.right <= permissionRect.left;
+        const footerItemCount = firefoxControls.querySelectorAll(
+          "[data-fennevia-urlbar-items] li"
+        ).length;
+        const compactFooter =
+          footerItemCount === 0 &&
+          firefoxControlsRect.height <= 48 &&
+          firefoxControlsCopyRect.height <= 18;
+        const firstOption = projectedOptions[0];
+        if (
+          firstOption.getAttribute("data-fennevia-suggestion-execution") !==
+          "direct"
+        ) {
+          throw new Error(
+            "FENNEVIA_FIREFOX_TEST_URLBAR_SUGGESTIONS_HEURISTIC_NOT_DIRECT"
+          );
+        }
+
+        dispatchInputKey("ArrowDown");
+        await waitFor(
+          () => {
+            const currentFirstOption = options()[0];
+            return (
+              currentFirstOption?.getAttribute("aria-selected") === "true" &&
+              input.getAttribute("aria-activedescendant") ===
+                currentFirstOption.id
+            );
+          },
+          "FENNEVIA_FIREFOX_TEST_URLBAR_SUGGESTIONS_SELECTION_TIMEOUT"
+        );
+        const selectedOption = options()[0];
+        const activeDescendantLinked =
+          input.getAttribute("aria-activedescendant") === selectedOption.id;
+        dispatchInputKey("Enter");
+        await waitFor(
+          () =>
+            !popupVisible() &&
+            gBrowser.selectedBrowser.currentURI.spec.startsWith(
+              "about:preferences"
+            ),
+          "FENNEVIA_FIREFOX_TEST_URLBAR_SUGGESTIONS_EXECUTION_TIMEOUT"
+        );
+
+        return {
+          activeDescendantLinked,
+          ariaAutocompleteList:
+            input.getAttribute("aria-autocomplete") === "list",
+          comboboxRole: input.getAttribute("role") === "combobox",
+          compactFooter,
+          controllerRestoredAfterExecution:
+            nativeInput.controller === nativeController,
+          controllerRestoredBeforeExecution,
+          directResultCount,
+          internalPageCommitted:
+            gBrowser.selectedBrowser.currentURI.spec.startsWith(
+              "about:preferences"
+            ),
+          listboxRole: listbox.getAttribute("role") === "listbox",
+          nativeAccessTargetHeight: nativeAccessRect.height,
+          nativeResultCount,
+          nativeRowCountBeforeExecution: nativeRowsBeforeExecution.length,
+          nativeViewClosedAfterExecution: !nativeView.isOpen,
+          nativeViewClosedBeforeExecution,
+          optionCount: projectedOptions.length,
+          popupClosed: !popupVisible(),
+          sourceKindCount: sourceKinds.size,
+          statusColumnCount,
+          statusControlsShareRow,
+          statusRowHeight: detailsRect.height,
+        };
+      } finally {
+        nativeView.close();
+        if (popupVisible()) {
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              bubbles: true,
+              cancelable: true,
+              key: "Escape",
+            })
+          );
+        }
+      }
+    })();
+  `,
+    STATE_TIMEOUT_MS,
+  );
+
+  assert.equal(evidence.activeDescendantLinked, true);
+  assert.equal(evidence.ariaAutocompleteList, true);
+  assert.equal(evidence.comboboxRole, true);
+  assert.equal(evidence.compactFooter, true);
+  assert.equal(evidence.controllerRestoredAfterExecution, true);
+  assert.equal(evidence.controllerRestoredBeforeExecution, true);
+  assert.ok(evidence.directResultCount >= 1);
+  assert.equal(evidence.internalPageCommitted, true);
+  assert.equal(evidence.listboxRole, true);
+  assert.ok(evidence.nativeAccessTargetHeight >= 32);
+  assert.equal(evidence.nativeRowCountBeforeExecution, 0);
+  assert.equal(evidence.nativeViewClosedAfterExecution, true);
+  assert.equal(evidence.nativeViewClosedBeforeExecution, true);
+  assert.ok(evidence.optionCount >= 1);
+  assert.equal(evidence.popupClosed, true);
+  assert.ok(evidence.sourceKindCount >= 1);
+  assert.equal(evidence.statusColumnCount, 2);
+  assert.equal(evidence.statusControlsShareRow, true);
+  assert.ok(evidence.statusRowHeight <= 56);
+  return evidence;
+}
+
 async function waitForProcessExit(child, timeoutMs) {
   if (child.exitCode !== null) {
     return child.exitCode;
@@ -7277,6 +7751,54 @@ async function run() {
       1,
     );
     assert.equal(startupEvidence.firstPartyScriptErrorCount, 0);
+
+    if (options.urlbarProviderProbe) {
+      const providerEvidence = await runUrlbarProviderProbe(client);
+      const postProbeEvidence = await collectEvidence(client);
+      assert.equal(postProbeEvidence.firstPartyScriptErrorCount, 0);
+
+      await client.request("Marionette:AcceptConnections", { value: false });
+      quitRequested = true;
+      try {
+        await client.request("Marionette:Quit", {});
+      } catch {
+        // A clean application quit may close Marionette before its response arrives.
+      }
+      await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
+      console.log(`urlbarProviderEvidence=${JSON.stringify(providerEvidence)}`);
+      console.log(
+        "PASS: Firefox's existing per-window Urlbar input and shared ProvidersManager " +
+          "published provider results, the native view stayed closed, result objects " +
+          "remained available without native rows, and exact-context cleanup completed " +
+          "without a first-party error.",
+      );
+      return;
+    }
+
+    if (options.urlbarSuggestionsProbe) {
+      const suggestionsEvidence = await runUrlbarSuggestionsProbe(client);
+      const postProbeEvidence = await collectEvidence(client);
+      assert.equal(postProbeEvidence.firstPartyScriptErrorCount, 0);
+
+      await client.request("Marionette:AcceptConnections", { value: false });
+      quitRequested = true;
+      try {
+        await client.request("Marionette:Quit", {});
+      } catch {
+        // A clean application quit may close Marionette before its response arrives.
+      }
+      await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
+      console.log(
+        `urlbarSuggestionsEvidence=${JSON.stringify(suggestionsEvidence)}`,
+      );
+      console.log(
+        "PASS: Fennevia projected Firefox Urlbar provider results into its custom " +
+          "combobox, kept the native view closed, restored the native controller, " +
+          "and committed a fixed internal-page result through Firefox's pickResult " +
+          "path without a first-party error.",
+      );
+      return;
+    }
 
     if (options.performanceBaseline) {
       assert.deepEqual(

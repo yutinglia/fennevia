@@ -15,7 +15,7 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 - **左方：**帶有載入、媒體分享及崩潰狀態圖示的垂直分頁、精簡的網址／狀態啟動器，以及放在此處的 widget。
 - **右方：**書籤，以及放在此處的 widget。
 - **下方：**下載進度及狀態，以及放在此處的 widget。
-- **中央：**從左方啟動器或按 <kbd>Ctrl</kbd>+<kbd>L</kbd> 開啟的網址／搜尋彈出面板。
+- **中央：**從左方啟動器或按 <kbd>Ctrl</kbd>+<kbd>L</kbd> 開啟的網址／搜尋彈出面板。目前開發版本的無障礙結果清單直接使用 Firefox 已啟用的 Urlbar 供應器與搜尋建議；Fennevia 不會另建搜尋引擎或建議服務。
 
 安全提示、權限、憑證、擴充套件安裝、下載安全、DevTools、完整原生網址列，以及自訂視窗按鈕背後的視窗指令仍由 Firefox 負責。原生標題列按鈕節點會保留，以便失敗時立刻復原。遇到不支援的功能或需要復原時，Fennevia 可以重新顯示完整的 Firefox 原生介面。
 
@@ -38,7 +38,9 @@ Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用�
 
 Fennevia 已經超越首個四邊介面 MVP。目前預發行版亦包括 Fennevia 自有的 widget 編輯器，可把 widget 即時拖放到四個邊緣；有限度的外觀與邊緣互動設定；預設跟隨 Firefox 設計 token；英文與繁體中文介面；啟動首幀隱藏原生工具列；以及 Windows 的 `FenneviaSetup.exe` 安裝精靈。
 
-這些實作已有針對性的自動化測試，但完整的 Firefox 實機視覺、原生彈出面板定位、自訂模式、啟動首幀及 GUI 安裝流程測試矩陣仍未完成。因此目前主要欠缺的是相容性與發行驗證，而不是核心瀏覽器介面功能。詳情請參閱[目前專案狀態（英文）](docs/current-status.md)，當中整理了已完成能力、證據邊界、已知風險及建議優先次序。
+目前開發版本亦會把 Firefox 自己每個視窗的 Urlbar provider manager 所產生、經限制的結果投影到中央 combobox。搜尋引擎、供應器選擇、排序、搜尋建議／私密視窗政策及結果執行仍由 Firefox 負責。一般結果會交回 Firefox 的 `pickResult`；豐富或未知結果則開啟完整原生網址列。這項工作已有針對性測試及兩次 Firefox 154 探針，但完整供應器與發行測試矩陣仍未完成，也不代表已有新的公開發行版。
+
+這些實作已有針對性的自動化測試，但完整的 Firefox 實機視覺、原生彈出面板定位、自訂模式、啟動首幀、GUI 安裝流程及具代表性的 Urlbar 供應器測試矩陣仍未完成。因此目前主要欠缺的是相容性與發行驗證，而不是核心瀏覽器介面功能。詳情請參閱[目前專案狀態（英文）](docs/current-status.md)，當中整理了已完成能力、證據邊界、已知風險及建議優先次序。
 
 ## 安裝
 
@@ -111,7 +113,7 @@ pwsh -NoProfile -File .\scripts\fennevia-package.ps1 Install `
 
 ## 日常操作與復原
 
-把滑鼠移到對應的視窗邊緣即可顯示面板。當介面健康運作時，<kbd>Ctrl</kbd>+<kbd>L</kbd> 會開啟 Fennevia 的中央網址／搜尋彈出面板。需要完整 Firefox 網址列、搜尋供應器、擴充套件操作或原生面板時，請選擇 **Open full Firefox address bar**。
+把滑鼠移到對應的視窗邊緣即可顯示面板。當介面健康運作時，<kbd>Ctrl</kbd>+<kbd>L</kbd> 會開啟 Fennevia 的中央網址／搜尋彈出面板。需要完整 Firefox 網址列、豐富／不支援的供應器結果、搜尋 one-off、擴充套件操作或原生面板時，請選擇 **Open Firefox address bar**。
 
 若 Firefox 仍在執行，但自訂介面無法正常使用，請按 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F12</kbd>，啟用內建的 Firefox 原生介面復原功能。若快捷鍵也失效，請關閉 Firefox，並使用同一個發行套件執行 `Disable`。不要手動刪除 Firefox 程式或設定檔內不確定用途的檔案。
 

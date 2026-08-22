@@ -38,6 +38,10 @@ import type {
   BrowserUrlbarCoverageStateAdapter,
 } from "../../app/urlbar-coverage-state";
 import type {
+  BrowserUrlbarSuggestionsBridge,
+  BrowserUrlbarSuggestionsStateAdapter,
+} from "../../app/urlbar-suggestions-state";
+import type {
   BrowserWindowControlsBridge,
   BrowserWindowControlsStateAdapter,
 } from "../../app/window-controls-state";
@@ -86,6 +90,7 @@ export type MountOptions = Readonly<{
   targets: EdgeMountTargets;
   toolbarWidgets?: BrowserToolbarWidgetsBridge;
   urlbarCoverage: BrowserUrlbarCoverageBridge;
+  urlbarSuggestions: BrowserUrlbarSuggestionsBridge;
   locale?: BrowserLocaleBridge;
   windowControls: BrowserWindowControlsBridge;
   windowKind: ShellWindowKind;
@@ -116,6 +121,7 @@ export type MountedShell = Readonly<{
   toolbarWidgets: BrowserToolbarWidgetsStateAdapter | undefined;
   locale: BrowserLocaleStateAdapter;
   urlbarCoverage: BrowserUrlbarCoverageStateAdapter;
+  urlbarSuggestions: BrowserUrlbarSuggestionsStateAdapter;
   windowControls: BrowserWindowControlsStateAdapter;
 }>;
 

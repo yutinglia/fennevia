@@ -205,9 +205,10 @@ is not source of truth. `WindowShell.sys.mjs` creates exactly one boundary from
 the existing `WindowManager` context for each managed window and retains it in
 the same frame-keyed private record as the frontend API. It passes no bridge
 implementation object, native handle, or capability object to Svelte. Issues
-#10, #12, #13, #14, #32, #37, and ADR-037 pass only frozen ordinary-data tabs,
-navigation/address, bookmarks, anonymous download-status, Urlbar coverage, and
-fixed browser-tool contracts through separate application adapters.
+#10, #12, #13, #14, #32, #37, ADR-037, and ADR-061 pass only frozen
+ordinary-data tabs, navigation/address, bookmarks, anonymous download-status,
+Urlbar coverage, native Urlbar result projections, and fixed browser-tool
+contracts through separate application adapters.
 ADR-052 adds an optional locale snapshot that carries only the mapped id `en`
 or `zh-Hant`.
 
@@ -228,8 +229,9 @@ and fixed state only. Event subscriptions and cleanup callbacks return
 idempotent disposers, and boundary disposal continues through all owned
 subscriptions and registries before reporting a typed cleanup error. These are
 the only shared utilities consumed by the tabs, navigation, bookmarks,
-downloads, Urlbar-coverage, browser-tools, and locale bridges; no service locator,
-dependency-injection framework, or generic Firefox SDK exists.
+downloads, Urlbar-coverage, Urlbar-suggestions, browser-tools, and locale
+bridges; no service locator, dependency-injection framework, or generic Firefox
+SDK exists.
 
 ADR-052 adds `src/firefox/locale.ts` to the same generated private ESM. It
 reads `Services.locale.appLocaleAsBCP47` (the Firefox UI language, not
@@ -375,6 +377,28 @@ project popup and then calls Firefox's `openLocation()`, preserving providers,
 suggestions, one-offs, extension actions, prompts, and native panels. One
 observer is disconnected exactly once with the window. See ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
+
+ADR-061 adds the separate `src/firefox/urlbar-suggestions.ts` facade and focused
+feature folder. Each window reuses its existing `gURLBar.startQuery()` context
+builder and parent controller's shared `ProvidersManager`; it registers no
+engine, provider, manager, controller, or view. A synchronous child-controller
+proxy redirects only the newly built context, then guarded restoration returns
+the exact native controller identity before provider work continues. A parent
+proxy receives incremental results while exposing a project view that never
+opens native rows. Replacement, ordinary close, failure, and disposal cancel
+the exact active context.
+
+Only bounded title/description text, closed type/source enums, heuristic state,
+source-validated icon references, direct/native execution class, and an opaque
+per-window result token cross into `src/app/urlbar-suggestions-state.ts`.
+Firefox result objects stay in the boundary registry. Current ordinary rows are
+executed by resolving the token and calling the existing window's
+`gURLBar.pickResult()`; search-mode follow-up queries reuse the same guarded
+proxy. Tip, dynamic, unknown, and other row-dependent results use the complete
+native Urlbar handoff. Query/result text and tokens have no log, persistence,
+telemetry, clipboard, dataset, CSS-variable, or project-network sink. See
+ADR-061 and
+`docs/research/firefox-153-154-native-urlbar-suggestions.md`.
 
 ADR-037 adds `src/firefox/browser-tools.ts` to the same generated private ESM.
 One controller per window validates the current Firefox owners needed for ten
@@ -539,6 +563,12 @@ protections DOM or renders inferred security state.
 
 Issue #37 extends that same popup with a full-width site-permission card, fixed
 applicable Firefox-control labels, and one native Urlbar handoff button.
+ADR-061 adds one bounded-scroll ARIA listbox controlled by the existing input.
+Arrow keys, Home/End, Page Up/Down, Enter, pointer hover, left click, and middle
+click operate only opaque current-query tokens. One polite status output
+announces query/result state; result text uses Svelte interpolation and icons use
+only a validated image property with a fixed fallback. Enter with no selection
+still uses the existing native raw-submission path.
 ADR-037/ADR-042's Trust/identity, protections, and permission bridge actions
 remain available; ADR-059 presents the first two as one visible Trust control
 in the left launcher and centered popup rather than duplicate entries or a
@@ -868,6 +898,9 @@ src/
     urlbar-coverage/
       controller.ts           # per-window ownership and cleanup
       support.ts              # capability checks and native-data helpers
+    urlbar-suggestions/
+      controller.ts           # shared-manager query, tokens, execution, cleanup
+      support.ts              # capability checks and bounded result projection
     toolbar-widgets/
       controller.ts
       native-support.ts
@@ -908,6 +941,7 @@ src/
       adapter.ts
       errors.ts
     urlbar-coverage-state.ts
+    urlbar-suggestions-state.ts
     window-controls-state.ts
   shell/
     AddressPopup.svelte
@@ -921,6 +955,7 @@ src/
     index.ts                  # public mount/health facade
     locale-ui.ts
     toolbar-widget-icons.ts
+    urlbar-suggestions-labels.ts
     features/
       customize/CustomizeInteractionSection.svelte
       customize/CustomizeStyleSection.svelte

@@ -37,7 +37,7 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-21, public prerelease package `0.11.0-beta.1` remains published
+As of 2026-08-22, public prerelease package `0.11.0-beta.1` remains published
 for Windows x64. Validated evidence is Firefox 153.0.4 BuildID 20260810162159
 and owner-confirmed ordinary runtime on Firefox 154.0 BuildID 20260812182057.
 The installer accepts Firefox 153 and newer after an explicit warning that only
@@ -74,6 +74,12 @@ Completed:
   safety/management retention;
 - #37: full current Urlbar status/action inventory, fixed permission/action
   coverage in the detailed popup, and complete Firefox native-Urlbar handoff;
+- ADR-061: the centered popup projects bounded results from Firefox's existing
+  per-window Urlbar provider manager, executes ordinary rows through native
+  `pickResult`, and hands rich/unknown rows to the complete native Urlbar. It
+  adds no engine, provider, ranking, persistence, or project network endpoint;
+  focused tests and two Firefox 154 probes pass while the representative-provider
+  and release matrices remain pending;
 - #15: exact health-gated content-only activation, complete retained native
   reveal, and reversible per-window fail-open cleanup;
 - #16: fixed local/CI PowerShell gates, aggregate performance/resource mode,
@@ -81,7 +87,7 @@ Completed:
   executable Firefox stable-update rehearsal.
 
 Current fast branch enhancement under ADR-037, ADR-042, ADR-044 through
-ADR-047, and ADR-054 through ADR-060:
+ADR-047, and ADR-054 through ADR-061:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   Firefox tools, and progressive disclosure;
@@ -445,6 +451,20 @@ Evidence: ADR-027 and
 Evidence: ADR-028 and
 `docs/research/firefox-153-address-popup.md`.
 
+ADR-061 extends the same popup without replacing Firefox's provider stack. The
+existing input now controls one bounded result list populated by the owning
+window's native Urlbar manager. Closed presentation fields and per-window opaque
+tokens cross the bridge; Firefox keeps query contexts, provider selection,
+ranking, search engines/suggestions, private policy, result objects, execution,
+and destinations. Ordinary rows use native `pickResult`; rich/unknown rows use
+the existing complete-native-Urlbar handoff. Focused automation and Firefox 154
+query-contract/production-panel probes pass. Firefox 153, representative
+providers, remote-suggestion settings, one-offs/rich rows, second/private
+windows, full accessibility/layout, failure injection, and release rows remain
+not run. Evidence: ADR-061,
+`plans/008-native-urlbar-suggestions.md`, and
+`docs/research/firefox-153-154-native-urlbar-suggestions.md`.
+
 #### Right bookmarks — complete (#14)
 
 - typed Places bridge;
@@ -496,7 +516,7 @@ Evidence: ADR-030 and
   labels;
 - one read-only per-window owner-state observer with deterministic cleanup;
 - no principal, certificate, permission record, extension identity, action ID,
-  provider result, or native node crosses the bridge;
+  provider result, or native node crosses the #37 coverage bridge;
 - full Firefox Urlbar, providers, prompts, panels, and commands retained through
   `window.openLocation()`;
 - real HTTP, valid HTTPS, internal, network-error, permission, ETP, dynamic
@@ -504,6 +524,11 @@ Evidence: ADR-030 and
 
 Evidence: ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
+
+ADR-061 narrowly supersedes only ADR-031's provider-result ban: a separate
+focused bridge may expose bounded presentation fields and opaque execution
+tokens under the privacy/cleanup rules above. The fixed coverage observer and
+native security/action ownership remain unchanged.
 
 #### Single-line toolbar and native detail handoffs — focused implementation complete, manual Firefox pending (ADR-037, ADR-042)
 

@@ -78,6 +78,7 @@ export async function verifyShellAppHealth({
     'label[for="fennevia-address-popup-input"]',
     "input#fennevia-address-popup-input[data-fennevia-address-popup-input]",
     "output[data-fennevia-address-popup-status]",
+    '[role="listbox"][data-fennevia-urlbar-suggestions]',
     "[data-fennevia-address-popup-details]",
     'button[data-fennevia-trust-detail][data-fennevia-browser-tool="site-information"]',
     'button[data-fennevia-permission-detail][data-fennevia-browser-tool="site-permissions"]',
@@ -99,6 +100,7 @@ export async function verifyShellAppHealth({
     mounted.navigation.status().disposed ||
     mounted.tabs.status().disposed ||
     mounted.urlbarCoverage.status().disposed ||
+    mounted.urlbarSuggestions.status().disposed ||
     mounted.windowControls.status().disposed ||
     roots.some((root, index) => {
       const edge = edgeNames[index];
@@ -252,6 +254,19 @@ export function getShellAppCapabilities({
         overlayTarget.querySelector("[data-fennevia-native-urlbar-access]"),
       ),
       name: "frontend.urlbar-coverage-state",
+    }),
+    Object.freeze({
+      available: Boolean(
+        mounted &&
+        !mounted.urlbarSuggestions.status().disposed &&
+        overlayTarget.querySelector(
+          '[role="listbox"][data-fennevia-urlbar-suggestions]',
+        ) &&
+        overlayTarget.querySelector(
+          'input[role="combobox"][data-fennevia-address-popup-input]',
+        ),
+      ),
+      name: "frontend.urlbar-suggestions-state",
     }),
     Object.freeze({
       available: Boolean(
