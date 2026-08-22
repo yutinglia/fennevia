@@ -88,11 +88,13 @@ foreach ($requiredToken in @(
     'firefox-identity-regression',
     '\.fennevia-dev-profile\.json',
     '--performance-baseline',
+    '--performance-stock-baseline',
     'PERFORMANCE_IDLE_WINDOW_MS\s*=\s*5_000',
     'PERFORMANCE_WINDOW_CYCLES\s*=\s*5',
     'ChromeUtils\.requestProcInfo\(\)',
     'cpuTimeDeltaNs',
-    'performanceBaseline='
+    'performanceBaseline=',
+    'performanceStockBaseline='
 )) {
     Assert-True -Condition ($firefoxTestContent -match $requiredToken) -Message "The real-Firefox probe is missing a required target-ownership or performance boundary."
 }

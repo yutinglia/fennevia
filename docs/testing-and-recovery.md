@@ -1389,6 +1389,12 @@ node .\tests\firefox-window-lifecycle.mjs `
   --profile '<FENNEVIA_DEV_PROFILE>' `
   --performance-baseline
 
+# Run only while this marker-owned installation is hard-disabled.
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --performance-stock-baseline
+
 node .\tests\firefox-window-lifecycle.mjs `
   --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
   --profile '<FENNEVIA_DEV_PROFILE>' `
@@ -1419,6 +1425,14 @@ normal-window lifecycle cycles. It discards process/window IDs, origins, URIs,
 titles, threads, and all browsing-derived fields. Repeat it three times on the
 same hardware and apply the investigation thresholds in
 `docs/firefox-update-workflow.md`; it is not a noisy CI pass/fail benchmark.
+
+The stock-control performance mode is diagnostic rather than a routine matrix
+row. Use it when an enabled idle threshold triggers: run three cold starts on
+the same copied Firefox and profile while the installer is hard-disabled, then
+restore Enable in a `finally` path. It validates the disabled ownership state,
+native UI, zero Fennevia records, and zero project hosts before returning only
+the same aggregate idle fields. It does not claim that the retained package is
+an uninstalled stock tree.
 
 The two Urlbar modes are focused compatibility checks. The provider mode proves
 the selected shared-manager contract without constructing native rows. The

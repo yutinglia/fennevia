@@ -99,6 +99,7 @@ function parseArguments(argv) {
     inspectDom: false,
     browserToolbox: false,
     performanceBaseline: false,
+    performanceStockBaseline: false,
     sessionRestore: null,
     urlbarProviderProbe: false,
     urlbarSuggestionsProbe: false,
@@ -174,6 +175,10 @@ function parseArguments(argv) {
       result.performanceBaseline = true;
       continue;
     }
+    if (argument === "--performance-stock-baseline") {
+      result.performanceStockBaseline = true;
+      continue;
+    }
     if (argument === "--urlbar-provider-probe") {
       result.urlbarProviderProbe = true;
       continue;
@@ -213,6 +218,7 @@ function parseArguments(argv) {
       result.expectStock,
       result.inspectDom,
       result.performanceBaseline,
+      result.performanceStockBaseline,
       result.urlbarProviderProbe,
       result.urlbarSuggestionsProbe,
       result.sessionRestore !== null,
@@ -236,6 +242,7 @@ function parseArguments(argv) {
       result.expectStock ||
       result.inspectDom ||
       result.performanceBaseline ||
+      result.performanceStockBaseline ||
       result.urlbarProviderProbe ||
       result.urlbarSuggestionsProbe ||
       result.sessionRestore !== null)
@@ -1294,6 +1301,22 @@ async function collectProcessResourceSnapshot(client) {
   `);
 }
 
+async function collectIdleResourceBaseline(client) {
+  const idleBefore = await collectProcessResourceSnapshot(client);
+  await new Promise((resolve) =>
+    setTimeout(resolve, PERFORMANCE_IDLE_WINDOW_MS),
+  );
+  const idleAfter = await collectProcessResourceSnapshot(client);
+  return {
+    cpuCycleDelta: idleAfter.cpuCycleCount - idleBefore.cpuCycleCount,
+    cpuTimeDeltaNs: idleAfter.cpuTimeNs - idleBefore.cpuTimeNs,
+    memoryDeltaBytes: idleAfter.memoryBytes - idleBefore.memoryBytes,
+    processCountAfter: idleAfter.processCount,
+    processCountBefore: idleBefore.processCount,
+    windowMs: PERFORMANCE_IDLE_WINDOW_MS,
+  };
+}
+
 async function measureEdgeRevealLatency(client) {
   return client.execute(`
     return (async () => {
@@ -1422,11 +1445,7 @@ async function collectPerformanceBaseline(
   originalHandle,
   startupToActiveMs,
 ) {
-  const idleBefore = await collectProcessResourceSnapshot(client);
-  await new Promise((resolve) =>
-    setTimeout(resolve, PERFORMANCE_IDLE_WINDOW_MS),
-  );
-  const idleAfter = await collectProcessResourceSnapshot(client);
+  const idle = await collectIdleResourceBaseline(client);
   const edgeReveal = await measureEdgeRevealLatency(client);
   const cyclesBefore = await collectProcessResourceSnapshot(client);
   await exercisePerformanceWindowCycles(client, originalHandle);
@@ -1456,14 +1475,7 @@ async function collectPerformanceBaseline(
   return {
     schemaVersion: 1,
     startupToActiveMs,
-    idle: {
-      cpuCycleDelta: idleAfter.cpuCycleCount - idleBefore.cpuCycleCount,
-      cpuTimeDeltaNs: idleAfter.cpuTimeNs - idleBefore.cpuTimeNs,
-      memoryDeltaBytes: idleAfter.memoryBytes - idleBefore.memoryBytes,
-      processCountAfter: idleAfter.processCount,
-      processCountBefore: idleBefore.processCount,
-      windowMs: PERFORMANCE_IDLE_WINDOW_MS,
-    },
+    idle,
     edgeReveal,
     windowCycles: {
       count: PERFORMANCE_WINDOW_CYCLES,
@@ -7722,7 +7734,7 @@ async function run() {
     options.profile,
     options.expectFailOpen,
     options.expectStock || options.inspectDom,
-    options.expectDisabled,
+    options.expectDisabled || options.performanceStockBaseline,
     options.expectSafeStart,
     options.expectShellFailOpen,
     options.expectShellMissingFailOpen || sessionRestoreFailOpen,
@@ -7921,6 +7933,41 @@ async function run() {
       console.log(
         "PASS: hard-disabled startup retained native browser UI with zero " +
           "Fennevia records or project hosts.",
+      );
+      return;
+    }
+
+    if (options.performanceStockBaseline) {
+      assert.deepEqual(await collectNativeState(client), EXPECTED_NATIVE_STATE);
+      const evidence = await collectEvidence(client);
+      assert.equal(evidence.records.length, 0);
+      assert.equal(evidence.firstPartyScriptErrorCount, 0);
+      assert.equal(
+        await client.execute(`
+          return document.querySelectorAll('[data-fennevia-shell-frame]').length;
+        `),
+        0,
+      );
+      const baseline = {
+        schemaVersion: 1,
+        startupToNativeReadyMs: Date.now() - launchStartedAt,
+        idle: await collectIdleResourceBaseline(client),
+      };
+
+      await client.request("Marionette:AcceptConnections", { value: false });
+      quitRequested = true;
+      try {
+        await client.request("Marionette:Quit", {});
+      } catch {
+        // A clean application quit may close Marionette before its response arrives.
+      }
+      await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
+      console.log(
+        `performanceStockBaseline=${JSON.stringify(baseline)}`,
+      );
+      console.log(
+        "PASS: hard-disabled Firefox produced a privacy-safe five-second " +
+          "idle-resource control with zero Fennevia records or project hosts.",
       );
       return;
     }

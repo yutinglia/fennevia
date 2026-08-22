@@ -796,6 +796,11 @@ node .\tests\firefox-window-lifecycle.mjs `
   --performance-baseline
 ```
 
+If the five-second idle threshold triggers, hard-disable only the same isolated
+marker-owned target and run three `--performance-stock-baseline` cold-start
+controls before restoring Enable. This mode reuses ADR-034's aggregate-only
+collector and must observe zero Fennevia records and project hosts.
+
 Use the feature-specific recovery wrapper documented in
 `docs/testing-and-recovery.md`. Every owned mutation wrapper restores exact bytes
 and verifies hashes in `finally`.

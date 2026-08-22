@@ -226,14 +226,15 @@ They must never receive browsing data.
 
 ### 6.4 Test-only resource evidence
 
-`--performance-baseline` may call Firefox's privileged process-info API only in
-the local real-Firefox harness. The collector immediately returns aggregate
-process count, memory bytes, CPU nanoseconds/cycles, and fixed timing samples.
-It must not serialize the raw record because that record can also contain
-origins, document URIs/titles, process IDs, windows, and threads. This API and
-its results never enter production runtime, Svelte state, persistence,
-telemetry, or a network sink. ADR-034 and static privacy assertions own this
-exception.
+`--performance-baseline` and its hard-disabled
+`--performance-stock-baseline` diagnostic control may call Firefox's privileged
+process-info API only in the local real-Firefox harness. The collector
+immediately returns aggregate process count, memory bytes, CPU
+nanoseconds/cycles, and fixed timing samples. It must not serialize the raw
+record because that record can also contain origins, document URIs/titles,
+process IDs, windows, and threads. This API and its results never enter
+production runtime, Svelte state, persistence, telemetry, or a network sink.
+ADR-034 and static privacy assertions own this exception.
 
 ### 6.5 Test-only persisted-session evidence
 

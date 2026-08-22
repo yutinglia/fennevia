@@ -1050,11 +1050,12 @@ complete operator contract and failure codes are in `docs/installation.md`.
 
 ## ADR-034: Collect only aggregate Firefox resource evidence in the test harness
 
-**Status:** Accepted for test-only Firefox 153.0.4 evidence
+**Status:** Accepted for test-only Firefox 153.0.4 and 154.0 evidence
 
 The real-Firefox harness may call the privileged, unsupported
 `ChromeUtils.requestProcInfo()` only in the explicit `--performance-baseline`
-mode. The collector immediately reduces the parent and child process records to
+mode and its hard-disabled `--performance-stock-baseline` diagnostic control.
+The collector immediately reduces the parent and child process records to
 numeric process count, committed memory bytes, CPU time nanoseconds, and CPU
 cycles. It never serializes or returns process IDs, origins, windows, document
 URIs/titles, threads, utility actors, or native records. Production runtime and
@@ -1064,7 +1065,11 @@ The baseline separately records harness-observed spawn-to-active time, a five-
 second hidden-surface idle delta, four-edge reveal p50/p95/max, and memory/CPU
 before and after five complete normal-window lifecycle cycles. Results are local
 diagnostic evidence with repeatable investigation thresholds, not a synthetic
-CI score or telemetry sink.
+CI score or telemetry sink. The hard-disabled control reuses the same
+five-second aggregate collector, requires the marker-owned disabled
+installation state, and first proves zero Fennevia records and project hosts;
+it does not treat an installed but disabled package as an uninstalled Firefox
+target.
 
 **Reasoning:** Firefox 153's pinned
 `dom/chrome-webidl/ChromeUtils.webidl` defines process memory in bytes and CPU

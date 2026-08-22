@@ -104,6 +104,14 @@ memory, edge-reveal latency, process count, and five normal-window lifecycle
 cycles. The harness deliberately discards process URIs, titles, origins, IDs,
 and thread/window records returned by Firefox.
 
+If an idle-resource threshold triggers, use the same isolated marker-owned
+program/profile pair as its own hard-disabled control. Preview and apply
+`Disable`, run three cold starts with `--performance-stock-baseline`, and always
+restore `Enable` in a `finally` path. The diagnostic mode requires the valid
+disabled ownership pair, proves native UI with zero Fennevia records and hosts,
+and emits only the same five-second aggregate idle fields. It is a disabled
+control, not proof of an uninstalled stock tree.
+
 Run the SessionStore wrapper once on the isolated old-build pair and preserve
 only its fixed-ID/count/boolean evidence. It performs prepare, cross-process
 verify, missing-frontend fail-open, and cleanup, then returns the profile to one
@@ -220,8 +228,13 @@ not noisy CI pass/fail limits:
   cleanup count.
 
 Re-run outliers and investigate with Firefox Profiler/DevTools when repeatable.
-Document hardware and uncertainty. Never normalize a persistent leak as a new
-baseline without identifying its owner.
+When an enabled median crosses the idle threshold, compare it with three
+hard-disabled control runs on the same copied program and profile. A comparable
+control identifies Firefox/build/profile startup activity rather than a
+Fennevia-specific idle regression; a materially lower control requires further
+Fennevia investigation. Document hardware, both distributions, and uncertainty.
+Never normalize a persistent leak as a new baseline without identifying its
+owner.
 
 ## 9. Security and release review
 
