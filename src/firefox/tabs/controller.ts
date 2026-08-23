@@ -15,6 +15,7 @@ import type {
 import {
   maximumContainerLabelLength,
   maximumTabTitleLength,
+  tabContainerColors,
 } from "../../app/tab-state.ts";
 import {
   FirefoxBridgeError,
@@ -230,47 +231,82 @@ export function createFirefoxTabsBridge({
     return undefined;
   };
 
-  const readContainer = (tab: NativeTab): TabContainerSnapshot | undefined => {
-    if (!identityService) {
-      return undefined;
-    }
-    const parsed = Number.parseInt(
-      String(readAttribute(tab, "usercontextid") ?? ""),
-      10,
-    );
-    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
-      return undefined;
-    }
-    let identity: unknown;
+  const readUserContextId = (tab: NativeTab): number | undefined => {
+    let propertyValue: unknown;
     try {
-      identity = Reflect.apply(
-        identityService.getPublicIdentityFromId,
-        identityService,
-        [parsed],
+      propertyValue = tab.userContextId;
+    } catch {
+      propertyValue = undefined;
+    }
+    for (const value of [propertyValue, readAttribute(tab, "usercontextid")]) {
+      const parsed = Number(value);
+      if (Number.isSafeInteger(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return undefined;
+  };
+
+  const readNativeContainerColor = (
+    tab: NativeTab,
+  ): TabContainerSnapshot["color"] | undefined => {
+    const classList = tab.classList;
+    if (!isNativeRecord(classList)) {
+      return undefined;
+    }
+    const contains = classList.contains;
+    if (!isFunction(contains)) {
+      return undefined;
+    }
+    try {
+      return tabContainerColors.find((color) =>
+        Boolean(
+          Reflect.apply(contains, classList, [`identity-color-${color}`]),
+        ),
       );
     } catch {
       return undefined;
     }
-    if (!isNativeRecord(identity)) {
+  };
+
+  const readContainer = (tab: NativeTab): TabContainerSnapshot | undefined => {
+    const userContextId = readUserContextId(tab);
+    if (userContextId === undefined) {
       return undefined;
     }
-    const color = resolveContainerColor(identity.color);
+    let identity: unknown;
+    if (identityService) {
+      try {
+        identity = Reflect.apply(
+          identityService.getPublicIdentityFromId,
+          identityService,
+          [userContextId],
+        );
+      } catch {
+        identity = undefined;
+      }
+    }
+    const color =
+      (isNativeRecord(identity)
+        ? resolveContainerColor(identity.color)
+        : undefined) ?? readNativeContainerColor(tab);
     if (!color) {
       return undefined;
     }
     let label = "";
-    if (typeof identity.name === "string") {
+    if (isNativeRecord(identity) && typeof identity.name === "string") {
       label = identity.name;
     }
     if (
       label.trim().length === 0 &&
+      identityService &&
       isFunction(identityService.getUserContextLabel)
     ) {
       try {
         const candidate = Reflect.apply(
           identityService.getUserContextLabel,
           identityService,
-          [parsed],
+          [userContextId],
         );
         if (typeof candidate === "string") {
           label = candidate;

@@ -56,7 +56,23 @@ function createEventTarget() {
 
 function createTab(label, attributes = {}) {
   const values = new Map(Object.entries({ label, ...attributes }));
+  const classes = new Set();
   return {
+    classList: {
+      add(...tokens) {
+        for (const token of tokens) {
+          classes.add(token);
+        }
+      },
+      contains(token) {
+        return classes.has(token);
+      },
+      remove(...tokens) {
+        for (const token of tokens) {
+          classes.delete(token);
+        }
+      },
+    },
     closing: false,
     getAttribute(name) {
       return values.get(name) ?? "";
@@ -77,6 +93,11 @@ function createTab(label, attributes = {}) {
       }
       values.set("muted", "true");
       values.delete("soundplaying");
+    },
+    get userContextId() {
+      return values.has("usercontextid")
+        ? Number.parseInt(values.get("usercontextid"), 10)
+        : 0;
     },
   };
 }
@@ -784,20 +805,37 @@ test("audio, sharing, crash, picture-in-picture, and container fields reconcile 
   }
 });
 
-test("optional container lookup failures omit container fields without failing health", () => {
+test("native identity classes preserve container color when the optional label service fails", () => {
+  const native = createNativeWindow();
+  native.tabs[0].setAttribute("usercontextid", "1");
+  native.tabs[0].classList.add("identity-color-blue");
+  const pair = createController(native, [], () => {
+    throw new Error("identity module missing");
+  });
+  try {
+    const snapshot = pair.controller.tabs.snapshot();
+    assert.deepEqual(snapshot[0].container, {
+      color: "blue",
+      label: "Container",
+    });
+    assert.ok(
+      pair.controller
+        .assertRequiredCapabilities()
+        .every((capability) => capability.available),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("container state stays omitted when neither service nor native color class is available", () => {
   const native = createNativeWindow();
   native.tabs[0].setAttribute("usercontextid", "1");
   const pair = createController(native, [], () => {
     throw new Error("identity module missing");
   });
   try {
-    const snapshot = pair.controller.tabs.snapshot();
-    assert.equal(snapshot[0].container, undefined);
-    assert.ok(
-      pair.controller
-        .assertRequiredCapabilities()
-        .every((capability) => capability.available),
-    );
+    assert.equal(pair.controller.tabs.snapshot()[0].container, undefined);
   } finally {
     disposePair(pair);
   }

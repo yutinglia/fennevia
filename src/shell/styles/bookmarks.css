@@ -108,6 +108,12 @@
 }
 
 #fennevia-shell-frame-host
+  .fennevia-bookmarks__item-favicon:not([hidden])
+  + .fennevia-bookmarks__item-fallback {
+  visibility: hidden;
+}
+
+#fennevia-shell-frame-host
   .fennevia-bookmarks__item[data-fennevia-bookmark-kind="bookmark"]
   .fennevia-bookmarks__item-icon {
   color: var(--fennevia-glass-muted);

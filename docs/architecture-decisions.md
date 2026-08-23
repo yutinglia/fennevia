@@ -2770,10 +2770,11 @@ rows are recorded in
 
 ## ADR-065: Preserve pointer intent across tab mutations and native window dragging
 
-**Status:** Accepted for the project-owner correction on 2026-08-23; Firefox
-154 source review and focused automation are complete; the real Firefox
-interaction, theme, window-state, second-window, and private-window matrix
-remains pending
+**Status:** Accepted for the project-owner correction on 2026-08-23; partially
+superseded by ADR-066 for action-hold ordering, click-only drag candidates, the
+explicit container element, and native-class fallback; Firefox 154 source
+review and focused automation are complete; the real Firefox interaction,
+theme, window-state, second-window, and private-window matrix remains pending
 
 Supersede ADR-037's rule that native window-drag start releases every edge
 pointer hold. Extend the existing shared edge controller with one transient,
@@ -2823,3 +2824,69 @@ is copied. Firefox's Windows drag event and synthesized release remain the
 pinned owners already documented by ADR-037. Exact evidence, current canary
 checks, privacy review, validation, and pending real-browser rows are recorded
 in `docs/research/firefox-154-tabbar-interaction-follow-up.md`.
+
+## ADR-066: Reconcile shell click candidates and make fallback visuals exclusive
+
+**Status:** Accepted for the project-owner follow-up on 2026-08-23; Firefox 154
+source review, focused automation, and complete ordinary automation are
+complete; the real Firefox interaction/visual matrix remains pending
+
+Refine ADR-065 without changing the #31 shared edge owner. A neutral primary
+press on owned top/side/bottom chrome starts a transient drag candidate and
+captures only finite pointer and window screen coordinates. A changed window
+position or Euclidean pointer displacement of at least 4 CSS px confirms
+movement. Ending a confirmed drag clears only the drag lock, preserving the
+source pointer hold through Firefox's native move loop until a later real
+pointer exit enters the one shared hide timer. Ending a stationary or
+sub-threshold candidate clears the lock and explicitly releases that source
+through the existing inside-window delay. Cancellation remains conservative;
+blur, suppression, disable, and disposal retain their deterministic cleanup.
+Do not add a private timer, edge trigger, observer, or window-global flag.
+
+Acquire the configured tab edge's pointer hold synchronously before a
+mouse-origin select or close mutates native/Svelte state. After one DOM tick,
+hit-test the current panel and explicitly retain or release that same hold.
+Treat a zero-detail click as keyboard-origin only when its viewport coordinates
+are also zero; Firefox chrome can report a physical click with zero detail but
+real coordinates. Pointer-origin focus cleanup and keyboard/touch roving-focus
+recovery remain separate. No pointer coordinate crosses the frontend boundary,
+enters a snapshot, persists, or appears in diagnostics.
+
+Render container color in one explicit aria-hidden project-owned span rather
+than a pseudo-element. Read a positive native `tab.userContextId` first and
+retain the `usercontextid` attribute as a compatibility fallback. The optional
+`ContextualIdentityService` remains the primary bounded public label/color
+source. If that import or lookup is unavailable, accept only one class from the
+existing closed `identity-color-*` enum already placed on the native tab and
+emit its color with the generic bounded “Container” label. Missing IDs/classes,
+unknown colors, and private windows still omit container state and never fail
+activation. Native DOM/class objects remain inside `src/firefox/`.
+
+For tab and bookmark favicons, keep each property-assigned image hidden while
+its current source is loading. Unhide it only from `load`; hide it and remove
+`src` on `error` or disposal. Place the packaged fallback as the immediately
+following sibling and hide that fallback only while the image is not hidden.
+Exactly one visual layer therefore paints for success, loading, failure, source
+replacement, and teardown. Existing URL/data allowlists, no-referrer policy,
+and no-network/cache-only boundaries remain unchanged.
+
+**Reasoning:** The merged first correction still allowed four local lifecycle
+gaps. Its tab action acquired the pointer hold only after native/Svelte
+mutation, so the panel could disappear before the post-render hit test. Firefox
+chrome physical clicks can have zero `detail`, causing them to take the
+keyboard branch. A neutral press entered drag lock on mouse-down, but a
+click-only release had no source-hold release path. Finally, both favicon and
+fallback were independently positioned and visible after a successful load,
+and the container presentation still depended on both an optional identity
+module and a pseudo-element. Explicit lifecycle transitions remove those
+ambiguities while retaining the established controller and bridge.
+
+Firefox 154
+[`tab.js`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/components/tabbrowser/content/tab.js)
+exposes `userContextId`, while
+[`ContextualIdentityService.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs)
+owns the closed identity colors and native `identity-color-*` class assignment.
+Fennevia reads only those bounded current-tab properties and independently
+authors its XHTML/CSS. Exact report evidence, rejected alternatives, privacy
+review, validation, and pending real-browser rows are recorded in
+`docs/research/firefox-154-shell-interaction-second-follow-up.md`.

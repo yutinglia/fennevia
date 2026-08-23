@@ -61,7 +61,7 @@ Independently selected Fennevia direction:
 | Top page-loading feedback                             | Add a restrained loading accent driven by the existing selected-page loading boolean; do not create another progress listener.                                                                                                                                             |
 | Bottom download progress                              | Keep the existing anonymous Downloads bridge and bottom surface.                                                                                                                                                                                                           |
 | Floating caption buttons                              | Retain Firefox's native minimize/maximize/restore/close controls and style their container as an independent compact island.                                                                                                                                               |
-| Draggable empty chrome                                | Keep neutral panel space draggable and every interactive descendant explicitly `no-drag`; retain the dragged source edge through the native move loop and release it through the ordinary post-drag pointer-exit path.                                                      |
+| Draggable empty chrome                                | Keep neutral panel space draggable and every interactive descendant explicitly `no-drag`; retain the dragged source edge through the native move loop, but classify a stationary release as a click and return it to the shared delayed-hide path.                         |
 | Unified extensions and pinned extension actions       | Add a native Unified Extensions handoff plus a complete original-toolbar handoff. Do not clone extension identities or arbitrary extension buttons.                                                                                                                        |
 | Firefox app menu, settings, and toolbar customization | Add fixed top-row actions that delegate to current Firefox owners; native customization mode is the only customization UI.                                                                                                                                                 |
 | HTTPS/site identity and tracking protection           | ADR-059 presents one Firefox-style Trust shield at the leading edge inside the compact address launcher and one combined popup row. Both retained bridge actions converge on Firefox's current Trust Panel; Fennevia's bounded summary does not replace complete certificate, permission, exception, breach, or tracking data. |
@@ -152,8 +152,10 @@ Independently selected Fennevia direction:
       drag. On Windows, consume Firefox's chrome-only drag-region start event
       and synthesized mouse-up, ignore source pointer-out noise during the move
       loop, and retain panel/window fallbacks so a side-panel drag cannot reveal
-      the top surface. After release, the next real pointer exit uses the shared
-      delayed-hide path.
+      the top surface. Confirm movement from the window position or a bounded
+      4 CSS px pointer threshold. An actual drag remains held until the next
+      real pointer exit; a click-only neutral press explicitly releases through
+      the shared inside-window delayed-hide path.
 
 ### E. Documentation and provenance
 
@@ -232,6 +234,9 @@ run for this fast pass. They are not implied by the focused results above.
 - [ ] Dragging empty top/left/right/bottom chrome moves the window; releasing a
       drag from any edge does not leave that panel open or reveal another edge,
       including top after a left/right drag.
+- [ ] Clicking empty draggable top/left/right/bottom chrome without moving the
+      window does not leave that panel permanently held; it hides after the
+      configured inside-window delay even if no other panel is revealed first.
 - [ ] Left and right panels begin below a visible top row; bottom yields to both
       side panels; no panels overlap incorrectly.
 - [ ] Moving from a panel into page content uses the configured in-window hide

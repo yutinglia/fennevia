@@ -298,8 +298,7 @@
     border-color: Highlight;
   }
 
-  #fennevia-shell-frame-host
-    .fennevia-tab-strip__item[data-fennevia-container-color]::before {
+  #fennevia-shell-frame-host .fennevia-tab-strip__container-bar {
     background: Highlight;
     forced-color-adjust: none;
   }

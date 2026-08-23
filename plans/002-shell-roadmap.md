@@ -51,6 +51,15 @@ disabled-edge controller state, favicon sanitization/update behavior, and exact
 native style count. The real Firefox visual, DPI/theme, multi-window preference,
 and native-status rows remain pending.
 
+ADR-066 follows the first tabbar interaction correction with explicit
+click-versus-window-drag reconciliation, synchronous pointer holds around tab
+selection/close, a project-owned container stripe with a closed native-class
+fallback, and mutually exclusive loaded favicon/fallback painting for tabs and
+bookmarks. It reuses the shared edge timer and existing bridge fields. Focused
+automation passes; the real Firefox visual, input-modality, drag, theme, and
+second/private-window rows remain pending in
+`docs/testing-and-recovery.md` §§6.1 and 6.5.
+
 ADR-044 (#64) adds the read-only nav-bar widget mirror in the top surface with
 owner-approved rendering of extension identity data. ADR-045 deprecates that
 mirror as the only widget source and adds a Fennevia-owned customize mode with
@@ -337,13 +346,16 @@ Deferred:
 - thumbnails/previews;
 - container icon loads from `resource://usercontext-content/`.
 
-Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063, and
+Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063,
+ADR-065, and ADR-066, plus
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,
 `docs/research/firefox-153-154-native-shell-icons.md`,
-`docs/research/firefox-154-tab-drag-spatial-preview.md`, plus ADR-055 and
-`docs/research/firefox-153-154-panel-context-actions.md`.
+`docs/research/firefox-154-tab-drag-spatial-preview.md`,
+`docs/research/firefox-154-tabbar-interaction-follow-up.md`, and
+`docs/research/firefox-154-shell-interaction-second-follow-up.md`, plus ADR-055
+and `docs/research/firefox-153-154-panel-context-actions.md`.
 
 ## Milestone F: Shared four-edge interaction and design frame — complete
 

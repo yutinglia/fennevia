@@ -44,6 +44,9 @@ test("bookmark rows expose bounded pointer and keyboard context actions", async 
   assert.match(source, /onmousedown=/u);
   assert.match(source, /preventMiddleAutoscroll/u);
   assert.match(source, /use:setFaviconSource=\{row\.node\.faviconUrl\}/u);
+  assert.match(source, /node\.hidden = true;[\s\S]*?node\.src = nextSource/u);
+  assert.match(source, /node\.onload = \(\) => \{\s*node\.hidden = false;/u);
+  assert.match(source, /node\.onload = null/u);
   assert.match(source, /referrerpolicy="no-referrer"/u);
   assert.match(source, /draggable="false"/u);
   assert.match(source, /blurFocusedContextMenuItem\(\);/u);
@@ -66,6 +69,14 @@ test("bookmark rows expose bounded pointer and keyboard context actions", async 
   assert.match(source, /removeEventListener\("blur"/u);
   assert.match(styles, /\.fennevia-bookmarks__context-menu/u);
   assert.match(styles, /\.fennevia-bookmarks__item-favicon/u);
+  assert.match(
+    styles,
+    /\.fennevia-bookmarks__item-favicon:not\(\[hidden\]\)\s*\+ \.fennevia-bookmarks__item-fallback \{\s*visibility: hidden;/u,
+  );
+  assert.match(
+    source,
+    /class="fennevia-bookmarks__item-favicon"[\s\S]*?class="fennevia-bookmarks__item-fallback"/u,
+  );
   assert.doesNotMatch(
     source,
     /\b(?:gBrowser|Services|PlacesUtils|SessionStore|ChromeUtils)\b/u,
