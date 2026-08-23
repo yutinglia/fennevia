@@ -4,6 +4,7 @@ import {
   edgeInteractionBounds,
   edgeInteractionDefaults,
   edgeNames,
+  pointerExitLocations,
 } from "./contracts.ts";
 import type {
   EdgeInteractionConfig,
@@ -85,6 +86,7 @@ export function createEdgeShellController(
   });
   let interactionSuppressed = false;
   let windowDragActive = false;
+  let windowDragEdge: EdgeName | null = null;
 
   const requireEdge = (edge: EdgeName): EdgeSurfaceController => {
     if (!isEdgeName(edge)) {
@@ -131,7 +133,29 @@ export function createEdgeShellController(
   const releasePointer = (
     edge: EdgeName,
     location: PointerExitLocation,
-  ): boolean => requireEdge(edge).setPointerHeld(false, location);
+  ): boolean => {
+    const surface = requireEdge(edge);
+    if (!pointerExitLocations.includes(location)) {
+      throw createEdgeSurfaceError(
+        "FENNEVIA_EDGE_POINTER_EXIT_LOCATION_INVALID",
+      );
+    }
+    if (windowDragActive && windowDragEdge === edge) {
+      return false;
+    }
+    return surface.setPointerHeld(false, location);
+  };
+
+  const resolveWindowDragEdge = (edge?: EdgeName): EdgeName | null => {
+    const candidate =
+      edge ??
+      windowDragEdge ??
+      edgeNames.find(
+        (candidateEdge) => surfaces[candidateEdge].snapshot().holds.pointer,
+      ) ??
+      null;
+    return candidate !== null && edgeEnabled[candidate] ? candidate : null;
+  };
 
   const resolveActiveEdge = (): EdgeName | null => {
     if (activeEdge && surfaces[activeEdge].snapshot().visible) {
@@ -182,6 +206,7 @@ export function createEdgeShellController(
       enabled = false;
       interactionSuppressed = false;
       windowDragActive = false;
+      windowDragEdge = null;
       activeEdge = null;
       for (const edge of [...edgeNames].reverse()) {
         surfaces[edge].dispose();
@@ -239,6 +264,7 @@ export function createEdgeShellController(
       enabled = nextEnabled;
       if (!nextEnabled) {
         windowDragActive = false;
+        windowDragEdge = null;
       }
       activeEdge = null;
       syncSurfaceEnabled();
@@ -255,6 +281,10 @@ export function createEdgeShellController(
         return false;
       }
       edgeEnabled[edge] = nextEnabled;
+      if (!nextEnabled && windowDragEdge === edge) {
+        windowDragActive = false;
+        windowDragEdge = null;
+      }
       if (!nextEnabled && activeEdge === edge) {
         activeEdge = null;
       }
@@ -307,6 +337,7 @@ export function createEdgeShellController(
       interactionSuppressed = nextSuppressed;
       if (nextSuppressed) {
         windowDragActive = false;
+        windowDragEdge = null;
       }
       activeEdge = null;
       syncSurfaceEnabled();
@@ -333,26 +364,35 @@ export function createEdgeShellController(
       return markActive(edge, requireEdge(edge).setPopupHeld(held));
     },
 
-    setWindowDragActive(nextActive) {
+    setWindowDragActive(nextActive, edge) {
       requireUsable();
       if (typeof nextActive !== "boolean") {
         throw createEdgeSurfaceError(
           "FENNEVIA_EDGE_WINDOW_DRAG_ACTIVE_INVALID",
         );
       }
-      if (windowDragActive === nextActive) {
+      if (edge !== undefined) {
+        requireEdge(edge);
+      }
+      const nextDragEdge = nextActive ? resolveWindowDragEdge(edge) : null;
+      if (windowDragActive === nextActive && windowDragEdge === nextDragEdge) {
         return false;
       }
       if (nextActive && !interactionsEnabled()) {
         return false;
       }
       windowDragActive = nextActive;
+      windowDragEdge = nextDragEdge;
       if (nextActive) {
         // Firefox's four edge roots are separate Svelte mounts. Keep native
-        // window dragging in this shared controller so one root cannot reveal
-        // another while Windows is running its native move loop.
-        for (const edge of edgeNames) {
-          releasePointer(edge, "inside-window");
+        // window dragging in this shared controller so the source remains
+        // visible without allowing another root to reveal during the native
+        // Windows move loop.
+        for (const candidate of edgeNames) {
+          surfaces[candidate].setPointerHeld(candidate === nextDragEdge);
+        }
+        if (nextDragEdge) {
+          activeEdge = nextDragEdge;
         }
       }
       return true;

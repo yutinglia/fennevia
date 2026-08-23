@@ -125,8 +125,10 @@ unbounded content overlay. On Windows, Firefox's chrome-only
 lock in the same shared controller. Firefox's synthesized mouse-up after its
 hidden move loop, plus pointer-up/cancel and blur fallbacks, releases that lock.
 This coordinates all four independent roots so dragging neutral left/right
-chrome cannot reveal the top edge; keyboard, focus, and popup holds are not
-suppressed.
+chrome cannot reveal the top edge. The controller retains the source edge's
+pointer hold through Firefox's native move loop, ignores source pointer-release
+noise until the lock ends, and then leaves the ordinary delayed-hide path to
+the next real pointer exit; keyboard, focus, and popup holds are not suppressed.
 
 Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
 owns the only root-state transition table: `created -> mounted -> healthy ->
@@ -272,7 +274,15 @@ read-only states inside that button, while pin, mute, and close remain sibling
 controls in fixed trailing grid areas. Titles
 stay bounded text, favicon values use a strict internal/raster allowlist with a
 property-only image and explicit fallback, and no browsing value enters logs or
-diagnostics. The bridge synchronously activates Firefox's lazy tab-menu Fluent
+diagnostics. Container identity uses the existing closed color enum on an
+independent logical-inline-start pseudo-element instead of sharing a row shadow
+with drag presentation; forced colors replaces it with `Highlight`. After a
+pointer select or close mutates native and Svelte tab state, the strip performs
+one post-render hit test against its configured panel, reacquires the shared
+pointer hold only while the pointer is still inside, and clears action-induced
+focus after verifying that no surviving surface control owns it. Keyboard and
+touch paths retain deterministic roving-focus recovery. The bridge synchronously
+activates Firefox's lazy tab-menu Fluent
 IDs before opening and acquires a NativeUi handoff token for the popup lifetime,
 so the real native-tab trigger neither produces blank static labels nor reveals
 the original toolbar. ADR-062 keeps the existing move bridge but uses the whole

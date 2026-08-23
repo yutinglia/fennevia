@@ -299,8 +299,9 @@
   }
 
   #fennevia-shell-frame-host
-    .fennevia-tab-strip__item[data-fennevia-container-color] {
-    box-shadow: inset 3px 0 0 Highlight;
+    .fennevia-tab-strip__item[data-fennevia-container-color]::before {
+    background: Highlight;
+    forced-color-adjust: none;
   }
 
   #fennevia-shell-frame-host

@@ -274,8 +274,10 @@ For each edge:
   the Firefox window uses the window-leave delay; a duplicate window-level
   event does not create or restart a second timer;
 - dragging the native window from neutral top/left/right/bottom panel chrome
-  releases all pointer holds, suppresses cross-edge pointer reveal until the
-  matching mouse/pointer release, and does not reveal top after a side drag;
+  retains the dragged source edge's pointer hold, suppresses every other edge's
+  pointer reveal until the matching mouse/pointer release, ignores source
+  pointer-out noise during the native move loop, and then hides only after a
+  real post-drag pointer exit without revealing top after a side drag;
 - `Escape` priority and dismissal;
 - focus transfer into the surface;
 - focus restoration to the prior valid target;
@@ -336,8 +338,12 @@ Validate:
 - middle-click close without autoscroll;
 - mouse-initiated close by middle button or the close control keeps the tab
   surface held when the pointer remains inside the panel after the tab row is
-  removed; a real pointer exit still uses the shared delayed-hide path, while
-  keyboard and touch activation do not synthesize a pointer hold;
+  removed, clears an action-induced stale focus hold, and still uses the shared
+  delayed-hide path on a real pointer exit; keyboard and touch activation do
+  not synthesize a pointer hold and retain deterministic focus recovery;
+- mouse-initiated tab selection remains held across native/Svelte selection
+  reconciliation until the pointer actually exits, without leaving the clicked
+  tab focused as a second persistent hold;
 - drag reorder and `Ctrl+Shift+ArrowUp/Down` within the pinned partition;
 - pointer-aligned full-row browser drag image, an actual source row that follows
   the pointer without transform lag while inside its strip, stable pre-transform
@@ -366,7 +372,8 @@ Validate:
   text-symbol placeholder icons;
 - native `loading.svg` while `busy`, with no second project rotation and its
   packaged reduced-motion behavior left intact;
-- container color stripe and bounded label; private windows omit container;
+- container color stripe on an independent logical-inline-start layer, bounded
+  label, and visible forced-colors fallback; private windows omit container;
 - attention indicator;
 - deterministic close-focus recovery;
 - selected item remains reachable;
@@ -415,7 +422,8 @@ Evidence:
 - `docs/research/firefox-153-four-edge-shell.md`;
 - `docs/research/firefox-153-154-native-shell-icons.md`;
 - `docs/research/firefox-154-tab-drag-spatial-preview.md`;
-- `docs/research/firefox-154-cross-window-tab-drag.md`.
+- `docs/research/firefox-154-cross-window-tab-drag.md`;
+- `docs/research/firefox-154-tabbar-interaction-follow-up.md`.
 
 ADR-062 focused validation passed the complete `npm run verify` gate with
 318/318 Node tests, 87.49% line coverage, 95.11% function coverage, all fixed
@@ -448,6 +456,16 @@ change. The complete `npm run verify` gate passed with 331/331 Node tests,
 fixed PowerShell 7 suites, dependency audit, deterministic frontend/bridge
 builds, and 14/14 accepted production artifacts. The fixed suite also passed
 under Windows PowerShell 5.1. Real Firefox results are not inferred from this
+automation.
+
+ADR-065 adds source-edge retention during native window drag, post-mutation
+pointer/focus reconciliation for tab select and close, and an independent
+container identity layer. Its focused edge/tab/frontend suite passed 29/29.
+The complete `npm run verify` gate passed with 351/351 Node tests, 87.51% line
+coverage, 79.68% branch coverage, 95.31% function coverage, all fixed
+PowerShell 7 suites, dependency audit, deterministic frontend/bridge builds,
+and 14/14 accepted production artifacts. The fixed suite also passed under
+Windows PowerShell 5.1. Real Firefox results are not inferred from this
 automation.
 
 Issue #60 real Firefox rows (middle-click, audio/mute, container stripe,

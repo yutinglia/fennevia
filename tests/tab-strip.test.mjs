@@ -349,15 +349,23 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /handleTabAuxClick/u);
   assert.match(
     tabSource,
-    /const restorePointerHoldAfterClose = async \([\s\S]*?await tick\(\);[\s\S]*?elementFromPoint\([\s\S]*?surfacePanel\.contains\(pointerTarget\)[\s\S]*?setPointerHeld\(props\.edge, true\);/u,
+    /const restorePointerInteractionAfterMutation = async \([\s\S]*?await tick\(\);[\s\S]*?elementFromPoint\([\s\S]*?surfacePanel\.contains\(pointerTarget\)[\s\S]*?setPointerHeld\(props\.edge, true\);[\s\S]*?activeElement === interaction\.focusTarget[\s\S]*?interaction\.focusTarget\.blur\(\);[\s\S]*?releaseSurfaceFocus\(\);/u,
   );
   assert.match(tabSource, /pointerType === "touch"/u);
   assert.match(tabSource, /event\.button !== 0 && event\.button !== 1/u);
   assert.equal(
     tabSource.match(
-      /closeTab\([^\n]+, pointerPositionFromMouseEvent\(event\)\)/gu,
+      /closeTab\([^\n]+, pointerInteractionFromMouseEvent\(event\)\)/gu,
     )?.length,
     2,
+  );
+  assert.match(
+    tabSource,
+    /selectTab\(tab\.id, pointerInteractionFromMouseEvent\(event\)\)/u,
+  );
+  assert.match(
+    tabSource,
+    /if \(pointerInteraction\) \{[\s\S]*?restorePointerInteractionAfterMutation\(pointerInteraction\)[\s\S]*?\} else \{[\s\S]*?restoreFocusAfterClose/u,
   );
   assert.match(source, /openContextMenu/u);
   assert.match(source, /draggable="true"/u);
@@ -372,6 +380,22 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(
     source,
     /data-fennevia-container-color=\{tab\.container\?\.color\}/u,
+  );
+  assert.match(
+    styles,
+    /data-fennevia-container-color="blue"[\s\S]*?--fennevia-tab-container-color: #37adff;/u,
+  );
+  assert.match(
+    styles,
+    /data-fennevia-container-color\]::before \{[\s\S]*?inset-inline-start: 0;[\s\S]*?inline-size: 3px;[\s\S]*?background: var\(--fennevia-tab-container-color\);/u,
+  );
+  assert.match(
+    styles,
+    /forced-colors: active[\s\S]*?data-fennevia-container-color\]::before[\s\S]*?background: Highlight;/u,
+  );
+  assert.doesNotMatch(
+    styles,
+    /data-fennevia-container-color(?:="[^"]+")?\][^}]*box-shadow:/u,
   );
   assert.match(source, /findTabMoveIndex/u);
   assert.match(source, /resolveTabDropIndex/u);

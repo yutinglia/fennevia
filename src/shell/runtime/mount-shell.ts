@@ -83,6 +83,7 @@ import {
   type AddressPopupCoordinator,
 } from "./address-popup-coordinator";
 import { createSurfaceFocusCoordinator } from "./surface-focus";
+import { resolveWindowDragEdge } from "./edge-app-interactions";
 
 const WINDOW_DRAG_START_EVENT = "draggableregionleftmousedown";
 
@@ -298,11 +299,14 @@ export function mountShellApp({
     }
   };
 
-  const beginWindowDrag = (): void => {
+  const beginWindowDrag = (event: Event): void => {
     if (disposed) {
       return;
     }
-    shell.setWindowDragActive(true);
+    shell.setWindowDragActive(
+      true,
+      resolveWindowDragEdge(event.target) ?? undefined,
+    );
   };
 
   const releaseWindowDrag = (): void => {
@@ -313,8 +317,8 @@ export function mountShellApp({
   };
 
   const releaseWindowInteraction = (): void => {
-    releaseWindowPointer();
     releaseWindowDrag();
+    releaseWindowPointer();
   };
 
   const onPointerOut = (event: PointerEvent): void => {

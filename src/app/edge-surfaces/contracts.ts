@@ -93,7 +93,7 @@ export type EdgeShellController = Readonly<{
   setInteractionSuppressed: (suppressed: boolean) => boolean;
   setPointerHeld: (edge: EdgeName, held: boolean) => boolean;
   setPopupHeld: (edge: EdgeName, held: boolean) => boolean;
-  setWindowDragActive: (active: boolean) => boolean;
+  setWindowDragActive: (active: boolean, edge?: EdgeName) => boolean;
   snapshot: () => EdgeShellSnapshot;
 }>;
 
