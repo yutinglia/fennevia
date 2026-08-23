@@ -14,7 +14,7 @@ collision system, glass token set, or window-global coordination layer.
 
 Validated baseline as of 2026-08-24:
 
-- public package `0.13.0-beta.1` prerelease on Windows x64;
+- public package `0.14.0-beta.1` prerelease on Windows x64;
 - tested Firefox majors 153.0.4 BuildID 20260810162159 and 154.0 BuildID
   20260812182057; installer accepts 153+ after an explicit warning (ADR-048);
 - first real stock-stable transition recorded in
