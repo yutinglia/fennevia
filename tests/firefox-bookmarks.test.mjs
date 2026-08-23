@@ -55,19 +55,31 @@ function createNativeWindow({ privateWindow = false } = {}) {
         placesOrganizerCalls.push(item);
       },
     },
+    Services: {
+      io: {
+        newURI(href) {
+          return Object.freeze({ spec: href });
+        },
+      },
+    },
     placesOrganizerCalls,
   };
   document.defaultView = window;
   return window;
 }
 
-function createPlacesFixture() {
+function createPlacesFixture({
+  faviconDataUri = "data:image/png;base64,iVBORw0KGgo=",
+  faviconThrows = false,
+  faviconsAvailable = true,
+} = {}) {
   const records = new Map();
   const children = new Map(ROOT_GUIDS.map((guid) => [guid, []]));
   const observerRegistrations = [];
   const observerRemovals = [];
   const openCalls = [];
   const fetchCalls = [];
+  const faviconCalls = [];
   const rootTitles = new Map([
     ["toolbar_____", "Bookmarks Toolbar"],
     ["menu________", "Bookmarks Menu"],
@@ -175,6 +187,22 @@ function createPlacesFixture() {
       observerRemovals.push({ eventTypes, listener });
     },
   };
+  const favicons = {
+    async getFaviconForPage(pageUri, preferredWidth) {
+      faviconCalls.push({ pageUri, preferredWidth });
+      if (pageUri.spec.endsWith("/one")) {
+        if (faviconThrows) {
+          throw new Error("private favicon failure");
+        }
+        return Object.freeze({
+          dataURI: Object.freeze({
+            spec: faviconDataUri,
+          }),
+        });
+      }
+      return null;
+    },
+  };
   const PlacesUIUtils = {
     openNodeIn(node, where, view, isPrivate) {
       openCalls.push({ isPrivate, node, view, where });
@@ -191,7 +219,13 @@ function createPlacesFixture() {
   };
   const moduleLoader = (uri) => {
     if (uri === "resource://gre/modules/PlacesUtils.sys.mjs") {
-      return { PlacesUtils: { bookmarks, observers } };
+      return {
+        PlacesUtils: {
+          bookmarks,
+          ...(faviconsAvailable ? { favicons } : {}),
+          observers,
+        },
+      };
     }
     if (uri === "moz-src:///browser/components/places/PlacesUIUtils.sys.mjs") {
       return { PlacesUIUtils };
@@ -210,6 +244,7 @@ function createPlacesFixture() {
       observerRegistrations.at(-1).listener(events);
     },
     fetchCalls,
+    faviconCalls,
     moduleLoader,
     observerRegistrations,
     observerRemovals,
@@ -332,6 +367,12 @@ test("children query one bounded page by parent position without exposing URLs",
       ],
     );
     assert.equal(pair.fixture.fetchCalls.length, callsBefore + 3);
+    assert.equal(
+      page.items[1].faviconUrl,
+      "data:image/png;base64,iVBORw0KGgo=",
+    );
+    assert.equal(pair.fixture.faviconCalls.length, 1);
+    assert.equal(pair.fixture.faviconCalls[0].preferredWidth, 16);
     assert.doesNotMatch(JSON.stringify(page), /example\.invalid|bookmark0001/u);
     assert.ok(Object.isFrozen(page));
     assert.ok(Object.isFrozen(page.items));
@@ -346,6 +387,84 @@ test("children query one bounded page by parent position without exposing URLs",
     assert.equal(normalizedPage.items[0].kind, "separator");
   } finally {
     disposePair(pair);
+  }
+});
+
+test("missing optional favicon support keeps the packaged fallback", async () => {
+  const pair = createController({
+    fixture: createPlacesFixture({ faviconsAvailable: false }),
+  });
+  try {
+    const capabilities = pair.controller.assertRequiredCapabilities();
+    assert.equal(
+      capabilities.find(
+        (capability) => capability.name === "firefox.places-favicon-query",
+      ).available,
+      false,
+    );
+    const [toolbar] = await pair.controller.bookmarks.roots();
+    const page = await pair.controller.bookmarks.children(toolbar.id);
+    assert.equal(page.status, "ok");
+    assert.equal(
+      Object.hasOwn(
+        page.items.find((item) => item.kind === "bookmark"),
+        "faviconUrl",
+      ),
+      false,
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("favicon preferred width is clamped for high DPI windows", async () => {
+  const pair = createController();
+  pair.window.devicePixelRatio = 8;
+  try {
+    const [toolbar] = await pair.controller.bookmarks.roots();
+    await pair.controller.bookmarks.children(toolbar.id);
+    assert.equal(pair.fixture.faviconCalls[0].preferredWidth, 64);
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("invalid or failed cached favicon results use the packaged fallback", async (t) => {
+  for (const [name, fixture] of [
+    [
+      "remote URL",
+      createPlacesFixture({
+        faviconDataUri: "https://example.invalid/icon.png",
+      }),
+    ],
+    [
+      "SVG data",
+      createPlacesFixture({ faviconDataUri: "data:image/svg+xml;base64,AAAA" }),
+    ],
+    [
+      "malformed data",
+      createPlacesFixture({ faviconDataUri: "data:image/png;base64,***" }),
+    ],
+    [
+      "invalid base64 length",
+      createPlacesFixture({ faviconDataUri: "data:image/png;base64,AAAAA" }),
+    ],
+    ["query failure", createPlacesFixture({ faviconThrows: true })],
+  ]) {
+    await t.test(name, async () => {
+      const pair = createController({ fixture });
+      try {
+        const [toolbar] = await pair.controller.bookmarks.roots();
+        const page = await pair.controller.bookmarks.children(toolbar.id);
+        const item = page.items.find(
+          (candidate) => candidate.kind === "bookmark",
+        );
+        assert.equal(Object.hasOwn(item, "faviconUrl"), false);
+        assert.deepEqual(pair.errors, []);
+      } finally {
+        disposePair(pair);
+      }
+    });
   }
 });
 
@@ -511,6 +630,33 @@ test("native changes publish only opaque affected parents and stale removed IDs"
       reason: "stale",
       status: "rejected",
     });
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("favicon changes request one all-scope refresh without exposing URLs", async () => {
+  const pair = createController();
+  const events = [];
+  try {
+    await pair.controller.bookmarks.roots();
+    pair.controller.bookmarks.subscribe((event) => events.push(event));
+    pair.fixture.dispatch([
+      {
+        faviconUrl: "https://private.invalid/favicon.ico",
+        type: "favicon-changed",
+        url: "https://private.invalid/",
+      },
+    ]);
+    assert.deepEqual(events, [
+      {
+        parentIds: [],
+        revision: 1,
+        scope: "all",
+        type: "changed",
+      },
+    ]);
+    assert.doesNotMatch(JSON.stringify(events), /private\.invalid/u);
   } finally {
     disposePair(pair);
   }

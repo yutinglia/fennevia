@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
 import { edgeNames } from "../../app/edge-surfaces";
 import {
+  createDefaultShellPanelConfig,
+  getSidePanelEdge,
+  type ProgressLightSource,
+} from "../../app/toolbar-widgets-state";
+import {
   FRAME_ENVIRONMENT_ATTRIBUTE,
   FRAME_READY_ATTRIBUTE,
   MOUNT_STATUS_ATTRIBUTE,
@@ -30,6 +35,14 @@ export async function verifyShellAppHealth({
   const leftRoot = roots[edgeNames.indexOf("left")];
   const rightRoot = roots[edgeNames.indexOf("right")];
   const bottomRoot = roots[edgeNames.indexOf("bottom")];
+  const shellSnapshot = mounted?.shell.snapshot();
+  const panels =
+    mounted?.toolbarWidgets?.snapshot().snapshot.panels ??
+    createDefaultShellPanelConfig();
+  const tabsEdge = getSidePanelEdge(panels, "tabs");
+  const bookmarksEdge = getSidePanelEdge(panels, "bookmarks");
+  const tabsRoot = tabsEdge === "left" ? leftRoot : rightRoot;
+  const bookmarksRoot = bookmarksEdge === "left" ? leftRoot : rightRoot;
   const addressPopupRoot = overlayTarget.querySelector<HTMLElement>(
     "#fennevia-address-popup-root[data-fennevia-address-popup-root]",
   );
@@ -38,7 +51,7 @@ export async function verifyShellAppHealth({
   );
   const templateConstructor =
     frame.ownerDocument.defaultView?.HTMLTemplateElement;
-  const requiredLeftSelectors = [
+  const requiredTabsSelectors = [
     "section[data-fennevia-address-launcher-region]",
     "button[data-fennevia-address-launcher]",
     'button[data-fennevia-trust-status][data-fennevia-browser-tool="site-information"]',
@@ -58,9 +71,8 @@ export async function verifyShellAppHealth({
     'button[data-fennevia-window-control="minimize"]',
     'button[data-fennevia-window-control="toggle-maximize"]',
     'button[data-fennevia-window-control="close"]',
-    '[data-fennevia-progress-light="load"]',
   ];
-  const requiredRightSelectors = [
+  const requiredBookmarksSelectors = [
     "select[data-fennevia-bookmark-roots]",
     "option[data-fennevia-bookmark-root]",
     '[role="list"][data-fennevia-bookmark-list]',
@@ -70,7 +82,6 @@ export async function verifyShellAppHealth({
     "section[data-fennevia-downloads]",
     "[data-fennevia-download-summary]",
     "[data-fennevia-download-progress]",
-    '[data-fennevia-progress-light="download"]',
   ];
   const requiredAddressPopupSelectors = [
     "button[data-fennevia-address-popup-backdrop]",
@@ -86,6 +97,24 @@ export async function verifyShellAppHealth({
     "button[data-fennevia-native-urlbar-access]",
     "button[data-fennevia-address-popup-close]",
   ];
+  const hasConfiguredProgressLight = (
+    root: HTMLElement | null | undefined,
+    source: ProgressLightSource,
+  ): boolean => {
+    if (!root) {
+      return false;
+    }
+    const light = root.querySelector<HTMLElement>(
+      "[data-fennevia-progress-light]",
+    );
+    if (source === "off") {
+      return light === null;
+    }
+    return (
+      light?.getAttribute("data-fennevia-progress-light") ===
+      (source === "loading" ? "load" : "download")
+    );
+  };
 
   if (
     frame.getAttribute(FRAME_READY_ATTRIBUTE) !== "" ||
@@ -102,6 +131,8 @@ export async function verifyShellAppHealth({
     mounted.urlbarCoverage.status().disposed ||
     mounted.urlbarSuggestions.status().disposed ||
     mounted.windowControls.status().disposed ||
+    !shellSnapshot ||
+    shellSnapshot.surfaces.bottom.enabled !== panels.bottomDownloadsEnabled ||
     roots.some((root, index) => {
       const edge = edgeNames[index];
       return (
@@ -124,21 +155,27 @@ export async function verifyShellAppHealth({
         targets[edge].getAttribute(MOUNT_STATUS_ATTRIBUTE) !== "mounted",
     ) ||
     overlayTarget.getAttribute(MOUNT_STATUS_ATTRIBUTE) !== "mounted" ||
-    !leftRoot ||
-    requiredLeftSelectors.some(
-      (selector) => !leftRoot.querySelector(selector),
+    !tabsRoot ||
+    tabsRoot.getAttribute("data-fennevia-side-role") !== "tabs" ||
+    requiredTabsSelectors.some(
+      (selector) => !tabsRoot.querySelector(selector),
     ) ||
-    leftRoot.querySelector("input") !== null ||
+    tabsRoot.querySelector("input") !== null ||
     !topRoot ||
     requiredTopSelectors.some((selector) => !topRoot.querySelector(selector)) ||
-    !rightRoot ||
-    requiredRightSelectors.some(
-      (selector) => !rightRoot.querySelector(selector),
+    !bookmarksRoot ||
+    bookmarksRoot.getAttribute("data-fennevia-side-role") !== "bookmarks" ||
+    requiredBookmarksSelectors.some(
+      (selector) => !bookmarksRoot.querySelector(selector),
     ) ||
     !bottomRoot ||
+    bottomRoot.getAttribute("data-fennevia-enabled") !==
+      String(panels.bottomDownloadsEnabled) ||
     requiredBottomSelectors.some(
       (selector) => !bottomRoot.querySelector(selector),
     ) ||
+    !hasConfiguredProgressLight(topRoot, panels.topProgressLight) ||
+    !hasConfiguredProgressLight(bottomRoot, panels.bottomProgressLight) ||
     !addressPopupRoot ||
     addressPopupRoot.parentElement !== overlayTarget ||
     addressPopupRoot.namespaceURI !== XHTML_NAMESPACE ||
@@ -170,6 +207,11 @@ export function getShellAppCapabilities({
 > {
   const mounted = mountedFrames.get(frame);
   const snapshot = mounted?.shell.snapshot();
+  const panels =
+    mounted?.toolbarWidgets?.snapshot().snapshot.panels ??
+    createDefaultShellPanelConfig();
+  const tabsEdge = getSidePanelEdge(panels, "tabs");
+  const bookmarksEdge = getSidePanelEdge(panels, "bookmarks");
   return Object.freeze([
     Object.freeze({
       available:
@@ -190,8 +232,10 @@ export function getShellAppCapabilities({
         snapshot &&
         edgeNames.every(
           (edge) =>
-            snapshot.surfaces[edge].phase === "hidden" ||
-            snapshot.surfaces[edge].phase === "disabled",
+            snapshot.surfaces[edge].phase ===
+            (edge === "bottom" && !panels.bottomDownloadsEnabled
+              ? "disabled"
+              : "hidden"),
         ),
       ),
       name: "frontend.edge-controller",
@@ -273,14 +317,14 @@ export function getShellAppCapabilities({
         mounted &&
         !mounted.addressPopup.status().disposed &&
         !mounted.navigation.status().disposed &&
-        targets.left.querySelector("[data-fennevia-address-launcher]") &&
+        targets[tabsEdge].querySelector("[data-fennevia-address-launcher]") &&
         overlayTarget.querySelector("[data-fennevia-address-popup-input]"),
       ),
       name: "frontend.address-popup-state",
     }),
     Object.freeze({
       available: Boolean(
-        targets.left.querySelector(
+        targets[tabsEdge].querySelector(
           'button[data-fennevia-trust-status][data-fennevia-browser-tool="site-information"]',
         ) &&
         overlayTarget.querySelector(
@@ -296,8 +340,10 @@ export function getShellAppCapabilities({
       available: Boolean(
         mounted &&
         !mounted.bookmarks.status().disposed &&
-        targets.right.querySelector("[data-fennevia-bookmark-roots]") &&
-        targets.right.querySelector("[data-fennevia-bookmark-list]"),
+        targets[bookmarksEdge].querySelector(
+          "[data-fennevia-bookmark-roots]",
+        ) &&
+        targets[bookmarksEdge].querySelector("[data-fennevia-bookmark-list]"),
       ),
       name: "frontend.bookmarks-state",
     }),
@@ -312,10 +358,14 @@ export function getShellAppCapabilities({
     }),
     Object.freeze({
       available: Boolean(
-        targets.top.querySelector('[data-fennevia-progress-light="load"]') &&
-        targets.bottom.querySelector(
-          '[data-fennevia-progress-light="download"]',
-        ),
+        (panels.topProgressLight === "off" ||
+          targets.top.querySelector(
+            `[data-fennevia-progress-light="${panels.topProgressLight === "loading" ? "load" : "download"}"]`,
+          )) &&
+        (panels.bottomProgressLight === "off" ||
+          targets.bottom.querySelector(
+            `[data-fennevia-progress-light="${panels.bottomProgressLight === "loading" ? "load" : "download"}"]`,
+          )),
       ),
       name: "frontend.progress-lights",
     }),

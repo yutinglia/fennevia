@@ -67,6 +67,10 @@ test("shell composition and CSS retain explicit bounded module ownership", async
     customize,
     /features\/customize\/CustomizeInteractionSection\.svelte/u,
   );
+  assert.match(
+    customize,
+    /features\/customize\/CustomizePanelsSection\.svelte/u,
+  );
 
   assert.deepEqual(css.trim().split(/\r?\n/u), [
     '@import "./foundation.css";',

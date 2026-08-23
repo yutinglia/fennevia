@@ -8,6 +8,7 @@ Status: implementation and documentation complete on
 `feat/fennevia-customize-mode` (ADR-045); ADR-046 adds localized names and
 native built-in icons; ADR-047 replaces the drawer list editor with live
 four-edge HTML5 drag-and-drop; ADR-054 adds bounded global edge-interaction
+settings; ADR-064 adds bounded panel-role, bottom-panel, and activity-light
 settings. The manual real-Firefox checklist in
 `docs/testing-and-recovery.md` §6.9 is still `not run`.
 
@@ -17,13 +18,14 @@ widget source and adds a Fennevia-owned customize mode:
 - the full current `CustomizableUI` widget inventory, extensions included, as
   an opaque-token palette;
 - project-owned placement editing across all four edge panels;
-- Fennevia-owned placeable widgets (`show-bookmarks` reveals the right-edge
-  bookmarks surface; `show-downloads` opens Firefox's `#downloadsPanel`;
+- Fennevia-owned placeable widgets (`show-bookmarks` reveals the configured
+  bookmarks side; `show-downloads` opens Firefox's `#downloadsPanel`;
   ADR-057's `show-translate` opens Firefox's built-in full-page translation
   panel) and spacer/spring/separator specials;
 - bounded appearance and interaction settings applied through a fixed CSS
   custom-property set and the shared #31 edge controller;
-- profile-local persistence and owner-approved bounded CustomizableUI writes.
+- profile-local persistence, including the strict panel configuration added by
+  ADR-064, and owner-approved bounded CustomizableUI writes.
 
 Native customize mode remains available through the Firefox application menu,
 complete native reveal, and fail-open; it is not a fixed top-row control.
@@ -82,6 +84,11 @@ activation contract.
       defaults; null/non-null pointer destinations route through the shared
       controller/timer while the existing hint animation and CSS/point hit
       geometry update together.
+- [x] ADR-064 version-1 `fennevia.customize.panels` JSON: complete
+      `tabs-left`/`tabs-right` side-role swap, bottom downloads enablement, and
+      independent `loading`/`downloads`/`off` top/bottom light sources, with
+      defaults of tabs left, bookmarks right, bottom enabled, loading top, and
+      downloads bottom.
 - [x] Skip list includes placements already represented by fixed Fennevia
       controls, including Unified Extensions and the application menu.
 - [x] Unit tests for model, bridge, adapter, skip list, missing capability,

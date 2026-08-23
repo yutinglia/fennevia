@@ -22,14 +22,16 @@ Validated baseline as of 2026-08-23:
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16,
   #17, #18, #22, #31, #32, #37, #39, #57, and #60 complete;
 - functional vertical tabs and a compact address/status launcher in the left
-  surface;
+  surface by default, with a bounded whole-role swap to the right;
 - one centered address/search popup with a combined Trust summary, permission,
   applicable-action, native Firefox provider-result list, and native-handoff
   coverage in a fifth owned root;
 - one-line primary navigation/address/status plus fixed native Firefox handoffs
   in the top surface;
-- bounded lazy Firefox Places bookmarks in the right surface;
-- event-driven anonymous aggregate Downloads status in the bottom surface;
+- bounded lazy Firefox Places bookmarks in the right surface by default, with
+  Firefox-cached raster favicons and middle-click new-tab opening;
+- event-driven anonymous aggregate Downloads status in the optionally disabled
+  bottom surface;
 - exact Firefox native DOM and complete reveal/fallback paths retained;
 - production enters `active` only after the complete health gate;
 - ADR-050 first-paint native hide is implemented in source; the real Firefox
@@ -40,6 +42,14 @@ host-anchored Firefox panel placement, and ADR-043's decorative gutter
 progress lights have focused automated evidence; the real Firefox popup-
 placement and live light-painting matrices remain pending and are not included
 in the earlier validated baseline.
+
+ADR-064 adds the owner-requested complete tabs/bookmarks side-role swap, bottom
+panel enablement, independent loading/download/off top and bottom gutter-light
+sources, cached bounded bookmark favicons, and an active-only native status
+capsule. Focused automation covers the strict preference, role routing,
+disabled-edge controller state, favicon sanitization/update behavior, and exact
+native style count. The real Firefox visual, DPI/theme, multi-window preference,
+and native-status rows remain pending.
 
 ADR-044 (#64) adds the read-only nav-bar widget mirror in the top surface with
 owner-approved rendering of extension identity data. ADR-045 deprecates that
@@ -264,7 +274,7 @@ Gate for every feature bridge:
 Evidence: ADR-023 and
 `docs/research/firefox-153-bridge-boundary.md`.
 
-## Milestone E: Tabs bridge and left-edge vertical tabs — complete
+## Milestone E: Tabs bridge and default-left vertical tabs — complete
 
 ### E.1 Typed tabs bridge (#10)
 
@@ -362,7 +372,7 @@ feature folders. Top-level files remain compatibility facades; no feature may
 use the refactor to create a second controller, timer, trigger, or privileged
 boundary.
 
-Current contents:
+Current default contents:
 
 - left: functional vertical tabs;
 - top: one-line primary navigation, address/page status, fixed native-detail
@@ -370,9 +380,13 @@ Current contents:
 - right: functional bounded/lazy bookmarks;
 - bottom: functional bounded download progress/status.
 
+ADR-064 keeps the top role fixed, permits only a complete left/right role swap,
+and permits disabling the bottom surface. It does not create a fifth edge role,
+duplicate tabs/bookmarks controller, or independent trigger/timer.
+
 ADR-055 layers one bounded project-owned common context menu onto every edge:
-Settings on top, New Tab on neutral left content, Manage Bookmarks on neutral
-right content, and Firefox Downloads on bottom, plus available Fennevia/native
+Settings on top, New Tab on the configured tabs side, Manage Bookmarks on the
+configured bookmarks side, and Firefox Downloads on bottom, plus available Fennevia/native
 customization and original-toolbar actions. Tab and bookmark descendants retain
 their specific owners. All paths reuse the shared popup hold and deterministic
 focus/listener cleanup. A 2026-08-22 owner-reported follow-up corrected the
@@ -506,7 +520,7 @@ Gate:
 - URL-like and search-like input delegates to current native Urlbar behavior;
 - navigation cannot overwrite an active draft;
 - no input or complete URL enters diagnostics or persistence;
-- the combined left surface remains compact, bounded, and hidden at rest;
+- the combined configured tabs surface remains compact, bounded, and hidden at rest;
 - compact and detailed status match the same current Firefox state and become
   conservatively unavailable when Firefox has no coherent status;
 - native Urlbar remains visible and unchanged;
@@ -546,10 +560,11 @@ failure-injection, and release rows remain not run. Evidence: ADR-061,
 `plans/008-native-urlbar-suggestions.md`, and
 `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
 
-## Milestone I: Right-edge bookmarks — complete (#14)
+## Milestone I: Default-right bookmarks — complete (#14)
 
 Replace the obsolete generic “sidebar MVP” direction with a focused,
-project-owned right-edge bookmarks feature.
+project-owned bookmark-side feature (right by default; ADR-064 permits the
+complete paired-role swap).
 
 ### Places bridge
 
@@ -568,7 +583,7 @@ Implemented and validated:
 Bookmark URLs need not enter Svelte state merely to open a bookmark. Large trees
 must not be mirrored eagerly.
 
-### Right-surface UI
+### Bookmark side-surface UI
 
 - root selector or documented section layout;
 - nested folder hierarchy;
@@ -577,15 +592,19 @@ must not be mirrored eagerly.
 - safe empty/loading/truncated/stale/error states;
 - keyboard traversal and focus stability;
 - pointer/keyboard bookmark/folder context actions with bounded placement,
-  focus restoration, and right-edge popup-hold cleanup;
-- no remote favicons for the MVP;
+  focus restoration, and configured-edge popup-hold cleanup;
+- middle click opens through the existing bounded new-tab disposition without
+  browser autoscroll;
+- Firefox-cached favicons use only bounded raster `data:` values assigned to an
+  image property, with the fixed packaged bookmark icon as fallback and no
+  remote project request;
 - native Library, `Ctrl+D`, bookmark dialogs, and management paths retained.
 
 Gate:
 
 - live native bookmark changes reconcile without continuous polling;
 - bookmark titles/URLs/folder contents do not enter normal logs or persistence;
-- right surface is hidden at rest and adds no permanent width;
+- the configured bookmark surface is hidden at rest and adds no permanent width;
 - native bookmark access remains usable;
 - failures fail open.
 
@@ -597,9 +616,10 @@ roots plus first page. The ordinary, second-window, private-window, Browser
 Toolbox, missing-capability, and frontend-recovery matrices passed on Firefox
 153.0.4 while native bookmark UI remained visible.
 
-Evidence: ADR-029 and
+Evidence: ADR-029 and ADR-064,
 `docs/research/firefox-153-bookmarks-surface.md`, plus ADR-055 and
-`docs/research/firefox-153-154-panel-context-actions.md`.
+`docs/research/firefox-153-154-panel-context-actions.md`, and
+`docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.
 
 ## Milestone J: Bottom-edge download progress/status — complete (#32)
 
@@ -632,11 +652,14 @@ principals, or native download objects.
 - accessible progress semantics;
 - native Downloads panel, notifications, reputation, safety, and management
   behavior retained.
+- ADR-064 may disable the owned bottom surface and its pointer/keyboard trigger
+  without stopping the per-window anonymous download bridge or native Firefox
+  Downloads paths.
 
 Gate:
 
 - single/multiple/mixed-size progress is correct without idle polling;
-- bottom surface is hidden at rest and adds no permanent padding;
+- enabled bottom surface is hidden at rest and adds no permanent padding;
 - filenames, paths, source URLs, and private activity do not enter normal logs;
 - failures fail open.
 
@@ -732,6 +755,8 @@ ADR-032 implements the final `healthy -> active` production transition and one
 exact per-window native visibility controller. ADR-037 extends its stylesheet
 to seven exact rules for reviewed toolbox/toolbar geometry, non-caption
 content, bookmarks/sidebar collapse, a 7px content gutter, and tabbox border.
+ADR-064 adds the active native status capsule and forced-colors override,
+bringing the current exact stylesheet contract to nine top-level rules.
 ADR-038 collapses every native caption copy at rest and places project-owned
 window controls on the top row. Native vertical-tab titlebar ownership,
 notifications, popups, dialogs, content, and DevTools remain intact. Native

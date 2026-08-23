@@ -47,10 +47,11 @@ As of 2026-08-23:
 - current shell: one zero-layout frame with independent top, left, right, and
   bottom surfaces plus one centered address-overlay root;
 - current functional features: vertical tabs and compact address/status
-  launcher in the left surface, centered address/search popup, primary
+  launcher on the default-left/configurable tabs side, centered address/search popup, primary
   navigation controls with bounded page status in the top surface, bounded lazy
-  bookmarks in the right surface, and anonymous aggregate download status in
-  the bottom surface; the centered popup also includes fixed Urlbar permission/
+  bookmarks on the default-right/configurable bookmark side, and anonymous
+  aggregate download status in the optionally disabled bottom surface; the
+  centered popup also includes fixed Urlbar permission/
   action coverage and complete native handoff;
 - current placeholders: none inside the five product surfaces;
 - native Firefox visible UI: exact ADR-032 toolbar/sidebar descendants collapse
@@ -316,7 +317,7 @@ owned surfaces. The center content hit target must remain Firefox-owned.
 
 ## 6. Feature-specific matrices
 
-### 6.1 Tabs and left surface — implemented
+### 6.1 Tabs and configured side surface — implemented
 
 Validate:
 
@@ -325,15 +326,15 @@ Validate:
 - exact native order;
 - selected, title, safe favicon/fallback, pinned, and loading state;
 - native and custom select/new/close/pin/unpin used alternately;
-- after the left surface's initial snapshot, a newly opened tab briefly
-  reveals the left edge and highlights only the new tab IDs;
+- after the tab surface's initial snapshot, a newly opened tab briefly reveals
+  its configured edge and highlights only the new tab IDs;
 - selected/background/last-tab close behavior;
 - rapid event/action bursts;
 - long, empty, emoji, markup-like, Unicode, and bidirectional titles;
 - rejected/failed favicon;
 - Up/Down, Home/End, Enter/Space, Delete, sibling pin/close/mute controls;
 - middle-click close without autoscroll;
-- mouse-initiated close by middle button or the close control keeps the left
+- mouse-initiated close by middle button or the close control keeps the tab
   surface held when the pointer remains inside the panel after the tab row is
   removed; a real pointer exit still uses the shared delayed-hide path, while
   keyboard and touch activation do not synthesize a pointer hold;
@@ -376,7 +377,7 @@ Validate:
 - same-window drag move, target-strip cross-window adoption at a pinned-aware
   insertion point, and target-browser-content append at the tab-list end;
 - target-window entry over either browser content or the project frame reveals
-  and holds that window's left tab surface before list hit testing; moving
+  and holds that window's configured tab surface before list hit testing; moving
   between target content and list keeps it visible;
 - an external target preview reserves one real row-height layout slot only for
   a valid target index, so a short target list extends without a
@@ -491,7 +492,8 @@ Validate:
 - one physical middle click invokes exactly one navigation action even if
   browser chrome dispatches both `click` and `auxclick`;
 - New Tab;
-- left-edge programmatic reveal and a short new-tab highlight after `TabOpen`;
+- configured-tab-edge programmatic reveal and a short new-tab highlight after
+  `TabOpen`;
 - selected-browser handoff;
 - redirects, same-document navigation, error pages, and tab close;
 - rapid command/tab-switch sequences;
@@ -557,8 +559,9 @@ Evidence: `docs/research/firefox-153-address-popup.md`.
 
 Validate:
 
-- the short left launcher shows only committed location plus one Firefox-style
-  Trust shield at the leading edge inside the shared address frame;
+- the short configured-tabs-side launcher shows only committed location plus
+  one Firefox-style Trust shield at the leading edge inside the shared address
+  frame;
 - the shield and centered popup's one full-width Trust row combine real Firefox
   connection/HTTPS and ETP status while keeping both bounded labels in the
   accessible name;
@@ -683,7 +686,7 @@ passed, blocked, or not run rather than inferring it from the focused probes.
 Evidence: ADR-061 and
 `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
 
-### 6.5 Right bookmarks — validated for #14
+### 6.5 Configured-side bookmarks — validated for #14; ADR-064 focused extension
 
 Validate:
 
@@ -694,13 +697,17 @@ Validate:
 - separator, malformed, stale, deleted, and missing-parent state;
 - native create, rename, move, reorder, and remove while hidden/open;
 - current-tab and supported new-tab opening;
+- middle-click new-tab opening with `mousedown` autoscroll prevention;
+- Firefox-cached favicon success, missing/throw fallback, malformed/non-raster/
+  oversized rejection, DPI width bounds, property-only image assignment, and
+  no URL-bearing diagnostics;
 - unsupported/special scheme policy;
 - observer event bursts without continuous polling;
 - keyboard traversal and focus stability during live changes;
 - pointer right-click plus Context Menu key/Shift+F10 on bookmark/folder rows;
 - current/new-tab, expand/collapse, and fixed Manage Bookmarks actions;
 - bounded menu placement, Arrow/Home/End/Escape, focus restoration, outside
-  pointer/window-blur close, and exact right popup-hold/listener cleanup;
+  pointer/window-blur close, and exact configured-edge popup-hold/listener cleanup;
 - no bookmark title, URL, folder contents, or user-data identifier in normal
   logs/persistence;
 - native Library, `Ctrl+D`, dialogs, and management paths retained;
@@ -727,6 +734,12 @@ row context-menu unit/static matrix passed; its real Firefox rows are **not
 run**. Evidence: ADR-055 and
 `docs/research/firefox-153-154-panel-context-actions.md`.
 
+ADR-064 adds focused bridge/state/static tests for the optional favicon
+capabilities and `favicon-changed` all-scope refresh. Its real Firefox cache,
+theme/DPI, failure-fallback, middle-click, and swapped-side rows are `not run`;
+see
+`docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.
+
 ### 6.6 Bottom downloads — validated for #32
 
 Validated:
@@ -744,6 +757,9 @@ Validated:
   normal diagnostics;
 - native Downloads panel, notification, reputation, and safety UI retained;
 - Downloads module/view/subscription/surface failure.
+- bottom-panel disable removes pointer/keyboard reveal and restores focus while
+  the anonymous bridge and Firefox-native paths remain usable; re-enable uses
+  the same controller and trigger.
 
 The real fixture adds native records to the current PUBLIC or PRIVATE list
 without starting a transfer or creating a target file. It validates 25/50/41
@@ -805,7 +821,7 @@ ADR-037 and ADR-042 add focused unit/static/build coverage for:
 - one semantic Trust entry at the leading edge inside the left address frame,
   one popup Trust row, exact fixed Firefox icon URIs rendered as masks, closed
   state priority, combined accessible labels, and retained dual bridge actions;
-- seven-rule native activation CSS, retained native caption nodes, project-owned
+- nine-rule native activation CSS, retained native caption nodes, project-owned
   top-row window controls, content gutter, and exact rule-count failure;
 - panel drag/no-drag declarations, edge-to-panel contact, transient shortcut
   overlay, `top > sides > bottom` collision policy, and shared native-window-
@@ -815,6 +831,9 @@ ADR-037 and ADR-042 add focused unit/static/build coverage for:
   download-width mapping, full-width activity pulse (not a fake load percent),
   reduced-motion static beam, and provenance checks that reject the
   old-project neon IDs/hex/hue-rotate/z-index.
+- ADR-064 independent top/bottom `loading`/`downloads`/`off` source routing,
+  default compatibility, subscription switching, and off-state absence; plus
+  the active-only bounded native status capsule and forced-colors rule.
 
 The user requested a fast handoff and will test the browser manually. Therefore
 the following are `not run`, not passed: cold-start flash, real unified Trust
@@ -904,10 +923,12 @@ ADR-045 adds focused unit/static/build coverage for:
   delegates to Firefox's built-in translation panel), and spacer/spring/separator
   specials, with the fixed skip list (including Unified Extensions and app-menu
   buttons already represented by fixed Fennevia controls);
-- versioned `fennevia.customize.layout` / `fennevia.customize.style` JSON
-  bounded to 16 KiB, fail-safe parse, and preference-observer republish;
+- versioned `fennevia.customize.layout` / `fennevia.customize.style` /
+  `fennevia.customize.panels` JSON bounded to 16 KiB each, fail-safe parse, and
+  preference-observer republish;
 - validated `add` / `move` / `remove` / `reset-layout` / `set-style` /
-  `reset-style` operations with a revision guard;
+  `reset-style` / `set-panels` / `reset-panels` operations with the existing
+  revision policy where applicable;
 - bounded adopt/restore writes: `addWidgetToArea(id, "nav-bar")` for widgets
   with no live node, restore to `AREA_ADDONS` for extensions and
   `removeWidgetFromArea` otherwise;
@@ -945,6 +966,9 @@ ADR-045 adds focused unit/static/build coverage for:
 - ADR-047 live-zone HTML5 drag-and-drop: customize session popup-holds all
   four edges, opaque drag payload, drop mapping to `add`/`move`/`remove`,
   keyboard Delete/Ctrl+Arrow/palette Enter, and popup-close re-hold.
+- ADR-064 defaults and strict enums for the complete tabs/bookmarks side swap,
+  bottom downloads enablement, and independent top/bottom activity-light
+  sources; disabled edge state survives global suppression/re-enable.
 
 The following are `not run`, not passed: live Fennevia customize drawer against
 a collapsed navbar, four-edge placement round-trips, **live-zone drag from
@@ -952,7 +976,9 @@ palette onto each edge and back**, adopt/restore of an
 installed extension, style tokens under forced colors and reduced motion,
 default Firefox Light/Dark design-token colors on owned surfaces,
 minimum/default/maximum trigger hit testing and live hide/reveal timings,
-multi-window pref observation, layout reset restoring native placements, and
+multi-window pref observation, side-role swap with open popups/focus,
+bottom-panel disable/re-enable, all light-source combinations, native status
+capsule under theme/forced-colors/DPI, layout reset restoring native placements, and
 Escape/focus restoration while a widget popup is also held. Implementation/
 source evidence is in `docs/research/firefox-153-customize-mode.md` and
 `plans/006-customize-mode.md`.
@@ -963,10 +989,10 @@ Validate each top/left/right/bottom panel from pointer right-click and from a
 focused control with the Context Menu key or Shift+F10:
 
 - top exposes Firefox Settings;
-- neutral left content exposes New Tab while a tab row retains Firefox's
-  complete translated native menu;
-- neutral right content exposes Manage Bookmarks while a bookmark/folder row
-  retains its bounded item actions;
+- neutral configured-tab-side content exposes New Tab while a tab row retains
+  Firefox's complete translated native menu;
+- neutral configured-bookmark-side content exposes Manage Bookmarks while a
+  bookmark/folder row retains its bounded item actions;
 - bottom exposes Firefox Downloads and keeps the surface held until the native
   popup closes;
 - capability-backed common actions expose Customize Fennevia, Customize
@@ -1097,7 +1123,7 @@ native modal stacking, narrow/short move/resize, maximize/minimize/restore,
 normal/second/private isolation, emergency fallback, partial activation CSS
 failure in an independent window, and Browser Console cleanliness. The Browser
 Toolbox variant repeated ownership and namespace inspection while active. The
-current ADR-038 extension has seven rules and the pending manual matrix in
+current ADR-064 extension has nine rules and the pending manual matrix in
 section 6.7; the earlier result must not be treated as evidence for the changed
 toolbar/caption implementation.
 
@@ -1136,7 +1162,7 @@ the health phase requires:
 - a valid window-controls snapshot and project-owned top-row min/max/close
   buttons;
 - exact Firefox native target/titlebar ownership, an attached exact activation
-  style with seven parsed rules, and synchronous native Urlbar reveal capability;
+  style with nine parsed rules, and synchronous native Urlbar reveal capability;
 - environment/suspension handling;
 - privileged emergency handler;
 - every declared required capability;
@@ -1519,7 +1545,7 @@ of the installed package.
 | Address launcher and popup     | `docs/research/firefox-153-address-popup.md`                  |
 | Urlbar coverage                | `docs/research/firefox-153-urlbar-coverage.md`                |
 | Native Urlbar suggestions      | `docs/research/firefox-153-154-native-urlbar-suggestions.md`  |
-| Right-edge bookmarks           | `docs/research/firefox-153-bookmarks-surface.md`              |
+| Default-right bookmarks        | `docs/research/firefox-153-bookmarks-surface.md`              |
 | Bottom-edge downloads          | `docs/research/firefox-153-downloads-surface.md`              |
 | Content-only activation        | `docs/research/firefox-153-content-only-activation.md`        |
 | First-paint native hide        | `docs/research/firefox-153-startup-native-hide.md`            |

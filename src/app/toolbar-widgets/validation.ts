@@ -23,6 +23,8 @@ import {
   toolbarPaletteKindSet,
   toolbarStyleThemeSet,
   toolbarStyleDensitySet,
+  sidePanelLayoutSet,
+  progressLightSourceSet,
   nonInteractiveKindSet,
 } from "./contracts.ts";
 import type {
@@ -33,6 +35,11 @@ import type {
   ToolbarStyleTheme,
   ToolbarStyleDensity,
   ToolbarStyleColorKey,
+  SidePanelLayout,
+  ProgressLightSource,
+  ShellPanelConfigSnapshot,
+  SidePanelEdge,
+  SidePanelRole,
   ToolbarWidgetSnapshot,
   ToolbarWidgetPartSnapshot,
   ToolbarPaletteEntrySnapshot,
@@ -99,6 +106,104 @@ export function isToolbarStyleDensity(
     typeof candidate === "string" &&
     toolbarStyleDensitySet.has(candidate as ToolbarStyleDensity)
   );
+}
+
+export function isSidePanelLayout(
+  candidate: unknown,
+): candidate is SidePanelLayout {
+  return (
+    typeof candidate === "string" &&
+    sidePanelLayoutSet.has(candidate as SidePanelLayout)
+  );
+}
+
+export function isProgressLightSource(
+  candidate: unknown,
+): candidate is ProgressLightSource {
+  return (
+    typeof candidate === "string" &&
+    progressLightSourceSet.has(candidate as ProgressLightSource)
+  );
+}
+
+export function createDefaultShellPanelConfig(): ShellPanelConfigSnapshot {
+  return Object.freeze({
+    bottomDownloadsEnabled: true,
+    bottomProgressLight: "downloads" as const,
+    sidePanelLayout: "tabs-left" as const,
+    topProgressLight: "loading" as const,
+  });
+}
+
+export function copyShellPanelConfigSnapshot(
+  candidate: ShellPanelConfigSnapshot,
+): ShellPanelConfigSnapshot {
+  if (
+    !candidate ||
+    typeof candidate !== "object" ||
+    typeof candidate.bottomDownloadsEnabled !== "boolean" ||
+    !isProgressLightSource(candidate.bottomProgressLight) ||
+    !isSidePanelLayout(candidate.sidePanelLayout) ||
+    !isProgressLightSource(candidate.topProgressLight)
+  ) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID",
+    );
+  }
+  return Object.freeze({
+    bottomDownloadsEnabled: candidate.bottomDownloadsEnabled,
+    bottomProgressLight: candidate.bottomProgressLight,
+    sidePanelLayout: candidate.sidePanelLayout,
+    topProgressLight: candidate.topProgressLight,
+  });
+}
+
+export function copyShellPanelConfigPartial(
+  candidate: Readonly<Partial<ShellPanelConfigSnapshot>>,
+): Readonly<Partial<ShellPanelConfigSnapshot>> {
+  if (!candidate || typeof candidate !== "object") {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID",
+    );
+  }
+  const keys = Object.keys(candidate);
+  const defaults = createDefaultShellPanelConfig();
+  const validated = copyShellPanelConfigSnapshot({
+    ...defaults,
+    ...candidate,
+  });
+  if (keys.length === 0 || keys.some((key) => !Object.hasOwn(validated, key))) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID",
+    );
+  }
+  const partial: Partial<ShellPanelConfigSnapshot> = {};
+  for (const key of keys) {
+    const panelKey = key as keyof ShellPanelConfigSnapshot;
+    if (candidate[panelKey] !== validated[panelKey]) {
+      throw createToolbarWidgetsStateError(
+        "FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID",
+      );
+    }
+    Object.assign(partial, { [panelKey]: validated[panelKey] });
+  }
+  return Object.freeze(partial);
+}
+
+export function getSidePanelRole(
+  panels: ShellPanelConfigSnapshot,
+  edge: SidePanelEdge,
+): SidePanelRole {
+  const tabsEdge = panels.sidePanelLayout === "tabs-left" ? "left" : "right";
+  return edge === tabsEdge ? "tabs" : "bookmarks";
+}
+
+export function getSidePanelEdge(
+  panels: ShellPanelConfigSnapshot,
+  role: SidePanelRole,
+): SidePanelEdge {
+  const tabsEdge = panels.sidePanelLayout === "tabs-left" ? "left" : "right";
+  return role === "tabs" ? tabsEdge : tabsEdge === "left" ? "right" : "left";
 }
 
 export function isInteractiveToolbarWidget(
@@ -284,7 +389,7 @@ export function copyToolbarStylePartial(
   const validated = copyToolbarStyleSnapshot(merged);
   if (
     keys.length === 0 ||
-    keys.some((key) => !(key in validated)) ||
+    keys.some((key) => !Object.hasOwn(validated, key)) ||
     keys.some(
       (key) =>
         normalized[key as keyof ToolbarStyleSnapshot] !==
@@ -514,6 +619,8 @@ export function createUnavailableToolbarWidgetsSnapshot(): ToolbarWidgetsSnapsho
     canEdit: false,
     layoutCustomized: false,
     palette: Object.freeze([]),
+    panels: createDefaultShellPanelConfig(),
+    panelsCustomized: false,
     style: createDefaultToolbarStyle(),
     zones: createEmptyToolbarWidgetZones(),
   });
@@ -528,6 +635,7 @@ export function copyToolbarWidgetsSnapshot(
     typeof candidate.available !== "boolean" ||
     typeof candidate.canEdit !== "boolean" ||
     typeof candidate.layoutCustomized !== "boolean" ||
+    typeof candidate.panelsCustomized !== "boolean" ||
     !Array.isArray(candidate.palette) ||
     candidate.palette.length > PALETTE_MAX_ENTRIES ||
     !candidate.zones ||
@@ -559,6 +667,8 @@ export function copyToolbarWidgetsSnapshot(
     palette: Object.freeze(
       candidate.palette.map(copyToolbarPaletteEntrySnapshot),
     ),
+    panels: copyShellPanelConfigSnapshot(candidate.panels),
+    panelsCustomized: candidate.panelsCustomized,
     style: copyToolbarStyleSnapshot(candidate.style),
     zones: Object.freeze(Object.fromEntries(zoneEntries)) as ToolbarWidgetZones,
   });
@@ -659,6 +769,15 @@ export function copyToolbarWidgetsEditOperation(
     }
     case "reset-style": {
       return Object.freeze({ type: "reset-style" as const });
+    }
+    case "set-panels": {
+      return Object.freeze({
+        panels: copyShellPanelConfigPartial(candidate.panels),
+        type: "set-panels" as const,
+      });
+    }
+    case "reset-panels": {
+      return Object.freeze({ type: "reset-panels" as const });
     }
     default: {
       throw createToolbarWidgetsStateError(

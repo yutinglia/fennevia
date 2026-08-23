@@ -22,6 +22,7 @@
   } from "../app/locale-state";
   import { localizeWidgetLabel, zoneDisplayName } from "./locale-ui";
   import CustomizeInteractionSection from "./features/customize/CustomizeInteractionSection.svelte";
+  import CustomizePanelsSection from "./features/customize/CustomizePanelsSection.svelte";
   import CustomizeStyleSection from "./features/customize/CustomizeStyleSection.svelte";
   import FirefoxIcon from "./FirefoxIcon.svelte";
   import ToolbarWidgetGlyph from "./ToolbarWidgetGlyph.svelte";
@@ -262,6 +263,15 @@
         </ul>
       {/if}
     </section>
+
+    <CustomizePanelsSection
+      customized={snapshot.panelsCustomized}
+      {localeId}
+      onResetPanels={() => void runEdit({ type: "reset-panels" })}
+      onSetPanels={(panels) =>
+        void runEdit({ panels, type: "set-panels" })}
+      panels={snapshot.panels}
+    />
 
     <CustomizeInteractionSection
       {localeId}

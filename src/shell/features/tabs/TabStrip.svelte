@@ -42,6 +42,7 @@
   import { createTabStripLabels } from "../../locale-ui";
 
   type Props = Readonly<{
+    edge: "left" | "right";
     localeId: FenneviaLocale;
     onFatalError: (error: unknown) => void;
     shell: EdgeShellController;
@@ -198,7 +199,10 @@
     cancelHighlight();
     highlightedTabIds = tabIds;
     try {
-      props.shell.revealProgrammatically("left", newTabHighlightDurationMs);
+      props.shell.revealProgrammatically(
+        props.edge,
+        newTabHighlightDurationMs,
+      );
     } catch (error) {
       props.onFatalError(error);
       return;
@@ -242,8 +246,8 @@
     ) {
       return;
     }
-    props.shell.setFocusHeld("left", false);
-    props.shell.releaseKeyboard("left");
+    props.shell.setFocusHeld(props.edge, false);
+    props.shell.releaseKeyboard(props.edge);
     rovingTabId = resolveRovingTabId(currentTabs.tabs);
   };
 
@@ -288,7 +292,7 @@
   const restorePointerHoldAfterClose = async (position: PointerPosition) => {
     await tick();
     const surfacePanel = tabStripElement?.closest<HTMLElement>(
-      '[data-fennevia-edge-panel="left"]',
+      `[data-fennevia-edge-panel="${props.edge}"]`,
     );
     if (!surfacePanel?.isConnected) {
       return;
@@ -298,7 +302,7 @@
       position.clientY,
     );
     if (pointerTarget && surfacePanel.contains(pointerTarget)) {
-      props.shell.setPointerHeld("left", true);
+      props.shell.setPointerHeld(props.edge, true);
     }
   };
 
@@ -442,7 +446,7 @@
       return;
     }
     dragHoldActive = active;
-    props.shell.setPointerHeld("left", active);
+    props.shell.setPointerHeld(props.edge, active);
   };
 
   const clearDragGeometry = () => {

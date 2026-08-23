@@ -4,6 +4,8 @@ import {
   maximumBookmarkTitleLength,
   bookmarkPageSize,
   maximumBookmarkDepth,
+  maximumBookmarkFaviconUrlLength,
+  bookmarkFaviconDataUrlPattern,
 } from "./contracts.ts";
 import type {
   BookmarkNodeKind,
@@ -61,7 +63,12 @@ export const copyNode = (
     typeof candidate !== "object" ||
     !bookmarkKinds.has(candidate.kind) ||
     typeof candidate.title !== "string" ||
-    typeof candidate.hasChildren !== "boolean"
+    typeof candidate.hasChildren !== "boolean" ||
+    (candidate.faviconUrl !== undefined &&
+      (candidate.kind !== "bookmark" ||
+        typeof candidate.faviconUrl !== "string" ||
+        candidate.faviconUrl.length > maximumBookmarkFaviconUrlLength ||
+        !bookmarkFaviconDataUrlPattern.test(candidate.faviconUrl)))
   ) {
     throw createStateError("FENNEVIA_BOOKMARK_STATE_NODE_INVALID");
   }
@@ -73,6 +80,9 @@ export const copyNode = (
     throw createStateError("FENNEVIA_BOOKMARK_STATE_NODE_INVALID");
   }
   return Object.freeze({
+    ...(candidate.faviconUrl === undefined
+      ? {}
+      : { faviconUrl: candidate.faviconUrl }),
     hasChildren: candidate.hasChildren,
     id,
     kind: candidate.kind,

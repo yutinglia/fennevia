@@ -66,12 +66,15 @@ of inventing a new architecture.
    namespace exists.
 3. The content-first shell consists of four independent project-owned floating
    surfaces:
-   - top: primary browser controls;
-   - left: vertical tabs and a compact address/status launcher;
-   - right: bookmarks;
-   - bottom: download progress and status.
+   - top: fixed primary browser controls;
+   - left and right: exactly one vertical-tabs/address-launcher surface and one
+     bookmarks surface, defaulting to tabs on the left and bookmarks on the
+     right, with an owner-configurable swap;
+   - bottom: download progress and status, with an owner-configurable enabled
+     state.
    A fifth centered project-owned overlay contains the only custom editable
-   address/search input; the left launcher is non-editable.
+   address/search input; the launcher on the configured tabs side is
+   non-editable.
 4. Every surface is hidden at rest and must reserve no permanent browser-content
    space.
 5. Feature modules must consume the shared frame, edge trigger, reveal

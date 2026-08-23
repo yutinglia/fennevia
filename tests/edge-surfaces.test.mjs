@@ -193,6 +193,28 @@ test("the shared shell keeps pointer reveal exclusive while preserving legitimat
   assert.equal(clock.size(), 0);
 });
 
+test("one configured edge stays disabled across global suppression", () => {
+  const shell = createEdgeShellController();
+  assert.equal(shell.setEdgeEnabled("bottom", false), true);
+  assert.equal(shell.snapshot().surfaces.bottom.phase, "disabled");
+  assert.equal(shell.revealFromKeyboard("bottom"), false);
+  assert.equal(shell.revealFromPointer("bottom"), false);
+  assert.equal(shell.snapshot().surfaces.left.enabled, true);
+
+  shell.setInteractionSuppressed(true);
+  shell.setInteractionSuppressed(false);
+  assert.equal(shell.snapshot().surfaces.bottom.phase, "disabled");
+  assert.equal(shell.snapshot().surfaces.top.phase, "hidden");
+
+  assert.equal(shell.setEdgeEnabled("bottom", true), true);
+  assert.equal(shell.snapshot().surfaces.bottom.phase, "hidden");
+  assert.equal(shell.revealFromKeyboard("bottom"), true);
+  assert.throws(
+    () => shell.setEdgeEnabled("bottom", "yes"),
+    /FENNEVIA_EDGE_ENABLED_INVALID/u,
+  );
+});
+
 test("window dragging suppresses cross-edge pointer reveal without clearing other holds", () => {
   const clock = createScheduler();
   const shell = createEdgeShellController({

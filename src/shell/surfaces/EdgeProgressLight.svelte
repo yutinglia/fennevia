@@ -5,6 +5,7 @@
     BrowserDownloadsStateAdapter,
   } from "../../app/download-state";
   import type { EdgeName } from "../../app/edge-surfaces";
+  import type { ProgressLightSource } from "../../app/toolbar-widgets-state";
   import {
     createBrowserNavigationState,
     type BrowserNavigationState,
@@ -20,6 +21,7 @@
     downloads?: BrowserDownloadsStateAdapter;
     edge: EdgeName;
     navigation?: BrowserNavigationStateAdapter;
+    source: ProgressLightSource;
   }>;
 
   const props: Props = $props();
@@ -38,7 +40,7 @@
   let currentDownloads: BrowserDownloadsState | null = $state(null);
 
   $effect(() => {
-    if (props.edge !== "top" || !props.navigation) {
+    if (props.source !== "loading" || !props.navigation) {
       return;
     }
     currentNavigation = props.navigation.snapshot();
@@ -48,7 +50,7 @@
   });
 
   $effect(() => {
-    if (props.edge !== "bottom" || !props.downloads) {
+    if (props.source !== "downloads" || !props.downloads) {
       currentDownloads = null;
       return;
     }
@@ -59,12 +61,14 @@
   });
 
   let presentation = $derived(
-    props.edge === "top"
+    props.source === "loading"
       ? resolveLoadProgressLight(currentNavigation.snapshot.loading)
-      : resolveDownloadProgressLight(currentDownloads),
+      : props.source === "downloads"
+        ? resolveDownloadProgressLight(currentDownloads)
+        : null,
   );
 </script>
 
-{#if props.edge === "top" || props.edge === "bottom"}
+{#if (props.edge === "top" || props.edge === "bottom") && presentation}
   <ProgressLight {presentation} />
 {/if}

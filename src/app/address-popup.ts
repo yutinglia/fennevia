@@ -11,7 +11,7 @@ import {
 } from "./tab-state.ts";
 
 export type AddressPopupInvocationSource =
-  "ctrl-l" | "left-launcher" | "top-launcher";
+  "ctrl-l" | "tabs-launcher" | "top-launcher";
 
 export type AddressPopupError =
   AddressSubmissionRejection | "submission-failed";
@@ -128,7 +128,7 @@ export function getAddressPopupCloseFocusDestination(
   if (
     snapshot.closeReason === "committed" ||
     snapshot.closeReason === "tab-changed" ||
-    snapshot.invocationSource === "left-launcher" ||
+    snapshot.invocationSource === "tabs-launcher" ||
     snapshot.invocationSource === "top-launcher"
   ) {
     return "content";
@@ -318,7 +318,7 @@ export function createAddressPopupController({
       requireUsable();
       if (
         source !== "ctrl-l" &&
-        source !== "left-launcher" &&
+        source !== "tabs-launcher" &&
         source !== "top-launcher"
       ) {
         throw createAddressPopupError("FENNEVIA_ADDRESS_POPUP_SOURCE_INVALID");

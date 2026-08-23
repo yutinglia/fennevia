@@ -55,6 +55,31 @@ export const toolbarStyleDensities = Object.freeze([
 
 export type ToolbarStyleDensity = (typeof toolbarStyleDensities)[number];
 
+export const sidePanelLayouts = Object.freeze([
+  "tabs-left",
+  "tabs-right",
+] as const);
+
+export type SidePanelLayout = (typeof sidePanelLayouts)[number];
+
+export const progressLightSources = Object.freeze([
+  "loading",
+  "downloads",
+  "off",
+] as const);
+
+export type ProgressLightSource = (typeof progressLightSources)[number];
+
+export type SidePanelRole = "bookmarks" | "tabs";
+export type SidePanelEdge = "left" | "right";
+
+export type ShellPanelConfigSnapshot = Readonly<{
+  bottomDownloadsEnabled: boolean;
+  bottomProgressLight: ProgressLightSource;
+  sidePanelLayout: SidePanelLayout;
+  topProgressLight: ProgressLightSource;
+}>;
+
 export const toolbarStyleBounds = Object.freeze({
   autoHideDelay: edgeInteractionBounds.hideDelayMs,
   blur: Object.freeze({ max: 32, min: 0 }),
@@ -130,6 +155,10 @@ export const toolbarStyleThemeSet = new Set<ToolbarStyleTheme>(
 );
 export const toolbarStyleDensitySet = new Set<ToolbarStyleDensity>(
   toolbarStyleDensities,
+);
+export const sidePanelLayoutSet = new Set<SidePanelLayout>(sidePanelLayouts);
+export const progressLightSourceSet = new Set<ProgressLightSource>(
+  progressLightSources,
 );
 
 export const nonInteractiveToolbarWidgetKinds = Object.freeze([
@@ -208,6 +237,8 @@ export type ToolbarWidgetsSnapshot = Readonly<{
   canEdit: boolean;
   layoutCustomized: boolean;
   palette: readonly ToolbarPaletteEntrySnapshot[];
+  panels: ShellPanelConfigSnapshot;
+  panelsCustomized: boolean;
   style: ToolbarStyleSnapshot;
   zones: ToolbarWidgetZones;
 }>;
@@ -239,7 +270,12 @@ export type ToolbarWidgetsEditOperation =
       style: Readonly<Partial<ToolbarStyleSnapshot>>;
       type: "set-style";
     }>
-  | Readonly<{ type: "reset-style" }>;
+  | Readonly<{ type: "reset-style" }>
+  | Readonly<{
+      panels: Readonly<Partial<ShellPanelConfigSnapshot>>;
+      type: "set-panels";
+    }>
+  | Readonly<{ type: "reset-panels" }>;
 
 export type ToolbarWidgetsStateEvent = Readonly<{
   revision: number;

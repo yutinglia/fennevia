@@ -67,10 +67,12 @@ Fennevia uses four independently owned floating surfaces:
 
 - **Top:** one-line primary browser controls, Firefox-native handoffs, a
   placeable widget zone, and compact window-command controls.
-- **Left:** vertical tabs, a compact address/status launcher with one Trust
-  shield embedded at the leading edge, and an optional widget zone.
-- **Right:** bookmarks and an optional widget zone.
-- **Bottom:** download progress/status and an optional widget zone.
+- **Left/right:** exactly one vertical-tabs role with a compact address/status
+  launcher, leading Trust shield, and optional widget zone, plus exactly one
+  bookmarks role with its optional widget zone. Tabs default left and bookmarks
+  default right; the roles may be swapped as one pair.
+- **Bottom:** download progress/status and an optional widget zone; the complete
+  panel may be disabled.
 
 A fifth centred overlay contains the only custom editable address/search input.
 All edge surfaces remain hidden at rest, reserve no permanent browser-content
@@ -131,9 +133,8 @@ Stock Firefox
               ├─ locale selection and en / zh-Hant catalogs
               └─ Svelte frame with five project-owned roots
                   ├─ top: one-line controls + native handoffs + widgets
-                  ├─ left: tabs + address launcher + widgets
-                  ├─ right: bookmarks + widgets
-                  ├─ bottom: download status + widgets
+                  ├─ left/right: paired tabs-launcher and bookmarks roles
+                  ├─ bottom: optional download status + widgets
                   └─ centred address/search overlay
 ```
 
@@ -241,6 +242,9 @@ zero-disable shortcut-tip, and trigger-thickness values in addition to
 background, text, border, saturation, shadow, and motion. These settings are
 versioned, size-limited, validated, profile-local, and kept away from
 Firefox-owned DOM and sensitive extension identity persistence.
+ADR-064 adds one similarly bounded panel preference for the paired side-role
+swap, bottom-panel enablement, and top/bottom activity-light sources. The top
+role remains fixed.
 
 `yutinglia/my-firefox-custom` may be consulted for desired capabilities and broad
 visual ideas such as edge activation, delayed hiding, glass surfaces,

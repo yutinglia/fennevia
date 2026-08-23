@@ -45,8 +45,10 @@ import {
 } from "../../app/tab-state";
 import {
   createBrowserToolbarWidgetsStateAdapter,
+  getSidePanelEdge,
   type BrowserToolbarWidgetsState,
   type BrowserToolbarWidgetsStateAdapter,
+  type SidePanelEdge,
 } from "../../app/toolbar-widgets-state";
 import {
   createBrowserUrlbarCoverageStateAdapter,
@@ -132,6 +134,10 @@ export function mountShellApp({
   let urlbarCoverageState: BrowserUrlbarCoverageStateAdapter | undefined;
   let urlbarSuggestionsState: BrowserUrlbarSuggestionsStateAdapter | undefined;
   let windowControlsState: BrowserWindowControlsStateAdapter | undefined;
+  let tabsEdge: SidePanelEdge = "left";
+  let bookmarksEdge: SidePanelEdge = "right";
+  let bottomDownloadsEnabled = true;
+  let tabContextMenuEdge: SidePanelEdge | null = null;
   const components: MountedComponent[] = [];
   const controllerSubscriptions: Array<() => boolean> = [];
   const scheduler = Object.freeze({
@@ -153,8 +159,21 @@ export function mountShellApp({
   });
 
   const surfaceFocus = createSurfaceFocusCoordinator({ frame, targets });
-  const { activeElementFor, focusCustomizeToggle, focusSurface, restoreFocus } =
-    surfaceFocus;
+  const {
+    activeElementFor,
+    discardFocusOrigin,
+    focusCustomizeToggle,
+    focusSurface,
+    restoreFocus,
+  } = surfaceFocus;
+
+  const releaseSurfaceFocusIfActive = (edge: EdgeName): void => {
+    if (activeElementFor(edge)) {
+      restoreFocus(edge);
+      return;
+    }
+    discardFocusOrigin(edge);
+  };
 
   const closeCustomizeSession = (): boolean => {
     if (!customizeSession?.isOpen()) {
@@ -229,6 +248,9 @@ export function mountShellApp({
         return;
       }
       if (revealEdge) {
+        if (!shell.snapshot().surfaces[revealEdge].enabled) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         shell.revealFromKeyboard(revealEdge);
@@ -483,7 +505,15 @@ export function mountShellApp({
         return openAddressPopup(request.source);
       }),
       tabsState.subscribeContextMenu((open) => {
-        shell.setPopupHeld("left", open);
+        if (open) {
+          tabContextMenuEdge = tabsEdge;
+          shell.setPopupHeld(tabContextMenuEdge, true);
+          return;
+        }
+        if (tabContextMenuEdge) {
+          shell.setPopupHeld(tabContextMenuEdge, false);
+          tabContextMenuEdge = null;
+        }
       }),
       browserToolsState.subscribePopup((open) => {
         if (open) {
@@ -508,7 +538,33 @@ export function mountShellApp({
         typeof view.matchMedia === "function"
           ? view.matchMedia("(prefers-reduced-motion: reduce)")
           : null;
-      const applyStyleFromState = (state: BrowserToolbarWidgetsState): void => {
+      const applyCustomizeState = (state: BrowserToolbarWidgetsState): void => {
+        const nextTabsEdge = getSidePanelEdge(state.snapshot.panels, "tabs");
+        const nextBookmarksEdge = getSidePanelEdge(
+          state.snapshot.panels,
+          "bookmarks",
+        );
+        if (nextTabsEdge !== tabsEdge || nextBookmarksEdge !== bookmarksEdge) {
+          releaseSurfaceFocusIfActive("left");
+          releaseSurfaceFocusIfActive("right");
+          shell.dismiss("left");
+          shell.dismiss("right");
+          if (tabContextMenuEdge) {
+            shell.setPopupHeld(tabContextMenuEdge, false);
+            tabContextMenuEdge = nextTabsEdge;
+            shell.setPopupHeld(tabContextMenuEdge, true);
+          }
+          tabsEdge = nextTabsEdge;
+          bookmarksEdge = nextBookmarksEdge;
+        }
+        const nextBottomEnabled = state.snapshot.panels.bottomDownloadsEnabled;
+        if (bottomDownloadsEnabled !== nextBottomEnabled) {
+          if (!nextBottomEnabled) {
+            releaseSurfaceFocusIfActive("bottom");
+          }
+          bottomDownloadsEnabled = nextBottomEnabled;
+          shell.setEdgeEnabled("bottom", nextBottomEnabled);
+        }
         shell.setInteractionConfig({
           hideDelayMs: state.snapshot.style.autoHideDelay,
           programmaticRevealMs: state.snapshot.style.temporaryRevealDuration,
@@ -519,8 +575,11 @@ export function mountShellApp({
           forcedColors: forcedColorsQuery?.matches === true,
           reducedMotion: reducedMotionQuery?.matches === true,
         });
+        if (customizeSession?.isOpen()) {
+          customizeSession.restoreHolds();
+        }
       };
-      applyStyleFromState(widgetsState.snapshot());
+      applyCustomizeState(widgetsState.snapshot());
       controllerSubscriptions.push(
         widgetsState.subscribePopup((open) => {
           if (open) {
@@ -532,7 +591,7 @@ export function mountShellApp({
           }
           shell.setPopupHeld("top", false);
         }),
-        widgetsState.subscribe(applyStyleFromState),
+        widgetsState.subscribe(applyCustomizeState),
       );
       const mediaQueries = [forcedColorsQuery, reducedMotionQuery].filter(
         (query): query is MediaQueryList => query !== null,
@@ -540,7 +599,7 @@ export function mountShellApp({
       if (mediaQueries.length > 0) {
         const onMediaChange = (): void => {
           try {
-            applyStyleFromState(widgetsState.snapshot());
+            applyCustomizeState(widgetsState.snapshot());
           } catch (error) {
             onFatalError(error);
           }
@@ -579,11 +638,12 @@ export function mountShellApp({
           edge,
           frame,
           browserTools: browserToolsState,
-          ...(edge === "top" || edge === "left"
-            ? {
-                navigation: navigationState,
-              }
-            : {}),
+          addressPopup,
+          bookmarks: bookmarksState,
+          downloads: downloadsState,
+          navigation: navigationState,
+          onOpenAddress: () => openAddressPopup("tabs-launcher"),
+          tabs: tabsState,
           ...(edge === "top"
             ? {
                 windowControls: windowControlsState,
@@ -602,15 +662,6 @@ export function mountShellApp({
           customizeSession,
           locale: localeState,
           toolbarWidgets: toolbarWidgetsState,
-          ...(edge === "left"
-            ? {
-                addressPopup,
-                onOpenAddress: () => openAddressPopup("left-launcher"),
-                tabs: tabsState,
-              }
-            : {}),
-          ...(edge === "right" ? { bookmarks: bookmarksState } : {}),
-          ...(edge === "bottom" ? { downloads: downloadsState } : {}),
           windowKind,
         },
         target,

@@ -33,8 +33,19 @@ test("bookmark rows expose bounded pointer and keyboard context actions", async 
   assert.match(source, /props\.onDismiss\(\);\s*props\.bookmarks\.manage\(\)/u);
   assert.match(source, /props\.bookmarks\.manage\(\)/u);
   assert.match(source, /event\.key === "Escape"/u);
-  assert.match(source, /setPopupHeld\("right", true\)/u);
-  assert.match(source, /setPopupHeld\("right", false\)/u);
+  assert.match(source, /setPopupHeld\(props\.edge, true\)/u);
+  assert.match(source, /setPopupHeld\(props\.edge, false\)/u);
+  assert.match(source, /onauxclick=/u);
+  assert.match(
+    source,
+    /handleBookmarkClick[\s\S]*?event\.button !== 0[\s\S]*?return/u,
+  );
+  assert.match(source, /openBookmark\(bookmarkId, "new-tab"\)/u);
+  assert.match(source, /onmousedown=/u);
+  assert.match(source, /preventMiddleAutoscroll/u);
+  assert.match(source, /use:setFaviconSource=\{row\.node\.faviconUrl\}/u);
+  assert.match(source, /referrerpolicy="no-referrer"/u);
+  assert.match(source, /draggable="false"/u);
   assert.match(source, /blurFocusedContextMenuItem\(\);/u);
   const closeStart = source.indexOf("const closeBookmarkContextMenu");
   const blurBeforeRemoval = source.indexOf(
@@ -54,6 +65,7 @@ test("bookmark rows expose bounded pointer and keyboard context actions", async 
   assert.match(source, /removeEventListener\("pointerdown"/u);
   assert.match(source, /removeEventListener\("blur"/u);
   assert.match(styles, /\.fennevia-bookmarks__context-menu/u);
+  assert.match(styles, /\.fennevia-bookmarks__item-favicon/u);
   assert.doesNotMatch(
     source,
     /\b(?:gBrowser|Services|PlacesUtils|SessionStore|ChromeUtils)\b/u,

@@ -155,9 +155,10 @@ Requirements:
 - disposal clears all holds, timers, observers, delegated listeners, roots, and
   focus-origin records.
 
-The top navigation, left address/status, centered detailed popup, right
-bookmarks, and bottom download-status surfaces are complete for #12–#14, #32,
-and #37. #15's completed gate activates exact reversible hiding only after
+The fixed top navigation, configured tabs-side address/status, centered detailed
+popup, configured bookmark-side panel, and optional bottom download-status
+surface are complete for #12–#14, #32, and #37, with ADR-064's bounded role and
+presentation extension. #15's completed gate activates exact reversible hiding only after
 health; complete native reveal and fail-open cleanup remain available.
 
 ## 6. Data classification and logging
@@ -586,22 +587,27 @@ Extension identity never enters logs, diagnostics, serialized frontend state,
 CSS custom properties on shared roots, root datasets, clipboard, or network
 requests; diagnostics stay at widget counts, revisions, and fixed codes.
 
-ADR-045 adds two owner-approved bounded exceptions. First, profile-local
-persistence: the privileged controller stores the Fennevia layout and style as
-bounded versioned JSON in the `fennevia.customize.layout` and
-`fennevia.customize.style` string preferences (16 KiB cap, strict schema,
+ADR-045 adds two owner-approved bounded exceptions. ADR-064 extends only the
+first exception's closed schema. First, profile-local persistence: the
+privileged controller stores the Fennevia layout, style, and panel policy as
+bounded versioned JSON in the `fennevia.customize.layout`,
+`fennevia.customize.style`, and `fennevia.customize.panels` string preferences
+(16 KiB cap each, strict schema,
 invalid values fail safe to the default mirror layout and default style). The
 layout pref contains Firefox widget ids — including extension widget ids — and
 the fixed Fennevia widget/special tokens; the style pref contains only the
 fixed style token set (theme, `#rrggbb` color tokens or empty defaults, and
 bounded integers for blur, radius, density, surface opacity, saturation,
 shadow, motion, font size, in-window hide delay, window-leave hide delay,
-temporary reveal duration, shortcut-tip duration, and edge trigger size).
+temporary reveal duration, shortcut-tip duration, and edge trigger size). The
+panel pref contains only one closed side-layout enum, one bottom-enabled
+boolean, and two closed activity-light enums; it cannot encode arbitrary
+geometry, CSS, a URL, or feature activity.
 ADR-054 keeps those interaction values at 100–5,000 ms, 100–5,000 ms,
 400–10,000 ms, 0–10,000 ms, and 6–24 CSS px respectively; old version-1 values
 receive the defaults. Empty color tokens resolve through CSS
 `var()` to Firefox chrome design-system properties already on `browser.xhtml`;
-Fennevia does not persist or log those resolved colors. Neither pref may ever
+Fennevia does not persist or log those resolved colors. None of the three prefs may ever
 contain URLs, titles, text input, browsing data, or private-window state.
 Second, bounded
 `CustomizableUI`
@@ -655,8 +661,9 @@ authoritative.
 ADR-055's four common panel context menus contain only fixed localized labels,
 closed action names, and ephemeral coordinates clamped to the project frame.
 They delegate through existing typed tabs/bookmarks/browser-tools adapters.
-The right bookmark-row menu carries only its existing opaque ID; the left tab
-keeps Firefox's own menu. No URL, title, Places GUID, download detail, native
+The configured bookmark-side row menu carries only its existing opaque ID; the
+configured tab side keeps Firefox's own menu. No URL, title, Places GUID,
+download detail, native
 node, private-window activity, or preference is added to menu state, datasets,
 logs, or persistence. Per-edge popup holds and document/window listeners exist
 only while a menu is open and are removed on every close or disposal path.
@@ -702,7 +709,7 @@ the current window's required
 Library window, editing/search/import/export behavior, and reuse policy. A
 bookmark-row context menu offers only existing current/new-tab open, folder
 expand/collapse, and this Library action. It stores no URL or title beyond the
-already-rendered bounded row and releases its right-edge hold/listeners on
+already-rendered bounded row and releases its configured side-edge hold/listeners on
 dismissal or disposal.
 
 Firefox natively shares profile bookmarks with private windows. Fennevia shows
@@ -712,14 +719,25 @@ expansion, scroll/focus, and disposer. It records no private-window bookmark
 activity and shares no project state with normal windows.
 
 Titles are rendered through Svelte text bindings with fixed packaged Firefox
-folder/bookmark/disclosure icons. No remote favicon, thumbnail, metadata,
-synchronization, or user-derived CSS URL is added. The native
+folder/bookmark/disclosure icons. ADR-064 may add one optional favicon obtained
+only from Firefox's existing Places cache. The privileged bridge converts the
+current bookmark URL to `nsIURI` locally, requests a DPI-bounded width, accepts
+only a base64 raster `data:` URI up to 262,144 characters, and then discards the
+URL/native result. The frontend assigns that value only through `img.src`, with
+`referrerpolicy="no-referrer"`, no accessible label, and the packaged bookmark
+icon as the failed/missing fallback. SVG data, remote icon URLs, CSS URLs,
+thumbnail/metadata fetching, synchronization, logging, persistence, and project
+network requests remain prohibited. A `favicon-changed` event emits only the
+existing fixed all-scope refresh signal; its page/favicon URL fields never cross
+the bridge. The native
 bookmarks toolbar, sidebar, Library, dialogs, `Ctrl+D`, and management paths
 remain attached, visible, and authoritative. Initial query or required Places/
 opening capability failure blocks health and leaves those native paths usable.
 Source evidence and real hostile-title/private/fail-open tests are in
 `docs/research/firefox-153-bookmarks-surface.md`,
-`docs/research/firefox-153-154-panel-context-actions.md`, ADR-029, and ADR-055.
+`docs/research/firefox-153-154-panel-context-actions.md`,
+`docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`,
+ADR-029, ADR-055, and ADR-064.
 
 ### 7.7 Downloads — implemented #32
 
@@ -967,13 +985,16 @@ section 7.4; Firefox remains the panel, prompt, command, extension, download,
 customization, and window-control owner.
 
 Issue #15 implements the narrow active-only boundary in ADR-032. One privileged
-controller validates exact Firefox 153 toolbar/sidebar/titlebar nodes and one
-seven-rule project style. ADR-050 adds one process-scoped author stylesheet
+controller validates exact Firefox toolbar/sidebar/titlebar nodes and one
+nine-rule project style. ADR-050 adds one process-scoped author stylesheet
 with no browsing data, scoped by `@-moz-document` to
 `chrome://browser/content/browser.xhtml`. Neither the controller nor that sheet
 reads URLs, labels, principals, certificates,
 permissions, extension identity, popup contents, sidebar contents, or browser
-content. Root state stores only fixed reveal/suspension booleans; logs contain
+content. ADR-064's two added rules select only the fixed
+`#statuspanel-label` owner and forced-colors mode; they read or replace no status
+text, URL, hover target, timing, or visibility state. Root state stores only
+fixed reveal/suspension booleans; logs contain
 only fixed error phase/code, Firefox version/build, and per-window opaque ID.
 
 Toolbox/toolbar geometry, exact non-caption content, the bookmarks toolbar, and
@@ -1044,7 +1065,7 @@ Implemented:
 - base lifecycle, health, frame, edge controller, tabs bridge, vertical tab UI,
   navigation/address bridge, compact launcher, centered popup, top controls,
   Urlbar-coverage bridge/details/native handoff, Urlbar-suggestions controller
-  and registry, bookmarks bridge/right panel, Downloads bridge/bottom panel,
+  and registry, bookmarks bridge/configured side panel, Downloads bridge/bottom panel,
   and native visibility controller have isolated normal, second-normal, and
   private instances;
 - opaque IDs include context/registry generation;

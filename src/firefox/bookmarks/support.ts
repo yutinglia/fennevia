@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { BookmarkNodeKind } from "../../app/bookmark-state.ts";
-import { maximumBookmarkTitleLength } from "../../app/bookmark-state.ts";
+import {
+  bookmarkFaviconDataUrlPattern,
+  maximumBookmarkFaviconUrlLength,
+  maximumBookmarkTitleLength,
+} from "../../app/bookmark-state.ts";
 import {
   FirefoxBridgeError,
   type FirefoxBridgeBoundary,
@@ -17,6 +21,7 @@ export const BOOKMARK_EVENT_TYPES = Object.freeze([
   "bookmark-moved",
   "bookmark-title-changed",
   "bookmark-url-changed",
+  "favicon-changed",
 ]);
 export const MAXIMUM_EVENT_PARENTS = 16;
 export const MAXIMUM_EVENT_BATCH = 128;
@@ -61,6 +66,9 @@ export type NativePlacesObservers = NativeRecord & {
 };
 export type NativePlacesUtils = NativeRecord & {
   bookmarks: NativeBookmarks;
+  favicons?: NativeRecord & {
+    getFaviconForPage: (...args: unknown[]) => Promise<unknown>;
+  };
   observers: NativePlacesObservers;
 };
 export type NativePlacesUIUtils = NativeRecord & {
@@ -84,6 +92,7 @@ export type BookmarksCapabilitySpecification = Readonly<{
   isAvailable: (value: unknown) => boolean;
   name: string;
   read: () => unknown;
+  requirement?: "optional" | "required";
   symbol: string;
 }>;
 
@@ -149,6 +158,15 @@ export const truncateTitle = (value: string): string => {
   }
   return result;
 };
+
+export const sanitizeBookmarkFaviconUrl = (
+  candidate: unknown,
+): string | undefined =>
+  typeof candidate === "string" &&
+  candidate.length <= maximumBookmarkFaviconUrlLength &&
+  bookmarkFaviconDataUrlPattern.test(candidate)
+    ? candidate
+    : undefined;
 
 export const asBookmarkRecord = (
   boundary: FirefoxBridgeBoundary,

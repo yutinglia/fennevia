@@ -2,13 +2,16 @@
 import { createToolbarWidgetPopupActions } from "./popup-actions.ts";
 import {
   copyToolbarStyleSnapshot,
+  copyShellPanelConfigSnapshot,
   copyToolbarWidgetsEditOperation,
+  createDefaultShellPanelConfig,
   createDefaultToolbarStyle,
   createUnavailableToolbarWidgetsSnapshot,
   fenneviaToolbarActions,
   toolbarZoneNames,
   type BrowserToolbarWidgetsBridge,
   type FenneviaToolbarAction,
+  type ShellPanelConfigSnapshot,
   type ToolbarPaletteEntrySnapshot,
   type ToolbarWidgetKind,
   type ToolbarWidgetPartSnapshot,
@@ -28,14 +31,17 @@ import {
   isCustomizeWidgetId,
   moveCustomizeLayoutEntry,
   parseCustomizeLayout,
+  parseCustomizePanels,
   parseCustomizeStyle,
   removeCustomizeLayoutEntry,
   serializeCustomizeLayout,
+  serializeCustomizePanels,
   serializeCustomizeStyle,
   withCustomizeAdopted,
   withoutCustomizeAdopted,
   type CustomizeLayout,
   type CustomizeLayoutEntry,
+  type CustomizePanels,
   type CustomizeStyle,
 } from "../customize-model.ts";
 import {
@@ -47,6 +53,7 @@ import {
 import {
   NAVBAR_AREA,
   LAYOUT_PREF,
+  PANELS_PREF,
   STYLE_PREF,
   CUSTOMIZE_PREF_DOMAIN,
   PALETTE_MAX_ENTRIES,
@@ -143,6 +150,7 @@ export function createFirefoxToolbarWidgetsBridge({
   let lastSnapshot: ToolbarWidgetsSnapshot =
     createUnavailableToolbarWidgetsSnapshot();
   let persistedLayout: CustomizeLayout | null = null;
+  let persistedPanels: CustomizePanels | null = null;
   let persistedStyle: CustomizeStyle = createDefaultToolbarStyle();
   let nextPaletteTokenSequence = 0;
   const paletteTokenByKey = new Map<string, string>();
@@ -1170,6 +1178,10 @@ export function createFirefoxToolbarWidgetsBridge({
       canEdit: prefs !== null,
       layoutCustomized: persistedLayout !== null,
       palette: buildPalette(customizableUi, layout),
+      panels: copyShellPanelConfigSnapshot(
+        persistedPanels ?? createDefaultShellPanelConfig(),
+      ),
+      panelsCustomized: persistedPanels !== null,
       style: copyToolbarStyleSnapshot(persistedStyle),
       zones: Object.freeze(
         Object.fromEntries(zoneEntries),
@@ -1270,10 +1282,12 @@ export function createFirefoxToolbarWidgetsBridge({
     const prefs = readPrefs(ownerWindow);
     if (!prefs) {
       persistedLayout = null;
+      persistedPanels = null;
       persistedStyle = createDefaultToolbarStyle();
       return;
     }
     persistedLayout = parseCustomizeLayout(readStringPref(prefs, LAYOUT_PREF));
+    persistedPanels = parseCustomizePanels(readStringPref(prefs, PANELS_PREF));
     persistedStyle =
       parseCustomizeStyle(readStringPref(prefs, STYLE_PREF)) ??
       createDefaultToolbarStyle();
@@ -1338,6 +1352,15 @@ export function createFirefoxToolbarWidgetsBridge({
       serializeCustomizeStyle(style),
     ]);
     persistedStyle = style;
+  };
+
+  const persistPanels = (panels: CustomizePanels): void => {
+    const prefs = requirePrefsForEdit();
+    Reflect.apply(prefs.setStringPref, prefs, [
+      PANELS_PREF,
+      serializeCustomizePanels(panels),
+    ]);
+    persistedPanels = panels;
   };
 
   const adoptWidgetForPlacement = (
@@ -1459,6 +1482,27 @@ export function createFirefoxToolbarWidgetsBridge({
           // The pref may already be at its default value.
         }
         persistedStyle = createDefaultToolbarStyle();
+        publishSnapshotIfChanged();
+        return true;
+      }
+      if (validated.type === "set-panels") {
+        persistPanels(
+          copyShellPanelConfigSnapshot({
+            ...(persistedPanels ?? createDefaultShellPanelConfig()),
+            ...validated.panels,
+          } as ShellPanelConfigSnapshot),
+        );
+        publishSnapshotIfChanged();
+        return true;
+      }
+      if (validated.type === "reset-panels") {
+        const prefs = requirePrefsForEdit();
+        try {
+          Reflect.apply(prefs.clearUserPref, prefs, [PANELS_PREF]);
+        } catch {
+          // The pref may already be at its default value.
+        }
+        persistedPanels = null;
         publishSnapshotIfChanged();
         return true;
       }

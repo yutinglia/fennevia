@@ -1633,7 +1633,7 @@ tokens (theme, accent, panel surface, chrome background, text, border, blur,
 radius, density, surface opacity, saturation, shadow, motion, and font size).
 ADR-054 adds bounded edge interaction integers to that same preference; it does
 not create another preference or persistence owner.
-Both prefs are strict versioned JSON with a 16 KiB cap, fail safe to defaults
+Those two prefs are strict versioned JSON with a 16 KiB cap, fail safe to defaults
 when invalid, are shared across windows through one preference observer per
 controller, and contain widget ids and fixed tokens only — never URLs, titles,
 input text, browsing data, or private-window state. Style is applied as a
@@ -2680,3 +2680,88 @@ project inference confirmed by the owner's report, not a claimed Firefox
 guarantee. Exact source evidence, rejected alternatives,
 privacy analysis, validation, and pending real-browser rows are recorded in
 `docs/research/firefox-154-cross-window-tab-drag.md`.
+
+## ADR-064: Configure bounded edge roles and activity presentation; use cached bookmark favicons
+
+**Status:** Accepted for the project-owner request on 2026-08-23; Firefox 154
+source review, implementation, and complete ordinary automation are complete;
+the real Firefox visual, multi-window preference, favicon, and accessibility
+matrix remains pending
+
+Revise the fixed-role clauses of ADR-026, ADR-029, ADR-030, ADR-043, and ADR-055
+without revising their ownership, privacy, or fail-open rules. The top role
+remains fixed. The two side roots must contain exactly one complete
+tabs/address-launcher role and one complete bookmarks role; the only layouts are
+`tabs-left` (default) and `tabs-right`. The bottom root remains the sole owned
+download panel but may be disabled. A disabled bottom edge has no pointer or
+keyboard reveal path, clears its focus/holds, remains disabled across global
+suspension/re-enable cycles, and leaves Firefox's Downloads owner plus the
+anonymous per-window bridge intact. Do not add a fifth surface, duplicate
+feature controller, second trigger, private timer, or arbitrary geometry.
+
+Persist this policy in one strict version-1
+`fennevia.customize.panels` JSON preference under the existing 16 KiB cap and
+`fennevia.customize.` observer. It contains only
+`bottomDownloadsEnabled: boolean`, `sidePanelLayout`, and closed
+`topProgressLight`/`bottomProgressLight` values of `loading`, `downloads`, or
+`off`. Defaults are bottom enabled, tabs left, bookmarks right, loading on top,
+and downloads on the bottom. Invalid or unknown fields fail safe to those
+defaults. Side-role changes dismiss both side surfaces, restore focus, move the
+native tab-menu hold if needed, and route each component, shortcut, context
+action, toolbar action, and health target through the shared current role. The
+preference contains no browsing-derived state.
+
+Generalize ADR-043's two existing decorative roots rather than adding lights.
+Each top/bottom light subscribes only to its selected existing adapter. `off`
+renders no beam; `loading` uses the selected-navigation boolean and `downloads`
+uses the already-anonymized aggregate. The 2 px, pointer-transparent,
+aria-hidden, reduced-motion, forced-colors, collision, and zero-content-margin
+contracts remain unchanged.
+
+Extend ADR-029 bookmark snapshots with one optional `faviconUrl`. The Firefox
+boundary converts the current private bookmark record's URL with
+`Services.io.newURI()` and asks the existing Places cache through optional
+`PlacesUtils.favicons.getFaviconForPage()` at a DPI-scaled preferred width
+clamped to 16–64 px. Accept only base64 raster data URIs
+(`avif`, `gif`, `jpeg`, `png`, ICO, or `webp`) up to 262,144 characters. SVG,
+remote/chrome/resource/file URLs, malformed data, cache misses, and query errors
+use ADR-060's packaged bookmark fallback and do not fail health. The frontend
+assigns the value only through an image `src` property, sets no accessible
+label, uses no-referrer policy, and clears the property on failure/disposal.
+Subscribe to Firefox's fixed `favicon-changed` Places event but inspect only its
+type; reduce it to the existing all-scope refresh so its page GUID, page URL,
+and favicon URL never cross the bridge. No network fetch, cache write,
+persistence, CSS URL, dataset, log value, or new process-global state is added.
+
+Treat a bookmark row's middle button like the existing explicit new-tab action:
+prevent default autoscroll on `mousedown`, then invoke the opaque bookmark ID
+with the closed `new-tab` disposition on `auxclick`. Re-fetch, scheme rejection,
+principal, background-tab preference, and normal/private policy remain owned by
+the existing Places boundary and Firefox.
+
+Style Firefox's retained corner status owner only while Fennevia is active and
+not suspended. Add one exact `#statuspanel-label` capsule rule using bounded
+size, ellipsis, Firefox/Fennevia chrome color tokens, border, radius, and shadow,
+plus one forced-colors override. Do not read or replace its text, URL, type,
+mirroring, transition, visibility, pointer behavior, or native placement. This
+raises the exact NativeUi stylesheet health contract from seven to nine parsed
+top-level rules. Partial/mutated CSS still suspends first and fails open;
+clearing `data-fennevia-active` restores Firefox styling immediately.
+
+**Reasoning:** Firefox 154's
+[`nsIFaviconService.idl`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/toolkit/components/places/nsIFaviconService.idl)
+exposes an asynchronous cached page/root-domain icon query with a preferred
+width and bounded in-memory data. Its
+[`NewTabUtils.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/toolkit/modules/NewTabUtils.sys.mjs)
+uses `Services.io.newURI()`, DPI-aware width, and the same cache API; Fennevia
+selects a narrower no-network/data-only boundary. Current
+[`PlacesEvent.webidl`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/dom/chrome-webidl/PlacesEvent.webidl)
+defines `favicon-changed`, whose sensitive fields Fennevia deliberately drops.
+Firefox 154
+[`content-area.css`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/themes/shared/tabbrowser/content-area.css)
+keeps `#statuspanel` as the pointer-transparent, mirrored, visibility-owning
+corner container and styles `#statuspanel-label`; changing only the active label
+presentation preserves that owner. Exact source evidence, alternatives,
+privacy review, implementation bounds, validation, and remaining real-browser
+rows are recorded in
+`docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.

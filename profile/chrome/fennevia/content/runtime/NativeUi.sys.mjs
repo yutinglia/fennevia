@@ -17,7 +17,7 @@ const POPUP_PROXY_ANCHOR_STYLE =
 const HIDE_DELAY_MS = 180;
 const CONTENT_GUTTER_PX = 7;
 const CONTENT_CORNER_RADIUS_PX = 4;
-const EXPECTED_STYLE_RULE_COUNT = 7;
+const EXPECTED_STYLE_RULE_COUNT = 9;
 
 const LISTENER_OPTIONS = Object.freeze({ capture: true });
 const CHROME_BACKGROUND_PROPERTY = "--fennevia-chrome-background";
@@ -94,6 +94,36 @@ const NATIVE_UI_STYLE = `
     #sidebar-splitter
   ) {
   visibility: collapse !important;
+}
+
+:root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-suspended])
+  #statuspanel-label {
+  min-height: 26px !important;
+  max-width: min(42vw, 520px) !important;
+  margin: 0 8px 8px !important;
+  padding: 5px 10px !important;
+  overflow: hidden !important;
+  color: var(--toolbar-text-color, var(--toolbar-color, CanvasText)) !important;
+  background-color: var(
+    --fennevia-chrome-background,
+    var(--toolbar-background-color, Canvas)
+  ) !important;
+  border: 1px solid var(--chrome-content-separator-color, currentColor) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 5px 18px rgb(0 0 0 / 24%) !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+  text-overflow: ellipsis !important;
+}
+
+@media (forced-colors: active) {
+  :root#main-window[data-fennevia-active]:not([data-fennevia-native-ui-suspended])
+    #statuspanel-label {
+    color: CanvasText !important;
+    background-color: Canvas !important;
+    border-color: CanvasText !important;
+    box-shadow: none !important;
+  }
 }
 `;
 

@@ -51,6 +51,7 @@ export const NAVBAR_AREA = "nav-bar";
 export const FALLBACK_ADDONS_AREA = "unified-extensions-area";
 export const LAYOUT_PREF = "fennevia.customize.layout";
 export const STYLE_PREF = "fennevia.customize.style";
+export const PANELS_PREF = "fennevia.customize.panels";
 export const CUSTOMIZE_PREF_DOMAIN = "fennevia.customize.";
 export const PREF_VALUE_MAX_LENGTH = 16384;
 export const PALETTE_MAX_ENTRIES = 256;

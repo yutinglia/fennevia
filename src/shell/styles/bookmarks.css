@@ -83,6 +83,7 @@
 }
 
 #fennevia-shell-frame-host .fennevia-bookmarks__item-icon {
+  position: relative;
   display: grid;
   inline-size: 18px;
   block-size: 18px;
@@ -91,6 +92,19 @@
   color: var(--fennevia-focus-color);
   background: color-mix(in srgb, var(--fennevia-focus-color) 12%, transparent);
   border-radius: var(--fennevia-control-radius);
+}
+
+#fennevia-shell-frame-host
+  :is(.fennevia-bookmarks__item-fallback, .fennevia-bookmarks__item-favicon) {
+  position: absolute;
+  display: grid;
+  inline-size: 14px;
+  block-size: 14px;
+  place-items: center;
+}
+
+#fennevia-shell-frame-host .fennevia-bookmarks__item-favicon {
+  object-fit: contain;
 }
 
 #fennevia-shell-frame-host

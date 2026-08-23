@@ -4,6 +4,9 @@ export const maximumBookmarkTitleLength = 160;
 export const bookmarkPageSize = 32;
 export const maximumBookmarkDepth = 8;
 export const maximumExpandedBookmarkFolders = 20;
+export const maximumBookmarkFaviconUrlLength = 262_144;
+export const bookmarkFaviconDataUrlPattern =
+  /^data:image\/(?:avif|gif|jpeg|png|vnd\.microsoft\.icon|webp|x-icon);base64,(?=[a-z0-9+/]+={0,2}$)(?:[a-z0-9+/]{4})*(?:[a-z0-9+/]{2}==|[a-z0-9+/]{3}=)?$/iu;
 
 export type BookmarkNodeKind = "bookmark" | "folder" | "separator";
 export type BookmarkOpenDisposition = "current" | "new-tab";
@@ -11,6 +14,7 @@ export type BookmarkOpenRejection =
   "busy" | "failed" | "not-bookmark" | "stale" | "unsupported-scheme";
 
 export type BookmarkNodeSnapshot = Readonly<{
+  faviconUrl?: string;
   hasChildren: boolean;
   id: string;
   kind: BookmarkNodeKind;

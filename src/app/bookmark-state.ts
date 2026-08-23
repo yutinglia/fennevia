@@ -5,6 +5,8 @@ export {
   bookmarkPageSize,
   maximumBookmarkDepth,
   maximumExpandedBookmarkFolders,
+  maximumBookmarkFaviconUrlLength,
+  bookmarkFaviconDataUrlPattern,
 } from "./bookmarks/contracts.ts";
 export type {
   BookmarkNodeKind,

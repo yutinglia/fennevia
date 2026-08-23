@@ -9,7 +9,6 @@
   import type { BrowserDownloadsStateAdapter } from "../app/download-state";
   import {
     edgeKeyboardBindings,
-    resolveEdgeAtPoint,
     type EdgeName,
     type EdgeShellController,
     type EdgeSurfaceController,
@@ -26,10 +25,17 @@
   import type {
     BrowserToolbarWidgetsState,
     BrowserToolbarWidgetsStateAdapter,
+    ProgressLightSource,
+    SidePanelRole,
+  } from "../app/toolbar-widgets-state";
+  import {
+    createDefaultShellPanelConfig,
+    getSidePanelRole,
   } from "../app/toolbar-widgets-state";
   import type { BrowserWindowControlsStateAdapter } from "../app/window-controls-state";
   import CustomizePanel from "./CustomizePanel.svelte";
   import EdgePanelContextMenu from "./features/context-menu/EdgePanelContextMenu.svelte";
+  import * as edgeUi from "./runtime/edge-app-interactions";
   import BottomSurface from "./surfaces/BottomSurface.svelte";
   import EdgeProgressLight from "./surfaces/EdgeProgressLight.svelte";
   import LeftSurface from "./surfaces/LeftSurface.svelte";
@@ -74,6 +80,22 @@
     return props.surface.snapshot();
   });
   let currentToolbarWidgets: BrowserToolbarWidgetsState | null = $state(null);
+  let panelConfig = $derived(
+    (currentToolbarWidgets ?? props.toolbarWidgets?.snapshot())?.snapshot
+      .panels ?? createDefaultShellPanelConfig(),
+  );
+  let sidePanelRole: SidePanelRole | null = $derived(
+    props.edge === "left" || props.edge === "right"
+      ? getSidePanelRole(panelConfig, props.edge)
+      : null,
+  );
+  let progressLightSource: ProgressLightSource = $derived(
+    props.edge === "top"
+      ? panelConfig.topProgressLight
+      : props.edge === "bottom"
+        ? panelConfig.bottomProgressLight
+        : "off",
+  );
   let shortcutHintsEnabled = $derived(
     (currentToolbarWidgets ?? props.toolbarWidgets?.snapshot())?.snapshot.style
       .shortcutHintDuration !== 0,
@@ -83,14 +105,7 @@
   let panelDragCandidate = false;
   let focusReleaseTimer: DelayedFocusTimer | undefined;
 
-  let surfaceLabels = $derived(
-    Object.freeze({
-      top: t("surface.top"),
-      left: t("surface.left"),
-      right: t("surface.right"),
-      bottom: t("surface.bottom"),
-    }),
-  );
+  let surfaceLabel = $derived(t(edgeUi.labelKey(props.edge, sidePanelRole)));
 
   $effect(() => {
     localeId = props.locale.snapshot().id;
@@ -176,39 +191,29 @@
   };
 
   const handleTriggerPointer = (event: PointerEvent) => {
-    if (event.buttons !== 0) {
+    if (
+      !surfaceState.enabled ||
+      !edgeUi.pointerActivatesEdge({
+        edge: props.edge,
+        event,
+        frame: props.frame,
+        triggerThickness:
+          props.shell.snapshot().interaction.triggerThicknessCssPixels,
+      })
+    ) {
       return;
     }
-    const bounds = props.frame.getBoundingClientRect();
-    const resolvedEdge = resolveEdgeAtPoint({
-      height: bounds.height,
-      thickness: props.shell.snapshot().interaction.triggerThicknessCssPixels,
-      width: bounds.width,
-      x: event.clientX - bounds.left,
-      y: event.clientY - bounds.top,
-    });
-    if (resolvedEdge === props.edge) {
-      props.shell.revealFromPointer(props.edge);
-    }
-  };
-
-  const crossedPointerBoundary = (event: PointerEvent): boolean => {
-    const boundary = event.currentTarget;
-    const related = event.relatedTarget;
-    return (
-      boundary instanceof Node &&
-      (!(related instanceof Node) || !boundary.contains(related))
-    );
+    props.shell.revealFromPointer(props.edge);
   };
 
   const handlePanelPointerOver = (event: PointerEvent) => {
-    if (event.buttons === 0 && crossedPointerBoundary(event)) {
+    if (event.buttons === 0 && edgeUi.crossedPointerBoundary(event)) {
       props.shell.setPointerHeld(props.edge, true);
     }
   };
 
   const handleSurfacePointerOut = (event: PointerEvent) => {
-    if (crossedPointerBoundary(event)) {
+    if (edgeUi.crossedPointerBoundary(event)) {
       props.shell.releasePointer(
         props.edge,
         event.relatedTarget === null ? "outside-window" : "inside-window",
@@ -216,19 +221,9 @@
     }
   };
 
-  const isInteractivePointerTarget = (
-    target: PointerEvent["target"],
-  ): boolean =>
-    target instanceof Element &&
-    Boolean(
-      target.closest(
-        'a, button, input, select, textarea, [contenteditable="true"], [role="button"], [role="link"], [role="tab"], [tabindex]',
-      ),
-    );
-
   const handlePanelPointerDown = (event: PointerEvent) => {
     panelDragCandidate =
-      event.button === 0 && !isInteractivePointerTarget(event.target);
+      event.button === 0 && !edgeUi.isInteractivePointerTarget(event.target);
     if (panelDragCandidate) {
       props.shell.setWindowDragActive(true);
     }
@@ -306,7 +301,9 @@
   lang={localeId}
   class="fennevia-edge-root"
   data-fennevia-edge={props.edge}
+  data-fennevia-enabled={surfaceState.enabled}
   data-fennevia-phase={surfaceState.phase}
+  data-fennevia-side-role={sidePanelRole ?? undefined}
   data-fennevia-surface-root=""
   data-fennevia-visible={surfaceState.visible}
   data-fennevia-window-kind={props.windowKind}
@@ -327,12 +324,13 @@
     downloads={props.downloads}
     edge={props.edge}
     navigation={props.navigation}
+    source={progressLightSource}
   />
 
   <div
     bind:this={panelElement}
     aria-hidden={!surfaceState.visible}
-    aria-label={surfaceLabels[props.edge]}
+    aria-label={surfaceLabel}
     class="fennevia-edge-panel"
     data-fennevia-edge-panel={props.edge}
     inert={!surfaceState.visible}
@@ -342,15 +340,16 @@
     onpointerup={handlePanelPointerRelease}
     role="region"
   >
-    {#if props.edge === "left" && props.addressPopup && props.navigation && props.tabs}
+    {#if (props.edge === "left" || props.edge === "right") && sidePanelRole === "tabs" && props.addressPopup && props.navigation && props.tabs}
       <LeftSurface
         addressPopup={props.addressPopup}
         browserTools={props.browserTools}
         {customizeOpen}
         customizeSession={props.customizeSession}
+        edge={props.edge}
         {localeId}
         navigation={props.navigation}
-        onDismiss={() => props.onDismiss("left")}
+        onDismiss={() => props.onDismiss(props.edge)}
         onFatalError={props.onFatalError}
         onOpenAddress={() => props.onOpenAddress?.() ?? false}
         shell={props.shell}
@@ -374,14 +373,15 @@
         windowControls={props.windowControls}
         windowKind={props.windowKind}
       />
-    {:else if props.edge === "right" && props.bookmarks}
+    {:else if (props.edge === "left" || props.edge === "right") && sidePanelRole === "bookmarks" && props.bookmarks}
       <RightSurface
         bookmarks={props.bookmarks}
         browserTools={props.browserTools}
         {customizeOpen}
         customizeSession={props.customizeSession}
+        edge={props.edge}
         {localeId}
-        onDismiss={() => props.onDismiss("right")}
+        onDismiss={() => props.onDismiss(props.edge)}
         onFatalError={props.onFatalError}
         shell={props.shell}
         toolbarWidgets={props.toolbarWidgets}
@@ -414,6 +414,7 @@
       onSetCustomizeOpen={setCustomizeOpen}
       panel={panelElement}
       shell={props.shell}
+      {sidePanelRole}
       tabs={props.tabs}
       toolbarWidgets={props.toolbarWidgets}
       visible={surfaceState.visible}
