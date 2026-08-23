@@ -561,10 +561,7 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
     bundle,
     /Ctrl or Command \+ Enter opens a bookmark in a new tab/u,
   );
-  assert.doesNotMatch(
-    bundle,
-    /Ctrl 或 Command \+ Enter 可在新分頁開啟書籤/u,
-  );
+  assert.doesNotMatch(bundle, /Ctrl 或 Command \+ Enter 可在新分頁開啟書籤/u);
   assert.match(bundle, /data-fennevia-download-summary/u);
   assert.match(bundle, /data-fennevia-download-progress/u);
   assert.match(bundle, /data-fennevia-progress-light/u);

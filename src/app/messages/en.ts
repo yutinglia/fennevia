@@ -162,7 +162,8 @@ export const en = {
     "Using your Fennevia layout. Drag widgets onto the four edge panels. Drop them here to remove. Reset to follow the Firefox toolbar again.",
   "customize.paletteAria": "Available widgets",
   "customize.panelAria": "Customize Fennevia shell",
-  "customize.allowCompactWindow": "Allow smaller than Firefox minimum window size",
+  "customize.allowCompactWindow":
+    "Allow smaller than Firefox minimum window size",
   "customize.allowCompactWindowHelp":
     "Firefox chrome normally refuses to shrink below its official minimum. Enable this to resize smaller while Fennevia is active. Caption buttons and some chrome may clip. The operating system still keeps its own floor.",
   "customize.panels": "Panels and progress lights",
