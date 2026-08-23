@@ -931,11 +931,12 @@
 
     let dragId: string | null = null;
     try {
-      dragId = props.tabs.beginDrag(tabId);
+      const startedDragId = props.tabs.beginDrag(tabId);
+      dragId = startedDragId;
       transfer.effectAllowed = "move";
       transfer.clearData();
       transfer.setData(TAB_DRAG_MIME_TYPE, "1");
-      sourceDragId = dragId;
+      sourceDragId = startedDragId;
       draggingTabId = tabId;
       externalDrag = null;
       clearDropTarget();
@@ -952,19 +953,19 @@
         );
         const list = dragImage.closest<HTMLElement>("[data-fennevia-tab-list]");
         if (list) {
-          captureDragGeometry(list, dragId, {
+          captureDragGeometry(list, startedDragId, {
             pointerY: event.clientY,
             tabId,
           });
           void tick().then(() => {
             if (
-              sourceDragId !== dragId ||
+              sourceDragId !== startedDragId ||
               draggingTabId !== tabId ||
               !list.isConnected
             ) {
               return;
             }
-            captureDragGeometry(list, dragId, {
+            captureDragGeometry(list, startedDragId, {
               pointerY: event.clientY,
               preservePointerOffset: true,
               tabId,
