@@ -6,7 +6,6 @@ import test from "node:test";
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const readProjectFile = (relativePath) =>
   readFile(path.join(projectRoot, ...relativePath.split("/")), "utf8");
-const lineCount = (source) => source.trimEnd().split(/\r?\n/u).length;
 
 test("stable facades keep feature implementations out of public entry files", async () => {
   const firefoxFeatures = [
@@ -28,31 +27,19 @@ test("stable facades keep feature implementations out of public entry files", as
         "u",
       ),
     );
-    assert.ok(lineCount(facade) <= 3);
   }
 
-  const [bookmarks, edges, toolbarWidgets, shell] = await Promise.all([
-    readProjectFile("src/app/bookmark-state.ts"),
-    readProjectFile("src/app/edge-surfaces.ts"),
-    readProjectFile("src/app/toolbar-widgets-state.ts"),
-    readProjectFile("src/shell/index.ts"),
-  ]);
-  assert.ok(lineCount(bookmarks) <= 40);
-  assert.ok(lineCount(edges) <= 40);
-  assert.ok(lineCount(toolbarWidgets) <= 80);
-  assert.ok(lineCount(shell) <= 15);
+  const shell = await readProjectFile("src/shell/index.ts");
   assert.match(shell, /from "\.\/runtime\/mount-shell"/u);
   assert.doesNotMatch(shell, /function mountShellApp/u);
 });
 
-test("shell composition and CSS retain explicit bounded module ownership", async () => {
+test("shell composition and CSS retain explicit module ownership", async () => {
   const [app, customize, css] = await Promise.all([
     readProjectFile("src/shell/App.svelte"),
     readProjectFile("src/shell/CustomizePanel.svelte"),
     readProjectFile("src/shell/styles/edge-shell.css"),
   ]);
-  assert.ok(lineCount(app) <= 450);
-  assert.ok(lineCount(customize) <= 350);
   assert.match(app, /\.\/surfaces\/TopSurface\.svelte/u);
   assert.match(app, /\.\/surfaces\/LeftSurface\.svelte/u);
   assert.match(
@@ -106,6 +93,5 @@ test("installer implementation uses one fixed release-inventoried allowlist", as
       `scripts/lib/installer/${implementationFile}`,
     );
     assert.match(implementation, /^function Fennevia|^function [A-Za-z]/mu);
-    assert.ok(lineCount(implementation) <= 900);
   }
 });

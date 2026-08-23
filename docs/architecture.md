@@ -1093,7 +1093,11 @@ program/
 ```
 
 Facade files preserve the established import paths while implementation modules
-are grouped by feature and responsibility. Firefox feature folders remain
+are grouped by feature and responsibility. Composition hosts such as
+`App.svelte` stay wiring: they must not absorb unrelated feature UI, pointer
+policy, or panel logic that belongs in `surfaces/`, `features/`, or
+`runtime/`. Source-structure tests check this ownership split and the CSS
+barrel; they do not enforce a numeric line budget. Firefox feature folders remain
 privileged and may not be imported by `src/app/` or `src/shell/`. CSS modules
 are imported in one explicit order so the pre-refactor cascade remains
 authoritative. The installer module dot-sources only its fixed reviewed list;

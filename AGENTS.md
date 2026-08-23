@@ -199,6 +199,11 @@ code, and unclear or unlicensed material remains prohibited.
   artifacts; every file must be reproducible from source.
 - Avoid large service containers, generic Firefox SDK layers, or speculative
   abstractions without a real consumer.
+- Keep composition hosts, public facades, CSS barrels, and installer loaders as
+  wiring. Put feature implementation in dedicated modules instead of growing
+  `App.svelte`, `CustomizePanel.svelte`, or another single file into a catch-all.
+  Do not add numeric line-count CI gates for this; extract when a file starts
+  owning unrelated feature logic.
 - Keep privileged implementation details out of Svelte stores, DOM datasets,
   serializable state, and diagnostics.
 - Feature UI must use the #31 edge contract rather than manipulating surface
