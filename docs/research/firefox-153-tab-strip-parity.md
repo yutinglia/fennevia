@@ -177,5 +177,6 @@ No canary code was copied.
 ## Follow-up
 
 - Tab groups, split view, workspaces, multi-select, and thumbnails remain
-  separate issues.
+  separate issues. Issue #109 later added native-backed multi-select; see
+  `docs/research/firefox-153-154-tab-multiselect.md` and ADR-071.
 - Re-run the live menu-positioning spike on the next supported Firefox stable.

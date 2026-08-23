@@ -346,6 +346,7 @@ export function createFirefoxTabsBridge({
       ...(hasAttribute(tab, "pictureinpicture")
         ? { pictureInPicture: true }
         : {}),
+      ...(hasAttribute(tab, "multiselected") ? { multiselected: true } : {}),
       id: registry.register(tab),
       loading: hasAttribute(tab, "busy"),
       pinned: hasAttribute(tab, "pinned"),
@@ -459,6 +460,121 @@ export function createFirefoxTabsBridge({
       );
     }
     return Reflect.apply(method, browser, args);
+  };
+
+  const isTabMultiselected = (tab: NativeTab): boolean =>
+    hasAttribute(tab, "multiselected");
+
+  const readSelectedTabs = (): NativeTab[] => {
+    const candidate = requireGBrowser().selectedTabs;
+    if (!Array.isArray(candidate)) {
+      throw createTabsError(
+        boundary,
+        "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING",
+        "firefox-tabs-action",
+        "window.gBrowser.selectedTabs",
+      );
+    }
+    const tabs: NativeTab[] = [];
+    for (const item of candidate) {
+      if (
+        isNativeRecord(item) &&
+        typeof item.hasAttribute === "function" &&
+        typeof item.getAttribute === "function"
+      ) {
+        tabs.push(item as NativeTab);
+      }
+    }
+    return tabs;
+  };
+
+  const readSamePinSelectedTabs = (handle: NativeTab): NativeTab[] => {
+    if (!isTabMultiselected(handle)) {
+      return [handle];
+    }
+    const pinned = hasAttribute(handle, "pinned");
+    const selected = new Set(readSelectedTabs());
+    const moving = readOpenTabs().filter(
+      (tab) => selected.has(tab) && hasAttribute(tab, "pinned") === pinned,
+    );
+    return moving.includes(handle) ? moving : [handle];
+  };
+
+  const moveNativeTabsToIndex = (
+    moving: readonly NativeTab[],
+    destStart: number,
+  ): void => {
+    if (moving.length === 0) {
+      return;
+    }
+    const movingSet = new Set(moving);
+    const openTabs = readOpenTabs();
+    const remaining = openTabs.filter((tab) => !movingSet.has(tab));
+    const destInRemaining = Math.max(
+      0,
+      destStart -
+        openTabs.slice(0, destStart).filter((tab) => movingSet.has(tab)).length,
+    );
+    const pinned = hasAttribute(moving[0], "pinned");
+    const remainingPinned = remaining.filter((tab) =>
+      hasAttribute(tab, "pinned"),
+    ).length;
+    const clamped = pinned
+      ? Math.min(Math.max(destInRemaining, 0), remainingPinned)
+      : Math.min(Math.max(destInRemaining, remainingPinned), remaining.length);
+    const desired = [
+      ...remaining.slice(0, clamped),
+      ...moving,
+      ...remaining.slice(clamped),
+    ];
+    for (let index = 0; index < desired.length; index += 1) {
+      const tab = desired[index];
+      const current = readOpenTabs();
+      if (tab && current[index] !== tab) {
+        callTabMethod("moveTabTo", [
+          tab,
+          { isUserTriggered: true, tabIndex: index },
+        ]);
+      }
+    }
+  };
+
+  const readLastMultiSelectedTab = (): NativeTab => {
+    const browser = requireGBrowser();
+    try {
+      const anchor = asNativeTab(boundary, browser.lastMultiSelectedTab);
+      if (readOpenTabs().includes(anchor)) {
+        return anchor;
+      }
+    } catch {
+      // Fall back to the active tab when the native anchor is missing.
+    }
+    return asNativeTab(boundary, browser.selectedTab);
+  };
+
+  const readLiveMovingTabs = (
+    transfer: Readonly<{
+      movingTabs?: readonly NativeTab[];
+      pinned: boolean;
+      tab: NativeTab;
+    }>,
+    presentIn: readonly NativeTab[] | null,
+  ): NativeTab[] => {
+    const captured = transfer.movingTabs ?? [transfer.tab];
+    const live = captured.filter((tab) => {
+      if (
+        !isNativeRecord(tab) ||
+        hasAttribute(tab, "pinned") !== transfer.pinned
+      ) {
+        return false;
+      }
+      return presentIn ? presentIn.includes(tab) : true;
+    });
+    if (presentIn) {
+      const ordered = presentIn.filter((tab) => live.includes(tab));
+      return ordered.includes(transfer.tab) ? ordered : [];
+    }
+    return live.length > 0 ? live : [transfer.tab];
   };
 
   const normalizeOpenOptions = (
@@ -619,6 +735,39 @@ export function createFirefoxTabsBridge({
   };
 
   const publicBridge: BrowserTabsBridge = Object.freeze({
+    activateKeepingMultiSelect(tabId: string): void {
+      const tab = requireOwnedTab(tabId);
+      const browser = requireGBrowser();
+      callTabMethod("lockClearMultiSelectionOnce", []);
+      try {
+        if (browser.selectedTab !== tab) {
+          if (!Reflect.set(browser, "selectedTab", tab)) {
+            throw createTabsError(
+              boundary,
+              "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED",
+              "firefox-tabs-action",
+              "window.gBrowser.selectedTab",
+            );
+          }
+          if (browser.selectedTab !== tab) {
+            throw createTabsError(
+              boundary,
+              "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED",
+              "firefox-tabs-action",
+              "window.gBrowser.selectedTab",
+            );
+          }
+        }
+      } finally {
+        try {
+          callTabMethod("unlockClearMultiSelection", []);
+        } catch {
+          // Unlock is best-effort so a missing counterpart cannot stick the lock.
+        }
+      }
+      reconcile(true);
+    },
+
     beginDrag(tabId: string): string {
       const tab = requireOwnedTab(tabId);
       try {
@@ -633,6 +782,7 @@ export function createFirefoxTabsBridge({
               return false;
             }
           },
+          movingTabs: readSamePinSelectedTabs(tab),
           pinned: hasAttribute(tab, "pinned"),
           sourceContextId: contextId,
           sourceWindowKind: windowKind,
@@ -651,10 +801,14 @@ export function createFirefoxTabsBridge({
 
     close(tabId: string): void {
       const tab = requireOwnedTab(tabId);
-      callTabMethod("removeTab", [
-        tab,
-        { animate: true, isUserTriggered: true },
-      ]);
+      if (isTabMultiselected(tab)) {
+        callTabMethod("removeMultiSelectedTabs", []);
+      } else {
+        callTabMethod("removeTab", [
+          tab,
+          { animate: true, isUserTriggered: true },
+        ]);
+      }
       reconcile(true);
     },
 
@@ -688,10 +842,25 @@ export function createFirefoxTabsBridge({
         const boundedIndex = transfer.pinned
           ? Math.min(Math.max(requestedIndex, 0), Math.max(pinnedCount - 1, 0))
           : Math.min(Math.max(requestedIndex, pinnedCount), finalMaximum);
-        callTabMethod("moveTabTo", [
-          transfer.tab,
-          { isUserTriggered: true, tabIndex: boundedIndex },
-        ]);
+        const moving = readLiveMovingTabs(transfer, nativeTabs);
+        if (moving.length === 0) {
+          dragCoordinator.cancel(transfer.id, contextId);
+          throw createTabsError(
+            boundary,
+            "FENNEVIA_FIREFOX_TAB_STALE",
+            "firefox-tabs-drag",
+            "tabs.dropDrag.source-tab",
+          );
+        }
+        const handlePos = moving.indexOf(transfer.tab);
+        const handleIndex = nativeTabs.indexOf(transfer.tab);
+        const destStart =
+          moving.length > 1
+            ? boundedIndex > handleIndex
+              ? boundedIndex + 1
+              : boundedIndex
+            : boundedIndex - Math.max(handlePos, 0);
+        moveNativeTabsToIndex(moving, destStart);
         const actualIndex = readOpenTabs().indexOf(transfer.tab);
         if (actualIndex < 0) {
           throw createTabsError(
@@ -714,25 +883,56 @@ export function createFirefoxTabsBridge({
       const boundedIndex = transfer.pinned
         ? Math.min(Math.max(requestedIndex, 0), pinnedCount)
         : Math.min(Math.max(requestedIndex, pinnedCount), nativeTabs.length);
-      let adoptedCandidate: unknown;
-      try {
-        adoptedCandidate = callTabMethod("adoptTab", [
-          transfer.tab,
-          {
-            selectTab: true,
-            tabIndex: boundedIndex,
-          },
-        ]);
-      } catch (error) {
-        throw createTabsError(
-          boundary,
-          "FENNEVIA_FIREFOX_TAB_ADOPT_REJECTED",
-          "firefox-tabs-drag",
-          "window.gBrowser.adoptTab",
-          error,
-        );
+      const moving = readLiveMovingTabs(transfer, null);
+      let insertAt = boundedIndex;
+      let selectedMover: NativeTab | undefined;
+      let selectedDest = boundedIndex;
+      let adoptedHandle: NativeTab | undefined;
+      const adoptOne = (
+        mover: NativeTab,
+        tabIndex: number,
+        selectTab: boolean,
+      ): NativeTab => {
+        let adoptedCandidate: unknown;
+        try {
+          adoptedCandidate = callTabMethod("adoptTab", [
+            mover,
+            {
+              selectTab,
+              tabIndex,
+            },
+          ]);
+        } catch (error) {
+          throw createTabsError(
+            boundary,
+            "FENNEVIA_FIREFOX_TAB_ADOPT_REJECTED",
+            "firefox-tabs-drag",
+            "window.gBrowser.adoptTab",
+            error,
+          );
+        }
+        return asNativeTab(boundary, adoptedCandidate);
+      };
+      for (const mover of moving) {
+        if (hasAttribute(mover, "selected") && selectedMover === undefined) {
+          selectedMover = mover;
+          selectedDest = insertAt;
+          continue;
+        }
+        const adopted = adoptOne(mover, insertAt, false);
+        if (mover === transfer.tab) {
+          adoptedHandle = adopted;
+        }
+        insertAt += 1;
       }
-      const adoptedTab = asNativeTab(boundary, adoptedCandidate);
+      if (selectedMover) {
+        const adopted = adoptOne(selectedMover, selectedDest, true);
+        if (selectedMover === transfer.tab) {
+          adoptedHandle = adopted;
+        }
+      }
+      const adoptedTab =
+        adoptedHandle ?? adoptOne(transfer.tab, boundedIndex, true);
       const adoptedTabs = readOpenTabs();
       const actualIndex = adoptedTabs.indexOf(adoptedTab);
       if (actualIndex < 0) {
@@ -805,18 +1005,24 @@ export function createFirefoxTabsBridge({
       }
 
       const sourceTabs = readOpenTabs();
-      if (!sourceTabs.includes(resolution.transfer.tab)) {
+      const moving = readLiveMovingTabs(resolution.transfer, sourceTabs);
+      if (
+        moving.length === 0 ||
+        !sourceTabs.includes(resolution.transfer.tab)
+      ) {
         dragCoordinator.cancel(dragId, contextId);
         return "unchanged";
       }
-      if (sourceTabs.length === 1) {
+      if (moving.length >= sourceTabs.length) {
         dragCoordinator.consume(dragId);
         return "unchanged";
       }
 
+      const detachMethod =
+        moving.length > 1 ? "replaceTabsWithWindow" : "replaceTabWithWindow";
       let replacement: unknown;
       try {
-        replacement = callTabMethod("replaceTabWithWindow", [
+        replacement = callTabMethod(detachMethod, [
           resolution.transfer.tab,
           {
             screenX: normalized.screenX,
@@ -829,7 +1035,7 @@ export function createFirefoxTabsBridge({
           boundary,
           "FENNEVIA_FIREFOX_TAB_DETACH_REJECTED",
           "firefox-tabs-drag",
-          "window.gBrowser.replaceTabWithWindow",
+          `window.gBrowser.${detachMethod}`,
           error,
         );
       } finally {
@@ -853,10 +1059,14 @@ export function createFirefoxTabsBridge({
           "tabs.move.index",
         );
       }
-      callTabMethod("moveTabTo", [
-        tab,
-        { isUserTriggered: true, tabIndex: index },
-      ]);
+      if (isTabMultiselected(tab)) {
+        moveNativeTabsToIndex(readSamePinSelectedTabs(tab), index);
+      } else {
+        callTabMethod("moveTabTo", [
+          tab,
+          { isUserTriggered: true, tabIndex: index },
+        ]);
+      }
       reconcile(true);
     },
 
@@ -965,6 +1175,11 @@ export function createFirefoxTabsBridge({
 
     pin(tabId: string): void {
       const tab = requireOwnedTab(tabId);
+      if (isTabMultiselected(tab)) {
+        callTabMethod("pinMultiSelectedTabs", []);
+        reconcile(true);
+        return;
+      }
       if (!hasAttribute(tab, "pinned")) {
         callTabMethod("pinTab", [tab]);
         if (!hasAttribute(tab, "pinned")) {
@@ -1003,6 +1218,38 @@ export function createFirefoxTabsBridge({
       }
     },
 
+    clearMultiSelect(): void {
+      callTabMethod("clearMultiSelectedTabs", []);
+      reconcile(true);
+    },
+
+    selectRange(tabId: string): void {
+      const tab = requireOwnedTab(tabId);
+      const browser = requireGBrowser();
+      const anchor = readLastMultiSelectedTab();
+      if (browser.selectedTab !== anchor) {
+        if (!Reflect.set(browser, "selectedTab", anchor)) {
+          throw createTabsError(
+            boundary,
+            "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED",
+            "firefox-tabs-action",
+            "window.gBrowser.selectedTab",
+          );
+        }
+        if (browser.selectedTab !== anchor) {
+          throw createTabsError(
+            boundary,
+            "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED",
+            "firefox-tabs-action",
+            "window.gBrowser.selectedTab",
+          );
+        }
+      }
+      callTabMethod("clearMultiSelectedTabs", []);
+      callTabMethod("addRangeToMultiSelectedTabs", [anchor, tab]);
+      reconcile(true);
+    },
+
     snapshot(): readonly TabSnapshot[] {
       requireWindow();
       return currentTabs;
@@ -1024,8 +1271,25 @@ export function createFirefoxTabsBridge({
       });
     },
 
+    toggleMultiSelect(tabId: string): void {
+      const tab = requireOwnedTab(tabId);
+      const browser = requireGBrowser();
+      if (isTabMultiselected(tab)) {
+        callTabMethod("removeFromMultiSelectedTabs", [tab]);
+      } else if (browser.selectedTab !== tab) {
+        callTabMethod("addToMultiSelectedTabs", [tab]);
+        Reflect.set(browser, "lastMultiSelectedTab", tab);
+      }
+      reconcile(true);
+    },
+
     toggleMute(tabId: string): void {
       const tab = requireOwnedTab(tabId);
+      if (isTabMultiselected(tab)) {
+        callTabMethod("toggleMuteAudioOnMultiSelectedTabs", [tab]);
+        reconcile(true);
+        return;
+      }
       const method = tab.toggleMuteAudio;
       if (!isFunction(method)) {
         throw createTabsError(
@@ -1041,6 +1305,11 @@ export function createFirefoxTabsBridge({
 
     unpin(tabId: string): void {
       const tab = requireOwnedTab(tabId);
+      if (isTabMultiselected(tab)) {
+        callTabMethod("unpinMultiSelectedTabs", []);
+        reconcile(true);
+        return;
+      }
       if (hasAttribute(tab, "pinned")) {
         callTabMethod("unpinTab", [tab]);
         if (hasAttribute(tab, "pinned")) {

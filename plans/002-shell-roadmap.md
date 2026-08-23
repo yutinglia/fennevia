@@ -354,12 +354,16 @@ Issue #60 completes the remaining flat-list parity on that same strip:
 Deferred:
 
 - tab groups/workspaces/split view;
-- multi-select;
 - thumbnails/previews;
 - container icon loads from `resource://usercontext-content/`.
 
+Issue #109 adds Firefox-owned tab multi-select on the existing strip (Accel
+toggle, Shift range, group drag/keyboard move, row close/mute/pin, native
+menu). Evidence: ADR-071 and
+`docs/research/firefox-153-154-tab-multiselect.md`.
+
 Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063,
-ADR-065, ADR-066, and ADR-070, plus
+ADR-065, ADR-066, ADR-070, and ADR-071, plus
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,
@@ -922,7 +926,7 @@ The following require separate plans and issues:
 - complete bookmarks/history manager;
 - complete Downloads manager and file actions;
 - bookmark drag-and-drop/editing;
-- tab groups, split view, workspaces, multi-select, and container icons;
+- tab groups, split view, workspaces, and container icons;
 - custom titlebar and OS window controls;
 - arbitrary theme editor or CSS injection;
 - any `browser.xhtml` or internal-component override;

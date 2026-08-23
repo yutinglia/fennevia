@@ -133,6 +133,22 @@
   });
 
   $effect(() => {
+    if (surfaceState.visible || sidePanelRole !== "tabs" || !props.tabs) {
+      return;
+    }
+    try {
+      const multiCount = (props.tabs.snapshot().tabs ?? []).filter(
+        (tab) => tab.multiselected === true,
+      ).length;
+      if (multiCount > 0) {
+        props.tabs.clearMultiSelect();
+      }
+    } catch (error) {
+      props.onFatalError(error);
+    }
+  });
+
+  $effect(() => {
     const toolbarWidgets = props.toolbarWidgets;
     if (!toolbarWidgets) {
       currentToolbarWidgets = null;

@@ -325,6 +325,7 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "tab.attention": "需要注意",
   "tab.cameraInUse": "正在使用相機",
   "tab.close": "關閉",
+  "tab.closeCount": "關閉 {count} 個分頁",
   "tab.closeTab": "關閉分頁",
   "tab.crashed": "已崩潰",
   "tab.dragPreview": "正在移動分頁",

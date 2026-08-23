@@ -9,6 +9,7 @@ export type TabStripLabels = Readonly<{
   attention: string;
   cameraInUse: string;
   close: string;
+  closeCount: string;
   crashed: string;
   indexOf: string;
   loading: string;
@@ -31,6 +32,7 @@ export const defaultTabStripLabels: TabStripLabels = Object.freeze({
   attention: "Attention",
   cameraInUse: "Using camera",
   close: "Close",
+  closeCount: "Close {count} tabs",
   crashed: "Crashed",
   indexOf: "{index} of {total}",
   loading: "Loading",
@@ -106,7 +108,11 @@ export function getTabActionAccessibleName(
   action: "close" | "mute" | "pin" | "resume-media" | "unmute" | "unpin",
   tab: TabSnapshot,
   labels: TabStripLabels = defaultTabStripLabels,
+  count = 1,
 ): string {
+  if (action === "close" && count > 1) {
+    return interpolate(labels.closeCount, { count });
+  }
   const verb =
     action === "close"
       ? labels.close
@@ -195,6 +201,130 @@ export function findTabMoveIndex(
   return index + delta;
 }
 
+export type TabPointerAction =
+  "activate" | "activate-keep-multi" | "range" | "toggle-multi";
+
+export function hasAccelModifier(
+  event: Readonly<{
+    ctrlKey: boolean;
+    getModifierState?: (key: string) => boolean;
+    metaKey: boolean;
+  }>,
+): boolean {
+  if (typeof event.getModifierState === "function") {
+    try {
+      if (event.getModifierState("Accel")) {
+        return true;
+      }
+    } catch {
+      // Fall through to ctrl/meta when Accel is unavailable.
+    }
+  }
+  return event.ctrlKey === true || event.metaKey === true;
+}
+
+export function resolveTabPointerAction(
+  event: Readonly<{
+    altKey: boolean;
+    button?: number;
+    ctrlKey: boolean;
+    getModifierState?: (key: string) => boolean;
+    metaKey: boolean;
+    shiftKey: boolean;
+  }>,
+  tab: Pick<TabSnapshot, "multiselected" | "selected">,
+): TabPointerAction {
+  if (event.button !== undefined && event.button !== 0) {
+    return "activate";
+  }
+  if (event.altKey) {
+    return "activate";
+  }
+  if (event.shiftKey) {
+    return "range";
+  }
+  if (hasAccelModifier(event)) {
+    return "toggle-multi";
+  }
+  if (!tab.selected && tab.multiselected) {
+    return "activate-keep-multi";
+  }
+  return "activate";
+}
+
+export function countMultiSelectedTabs(tabs: readonly TabSnapshot[]): number {
+  return tabs.reduce(
+    (total, tab) => total + (tab.multiselected === true ? 1 : 0),
+    0,
+  );
+}
+
+export function isTabInDragGroup(
+  tabs: readonly TabSnapshot[],
+  draggingTabId: string | null,
+  tabId: string,
+): boolean {
+  if (!draggingTabId) {
+    return false;
+  }
+  if (tabId === draggingTabId) {
+    return true;
+  }
+  const handle = tabs.find((tab) => tab.id === draggingTabId);
+  const tab = tabs.find((candidate) => candidate.id === tabId);
+  return Boolean(
+    handle?.multiselected && tab?.multiselected && handle.pinned === tab.pinned,
+  );
+}
+
+export function isCollapsedDragMember(
+  tabs: readonly TabSnapshot[],
+  draggingTabId: string | null,
+  tabId: string,
+): boolean {
+  return (
+    draggingTabId !== null &&
+    tabId !== draggingTabId &&
+    isTabInDragGroup(tabs, draggingTabId, tabId)
+  );
+}
+
+export function findTabGroupMoveIndex(
+  tabs: readonly TabSnapshot[],
+  movingIds: readonly string[],
+  delta: -1 | 1,
+): number | null {
+  if (movingIds.length === 0) {
+    return null;
+  }
+  const idSet = new Set(movingIds);
+  const moving = tabs.filter((tab) => idSet.has(tab.id));
+  if (moving.length !== movingIds.length || moving.length === 0) {
+    return null;
+  }
+  const pinned = moving[0]?.pinned;
+  if (moving.some((tab) => tab.pinned !== pinned)) {
+    return null;
+  }
+  const firstIndex = tabs.findIndex((tab) => tab.id === moving[0]?.id);
+  const lastIndex = tabs.findIndex((tab) => tab.id === moving.at(-1)?.id);
+  if (firstIndex < 0 || lastIndex < 0) {
+    return null;
+  }
+  const slice = tabs.slice(firstIndex, lastIndex + 1);
+  if (
+    slice.length !== moving.length ||
+    slice.some((tab) => !idSet.has(tab.id))
+  ) {
+    return null;
+  }
+  const neighbor = tabs[delta === 1 ? lastIndex + 1 : firstIndex - 1];
+  if (!neighbor || neighbor.pinned !== pinned) {
+    return null;
+  }
+  return delta === 1 ? firstIndex + 1 : firstIndex - 1;
+}
+
 export function resolveTabDropIndex(
   tabs: readonly TabSnapshot[],
   draggingTabId: string,
@@ -216,6 +346,10 @@ export function resolveTabDropIndex(
 
   let insertBefore = tabs.length;
   for (const [index, midpoint] of itemMids.entries()) {
+    const tab = tabs[index];
+    if (tab && isCollapsedDragMember(tabs, draggingTabId, tab.id)) {
+      continue;
+    }
     if (pointerY < midpoint) {
       insertBefore = index;
       break;
@@ -252,9 +386,38 @@ export function resolveTabDropPreview(
   ) {
     return null;
   }
+  let markerIndex = targetIndex;
+  let position: "after" | "before" =
+    targetIndex < draggingIndex ? "before" : "after";
+  const marker = tabs[markerIndex];
+  if (marker && isCollapsedDragMember(tabs, draggingTabId, marker.id)) {
+    const remainingAfter = tabs.findIndex(
+      (tab, index) =>
+        index >= markerIndex &&
+        tab.id !== draggingTabId &&
+        !isCollapsedDragMember(tabs, draggingTabId, tab.id),
+    );
+    if (remainingAfter >= 0) {
+      markerIndex = remainingAfter;
+      position = "before";
+    } else {
+      for (let index = markerIndex; index >= 0; index -= 1) {
+        const tab = tabs[index];
+        if (
+          tab &&
+          tab.id !== draggingTabId &&
+          !isCollapsedDragMember(tabs, draggingTabId, tab.id)
+        ) {
+          markerIndex = index;
+          position = "after";
+          break;
+        }
+      }
+    }
+  }
   return Object.freeze({
-    index: targetIndex,
-    position: targetIndex < draggingIndex ? "before" : "after",
+    index: markerIndex,
+    position,
   });
 }
 
@@ -265,6 +428,7 @@ export function resolveTabDragShift(
   itemIndex: number,
 ): TabDragShift {
   const draggingIndex = tabs.findIndex((tab) => tab.id === draggingTabId);
+  const item = tabs[itemIndex];
   if (
     draggingIndex < 0 ||
     targetIndex === null ||
@@ -274,7 +438,9 @@ export function resolveTabDragShift(
     targetIndex === draggingIndex ||
     !Number.isSafeInteger(itemIndex) ||
     itemIndex < 0 ||
-    itemIndex >= tabs.length
+    itemIndex >= tabs.length ||
+    !item ||
+    isCollapsedDragMember(tabs, draggingTabId, item.id)
   ) {
     return null;
   }

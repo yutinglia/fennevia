@@ -70,9 +70,25 @@
 }
 
 #fennevia-shell-frame-host
+  .fennevia-tab-strip__item[data-fennevia-multiselected="true"]:not(
+    [data-fennevia-selected="true"]
+  ) {
+  background: color-mix(
+    in srgb,
+    var(--fennevia-selected-surface) 55%,
+    transparent
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 28%,
+    transparent
+  );
+}
+
+#fennevia-shell-frame-host
   .fennevia-tab-strip__item:not([data-fennevia-selected="true"]):not(
-    [data-fennevia-dragging="true"]
-  ):hover {
+    [data-fennevia-multiselected="true"]
+  ):not([data-fennevia-dragging="true"]):hover {
   background: color-mix(in srgb, currentColor 10%, transparent);
   border-color: color-mix(in srgb, currentColor 14%, transparent);
 }
@@ -138,6 +154,25 @@
     opacity 100ms ease-out,
     background-color 80ms ease-out,
     border-color 80ms ease-out;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__item[data-fennevia-drag-collapsed="true"] {
+  display: none;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__item[data-fennevia-drag-following="true"][data-fennevia-drag-stack="true"] {
+  box-shadow:
+    var(--fennevia-glass-shadow),
+    2px 3px 0 0
+      color-mix(in srgb, var(--fennevia-selected-surface) 92%, transparent),
+    2px 3px 0 1px
+      color-mix(in srgb, var(--fennevia-focus-color) 70%, transparent),
+    4px 6px 0 0
+      color-mix(in srgb, var(--fennevia-selected-surface) 78%, transparent),
+    4px 6px 0 1px
+      color-mix(in srgb, var(--fennevia-focus-color) 45%, transparent);
 }
 
 #fennevia-shell-frame-host

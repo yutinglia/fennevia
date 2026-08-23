@@ -47,6 +47,7 @@ export type TabSnapshot = Readonly<{
   faviconUrl?: string;
   id: string;
   loading: boolean;
+  multiselected?: boolean;
   pictureInPicture?: boolean;
   pinned: boolean;
   selected: boolean;
@@ -78,6 +79,7 @@ export type TabContextMenuPoint = Readonly<{
 }>;
 
 export type TabDragSnapshot = Readonly<{
+  count: number;
   id: string;
   pinned: boolean;
   source: "other-window" | "same-window";
@@ -107,7 +109,9 @@ export type TabDragEndResult = (typeof tabDragEndResults)[number];
 const tabDragEndResultSet = new Set<string>(tabDragEndResults);
 
 export type BrowserTabsBridge = Readonly<{
+  activateKeepingMultiSelect: (tabId: string) => void;
   beginDrag: (tabId: string) => string;
+  clearMultiSelect: () => void;
   close: (tabId: string) => void;
   dropDrag: (index: number) => TabDragDropResult;
   endDrag: (dragId: string, options: TabDragEndOptions) => TabDragEndResult;
@@ -117,8 +121,10 @@ export type BrowserTabsBridge = Readonly<{
   openContextMenu: (tabId: string, point: TabContextMenuPoint) => void;
   pin: (tabId: string) => void;
   select: (tabId: string) => void;
+  selectRange: (tabId: string) => void;
   snapshot: () => readonly TabSnapshot[];
   subscribe: (listener: (event: TabStateEvent) => void) => () => boolean;
+  toggleMultiSelect: (tabId: string) => void;
   toggleMute: (tabId: string) => void;
   unpin: (tabId: string) => void;
 }>;
@@ -129,7 +135,9 @@ export type BrowserTabsState = Readonly<{
 }>;
 
 export type BrowserTabsStateAdapter = Readonly<{
+  activateKeepingMultiSelect: (tabId: string) => void;
   beginDrag: (tabId: string) => string;
+  clearMultiSelect: () => void;
   close: (tabId: string) => void;
   dispose: () => boolean;
   dropDrag: (index: number) => TabDragDropResult;
@@ -140,6 +148,7 @@ export type BrowserTabsStateAdapter = Readonly<{
   openContextMenu: (tabId: string, point: TabContextMenuPoint) => void;
   pin: (tabId: string) => void;
   select: (tabId: string) => void;
+  selectRange: (tabId: string) => void;
   snapshot: () => BrowserTabsState;
   status: () => Readonly<{
     disposed: boolean;
@@ -149,6 +158,7 @@ export type BrowserTabsStateAdapter = Readonly<{
   }>;
   subscribe: (listener: (state: BrowserTabsState) => void) => () => boolean;
   subscribeContextMenu: (listener: (open: boolean) => void) => () => boolean;
+  toggleMultiSelect: (tabId: string) => void;
   toggleMute: (tabId: string) => void;
   unpin: (tabId: string) => void;
 }>;
@@ -195,11 +205,17 @@ const copyTabDragSnapshot = (candidate: unknown): TabDragSnapshot | null => {
     !("pinned" in candidate) ||
     typeof candidate.pinned !== "boolean" ||
     !("source" in candidate) ||
-    (candidate.source !== "same-window" && candidate.source !== "other-window")
+    (candidate.source !== "same-window" &&
+      candidate.source !== "other-window") ||
+    !("count" in candidate) ||
+    !Number.isSafeInteger(candidate.count) ||
+    (candidate.count as number) < 1 ||
+    (candidate.count as number) > 1000
   ) {
     throw createStateError("FENNEVIA_TAB_STATE_DRAG_INVALID");
   }
   return Object.freeze({
+    count: candidate.count as number,
     id: candidate.id,
     pinned: candidate.pinned,
     source: candidate.source,
@@ -265,6 +281,8 @@ const copyTabSnapshot = (candidate: TabSnapshot): TabSnapshot => {
     (candidate.audio !== undefined && !isTabAudioState(candidate.audio)) ||
     (candidate.attention !== undefined &&
       typeof candidate.attention !== "boolean") ||
+    (candidate.multiselected !== undefined &&
+      typeof candidate.multiselected !== "boolean") ||
     (candidate.crashed !== undefined &&
       typeof candidate.crashed !== "boolean") ||
     (candidate.pictureInPicture !== undefined &&
@@ -277,6 +295,7 @@ const copyTabSnapshot = (candidate: TabSnapshot): TabSnapshot => {
   const container = copyTabContainer(candidate.container);
   return Object.freeze({
     ...(candidate.attention === true ? { attention: true } : {}),
+    ...(candidate.multiselected === true ? { multiselected: true } : {}),
     ...(candidate.audio === undefined ? {} : { audio: candidate.audio }),
     ...(container === undefined ? {} : { container }),
     ...(candidate.crashed === true ? { crashed: true } : {}),
@@ -343,7 +362,9 @@ export function createBrowserTabsStateAdapter(
   if (
     !bridge ||
     typeof bridge !== "object" ||
+    typeof bridge.activateKeepingMultiSelect !== "function" ||
     typeof bridge.beginDrag !== "function" ||
+    typeof bridge.clearMultiSelect !== "function" ||
     typeof bridge.close !== "function" ||
     typeof bridge.dropDrag !== "function" ||
     typeof bridge.endDrag !== "function" ||
@@ -353,8 +374,10 @@ export function createBrowserTabsStateAdapter(
     typeof bridge.openContextMenu !== "function" ||
     typeof bridge.pin !== "function" ||
     typeof bridge.select !== "function" ||
+    typeof bridge.selectRange !== "function" ||
     typeof bridge.snapshot !== "function" ||
     typeof bridge.subscribe !== "function" ||
+    typeof bridge.toggleMultiSelect !== "function" ||
     typeof bridge.toggleMute !== "function" ||
     typeof bridge.unpin !== "function"
   ) {
@@ -401,6 +424,10 @@ export function createBrowserTabsStateAdapter(
   };
 
   return Object.freeze({
+    activateKeepingMultiSelect(tabId: string): void {
+      requireBridge().activateKeepingMultiSelect(tabId);
+    },
+
     beginDrag(tabId: string): string {
       const dragId = requireBridge().beginDrag(tabId);
       if (
@@ -411,6 +438,10 @@ export function createBrowserTabsStateAdapter(
         throw createStateError("FENNEVIA_TAB_STATE_DRAG_INVALID");
       }
       return dragId;
+    },
+
+    clearMultiSelect(): void {
+      requireBridge().clearMultiSelect();
     },
 
     close(tabId: string): void {
@@ -465,6 +496,10 @@ export function createBrowserTabsStateAdapter(
       requireBridge().select(tabId);
     },
 
+    selectRange(tabId: string): void {
+      requireBridge().selectRange(tabId);
+    },
+
     snapshot(): BrowserTabsState {
       return state;
     },
@@ -510,6 +545,10 @@ export function createBrowserTabsStateAdapter(
         contextMenuListeners.delete(listener);
         return true;
       });
+    },
+
+    toggleMultiSelect(tabId: string): void {
+      requireBridge().toggleMultiSelect(tabId);
     },
 
     toggleMute(tabId: string): void {
