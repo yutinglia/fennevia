@@ -215,7 +215,7 @@ test("one configured edge stays disabled across global suppression", () => {
   );
 });
 
-test("window dragging suppresses cross-edge pointer reveal without clearing other holds", () => {
+test("window dragging retains its source edge and suppresses cross-edge pointer reveal", () => {
   const clock = createScheduler();
   const shell = createEdgeShellController({
     hideDelayMs: 10,
@@ -223,19 +223,24 @@ test("window dragging suppresses cross-edge pointer reveal without clearing othe
   });
 
   shell.revealFromPointer("left");
-  assert.equal(shell.setWindowDragActive(true), true);
-  assert.equal(shell.setWindowDragActive(true), false);
-  assert.equal(shell.snapshot().surfaces.left.holds.pointer, false);
-  assert.equal(clock.size(), 1);
+  assert.equal(shell.setWindowDragActive(true, "left"), true);
+  assert.equal(shell.setWindowDragActive(true, "left"), false);
+  assert.equal(shell.snapshot().surfaces.left.holds.pointer, true);
+  assert.equal(clock.size(), 0);
 
   assert.equal(shell.revealFromPointer("top"), false);
   assert.equal(shell.setPointerHeld("right", true), false);
+  assert.equal(shell.releasePointer("left", "outside-window"), false);
+  assert.equal(shell.snapshot().surfaces.left.holds.pointer, true);
   assert.equal(shell.revealFromKeyboard("top"), true);
   assert.equal(shell.setFocusHeld("right", true), true);
   assert.equal(shell.setPopupHeld("bottom", true), true);
   assert.equal(shell.revealProgrammatically("left", 100), true);
 
   assert.equal(shell.setWindowDragActive(false), true);
+  assert.equal(shell.snapshot().surfaces.left.holds.pointer, true);
+  assert.equal(shell.releasePointer("left", "inside-window"), true);
+  assert.equal(clock.size(), 1);
   assert.equal(shell.revealFromPointer("top"), true);
   assert.equal(shell.snapshot().surfaces.top.holds.pointer, true);
   assert.equal(shell.snapshot().surfaces.left.holds.programmatic, true);
@@ -245,6 +250,10 @@ test("window dragging suppresses cross-edge pointer reveal without clearing othe
   assert.throws(
     () => shell.setWindowDragActive("yes"),
     /FENNEVIA_EDGE_WINDOW_DRAG_ACTIVE_INVALID/u,
+  );
+  assert.throws(
+    () => shell.setWindowDragActive(true, "middle"),
+    /FENNEVIA_EDGE_NAME_INVALID/u,
   );
   shell.setEnabled(false);
   assert.equal(shell.setWindowDragActive(true), false);

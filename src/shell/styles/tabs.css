@@ -209,52 +209,66 @@
 
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-container-color="blue"] {
-  box-shadow: inset 3px 0 0 #37adff;
+  --fennevia-tab-container-color: #37adff;
 }
 
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-container-color="cyan"] {
-  box-shadow: inset 3px 0 0 #00c79a;
+  --fennevia-tab-container-color: #00c79a;
 }
 
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-container-color="gray"] {
-  box-shadow: inset 3px 0 0 #7c7c7d;
+  --fennevia-tab-container-color: #7c7c7d;
 }
 
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-container-color="green"] {
-  box-shadow: inset 3px 0 0 #51cd00;
+  --fennevia-tab-container-color: #51cd00;
 }
 
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-container-color="orange"] {
-  box-shadow: inset 3px 0 0 #ff9f00;
+  --fennevia-tab-container-color: #ff9f00;
 }
 
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-container-color="pink"] {
-  box-shadow: inset 3px 0 0 #ff4bda;
+  --fennevia-tab-container-color: #ff4bda;
 }
 
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-container-color="purple"] {
-  box-shadow: inset 3px 0 0 #af51f5;
+  --fennevia-tab-container-color: #af51f5;
 }
 
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-container-color="red"] {
-  box-shadow: inset 3px 0 0 #ff613d;
+  --fennevia-tab-container-color: #ff613d;
 }
 
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-container-color="violet"] {
-  box-shadow: inset 3px 0 0 #764edd;
+  --fennevia-tab-container-color: #764edd;
 }
 
 #fennevia-shell-frame-host
   .fennevia-tab-strip__item[data-fennevia-container-color="yellow"] {
-  box-shadow: inset 3px 0 0 #ffcb00;
+  --fennevia-tab-container-color: #ffcb00;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__item[data-fennevia-container-color]::before {
+  position: absolute;
+  z-index: 3;
+  inset-block: 5px;
+  inset-inline-start: 0;
+  inline-size: 3px;
+  background: var(--fennevia-tab-container-color);
+  border-start-end-radius: 999px;
+  border-end-end-radius: 999px;
+  content: "";
+  pointer-events: none;
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip__tab {

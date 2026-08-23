@@ -58,7 +58,7 @@ test("visible edge transforms override every directional off-screen transform", 
   assert.ok(visibleRule > lastDirectionalRule);
 });
 
-test("edge panels touch the trigger gutter, release native drags, and float visible transient shortcuts", async () => {
+test("edge panels touch the trigger gutter, coordinate native drags, and float visible transient shortcuts", async () => {
   const css = await readShellStyles(projectRoot);
 
   assert.match(css, /--fennevia-edge-trigger-thickness: 12px;/u);
@@ -143,7 +143,7 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   ]);
   assert.match(
     component,
-    /handlePanelPointerDown[\s\S]*?setWindowDragActive\(true\)/u,
+    /handlePanelPointerDown[\s\S]*?setWindowDragActive\(true, props\.edge\)/u,
   );
   assert.match(component, /handlePanelPointerRelease/u);
   assert.match(
@@ -216,6 +216,18 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   );
   assert.match(mountShell, /shell\.releasePointer\(edge, "outside-window"\)/u);
   assert.match(mountShell, /shell\.setWindowDragActive\(false\)/u);
+  assert.match(
+    mountShell,
+    /resolveWindowDragEdge\(event\.target\) \?\? undefined/u,
+  );
+  assert.match(
+    mountShell,
+    /releaseWindowInteraction[\s\S]*?releaseWindowDrag\(\);\s*releaseWindowPointer\(\);/u,
+  );
+  assert.match(
+    edgeInteractions,
+    /resolveWindowDragEdge[\s\S]*?closest<HTMLElement>\("\[data-fennevia-edge-panel\]"\)[\s\S]*?isEdgeName\(edge\)/u,
+  );
   assert.match(
     mountShell,
     /WINDOW_DRAG_START_EVENT = "draggableregionleftmousedown"/u,

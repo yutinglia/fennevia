@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
-import { resolveEdgeAtPoint, type EdgeName } from "../../app/edge-surfaces";
+import {
+  isEdgeName,
+  resolveEdgeAtPoint,
+  type EdgeName,
+} from "../../app/edge-surfaces";
 import type { MessageKey } from "../../app/i18n";
 import type { SidePanelRole } from "../../app/toolbar-widgets-state";
 
@@ -47,6 +51,18 @@ export const isInteractivePointerTarget = (
       'a, button, input, select, textarea, [contenteditable="true"], [role="button"], [role="link"], [role="tab"], [tabindex]',
     ),
   );
+
+export const resolveWindowDragEdge = (
+  target: EventTarget | null,
+): EdgeName | null => {
+  if (!(target instanceof Element)) {
+    return null;
+  }
+  const edge = target
+    .closest<HTMLElement>("[data-fennevia-edge-panel]")
+    ?.getAttribute("data-fennevia-edge-panel");
+  return isEdgeName(edge) ? edge : null;
+};
 
 export const labelKey = (
   edge: EdgeName,

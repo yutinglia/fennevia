@@ -54,9 +54,10 @@
     view: Window;
   };
 
-  type PointerPosition = Readonly<{
+  type PointerInteraction = Readonly<{
     clientX: number;
     clientY: number;
+    focusTarget: HTMLElement | null;
   }>;
 
   const closeFocusRetryDelayMs = 200;
@@ -273,9 +274,9 @@
     delayedFocusTimer = timer;
   };
 
-  const pointerPositionFromMouseEvent = (
+  const pointerInteractionFromMouseEvent = (
     event: MouseEvent,
-  ): PointerPosition | null => {
+  ): PointerInteraction | null => {
     const pointerType = (event as PointerEvent).pointerType;
     if (
       pointerType === "touch" ||
@@ -286,10 +287,17 @@
     ) {
       return null;
     }
-    return Object.freeze({ clientX: event.clientX, clientY: event.clientY });
+    return Object.freeze({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      focusTarget:
+        event.currentTarget instanceof HTMLElement ? event.currentTarget : null,
+    });
   };
 
-  const restorePointerHoldAfterClose = async (position: PointerPosition) => {
+  const restorePointerInteractionAfterMutation = async (
+    interaction: PointerInteraction,
+  ) => {
     await tick();
     const surfacePanel = tabStripElement?.closest<HTMLElement>(
       `[data-fennevia-edge-panel="${props.edge}"]`,
@@ -298,19 +306,33 @@
       return;
     }
     const pointerTarget = surfacePanel.ownerDocument.elementFromPoint(
-      position.clientX,
-      position.clientY,
+      interaction.clientX,
+      interaction.clientY,
     );
     if (pointerTarget && surfacePanel.contains(pointerTarget)) {
       props.shell.setPointerHeld(props.edge, true);
     }
+    if (
+      interaction.focusTarget?.isConnected &&
+      surfacePanel.ownerDocument.activeElement === interaction.focusTarget
+    ) {
+      interaction.focusTarget.blur();
+    }
+    releaseSurfaceFocus();
   };
 
-  const selectTab = (tabId: string) => {
+  const selectTab = (
+    tabId: string,
+    pointerInteraction: PointerInteraction | null = null,
+  ) => {
     cancelDelayedFocus();
     rovingTabId = tabId;
     props.tabs.select(tabId);
-    reportAsyncError(focusTab(tabId));
+    reportAsyncError(
+      pointerInteraction
+        ? restorePointerInteractionAfterMutation(pointerInteraction)
+        : focusTab(tabId),
+    );
   };
 
   const openTab = () => {
@@ -321,15 +343,18 @@
 
   const closeTab = (
     tabId: string,
-    pointerPosition: PointerPosition | null = null,
+    pointerInteraction: PointerInteraction | null = null,
   ) => {
     cancelDelayedFocus();
     const focusTarget = findCloseFocusTarget(currentTabs.tabs, tabId);
     rovingTabId = focusTarget;
     props.tabs.close(tabId);
-    restoreFocusAfterClose(resolveRovingTabId(currentTabs.tabs, focusTarget));
-    if (pointerPosition) {
-      reportAsyncError(restorePointerHoldAfterClose(pointerPosition));
+    if (pointerInteraction) {
+      reportAsyncError(
+        restorePointerInteractionAfterMutation(pointerInteraction),
+      );
+    } else {
+      restoreFocusAfterClose(resolveRovingTabId(currentTabs.tabs, focusTarget));
     }
   };
 
@@ -413,7 +438,7 @@
     }
     event.preventDefault();
     event.stopPropagation();
-    closeTab(tabId, pointerPositionFromMouseEvent(event));
+    closeTab(tabId, pointerInteractionFromMouseEvent(event));
   };
 
   const handleTabContextMenu = (event: MouseEvent, tabId: string) => {
@@ -1141,7 +1166,8 @@
           class="fennevia-tab-strip__tab"
           data-fennevia-tab=""
           draggable="true"
-          onclick={() => selectTab(tab.id)}
+          onclick={(event) =>
+            selectTab(tab.id, pointerInteractionFromMouseEvent(event))}
           ondragstart={(event) => handleTabDragStart(event, tab.id)}
           onfocus={() => (rovingTabId = tab.id)}
           onkeydown={(event) => handleTabKeydown(event, tab.id)}
@@ -1241,7 +1267,7 @@
           data-fennevia-action="close-tab"
           onclick={(event) => {
             event.stopPropagation();
-            closeTab(tab.id, pointerPositionFromMouseEvent(event));
+            closeTab(tab.id, pointerInteractionFromMouseEvent(event));
           }}
           tabindex={rovingTabId === tab.id ? 0 : -1}
           title={t("tab.closeTab")}

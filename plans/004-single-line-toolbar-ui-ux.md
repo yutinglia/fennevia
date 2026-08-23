@@ -61,7 +61,7 @@ Independently selected Fennevia direction:
 | Top page-loading feedback                             | Add a restrained loading accent driven by the existing selected-page loading boolean; do not create another progress listener.                                                                                                                                             |
 | Bottom download progress                              | Keep the existing anonymous Downloads bridge and bottom surface.                                                                                                                                                                                                           |
 | Floating caption buttons                              | Retain Firefox's native minimize/maximize/restore/close controls and style their container as an independent compact island.                                                                                                                                               |
-| Draggable empty chrome                                | Keep neutral panel space draggable and every interactive descendant explicitly `no-drag`; release edge pointer holds after drag completion.                                                                                                                                |
+| Draggable empty chrome                                | Keep neutral panel space draggable and every interactive descendant explicitly `no-drag`; retain the dragged source edge through the native move loop and release it through the ordinary post-drag pointer-exit path.                                                      |
 | Unified extensions and pinned extension actions       | Add a native Unified Extensions handoff plus a complete original-toolbar handoff. Do not clone extension identities or arbitrary extension buttons.                                                                                                                        |
 | Firefox app menu, settings, and toolbar customization | Add fixed top-row actions that delegate to current Firefox owners; native customization mode is the only customization UI.                                                                                                                                                 |
 | HTTPS/site identity and tracking protection           | ADR-059 presents one Firefox-style Trust shield at the leading edge inside the compact address launcher and one combined popup row. Both retained bridge actions converge on Firefox's current Trust Panel; Fennevia's bounded summary does not replace complete certificate, permission, exception, breach, or tracking data. |
@@ -147,12 +147,13 @@ Independently selected Fennevia direction:
 - [x] Ensure top, side, and bottom neutral regions drag the Firefox window.
 - [x] Ensure buttons, fields, tabs, links, and focusable controls never start a
       window drag.
-- [x] Ensure a native drag candidate immediately releases its pointer hold, and
-      suppress pointer reveal across all four roots while the native window
-      drag is active. On Windows, consume Firefox's chrome-only drag-region
-      start event and synthesized mouse-up; retain panel/window pointer
-      fallbacks so releasing a side-panel drag cannot reveal the top surface or
-      leave the dragged surface open.
+- [x] Ensure a native drag candidate retains its source-edge pointer hold while
+      suppressing pointer reveal from the other roots during the native window
+      drag. On Windows, consume Firefox's chrome-only drag-region start event
+      and synthesized mouse-up, ignore source pointer-out noise during the move
+      loop, and retain panel/window fallbacks so a side-panel drag cannot reveal
+      the top surface. After release, the next real pointer exit uses the shared
+      delayed-hide path.
 
 ### E. Documentation and provenance
 

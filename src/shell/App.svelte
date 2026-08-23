@@ -225,7 +225,7 @@
     panelDragCandidate =
       event.button === 0 && !edgeUi.isInteractivePointerTarget(event.target);
     if (panelDragCandidate) {
-      props.shell.setWindowDragActive(true);
+      props.shell.setWindowDragActive(true, props.edge);
     }
   };
 

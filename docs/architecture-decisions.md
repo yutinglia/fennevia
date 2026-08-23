@@ -1187,7 +1187,8 @@ top-row address cluster and native caption island superseded by ADR-038;
 popup-action toolbar reveal superseded by ADR-042; the widget/identity
 enumeration prohibition partially superseded by ADR-044; the fixed
 browser-tools contract is extended by ADR-057; separate visible
-site-information and protections controls are superseded by ADR-059
+site-information and protections controls are superseded by ADR-059; native
+window-drag pointer-release behavior is superseded by ADR-065
 
 Render the top edge as one project-owned, non-wrapping toolbar row. Expose only
 nine fixed browser-tool availability booleans and nine fixed actions through a
@@ -1237,7 +1238,8 @@ explicit no-drag region. On Windows, Firefox dispatches the chrome-only
 synthesized mouse-up after that loop exits. The shared edge controller uses
 that window-level lifetime to release every pointer hold and reject cross-edge
 pointer reveal during the drag; keyboard, focus, and popup holds remain
-authoritative.
+authoritative. ADR-065 supersedes only the release-every-pointer-hold clause:
+the dragged source edge now remains held until a real post-drag pointer exit.
 
 Project hosts and structural frontend nodes remain XHTML. Project-authored
 inline glyphs may use the SVG namespace only inside an explicit
@@ -2765,3 +2767,59 @@ presentation preserves that owner. Exact source evidence, alternatives,
 privacy review, implementation bounds, validation, and remaining real-browser
 rows are recorded in
 `docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.
+
+## ADR-065: Preserve pointer intent across tab mutations and native window dragging
+
+**Status:** Accepted for the project-owner correction on 2026-08-23; Firefox
+154 source review and focused automation are complete; the real Firefox
+interaction, theme, window-state, second-window, and private-window matrix
+remains pending
+
+Supersede ADR-037's rule that native window-drag start releases every edge
+pointer hold. Extend the existing shared edge controller with one transient,
+validated source edge for the current drag. Starting a drag keeps that source
+pointer-held, releases pointer holds on the other roots, and continues to reject
+new cross-edge pointer reveal. Pointer-out and window-level release noise for
+the source cannot clear it while Firefox owns the Windows move loop. The
+synthesized mouse-up or existing pointer fallback ends only the drag lock; the
+source remains visible until an actual later pointer exit enters the one shared
+delayed-hide path. Window blur, suppression, disable, and disposal still clear
+state deterministically. Do not add a private timer, trigger, observer, or
+window-global flag, and do not suppress keyboard, focus, popup, or programmatic
+holds.
+
+Treat pointer tab activation as a different focus modality from keyboard or
+touch activation. Capture only the action's transient viewport point and owned
+control, invoke the existing typed tab action, wait for the Svelte mutation,
+and hit-test the currently configured tab panel. If the pointer remains inside,
+reacquire its shared pointer hold. Remove focus only from the pointer-activated
+control and release any stale surface focus/keyboard hold only after checking
+that no surviving owned surface control is focused. Pointer close therefore
+does not focus the next row merely to keep the panel visible, while keyboard
+close retains deterministic roving-focus recovery. No coordinates or focus
+identity cross the frontend boundary, enter state snapshots, persist, or enter
+diagnostics.
+
+Render the existing closed container-color enum as a dedicated positioned
+pseudo-element at logical inline start. Each known color supplies only one
+project variable; the indicator no longer competes with the row's drag shadow,
+and forced-colors mode replaces the fill with `Highlight`. Keep the existing
+bounded container label and private-window omission. No new Firefox field,
+identity lookup, color value, runtime asset, or data flow is introduced.
+
+**Reasoning:** Local source inspection found three direct lifecycle conflicts:
+pointer close always invoked keyboard-style focus recovery, pointer select had
+no post-mutation pointer reconciliation, and `setWindowDragActive(true)` cleared
+the source hold itself. The container value already reached the owned row, but
+its only visual shared the row's `box-shadow` property with drag presentation.
+Firefox 154's
+[`ContextualIdentityService.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs)
+remains the source for the closed public identity colors, while its
+[`tabs.css`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/themes/shared/tabbrowser/tabs.css)
+confirms that native Firefox also gives identity presentation an independent
+positioned layer. Fennevia independently uses its own XHTML structure, logical
+geometry, selectors, and color tokens; no Firefox or compatibility-canary code
+is copied. Firefox's Windows drag event and synthesized release remain the
+pinned owners already documented by ADR-037. Exact evidence, current canary
+checks, privacy review, validation, and pending real-browser rows are recorded
+in `docs/research/firefox-154-tabbar-interaction-follow-up.md`.
