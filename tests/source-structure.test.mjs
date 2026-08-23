@@ -58,6 +58,11 @@ test("shell composition and CSS retain explicit module ownership", async () => {
     customize,
     /features\/customize\/CustomizePanelsSection\.svelte/u,
   );
+  assert.match(customize, /features\/customize\/CustomizeTabList\.svelte/u);
+  const tabList = await readProjectFile(
+    "src/shell/features/customize/CustomizeTabList.svelte",
+  );
+  assert.match(tabList, /role="tablist"/u);
 
   assert.deepEqual(css.trim().split(/\r?\n/u), [
     '@import "./foundation.css";',

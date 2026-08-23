@@ -527,7 +527,7 @@
     if (current.notice === "open-failed") {
       return t("bookmarks.openFailed");
     }
-    return t("bookmarks.hint");
+    return "";
   };
 
   $effect(() => {

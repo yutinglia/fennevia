@@ -1645,6 +1645,7 @@ function at(e) {
 }
 function ot() {
 	return Object.freeze({
+		allowCompactWindow: !1,
 		bottomDownloadsEnabled: !0,
 		bottomProgressLight: "downloads",
 		sidePanelLayout: "tabs-left",
@@ -1652,8 +1653,9 @@ function ot() {
 	});
 }
 function st(e) {
-	if (!e || typeof e != "object" || typeof e.bottomDownloadsEnabled != "boolean" || !at(e.bottomProgressLight) || !it(e.sidePanelLayout) || !at(e.topProgressLight)) throw $e("FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID");
+	if (!e || typeof e != "object" || typeof e.allowCompactWindow != "boolean" || typeof e.bottomDownloadsEnabled != "boolean" || !at(e.bottomProgressLight) || !it(e.sidePanelLayout) || !at(e.topProgressLight)) throw $e("FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID");
 	return Object.freeze({
+		allowCompactWindow: e.allowCompactWindow,
 		bottomDownloadsEnabled: e.bottomDownloadsEnabled,
 		bottomProgressLight: e.bottomProgressLight,
 		sidePanelLayout: e.sidePanelLayout,
@@ -1949,6 +1951,7 @@ function Lt(e) {
 	});
 }
 var Rt = new Set([
+	"allowCompactWindow",
 	"bottomDownloadsEnabled",
 	"bottomProgressLight",
 	"sidePanelLayout",
@@ -2449,7 +2452,6 @@ var xn = Object.freeze({
 		"bookmarks.folderLoadError": "Couldn't load this folder.",
 		"bookmarks.folderPages": "Folder pages",
 		"bookmarks.expandFolder": "Expand folder",
-		"bookmarks.hint": "Ctrl or Command + Enter opens a bookmark in a new tab.",
 		"bookmarks.listAria": "Bookmarks in selected location",
 		"bookmarks.loading": "Loading bookmark locations…",
 		"bookmarks.loadingShort": "Loading…",
@@ -2545,8 +2547,10 @@ var xn = Object.freeze({
 		"customize.layoutCustomized": "Using your Fennevia layout. Drag widgets onto the four edge panels. Drop them here to remove. Reset to follow the Firefox toolbar again.",
 		"customize.paletteAria": "Available widgets",
 		"customize.panelAria": "Customize Fennevia shell",
+		"customize.allowCompactWindow": "Allow smaller than Firefox minimum window size",
+		"customize.allowCompactWindowHelp": "Firefox chrome normally refuses to shrink below its official minimum. Enable this to resize smaller while Fennevia is active. Caption buttons and some chrome may clip. The operating system still keeps its own floor.",
 		"customize.panels": "Panels and progress lights",
-		"customize.panelsHelp": "Swap the two side roles, disable the bottom Downloads panel, or choose what each gutter light reports.",
+		"customize.panelsHelp": "Swap the two side roles, disable the bottom Downloads panel, choose what each gutter light reports, or allow a smaller-than-Firefox window size.",
 		"customize.progressLight.downloads": "Downloads",
 		"customize.progressLight.loading": "Page loading",
 		"customize.progressLight.off": "Off",
@@ -2560,6 +2564,11 @@ var xn = Object.freeze({
 		"customize.sidePanels.tabsLeft": "Tabs left · bookmarks right",
 		"customize.sidePanels.tabsRight": "Bookmarks left · tabs right",
 		"customize.style": "Appearance",
+		"customize.tab.appearance": "Appearance",
+		"customize.tab.interaction": "Interaction",
+		"customize.tab.panels": "Panels",
+		"customize.tab.widgets": "Widgets",
+		"customize.tabsAria": "Customize sections",
 		"customize.styleBlur": "Glass blur",
 		"customize.styleFontSize": "Font size",
 		"customize.styleMotion": "Motion duration",
@@ -2816,7 +2825,6 @@ var xn = Object.freeze({
 		"bookmarks.folderLoadError": "無法載入此資料夾。",
 		"bookmarks.folderPages": "資料夾分頁",
 		"bookmarks.expandFolder": "展開資料夾",
-		"bookmarks.hint": "Ctrl 或 Command + Enter 可在新分頁開啟書籤。",
 		"bookmarks.listAria": "所選位置中的書籤",
 		"bookmarks.loading": "正在載入書籤位置…",
 		"bookmarks.loadingShort": "載入中…",
@@ -2912,8 +2920,10 @@ var xn = Object.freeze({
 		"customize.layoutCustomized": "正在使用你的 Fennevia 版面。將元件拖到四個邊緣面板。拖到這裡可移除。重設後會再次跟隨 Firefox 工具列。",
 		"customize.paletteAria": "可用元件",
 		"customize.panelAria": "自訂 Fennevia 介面",
+		"customize.allowCompactWindow": "允許小於 Firefox 官方下限的視窗尺寸",
+		"customize.allowCompactWindowHelp": "Firefox 通常不允許視窗小於官方 chrome 下限。開啟後，Fennevia 啟用期間可以縮得更小。標題列按鈕與部分介面可能被裁切。作業系統仍會保留自己的下限。",
 		"customize.panels": "面板與進度光條",
-		"customize.panelsHelp": "互換左右面板的用途、關閉底部下載面板，或指定上下光條要顯示的狀態。",
+		"customize.panelsHelp": "互換左右面板的用途、關閉底部下載面板、指定上下光條要顯示的狀態，或允許小於 Firefox 官方下限的視窗。",
 		"customize.progressLight.downloads": "下載進度",
 		"customize.progressLight.loading": "網頁載入",
 		"customize.progressLight.off": "關閉",
@@ -2927,6 +2937,11 @@ var xn = Object.freeze({
 		"customize.sidePanels.tabsLeft": "左側分頁 · 右側書籤",
 		"customize.sidePanels.tabsRight": "左側書籤 · 右側分頁",
 		"customize.style": "外觀",
+		"customize.tab.appearance": "外觀",
+		"customize.tab.interaction": "互動",
+		"customize.tab.panels": "面板",
+		"customize.tab.widgets": "元件",
+		"customize.tabsAria": "自訂區段",
 		"customize.styleBlur": "玻璃模糊",
 		"customize.styleFontSize": "字型大小",
 		"customize.styleMotion": "動畫時長",

@@ -6405,7 +6405,7 @@ async function exerciseNativeUiPolicies(client) {
         );
         customizeRestoredActive =
           root.hasAttribute("data-fennevia-active") &&
-            nativeStyle.sheet.cssRules.length === 7;
+            nativeStyle.sheet.cssRules.length === 10;
 
         window.fullScreen = true;
         await waitFor(
@@ -6547,7 +6547,7 @@ async function exerciseWindowStatePolicy(client) {
       Math.abs(resizeRect.height - target.height) <= 2 &&
       resizeState.active &&
       resizeState.browserGeometryPreserved &&
-      resizeState.styleRuleCount === 7 &&
+      resizeState.styleRuleCount === 10 &&
       resizeState.nativeCloseHidden &&
       resizeState.projectWindowControlsPresent;
 
@@ -6557,7 +6557,7 @@ async function exerciseWindowStatePolicy(client) {
       maximizeState.windowState === maximizeState.windowStateMaximized &&
       maximizeState.active &&
       maximizeState.browserGeometryPreserved &&
-      maximizeState.styleRuleCount === 7 &&
+      maximizeState.styleRuleCount === 10 &&
       maximizeState.nativeCloseHidden &&
       maximizeState.projectWindowControlsPresent;
 
@@ -6566,7 +6566,7 @@ async function exerciseWindowStatePolicy(client) {
     minimized =
       minimizeState.windowState === minimizeState.windowStateMinimized &&
       minimizeState.active &&
-      minimizeState.styleRuleCount === 7;
+      minimizeState.styleRuleCount === 10;
   } finally {
     await client.request("WebDriver:SetWindowRect", initial);
     const restoreState = await inspect();
@@ -6574,7 +6574,7 @@ async function exerciseWindowStatePolicy(client) {
       restoreState.windowState === restoreState.windowStateNormal &&
       restoreState.active &&
       restoreState.browserGeometryPreserved &&
-      restoreState.styleRuleCount === 7 &&
+      restoreState.styleRuleCount === 10 &&
       restoreState.nativeCloseHidden &&
       restoreState.projectWindowControlsPresent;
   }
@@ -6593,7 +6593,7 @@ async function exercisePartialNativeUiCssFailOpen(client) {
       if (
         !root.hasAttribute("data-fennevia-active") ||
         !style ||
-        style.sheet.cssRules.length !== 7 ||
+        style.sheet.cssRules.length !== 10 ||
         !navBar ||
         !tabsToolbarItems
       ) {

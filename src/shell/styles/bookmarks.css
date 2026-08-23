@@ -239,6 +239,10 @@
   text-overflow: ellipsis;
 }
 
+#fennevia-shell-frame-host .fennevia-bookmarks__status:empty {
+  display: none;
+}
+
 #fennevia-shell-frame-host .fennevia-bookmarks button:disabled {
   opacity: 0.52;
 }

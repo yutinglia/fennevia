@@ -24,6 +24,9 @@
   import CustomizeInteractionSection from "./features/customize/CustomizeInteractionSection.svelte";
   import CustomizePanelsSection from "./features/customize/CustomizePanelsSection.svelte";
   import CustomizeStyleSection from "./features/customize/CustomizeStyleSection.svelte";
+  import CustomizeTabList, {
+    type CustomizeTabId,
+  } from "./features/customize/CustomizeTabList.svelte";
   import FirefoxIcon from "./FirefoxIcon.svelte";
   import ToolbarWidgetGlyph from "./ToolbarWidgetGlyph.svelte";
 
@@ -44,6 +47,7 @@
 
   let statusMessage = $state("");
   let paletteDropActive = $state(false);
+  let selectedTab: CustomizeTabId = $state("widgets");
 
   const paletteLabel = (entry: ToolbarPaletteEntrySnapshot): string =>
     localizeWidgetLabel(localeId, {
@@ -206,85 +210,125 @@
   {#if !snapshot?.canEdit}
     <p class="fennevia-customize__note">{t("customize.unavailable")}</p>
   {:else}
-    <p class="fennevia-customize__note" data-fennevia-customize-mode="">
-      {snapshot.layoutCustomized
-        ? t("customize.layoutCustomized")
-        : t("customize.followingFirefox")}
-    </p>
-    <p class="fennevia-customize__note">
-      {t("customize.keyboardAdd", { zone: addZoneName })}
-    </p>
-
-    <section
-      aria-label={t("customize.paletteAria")}
-      class="fennevia-customize__section"
-      class:fennevia-customize__section--drop={paletteDropActive}
-      data-fennevia-customize-palette=""
-      ondragend={handlePaletteDragEnd}
-      ondragleave={handlePaletteDragLeave}
-      ondragover={handlePaletteDragOver}
-      ondrop={handlePaletteDrop}
-    >
-      <h3 class="fennevia-customize__heading">{t("customize.paletteAria")}</h3>
-      {#if snapshot.palette.length === 0}
-        <p class="fennevia-customize__empty">{t("customize.emptyPalette")}</p>
-      {:else}
-        <ul class="fennevia-customize__grid">
-          {#each snapshot.palette as entry (entry.token)}
-            <li>
-              <button
-                aria-label={t("customize.addWidgetAria", {
-                  label: paletteLabel(entry),
-                  zone: addZoneName,
-                })}
-                class="fennevia-control fennevia-customize__tile"
-                data-fennevia-customize-add={entry.token}
-                draggable="true"
-                ondragend={handlePaletteDragEnd}
-                ondragstart={(event) => handlePaletteDragStart(event, entry)}
-                onkeydown={(event) => handlePaletteKeydown(event, entry)}
-                onclick={() => addFromPalette(entry.token)}
-                title={paletteLabel(entry)}
-                type="button"
-              >
-                <span aria-hidden="true" class="fennevia-customize__item-icon">
-                  {#if entry.kind === "special"}
-                    <span class="fennevia-customize__item-space">·</span>
-                  {:else}
-                    <ToolbarWidgetGlyph widget={entry} />
-                  {/if}
-                </span>
-                <span class="fennevia-customize__tile-label"
-                  >{paletteLabel(entry)}</span
-                >
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </section>
-
-    <CustomizePanelsSection
-      customized={snapshot.panelsCustomized}
+    <CustomizeTabList
       {localeId}
-      onResetPanels={() => void runEdit({ type: "reset-panels" })}
-      onSetPanels={(panels) =>
-        void runEdit({ panels, type: "set-panels" })}
-      panels={snapshot.panels}
+      onSelect={(tab) => (selectedTab = tab)}
+      selected={selectedTab}
     />
 
-    <CustomizeInteractionSection
-      {localeId}
-      onSetStyle={(style) => void runEdit({ style, type: "set-style" })}
-      style={snapshot.style}
-    />
+    {#if selectedTab === "widgets"}
+      <div
+        aria-labelledby="fennevia-customize-tab-widgets"
+        class="fennevia-customize__tabpanel"
+        data-fennevia-customize-tabpanel="widgets"
+        id="fennevia-customize-tabpanel-widgets"
+        role="tabpanel"
+      >
+        <p class="fennevia-customize__note" data-fennevia-customize-mode="">
+          {snapshot.layoutCustomized
+            ? t("customize.layoutCustomized")
+            : t("customize.followingFirefox")}
+        </p>
+        <p class="fennevia-customize__note">
+          {t("customize.keyboardAdd", { zone: addZoneName })}
+        </p>
 
-    <CustomizeStyleSection
-      {localeId}
-      onResetStyle={() => void runEdit({ type: "reset-style" })}
-      onSetStyle={(style) => void runEdit({ style, type: "set-style" })}
-      style={snapshot.style}
-    />
+        <section
+          aria-label={t("customize.paletteAria")}
+          class="fennevia-customize__section"
+          class:fennevia-customize__section--drop={paletteDropActive}
+          data-fennevia-customize-palette=""
+          ondragend={handlePaletteDragEnd}
+          ondragleave={handlePaletteDragLeave}
+          ondragover={handlePaletteDragOver}
+          ondrop={handlePaletteDrop}
+        >
+          <h3 class="fennevia-customize__heading">{t("customize.paletteAria")}</h3>
+          {#if snapshot.palette.length === 0}
+            <p class="fennevia-customize__empty">{t("customize.emptyPalette")}</p>
+          {:else}
+            <ul class="fennevia-customize__grid">
+              {#each snapshot.palette as entry (entry.token)}
+                <li>
+                  <button
+                    aria-label={t("customize.addWidgetAria", {
+                      label: paletteLabel(entry),
+                      zone: addZoneName,
+                    })}
+                    class="fennevia-control fennevia-customize__tile"
+                    data-fennevia-customize-add={entry.token}
+                    draggable="true"
+                    ondragend={handlePaletteDragEnd}
+                    ondragstart={(event) => handlePaletteDragStart(event, entry)}
+                    onkeydown={(event) => handlePaletteKeydown(event, entry)}
+                    onclick={() => addFromPalette(entry.token)}
+                    title={paletteLabel(entry)}
+                    type="button"
+                  >
+                    <span aria-hidden="true" class="fennevia-customize__item-icon">
+                      {#if entry.kind === "special"}
+                        <span class="fennevia-customize__item-space">·</span>
+                      {:else}
+                        <ToolbarWidgetGlyph widget={entry} />
+                      {/if}
+                    </span>
+                    <span class="fennevia-customize__tile-label"
+                      >{paletteLabel(entry)}</span
+                    >
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </section>
+      </div>
+    {:else if selectedTab === "panels"}
+      <div
+        aria-labelledby="fennevia-customize-tab-panels"
+        class="fennevia-customize__tabpanel"
+        data-fennevia-customize-tabpanel="panels"
+        id="fennevia-customize-tabpanel-panels"
+        role="tabpanel"
+      >
+        <CustomizePanelsSection
+          customized={snapshot.panelsCustomized}
+          {localeId}
+          onResetPanels={() => void runEdit({ type: "reset-panels" })}
+          onSetPanels={(panels) =>
+            void runEdit({ panels, type: "set-panels" })}
+          panels={snapshot.panels}
+        />
+      </div>
+    {:else if selectedTab === "interaction"}
+      <div
+        aria-labelledby="fennevia-customize-tab-interaction"
+        class="fennevia-customize__tabpanel"
+        data-fennevia-customize-tabpanel="interaction"
+        id="fennevia-customize-tabpanel-interaction"
+        role="tabpanel"
+      >
+        <CustomizeInteractionSection
+          {localeId}
+          onSetStyle={(style) => void runEdit({ style, type: "set-style" })}
+          style={snapshot.style}
+        />
+      </div>
+    {:else}
+      <div
+        aria-labelledby="fennevia-customize-tab-appearance"
+        class="fennevia-customize__tabpanel"
+        data-fennevia-customize-tabpanel="appearance"
+        id="fennevia-customize-tabpanel-appearance"
+        role="tabpanel"
+      >
+        <CustomizeStyleSection
+          {localeId}
+          onResetStyle={() => void runEdit({ type: "reset-style" })}
+          onSetStyle={(style) => void runEdit({ style, type: "set-style" })}
+          style={snapshot.style}
+        />
+      </div>
+    {/if}
 
     <footer class="fennevia-customize__footer">
       <button

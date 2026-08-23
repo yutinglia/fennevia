@@ -59,6 +59,14 @@
         : false;
     props.onSetPanels({ bottomDownloadsEnabled: checked });
   };
+
+  const setAllowCompactWindow = (event: Event): void => {
+    const checked =
+      event.currentTarget instanceof HTMLInputElement
+        ? event.currentTarget.checked
+        : false;
+    props.onSetPanels({ allowCompactWindow: checked });
+  };
 </script>
 
 <fieldset
@@ -84,6 +92,19 @@
       <option value="tabs-right">{t("customize.sidePanels.tabsRight")}</option>
     </select>
   </label>
+
+  <label class="fennevia-customize__panel-toggle">
+    <input
+      checked={props.panels.allowCompactWindow}
+      data-fennevia-customize-compact-window=""
+      onchange={setAllowCompactWindow}
+      type="checkbox"
+    />
+    <span>{t("customize.allowCompactWindow")}</span>
+  </label>
+  <p class="fennevia-customize__interaction-help">
+    {t("customize.allowCompactWindowHelp")}
+  </p>
 
   <label class="fennevia-customize__panel-toggle">
     <input

@@ -3,6 +3,7 @@ const XUL_NAMESPACE =
   "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
 const ACTIVE_ATTRIBUTE = "data-fennevia-active";
+const COMPACT_WINDOW_ATTRIBUTE = "data-fennevia-compact-window";
 const REVEALED_ATTRIBUTE = "data-fennevia-native-ui-revealed";
 const SUSPENDED_ATTRIBUTE = "data-fennevia-native-ui-suspended";
 const STYLE_ID = "fennevia-native-ui-style";
@@ -17,7 +18,7 @@ const POPUP_PROXY_ANCHOR_STYLE =
 const HIDE_DELAY_MS = 180;
 const CONTENT_GUTTER_PX = 7;
 const CONTENT_CORNER_RADIUS_PX = 4;
-const EXPECTED_STYLE_RULE_COUNT = 9;
+const EXPECTED_STYLE_RULE_COUNT = 10;
 
 const LISTENER_OPTIONS = Object.freeze({ capture: true });
 const CHROME_BACKGROUND_PROPERTY = "--fennevia-chrome-background";
@@ -124,6 +125,11 @@ const NATIVE_UI_STYLE = `
     border-color: CanvasText !important;
     box-shadow: none !important;
   }
+}
+
+:root#main-window[data-fennevia-active][data-fennevia-compact-window]:not([data-fennevia-native-ui-suspended]) {
+  min-width: 0 !important;
+  min-height: 0 !important;
 }
 `;
 
@@ -746,6 +752,7 @@ export function createNativeUiController({ window, frame, onError }) {
   const popupProxyTimers = new Map();
   const popupHandoffIds = new Set();
   let storedChromeBackground = "";
+  let storedCompactWindow = false;
   let popupNotificationsOwner;
   let popupNotificationsOwnerDescriptor;
   let popupNotificationsAnchorCallbackRouter;
@@ -774,6 +781,27 @@ export function createNativeUiController({ window, frame, onError }) {
     }
     storedChromeBackground = normalizeChromeBackground(value);
     applyChromeBackground();
+    return true;
+  };
+
+  const clearCompactWindow = () => {
+    root.removeAttribute?.(COMPACT_WINDOW_ATTRIBUTE);
+  };
+
+  const applyCompactWindow = () => {
+    if (!storedCompactWindow) {
+      clearCompactWindow();
+      return;
+    }
+    root.setAttribute(COMPACT_WINDOW_ATTRIBUTE, "");
+  };
+
+  const setCompactWindow = (value) => {
+    if (disposed || failed) {
+      return false;
+    }
+    storedCompactWindow = value === true;
+    applyCompactWindow();
     return true;
   };
 
@@ -1882,6 +1910,12 @@ export function createNativeUiController({ window, frame, onError }) {
         firstError ??= error;
       }
       try {
+        storedCompactWindow = false;
+        clearCompactWindow();
+      } catch (error) {
+        firstError ??= error;
+      }
+      try {
         popupProxyAnchor.remove();
       } catch (error) {
         firstError ??= error;
@@ -1909,6 +1943,7 @@ export function createNativeUiController({ window, frame, onError }) {
     },
 
     setChromeBackground,
+    setCompactWindow,
 
     revealForToolbar() {
       return revealForNativeHandoff({

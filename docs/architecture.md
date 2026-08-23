@@ -527,12 +527,20 @@ true window-deactivation `blur` selects the window-leave delay. Focusing the
 selected chrome `<browser>` after a tab select is not a window leave. A zero
 shortcut-tip duration omits the footer from rendering. Those two prefs are versioned
 JSON with a 16 KiB cap and fail safe to defaults. ADR-064 adds a third strict
-version-1 `fennevia.customize.panels` preference containing only the complete
+version-1 `fennevia.customize.panels` preference containing the complete
 `tabs-left`/`tabs-right` side-role selection, a bottom-download-panel boolean,
 and `loading`/`downloads`/`off` sources for the top and bottom gutter lights.
-Its defaults preserve tabs left, bookmarks right, bottom enabled, loading top,
-and downloads bottom. The pref observer republishes all three settings across
-windows. Glass, trigger, and
+ADR-068 extends that same closed object with `allowCompactWindow`, default
+false, so NativeUi can optionally clear Firefox chrome `:root` min-width and
+min-height while Fennevia is active. Missing keys keep the documented
+defaults. Its defaults preserve tabs left, bookmarks right, bottom enabled,
+loading top, downloads bottom, and the official Firefox window floor. The pref
+observer republishes all three settings across windows. The customize drawer
+uses one tablist for widgets, panels, interaction, and appearance so the
+stacked editor does not grow into a single scrolling form. Shortcut-tip
+footers still honor the duration pref on every edge, including the
+bookmarks-side surface. The bookmarks status row no longer shows a persistent
+Ctrl/Command+Enter hint; it only appears for actual notices. Glass, trigger, and
 shortcut-animation tokens apply on the project frame root; the validated reveal
 timing values update the one shared edge controller. Empty color tokens resolve
 to Firefox chrome design-system variables (ADR-051). The chrome background
@@ -549,7 +557,7 @@ hides the zones and missing `Services.prefs` disables editing; neither joins
 activation health. ADR-047 moves placement editing onto the live four-edge
 widget zones with HTML5 drag-and-drop; the top-host drawer is the palette and
 style editor, centered in the remaining content well so it does not cover the
-four-edge drop zones. See ADR-044, ADR-045, ADR-046, ADR-047, ADR-064,
+four-edge drop zones. See ADR-044, ADR-045, ADR-046, ADR-047, ADR-064, ADR-068,
 `docs/research/firefox-153-toolbar-widget-mirror.md`,
 `docs/research/firefox-153-customize-mode.md`, and
 `docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.
@@ -803,7 +811,7 @@ AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute and never registers the startup hide sheet.
 
 ADR-032, as extended by ADR-037, ADR-038, ADR-042, ADR-050, ADR-056, ADR-057,
-and ADR-064, implements the gate with a nine-rule
+ADR-064, and ADR-068, implements the gate with a ten-rule
 project-owned style, a process-scoped first-paint author sheet, and two temporary root markers:
 
 ```text
@@ -855,7 +863,7 @@ ownership follows `#window-modal-dialog.open` (and tab-dialog markers) rather
 than a leftover `window-modal-open` attribute after the HTML dialog has
 closed. DOM fullscreen also suspends project hiding
 while Firefox's own fullscreen CSS remains authoritative; browser fullscreen
-retains active mode. The controller validates exact nodes, nine parsed rules,
+retains active mode. The controller validates exact nodes, ten parsed rules,
 and the proxy anchor's fixed identity/parent/style before health, then watches
 integrity. Invalid or partial CSS, proxy mutation, and stable target drift
 suspend first and request per-window fail-open disposal. Clearing active
@@ -872,6 +880,11 @@ is not suspended: a bounded theme-token capsule plus a forced-colors override.
 The selector changes no status text, visibility, timing, placement owner, or
 pointer behavior and disappears immediately with `data-fennevia-active`; see
 `docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.
+ADR-068 adds one further active/compact-window/not-suspended `:root#main-window`
+`min-width`/`min-height` override, default off. Clearing the compact-window
+attribute or `data-fennevia-active` restores Firefox's chrome floor immediately.
+The operating-system window floor remains. Compact-window is not a health
+input.
 
 ## 8. Override policy
 

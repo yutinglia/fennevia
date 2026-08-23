@@ -271,6 +271,8 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.equal(customizePanels.match(/<option value="off">/gu)?.length, 2);
   assert.match(customizePanels, /bottomDownloadsEnabled/u);
+  assert.match(customizePanels, /allowCompactWindow/u);
+  assert.match(customizePanels, /data-fennevia-customize-compact-window/u);
   assert.match(
     mountShell,
     /removeEventListener\(WINDOW_DRAG_START_EVENT, beginWindowDrag\)/u,
@@ -283,7 +285,9 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(customizeStyle, /--fennevia-edge-trigger-thickness/u);
   assert.match(customizeStyle, /--fennevia-hide-delay/u);
   assert.match(customizeStyle, /--fennevia-shortcut-tip-duration/u);
+  assert.doesNotMatch(component, /sidePanelRole !== "bookmarks"/u);
   assert.match(component, /shortcutHintDuration !== 0/u);
+  assert.match(css, /\.fennevia-bookmarks__status:empty/u);
   assert.match(
     component,
     /resolveOwnedSurfacePointerOutRelease\(\s*event,\s*rootElement,\s*panelElement/u,
@@ -322,10 +326,9 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.match(css, /data-fennevia-customize-active/u);
   assert.match(css, /--fennevia-bottom-clearance/u);
-  assert.match(
-    css,
-    /\.fennevia-customize \{[\s\S]*?var\(--fennevia-left-clearance\)[\s\S]*?var\(--fennevia-right-clearance\)/u,
-  );
+  assert.match(css, /\.fennevia-customize \{[\s\S]*?overflow: hidden;/u);
+  assert.match(css, /\.fennevia-customize__tabs/u);
+  assert.match(css, /\.fennevia-customize__tabpanel/u);
   assert.match(
     css,
     /\.fennevia-customize \{[\s\S]*?var\(--fennevia-bottom-clearance\)/u,
@@ -509,6 +512,8 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     `${leftSurface}\n${addressPopup}`,
     /data-fennevia-(?:connection|protection)-(?:status|detail)/u,
   );
+  assert.doesNotMatch(bookmarks, /bookmarks\.hint/u);
+  assert.match(bookmarks, /const noticeText[\s\S]*?return "";/u);
 
   const customize = await Promise.all([
     readProjectFile("src/shell/CustomizePanel.svelte"),
@@ -552,6 +557,11 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /data-fennevia-bookmark-roots/u);
   assert.match(bundle, /data-fennevia-bookmark-list/u);
   assert.match(bundle, /data-fennevia-bookmark-status/u);
+  assert.doesNotMatch(
+    bundle,
+    /Ctrl or Command \+ Enter opens a bookmark in a new tab/u,
+  );
+  assert.doesNotMatch(bundle, /Ctrl 或 Command \+ Enter 可在新分頁開啟書籤/u);
   assert.match(bundle, /data-fennevia-download-summary/u);
   assert.match(bundle, /data-fennevia-download-progress/u);
   assert.match(bundle, /data-fennevia-progress-light/u);

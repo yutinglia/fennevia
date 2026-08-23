@@ -215,6 +215,7 @@ export function serializeCustomizeStyle(style: CustomizeStyle): string {
 }
 
 const customizePanelKeys = new Set([
+  "allowCompactWindow",
   "bottomDownloadsEnabled",
   "bottomProgressLight",
   "sidePanelLayout",

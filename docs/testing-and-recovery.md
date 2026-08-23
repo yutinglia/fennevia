@@ -268,7 +268,9 @@ For each edge:
   including changing each applicable value while the one hide timer is pending;
 - default and minimum/maximum temporary programmatic reveal durations;
 - zero/default/maximum shortcut-tip durations, including no initial footer at
-  zero and a timed non-fading expiry under reduced motion;
+  zero and a timed non-fading expiry under reduced motion, on every edge
+  including bookmarks; the bookmarks status row stays empty unless there is a
+  real notice;
 - rapid exit/re-entry;
 - pointer moving into browser content uses the in-window delay; pointer leaving
   the Firefox window uses the window-leave delay; a duplicate window-level
@@ -881,7 +883,7 @@ ADR-037 and ADR-042 add focused unit/static/build coverage for:
 - one semantic Trust entry at the leading edge inside the left address frame,
   one popup Trust row, exact fixed Firefox icon URIs rendered as masks, closed
   state priority, combined accessible labels, and retained dual bridge actions;
-- nine-rule native activation CSS, retained native caption nodes, project-owned
+- ten-rule native activation CSS, retained native caption nodes, project-owned
   top-row window controls, content gutter, and exact rule-count failure;
 - panel drag/no-drag declarations, edge-to-panel contact, transient shortcut
   overlay, `top > sides > bottom` collision policy, and shared native-window-
@@ -1029,6 +1031,10 @@ ADR-045 adds focused unit/static/build coverage for:
 - ADR-064 defaults and strict enums for the complete tabs/bookmarks side swap,
   bottom downloads enablement, and independent top/bottom activity-light
   sources; disabled edge state survives global suppression/re-enable.
+- ADR-068 `allowCompactWindow` default false, missing-key defaults, NativeUi
+  ten parsed rules, compact-window attribute on/off plus dispose restore, and
+  the customize drawer tablist (widgets/panels/interaction/appearance) with
+  Arrow/Home/End.
 
 The following are `not run`, not passed: live Fennevia customize drawer against
 a collapsed navbar, four-edge placement round-trips, **live-zone drag from
@@ -1222,7 +1228,7 @@ the health phase requires:
 - a valid window-controls snapshot and project-owned top-row min/max/close
   buttons;
 - exact Firefox native target/titlebar ownership, an attached exact activation
-  style with nine parsed rules, and synchronous native Urlbar reveal capability;
+  style with ten parsed rules, and synchronous native Urlbar reveal capability;
 - environment/suspension handling;
 - privileged emergency handler;
 - every declared required capability;
