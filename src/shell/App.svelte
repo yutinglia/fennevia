@@ -136,21 +136,15 @@
     if (surfaceState.visible || sidePanelRole !== "tabs" || !props.tabs) {
       return;
     }
-    let multiCount = 0;
     try {
-      multiCount = (props.tabs.snapshot().tabs ?? []).filter(
+      const multiCount = (props.tabs.snapshot().tabs ?? []).filter(
         (tab) => tab.multiselected === true,
       ).length;
+      if (multiCount > 0) {
+        props.tabs.clearMultiSelect();
+      }
     } catch (error) {
       props.onFatalError(error);
-      return;
-    }
-    if (multiCount > 0) {
-      try {
-        props.tabs.clearMultiSelect();
-      } catch (error) {
-        props.onFatalError(error);
-      }
     }
   });
 
