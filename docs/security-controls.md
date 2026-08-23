@@ -19,7 +19,7 @@ formal audit or penetration test.
 
 Current validated baseline:
 
-- public package `0.12.0-beta.1` prerelease;
+- public package `0.13.0-beta.1` prerelease;
 - Firefox 153.0.4 BuildID 20260810162159 and 154.0 BuildID 20260812182057,
   Windows x64; later majors may install after an explicit no-promise warning;
 - copied Firefox program plus marker-owned development profile;
@@ -83,7 +83,7 @@ blocker, not an implicit risk acceptance.
 ### 3.1 Current inventory
 
 `package-manifest.json` is the installed-file source of truth. Package
-`0.12.0-beta.1`
+`0.13.0-beta.1`
 contains the following profile paths:
 
 ```text

@@ -180,7 +180,7 @@ try {
                 Status = "planned"
                 DryRun = $true
                 Applied = $false
-                PackageVersion = "0.12.0-beta.1"
+                PackageVersion = "0.13.0-beta.1"
                 State = "enabled"
                 Program = "<FIREFOX_PROGRAM>"
                 Profile = "<FENNEVIA_PROFILE>"
@@ -223,7 +223,7 @@ try {
             Status = "applied"
             DryRun = $false
             Applied = $true
-            PackageVersion = "0.12.0-beta.1"
+            PackageVersion = "0.13.0-beta.1"
             State = "enabled"
             Program = "<FIREFOX_PROGRAM>"
             Profile = "<FENNEVIA_PROFILE>"

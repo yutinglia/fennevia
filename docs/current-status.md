@@ -1,9 +1,8 @@
 # Current Project Status
 
-> Snapshot: 2026-08-23. This status review is based on `main` through PR #98
-> plus the `0.12.0-beta.1` release-hardening commits and the current ADR-064
-> configurable-panel/favicon/status follow-up, alongside the public
-> `v0.12.0-beta.1` prerelease.
+> Snapshot: 2026-08-24. This status review is based on `main` through PR #103
+> plus the `0.13.0-beta.1` version identity, alongside the public
+> `v0.13.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
@@ -14,13 +13,13 @@ and testing documents retain the complete engineering contract.
 
 | Area                            | Current state                                                                                                                                               |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public release                  | `v0.12.0-beta.1`, Windows x64 prerelease                                                                                                                    |
+| Public release                  | `v0.13.0-beta.1`, Windows x64 prerelease                                                                                                                    |
 | Tested Firefox                  | Stock Firefox 153.0.4 BuildID `20260810162159` and 154.0 BuildID `20260812182057`, release channel                                                          |
 | Installer compatibility gate    | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested                                                                                |
 | Core four-edge MVP              | Implemented and released                                                                                                                                    |
-| Post-MVP shell work             | Included in `v0.12.0-beta.1` with focused automated coverage                                                                                                |
-| Native Urlbar result projection | Included in `v0.12.0-beta.1`; Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes pass; representative-provider matrix pending |
-| Real-Firefox validation         | The automated Firefox 154 release/recovery and extracted-package matrix passes; several manual visual, assistive, account/device, and GUI installer rows remain pending |
+| Post-MVP shell work             | Included in `v0.13.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, and tab-panel hold |
+| Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending |
+| Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.13.0-beta.1` package does not re-run that matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                             |
 
 ## Implemented product surface
@@ -176,7 +175,8 @@ control, deterministic dual-archive preflight, Unicode-path extraction, and the
 extracted package's update/disable/recovery/uninstall/stock-start/install
 lifecycle. See
 [`docs/research/firefox-154-0.12.0-beta.1-release-validation.md`](research/firefox-154-0.12.0-beta.1-release-validation.md).
-This does not convert the manual rows below into observed evidence.
+This `0.13.0-beta.1` package does not re-run that matrix and does not convert
+the pending real-Firefox rows below into observed evidence.
 
 That automated evidence does **not** complete every real-browser claim. The
 following remain explicitly pending in the current plans and testing document:
@@ -220,7 +220,7 @@ following remain explicitly pending in the current plans and testing document:
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.
 
-Accordingly, `v0.12.0-beta.1` should be described as an implemented experimental
+Accordingly, `v0.13.0-beta.1` should be described as an implemented experimental
 prerelease with validation debt, not as a stable product. The largest remaining
 risk is Firefox-internal compatibility and real-environment coverage rather
 than absence of the core shell.
