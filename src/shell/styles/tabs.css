@@ -49,7 +49,6 @@
   border: 1px solid transparent;
   border-radius: var(--fennevia-control-radius);
   transition:
-    transform var(--fennevia-motion-duration) var(--fennevia-motion-easing),
     opacity 100ms ease-out,
     background-color 80ms ease-out,
     border-color 80ms ease-out;
@@ -145,6 +144,16 @@
   .fennevia-tab-strip__list[data-fennevia-drag-active="true"]
   .fennevia-tab-strip__item {
   will-change: transform;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip__list[data-fennevia-drag-active="true"]
+  .fennevia-tab-strip__item:not([data-fennevia-drag-following="true"]) {
+  transition:
+    transform var(--fennevia-motion-duration) var(--fennevia-motion-easing),
+    opacity 100ms ease-out,
+    background-color 80ms ease-out,
+    border-color 80ms ease-out;
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip__item[data-fennevia-drag-shift] {
