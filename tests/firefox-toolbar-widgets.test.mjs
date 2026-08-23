@@ -2026,6 +2026,61 @@ test("style edits persist and external pref changes republish", async () => {
   }
 });
 
+test("panel and progress-light edits persist, observe, and reset", async () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    let snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(snapshot.panelsCustomized, false);
+    assert.deepEqual(snapshot.panels, {
+      bottomDownloadsEnabled: true,
+      bottomProgressLight: "downloads",
+      sidePanelLayout: "tabs-left",
+      topProgressLight: "loading",
+    });
+
+    await pair.controller.toolbarWidgets.edit({
+      panels: {
+        bottomDownloadsEnabled: false,
+        sidePanelLayout: "tabs-right",
+        topProgressLight: "downloads",
+      },
+      type: "set-panels",
+    });
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(snapshot.panelsCustomized, true);
+    assert.equal(snapshot.panels.bottomDownloadsEnabled, false);
+    assert.equal(snapshot.panels.sidePanelLayout, "tabs-right");
+    assert.equal(snapshot.panels.topProgressLight, "downloads");
+    assert.ok(
+      native.getPrefValue("fennevia.customize.panels").includes('"version":1'),
+    );
+
+    native.setPrefValue(
+      "fennevia.customize.panels",
+      JSON.stringify({
+        bottomDownloadsEnabled: true,
+        bottomProgressLight: "off",
+        sidePanelLayout: "tabs-left",
+        topProgressLight: "off",
+        version: 1,
+      }),
+    );
+    native.runTimers();
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(snapshot.panels.bottomProgressLight, "off");
+    assert.equal(snapshot.panels.topProgressLight, "off");
+
+    await pair.controller.toolbarWidgets.edit({ type: "reset-panels" });
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(snapshot.panelsCustomized, false);
+    assert.equal(snapshot.panels.sidePanelLayout, "tabs-left");
+    assert.equal(native.getPrefValue("fennevia.customize.panels"), undefined);
+  } finally {
+    disposePair(pair);
+  }
+});
+
 test("fennevia widgets place into any zone and edits require fresh revisions", async () => {
   const native = createNativeWindow();
   const pair = createController(native);

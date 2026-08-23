@@ -256,15 +256,14 @@ function T({ buildId: e, contextId: n, firefoxVersion: r, window: i, windowKind:
 		}
 	});
 }
-//#endregion
-//#region src/firefox/bookmarks/support.ts
-var E = "resource://gre/modules/PlacesUtils.sys.mjs", D = "moz-src:///browser/components/places/PlacesUIUtils.sys.mjs", O = Object.freeze([
+var E = /^data:image\/(?:avif|gif|jpeg|png|vnd\.microsoft\.icon|webp|x-icon);base64,(?=[a-z0-9+/]+={0,2}$)(?:[a-z0-9+/]{4})*(?:[a-z0-9+/]{2}==|[a-z0-9+/]{3}=)?$/iu, D = "resource://gre/modules/PlacesUtils.sys.mjs", O = "moz-src:///browser/components/places/PlacesUIUtils.sys.mjs", k = Object.freeze([
 	"bookmark-added",
 	"bookmark-removed",
 	"bookmark-moved",
 	"bookmark-title-changed",
-	"bookmark-url-changed"
-]), k = /^[A-Za-z0-9_-]{12}$/u, A = new Set([
+	"bookmark-url-changed",
+	"favicon-changed"
+]), A = /^[A-Za-z0-9_-]{12}$/u, ee = new Set([
 	"data:",
 	"javascript:",
 	"place:",
@@ -282,29 +281,29 @@ var E = "resource://gre/modules/PlacesUtils.sys.mjs", D = "moz-src:///browser/co
 	context: N(e),
 	phase: n,
 	symbol: r
-}), ee = (e, t, n, r) => {
-	if (typeof t != "string" || !k.test(t)) throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_GUID_INVALID", n, r);
+}), F = (e, t, n, r) => {
+	if (typeof t != "string" || !A.test(t)) throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_GUID_INVALID", n, r);
 	return t;
-}, F = (e) => {
+}, te = (e) => {
 	let t = "", n = 0;
 	for (let r of e) {
 		if (n >= 160) break;
 		t += r, n += 1;
 	}
 	return t;
-}, te = (e, t, n, r, i) => {
-	if (!j(t) || typeof t.guid != "string" || typeof t.parentGuid != "string" || typeof t.index != "number" || !Number.isSafeInteger(t.index) || t.index < 0 || typeof t.type != "number" || typeof t.title != "string" || (ee(e, t.guid, r, "PlacesUtils.bookmarks.fetch.result.guid"), ee(e, t.parentGuid, r, "PlacesUtils.bookmarks.fetch.result.parentGuid"), i !== void 0 && t.guid !== i || ![
+}, ne = (e) => typeof e == "string" && e.length <= 262144 && E.test(e) ? e : void 0, I = (e, t, n, r, i) => {
+	if (!j(t) || typeof t.guid != "string" || typeof t.parentGuid != "string" || typeof t.index != "number" || !Number.isSafeInteger(t.index) || t.index < 0 || typeof t.type != "number" || typeof t.title != "string" || (F(e, t.guid, r, "PlacesUtils.bookmarks.fetch.result.guid"), F(e, t.parentGuid, r, "PlacesUtils.bookmarks.fetch.result.parentGuid"), i !== void 0 && t.guid !== i || ![
 		n.TYPE_BOOKMARK,
 		n.TYPE_FOLDER,
 		n.TYPE_SEPARATOR
 	].includes(t.type) || t.type === n.TYPE_FOLDER && (!Number.isSafeInteger(t.childCount) || t.childCount < 0))) throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_RECORD_INVALID", r, "PlacesUtils.bookmarks.fetch.result");
 	return t;
-}, ne = (e, t, n) => {
+}, re = (e, t, n) => {
 	if (t.type === n.TYPE_BOOKMARK) return "bookmark";
 	if (t.type === n.TYPE_FOLDER) return "folder";
 	if (t.type === n.TYPE_SEPARATOR) return "separator";
 	throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_TYPE_INVALID", "firefox-bookmarks-snapshot", "PlacesUtils.bookmarks.TYPE_BOOKMARK");
-}, I = (e) => {
+}, ie = (e) => {
 	if (!j(e) || typeof e.href != "string") return null;
 	if (typeof e.protocol == "string") return e.protocol.toLowerCase();
 	let t = e.href.indexOf(":");
@@ -312,11 +311,11 @@ var E = "resource://gre/modules/PlacesUtils.sys.mjs", D = "moz-src:///browser/co
 };
 //#endregion
 //#region src/firefox/bookmarks/controller.ts
-function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
+function ae({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 	if (e.assertOwnsWindow(r), !j(r) || typeof t != "function" || typeof n != "function") throw P(e, "FENNEVIA_FIREFOX_BOOKMARKS_OPTIONS_INVALID", "firefox-bookmarks-create", "ChromeUtils.importESModule");
 	let i, a;
 	try {
-		i = t(E), a = t(D);
+		i = t(D), a = t(O);
 	} catch (t) {
 		throw P(e, "FENNEVIA_FIREFOX_BOOKMARKS_MODULE_LOAD_FAILED", "firefox-bookmarks-module-load", "ChromeUtils.importESModule", t);
 	}
@@ -340,7 +339,7 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			symbol: "PlacesUtils.bookmarks.fetch"
 		}),
 		Object.freeze({
-			isAvailable: (e) => Array.isArray(e) && e.length === 4 && e.every((e) => typeof e == "string" && k.test(e)),
+			isAvailable: (e) => Array.isArray(e) && e.length === 4 && e.every((e) => typeof e == "string" && A.test(e)),
 			name: "firefox.places-bookmark-roots",
 			read: () => c?.bookmarks?.userContentRoots,
 			symbol: "PlacesUtils.bookmarks.userContentRoots"
@@ -386,6 +385,20 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			name: "firefox.places-organizer",
 			read: () => j(r.PlacesCommandHook) ? r.PlacesCommandHook.showPlacesOrganizer : void 0,
 			symbol: "window.PlacesCommandHook.showPlacesOrganizer"
+		}),
+		Object.freeze({
+			isAvailable: M,
+			name: "firefox.places-favicon-query",
+			read: () => c?.favicons?.getFaviconForPage,
+			requirement: "optional",
+			symbol: "PlacesUtils.favicons.getFaviconForPage"
+		}),
+		Object.freeze({
+			isAvailable: M,
+			name: "firefox.places-favicon-uri",
+			read: () => j(r.Services) && j(r.Services.io) ? r.Services.io.newURI : void 0,
+			requirement: "optional",
+			symbol: "window.Services.io.newURI"
 		})
 	]), d = r, f = !1, p = null, m = !1, h = 0, g = new Set(), v = e.createHandleRegistry("bookmark"), y = new Map(), x = new Map(), S = () => {
 		if (f || !d) throw P(e, "FENNEVIA_FIREFOX_BOOKMARKS_DISPOSED", "firefox-bookmarks-access", "window");
@@ -403,23 +416,23 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			snapshot: Object.freeze({
 				available: t,
 				name: e.name,
-				requirement: "required",
+				requirement: e.requirement ?? "required",
 				symbol: e.symbol
 			})
 		});
 	})), w = () => {
 		S();
-		let t = C(), n = t.find((e) => !e.snapshot.available);
+		let t = C(), n = t.find((e) => e.snapshot.requirement === "required" && !e.snapshot.available);
 		if (n) throw P(e, "FENNEVIA_FIREFOX_BOOKMARKS_CAPABILITY_MISSING", "firefox-bookmarks-capability", n.snapshot.symbol, n.cause);
 		return Object.freeze(t.map((e) => e.snapshot));
 	}, T = (t) => {
 		S();
-		let n = ee(e, t, "firefox-bookmarks-handle", "PlacesUtils.bookmarks.guid"), r = x.get(n);
+		let n = F(e, t, "firefox-bookmarks-handle", "PlacesUtils.bookmarks.guid"), r = x.get(n);
 		if (r) return r;
 		let i = Object.freeze({ guid: n }), a = v.register(i);
 		return y.set(n, i), x.set(n, a), a;
-	}, N = (e) => {
-		if (typeof e != "string" || !k.test(e)) return !1;
+	}, E = (e) => {
+		if (typeof e != "string" || !A.test(e)) return !1;
 		let t = x.get(e);
 		if (!t) return !1;
 		x.delete(e), y.delete(e);
@@ -428,15 +441,28 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 		} catch {
 			return !1;
 		}
-	}, L = (e) => (S(), v.resolve(e).guid), re = (t, n = t.title) => {
-		let r = ne(e, t, c.bookmarks);
+	}, N = (e) => (S(), v.resolve(e).guid), ae = async (e) => {
+		if (e.type !== c.bookmarks.TYPE_BOOKMARK) return;
+		let t = S(), n = c.favicons, r = t.Services, i = j(r) ? r.io : void 0, a = j(i) ? i.newURI : void 0, o = n?.getFaviconForPage, s = j(e.url) ? e.url.href : void 0;
+		if (!(!n || !M(o) || !j(i) || !M(a) || typeof s != "string")) try {
+			let e = Reflect.apply(a, i, [s]), r = typeof t.devicePixelRatio == "number" && Number.isFinite(t.devicePixelRatio) ? t.devicePixelRatio : 1, c = Math.min(64, Math.max(16, Math.round(16 * r))), l = await Reflect.apply(o, n, [e, c]);
+			S();
+			let u = j(l) ? l.dataURI : void 0;
+			return ne(j(u) ? u.spec : void 0);
+		} catch (e) {
+			if (_(e)) throw e;
+			return;
+		}
+	}, oe = async (t, n = t.title) => {
+		let r = re(e, t, c.bookmarks), i = await ae(t);
 		return Object.freeze({
+			...i === void 0 ? {} : { faviconUrl: i },
 			hasChildren: r === "folder" && Number.isSafeInteger(t.childCount) && t.childCount > 0,
 			id: T(t.guid),
 			kind: r,
-			title: F(n)
+			title: te(n)
 		});
-	}, ie = async (t, n) => {
+	}, se = async (t, n) => {
 		S();
 		let r;
 		try {
@@ -444,8 +470,8 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 		} catch (t) {
 			throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_QUERY_FAILED", n, "PlacesUtils.bookmarks.fetch", t);
 		}
-		return S(), r === null ? null : te(e, r, c.bookmarks, n, "guid" in t ? t.guid : void 0);
-	}, ae = (t, r) => {
+		return S(), r === null ? null : I(e, r, c.bookmarks, n, "guid" in t ? t.guid : void 0);
+	}, ce = (t, r) => {
 		h += 1;
 		let i = Object.freeze({
 			parentIds: Object.freeze([...t]),
@@ -458,40 +484,45 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 		} catch (t) {
 			n(P(e, "FENNEVIA_FIREFOX_BOOKMARKS_SUBSCRIBER_FAILED", "firefox-bookmarks-notify", "bookmarks.subscribe", t));
 		}
-	}, oe = (t) => {
+	}, le = (t) => {
 		p = _(t) ? t : P(e, "FENNEVIA_FIREFOX_BOOKMARKS_OBSERVER_FAILED", "firefox-bookmarks-observer", "PlacesUtils.observers.addListener", t), n(p);
-	}, se = (t) => {
+	}, ue = (t) => {
 		if (!(f || p)) try {
 			if (!Array.isArray(t)) throw P(e, "FENNEVIA_FIREFOX_BOOKMARKS_EVENT_INVALID", "firefox-bookmarks-observer", "PlacesEventCallback.events");
 			if (t.length > 128) {
-				ae(Object.freeze([]), "all");
+				ce(Object.freeze([]), "all");
 				return;
 			}
-			let n = new Set(), r = [];
-			for (let i of t) {
-				if (!j(i) || typeof i.type != "string" || !O.includes(i.type) || typeof i.parentGuid != "string" || typeof i.isTagging != "boolean") throw P(e, "FENNEVIA_FIREFOX_BOOKMARKS_EVENT_INVALID", "firefox-bookmarks-observer", "PlacesEvent");
-				if (i.isTagging) continue;
-				ee(e, i.parentGuid, "firefox-bookmarks-observer", "PlacesEvent.parentGuid");
-				let t = x.get(i.parentGuid);
-				if (t && n.add(t), i.type === "bookmark-moved") {
-					let t = ee(e, i.oldParentGuid, "firefox-bookmarks-observer", "PlacesBookmarkMoved.oldParentGuid"), r = x.get(t);
+			let n = new Set(), r = [], i = !1;
+			for (let a of t) {
+				if (!j(a) || typeof a.type != "string" || !k.includes(a.type)) throw P(e, "FENNEVIA_FIREFOX_BOOKMARKS_EVENT_INVALID", "firefox-bookmarks-observer", "PlacesEvent");
+				if (a.type === "favicon-changed") {
+					i = !0;
+					continue;
+				}
+				if (typeof a.parentGuid != "string" || typeof a.isTagging != "boolean") throw P(e, "FENNEVIA_FIREFOX_BOOKMARKS_EVENT_INVALID", "firefox-bookmarks-observer", "PlacesEvent");
+				if (a.isTagging) continue;
+				F(e, a.parentGuid, "firefox-bookmarks-observer", "PlacesEvent.parentGuid");
+				let t = x.get(a.parentGuid);
+				if (t && n.add(t), a.type === "bookmark-moved") {
+					let t = F(e, a.oldParentGuid, "firefox-bookmarks-observer", "PlacesBookmarkMoved.oldParentGuid"), r = x.get(t);
 					r && n.add(r);
 				}
-				i.type === "bookmark-removed" && r.push(ee(e, i.guid, "firefox-bookmarks-observer", "PlacesBookmarkRemoved.guid"));
+				a.type === "bookmark-removed" && r.push(F(e, a.guid, "firefox-bookmarks-observer", "PlacesBookmarkRemoved.guid"));
 			}
-			let i = Array.from(n);
-			i.length > 16 ? ae(Object.freeze([]), "all") : i.length > 0 && ae(Object.freeze(i), "parents");
-			for (let e of r) N(e);
+			let a = Array.from(n);
+			i || a.length > 16 ? ce(Object.freeze([]), "all") : a.length > 0 && ce(Object.freeze(a), "parents");
+			for (let e of r) E(e);
 		} catch (e) {
-			oe(e);
+			le(e);
 		}
-	}, ce = b(() => {
-		m && (m = !1, Reflect.apply(c.observers.removeListener, c.observers, [O, se]));
-	}), le = Object.freeze({
+	}, de = b(() => {
+		m && (m = !1, Reflect.apply(c.observers.removeListener, c.observers, [k, ue]));
+	}), fe = Object.freeze({
 		async children(t, n = {}) {
 			let r;
 			try {
-				r = L(t);
+				r = N(t);
 			} catch (e) {
 				if (_(e) && e.fenneviaCode === "FENNEVIA_FIREFOX_HANDLE_STALE") return Object.freeze({
 					parentId: t,
@@ -502,8 +533,8 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			if (!j(n) || Object.keys(n).some((e) => e !== "limit" && e !== "offset")) throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_QUERY_OPTIONS_INVALID", "firefox-bookmarks-query", "bookmarks.children.options");
 			let i = n.limit ?? 32, a = n.offset ?? 0;
 			if (!Number.isSafeInteger(i) || i < 1 || i > 32 || !Number.isSafeInteger(a) || a < 0 || a > 1e6) throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_QUERY_OPTIONS_INVALID", "firefox-bookmarks-query", "bookmarks.children.options");
-			let o = await ie({ guid: r }, "firefox-bookmarks-query-parent");
-			if (!o) return N(r), Object.freeze({
+			let o = await se({ guid: r }, "firefox-bookmarks-query-parent");
+			if (!o) return E(r), Object.freeze({
 				parentId: t,
 				status: "stale"
 			});
@@ -513,7 +544,7 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			});
 			let s = o.childCount, l = s === 0 ? 0 : Math.min(a, Math.floor((s - 1) / i) * i), u = Math.min(s, l + i), d = [];
 			for (let e = l; e < u; e += 1) {
-				let n = await ie({
+				let n = await se({
 					index: e,
 					parentGuid: r
 				}, "firefox-bookmarks-query-child");
@@ -521,15 +552,16 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 					parentId: t,
 					status: "stale"
 				});
-				d.push(re(n));
+				d.push(n);
 			}
-			return Object.freeze({
-				items: Object.freeze(d),
+			let f = await Promise.all(d.map((e) => oe(e)));
+			return S(), Object.freeze({
+				items: Object.freeze(f),
 				offset: l,
 				parentId: t,
 				status: "ok",
 				totalCount: s,
-				truncated: l + d.length < s
+				truncated: l + f.length < s
 			});
 		},
 		manage() {
@@ -546,7 +578,7 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			if (n !== "current" && n !== "new-tab") throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_DISPOSITION_INVALID", "firefox-bookmarks-open", "bookmarks.open.disposition");
 			let r;
 			try {
-				r = L(t);
+				r = N(t);
 			} catch (e) {
 				if (_(e) && e.fenneviaCode === "FENNEVIA_FIREFOX_HANDLE_STALE") return Object.freeze({
 					reason: "stale",
@@ -554,8 +586,8 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 				});
 				throw e;
 			}
-			let i = await ie({ guid: r }, "firefox-bookmarks-open-fetch");
-			if (!i) return N(r), Object.freeze({
+			let i = await se({ guid: r }, "firefox-bookmarks-open-fetch");
+			if (!i) return E(r), Object.freeze({
 				reason: "stale",
 				status: "rejected"
 			});
@@ -563,8 +595,8 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 				reason: "not-bookmark",
 				status: "rejected"
 			});
-			let a = I(i.url);
-			if (!a || A.has(a)) return Object.freeze({
+			let a = ie(i.url);
+			if (!a || ee.has(a)) return Object.freeze({
 				reason: "unsupported-scheme",
 				status: "rejected"
 			});
@@ -587,7 +619,7 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			S();
 			let t = c.bookmarks.userContentRoots, n = [];
 			for (let r of t) {
-				let t = await ie({ guid: r }, "firefox-bookmarks-query-roots");
+				let t = await se({ guid: r }, "firefox-bookmarks-query-roots");
 				if (!t || t.type !== c.bookmarks.TYPE_FOLDER) throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_ROOT_INVALID", "firefox-bookmarks-query-roots", "PlacesUtils.bookmarks.userContentRoots");
 				let i;
 				try {
@@ -596,7 +628,7 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 					throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_ROOT_TITLE_FAILED", "firefox-bookmarks-query-roots", "PlacesUtils.bookmarks.getLocalizedTitle", t);
 				}
 				if (typeof i != "string") throw P(e, "FENNEVIA_FIREFOX_BOOKMARK_ROOT_TITLE_INVALID", "firefox-bookmarks-query-roots", "PlacesUtils.bookmarks.getLocalizedTitle");
-				n.push(re(t, i));
+				n.push(await oe(t, i));
 			}
 			return Object.freeze(n);
 		},
@@ -608,12 +640,12 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 		}
 	});
 	try {
-		e.assertRequiredCapabilities(), w(), Reflect.apply(c.observers.addListener, c.observers, [O, se]), m = !0;
+		e.assertRequiredCapabilities(), w(), Reflect.apply(c.observers.addListener, c.observers, [k, ue]), m = !0;
 	} catch (t) {
 		f = !0, d = null;
 		let r;
 		try {
-			ce();
+			de();
 		} catch (e) {
 			r = e;
 		}
@@ -626,13 +658,13 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 	}
 	return Object.freeze({
 		assertRequiredCapabilities: w,
-		bookmarks: le,
+		bookmarks: fe,
 		dispose() {
 			if (f) return !1;
 			f = !0, d = null;
 			let t;
 			try {
-				ce();
+				de();
 			} catch (e) {
 				t = e;
 			}
@@ -659,7 +691,7 @@ function L({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 }
 //#endregion
 //#region src/app/browser-tools-state.ts
-var re = Object.freeze([
+var oe = Object.freeze([
 	"site-information",
 	"protections",
 	"site-permissions",
@@ -670,7 +702,7 @@ var re = Object.freeze([
 	"settings",
 	"customize",
 	"native-toolbar"
-]), ie = Object.freeze([
+]), se = Object.freeze([
 	"site-information",
 	"protections",
 	"site-permissions",
@@ -678,16 +710,16 @@ var re = Object.freeze([
 	"extensions",
 	"translate",
 	"application-menu"
-]), ae = new Set(re), oe = new Set(ie);
-function se(e) {
-	return typeof e == "string" && ae.has(e);
+]), ce = new Set(oe), le = new Set(se);
+function ue(e) {
+	return typeof e == "string" && ce.has(e);
 }
-function ce(e) {
-	return typeof e == "string" && oe.has(e);
+function de(e) {
+	return typeof e == "string" && le.has(e);
 }
 //#endregion
 //#region src/firefox/browser-tools/support.ts
-var le = Object.freeze({ capture: !0 }), ue = Object.freeze([
+var fe = Object.freeze({ capture: !0 }), pe = Object.freeze([
 	"appMenu-popup",
 	"downloadsPanel",
 	"identity-popup",
@@ -696,7 +728,7 @@ var le = Object.freeze({ capture: !0 }), ue = Object.freeze([
 	"trustpanel-popup",
 	"unified-extensions-panel",
 	"full-page-translations-panel"
-]), de = new Set(ue), fe = Object.freeze({
+]), me = new Set(pe), he = Object.freeze({
 	"application-menu": Object.freeze(["appMenu-popup"]),
 	downloads: Object.freeze(["downloadsPanel"]),
 	extensions: Object.freeze(["unified-extensions-panel"]),
@@ -704,26 +736,26 @@ var le = Object.freeze({ capture: !0 }), ue = Object.freeze([
 	protections: Object.freeze(["trustpanel-popup", "protections-popup"]),
 	"site-information": Object.freeze(["trustpanel-popup", "identity-popup"]),
 	"site-permissions": Object.freeze(["permission-popup"])
-}), pe = "bottomcenter topright", me = Object.freeze({
-	"application-menu": pe,
+}), ge = "bottomcenter topright", _e = Object.freeze({
+	"application-menu": ge,
 	downloads: "after_start",
 	extensions: "after_end",
 	translate: "after_end",
 	protections: "end_before",
 	"site-information": "end_before",
 	"site-permissions": "after_end"
-}), he = (e) => e === pe, R = (e) => typeof e == "object" && !!e, z = (e) => typeof e == "function", ge = (e) => {
+}), ve = (e) => e === ge, L = (e) => typeof e == "object" && !!e, R = (e) => typeof e == "function", ye = (e) => {
 	let t = e.PanelMultiView;
 	if (typeof t == "function") {
 		let e = t;
-		return z(e.openPopup) ? e : null;
+		return R(e.openPopup) ? e : null;
 	}
-	return R(t) && z(t.openPopup) ? t : null;
-}, _e = (e) => R(e) && z(e.addEventListener) && z(e.removeEventListener), ve = (e) => R(e) && z(e.click) && z(e.focus), B = (e) => R(e) && z(e.hidePopup) && z(e.moveToAnchor) && z(e.openPopup), ye = (e) => typeof e == "number" && Number.isFinite(e) ? e : void 0, V = (e) => {
+	return L(t) && R(t.openPopup) ? t : null;
+}, be = (e) => L(e) && R(e.addEventListener) && R(e.removeEventListener), xe = (e) => L(e) && R(e.click) && R(e.focus), z = (e) => L(e) && R(e.hidePopup) && R(e.moveToAnchor) && R(e.openPopup), B = (e) => typeof e == "number" && Number.isFinite(e) ? e : void 0, Se = (e) => {
 	try {
 		let t = Reflect.apply(e.getBoundingClientRect, e, []);
-		if (!R(t)) return null;
-		let n = ye(t.left) ?? ye(t.x), r = ye(t.top) ?? ye(t.y), i = ye(t.width), a = ye(t.height);
+		if (!L(t)) return null;
+		let n = B(t.left) ?? B(t.x), r = B(t.top) ?? B(t.y), i = B(t.width), a = B(t.height);
 		return n === void 0 || r === void 0 || i === void 0 || a === void 0 ? null : Object.freeze({
 			height: Math.max(1, Math.round(a)),
 			width: Math.max(1, Math.round(i)),
@@ -733,153 +765,153 @@ var le = Object.freeze({ capture: !0 }), ue = Object.freeze([
 	} catch {
 		return null;
 	}
-}, be = (e) => {
-	let t = ye(e.mozInnerScreenX) ?? 0, n = ye(e.mozInnerScreenY) ?? 0;
+}, Ce = (e) => {
+	let t = B(e.mozInnerScreenX) ?? 0, n = B(e.mozInnerScreenY) ?? 0;
 	return Object.freeze({
 		x: Math.round(t),
 		y: Math.round(n)
 	});
-}, H = (e, t) => {
+}, V = (e, t) => {
 	let n = e.document;
-	if (!(!R(n) || !z(n.getElementById))) return Reflect.apply(n.getElementById, n, [t]);
-}, xe = (e) => R(e) ? e.panel : void 0, U = (e) => Object.freeze(e), Se = Object.freeze([
-	U({
-		isAvailable: (e) => ve(e) && z(e.checkVisibility),
+	if (!(!L(n) || !R(n.getElementById))) return Reflect.apply(n.getElementById, n, [t]);
+}, we = (e) => L(e) ? e.panel : void 0, H = (e) => Object.freeze(e), Te = Object.freeze([
+	H({
+		isAvailable: (e) => xe(e) && R(e.checkVisibility),
 		name: "browser-tools.trust-anchor",
-		read: (e) => H(e, "trust-icon-container"),
+		read: (e) => V(e, "trust-icon-container"),
 		symbol: "document.trust-icon-container.click.focus.checkVisibility"
 	}),
-	U({
-		isAvailable: ve,
+	H({
+		isAvailable: xe,
 		name: "browser-tools.identity-anchor",
-		read: (e) => H(e, "identity-icon-box"),
+		read: (e) => V(e, "identity-icon-box"),
 		symbol: "document.identity-icon-box.click.focus"
 	}),
-	U({
-		isAvailable: ve,
+	H({
+		isAvailable: xe,
 		name: "browser-tools.protections-anchor",
-		read: (e) => H(e, "tracking-protection-icon-container"),
+		read: (e) => V(e, "tracking-protection-icon-container"),
 		symbol: "document.tracking-protection-icon-container.click.focus"
 	}),
-	U({
-		isAvailable: ve,
+	H({
+		isAvailable: xe,
 		name: "browser-tools.permissions-anchor",
-		read: (e) => H(e, "identity-permission-box"),
+		read: (e) => V(e, "identity-permission-box"),
 		symbol: "document.identity-permission-box.click.focus"
 	}),
-	U({
-		isAvailable: z,
+	H({
+		isAvailable: R,
 		name: "browser-tools.unified-extensions",
-		read: (e) => R(e.gUnifiedExtensions) ? e.gUnifiedExtensions.togglePanel : void 0,
+		read: (e) => L(e.gUnifiedExtensions) ? e.gUnifiedExtensions.togglePanel : void 0,
 		symbol: "window.gUnifiedExtensions.togglePanel"
 	}),
-	U({
-		isAvailable: z,
+	H({
+		isAvailable: R,
 		name: "browser-tools.full-page-translations",
-		read: (e) => R(e.FullPageTranslationsPanel) ? e.FullPageTranslationsPanel.open : void 0,
+		read: (e) => L(e.FullPageTranslationsPanel) ? e.FullPageTranslationsPanel.open : void 0,
 		requirement: "optional",
 		symbol: "window.FullPageTranslationsPanel.open"
 	}),
-	U({
-		isAvailable: z,
+	H({
+		isAvailable: R,
 		name: "browser-tools.application-menu",
-		read: (e) => R(e.PanelUI) ? e.PanelUI.show : void 0,
+		read: (e) => L(e.PanelUI) ? e.PanelUI.show : void 0,
 		symbol: "window.PanelUI.show"
 	}),
-	U({
-		isAvailable: z,
+	H({
+		isAvailable: R,
 		name: "browser-tools.application-menu-ready",
-		read: (e) => R(e.PanelUI) ? e.PanelUI.ensureReady : void 0,
+		read: (e) => L(e.PanelUI) ? e.PanelUI.ensureReady : void 0,
 		symbol: "window.PanelUI.ensureReady"
 	}),
-	U({
-		isAvailable: z,
+	H({
+		isAvailable: R,
 		name: "browser-tools.settings",
 		read: (e) => e.openPreferences,
 		symbol: "window.openPreferences"
 	}),
-	U({
-		isAvailable: z,
+	H({
+		isAvailable: R,
 		name: "browser-tools.customize",
-		read: (e) => R(e.gCustomizeMode) ? e.gCustomizeMode.enter : void 0,
+		read: (e) => L(e.gCustomizeMode) ? e.gCustomizeMode.enter : void 0,
 		symbol: "window.gCustomizeMode.enter"
 	}),
-	U({
-		isAvailable: (e) => R(e) && z(e.focus),
+	H({
+		isAvailable: (e) => L(e) && R(e.focus),
 		name: "browser-tools.native-toolbar-focus",
-		read: (e) => H(e, "back-button"),
+		read: (e) => V(e, "back-button"),
 		symbol: "document.back-button.focus"
 	}),
-	U({
-		isAvailable: ve,
+	H({
+		isAvailable: xe,
 		name: "browser-tools.extensions-anchor",
-		read: (e) => H(e, "unified-extensions-button"),
+		read: (e) => V(e, "unified-extensions-button"),
 		symbol: "document.unified-extensions-button.click.focus"
 	}),
-	U({
-		isAvailable: ve,
+	H({
+		isAvailable: xe,
 		name: "browser-tools.application-menu-anchor",
-		read: (e) => H(e, "PanelUI-menu-button"),
+		read: (e) => V(e, "PanelUI-menu-button"),
 		symbol: "document.PanelUI-menu-button.click.focus"
 	}),
-	U({
-		isAvailable: z,
+	H({
+		isAvailable: R,
 		name: "browser-tools.trust-panel",
-		read: (e) => R(e.gTrustPanelHandler) ? e.gTrustPanelHandler.showPopup : void 0,
+		read: (e) => L(e.gTrustPanelHandler) ? e.gTrustPanelHandler.showPopup : void 0,
 		symbol: "window.gTrustPanelHandler.showPopup"
 	}),
-	U({
-		isAvailable: z,
+	H({
+		isAvailable: R,
 		name: "browser-tools.permission-set-anchor",
-		read: (e) => R(e.gPermissionPanel) ? e.gPermissionPanel.setAnchor : void 0,
+		read: (e) => L(e.gPermissionPanel) ? e.gPermissionPanel.setAnchor : void 0,
 		symbol: "window.gPermissionPanel.setAnchor"
 	}),
-	U({
-		isAvailable: z,
+	H({
+		isAvailable: R,
 		name: "browser-tools.permission-open-popup",
-		read: (e) => R(e.gPermissionPanel) ? e.gPermissionPanel.openPopup : void 0,
+		read: (e) => L(e.gPermissionPanel) ? e.gPermissionPanel.openPopup : void 0,
 		symbol: "window.gPermissionPanel.openPopup"
 	}),
-	U({
-		isAvailable: z,
+	H({
+		isAvailable: R,
 		name: "browser-tools.downloads-initialize",
-		read: (e) => R(e.DownloadsPanel) ? e.DownloadsPanel.initialize : void 0,
+		read: (e) => L(e.DownloadsPanel) ? e.DownloadsPanel.initialize : void 0,
 		symbol: "window.DownloadsPanel.initialize"
 	}),
-	U({
-		isAvailable: B,
+	H({
+		isAvailable: z,
 		name: "browser-tools.downloads-panel",
 		read: (e) => {
-			let t = H(e, "downloadsPanel");
-			return B(t) ? t : xe(e.DownloadsPanel);
+			let t = V(e, "downloadsPanel");
+			return z(t) ? t : we(e.DownloadsPanel);
 		},
 		symbol: "document.downloadsPanel.openPopup.moveToAnchor.hidePopup"
 	}),
-	U({
-		isAvailable: B,
+	H({
+		isAvailable: z,
 		name: "browser-tools.application-menu-panel",
 		read: (e) => {
-			let t = H(e, "appMenu-popup");
-			return B(t) ? t : xe(e.PanelUI);
+			let t = V(e, "appMenu-popup");
+			return z(t) ? t : we(e.PanelUI);
 		},
 		symbol: "document.appMenu-popup.openPopup.moveToAnchor.hidePopup"
 	}),
-	U({
-		isAvailable: B,
+	H({
+		isAvailable: z,
 		name: "browser-tools.extensions-panel",
 		read: (e) => {
-			let t = H(e, "unified-extensions-panel");
-			return B(t) ? t : xe(e.gUnifiedExtensions);
+			let t = V(e, "unified-extensions-panel");
+			return z(t) ? t : we(e.gUnifiedExtensions);
 		},
 		symbol: "document.unified-extensions-panel.openPopup.moveToAnchor.hidePopup"
 	}),
-	U({
-		isAvailable: _e,
+	H({
+		isAvailable: be,
 		name: "browser-tools.document-events",
 		read: (e) => e.document,
 		symbol: "document.addEventListener.removeEventListener"
 	})
-]), Ce = (e) => Object.freeze(Se.map((t) => {
+]), Ee = (e) => Object.freeze(Te.map((t) => {
 	let n = !1, r;
 	try {
 		n = t.isAvailable(t.read(e));
@@ -895,20 +927,20 @@ var le = Object.freeze({ capture: !0 }), ue = Object.freeze([
 			symbol: t.symbol
 		})
 	});
-})), we = (e) => {
+})), De = (e) => {
 	let t = e.snapshot();
 	return Object.freeze({
 		buildId: t.buildId,
 		firefoxVersion: t.firefoxVersion,
 		windowKind: t.windowKind
 	});
-}, W = (e, t, n, r, i) => new g({
+}, U = (e, t, n, r, i) => new g({
 	cause: i,
 	code: t,
-	context: we(e),
+	context: De(e),
 	phase: n,
 	symbol: r
-}), Te = (e) => {
+}), Oe = (e) => {
 	let t = (t) => e.some((e) => e.snapshot.name === t && e.snapshot.available);
 	return Object.freeze({
 		applicationMenu: t("browser-tools.application-menu"),
@@ -922,52 +954,52 @@ var le = Object.freeze({ capture: !0 }), ue = Object.freeze([
 		sitePermissions: t("browser-tools.permission-open-popup"),
 		translate: t("browser-tools.full-page-translations")
 	});
-}, Ee = (e) => {
+}, ke = (e) => {
 	let t = e.state;
 	if (t === "open" || t === "showing") return !0;
 	let n = e.getAttribute;
-	if (!z(n)) return !1;
+	if (!R(n)) return !1;
 	let r = Reflect.apply(n, e, ["state"]);
 	return r === "open" || r === "showing";
-}, De = (e) => R(e) ? R(e.originalTarget) ? e.originalTarget : R(e.target) ? e.target : null : null, Oe = 1e4;
-function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n, frame: r, requestNativeUiReveal: i, window: a }) {
-	if (t.assertOwnsWindow(a), !R(a) || !R(r) || typeof r.contains != "function" || typeof i != "function" || typeof e != "function" || typeof n != "function") throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_OPTIONS_INVALID", "firefox-browser-tools-create", "window");
+}, Ae = (e) => L(e) ? L(e.originalTarget) ? e.originalTarget : L(e.target) ? e.target : null : null, je = 1e4;
+function Me({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n, frame: r, requestNativeUiReveal: i, window: a }) {
+	if (t.assertOwnsWindow(a), !L(a) || !L(r) || typeof r.contains != "function" || typeof i != "function" || typeof e != "function" || typeof n != "function") throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_OPTIONS_INVALID", "firefox-browser-tools-create", "window");
 	let o = (e) => Reflect.apply(r.contains, r, [e]) === !0, s = a, c = !1, l = 0, u = null, d = new Set(), f = [], p = new Set(), m = new Set(), h = () => {
-		if (c || !s) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_DISPOSED", "firefox-browser-tools-access", "window");
+		if (c || !s) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_DISPOSED", "firefox-browser-tools-access", "window");
 		return s;
 	}, g = () => {
-		let e = Ce(h()), n = e.find((e) => e.snapshot.requirement === "required" && !e.snapshot.available);
-		if (n) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-capability", n.snapshot.symbol, n.cause);
+		let e = Ee(h()), n = e.find((e) => e.snapshot.requirement === "required" && !e.snapshot.available);
+		if (n) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-capability", n.snapshot.symbol, n.cause);
 		return Object.freeze(e.map((e) => e.snapshot));
 	}, v = () => {
 		let e;
 		try {
 			e = i() === !0;
 		} catch (e) {
-			throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_REVEAL_FAILED", "firefox-browser-tools-reveal", "nativeUi.revealForToolbar", e);
+			throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_REVEAL_FAILED", "firefox-browser-tools-reveal", "nativeUi.revealForToolbar", e);
 		}
-		if (!e) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_REVEAL_REJECTED", "firefox-browser-tools-reveal", "nativeUi.revealForToolbar");
+		if (!e) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_REVEAL_REJECTED", "firefox-browser-tools-reveal", "nativeUi.revealForToolbar");
 	}, y = async (e, n, r, i = []) => {
 		let a = e[n];
-		if (!z(a)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", r);
+		if (!R(a)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", r);
 		try {
 			await Reflect.apply(a, e, i);
 		} catch (e) {
-			throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", r, e);
+			throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", r, e);
 		}
 	}, b = (e) => {
 		let n = h();
-		if (!R(e) || !z(e.getBoundingClientRect) || e.ownerDocument !== n.document || o(e) !== !0) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_HOST_INVALID", "firefox-browser-tools-action", "browser-tools.host");
+		if (!L(e) || !R(e.getBoundingClientRect) || e.ownerDocument !== n.document || o(e) !== !0) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_HOST_INVALID", "firefox-browser-tools-action", "browser-tools.host");
 		return e;
 	}, x = (e, t) => {
-		if (R(e) && z(e.stopPropagation) && (e.type === "click" || e.type === "keypress")) return e;
+		if (L(e) && R(e.stopPropagation) && (e.type === "click" || e.type === "keypress")) return e;
 		let n = h().MouseEvent;
-		if (z(n)) try {
+		if (R(n)) try {
 			let e = Reflect.construct(n, ["click", Object.freeze({
 				bubbles: !0,
 				button: 0
 			})]);
-			if (R(e) && z(e.stopPropagation)) return e;
+			if (L(e) && R(e.stopPropagation)) return e;
 		} catch {}
 		return Object.freeze({
 			button: 0,
@@ -978,8 +1010,8 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 	}, S = (e) => {
 		let t = h();
 		for (let n of e) {
-			let e = H(t, n);
-			if (B(e) && Ee(e)) return e;
+			let e = V(t, n);
+			if (z(e) && ke(e)) return e;
 		}
 		return null;
 	}, C = (n) => {
@@ -987,9 +1019,9 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		try {
 			r = e(n) === !0;
 		} catch (e) {
-			throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_HANDOFF_FAILED", "firefox-browser-tools-handoff", "nativeUi.beginPopupHandoff", e);
+			throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_HANDOFF_FAILED", "firefox-browser-tools-handoff", "nativeUi.beginPopupHandoff", e);
 		}
-		if (!r) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_HANDOFF_REJECTED", "firefox-browser-tools-handoff", "nativeUi.beginPopupHandoff");
+		if (!r) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_HANDOFF_REJECTED", "firefox-browser-tools-handoff", "nativeUi.beginPopupHandoff");
 	}, w = (e) => {
 		try {
 			n(e);
@@ -998,7 +1030,7 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		try {
 			Reflect.apply(e.hidePopup, e, []);
 		} catch (e) {
-			throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", n, e);
+			throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", n, e);
 		}
 	}, E = (e, n, r, i) => {
 		try {
@@ -1009,7 +1041,7 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 				0
 			]);
 		} catch (e) {
-			throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", i, e);
+			throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", i, e);
 		}
 	}, D = (e, n, r, i) => {
 		try {
@@ -1020,17 +1052,17 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 				0
 			]);
 		} catch (e) {
-			throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", i, e);
+			throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", i, e);
 		}
 	}, O = (e, t, n, r) => {
-		if (he(n)) {
-			let n = V(t), r = be(h()), i = e.moveTo;
-			if (n && z(i)) try {
+		if (ve(n)) {
+			let n = Se(t), r = Ce(h()), i = e.moveTo;
+			if (n && R(i)) try {
 				let t = r.x + n.x, a = r.y + n.y + n.height, o = e.getOuterScreenRect;
-				if (z(o)) {
+				if (R(o)) {
 					let i = Reflect.apply(o, e, []);
-					if (R(i)) {
-						let e = ye(i.width);
+					if (L(i)) {
+						let e = B(i.width);
 						e !== void 0 && (t = r.x + n.x + n.width - Math.round(e));
 					}
 				}
@@ -1041,31 +1073,31 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		D(e, t, n, r);
 	}, k = (e) => {
 		let t = h();
-		for (let n of ue) {
+		for (let n of pe) {
 			if (e.has(n)) continue;
-			let r = H(t, n);
-			B(r) && Ee(r) && T(r, `document.${n}.hidePopup`);
+			let r = V(t, n);
+			z(r) && ke(r) && T(r, `document.${n}.hidePopup`);
 		}
 	}, A = (e, t) => {
 		let n = e.closest;
-		if (z(n)) try {
+		if (R(n)) try {
 			if (Reflect.apply(n, e, ["[data-fennevia-address-popup]"]) != null) return "after_end";
 			if (Reflect.apply(n, e, ["[data-fennevia-edge=\"left\"]"]) != null) return "end_before";
 		} catch {}
-		return me[t];
-	}, j = (e) => {
+		return _e[t];
+	}, ee = (e) => {
 		let t = h();
-		for (let n of fe[e]) {
-			let e = H(t, n);
-			if (B(e)) return e;
+		for (let n of he[e]) {
+			let e = V(t, n);
+			if (z(e)) return e;
 		}
-		return S(fe[e]);
-	}, M = (e) => {
-		let n = j(e);
-		if (!n) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", `document.${fe[e][0]}.openPopup.moveToAnchor.hidePopup`);
+		return S(he[e]);
+	}, j = (e) => {
+		let n = ee(e);
+		if (!n) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", `document.${he[e][0]}.openPopup.moveToAnchor.hidePopup`);
 		return n;
-	}, N = async (e, n, r, i) => {
-		let a = h(), o = ge(a), s = V(n), c = be(a), l, u = () => Ee(e), d = async (e) => {
+	}, M = async (e, n, r, i) => {
+		let a = h(), o = ye(a), s = Se(n), c = Ce(a), l, u = () => ke(e), d = async (e) => {
 			try {
 				await e();
 			} catch (e) {
@@ -1073,10 +1105,10 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			}
 			return u();
 		}, f = () => {
-			if (he(r)) try {
+			if (ve(r)) try {
 				O(e, n, r, `${i}.moveTo`);
 			} catch {}
-		}, p = o && z(o.openPopup) ? o.openPopup : void 0, m = async (t, n) => !o || !p ? !1 : d(() => Reflect.apply(p, o, [
+		}, p = o && R(o.openPopup) ? o.openPopup : void 0, m = async (t, n) => !o || !p ? !1 : d(() => Reflect.apply(p, o, [
 			e,
 			t,
 			n
@@ -1087,7 +1119,7 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			E(e, n, r, `${i}.openPopup`);
 		}), x = () => {
 			let t = e.openPopupAtScreenRect;
-			return !s || !z(t) ? Promise.resolve(!1) : d(() => Reflect.apply(t, e, [
+			return !s || !R(t) ? Promise.resolve(!1) : d(() => Reflect.apply(t, e, [
 				r,
 				c.x + s.x,
 				c.y + s.y,
@@ -1098,23 +1130,23 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			]));
 		}, S = () => {
 			let t = e.openPopupAtScreen;
-			return !s || !z(t) ? Promise.resolve(!1) : d(() => Reflect.apply(t, e, [
+			return !s || !R(t) ? Promise.resolve(!1) : d(() => Reflect.apply(t, e, [
 				c.x + s.x,
 				c.y + s.y + s.height,
 				!1
 			]));
 		}, C = (() => {
 			let t = e.querySelector;
-			if (!z(t)) return !1;
+			if (!R(t)) return !1;
 			try {
 				return Reflect.apply(t, e, ["panelmultiview"]) != null;
 			} catch {
 				return !1;
 			}
-		})(), w = p && (C || he(r)) ? he(r) ? [
+		})(), w = p && (C || ve(r)) ? ve(r) ? [
 			async () => {
 				let t = e.openPopupAtScreenRect, i = e.openPopup;
-				if (!s || !p || !z(t) || !z(i)) return !1;
+				if (!s || !p || !R(t) || !R(i)) return !1;
 				let a = () => Reflect.apply(t, e, [
 					r,
 					c.x + s.x,
@@ -1144,7 +1176,7 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			g,
 			v,
 			y
-		] : he(r) ? [
+		] : ve(r) ? [
 			y,
 			x,
 			g,
@@ -1170,20 +1202,20 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			f();
 			return;
 		}
-		throw _(l) ? l : W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", `${i}.openPopup`, l);
-	}, P = async (e, t, n) => {
-		let r = M(e), i = typeof r.id == "string" && r.id ? r.id : fe[e][0];
-		return Ee(r) ? (D(r, t, n, `document.${i}.moveToAnchor`), r) : (await N(r, t, n, `document.${i}`), r);
-	}, ee = async () => {
+		throw _(l) ? l : U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", `${i}.openPopup`, l);
+	}, N = async (e, t, n) => {
+		let r = j(e), i = typeof r.id == "string" && r.id ? r.id : he[e][0];
+		return ke(r) ? (D(r, t, n, `document.${i}.moveToAnchor`), r) : (await M(r, t, n, `document.${i}`), r);
+	}, P = async () => {
 		let e = h(), t = e.promiseDocumentFlushed;
-		if (z(t)) try {
+		if (R(t)) try {
 			await Reflect.apply(t, e, [() => void 0]);
 			return;
 		} catch {}
 		await Promise.resolve();
 	}, F = (e, t = 800) => {
-		let n = h(), r = H(n, e);
-		return B(r) && Ee(r) ? Promise.resolve(!0) : new Promise((r) => {
+		let n = h(), r = V(n, e);
+		return z(r) && ke(r) ? Promise.resolve(!0) : new Promise((r) => {
 			let i = !1, a = (e) => {
 				i || (i = !0, r(e));
 			}, o = {
@@ -1191,28 +1223,28 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 				resolve: a,
 				timeoutHandle: void 0
 			}, s = n.setTimeout;
-			z(s) ? o.timeoutHandle = Reflect.apply(s, n, [() => {
+			R(s) ? o.timeoutHandle = Reflect.apply(s, n, [() => {
 				m.delete(o);
-				let t = H(n, e);
-				a(B(t) && Ee(t));
+				let t = V(n, e);
+				a(z(t) && ke(t));
 			}, t]) : queueMicrotask(() => {
 				m.delete(o);
-				let t = H(n, e);
-				a(B(t) && Ee(t));
+				let t = V(n, e);
+				a(z(t) && ke(t));
 			}), m.add(o);
 		});
 	}, te = (e, t) => {
 		let n = s;
 		for (let r of Array.from(m)) if (r.panelId === e) {
-			if (m.delete(r), n && z(n.clearTimeout)) try {
+			if (m.delete(r), n && R(n.clearTimeout)) try {
 				Reflect.apply(n.clearTimeout, n, [r.timeoutHandle]);
 			} catch {}
 			r.resolve(t);
 		}
 	}, ne = async (e, t) => {
-		let n = b(t), r = fe[e][0], i = A(n, e);
-		k(new Set(fe[e])), await ee();
-		for (let t of fe[e]) C(t);
+		let n = b(t), r = he[e][0], i = A(n, e);
+		k(new Set(he[e])), await P();
+		for (let t of he[e]) C(t);
 		return u = Object.freeze({
 			host: n,
 			panelId: r,
@@ -1220,79 +1252,79 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		}), u;
 	}, I = () => {
 		let e = s;
-		if (!e || !R(e.gPermissionPanel)) return;
+		if (!e || !L(e.gPermissionPanel)) return;
 		let t = e.gPermissionPanel.setAnchor;
-		if (z(t)) try {
+		if (R(t)) try {
 			Reflect.apply(t, e.gPermissionPanel, [null, "bottomleft topleft"]);
 		} catch {}
-	}, L = (e) => {
+	}, re = (e) => {
 		let t = Object.freeze({
 			open: e,
 			type: "native-popup"
 		});
 		for (let e of Array.from(p)) e(t);
-	}, re = (e) => {
+	}, ie = (e) => {
 		if (c) return;
-		let t = De(e), n = typeof t?.id == "string" ? t.id : typeof t?.getAttribute == "function" ? t.getAttribute("id") : void 0;
-		if (typeof n != "string" || !de.has(n)) return;
-		let r = R(e) ? e.type : void 0;
+		let t = Ae(e), n = typeof t?.id == "string" ? t.id : typeof t?.getAttribute == "function" ? t.getAttribute("id") : void 0;
+		if (typeof n != "string" || !me.has(n)) return;
+		let r = L(e) ? e.type : void 0;
 		if (r === "popupshown") {
 			te(n, !0);
-			for (let e of ue) e !== n && w(e);
-			if (u && B(t)) try {
+			for (let e of pe) e !== n && w(e);
+			if (u && z(t)) try {
 				O(t, u.host, u.position, `document.${n}.moveToAnchor`);
 			} catch {}
-			L(!0);
+			re(!0);
 			return;
 		}
 		if (r === "popuphidden") {
 			if (d.has(n)) return;
-			u = null, n === "permission-popup" && I(), w(n), L(!1);
+			u = null, n === "permission-popup" && I(), w(n), re(!1);
 		}
-	}, ie = async (e, n, r) => {
+	}, ae = async (e, n, r) => {
 		let i = h(), a = await ne(e, n);
-		for (let t of fe[e]) d.add(t);
+		for (let t of he[e]) d.add(t);
 		try {
 			switch (e) {
 				case "site-information":
 				case "protections": {
-					if (!R(i.gTrustPanelHandler)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gTrustPanelHandler.showPopup");
+					if (!L(i.gTrustPanelHandler)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gTrustPanelHandler.showPopup");
 					try {
 						await y(i.gTrustPanelHandler, "showPopup", "window.gTrustPanelHandler.showPopup");
 					} catch {}
-					let n = S(fe[e]);
-					return n ? (D(n, a.host, a.position, `document.${n.id ?? a.panelId}.moveToAnchor`), !0) : (await P(e, a.host, a.position), !0);
+					let n = S(he[e]);
+					return n ? (D(n, a.host, a.position, `document.${n.id ?? a.panelId}.moveToAnchor`), !0) : (await N(e, a.host, a.position), !0);
 				}
 				case "site-permissions": {
-					if (!R(i.gPermissionPanel)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gPermissionPanel.setAnchor");
+					if (!L(i.gPermissionPanel)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gPermissionPanel.setAnchor");
 					let n = i.gPermissionPanel.setAnchor;
-					if (!z(n)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gPermissionPanel.setAnchor");
+					if (!R(n)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gPermissionPanel.setAnchor");
 					try {
 						Reflect.apply(n, i.gPermissionPanel, [a.host, a.position]);
 					} catch (e) {
-						throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", "window.gPermissionPanel.setAnchor", e);
+						throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", "window.gPermissionPanel.setAnchor", e);
 					}
 					try {
 						await y(i.gPermissionPanel, "openPopup", "window.gPermissionPanel.openPopup", [Object.freeze({})]);
 					} catch {}
-					let r = S(fe[e]);
-					return r ? (D(r, a.host, a.position, "document.permission-popup.moveToAnchor"), !0) : (await P(e, a.host, a.position), !0);
+					let r = S(he[e]);
+					return r ? (D(r, a.host, a.position, "document.permission-popup.moveToAnchor"), !0) : (await N(e, a.host, a.position), !0);
 				}
 				case "downloads":
-					if (!R(i.DownloadsPanel)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.DownloadsPanel.initialize");
-					return await y(i.DownloadsPanel, "initialize", "window.DownloadsPanel.initialize"), await P(e, a.host, a.position), !0;
+					if (!L(i.DownloadsPanel)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.DownloadsPanel.initialize");
+					return await y(i.DownloadsPanel, "initialize", "window.DownloadsPanel.initialize"), await N(e, a.host, a.position), !0;
 				case "extensions": {
-					let n = M(e);
-					if (Ee(n)) {
+					let n = j(e);
+					if (ke(n)) {
 						T(n, "document.unified-extensions-panel.hidePopup"), u = null;
-						for (let t of fe[e]) w(t);
-						return L(!1), !0;
+						for (let t of he[e]) w(t);
+						return re(!1), !0;
 					}
-					if (!R(i.gUnifiedExtensions)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gUnifiedExtensions.togglePanel");
-					let r = ge(i), o = r && z(r.openPopup) ? r.openPopup : void 0;
+					if (!L(i.gUnifiedExtensions)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gUnifiedExtensions.togglePanel");
+					let r = ye(i), o = r && R(r.openPopup) ? r.openPopup : void 0;
 					if (r && o) try {
 						r.openPopup = (e, ...t) => {
-							if (!(R(e) && e.id === "unified-extensions-panel")) return Reflect.apply(o, r, [e, ...t]);
+							if (!(L(e) && e.id === "unified-extensions-panel")) return Reflect.apply(o, r, [e, ...t]);
 						};
 					} catch {}
 					try {
@@ -1302,16 +1334,16 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 							r.openPopup = o;
 						} catch {}
 					}
-					return await P(e, a.host, a.position), !0;
+					return await N(e, a.host, a.position), !0;
 				}
 				case "translate": {
 					let n = i.FullPageTranslationsPanel;
-					if (!R(n) || !z(n.open)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.FullPageTranslationsPanel.open");
-					let o = ge(i), s = o?.openPopup, c = null;
-					if (o && z(s)) {
+					if (!L(n) || !R(n.open)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.FullPageTranslationsPanel.open");
+					let o = ye(i), s = o?.openPopup, c = null;
+					if (o && R(s)) {
 						c = (e, ...t) => {
-							if (R(e) && e.id === "full-page-translations-panel") {
-								let n = R(t[1]) ? Object.freeze({
+							if (L(e) && e.id === "full-page-translations-panel") {
+								let n = L(t[1]) ? Object.freeze({
 									...t[1],
 									position: a.position
 								}) : Object.freeze({ position: a.position });
@@ -1331,86 +1363,86 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 					}
 					let l = !1;
 					try {
-						await y(n, "open", "window.FullPageTranslationsPanel.open", [x(r, a.host)]), l = await F(a.panelId, Oe);
+						await y(n, "open", "window.FullPageTranslationsPanel.open", [x(r, a.host)]), l = await F(a.panelId, je);
 					} finally {
 						if (o && s && c && o.openPopup === c) try {
 							o.openPopup = s;
 						} catch {}
 					}
-					if (!l) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", "document.full-page-translations-panel.popupshown");
-					let u = j(e);
-					if (!u || !Ee(u)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", "document.full-page-translations-panel.openPopup");
+					if (!l) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", "document.full-page-translations-panel.popupshown");
+					let u = ee(e);
+					if (!u || !ke(u)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", "document.full-page-translations-panel.openPopup");
 					return u.anchorNode !== a.host && O(u, a.host, a.position, "document.full-page-translations-panel.moveToAnchor"), !0;
 				}
 				case "application-menu": {
-					let n = M(e);
-					if (Ee(n)) {
+					let n = j(e);
+					if (ke(n)) {
 						T(n, "document.appMenu-popup.hidePopup"), u = null;
-						for (let t of fe[e]) w(t);
-						return L(!1), !0;
+						for (let t of he[e]) w(t);
+						return re(!1), !0;
 					}
-					if (!R(i.PanelUI)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.PanelUI.ensureReady");
+					if (!L(i.PanelUI)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.PanelUI.ensureReady");
 					await y(i.PanelUI, "ensureReady", "window.PanelUI.ensureReady");
 					let r = i.PanelUI._ensureShortcutsShown;
-					if (z(r)) try {
+					if (R(r)) try {
 						Reflect.apply(r, i.PanelUI, []);
 					} catch {}
 					try {
-						await P(e, a.host, a.position);
+						await N(e, a.host, a.position);
 					} catch {}
-					let o = j(e);
-					if (o && Ee(o)) return !0;
-					if (C("appMenu-popup"), !z(i.PanelUI.show)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.PanelUI.show");
+					let o = ee(e);
+					if (o && ke(o)) return !0;
+					if (C("appMenu-popup"), !R(i.PanelUI.show)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.PanelUI.show");
 					let s = F("appMenu-popup");
 					try {
 						let e = Reflect.apply(i.PanelUI.show, i.PanelUI, []);
 						Promise.resolve(e).catch(() => {});
 					} catch (e) {
-						throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", "window.PanelUI.show", e);
+						throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", "window.PanelUI.show", e);
 					}
 					await s;
-					let c = j(e);
-					return c && Ee(c) ? (O(c, a.host, a.position, "document.appMenu-popup.moveTo"), !0) : (await P(e, a.host, a.position), !0);
+					let c = ee(e);
+					return c && ke(c) ? (O(c, a.host, a.position, "document.appMenu-popup.moveTo"), !0) : (await N(e, a.host, a.position), !0);
 				}
 			}
-			throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_INVALID", "firefox-browser-tools-action", "browser-tools.action");
+			throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_INVALID", "firefox-browser-tools-action", "browser-tools.action");
 		} finally {
-			for (let t of fe[e]) d.delete(t);
+			for (let t of he[e]) d.delete(t);
 		}
-	}, ae = Object.freeze({
+	}, oe = Object.freeze({
 		invoke: async (e, n, r) => {
-			if (!se(e)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_INVALID", "firefox-browser-tools-action", "browser-tools.action");
+			if (!ue(e)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_INVALID", "firefox-browser-tools-action", "browser-tools.action");
 			let i = h();
 			l += 1;
 			try {
-				if (ce(e)) return await ie(e, n, r);
+				if (de(e)) return await ae(e, n, r);
 				switch (e) {
 					case "settings": return await y(i, "openPreferences", "window.openPreferences"), !0;
 					case "customize":
-						if (!R(i.gCustomizeMode)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gCustomizeMode.enter");
+						if (!L(i.gCustomizeMode)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "window.gCustomizeMode.enter");
 						return await y(i.gCustomizeMode, "enter", "window.gCustomizeMode.enter"), !0;
 					case "native-toolbar": {
 						v();
-						let e = H(i, "back-button");
-						if (!R(e) || !z(e.focus)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "document.back-button.focus");
+						let e = V(i, "back-button");
+						if (!L(e) || !R(e.focus)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-action", "document.back-button.focus");
 						try {
 							Reflect.apply(e.focus, e, [Object.freeze({ preventScroll: !0 })]);
 						} catch (e) {
-							throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", "document.back-button.focus", e);
+							throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED", "firefox-browser-tools-action", "document.back-button.focus", e);
 						}
 						return !0;
 					}
 				}
-				throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_INVALID", "firefox-browser-tools-action", "browser-tools.action");
+				throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_INVALID", "firefox-browser-tools-action", "browser-tools.action");
 			} finally {
 				--l;
 			}
 		},
 		snapshot() {
-			return Te(Ce(h()));
+			return Oe(Ee(h()));
 		},
 		subscribe(e) {
-			if (h(), typeof e != "function") throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_LISTENER_INVALID", "firefox-browser-tools-subscribe", "browser-tools.subscribe");
+			if (h(), typeof e != "function") throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_LISTENER_INVALID", "firefox-browser-tools-subscribe", "browser-tools.subscribe");
 			p.add(e);
 			let n = !0;
 			return Object.freeze(() => n ? (n = !1, p.delete(e), !0) : !1);
@@ -1419,8 +1451,8 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 	try {
 		t.assertRequiredCapabilities(), g();
 		let e = h().document;
-		if (!_e(e)) throw W(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-capability", "document.addEventListener.removeEventListener");
-		f.push(t.subscribe(e, "popupshown", re, le), t.subscribe(e, "popuphidden", re, le));
+		if (!be(e)) throw U(t, "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING", "firefox-browser-tools-capability", "document.addEventListener.removeEventListener");
+		f.push(t.subscribe(e, "popupshown", ie, fe), t.subscribe(e, "popuphidden", ie, fe));
 	} catch (e) {
 		c = !0, s = null;
 		for (let e of f.reverse()) try {
@@ -1430,7 +1462,7 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 	}
 	return Object.freeze({
 		assertRequiredCapabilities: g,
-		browserTools: ae,
+		browserTools: oe,
 		dispose() {
 			if (c) return !1;
 			c = !0;
@@ -1438,9 +1470,9 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			u = null, p.clear();
 			for (let e of Array.from(m)) m.delete(e), e.resolve(!1);
 			if (e) {
-				for (let t of ue) {
-					let n = H(e, t);
-					if (B(n) && Ee(n)) try {
+				for (let t of pe) {
+					let n = V(e, t);
+					if (z(n) && ke(n)) try {
 						Reflect.apply(n.hidePopup, n, []);
 					} catch {}
 					w(t);
@@ -1463,12 +1495,12 @@ function ke({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 }
 //#endregion
 //#region src/app/edge-surfaces/contracts.ts
-var Ae = Object.freeze({
+var Ne = Object.freeze({
 	defaultProgrammaticRevealMs: 1200,
 	hideDelayMs: 300,
 	maximumProgrammaticRevealMs: 1e4,
 	windowLeaveHideDelayMs: 800
-}), je = Object.freeze({
+}), Pe = Object.freeze({
 	hideDelayMs: Object.freeze({
 		max: 5e3,
 		min: 100
@@ -1485,47 +1517,51 @@ var Ae = Object.freeze({
 		max: 5e3,
 		min: 100
 	})
-}), Me = Object.freeze({
-	hideDelayMs: Ae.hideDelayMs,
-	programmaticRevealMs: Ae.defaultProgrammaticRevealMs,
+}), Fe = Object.freeze({
+	hideDelayMs: Ne.hideDelayMs,
+	programmaticRevealMs: Ne.defaultProgrammaticRevealMs,
 	triggerThicknessCssPixels: 12,
-	windowLeaveHideDelayMs: Ae.windowLeaveHideDelayMs
-}), Ne = Object.freeze([
+	windowLeaveHideDelayMs: Ne.windowLeaveHideDelayMs
+}), Ie = Object.freeze([
 	"built-in",
 	"extension-action",
 	"fennevia",
 	"separator",
 	"spacer",
 	"spring"
-]), Pe = Object.freeze([
+]), Le = Object.freeze([
 	"top",
 	"left",
 	"right",
 	"bottom"
-]), Fe = Object.freeze([
+]), Re = Object.freeze([
 	"show-bookmarks",
 	"show-downloads",
 	"show-translate"
-]), Ie = Object.freeze([
+]), ze = Object.freeze([
 	"built-in",
 	"extension-action",
 	"fennevia",
 	"special"
-]), Le = Object.freeze([
+]), Be = Object.freeze([
 	"auto",
 	"light",
 	"dark"
-]), Re = Object.freeze([
+]), Ve = Object.freeze([
 	"compact",
 	"cozy",
 	"comfortable"
-]), ze = Object.freeze({
-	autoHideDelay: je.hideDelayMs,
+]), He = Object.freeze(["tabs-left", "tabs-right"]), Ue = Object.freeze([
+	"loading",
+	"downloads",
+	"off"
+]), We = Object.freeze({
+	autoHideDelay: Pe.hideDelayMs,
 	blur: Object.freeze({
 		max: 32,
 		min: 0
 	}),
-	edgeTriggerSize: je.triggerThicknessCssPixels,
+	edgeTriggerSize: Pe.triggerThicknessCssPixels,
 	fontSize: Object.freeze({
 		max: 14,
 		min: 11
@@ -1554,27 +1590,27 @@ var Ae = Object.freeze({
 		max: 100,
 		min: 50
 	}),
-	temporaryRevealDuration: je.programmaticRevealMs,
-	windowLeaveHideDelay: je.windowLeaveHideDelayMs
-}), Be = /^#[0-9A-Fa-f]{6}$/u, Ve = Object.freeze([
+	temporaryRevealDuration: Pe.programmaticRevealMs,
+	windowLeaveHideDelay: Pe.windowLeaveHideDelayMs
+}), Ge = /^#[0-9A-Fa-f]{6}$/u, Ke = Object.freeze([
 	"accent",
 	"border",
 	"chromeBackground",
 	"surface",
 	"text"
-]), He = /^[a-z][a-z0-9-]{0,63}$/u;
-new Set(Ne);
-var Ue = new Set(Pe), We = new Set(Fe);
+]), qe = /^[a-z][a-z0-9-]{0,63}$/u;
 new Set(Ie);
-var Ge = new Set(Le), Ke = new Set(Re), qe = Object.freeze([
+var Je = new Set(Le), Ye = new Set(Re);
+new Set(ze);
+var Xe = new Set(Be), Ze = new Set(Ve), Qe = new Set(He), $e = new Set(Ue), et = Object.freeze([
 	"separator",
 	"spacer",
 	"spring"
 ]);
-new Set(qe);
+new Set(et);
 //#endregion
 //#region src/app/toolbar-widgets/errors.ts
-var Je = (e) => {
+var tt = (e) => {
 	let t = Error(e);
 	return t.name = "FenneviaToolbarWidgetsStateError", Object.defineProperties(t, {
 		fenneviaCode: {
@@ -1589,27 +1625,65 @@ var Je = (e) => {
 };
 //#endregion
 //#region src/app/toolbar-widgets/validation.ts
-function Ye(e) {
-	return typeof e == "string" && Ue.has(e);
+function nt(e) {
+	return typeof e == "string" && Je.has(e);
 }
-function Xe(e) {
-	return typeof e == "string" && We.has(e);
+function rt(e) {
+	return typeof e == "string" && Ye.has(e);
 }
-function Ze(e) {
-	return typeof e == "string" && Ge.has(e);
+function it(e) {
+	return typeof e == "string" && Xe.has(e);
 }
-function Qe(e) {
-	return typeof e == "string" && Ke.has(e);
+function at(e) {
+	return typeof e == "string" && Ze.has(e);
 }
-function $e() {
+function ot(e) {
+	return typeof e == "string" && Qe.has(e);
+}
+function st(e) {
+	return typeof e == "string" && $e.has(e);
+}
+function ct() {
+	return Object.freeze({
+		bottomDownloadsEnabled: !0,
+		bottomProgressLight: "downloads",
+		sidePanelLayout: "tabs-left",
+		topProgressLight: "loading"
+	});
+}
+function lt(e) {
+	if (!e || typeof e != "object" || typeof e.bottomDownloadsEnabled != "boolean" || !st(e.bottomProgressLight) || !ot(e.sidePanelLayout) || !st(e.topProgressLight)) throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID");
+	return Object.freeze({
+		bottomDownloadsEnabled: e.bottomDownloadsEnabled,
+		bottomProgressLight: e.bottomProgressLight,
+		sidePanelLayout: e.sidePanelLayout,
+		topProgressLight: e.topProgressLight
+	});
+}
+function ut(e) {
+	if (!e || typeof e != "object") throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID");
+	let t = Object.keys(e), n = lt({
+		...ct(),
+		...e
+	});
+	if (t.length === 0 || t.some((e) => !Object.hasOwn(n, e))) throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID");
+	let r = {};
+	for (let i of t) {
+		let t = i;
+		if (e[t] !== n[t]) throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID");
+		Object.assign(r, { [t]: n[t] });
+	}
+	return Object.freeze(r);
+}
+function dt() {
 	return Object.freeze({
 		accent: "",
-		autoHideDelay: Me.hideDelayMs,
+		autoHideDelay: Fe.hideDelayMs,
 		blur: 18,
 		border: "",
 		chromeBackground: "",
 		density: "cozy",
-		edgeTriggerSize: Me.triggerThicknessCssPixels,
+		edgeTriggerSize: Fe.triggerThicknessCssPixels,
 		fontSize: 12,
 		motion: 180,
 		radius: 4,
@@ -1618,24 +1692,24 @@ function $e() {
 		shortcutHintDuration: 600,
 		surface: "",
 		surfaceOpacity: 94,
-		temporaryRevealDuration: Me.programmaticRevealMs,
+		temporaryRevealDuration: Fe.programmaticRevealMs,
 		text: "",
 		theme: "auto",
-		windowLeaveHideDelay: Me.windowLeaveHideDelayMs
+		windowLeaveHideDelay: Fe.windowLeaveHideDelayMs
 	});
 }
-var et = (e, t) => typeof e == "number" && Number.isSafeInteger(e) && e >= t.min && e <= t.max, tt = new Set(Ve);
-function nt(e) {
-	return typeof e == "string" && tt.has(e);
+var ft = (e, t) => typeof e == "number" && Number.isSafeInteger(e) && e >= t.min && e <= t.max, pt = new Set(Ke);
+function mt(e) {
+	return typeof e == "string" && pt.has(e);
 }
-function rt(e) {
-	return typeof e == "string" ? e === "" ? "" : Be.test(e) ? e.toLowerCase() : null : null;
+function ht(e) {
+	return typeof e == "string" ? e === "" ? "" : Ge.test(e) ? e.toLowerCase() : null : null;
 }
-var it = (e) => rt(e);
-function at(e) {
-	if (!e || typeof e != "object") throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
-	let t = it(e.accent), n = it(e.border), r = it(e.chromeBackground), i = it(e.surface), a = it(e.text);
-	if (t === null || n === null || r === null || i === null || a === null || !et(e.autoHideDelay, ze.autoHideDelay) || !et(e.blur, ze.blur) || !Qe(e.density) || !et(e.edgeTriggerSize, ze.edgeTriggerSize) || !et(e.fontSize, ze.fontSize) || !et(e.motion, ze.motion) || !et(e.radius, ze.radius) || !et(e.saturation, ze.saturation) || !et(e.shadow, ze.shadow) || !et(e.shortcutHintDuration, ze.shortcutHintDuration) || !et(e.surfaceOpacity, ze.surfaceOpacity) || !et(e.temporaryRevealDuration, ze.temporaryRevealDuration) || !Ze(e.theme) || !et(e.windowLeaveHideDelay, ze.windowLeaveHideDelay)) throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
+var gt = (e) => ht(e);
+function _t(e) {
+	if (!e || typeof e != "object") throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
+	let t = gt(e.accent), n = gt(e.border), r = gt(e.chromeBackground), i = gt(e.surface), a = gt(e.text);
+	if (t === null || n === null || r === null || i === null || a === null || !ft(e.autoHideDelay, We.autoHideDelay) || !ft(e.blur, We.blur) || !at(e.density) || !ft(e.edgeTriggerSize, We.edgeTriggerSize) || !ft(e.fontSize, We.fontSize) || !ft(e.motion, We.motion) || !ft(e.radius, We.radius) || !ft(e.saturation, We.saturation) || !ft(e.shadow, We.shadow) || !ft(e.shortcutHintDuration, We.shortcutHintDuration) || !ft(e.surfaceOpacity, We.surfaceOpacity) || !ft(e.temporaryRevealDuration, We.temporaryRevealDuration) || !it(e.theme) || !ft(e.windowLeaveHideDelay, We.windowLeaveHideDelay)) throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
 	return Object.freeze({
 		accent: t,
 		autoHideDelay: e.autoHideDelay,
@@ -1658,23 +1732,23 @@ function at(e) {
 		windowLeaveHideDelay: e.windowLeaveHideDelay
 	});
 }
-function ot(e) {
-	if (!e || typeof e != "object") throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
+function vt(e) {
+	if (!e || typeof e != "object") throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
 	let t = Object.keys(e), n = {};
 	for (let r of t) {
-		if (nt(r)) {
-			let t = it(e[r]);
-			if (t === null) throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
+		if (mt(r)) {
+			let t = gt(e[r]);
+			if (t === null) throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
 			Object.assign(n, { [r]: t });
 			continue;
 		}
 		Object.assign(n, { [r]: e[r] });
 	}
-	let r = at({
-		...$e(),
+	let r = _t({
+		...dt(),
 		...n
 	});
-	if (t.length === 0 || t.some((e) => !(e in r)) || t.some((e) => n[e] !== r[e])) throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
+	if (t.length === 0 || t.some((e) => !Object.hasOwn(r, e)) || t.some((e) => n[e] !== r[e])) throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID");
 	let i = {};
 	for (let e of t) {
 		let t = e;
@@ -1682,7 +1756,7 @@ function ot(e) {
 	}
 	return Object.freeze(i);
 }
-function st() {
+function yt() {
 	return Object.freeze({
 		bottom: Object.freeze([]),
 		left: Object.freeze([]),
@@ -1690,22 +1764,24 @@ function st() {
 		top: Object.freeze([])
 	});
 }
-function ct() {
+function bt() {
 	return Object.freeze({
 		available: !1,
 		canEdit: !1,
 		layoutCustomized: !1,
 		palette: Object.freeze([]),
-		style: $e(),
-		zones: st()
+		panels: ct(),
+		panelsCustomized: !1,
+		style: dt(),
+		zones: yt()
 	});
 }
-var lt = (e) => typeof e == "number" && Number.isSafeInteger(e) && e >= 0 && e <= 48, ut = (e) => typeof e == "number" && Number.isSafeInteger(e) && e >= 0;
-function dt(e) {
-	if (!e || typeof e != "object") throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
+var xt = (e) => typeof e == "number" && Number.isSafeInteger(e) && e >= 0 && e <= 48, St = (e) => typeof e == "number" && Number.isSafeInteger(e) && e >= 0;
+function Ct(e) {
+	if (!e || typeof e != "object") throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
 	switch (e.type) {
 		case "add":
-			if (typeof e.token != "string" || !He.test(e.token) || !Ye(e.zone) || !lt(e.index) || !ut(e.revision)) throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
+			if (typeof e.token != "string" || !qe.test(e.token) || !nt(e.zone) || !xt(e.index) || !St(e.revision)) throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
 			return Object.freeze({
 				index: e.index,
 				revision: e.revision,
@@ -1714,7 +1790,7 @@ function dt(e) {
 				zone: e.zone
 			});
 		case "move":
-			if (!Ye(e.fromZone) || !Ye(e.toZone) || !lt(e.fromIndex) || !lt(e.toIndex) || !ut(e.revision)) throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
+			if (!nt(e.fromZone) || !nt(e.toZone) || !xt(e.fromIndex) || !xt(e.toIndex) || !St(e.revision)) throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
 			return Object.freeze({
 				fromIndex: e.fromIndex,
 				fromZone: e.fromZone,
@@ -1724,7 +1800,7 @@ function dt(e) {
 				type: "move"
 			});
 		case "remove":
-			if (!Ye(e.zone) || !lt(e.index) || !ut(e.revision)) throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
+			if (!nt(e.zone) || !xt(e.index) || !St(e.revision)) throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
 			return Object.freeze({
 				index: e.index,
 				revision: e.revision,
@@ -1732,32 +1808,37 @@ function dt(e) {
 				zone: e.zone
 			});
 		case "reset-layout":
-			if (!ut(e.revision)) throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
+			if (!St(e.revision)) throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
 			return Object.freeze({
 				revision: e.revision,
 				type: "reset-layout"
 			});
 		case "set-style": return Object.freeze({
-			style: ot(e.style),
+			style: vt(e.style),
 			type: "set-style"
 		});
 		case "reset-style": return Object.freeze({ type: "reset-style" });
-		default: throw Je("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
+		case "set-panels": return Object.freeze({
+			panels: ut(e.panels),
+			type: "set-panels"
+		});
+		case "reset-panels": return Object.freeze({ type: "reset-panels" });
+		default: throw tt("FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID");
 	}
 }
 //#endregion
 //#region src/firefox/customize-model.ts
-var ft = Object.freeze([
+var wt = Object.freeze([
 	"separator",
 	"spacer",
 	"spring"
-]), pt = new Set(ft), mt = Object.freeze({
+]), Tt = new Set(wt), Et = Object.freeze({
 	adoptedMaxEntries: 64,
 	serializedMaxLength: 16384,
 	widgetIdMaxLength: 128,
 	zoneMaxEntries: 48
-}), ht = /^[A-Za-z0-9_.-]{1,128}$/u;
-function gt(e) {
+}), Dt = /^[A-Za-z0-9_.-]{1,128}$/u;
+function Ot(e) {
 	let t = Error(e);
 	return t.name = "FenneviaCustomizeModelError", Object.defineProperties(t, {
 		fenneviaCode: {
@@ -1770,50 +1851,50 @@ function gt(e) {
 		}
 	}), t;
 }
-function _t(e) {
-	return typeof e == "string" && pt.has(e);
+function kt(e) {
+	return typeof e == "string" && Tt.has(e);
 }
-function vt(e) {
-	return typeof e == "string" && ht.test(e);
+function At(e) {
+	return typeof e == "string" && Dt.test(e);
 }
-function yt(e) {
-	if (!e || typeof e != "object") throw gt("FENNEVIA_CUSTOMIZE_MODEL_ENTRY_INVALID");
+function jt(e) {
+	if (!e || typeof e != "object") throw Ot("FENNEVIA_CUSTOMIZE_MODEL_ENTRY_INVALID");
 	let t = e;
-	if (t.type === "widget" && vt(t.id)) return Object.freeze({
+	if (t.type === "widget" && At(t.id)) return Object.freeze({
 		id: t.id,
 		type: "widget"
 	});
-	if (t.type === "special" && _t(t.kind)) return Object.freeze({
+	if (t.type === "special" && kt(t.kind)) return Object.freeze({
 		kind: t.kind,
 		type: "special"
 	});
-	if (t.type === "fennevia" && Xe(t.id)) return Object.freeze({
+	if (t.type === "fennevia" && rt(t.id)) return Object.freeze({
 		id: t.id,
 		type: "fennevia"
 	});
-	throw gt("FENNEVIA_CUSTOMIZE_MODEL_ENTRY_INVALID");
+	throw Ot("FENNEVIA_CUSTOMIZE_MODEL_ENTRY_INVALID");
 }
-function bt(e) {
-	if (!e || typeof e != "object") throw gt("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_INVALID");
+function Mt(e) {
+	if (!e || typeof e != "object") throw Ot("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_INVALID");
 	let t = e, n = [];
-	for (let e of Pe) {
+	for (let e of Le) {
 		let r = t[e];
-		if (!Array.isArray(r) || r.length > mt.zoneMaxEntries) throw gt("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_INVALID");
-		n.push([e, Object.freeze(r.map(yt))]);
+		if (!Array.isArray(r) || r.length > Et.zoneMaxEntries) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_INVALID");
+		n.push([e, Object.freeze(r.map(jt))]);
 	}
 	return Object.freeze(Object.fromEntries(n));
 }
-function xt(e) {
-	if (!e || typeof e != "object") throw gt("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_INVALID");
+function Nt(e) {
+	if (!e || typeof e != "object") throw Ot("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_INVALID");
 	let t = e;
-	if (t.version !== 1 || !Array.isArray(t.adopted) || t.adopted.length > mt.adoptedMaxEntries || t.adopted.some((e) => !vt(e))) throw gt("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_INVALID");
+	if (t.version !== 1 || !Array.isArray(t.adopted) || t.adopted.length > Et.adoptedMaxEntries || t.adopted.some((e) => !At(e))) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_INVALID");
 	return Object.freeze({
 		adopted: Object.freeze([...t.adopted]),
 		version: 1,
-		zones: bt(t.zones)
+		zones: Mt(t.zones)
 	});
 }
-function St() {
+function Pt() {
 	return Object.freeze({
 		adopted: Object.freeze([]),
 		version: 1,
@@ -1825,35 +1906,35 @@ function St() {
 		})
 	});
 }
-function Ct(e, t = []) {
-	return xt({
+function Ft(e, t = []) {
+	return Nt({
 		adopted: t,
 		version: 1,
 		zones: {
-			...St().zones,
+			...Pt().zones,
 			...e
 		}
 	});
 }
-function wt(e) {
-	if (typeof e != "string" || e === "" || e.length > mt.serializedMaxLength) return null;
+function It(e) {
+	if (typeof e != "string" || e === "" || e.length > Et.serializedMaxLength) return null;
 	try {
-		return xt(JSON.parse(e));
+		return Nt(JSON.parse(e));
 	} catch {
 		return null;
 	}
 }
-function Tt(e) {
-	let t = JSON.stringify(xt(e));
-	if (t.length > mt.serializedMaxLength) throw gt("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_TOO_LARGE");
+function Lt(e) {
+	let t = JSON.stringify(Nt(e));
+	if (t.length > Et.serializedMaxLength) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_TOO_LARGE");
 	return t;
 }
-function Et(e) {
-	if (typeof e != "string" || e === "" || e.length > mt.serializedMaxLength) return null;
+function Rt(e) {
+	if (typeof e != "string" || e === "" || e.length > Et.serializedMaxLength) return null;
 	try {
 		let t = JSON.parse(e);
-		return !t || typeof t != "object" || t.version !== 1 ? null : at({
-			...$e(),
+		return !t || typeof t != "object" || t.version !== 1 ? null : _t({
+			...dt(),
 			...t,
 			version: void 0
 		});
@@ -1861,15 +1942,41 @@ function Et(e) {
 		return null;
 	}
 }
-function Dt(e) {
+function zt(e) {
 	return JSON.stringify({
-		...at(e),
+		..._t(e),
 		version: 1
 	});
 }
-function Ot(e, t) {
+var Bt = new Set([
+	"bottomDownloadsEnabled",
+	"bottomProgressLight",
+	"sidePanelLayout",
+	"topProgressLight",
+	"version"
+]);
+function Vt(e) {
+	if (typeof e != "string" || e === "" || e.length > Et.serializedMaxLength) return null;
+	try {
+		let t = JSON.parse(e);
+		return !t || typeof t != "object" || t.version !== 1 || Object.keys(t).some((e) => !Bt.has(e)) ? null : lt({
+			...ct(),
+			...t,
+			version: void 0
+		});
+	} catch {
+		return null;
+	}
+}
+function Ht(e) {
+	return JSON.stringify({
+		...lt(e),
+		version: 1
+	});
+}
+function Ut(e, t) {
 	if (t.type === "special") return null;
-	for (let n of Pe) {
+	for (let n of Le) {
 		let r = e.zones[n];
 		for (let [e, i] of r.entries()) if (i.type === t.type && i.id === t.id) return Object.freeze({
 			index: e,
@@ -1878,13 +1985,13 @@ function Ot(e, t) {
 	}
 	return null;
 }
-var kt = (e) => {
-	if (!Ye(e)) throw gt("FENNEVIA_CUSTOMIZE_MODEL_ZONE_INVALID");
+var Wt = (e) => {
+	if (!nt(e)) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_ZONE_INVALID");
 	return e;
-}, At = (e, t) => {
-	if (!Number.isSafeInteger(e) || e < 0) throw gt("FENNEVIA_CUSTOMIZE_MODEL_INDEX_INVALID");
+}, Gt = (e, t) => {
+	if (!Number.isSafeInteger(e) || e < 0) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_INDEX_INVALID");
 	return Math.min(e, t);
-}, jt = (e, t, n) => Object.freeze({
+}, Kt = (e, t, n) => Object.freeze({
 	adopted: e.adopted,
 	version: 1,
 	zones: Object.freeze({
@@ -1892,70 +1999,70 @@ var kt = (e) => {
 		[t]: Object.freeze([...n])
 	})
 });
-function Mt(e, t, n, r) {
-	let i = yt(t), a = kt(n), o = Ot(e, i), s = e;
-	o && (s = Nt(e, o.zone, o.index));
+function qt(e, t, n, r) {
+	let i = jt(t), a = Wt(n), o = Ut(e, i), s = e;
+	o && (s = Jt(e, o.zone, o.index));
 	let c = [...s.zones[a]];
-	if (c.length >= mt.zoneMaxEntries) throw gt("FENNEVIA_CUSTOMIZE_MODEL_ZONE_FULL");
-	return c.splice(At(r, c.length), 0, i), jt(s, a, c);
+	if (c.length >= Et.zoneMaxEntries) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_ZONE_FULL");
+	return c.splice(Gt(r, c.length), 0, i), Kt(s, a, c);
 }
-function Nt(e, t, n) {
-	let r = kt(t), i = [...e.zones[r]];
-	if (!Number.isSafeInteger(n) || n < 0 || n >= i.length) throw gt("FENNEVIA_CUSTOMIZE_MODEL_INDEX_INVALID");
-	return i.splice(n, 1), jt(e, r, i);
+function Jt(e, t, n) {
+	let r = Wt(t), i = [...e.zones[r]];
+	if (!Number.isSafeInteger(n) || n < 0 || n >= i.length) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_INDEX_INVALID");
+	return i.splice(n, 1), Kt(e, r, i);
 }
-function Pt(e, t, n) {
-	let r = kt(t), i = e.zones[r];
-	if (!Number.isSafeInteger(n) || n < 0 || n >= i.length) throw gt("FENNEVIA_CUSTOMIZE_MODEL_INDEX_INVALID");
+function Yt(e, t, n) {
+	let r = Wt(t), i = e.zones[r];
+	if (!Number.isSafeInteger(n) || n < 0 || n >= i.length) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_INDEX_INVALID");
 	return i[n];
 }
-function Ft(e, t, n, r, i) {
-	let a = Pt(e, t, n), o = Nt(e, t, n), s = [...o.zones[kt(r)]];
-	if (s.length >= mt.zoneMaxEntries) throw gt("FENNEVIA_CUSTOMIZE_MODEL_ZONE_FULL");
-	return s.splice(At(i, s.length), 0, a), jt(o, r, s);
+function Xt(e, t, n, r, i) {
+	let a = Yt(e, t, n), o = Jt(e, t, n), s = [...o.zones[Wt(r)]];
+	if (s.length >= Et.zoneMaxEntries) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_ZONE_FULL");
+	return s.splice(Gt(i, s.length), 0, a), Kt(o, r, s);
 }
-function It(e, t) {
-	if (!vt(t)) throw gt("FENNEVIA_CUSTOMIZE_MODEL_ENTRY_INVALID");
+function Zt(e, t) {
+	if (!At(t)) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_ENTRY_INVALID");
 	if (e.adopted.includes(t)) return e;
-	if (e.adopted.length >= mt.adoptedMaxEntries) throw gt("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_TOO_LARGE");
+	if (e.adopted.length >= Et.adoptedMaxEntries) throw Ot("FENNEVIA_CUSTOMIZE_MODEL_LAYOUT_TOO_LARGE");
 	return Object.freeze({
 		adopted: Object.freeze([...e.adopted, t]),
 		version: 1,
 		zones: e.zones
 	});
 }
-function Lt(e, t) {
+function Qt(e, t) {
 	return e.adopted.includes(t) ? Object.freeze({
 		adopted: Object.freeze(e.adopted.filter((e) => e !== t)),
 		version: 1,
 		zones: e.zones
 	}) : e;
 }
-function Rt(e, t) {
-	return Ot(e, {
+function $t(e, t) {
+	return Ut(e, {
 		id: t,
 		type: "widget"
 	}) !== null;
 }
 //#endregion
 //#region src/firefox/downloads/support.ts
-var zt = "resource://gre/modules/Downloads.sys.mjs", Bt = (e) => typeof e == "object" && !!e, Vt = (e) => typeof e == "function", Ht = (e) => {
+var en = "resource://gre/modules/Downloads.sys.mjs", tn = (e) => typeof e == "object" && !!e, nn = (e) => typeof e == "function", rn = (e) => {
 	let t = e.snapshot();
 	return Object.freeze({
 		buildId: t.buildId,
 		firefoxVersion: t.firefoxVersion,
 		windowKind: t.windowKind
 	});
-}, Ut = (e, t, n, r, i) => new g({
+}, an = (e, t, n, r, i) => new g({
 	cause: i,
 	code: t,
-	context: Ht(e),
+	context: rn(e),
 	phase: n,
 	symbol: r
-}), Wt = (e) => typeof e == "number" && Number.isFinite(e) && Number.isSafeInteger(e) && e >= 0, Gt = (e, t) => {
-	if (!Bt(t) || typeof t.stopped != "boolean" || typeof t.succeeded != "boolean" || typeof t.canceled != "boolean" || typeof t.hasPartialData != "boolean" || typeof t.hasProgress != "boolean" || !Number.isInteger(t.progress) || t.progress < 0 || t.progress > 100 || !Wt(t.currentBytes) || !Wt(t.totalBytes)) throw Ut(e, "FENNEVIA_FIREFOX_DOWNLOAD_RECORD_INVALID", "firefox-downloads-event", "Download");
+}), on = (e) => typeof e == "number" && Number.isFinite(e) && Number.isSafeInteger(e) && e >= 0, sn = (e, t) => {
+	if (!tn(t) || typeof t.stopped != "boolean" || typeof t.succeeded != "boolean" || typeof t.canceled != "boolean" || typeof t.hasPartialData != "boolean" || typeof t.hasProgress != "boolean" || !Number.isInteger(t.progress) || t.progress < 0 || t.progress > 100 || !on(t.currentBytes) || !on(t.totalBytes)) throw an(e, "FENNEVIA_FIREFOX_DOWNLOAD_RECORD_INVALID", "firefox-downloads-event", "Download");
 	return t;
-}, Kt = (e) => e.stopped ? e.succeeded ? "succeeded" : e.error ? "failed" : e.canceled ? e.hasPartialData ? "paused" : "canceled" : "queued" : "active", qt = (e) => e === "succeeded" || e === "failed" || e === "canceled", Jt = (e) => Math.min(e, 999), Yt = () => Object.freeze({
+}, cn = (e) => e.stopped ? e.succeeded ? "succeeded" : e.error ? "failed" : e.canceled ? e.hasPartialData ? "paused" : "canceled" : "queued" : "active", ln = (e) => e === "succeeded" || e === "failed" || e === "canceled", un = (e) => Math.min(e, 999), dn = () => Object.freeze({
 	activeCount: 0,
 	aggregatePercent: null,
 	canceledCount: 0,
@@ -1972,23 +2079,23 @@ var zt = "resource://gre/modules/Downloads.sys.mjs", Bt = (e) => typeof e == "ob
 });
 //#endregion
 //#region src/firefox/downloads/controller.ts
-function Xt({ boundary: e, moduleLoader: t, onError: n, window: r }) {
-	if (e.assertOwnsWindow(r), !Bt(r) || typeof t != "function" || typeof n != "function") throw Ut(e, "FENNEVIA_FIREFOX_DOWNLOADS_OPTIONS_INVALID", "firefox-downloads-create", "ChromeUtils.importESModule");
+function fn({ boundary: e, moduleLoader: t, onError: n, window: r }) {
+	if (e.assertOwnsWindow(r), !tn(r) || typeof t != "function" || typeof n != "function") throw an(e, "FENNEVIA_FIREFOX_DOWNLOADS_OPTIONS_INVALID", "firefox-downloads-create", "ChromeUtils.importESModule");
 	let i;
 	try {
-		i = t(zt);
+		i = t(en);
 	} catch (t) {
-		throw Ut(e, "FENNEVIA_FIREFOX_DOWNLOADS_MODULE_LOAD_FAILED", "firefox-downloads-module-load", "ChromeUtils.importESModule", t);
+		throw an(e, "FENNEVIA_FIREFOX_DOWNLOADS_MODULE_LOAD_FAILED", "firefox-downloads-module-load", "ChromeUtils.importESModule", t);
 	}
-	let a = Bt(i) ? i.Downloads : void 0, o = a, s = e.snapshot().windowKind === "private" ? "private" : "public", c = s === "private" ? o?.PRIVATE : o?.PUBLIC, l = Object.freeze([
+	let a = tn(i) ? i.Downloads : void 0, o = a, s = e.snapshot().windowKind === "private" ? "private" : "public", c = s === "private" ? o?.PRIVATE : o?.PUBLIC, l = Object.freeze([
 		Object.freeze({
-			isAvailable: Bt,
+			isAvailable: tn,
 			name: "firefox.downloads",
 			read: () => a,
 			symbol: "Downloads"
 		}),
 		Object.freeze({
-			isAvailable: Vt,
+			isAvailable: nn,
 			name: "firefox.downloads-get-list",
 			read: () => o?.getList,
 			symbol: "Downloads.getList"
@@ -1999,11 +2106,11 @@ function Xt({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			read: () => c,
 			symbol: s === "private" ? "Downloads.PRIVATE" : "Downloads.PUBLIC"
 		})
-	]), u = r, d = null, f = !1, p = null, m = !0, h = 0, g = !1, v = !1, y = 0, x = 0, S = !1, C = Yt(), w = "", T = new Set(), E = e.createHandleRegistry("download"), D = new Map(), O = new WeakSet(), k = [], A = () => {
-		if (f || !u) throw Ut(e, "FENNEVIA_FIREFOX_DOWNLOADS_DISPOSED", "firefox-downloads-access", "window");
+	]), u = r, d = null, f = !1, p = null, m = !0, h = 0, g = !1, v = !1, y = 0, x = 0, S = !1, C = dn(), w = "", T = new Set(), E = e.createHandleRegistry("download"), D = new Map(), O = new WeakSet(), k = [], A = () => {
+		if (f || !u) throw an(e, "FENNEVIA_FIREFOX_DOWNLOADS_DISPOSED", "firefox-downloads-access", "window");
 		if (p) throw p;
 		return e.assertOwnsWindow(u), u;
-	}, j = () => {
+	}, ee = () => {
 		let e = l.map((e) => {
 			let t = !1, n;
 			try {
@@ -2022,38 +2129,38 @@ function Xt({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			});
 		});
 		return d && e.push(Object.freeze({ snapshot: Object.freeze({
-			available: Vt(d.addView),
+			available: nn(d.addView),
 			name: "firefox.downloads-list-add-view",
 			requirement: "required",
 			symbol: "DownloadList.addView"
 		}) }), Object.freeze({ snapshot: Object.freeze({
-			available: Vt(d.removeView),
+			available: nn(d.removeView),
 			name: "firefox.downloads-list-remove-view",
 			requirement: "required",
 			symbol: "DownloadList.removeView"
 		}) })), Object.freeze(e);
-	}, M = () => {
+	}, j = () => {
 		A();
-		let t = j(), n = t.find((e) => !e.snapshot.available);
-		if (n) throw Ut(e, "FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING", "firefox-downloads-capability", n.snapshot.symbol, n.cause);
+		let t = ee(), n = t.find((e) => !e.snapshot.available);
+		if (n) throw an(e, "FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING", "firefox-downloads-capability", n.snapshot.symbol, n.cause);
 		return Object.freeze(t.map((e) => e.snapshot));
-	}, N = (t) => p || (p = _(t) ? t : Ut(e, "FENNEVIA_FIREFOX_DOWNLOADS_EVENT_FAILED", "firefox-downloads-event", "DownloadList.view", t), n(p), p), P = (e) => {
+	}, M = (t) => p || (p = _(t) ? t : an(e, "FENNEVIA_FIREFOX_DOWNLOADS_EVENT_FAILED", "firefox-downloads-event", "DownloadList.view", t), n(p), p), N = (e) => {
 		let t = D.get(e);
 		if (!t) return !1;
 		D.delete(e);
 		let n = k.indexOf(e);
 		return n !== -1 && k.splice(n, 1), E.release(t.id), !0;
-	}, ee = (e) => {
+	}, P = (e) => {
 		let t = k.indexOf(e);
 		for (t !== -1 && k.splice(t, 1), k.unshift(e); k.length > 3;) {
 			let e = k.pop();
-			e && P(e);
+			e && N(e);
 		}
 	}, F = (t) => {
-		let n = Gt(e, t), r = Kt(n);
-		if (m && (O.add(n), qt(r))) return;
+		let n = sn(e, t), r = cn(n);
+		if (m && (O.add(n), ln(r))) return;
 		let i = D.get(n);
-		if (!(!i && qt(r) && O.has(n))) {
+		if (!(!i && ln(r) && O.has(n))) {
 			if (i || (i = {
 				currentBytes: 0,
 				download: n,
@@ -2063,7 +2170,7 @@ function Xt({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 				progressPercent: null,
 				state: r,
 				totalBytes: 0
-			}, D.set(n, i)), i.currentBytes = n.currentBytes, i.hasProgress = n.hasProgress, i.progressPercent = r === "succeeded" ? 100 : n.hasProgress ? n.progress : null, i.state = r, i.totalBytes = n.totalBytes, qt(r)) ee(n);
+			}, D.set(n, i)), i.currentBytes = n.currentBytes, i.hasProgress = n.hasProgress, i.progressPercent = r === "succeeded" ? 100 : n.hasProgress ? n.progress : null, i.state = r, i.totalBytes = n.totalBytes, ln(r)) P(n);
 			else {
 				let e = k.indexOf(n);
 				e !== -1 && k.splice(e, 1);
@@ -2118,18 +2225,18 @@ function Xt({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			succeeded: e.succeeded.length
 		}), o = Object.values(a).some((e) => e > 999);
 		return Object.freeze({
-			activeCount: Jt(a.active),
+			activeCount: un(a.active),
 			aggregatePercent: i.percent,
-			canceledCount: Jt(a.canceled),
+			canceledCount: un(a.canceled),
 			countOverflow: o,
-			failedCount: Jt(a.failed),
+			failedCount: un(a.failed),
 			items: Object.freeze(r),
-			pausedCount: Jt(a.paused),
+			pausedCount: un(a.paused),
 			phase: v ? "ready" : "loading",
 			progressMode: i.mode,
-			queuedCount: Jt(a.queued),
+			queuedCount: un(a.queued),
 			revision: y + 1,
-			succeededCount: Jt(a.succeeded),
+			succeededCount: un(a.succeeded),
 			truncated: n.length > 6 || o
 		});
 	}, I = () => {
@@ -2150,16 +2257,16 @@ function Xt({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			for (let t of Array.from(T)) try {
 				t(C);
 			} catch (t) {
-				N(Ut(e, "FENNEVIA_FIREFOX_DOWNLOADS_SUBSCRIBER_FAILED", "firefox-downloads-notify", "downloads.subscribe", t));
+				M(an(e, "FENNEVIA_FIREFOX_DOWNLOADS_SUBSCRIBER_FAILED", "firefox-downloads-notify", "downloads.subscribe", t));
 				return;
 			}
 		}
-	}, L = Object.freeze({
+	}, re = Object.freeze({
 		onDownloadAdded(e) {
 			if (!(f || p)) try {
 				F(e), I();
 			} catch (e) {
-				N(e);
+				M(e);
 			}
 		},
 		onDownloadBatchEnded() {
@@ -2172,57 +2279,57 @@ function Xt({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			if (!(f || p)) try {
 				F(e), I();
 			} catch (e) {
-				N(e);
+				M(e);
 			}
 		},
 		onDownloadRemoved(t) {
 			if (!(f || p)) try {
-				let n = Gt(e, t);
-				P(n), I();
+				let n = sn(e, t);
+				N(n), I();
 			} catch (e) {
-				N(e);
+				M(e);
 			}
 		}
-	}), re = b(() => {
-		!S || !d || (S = !1, Reflect.apply(d.removeView, d, [L]));
+	}), ie = b(() => {
+		!S || !d || (S = !1, Reflect.apply(d.removeView, d, [re]));
 	});
-	e.assertRequiredCapabilities(), M();
-	let ie = (async () => {
+	e.assertRequiredCapabilities(), j();
+	let ae = (async () => {
 		try {
 			let t = await Reflect.apply(o.getList, o, [c]);
 			if (f) return !0;
-			if (!Bt(t) || !Vt(t.addView) || !Vt(t.removeView)) throw Ut(e, "FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING", "firefox-downloads-capability", !Bt(t) || !Vt(t.addView) ? "DownloadList.addView" : "DownloadList.removeView");
-			if (d = t, S = !0, Reflect.apply(d.addView, d, [L]), f) return re(), !0;
+			if (!tn(t) || !nn(t.addView) || !nn(t.removeView)) throw an(e, "FENNEVIA_FIREFOX_DOWNLOADS_CAPABILITY_MISSING", "firefox-downloads-capability", !tn(t) || !nn(t.addView) ? "DownloadList.addView" : "DownloadList.removeView");
+			if (d = t, S = !0, Reflect.apply(d.addView, d, [re]), f) return ie(), !0;
 			if (m = !1, h = 0, p) throw p;
 			return v = !0, I(), !0;
 		} catch (t) {
 			if (f) return !0;
-			throw p ?? N(_(t) ? t : Ut(e, "FENNEVIA_FIREFOX_DOWNLOADS_INITIALIZATION_FAILED", "firefox-downloads-initialize", "Downloads.getList", t));
+			throw p ?? M(_(t) ? t : an(e, "FENNEVIA_FIREFOX_DOWNLOADS_INITIALIZATION_FAILED", "firefox-downloads-initialize", "Downloads.getList", t));
 		}
 	})();
-	ie.catch(() => void 0);
-	let ae = Object.freeze({
+	ae.catch(() => void 0);
+	let oe = Object.freeze({
 		ready() {
-			return A(), ie;
+			return A(), ae;
 		},
 		snapshot() {
 			return A(), C;
 		},
 		subscribe(t) {
-			if (A(), typeof t != "function") throw Ut(e, "FENNEVIA_FIREFOX_DOWNLOADS_LISTENER_INVALID", "firefox-downloads-subscribe", "downloads.subscribe");
+			if (A(), typeof t != "function") throw an(e, "FENNEVIA_FIREFOX_DOWNLOADS_LISTENER_INVALID", "firefox-downloads-subscribe", "downloads.subscribe");
 			return T.add(t), b(() => {
 				T.delete(t);
 			});
 		}
 	});
 	return Object.freeze({
-		assertRequiredCapabilities: M,
+		assertRequiredCapabilities: j,
 		dispose() {
 			if (f) return !1;
 			f = !0, u = null, m = !1, h = 0, g = !1;
 			let t;
 			try {
-				re();
+				ie();
 			} catch (e) {
 				t = e;
 			}
@@ -2232,12 +2339,12 @@ function Xt({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			} catch (e) {
 				t ??= e;
 			}
-			if (d = null, t !== void 0) throw Ut(e, "FENNEVIA_FIREFOX_DOWNLOADS_DISPOSE_FAILED", "firefox-downloads-dispose", "DownloadList.removeView", t);
+			if (d = null, t !== void 0) throw an(e, "FENNEVIA_FIREFOX_DOWNLOADS_DISPOSE_FAILED", "firefox-downloads-dispose", "DownloadList.removeView", t);
 			return !0;
 		},
-		downloads: ae,
+		downloads: oe,
 		ready() {
-			return A(), ie;
+			return A(), ae;
 		},
 		snapshot() {
 			return Object.freeze({
@@ -2255,7 +2362,7 @@ function Xt({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 }
 //#endregion
 //#region src/app/locale-state.ts
-var Zt = Object.freeze(["en", "zh-Hant"]), Qt = "en", $t = new Set(Zt), en = (e) => {
+var pn = Object.freeze(["en", "zh-Hant"]), mn = "en", hn = new Set(pn), gn = (e) => {
 	let t = Error(e);
 	return t.name = "FenneviaLocaleStateError", Object.defineProperties(t, {
 		fenneviaCode: {
@@ -2267,19 +2374,19 @@ var Zt = Object.freeze(["en", "zh-Hant"]), Qt = "en", $t = new Set(Zt), en = (e)
 			value: "locale-state"
 		}
 	}), t;
-}, tn = (e) => e.trim().replaceAll("_", "-").toLowerCase(), nn = (e, t) => e === t || e.startsWith(`${t}-`);
-function rn(e) {
-	return typeof e == "string" && $t.has(e);
+}, _n = (e) => e.trim().replaceAll("_", "-").toLowerCase(), vn = (e, t) => e === t || e.startsWith(`${t}-`);
+function yn(e) {
+	return typeof e == "string" && hn.has(e);
 }
-function an(e) {
-	return typeof e != "string" || e.trim().length === 0 ? "en" : nn(tn(e), "zh") ? "zh-Hant" : "en";
+function bn(e) {
+	return typeof e != "string" || e.trim().length === 0 ? "en" : vn(_n(e), "zh") ? "zh-Hant" : "en";
 }
-function on(e) {
-	if (!e || typeof e != "object" || !rn(e.id)) throw en("FENNEVIA_LOCALE_STATE_SNAPSHOT_INVALID");
+function xn(e) {
+	if (!e || typeof e != "object" || !yn(e.id)) throw gn("FENNEVIA_LOCALE_STATE_SNAPSHOT_INVALID");
 	return Object.freeze({ id: e.id });
 }
-function sn(e = "en") {
-	if (!rn(e)) throw en("FENNEVIA_LOCALE_STATE_SNAPSHOT_INVALID");
+function Sn(e = "en") {
+	if (!yn(e)) throw gn("FENNEVIA_LOCALE_STATE_SNAPSHOT_INVALID");
 	let t = Object.freeze({ id: e });
 	return Object.freeze({
 		snapshot() {
@@ -2292,7 +2399,7 @@ function sn(e = "en") {
 }
 //#endregion
 //#region src/app/i18n.ts
-var cn = Object.freeze({
+var Cn = Object.freeze({
 	en: {
 		"address.close": "Close",
 		"address.closeAria": "Close address and search",
@@ -2398,6 +2505,8 @@ var cn = Object.freeze({
 		"customize.addWidgetAria": "Add {label} to the {zone} panel",
 		"customize.autoHideDelay": "Hide after entering page",
 		"customize.autoHideDelayHelp": "How long a panel remains visible after the pointer moves into page content or another area inside Firefox.",
+		"customize.bottomDownloadsPanel": "Enable bottom Downloads panel",
+		"customize.bottomProgressLight": "Bottom light",
 		"customize.closeAria": "Close customize panel",
 		"customize.colorAccent": "Accent color",
 		"customize.colorBorder": "Border color",
@@ -2436,11 +2545,20 @@ var cn = Object.freeze({
 		"customize.layoutCustomized": "Using your Fennevia layout. Drag widgets onto the four edge panels. Drop them here to remove. Reset to follow the Firefox toolbar again.",
 		"customize.paletteAria": "Available widgets",
 		"customize.panelAria": "Customize Fennevia shell",
+		"customize.panels": "Panels and progress lights",
+		"customize.panelsHelp": "Swap the two side roles, disable the bottom Downloads panel, or choose what each gutter light reports.",
+		"customize.progressLight.downloads": "Downloads",
+		"customize.progressLight.loading": "Page loading",
+		"customize.progressLight.off": "Off",
 		"customize.resetLayout": "Reset layout",
+		"customize.resetPanels": "Reset panels and lights",
 		"customize.resetStyle": "Reset appearance and interaction",
 		"customize.shortcutHintDuration": "Shortcut tips",
 		"customize.shortcutHintDurationHelp": "How long keyboard shortcut tips stay visible when an edge panel opens. Set to 0 to hide them entirely.",
 		"customize.shortcutHintOff": "Off",
+		"customize.sidePanels": "Side panel roles",
+		"customize.sidePanels.tabsLeft": "Tabs left · bookmarks right",
+		"customize.sidePanels.tabsRight": "Bookmarks left · tabs right",
 		"customize.style": "Appearance",
 		"customize.styleBlur": "Glass blur",
 		"customize.styleFontSize": "Font size",
@@ -2451,6 +2569,7 @@ var cn = Object.freeze({
 		"customize.styleShadow": "Shadow intensity",
 		"customize.temporaryRevealDuration": "Temporary reveal",
 		"customize.temporaryRevealDurationHelp": "How long actions such as Show bookmarks reveal a panel when it is not otherwise held.",
+		"customize.topProgressLight": "Top light",
 		"customize.theme": "Theme",
 		"customize.theme.auto": "Auto",
 		"customize.theme.dark": "Dark",
@@ -2575,8 +2694,10 @@ var cn = Object.freeze({
 		"protection.unavailable.label": "Enhanced Tracking Protection is not available for this page",
 		"trust.summary": "{connection} · {protection}",
 		"surface.bottom": "Downloads",
+		"surface.bookmarks": "Bookmarks",
 		"surface.left": "Tabs and address",
 		"surface.right": "Bookmarks",
+		"surface.tabs": "Tabs and address",
 		"surface.top": "Browser controls",
 		"tab.allowMedia": "Allow media for",
 		"tab.attention": "Attention",
@@ -2751,6 +2872,8 @@ var cn = Object.freeze({
 		"customize.addWidgetAria": "將 {label} 加到{zone}面板",
 		"customize.autoHideDelay": "移入網頁後隱藏",
 		"customize.autoHideDelayHelp": "指標從面板移入網頁內容或 Firefox 視窗內其他區域後，面板繼續顯示的時間。",
+		"customize.bottomDownloadsPanel": "啟用底部下載面板",
+		"customize.bottomProgressLight": "底部光條",
 		"customize.closeAria": "關閉自訂面板",
 		"customize.colorAccent": "強調色",
 		"customize.colorBorder": "邊框顏色",
@@ -2789,11 +2912,20 @@ var cn = Object.freeze({
 		"customize.layoutCustomized": "正在使用你的 Fennevia 版面。將元件拖到四個邊緣面板。拖到這裡可移除。重設後會再次跟隨 Firefox 工具列。",
 		"customize.paletteAria": "可用元件",
 		"customize.panelAria": "自訂 Fennevia 介面",
+		"customize.panels": "面板與進度光條",
+		"customize.panelsHelp": "互換左右面板的用途、關閉底部下載面板，或指定上下光條要顯示的狀態。",
+		"customize.progressLight.downloads": "下載進度",
+		"customize.progressLight.loading": "網頁載入",
+		"customize.progressLight.off": "關閉",
 		"customize.resetLayout": "重設版面",
+		"customize.resetPanels": "重設面板與光條",
 		"customize.resetStyle": "重設外觀與互動",
 		"customize.shortcutHintDuration": "快速鍵提示",
 		"customize.shortcutHintDurationHelp": "邊緣面板開啟時，鍵盤快速鍵提示要顯示多久。設為 0 可完全隱藏提示。",
 		"customize.shortcutHintOff": "不顯示",
+		"customize.sidePanels": "左右面板用途",
+		"customize.sidePanels.tabsLeft": "左側分頁 · 右側書籤",
+		"customize.sidePanels.tabsRight": "左側書籤 · 右側分頁",
 		"customize.style": "外觀",
 		"customize.styleBlur": "玻璃模糊",
 		"customize.styleFontSize": "字型大小",
@@ -2804,6 +2936,7 @@ var cn = Object.freeze({
 		"customize.styleShadow": "陰影強度",
 		"customize.temporaryRevealDuration": "暫時顯示",
 		"customize.temporaryRevealDurationHelp": "「顯示書籤」等動作在沒有其他保持狀態時，讓面板顯示多久。",
+		"customize.topProgressLight": "頂部光條",
 		"customize.theme": "主題",
 		"customize.theme.auto": "自動",
 		"customize.theme.dark": "深色",
@@ -2928,8 +3061,10 @@ var cn = Object.freeze({
 		"protection.unavailable.label": "此頁面無法使用加強型追蹤保護",
 		"trust.summary": "{connection} · {protection}",
 		"surface.bottom": "下載",
+		"surface.bookmarks": "書籤",
 		"surface.left": "分頁與網址",
 		"surface.right": "書籤",
+		"surface.tabs": "分頁與網址",
 		"surface.top": "瀏覽器控制項",
 		"tab.allowMedia": "允許媒體：",
 		"tab.attention": "需要注意",
@@ -3000,54 +3135,54 @@ var cn = Object.freeze({
 		"window.restoreAria": "還原視窗"
 	}
 });
-function ln(e, t) {
+function wn(e, t) {
 	return t ? e.replace(/\{([A-Za-z][A-Za-z0-9]*)\}/gu, (e, n) => {
 		let r = t[n];
 		return r === void 0 ? e : String(r);
 	}) : e;
 }
-function un(e, t, n) {
-	return ln((cn[e] ?? cn.en)[t] ?? cn.en[t] ?? t, n);
+function Tn(e, t, n) {
+	return wn((Cn[e] ?? Cn.en)[t] ?? Cn.en[t] ?? t, n);
 }
 //#endregion
 //#region src/firefox/locale.ts
-var dn = "intl:app-locales-changed", fn = Object.freeze([
+var En = "intl:app-locales-changed", Dn = Object.freeze([
 	"frame",
 	"overlay",
 	"top",
 	"left",
 	"right",
 	"bottom"
-]), pn = Object.freeze({
+]), On = Object.freeze({
 	bottom: "chrome.host.bottom",
 	frame: "chrome.host.frame",
 	left: "chrome.host.left",
 	overlay: "chrome.host.overlay",
 	right: "chrome.host.right",
 	top: "chrome.host.top"
-}), mn = (e) => typeof e == "object" && !!e, hn = (e) => typeof e == "function", gn = (e) => {
+}), kn = (e) => typeof e == "object" && !!e, An = (e) => typeof e == "function", jn = (e) => {
 	let t = e.Services;
-	if (!mn(t)) return null;
+	if (!kn(t)) return null;
 	let n = t.locale;
-	return mn(n) ? n : null;
-}, _n = (e) => {
+	return kn(n) ? n : null;
+}, Mn = (e) => {
 	let t = e.Services;
-	if (!mn(t)) return null;
+	if (!kn(t)) return null;
 	let n = t.obs;
-	return !mn(n) || !hn(n.addObserver) || !hn(n.removeObserver) ? null : n;
-}, vn = Object.freeze([Object.freeze({
+	return !kn(n) || !An(n.addObserver) || !An(n.removeObserver) ? null : n;
+}, Nn = Object.freeze([Object.freeze({
 	isAvailable: (e) => e !== null,
 	name: "locale.app-locale",
-	read: (e) => gn(e),
+	read: (e) => jn(e),
 	requirement: "optional",
 	symbol: "window.Services.locale.appLocaleAsBCP47"
 }), Object.freeze({
 	isAvailable: (e) => e !== null,
 	name: "locale.app-locales-observer",
-	read: (e) => _n(e),
+	read: (e) => Mn(e),
 	requirement: "optional",
 	symbol: "window.Services.obs.addObserver.removeObserver"
-})]), yn = (e) => Object.freeze(vn.map((t) => {
+})]), Pn = (e) => Object.freeze(Nn.map((t) => {
 	let n = !1, r;
 	try {
 		n = t.isAvailable(t.read(e));
@@ -3063,21 +3198,21 @@ var dn = "intl:app-locales-changed", fn = Object.freeze([
 			symbol: t.symbol
 		})
 	});
-})), bn = (e) => {
+})), Fn = (e) => {
 	let t = e.snapshot();
 	return Object.freeze({
 		buildId: t.buildId,
 		firefoxVersion: t.firefoxVersion,
 		windowKind: t.windowKind
 	});
-}, xn = (e, t, n, r, i) => new g({
+}, In = (e, t, n, r, i) => new g({
 	cause: i,
 	code: t,
-	context: bn(e),
+	context: Fn(e),
 	phase: n,
 	symbol: r
-}), Sn = (e) => {
-	let t = gn(e);
+}), Ln = (e) => {
+	let t = jn(e);
 	if (!t) return "";
 	try {
 		let e = t.appLocaleAsBCP47;
@@ -3085,18 +3220,18 @@ var dn = "intl:app-locales-changed", fn = Object.freeze([
 	} catch {
 		return "";
 	}
-}, Cn = (e) => Object.freeze({ id: an(Sn(e)) }), wn = (e, t) => un(e, pn[t]);
-function Tn({ boundary: e, onError: t, window: n }) {
-	if (e.assertOwnsWindow(n), !mn(n)) throw xn(e, "FENNEVIA_FIREFOX_LOCALE_OPTIONS_INVALID", "firefox-locale-create", "window");
+}, Rn = (e) => Object.freeze({ id: bn(Ln(e)) }), zn = (e, t) => Tn(e, On[t]);
+function Bn({ boundary: e, onError: t, window: n }) {
+	if (e.assertOwnsWindow(n), !kn(n)) throw In(e, "FENNEVIA_FIREFOX_LOCALE_OPTIONS_INVALID", "firefox-locale-create", "window");
 	let r = typeof t == "function" ? t : () => {}, i = n, a = !1, o = new Set(), s = !1, c = Object.freeze({ observe() {
 		u();
 	} }), l = () => {
-		if (a || !i) throw xn(e, "FENNEVIA_FIREFOX_LOCALE_DISPOSED", "firefox-locale-access", "window");
+		if (a || !i) throw In(e, "FENNEVIA_FIREFOX_LOCALE_DISPOSED", "firefox-locale-access", "window");
 		return i;
 	}, u = () => {
 		let t;
 		try {
-			t = Cn(l());
+			t = Rn(l());
 		} catch (e) {
 			r(e);
 			return;
@@ -3104,37 +3239,37 @@ function Tn({ boundary: e, onError: t, window: n }) {
 		for (let n of Array.from(o)) try {
 			n(t);
 		} catch (t) {
-			r(xn(e, "FENNEVIA_FIREFOX_LOCALE_SUBSCRIBER_FAILED", "firefox-locale-notify", "locale.subscribe", t));
+			r(In(e, "FENNEVIA_FIREFOX_LOCALE_SUBSCRIBER_FAILED", "firefox-locale-notify", "locale.subscribe", t));
 		}
 	}, d = () => {
 		if (!s || !i) {
 			s = !1;
 			return;
 		}
-		let e = _n(i);
+		let e = Mn(i);
 		if (e) try {
-			Reflect.apply(e.removeObserver, e, [c, dn]);
+			Reflect.apply(e.removeObserver, e, [c, En]);
 		} catch {}
 		s = !1;
-	}, f = _n(n);
+	}, f = Mn(n);
 	if (f) try {
-		Reflect.apply(f.addObserver, f, [c, dn]), s = !0;
+		Reflect.apply(f.addObserver, f, [c, En]), s = !0;
 	} catch (t) {
-		r(xn(e, "FENNEVIA_FIREFOX_LOCALE_SUBSCRIBE_FAILED", "firefox-locale-subscribe", "window.Services.obs.addObserver", t));
+		r(In(e, "FENNEVIA_FIREFOX_LOCALE_SUBSCRIBE_FAILED", "firefox-locale-subscribe", "window.Services.obs.addObserver", t));
 	}
 	let p = Object.freeze({
 		snapshot() {
-			return on(Cn(l()));
+			return xn(Rn(l()));
 		},
 		subscribe(t) {
-			if (typeof t != "function") throw xn(e, "FENNEVIA_FIREFOX_LOCALE_LISTENER_INVALID", "firefox-locale-subscribe", "locale.subscribe");
+			if (typeof t != "function") throw In(e, "FENNEVIA_FIREFOX_LOCALE_LISTENER_INVALID", "firefox-locale-subscribe", "locale.subscribe");
 			return l(), o.add(t), () => o.delete(t);
 		}
 	});
 	return Object.freeze({
 		assertRequiredCapabilities() {
-			let t = yn(l()), n = t.find((e) => e.snapshot.requirement === "required" && !e.snapshot.available);
-			if (n) throw xn(e, "FENNEVIA_FIREFOX_LOCALE_CAPABILITY_MISSING", "firefox-locale-capability", n.snapshot.symbol, n.cause);
+			let t = Pn(l()), n = t.find((e) => e.snapshot.requirement === "required" && !e.snapshot.available);
+			if (n) throw In(e, "FENNEVIA_FIREFOX_LOCALE_CAPABILITY_MISSING", "firefox-locale-capability", n.snapshot.symbol, n.cause);
 			return Object.freeze(t.map((e) => e.snapshot));
 		},
 		dispose() {
@@ -3148,7 +3283,7 @@ function Tn({ boundary: e, onError: t, window: n }) {
 }
 //#endregion
 //#region src/app/navigation-state.ts
-var En = 2048, Dn = 4096, On = (e) => {
+var Vn = 2048, Hn = 4096, Un = (e) => {
 	let t = Error(e);
 	return t.name = "FenneviaNavigationStateError", Object.defineProperties(t, {
 		fenneviaCode: {
@@ -3161,10 +3296,10 @@ var En = 2048, Dn = 4096, On = (e) => {
 		}
 	}), t;
 };
-function kn(e) {
-	if (!e || typeof e != "object") throw On("FENNEVIA_NAVIGATION_POINTER_GESTURE_INVALID");
+function Wn(e) {
+	if (!e || typeof e != "object") throw Un("FENNEVIA_NAVIGATION_POINTER_GESTURE_INVALID");
 	let t = e;
-	if (typeof t.altKey != "boolean" || typeof t.ctrlKey != "boolean" || typeof t.metaKey != "boolean" || typeof t.shiftKey != "boolean" || !Number.isInteger(t.button) || t.button < 0 || t.button > 2) throw On("FENNEVIA_NAVIGATION_POINTER_GESTURE_INVALID");
+	if (typeof t.altKey != "boolean" || typeof t.ctrlKey != "boolean" || typeof t.metaKey != "boolean" || typeof t.shiftKey != "boolean" || !Number.isInteger(t.button) || t.button < 0 || t.button > 2) throw Un("FENNEVIA_NAVIGATION_POINTER_GESTURE_INVALID");
 	return Object.freeze({
 		altKey: t.altKey,
 		button: t.button,
@@ -3175,7 +3310,7 @@ function kn(e) {
 }
 //#endregion
 //#region src/firefox/navigation/support.ts
-var An = Object.freeze({
+var Gn = Object.freeze({
 	back: Object.freeze({
 		id: "Browser:Back",
 		method: "back"
@@ -3196,29 +3331,29 @@ var An = Object.freeze({
 		id: "Browser:Stop",
 		method: "stop"
 	})
-}), jn = Object.freeze(["TabSelect", "TabAttrModified"]), Mn = new Set([
+}), Kn = Object.freeze(["TabSelect", "TabAttrModified"]), qn = new Set([
 	"busy",
 	"label",
 	"selected"
-]), Nn = "Browser:OpenLocation", Pn = Object.freeze({
+]), Jn = "Browser:OpenLocation", Yn = Object.freeze({
 	selectAll: !0,
 	source: "ctrl-l",
 	type: "address-popup-open"
-}), Fn = Object.freeze({ status: "accepted" }), In = Object.freeze({
+}), Xn = Object.freeze({ status: "accepted" }), Zn = Object.freeze({
 	reason: "empty",
 	status: "rejected"
-}), Ln = Object.freeze({
+}), Qn = Object.freeze({
 	reason: "too-long",
 	status: "rejected"
-}), Rn = Object.freeze({
+}), $n = Object.freeze({
 	reason: "unsafe-scheme",
 	status: "rejected"
-}), zn = /^\s*(?:data|javascript|vbscript)\s*:/iu, Bn = new Set([
+}), er = /^\s*(?:data|javascript|vbscript)\s*:/iu, tr = new Set([
 	"about:blank",
 	"about:home",
 	"about:newtab",
 	"about:privatebrowsing"
-]), Vn = Object.freeze({
+]), nr = Object.freeze({
 	associated: "associated",
 	"cert-error-page": "certificate-error",
 	chrome: "internal",
@@ -3231,63 +3366,63 @@ var An = Object.freeze({
 	"secure-cert-user-overridden": "secure-certificate-override",
 	"secure-etsi": "secure-qualified-certificate",
 	"secure-ev": "secure-verified-organization"
-}), Hn = (e) => `document.commands[${e.replaceAll(":", "-")}]`, G = (e) => typeof e == "object" && !!e, K = (e) => typeof e == "function", Un = (e) => G(e) && K(e.addEventListener) && K(e.removeEventListener), Wn = (e) => e.gBrowser, Gn = (e, t) => {
-	let n = Wn(e);
-	return G(n) ? n[t] : void 0;
-}, Kn = (e, t) => {
-	let n = Gn(e, "selectedBrowser");
-	return G(n) ? n[t] : void 0;
-}, qn = (e, t) => {
+}), rr = (e) => `document.commands[${e.replaceAll(":", "-")}]`, W = (e) => typeof e == "object" && !!e, G = (e) => typeof e == "function", ir = (e) => W(e) && G(e.addEventListener) && G(e.removeEventListener), ar = (e) => e.gBrowser, or = (e, t) => {
+	let n = ar(e);
+	return W(n) ? n[t] : void 0;
+}, sr = (e, t) => {
+	let n = or(e, "selectedBrowser");
+	return W(n) ? n[t] : void 0;
+}, cr = (e, t) => {
 	let n = e.BrowserCommands;
-	return G(n) ? n[t] : void 0;
-}, Jn = (e, t) => {
+	return W(n) ? n[t] : void 0;
+}, lr = (e, t) => {
 	let n = e.gURLBar;
-	return G(n) ? n[t] : void 0;
-}, Yn = (e, t) => e[t], Xn = (e) => {
+	return W(n) ? n[t] : void 0;
+}, ur = (e, t) => e[t], dr = (e) => {
 	let t = e.document;
-	return G(t) ? t.documentElement : void 0;
-}, Zn = (e, t) => {
+	return W(t) ? t.documentElement : void 0;
+}, fr = (e, t) => {
 	let n = e.document;
-	if (!(!G(n) || !K(n.getElementById))) return Reflect.apply(n.getElementById, n, [t]);
-}, Qn = (e) => G(e) && K(e.hasAttribute), $n = (e) => Un(e) && typeof e.value == "string" && K(e.getAttribute) && K(e.handleCommand), er = (e) => G(e) && K(e.getConnectionSecurityInformation), tr = (e) => G(e) && K(e.onContentBlockingEvent), nr = (e) => G(e) && K(e.canHandle), rr = (e) => G(e) && typeof e.canGoBack == "boolean" && typeof e.canGoForward == "boolean", ir = (e) => G(e) && (typeof e.displaySpec == "string" || typeof e.spec == "string"), ar = Object.freeze([
+	if (!(!W(n) || !G(n.getElementById))) return Reflect.apply(n.getElementById, n, [t]);
+}, pr = (e) => W(e) && G(e.hasAttribute), mr = (e) => ir(e) && typeof e.value == "string" && G(e.getAttribute) && G(e.handleCommand), hr = (e) => W(e) && G(e.getConnectionSecurityInformation), gr = (e) => W(e) && G(e.onContentBlockingEvent), _r = (e) => W(e) && G(e.canHandle), vr = (e) => W(e) && typeof e.canGoBack == "boolean" && typeof e.canGoForward == "boolean", yr = (e) => W(e) && (typeof e.displaySpec == "string" || typeof e.spec == "string"), br = Object.freeze([
 	Object.freeze({
-		isAvailable: rr,
+		isAvailable: vr,
 		name: "firefox.navigation-selected-browser",
-		read: (e) => Gn(e, "selectedBrowser"),
+		read: (e) => or(e, "selectedBrowser"),
 		symbol: "window.gBrowser.selectedBrowser.canGoBack"
 	}),
 	Object.freeze({
-		isAvailable: ir,
+		isAvailable: yr,
 		name: "firefox.navigation-current-uri",
-		read: (e) => Kn(e, "currentURI"),
+		read: (e) => sr(e, "currentURI"),
 		symbol: "window.gBrowser.selectedBrowser.currentURI.displaySpec"
 	}),
 	Object.freeze({
-		isAvailable: K,
+		isAvailable: G,
 		name: "firefox.navigation-selected-browser-focus",
-		read: (e) => Kn(e, "focus"),
+		read: (e) => sr(e, "focus"),
 		symbol: "window.gBrowser.selectedBrowser.focus"
 	}),
 	Object.freeze({
-		isAvailable: (e) => G(e) && K(e.getAttribute),
+		isAvailable: (e) => W(e) && G(e.getAttribute),
 		name: "firefox.navigation-selected-tab",
-		read: (e) => Gn(e, "selectedTab"),
+		read: (e) => or(e, "selectedTab"),
 		symbol: "window.gBrowser.selectedTab.getAttribute"
 	}),
 	Object.freeze({
-		isAvailable: Un,
+		isAvailable: ir,
 		name: "firefox.navigation-tab-events",
-		read: (e) => Gn(e, "tabContainer"),
+		read: (e) => or(e, "tabContainer"),
 		symbol: "window.gBrowser.tabContainer"
 	}),
 	...[["add-progress-listener", "addTabsProgressListener"], ["remove-progress-listener", "removeTabsProgressListener"]].map(([e, t]) => Object.freeze({
-		isAvailable: K,
+		isAvailable: G,
 		name: `firefox.navigation-${e}`,
-		read: (e) => Gn(e, t),
+		read: (e) => or(e, t),
 		symbol: `window.gBrowser.${t}`
 	})),
 	Object.freeze({
-		isAvailable: K,
+		isAvailable: G,
 		name: "firefox.navigation-mutation-observer",
 		read: (e) => e.MutationObserver,
 		symbol: "window.MutationObserver"
@@ -3295,75 +3430,75 @@ var An = Object.freeze({
 	Object.freeze({
 		isAvailable: (e) => typeof e == "string",
 		name: "firefox.navigation-urlbar-value",
-		read: (e) => Jn(e, "value"),
+		read: (e) => lr(e, "value"),
 		symbol: "window.gURLBar.value"
 	}),
 	Object.freeze({
-		isAvailable: K,
+		isAvailable: G,
 		name: "firefox.navigation-urlbar-submission",
-		read: (e) => Jn(e, "handleCommand"),
+		read: (e) => lr(e, "handleCommand"),
 		symbol: "window.gURLBar.handleCommand"
 	}),
 	Object.freeze({
-		isAvailable: K,
+		isAvailable: G,
 		name: "firefox.navigation-urlbar-proxy-state",
-		read: (e) => Jn(e, "getAttribute"),
+		read: (e) => lr(e, "getAttribute"),
 		symbol: "window.gURLBar.getAttribute"
 	}),
 	Object.freeze({
-		isAvailable: er,
+		isAvailable: hr,
 		name: "firefox.navigation-connection-security",
-		read: (e) => Yn(e, "gIdentityHandler"),
+		read: (e) => ur(e, "gIdentityHandler"),
 		symbol: "window.gIdentityHandler.getConnectionSecurityInformation"
 	}),
 	Object.freeze({
-		isAvailable: tr,
+		isAvailable: gr,
 		name: "firefox.navigation-tracking-protection",
-		read: (e) => Yn(e, "gProtectionsHandler"),
+		read: (e) => ur(e, "gProtectionsHandler"),
 		symbol: "window.gProtectionsHandler.onContentBlockingEvent"
 	}),
 	Object.freeze({
-		isAvailable: nr,
+		isAvailable: _r,
 		name: "firefox.navigation-tracking-protection-availability",
-		read: (e) => Yn(e, "ContentBlockingAllowList"),
+		read: (e) => ur(e, "ContentBlockingAllowList"),
 		symbol: "window.ContentBlockingAllowList.canHandle"
 	}),
 	Object.freeze({
-		isAvailable: (e) => Qn(e) && Un(e),
+		isAvailable: (e) => pr(e) && ir(e),
 		name: "firefox.navigation-open-location-command",
-		read: (e) => Zn(e, Nn),
-		symbol: Hn(Nn)
+		read: (e) => fr(e, Jn),
+		symbol: rr(Jn)
 	}),
 	Object.freeze({
-		isAvailable: (e) => G(e) && K(e.hasAttribute),
+		isAvailable: (e) => W(e) && G(e.hasAttribute),
 		name: "firefox.navigation-shell-health-gate",
-		read: Xn,
+		read: dr,
 		symbol: "document.documentElement.hasAttribute"
 	}),
-	...Object.values(An).flatMap(({ id: e, method: t }) => [Object.freeze({
-		isAvailable: Qn,
+	...Object.values(Gn).flatMap(({ id: e, method: t }) => [Object.freeze({
+		isAvailable: pr,
 		name: `firefox.navigation-command-${t}`,
-		read: (t) => Zn(t, e),
-		symbol: Hn(e)
+		read: (t) => fr(t, e),
+		symbol: rr(e)
 	}), Object.freeze({
-		isAvailable: K,
+		isAvailable: G,
 		name: `firefox.navigation-action-${t}`,
-		read: (e) => qn(e, t),
+		read: (e) => cr(e, t),
 		symbol: `window.BrowserCommands.${t}`
 	})]),
 	Object.freeze({
-		isAvailable: K,
+		isAvailable: G,
 		name: "firefox.navigation-action-home",
-		read: (e) => qn(e, "home"),
+		read: (e) => cr(e, "home"),
 		symbol: "window.BrowserCommands.home"
 	}),
 	Object.freeze({
-		isAvailable: K,
+		isAvailable: G,
 		name: "firefox.navigation-action-reloadOrDuplicate",
-		read: (e) => qn(e, "reloadOrDuplicate"),
+		read: (e) => cr(e, "reloadOrDuplicate"),
 		symbol: "window.BrowserCommands.reloadOrDuplicate"
 	})
-]), or = (e) => Object.freeze(ar.map((t) => {
+]), xr = (e) => Object.freeze(br.map((t) => {
 	let n = !1, r;
 	try {
 		n = t.isAvailable(t.read(e));
@@ -3379,28 +3514,28 @@ var An = Object.freeze({
 			symbol: t.symbol
 		})
 	});
-})), sr = (e) => {
+})), Sr = (e) => {
 	let t = e.snapshot();
 	return Object.freeze({
 		buildId: t.buildId,
 		firefoxVersion: t.firefoxVersion,
 		windowKind: t.windowKind
 	});
-}, q = (e, t, n, r, i) => new g({
+}, K = (e, t, n, r, i) => new g({
 	cause: i,
 	code: t,
-	context: sr(e),
+	context: Sr(e),
 	phase: n,
 	symbol: r
-}), cr = (e, t) => e.addressValue === t.addressValue && e.canGoBack === t.canGoBack && e.canGoForward === t.canGoForward && e.connectionSecurity === t.connectionSecurity && e.displayUri === t.displayUri && e.loading === t.loading && e.title === t.title && e.trackingProtection === t.trackingProtection, lr = (e) => {
-	if (!G(e) || !G(e.detail)) return !0;
+}), Cr = (e, t) => e.addressValue === t.addressValue && e.canGoBack === t.canGoBack && e.canGoForward === t.canGoForward && e.connectionSecurity === t.connectionSecurity && e.displayUri === t.displayUri && e.loading === t.loading && e.title === t.title && e.trackingProtection === t.trackingProtection, wr = (e) => {
+	if (!W(e) || !W(e.detail)) return !0;
 	let t = e.detail.changed;
-	return !Array.isArray(t) || t.some((e) => typeof e != "string") ? !0 : t.some((e) => Mn.has(e));
+	return !Array.isArray(t) || t.some((e) => typeof e != "string") ? !0 : t.some((e) => qn.has(e));
 };
 //#endregion
 //#region src/firefox/navigation/controller.ts
-function ur({ boundary: e, onError: t, window: n }) {
-	if (e.assertOwnsWindow(n), !G(n) || typeof t != "function") throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_OPTIONS_INVALID", "firefox-navigation-create", "window");
+function Tr({ boundary: e, onError: t, window: n }) {
+	if (e.assertOwnsWindow(n), !W(n) || typeof t != "function") throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_OPTIONS_INVALID", "firefox-navigation-create", "window");
 	let r = n, i = !1, a = null, o = 0, s = Object.freeze({
 		addressValue: "",
 		canGoBack: !1,
@@ -3411,60 +3546,60 @@ function ur({ boundary: e, onError: t, window: n }) {
 		title: "",
 		trackingProtection: "unavailable"
 	}), c = null, l = !1, u = [], d = new Set(), f = new Set(), p = () => {
-		if (i || !r) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_DISPOSED", "firefox-navigation-access", "window.gBrowser.selectedBrowser");
+		if (i || !r) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_DISPOSED", "firefox-navigation-access", "window.gBrowser.selectedBrowser");
 		if (a) throw a;
 		return e.assertOwnsWindow(r), r;
 	}, m = () => {
 		let t = p().gBrowser;
-		if (!G(t)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-capability", "window.gBrowser");
+		if (!W(t)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-capability", "window.gBrowser");
 		return t;
 	}, h = () => {
 		let t = m().selectedBrowser;
-		if (!rr(t)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.gBrowser.selectedBrowser.canGoBack");
+		if (!vr(t)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.gBrowser.selectedBrowser.canGoBack");
 		return t;
 	}, g = () => {
 		let t = m().selectedTab;
-		if (!G(t) || !K(t.getAttribute)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.gBrowser.selectedTab.getAttribute");
+		if (!W(t) || !G(t.getAttribute)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.gBrowser.selectedTab.getAttribute");
 		return t;
 	}, v = (t) => {
-		let n = Zn(p(), t);
-		if (!Qn(n)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-command", Hn(t));
+		let n = fr(p(), t);
+		if (!pr(n)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-command", rr(t));
 		return n;
 	}, y = () => {
 		let t = p().gURLBar;
-		if (!$n(t)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-capability", "window.gURLBar.handleCommand");
+		if (!mr(t)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-capability", "window.gURLBar.handleCommand");
 		return t;
 	}, x = () => {
 		let t = p().gIdentityHandler;
-		if (!er(t)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.gIdentityHandler.getConnectionSecurityInformation");
+		if (!hr(t)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.gIdentityHandler.getConnectionSecurityInformation");
 		return t;
 	}, S = () => {
 		let t = p().gProtectionsHandler;
-		if (!tr(t)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.gProtectionsHandler.onContentBlockingEvent");
+		if (!gr(t)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.gProtectionsHandler.onContentBlockingEvent");
 		return t;
 	}, C = () => {
 		let t = p().ContentBlockingAllowList;
-		if (!nr(t)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.ContentBlockingAllowList.canHandle");
+		if (!_r(t)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.ContentBlockingAllowList.canHandle");
 		return t;
 	}, w = () => {
-		let t = or(p()), n = t.find((e) => !e.snapshot.available);
-		if (n) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-capability", n.snapshot.symbol, n.cause);
+		let t = xr(p()), n = t.find((e) => !e.snapshot.available);
+		if (n) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-capability", n.snapshot.symbol, n.cause);
 		return Object.freeze(t.map((e) => e.snapshot));
 	}, T = (e) => {
 		let t = v(e);
 		return !Reflect.apply(t.hasAttribute, t, ["disabled"]);
 	}, E = (t) => {
 		let n = t.currentURI;
-		if (!ir(n)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.gBrowser.selectedBrowser.currentURI.displaySpec");
+		if (!yr(n)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-snapshot", "window.gBrowser.selectedBrowser.currentURI.displaySpec");
 		let r = typeof n.displaySpec == "string" ? n.displaySpec : n.spec;
-		return String(r ?? "").slice(0, En);
+		return String(r ?? "").slice(0, Vn);
 	}, D = (e) => {
-		if (Bn.has(e)) return "";
+		if (tr.has(e)) return "";
 		let t = y();
-		return (Reflect.apply(t.getAttribute, t, ["pageproxystate"]) === "valid" ? t.value : e).slice(0, Dn);
+		return (Reflect.apply(t.getAttribute, t, ["pageproxystate"]) === "valid" ? t.value : e).slice(0, Hn);
 	}, O = () => {
 		let e = x(), t = Reflect.apply(e.getConnectionSecurityInformation, e, []);
-		return typeof t == "string" ? Vn[t] ?? "unavailable" : "unavailable";
+		return typeof t == "string" ? nr[t] ?? "unavailable" : "unavailable";
 	}, k = (e) => {
 		let t = C();
 		if (Reflect.apply(t.canHandle, t, [e]) !== !0) return "unavailable";
@@ -3474,15 +3609,15 @@ function ur({ boundary: e, onError: t, window: n }) {
 		let e = h(), t = g(), n = E(e);
 		return Object.freeze({
 			addressValue: D(n),
-			canGoBack: T(An.back.id),
-			canGoForward: T(An.forward.id),
+			canGoBack: T(Gn.back.id),
+			canGoForward: T(Gn.forward.id),
 			connectionSecurity: O(),
 			displayUri: n,
-			loading: T(An.stop.id),
+			loading: T(Gn.stop.id),
 			title: String(Reflect.apply(t.getAttribute, t, ["label"]) ?? "").slice(0, 256),
 			trackingProtection: k(e)
 		});
-	}, j = () => {
+	}, ee = () => {
 		let n = Object.freeze({
 			revision: o,
 			snapshot: s,
@@ -3491,37 +3626,37 @@ function ur({ boundary: e, onError: t, window: n }) {
 		for (let r of Array.from(d)) try {
 			r(n);
 		} catch (n) {
-			t(q(e, "FENNEVIA_FIREFOX_NAVIGATION_SUBSCRIBER_FAILED", "firefox-navigation-notify", "navigation.subscribe", n));
+			t(K(e, "FENNEVIA_FIREFOX_NAVIGATION_SUBSCRIBER_FAILED", "firefox-navigation-notify", "navigation.subscribe", n));
 		}
-	}, M = (e) => {
+	}, j = (e) => {
 		let t = A();
-		return cr(s, t) && o > 0 ? !1 : (s = t, o += 1, e && j(), !0);
-	}, N = (n, r) => {
-		a = _(n) ? n : q(e, "FENNEVIA_FIREFOX_NAVIGATION_EVENT_FAILED", "firefox-navigation-event", r, n), t(a);
-	}, P = (e) => {
+		return Cr(s, t) && o > 0 ? !1 : (s = t, o += 1, e && ee(), !0);
+	}, M = (n, r) => {
+		a = _(n) ? n : K(e, "FENNEVIA_FIREFOX_NAVIGATION_EVENT_FAILED", "firefox-navigation-event", r, n), t(a);
+	}, N = (e) => {
 		if (!(i || a)) try {
-			M(!0);
+			j(!0);
 		} catch (t) {
-			N(t, e);
+			M(t, e);
 		}
-	}, ee = (e, t, n) => {
+	}, P = (e, t, n) => {
 		if (!(i || a)) try {
-			e === m().selectedBrowser && G(t) && t.isTopLevel === !0 && M(!0);
+			e === m().selectedBrowser && W(t) && t.isTopLevel === !0 && j(!0);
 		} catch (e) {
-			N(e, n);
+			M(e, n);
 		}
 	}, F = Object.freeze({
 		onLocationChange(e, t) {
-			ee(e, t, "window.gBrowser.onLocationChange");
+			P(e, t, "window.gBrowser.onLocationChange");
 		},
 		onStateChange(e, t) {
-			ee(e, t, "window.gBrowser.onStateChange");
+			P(e, t, "window.gBrowser.onStateChange");
 		},
 		onSecurityChange(e, t) {
-			ee(e, t, "window.gBrowser.onSecurityChange");
+			P(e, t, "window.gBrowser.onSecurityChange");
 		},
 		onContentBlockingEvent(e, t) {
-			ee(e, t, "window.gBrowser.onContentBlockingEvent");
+			P(e, t, "window.gBrowser.onContentBlockingEvent");
 		}
 	}), te = (e) => ({
 		altKey: e.altKey,
@@ -3531,108 +3666,108 @@ function ur({ boundary: e, onError: t, window: n }) {
 		preventDefault() {},
 		shiftKey: e.shiftKey
 	}), ne = (t, n) => {
-		let r = p().BrowserCommands, i = G(r) ? r[t] : void 0;
-		if (!K(i)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-action", `window.BrowserCommands.${t}`);
+		let r = p().BrowserCommands, i = W(r) ? r[t] : void 0;
+		if (!G(i)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-action", `window.BrowserCommands.${t}`);
 		try {
 			return Reflect.apply(i, r, n === void 0 ? [] : [te(n)]), !0;
 		} catch (n) {
-			throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_ACTION_FAILED", "firefox-navigation-action", `window.BrowserCommands.${t}`, n);
+			throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_ACTION_FAILED", "firefox-navigation-action", `window.BrowserCommands.${t}`, n);
 		}
 	}, I = (e, t = !0, n) => {
-		let r = An[e];
+		let r = Gn[e];
 		h();
 		let i = v(r.id);
 		return t && Reflect.apply(i.hasAttribute, i, ["disabled"]) ? !1 : ne(r.method, n);
-	}, L = (t) => {
-		if (typeof t != "string") return In;
-		if (t.length > 4096) return Ln;
-		if (t.trim().length === 0) return In;
-		if (zn.test(t)) return Rn;
+	}, re = (t) => {
+		if (typeof t != "string") return Zn;
+		if (t.length > 4096) return Qn;
+		if (t.trim().length === 0) return Zn;
+		if (er.test(t)) return $n;
 		h();
 		let n = y();
 		try {
-			return n.value = t, Reflect.apply(n.handleCommand, n, []), Fn;
+			return n.value = t, Reflect.apply(n.handleCommand, n, []), Xn;
 		} catch (t) {
-			throw q(e, "FENNEVIA_FIREFOX_ADDRESS_SUBMISSION_FAILED", "firefox-address-submit", "window.gURLBar.handleCommand", t);
+			throw K(e, "FENNEVIA_FIREFOX_ADDRESS_SUBMISSION_FAILED", "firefox-address-submit", "window.gURLBar.handleCommand", t);
 		}
-	}, re = () => {
-		let e = Xn(p());
-		return G(e) && K(e.hasAttribute) && !!Reflect.apply(e.hasAttribute, e, ["data-fennevia-healthy"]);
-	}, ie = (e) => {
-		if (!G(e) || !G(e.sourceEvent)) return !1;
-		let t = e.sourceEvent.target;
-		return G(t) && t.id === "focusURLBar";
+	}, ie = () => {
+		let e = dr(p());
+		return W(e) && G(e.hasAttribute) && !!Reflect.apply(e.hasAttribute, e, ["data-fennevia-healthy"]);
 	}, ae = (e) => {
+		if (!W(e) || !W(e.sourceEvent)) return !1;
+		let t = e.sourceEvent.target;
+		return W(t) && t.id === "focusURLBar";
+	}, oe = (e) => {
 		if (!(i || a)) try {
-			if (!re() || !ie(e) || f.size === 0) return;
-			M(!0);
+			if (!ie() || !ae(e) || f.size === 0) return;
+			j(!0);
 			let t = !1;
-			for (let e of Array.from(f)) t = e(Pn) === !0 || t;
-			if (!t || !G(e)) return;
-			K(e.preventDefault) && Reflect.apply(e.preventDefault, e, []), K(e.stopPropagation) && Reflect.apply(e.stopPropagation, e, []);
+			for (let e of Array.from(f)) t = e(Yn) === !0 || t;
+			if (!t || !W(e)) return;
+			G(e.preventDefault) && Reflect.apply(e.preventDefault, e, []), G(e.stopPropagation) && Reflect.apply(e.stopPropagation, e, []);
 		} catch (e) {
-			N(e, Hn(Nn));
+			M(e, rr(Jn));
 		}
-	}, oe = Object.freeze({
-		back: (e) => I("back", !0, e === void 0 ? void 0 : kn(e)),
+	}, se = Object.freeze({
+		back: (e) => I("back", !0, e === void 0 ? void 0 : Wn(e)),
 		focusContent() {
 			let t = h(), n = t.focus;
-			if (!K(n)) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-focus", "window.gBrowser.selectedBrowser.focus");
+			if (!G(n)) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING", "firefox-navigation-focus", "window.gBrowser.selectedBrowser.focus");
 			try {
 				return Reflect.apply(n, t, []), !0;
 			} catch (t) {
-				throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_FOCUS_FAILED", "firefox-navigation-focus", "window.gBrowser.selectedBrowser.focus", t);
+				throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_FOCUS_FAILED", "firefox-navigation-focus", "window.gBrowser.selectedBrowser.focus", t);
 			}
 		},
-		forward: (e) => I("forward", !0, e === void 0 ? void 0 : kn(e)),
+		forward: (e) => I("forward", !0, e === void 0 ? void 0 : Wn(e)),
 		home(e) {
-			return h(), ne("home", e === void 0 ? void 0 : kn(e));
+			return h(), ne("home", e === void 0 ? void 0 : Wn(e));
 		},
 		newTab: () => I("newTab", !1),
 		reload(e) {
-			return e === void 0 ? I("reload") : (h(), ne("reloadOrDuplicate", kn(e)));
+			return e === void 0 ? I("reload") : (h(), ne("reloadOrDuplicate", Wn(e)));
 		},
 		reloadOrStop() {
-			let e = T(An.stop.id) ? "stop" : "reload";
+			let e = T(Gn.stop.id) ? "stop" : "reload";
 			return I(e), e;
 		},
 		snapshot() {
 			return p(), s;
 		},
 		stop: () => I("stop"),
-		submitAddress: L,
+		submitAddress: re,
 		subscribe(t) {
-			if (p(), typeof t != "function") throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_LISTENER_INVALID", "firefox-navigation-subscribe", "navigation.subscribe");
+			if (p(), typeof t != "function") throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_LISTENER_INVALID", "firefox-navigation-subscribe", "navigation.subscribe");
 			return d.add(t), b(() => {
 				d.delete(t);
 			});
 		},
 		subscribeAddressPopupOpen(t) {
-			if (p(), typeof t != "function") throw q(e, "FENNEVIA_FIREFOX_ADDRESS_POPUP_LISTENER_INVALID", "firefox-address-popup-subscribe", "navigation.subscribeAddressPopupOpen");
+			if (p(), typeof t != "function") throw K(e, "FENNEVIA_FIREFOX_ADDRESS_POPUP_LISTENER_INVALID", "firefox-address-popup-subscribe", "navigation.subscribeAddressPopupOpen");
 			return f.add(t), b(() => {
 				f.delete(t);
 			});
 		}
 	});
 	try {
-		e.assertRequiredCapabilities(), w(), M(!1);
+		e.assertRequiredCapabilities(), w(), j(!1);
 		let t = m().tabContainer;
-		for (let n of jn) u.push(e.subscribe(t, n, (e) => {
+		for (let n of Kn) u.push(e.subscribe(t, n, (e) => {
 			if (!(i || a)) try {
-				if (n === "TabAttrModified" && (G(e) && e.target !== m().selectedTab || !lr(e))) return;
-				M(!0);
+				if (n === "TabAttrModified" && (W(e) && e.target !== m().selectedTab || !wr(e))) return;
+				j(!0);
 			} catch (e) {
-				N(e, `window.gBrowser.tabContainer.${n}`);
+				M(e, `window.gBrowser.tabContainer.${n}`);
 			}
 		}));
-		u.push(e.subscribe(v(Nn), "command", ae));
+		u.push(e.subscribe(v(Jn), "command", oe));
 		let n = m();
 		Reflect.apply(n.addTabsProgressListener, n, [F]), l = !0;
 		let r = p().MutationObserver;
 		c = new r(() => {
-			P("document.command.disabled");
+			N("document.command.disabled");
 		});
-		for (let { id: e } of Object.values(An)) c.observe(v(e), {
+		for (let { id: e } of Object.values(Gn)) c.observe(v(e), {
 			attributeFilter: ["disabled"],
 			attributes: !0
 		});
@@ -3645,8 +3780,8 @@ function ur({ boundary: e, onError: t, window: n }) {
 			a ??= e;
 		}
 		if (c = null, l && r) try {
-			let e = G(r.gBrowser) ? r.gBrowser : null;
-			e && K(e.removeTabsProgressListener) && Reflect.apply(e.removeTabsProgressListener, e, [F]);
+			let e = W(r.gBrowser) ? r.gBrowser : null;
+			e && G(e.removeTabsProgressListener) && Reflect.apply(e.removeTabsProgressListener, e, [F]);
 		} catch (e) {
 			a ??= e;
 		}
@@ -3656,7 +3791,7 @@ function ur({ boundary: e, onError: t, window: n }) {
 		} catch (e) {
 			a ??= e;
 		}
-		throw r = null, a !== void 0 && t(q(e, "FENNEVIA_FIREFOX_NAVIGATION_DISPOSE_FAILED", "firefox-navigation-dispose", "window.gBrowser.removeTabsProgressListener", a)), n;
+		throw r = null, a !== void 0 && t(K(e, "FENNEVIA_FIREFOX_NAVIGATION_DISPOSE_FAILED", "firefox-navigation-dispose", "window.gBrowser.removeTabsProgressListener", a)), n;
 	}
 	return Object.freeze({
 		assertRequiredCapabilities: w,
@@ -3670,8 +3805,8 @@ function ur({ boundary: e, onError: t, window: n }) {
 				t ??= e;
 			}
 			if (c = null, l && r) try {
-				let e = G(r.gBrowser) ? r.gBrowser : null;
-				if (!e || !K(e.removeTabsProgressListener)) throw TypeError("FENNEVIA_FIREFOX_NAVIGATION_PROGRESS_DISPOSER_INVALID");
+				let e = W(r.gBrowser) ? r.gBrowser : null;
+				if (!e || !G(e.removeTabsProgressListener)) throw TypeError("FENNEVIA_FIREFOX_NAVIGATION_PROGRESS_DISPOSER_INVALID");
 				Reflect.apply(e.removeTabsProgressListener, e, [F]);
 			} catch (e) {
 				t ??= e;
@@ -3682,10 +3817,10 @@ function ur({ boundary: e, onError: t, window: n }) {
 			} catch (e) {
 				t ??= e;
 			}
-			if (u.length = 0, d.clear(), f.clear(), r = null, t !== void 0) throw q(e, "FENNEVIA_FIREFOX_NAVIGATION_DISPOSE_FAILED", "firefox-navigation-dispose", "window.gBrowser.removeTabsProgressListener", t);
+			if (u.length = 0, d.clear(), f.clear(), r = null, t !== void 0) throw K(e, "FENNEVIA_FIREFOX_NAVIGATION_DISPOSE_FAILED", "firefox-navigation-dispose", "window.gBrowser.removeTabsProgressListener", t);
 			return !0;
 		},
-		navigation: oe,
+		navigation: se,
 		snapshot() {
 			return Object.freeze({
 				addressPopupSubscriberCount: f.size,
@@ -3699,15 +3834,15 @@ function ur({ boundary: e, onError: t, window: n }) {
 }
 //#endregion
 //#region src/app/tab-state.ts
-var dr = Object.freeze([
+var Er = Object.freeze([
 	"playing",
 	"muted",
 	"blocked"
-]), fr = Object.freeze([
+]), Dr = Object.freeze([
 	"camera",
 	"microphone",
 	"screen"
-]), pr = Object.freeze([
+]), Or = Object.freeze([
 	"blue",
 	"cyan",
 	"gray",
@@ -3719,24 +3854,24 @@ var dr = Object.freeze([
 	"violet",
 	"yellow"
 ]);
-new Set(dr);
-var mr = new Set(pr), hr = new Set(fr), gr = Object.freeze([
+new Set(Er);
+var kr = new Set(Or), Ar = new Set(Dr), jr = Object.freeze([
 	"blocked",
 	"cancelled",
 	"consumed",
 	"detached",
 	"unchanged"
 ]);
-new Set(gr);
-function _r(e) {
-	return typeof e == "string" && mr.has(e);
+new Set(jr);
+function Mr(e) {
+	return typeof e == "string" && kr.has(e);
 }
-function vr(e) {
-	return typeof e == "string" && hr.has(e);
+function Nr(e) {
+	return typeof e == "string" && Ar.has(e);
 }
 //#endregion
 //#region src/firefox/tabs/support.ts
-var yr = Object.freeze([
+var Pr = Object.freeze([
 	"TabOpen",
 	"TabClose",
 	"TabSelect",
@@ -3745,7 +3880,7 @@ var yr = Object.freeze([
 	"TabUnpinned",
 	"TabRemotenessChange",
 	"TabAttrModified"
-]), br = Object.freeze(["oop-browser-crashed", "oop-browser-buildid-mismatch"]), xr = new Set([
+]), Fr = Object.freeze(["oop-browser-crashed", "oop-browser-buildid-mismatch"]), Ir = new Set([
 	"activemedia-blocked",
 	"attention",
 	"busy",
@@ -3758,32 +3893,32 @@ var yr = Object.freeze([
 	"sharing",
 	"soundplaying",
 	"usercontextid"
-]), Sr = "resource://gre/modules/ContextualIdentityService.sys.mjs", Cr = /[\s"'<>\\]/u, wr = /^data:image\/(?:avif|gif|jpeg|png|vnd\.microsoft\.icon|webp|x-icon);base64,[a-z0-9+/]+={0,2}$/iu, Tr = Object.freeze({
+]), Lr = "resource://gre/modules/ContextualIdentityService.sys.mjs", Rr = /[\s"'<>\\]/u, zr = /^data:image\/(?:avif|gif|jpeg|png|vnd\.microsoft\.icon|webp|x-icon);base64,[a-z0-9+/]+={0,2}$/iu, Br = Object.freeze({
 	toolbar: "gray",
 	turquoise: "cyan"
-}), Er = (e) => typeof e == "object" && !!e || typeof e == "function", J = (e) => typeof e == "object" && !!e, Dr = (e) => typeof e == "function", Or = (e) => e.gBrowser, kr = (e, t) => {
-	let n = Or(e);
-	return J(n) ? n[t] : void 0;
-}, Ar = (e, t) => {
+}), Vr = (e) => typeof e == "object" && !!e || typeof e == "function", q = (e) => typeof e == "object" && !!e, Hr = (e) => typeof e == "function", Ur = (e) => e.gBrowser, Wr = (e, t) => {
+	let n = Ur(e);
+	return q(n) ? n[t] : void 0;
+}, Gr = (e, t) => {
 	let n = e.document;
-	if (!(!J(n) || !Dr(n.getElementById))) return Reflect.apply(n.getElementById, n, [t]);
-}, jr = (e) => J(e) && Dr(e.openPopup) && Dr(e.moveTo) && Dr(e.addEventListener) && Dr(e.removeEventListener), Mr = Object.freeze([
+	if (!(!q(n) || !Hr(n.getElementById))) return Reflect.apply(n.getElementById, n, [t]);
+}, Kr = (e) => q(e) && Hr(e.openPopup) && Hr(e.moveTo) && Hr(e.addEventListener) && Hr(e.removeEventListener), qr = Object.freeze([
 	Object.freeze({
 		isAvailable: Array.isArray,
 		name: "firefox.open-tabs",
-		read: (e) => kr(e, "openTabs"),
+		read: (e) => Wr(e, "openTabs"),
 		symbol: "window.gBrowser.openTabs"
 	}),
 	Object.freeze({
-		isAvailable: Er,
+		isAvailable: Vr,
 		name: "firefox.selected-tab",
-		read: (e) => kr(e, "selectedTab"),
+		read: (e) => Wr(e, "selectedTab"),
 		symbol: "window.gBrowser.selectedTab"
 	}),
 	Object.freeze({
-		isAvailable: (e) => J(e) && Dr(e.addEventListener) && Dr(e.removeEventListener),
+		isAvailable: (e) => q(e) && Hr(e.addEventListener) && Hr(e.removeEventListener),
 		name: "firefox.tab-crash-events",
-		read: Or,
+		read: Ur,
 		symbol: "window.gBrowser.addEventListener.removeEventListener"
 	}),
 	...[
@@ -3796,9 +3931,9 @@ var yr = Object.freeze([
 		["detach-tab", "replaceTabWithWindow"],
 		["translate-tab-context-menu", "translateTabContextMenu"]
 	].map(([e, t]) => Object.freeze({
-		isAvailable: Dr,
+		isAvailable: Hr,
 		name: `firefox.${e}`,
-		read: (e) => kr(e, t),
+		read: (e) => Wr(e, t),
 		symbol: `window.gBrowser.${t}`
 	})),
 	Object.freeze({
@@ -3808,12 +3943,12 @@ var yr = Object.freeze([
 		symbol: "window.BROWSER_NEW_TAB_URL"
 	}),
 	Object.freeze({
-		isAvailable: jr,
+		isAvailable: Kr,
 		name: "firefox.tab-context-menu",
-		read: (e) => Ar(e, "tabContextMenu"),
+		read: (e) => Gr(e, "tabContextMenu"),
 		symbol: "document.tabContextMenu.openPopup.moveTo"
 	})
-]), Nr = (e) => Object.freeze(Mr.map((t) => {
+]), Jr = (e) => Object.freeze(qr.map((t) => {
 	let n = !1, r;
 	try {
 		n = t.isAvailable(t.read(e));
@@ -3829,36 +3964,36 @@ var yr = Object.freeze([
 			symbol: t.symbol
 		})
 	});
-})), Pr = (e) => {
+})), Yr = (e) => {
 	let t = e.snapshot();
 	return Object.freeze({
 		buildId: t.buildId,
 		firefoxVersion: t.firefoxVersion,
 		windowKind: t.windowKind
 	});
-}, Y = (e, t, n, r, i) => new g({
+}, J = (e, t, n, r, i) => new g({
 	cause: i,
 	code: t,
-	context: Pr(e),
+	context: Yr(e),
 	phase: n,
 	symbol: r
-}), Fr = (e, t) => {
-	if (!J(t) || typeof t.getAttribute != "function" || typeof t.hasAttribute != "function") throw Y(e, "FENNEVIA_FIREFOX_TAB_SHAPE_INVALID", "firefox-tabs-snapshot", "MozTabbrowserTab.getAttribute");
+}), Xr = (e, t) => {
+	if (!q(t) || typeof t.getAttribute != "function" || typeof t.hasAttribute != "function") throw J(e, "FENNEVIA_FIREFOX_TAB_SHAPE_INVALID", "firefox-tabs-snapshot", "MozTabbrowserTab.getAttribute");
 	return t;
-}, Ir = (e) => {
-	if (typeof e == "string" && e.length !== 0 && (e.length <= 2048 && (e.startsWith("chrome://") || e.startsWith("resource://") || e.startsWith("moz-remote-image:")) && !Cr.test(e) || e.length <= 262144 && wr.test(e))) return e;
-}, Lr = (e, t) => e.length === t.length && e.every((e, n) => {
+}, Zr = (e) => {
+	if (typeof e == "string" && e.length !== 0 && (e.length <= 2048 && (e.startsWith("chrome://") || e.startsWith("resource://") || e.startsWith("moz-remote-image:")) && !Rr.test(e) || e.length <= 262144 && zr.test(e))) return e;
+}, Qr = (e, t) => e.length === t.length && e.every((e, n) => {
 	let r = t[n];
 	return r !== void 0 && e.id === r.id && e.title === r.title && e.selected === r.selected && e.pinned === r.pinned && e.loading === r.loading && e.faviconUrl === r.faviconUrl && e.audio === r.audio && e.attention === r.attention && e.crashed === r.crashed && e.pictureInPicture === r.pictureInPicture && e.sharing === r.sharing && e.container?.color === r.container?.color && e.container?.label === r.container?.label;
-}), Rr = (e) => {
-	if (!J(e) || !J(e.detail)) return !0;
+}), $r = (e) => {
+	if (!q(e) || !q(e.detail)) return !0;
 	let t = e.detail.changed;
-	return !Array.isArray(t) || t.some((e) => typeof e != "string") ? !0 : t.some((e) => xr.has(e));
-}, zr = (e) => {
+	return !Array.isArray(t) || t.some((e) => typeof e != "string") ? !0 : t.some((e) => Ir.has(e));
+}, ei = (e) => {
 	if (typeof e != "string" || e.length === 0) return;
-	let t = Tr[e] ?? e;
-	return _r(t) ? t : void 0;
-}, Br = (e) => vr(e) ? e : void 0, Vr = (e, t) => !J(e) || e.target === void 0 || e.target === t || J(e.target) && e.target.id === "tabContextMenu", Hr = /^tab-transfer-[A-Za-z0-9-]{8,128}$/u, Ur = (e) => {
+	let t = Br[e] ?? e;
+	return Mr(t) ? t : void 0;
+}, ti = (e) => Nr(e) ? e : void 0, ni = (e, t) => !q(e) || e.target === void 0 || e.target === t || q(e.target) && e.target.id === "tabContextMenu", ri = /^tab-transfer-[A-Za-z0-9-]{8,128}$/u, ii = (e) => {
 	let t = Error(e);
 	return t.name = "FenneviaTabDragCoordinatorError", Object.defineProperties(t, {
 		fenneviaCode: {
@@ -3871,8 +4006,8 @@ var yr = Object.freeze([
 		}
 	}), t;
 };
-function Wr({ createToken: e }) {
-	if (typeof e != "function") throw Ur("FENNEVIA_TAB_DRAG_TOKEN_FACTORY_INVALID");
+function ai({ createToken: e }) {
+	if (typeof e != "function") throw ii("FENNEVIA_TAB_DRAG_TOKEN_FACTORY_INVALID");
 	let t = null, n = null, r = (e, r) => {
 		t = null, n = Object.freeze({
 			id: e.id,
@@ -3893,10 +4028,10 @@ function Wr({ createToken: e }) {
 	};
 	return Object.freeze({
 		begin(r) {
-			if (!r || typeof r != "object" || typeof r.sourceContextId != "string" || r.sourceContextId.length === 0 || r.sourceWindowKind !== "normal" && r.sourceWindowKind !== "private" || typeof r.pinned != "boolean" || typeof r.isActive != "function" || !r.tab || typeof r.tab != "object") throw Ur("FENNEVIA_TAB_DRAG_SOURCE_INVALID");
-			if (i()) throw Ur("FENNEVIA_TAB_DRAG_ALREADY_ACTIVE");
+			if (!r || typeof r != "object" || typeof r.sourceContextId != "string" || r.sourceContextId.length === 0 || r.sourceWindowKind !== "normal" && r.sourceWindowKind !== "private" || typeof r.pinned != "boolean" || typeof r.isActive != "function" || !r.tab || typeof r.tab != "object") throw ii("FENNEVIA_TAB_DRAG_SOURCE_INVALID");
+			if (i()) throw ii("FENNEVIA_TAB_DRAG_ALREADY_ACTIVE");
 			let a = e();
-			if (typeof a != "string" || !Hr.test(a)) throw Ur("FENNEVIA_TAB_DRAG_TOKEN_INVALID");
+			if (typeof a != "string" || !ri.test(a)) throw ii("FENNEVIA_TAB_DRAG_TOKEN_INVALID");
 			return n = null, t = Object.freeze({
 				id: a,
 				...r
@@ -3943,39 +4078,39 @@ function Wr({ createToken: e }) {
 }
 //#endregion
 //#region src/firefox/tabs/controller.ts
-var Gr = "tabContextMenu";
-function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n, dragCoordinator: r, isTabDetachAllowed: i, moduleLoader: a, onError: o, window: s }) {
-	if (t.assertOwnsWindow(s), !J(s) || typeof e != "function" || typeof n != "function" || !r || typeof r.begin != "function" || typeof r.cancel != "function" || typeof r.cancelContext != "function" || typeof r.consume != "function" || typeof r.inspect != "function" || typeof r.resolve != "function" || typeof r.resolveForEnd != "function" || typeof i != "function" || typeof o != "function") throw Y(t, "FENNEVIA_FIREFOX_TABS_OPTIONS_INVALID", "firefox-tabs-create", "window");
+var oi = "tabContextMenu";
+function si({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n, dragCoordinator: r, isTabDetachAllowed: i, moduleLoader: a, onError: o, window: s }) {
+	if (t.assertOwnsWindow(s), !q(s) || typeof e != "function" || typeof n != "function" || !r || typeof r.begin != "function" || typeof r.cancel != "function" || typeof r.cancelContext != "function" || typeof r.consume != "function" || typeof r.inspect != "function" || typeof r.resolve != "function" || typeof r.resolveForEnd != "function" || typeof i != "function" || typeof o != "function") throw J(t, "FENNEVIA_FIREFOX_TABS_OPTIONS_INVALID", "firefox-tabs-create", "window");
 	let c = s, l = !1, u = null, d = 0, f = Object.freeze([]), p = new Set(), m = new Set(), h = [], g = t.createHandleRegistry("tab"), v = null, y = null, x = !1, S = t.snapshot(), C = S.contextId, w = S.windowKind;
 	if (typeof a == "function") try {
-		let e = a(Sr), t = J(e) ? e.ContextualIdentityService : void 0;
-		J(t) && Dr(t.getPublicIdentityFromId) && (v = t);
+		let e = a(Lr), t = q(e) ? e.ContextualIdentityService : void 0;
+		q(t) && Hr(t.getPublicIdentityFromId) && (v = t);
 	} catch {
 		v = null;
 	}
 	let T = () => {
-		if (l || !c) throw Y(t, "FENNEVIA_FIREFOX_TABS_DISPOSED", "firefox-tabs-access", "window.gBrowser.openTabs");
+		if (l || !c) throw J(t, "FENNEVIA_FIREFOX_TABS_DISPOSED", "firefox-tabs-access", "window.gBrowser.openTabs");
 		if (u) throw u;
 		return t.assertOwnsWindow(c), c;
 	}, E = () => {
 		let e = T().gBrowser;
-		if (!J(e)) throw Y(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-capability", "window.gBrowser");
+		if (!q(e)) throw J(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-capability", "window.gBrowser");
 		return e;
 	}, D = () => {
-		let e = Nr(T()), n = e.find((e) => !e.snapshot.available);
-		if (n) throw Y(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-capability", n.snapshot.symbol, n.cause);
+		let e = Jr(T()), n = e.find((e) => !e.snapshot.available);
+		if (n) throw J(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-capability", n.snapshot.symbol, n.cause);
 		return Object.freeze(e.map((e) => e.snapshot));
 	}, O = () => {
 		let e = E().openTabs;
-		if (!Array.isArray(e)) throw Y(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-snapshot", "window.gBrowser.openTabs");
-		let n = e.map((e) => Fr(t, e));
-		if (new Set(n).size !== n.length) throw Y(t, "FENNEVIA_FIREFOX_TAB_ORDER_INVALID", "firefox-tabs-snapshot", "window.gBrowser.openTabs");
+		if (!Array.isArray(e)) throw J(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-snapshot", "window.gBrowser.openTabs");
+		let n = e.map((e) => Xr(t, e));
+		if (new Set(n).size !== n.length) throw J(t, "FENNEVIA_FIREFOX_TAB_ORDER_INVALID", "firefox-tabs-snapshot", "window.gBrowser.openTabs");
 		return n;
-	}, k = (e, t) => Reflect.apply(e.getAttribute, e, [t]), A = (e, t) => !!Reflect.apply(e.hasAttribute, e, [t]), j = (e) => {
+	}, k = (e, t) => Reflect.apply(e.getAttribute, e, [t]), A = (e, t) => !!Reflect.apply(e.hasAttribute, e, [t]), ee = (e) => {
 		if (A(e, "activemedia-blocked")) return "blocked";
 		if (A(e, "muted")) return "muted";
 		if (A(e, "soundplaying")) return "playing";
-	}, M = (e) => {
+	}, j = (e) => {
 		if (!v) return;
 		let t = Number.parseInt(String(k(e, "usercontextid") ?? ""), 10);
 		if (!Number.isSafeInteger(t) || t <= 0) return;
@@ -3985,11 +4120,11 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		} catch {
 			return;
 		}
-		if (!J(n)) return;
-		let r = zr(n.color);
+		if (!q(n)) return;
+		let r = ei(n.color);
 		if (!r) return;
 		let i = "";
-		if (typeof n.name == "string" && (i = n.name), i.trim().length === 0 && Dr(v.getUserContextLabel)) try {
+		if (typeof n.name == "string" && (i = n.name), i.trim().length === 0 && Hr(v.getUserContextLabel)) try {
 			let e = Reflect.apply(v.getUserContextLabel, v, [t]);
 			typeof e == "string" && (i = e);
 		} catch {
@@ -4000,8 +4135,8 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			color: r,
 			label: (a.length === 0 ? "Container" : a).slice(0, 80)
 		});
-	}, N = (e, t) => {
-		let n = String(k(e, "label") ?? "").slice(0, 256), r = Ir(k(e, "image")), i = j(e), a = M(e), o = Br(k(e, "sharing"));
+	}, M = (e, t) => {
+		let n = String(k(e, "label") ?? "").slice(0, 256), r = Zr(k(e, "image")), i = ee(e), a = j(e), o = ti(k(e, "sharing"));
 		return Object.freeze({
 			...A(e, "attention") ? { attention: !0 } : {},
 			...i === void 0 ? {} : { audio: i },
@@ -4016,77 +4151,77 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			...o === void 0 ? {} : { sharing: o },
 			title: n
 		});
-	}, P = (e) => {
+	}, N = (e) => {
 		for (let n of Array.from(m)) try {
 			n(e);
 		} catch (e) {
-			o(Y(t, "FENNEVIA_FIREFOX_TABS_SUBSCRIBER_FAILED", "firefox-tabs-notify", "tabs.subscribe", e));
+			o(J(t, "FENNEVIA_FIREFOX_TABS_SUBSCRIBER_FAILED", "firefox-tabs-notify", "tabs.subscribe", e));
 		}
-	}, ee = () => {
-		P(Object.freeze({
+	}, P = () => {
+		N(Object.freeze({
 			revision: d,
 			tabs: f,
 			type: "snapshot"
 		}));
 	}, F = (e) => {
-		let t = E(), n = O().map((e) => N(e, t.selectedTab)), r = new Set(n.map((e) => e.id));
+		let t = E(), n = O().map((e) => M(e, t.selectedTab)), r = new Set(n.map((e) => e.id));
 		for (let e of Array.from(p)) r.has(e) || (g.release(e), p.delete(e));
 		for (let e of r) p.add(e);
 		let i = Object.freeze(n);
-		return !Lr(f, i) && (f = i, d += 1, e && ee(), !0);
+		return !Qr(f, i) && (f = i, d += 1, e && P(), !0);
 	}, te = (e, n) => {
-		u = _(e) ? e : Y(t, "FENNEVIA_FIREFOX_TABS_EVENT_FAILED", "firefox-tabs-event", `window.gBrowser.tabContainer.${n}`, e), o(u);
+		u = _(e) ? e : J(t, "FENNEVIA_FIREFOX_TABS_EVENT_FAILED", "firefox-tabs-event", `window.gBrowser.tabContainer.${n}`, e), o(u);
 	}, ne = (e) => {
 		T();
 		let n = g.resolve(e);
-		if (!O().includes(n)) throw g.release(e), p.delete(e), Y(t, "FENNEVIA_FIREFOX_TAB_STALE", "firefox-tabs-action", "tab.opaque-id");
+		if (!O().includes(n)) throw g.release(e), p.delete(e), J(t, "FENNEVIA_FIREFOX_TAB_STALE", "firefox-tabs-action", "tab.opaque-id");
 		return n;
 	}, I = (e, n) => {
 		let r = E(), i = r[e];
-		if (typeof i != "function") throw Y(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", `window.gBrowser.${e}`);
+		if (typeof i != "function") throw J(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", `window.gBrowser.${e}`);
 		return Reflect.apply(i, r, n);
-	}, L = (e) => {
-		if (e === void 0) return Object.freeze({ selected: !0 });
-		if (!J(e) || Object.keys(e).some((e) => e !== "selected") || e.selected !== void 0 && typeof e.selected != "boolean") throw Y(t, "FENNEVIA_FIREFOX_TAB_OPEN_OPTIONS_INVALID", "firefox-tabs-action", "tabs.open.options");
-		return Object.freeze({ selected: e.selected ?? !0 });
 	}, re = (e) => {
-		if (!J(e) || Object.keys(e).some((e) => e !== "screenX" && e !== "screenY") || typeof e.screenX != "number" || typeof e.screenY != "number" || !Number.isFinite(e.screenX) || !Number.isFinite(e.screenY) || Math.abs(e.screenX) > 1e5 || Math.abs(e.screenY) > 1e5) throw Y(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_POINT_INVALID", "firefox-tabs-action", "tabs.openContextMenu.point");
+		if (e === void 0) return Object.freeze({ selected: !0 });
+		if (!q(e) || Object.keys(e).some((e) => e !== "selected") || e.selected !== void 0 && typeof e.selected != "boolean") throw J(t, "FENNEVIA_FIREFOX_TAB_OPEN_OPTIONS_INVALID", "firefox-tabs-action", "tabs.open.options");
+		return Object.freeze({ selected: e.selected ?? !0 });
+	}, ie = (e) => {
+		if (!q(e) || Object.keys(e).some((e) => e !== "screenX" && e !== "screenY") || typeof e.screenX != "number" || typeof e.screenY != "number" || !Number.isFinite(e.screenX) || !Number.isFinite(e.screenY) || Math.abs(e.screenX) > 1e5 || Math.abs(e.screenY) > 1e5) throw J(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_POINT_INVALID", "firefox-tabs-action", "tabs.openContextMenu.point");
 		return Object.freeze({
 			screenX: e.screenX,
 			screenY: e.screenY
 		});
-	}, ie = (e) => {
-		if (!J(e) || Object.keys(e).some((e) => e !== "cancelled" && e !== "screenX" && e !== "screenY") || typeof e.cancelled != "boolean" || typeof e.screenX != "number" || typeof e.screenY != "number" || !Number.isFinite(e.screenX) || !Number.isFinite(e.screenY) || Math.abs(e.screenX) > 1e5 || Math.abs(e.screenY) > 1e5) throw Y(t, "FENNEVIA_FIREFOX_TAB_DRAG_END_OPTIONS_INVALID", "firefox-tabs-drag", "tabs.endDrag.options");
+	}, ae = (e) => {
+		if (!q(e) || Object.keys(e).some((e) => e !== "cancelled" && e !== "screenX" && e !== "screenY") || typeof e.cancelled != "boolean" || typeof e.screenX != "number" || typeof e.screenY != "number" || !Number.isFinite(e.screenX) || !Number.isFinite(e.screenY) || Math.abs(e.screenX) > 1e5 || Math.abs(e.screenY) > 1e5) throw J(t, "FENNEVIA_FIREFOX_TAB_DRAG_END_OPTIONS_INVALID", "firefox-tabs-drag", "tabs.endDrag.options");
 		return Object.freeze({
 			cancelled: e.cancelled,
 			screenX: e.screenX,
 			screenY: e.screenY
 		});
-	}, ae = (e, n) => {
-		if (!Number.isSafeInteger(e) || e < 0 || e > n) throw Y(t, "FENNEVIA_FIREFOX_TAB_DRAG_DROP_INDEX_INVALID", "firefox-tabs-drag", "tabs.dropDrag.index");
+	}, oe = (e, n) => {
+		if (!Number.isSafeInteger(e) || e < 0 || e > n) throw J(t, "FENNEVIA_FIREFOX_TAB_DRAG_DROP_INDEX_INVALID", "firefox-tabs-drag", "tabs.dropDrag.index");
 		return e;
-	}, oe = () => {
-		if (T(), !y || !jr(y)) throw Y(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "document.tabContextMenu.openPopup.moveTo");
-		return y;
 	}, se = () => {
+		if (T(), !y || !Kr(y)) throw J(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "document.tabContextMenu.openPopup.moveTo");
+		return y;
+	}, ce = () => {
 		if (x) return;
 		let n;
 		try {
-			n = e(Gr) === !0;
+			n = e(oi) === !0;
 		} catch (e) {
-			throw Y(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_HANDOFF_FAILED", "firefox-tabs-context-menu-handoff", "nativeUi.beginPopupHandoff", e);
+			throw J(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_HANDOFF_FAILED", "firefox-tabs-context-menu-handoff", "nativeUi.beginPopupHandoff", e);
 		}
-		if (!n) throw Y(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_HANDOFF_REJECTED", "firefox-tabs-context-menu-handoff", "nativeUi.beginPopupHandoff");
+		if (!n) throw J(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_HANDOFF_REJECTED", "firefox-tabs-context-menu-handoff", "nativeUi.beginPopupHandoff");
 		x = !0;
-	}, ce = () => {
+	}, le = () => {
 		if (!x) return null;
 		x = !1;
 		try {
-			return n(Gr), null;
+			return n(oi), null;
 		} catch (e) {
-			return Y(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_HANDOFF_RELEASE_FAILED", "firefox-tabs-context-menu-handoff", "nativeUi.endPopupHandoff", e);
+			return J(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_HANDOFF_RELEASE_FAILED", "firefox-tabs-context-menu-handoff", "nativeUi.endPopupHandoff", e);
 		}
-	}, le = Object.freeze({
+	}, ue = Object.freeze({
 		beginDrag(e) {
 			let n = ne(e);
 			try {
@@ -4105,7 +4240,7 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 					tab: n
 				});
 			} catch (e) {
-				throw Y(t, "FENNEVIA_FIREFOX_TAB_DRAG_BEGIN_REJECTED", "firefox-tabs-drag", "tabs.beginDrag", e);
+				throw J(t, "FENNEVIA_FIREFOX_TAB_DRAG_BEGIN_REJECTED", "firefox-tabs-drag", "tabs.beginDrag", e);
 			}
 		},
 		close(e) {
@@ -4116,21 +4251,21 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			}]), F(!0);
 		},
 		dropDrag(e) {
-			let n = O(), i = ae(e, n.length), a = r.resolve({
+			let n = O(), i = oe(e, n.length), a = r.resolve({
 				contextId: C,
 				windowKind: w
 			});
-			if (!a) throw Y(t, "FENNEVIA_FIREFOX_TAB_DRAG_UNAVAILABLE", "firefox-tabs-drag", "tabs.dropDrag.transfer");
+			if (!a) throw J(t, "FENNEVIA_FIREFOX_TAB_DRAG_UNAVAILABLE", "firefox-tabs-drag", "tabs.dropDrag.transfer");
 			let o = n.filter((e) => A(e, "pinned")).length;
 			if (a.sourceContextId === C) {
-				if (!n.includes(a.tab)) throw r.cancel(a.id, C), Y(t, "FENNEVIA_FIREFOX_TAB_STALE", "firefox-tabs-drag", "tabs.dropDrag.source-tab");
+				if (!n.includes(a.tab)) throw r.cancel(a.id, C), J(t, "FENNEVIA_FIREFOX_TAB_STALE", "firefox-tabs-drag", "tabs.dropDrag.source-tab");
 				let e = Math.max(n.length - 1, 0), s = a.pinned ? Math.min(Math.max(i, 0), Math.max(o - 1, 0)) : Math.min(Math.max(i, o), e);
 				I("moveTabTo", [a.tab, {
 					isUserTriggered: !0,
 					tabIndex: s
 				}]);
 				let c = O().indexOf(a.tab);
-				if (c < 0) throw Y(t, "FENNEVIA_FIREFOX_TAB_MOVE_REJECTED", "firefox-tabs-drag", "window.gBrowser.moveTabTo");
+				if (c < 0) throw J(t, "FENNEVIA_FIREFOX_TAB_MOVE_REJECTED", "firefox-tabs-drag", "window.gBrowser.moveTabTo");
 				let l = g.register(a.tab);
 				return r.consume(a.id), F(!0), Object.freeze({
 					index: c,
@@ -4145,10 +4280,10 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 					tabIndex: s
 				}]);
 			} catch (e) {
-				throw Y(t, "FENNEVIA_FIREFOX_TAB_ADOPT_REJECTED", "firefox-tabs-drag", "window.gBrowser.adoptTab", e);
+				throw J(t, "FENNEVIA_FIREFOX_TAB_ADOPT_REJECTED", "firefox-tabs-drag", "window.gBrowser.adoptTab", e);
 			}
-			let l = Fr(t, c), u = O().indexOf(l);
-			if (u < 0) throw Y(t, "FENNEVIA_FIREFOX_TAB_ADOPT_REJECTED", "firefox-tabs-drag", "window.gBrowser.adoptTab");
+			let l = Xr(t, c), u = O().indexOf(l);
+			if (u < 0) throw J(t, "FENNEVIA_FIREFOX_TAB_ADOPT_REJECTED", "firefox-tabs-drag", "window.gBrowser.adoptTab");
 			let d = g.register(l);
 			return r.consume(a.id), F(!0), Object.freeze({
 				index: u,
@@ -4157,8 +4292,8 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			});
 		},
 		endDrag(e, n) {
-			if (T(), typeof e != "string" || e.length === 0 || e.length > 160) throw Y(t, "FENNEVIA_FIREFOX_TAB_DRAG_ID_INVALID", "firefox-tabs-drag", "tabs.endDrag.id");
-			let a = ie(n), o = r.resolveForEnd(e, C);
+			if (T(), typeof e != "string" || e.length === 0 || e.length > 160) throw J(t, "FENNEVIA_FIREFOX_TAB_DRAG_ID_INVALID", "firefox-tabs-drag", "tabs.endDrag.id");
+			let a = ae(n), o = r.resolveForEnd(e, C);
 			if (o.status === "consumed") return "consumed";
 			if (o.status === "cancelled") return "cancelled";
 			if (o.status === "missing" || o.status !== "active") return "unchanged";
@@ -4167,7 +4302,7 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			try {
 				s = i() === !0;
 			} catch (n) {
-				throw r.cancel(e, C), Y(t, "FENNEVIA_FIREFOX_TAB_DETACH_POLICY_FAILED", "firefox-tabs-drag", "browser.tabs.allowTabDetach", n);
+				throw r.cancel(e, C), J(t, "FENNEVIA_FIREFOX_TAB_DETACH_POLICY_FAILED", "firefox-tabs-drag", "browser.tabs.allowTabDetach", n);
 			}
 			if (!s) return r.cancel(e, C), "blocked";
 			let c = O();
@@ -4181,7 +4316,7 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 					suppressanimation: 1
 				}]);
 			} catch (e) {
-				throw Y(t, "FENNEVIA_FIREFOX_TAB_DETACH_REJECTED", "firefox-tabs-drag", "window.gBrowser.replaceTabWithWindow", e);
+				throw J(t, "FENNEVIA_FIREFOX_TAB_DETACH_REJECTED", "firefox-tabs-drag", "window.gBrowser.replaceTabWithWindow", e);
 			} finally {
 				r.consume(e);
 			}
@@ -4195,30 +4330,30 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		},
 		move(e, n) {
 			let r = ne(e);
-			if (!Number.isSafeInteger(n) || n < 0 || n > 1e4) throw Y(t, "FENNEVIA_FIREFOX_TAB_MOVE_INDEX_INVALID", "firefox-tabs-action", "tabs.move.index");
+			if (!Number.isSafeInteger(n) || n < 0 || n > 1e4) throw J(t, "FENNEVIA_FIREFOX_TAB_MOVE_INDEX_INVALID", "firefox-tabs-action", "tabs.move.index");
 			I("moveTabTo", [r, {
 				isUserTriggered: !0,
 				tabIndex: n
 			}]), F(!0);
 		},
 		open(e) {
-			let n = L(e), r = T().BROWSER_NEW_TAB_URL;
-			if (typeof r != "string" || r.length === 0) throw Y(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "window.BROWSER_NEW_TAB_URL");
-			let i = Fr(t, I("addTrustedTab", [r, { inBackground: !n.selected }]));
-			if (!O().includes(i)) throw Y(t, "FENNEVIA_FIREFOX_TAB_OPEN_REJECTED", "firefox-tabs-action", "window.gBrowser.addTrustedTab");
+			let n = re(e), r = T().BROWSER_NEW_TAB_URL;
+			if (typeof r != "string" || r.length === 0) throw J(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "window.BROWSER_NEW_TAB_URL");
+			let i = Xr(t, I("addTrustedTab", [r, { inBackground: !n.selected }]));
+			if (!O().includes(i)) throw J(t, "FENNEVIA_FIREFOX_TAB_OPEN_REJECTED", "firefox-tabs-action", "window.gBrowser.addTrustedTab");
 			let a = g.register(i);
-			if (F(!0), n.selected && E().selectedTab !== i) throw Y(t, "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED", "firefox-tabs-action", "window.gBrowser.selectedTab");
+			if (F(!0), n.selected && E().selectedTab !== i) throw J(t, "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED", "firefox-tabs-action", "window.gBrowser.selectedTab");
 			return a;
 		},
 		openContextMenu(e, n) {
-			let r = ne(e), i = re(n), a = oe(), s = a.openPopup, c = a.moveTo;
-			if (!Dr(s) || !Dr(c)) throw Y(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "document.tabContextMenu.openPopup.moveTo");
+			let r = ne(e), i = ie(n), a = se(), s = a.openPopup, c = a.moveTo;
+			if (!Hr(s) || !Hr(c)) throw J(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "document.tabContextMenu.openPopup.moveTo");
 			try {
 				I("translateTabContextMenu", []);
 			} catch (e) {
-				throw _(e) ? e : Y(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_TRANSLATION_FAILED", "firefox-tabs-action", "window.gBrowser.translateTabContextMenu", e);
+				throw _(e) ? e : J(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_TRANSLATION_FAILED", "firefox-tabs-action", "window.gBrowser.translateTabContextMenu", e);
 			}
-			se();
+			ce();
 			try {
 				Reflect.apply(s, a, [
 					r,
@@ -4228,26 +4363,26 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 					!0
 				]);
 			} catch (e) {
-				let n = ce();
-				throw n && o(n), Y(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_REJECTED", "firefox-tabs-action", "document.tabContextMenu.openPopup", e);
+				let n = le();
+				throw n && o(n), J(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_REJECTED", "firefox-tabs-action", "document.tabContextMenu.openPopup", e);
 			}
 			try {
 				Reflect.apply(c, a, [i.screenX, i.screenY]);
 			} catch (e) {
-				o(Y(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_POSITION_FAILED", "firefox-tabs-action", "document.tabContextMenu.moveTo", e));
+				o(J(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_POSITION_FAILED", "firefox-tabs-action", "document.tabContextMenu.moveTo", e));
 			}
 		},
 		pin(e) {
 			let n = ne(e);
 			if (!A(n, "pinned")) {
-				if (I("pinTab", [n]), !A(n, "pinned")) throw Y(t, "FENNEVIA_FIREFOX_TAB_PIN_REJECTED", "firefox-tabs-action", "window.gBrowser.pinTab");
+				if (I("pinTab", [n]), !A(n, "pinned")) throw J(t, "FENNEVIA_FIREFOX_TAB_PIN_REJECTED", "firefox-tabs-action", "window.gBrowser.pinTab");
 				F(!0);
 			}
 		},
 		select(e) {
 			let n = ne(e), r = E();
 			if (r.selectedTab !== n) {
-				if (!Reflect.set(r, "selectedTab", n) || r.selectedTab !== n) throw Y(t, "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED", "firefox-tabs-action", "window.gBrowser.selectedTab");
+				if (!Reflect.set(r, "selectedTab", n) || r.selectedTab !== n) throw J(t, "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED", "firefox-tabs-action", "window.gBrowser.selectedTab");
 				F(!0);
 			}
 		},
@@ -4255,20 +4390,20 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			return T(), f;
 		},
 		subscribe(e) {
-			if (T(), typeof e != "function") throw Y(t, "FENNEVIA_FIREFOX_TABS_LISTENER_INVALID", "firefox-tabs-subscribe", "tabs.subscribe");
+			if (T(), typeof e != "function") throw J(t, "FENNEVIA_FIREFOX_TABS_LISTENER_INVALID", "firefox-tabs-subscribe", "tabs.subscribe");
 			return m.add(e), b(() => {
 				m.delete(e);
 			});
 		},
 		toggleMute(e) {
 			let n = ne(e), r = n.toggleMuteAudio;
-			if (!Dr(r)) throw Y(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "MozTabbrowserTab.toggleMuteAudio");
+			if (!Hr(r)) throw J(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "MozTabbrowserTab.toggleMuteAudio");
 			Reflect.apply(r, n, []), F(!0);
 		},
 		unpin(e) {
 			let n = ne(e);
 			if (A(n, "pinned")) {
-				if (I("unpinTab", [n]), A(n, "pinned")) throw Y(t, "FENNEVIA_FIREFOX_TAB_UNPIN_REJECTED", "firefox-tabs-action", "window.gBrowser.unpinTab");
+				if (I("unpinTab", [n]), A(n, "pinned")) throw J(t, "FENNEVIA_FIREFOX_TAB_UNPIN_REJECTED", "firefox-tabs-action", "window.gBrowser.unpinTab");
 				F(!0);
 			}
 		}
@@ -4276,32 +4411,32 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 	try {
 		t.assertRequiredCapabilities(), D(), F(!1);
 		let e = E(), n = e.tabContainer;
-		for (let e of yr) h.push(t.subscribe(n, e, (t) => {
+		for (let e of Pr) h.push(t.subscribe(n, e, (t) => {
 			if (!(l || u)) try {
-				if (e === "TabAttrModified" && !Rr(t)) return;
+				if (e === "TabAttrModified" && !$r(t)) return;
 				F(!0);
 			} catch (t) {
 				te(t, e);
 			}
 		}));
-		for (let n of br) h.push(t.subscribe(e, n, () => {
+		for (let n of Fr) h.push(t.subscribe(e, n, () => {
 			if (!(l || u)) try {
 				F(!0);
 			} catch (e) {
 				te(e, n);
 			}
 		}));
-		let r = Ar(T(), "tabContextMenu");
-		if (!jr(r)) throw Y(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-capability", "document.tabContextMenu.openPopup.moveTo");
+		let r = Gr(T(), "tabContextMenu");
+		if (!Kr(r)) throw J(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-capability", "document.tabContextMenu.openPopup.moveTo");
 		y = r, h.push(t.subscribe(r, "popupshown", (e) => {
-			l || u || !Vr(e, r) || P(Object.freeze({
+			l || u || !ni(e, r) || N(Object.freeze({
 				open: !0,
 				type: "context-menu"
 			}));
 		})), h.push(t.subscribe(r, "popuphidden", (e) => {
-			if (!Vr(e, r)) return;
-			let t = ce();
-			t && o(t), !l && P(Object.freeze({
+			if (!ni(e, r)) return;
+			let t = le();
+			t && o(t), !l && N(Object.freeze({
 				open: !1,
 				type: "context-menu"
 			}));
@@ -4324,7 +4459,7 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		} catch (e) {
 			n ??= e;
 		}
-		throw n !== void 0 && o(Y(t, "FENNEVIA_FIREFOX_TABS_DISPOSE_FAILED", "firefox-tabs-dispose", "window.gBrowser.tabContainer", n)), e;
+		throw n !== void 0 && o(J(t, "FENNEVIA_FIREFOX_TABS_DISPOSE_FAILED", "firefox-tabs-dispose", "window.gBrowser.tabContainer", n)), e;
 	}
 	return Object.freeze({
 		assertRequiredCapabilities: D,
@@ -4339,12 +4474,12 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			}
 			c = null;
 			let n = y?.hidePopup;
-			if (y && Dr(n)) try {
+			if (y && Hr(n)) try {
 				Reflect.apply(n, y, []);
 			} catch (t) {
 				e ??= t;
 			}
-			let i = ce();
+			let i = le();
 			i && (e ??= i), y = null, v = null;
 			for (let t of h.reverse()) try {
 				t();
@@ -4357,7 +4492,7 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 			} catch (t) {
 				e ??= t;
 			}
-			if (e !== void 0) throw Y(t, "FENNEVIA_FIREFOX_TABS_DISPOSE_FAILED", "firefox-tabs-dispose", "window.gBrowser.tabContainer", e);
+			if (e !== void 0) throw J(t, "FENNEVIA_FIREFOX_TABS_DISPOSE_FAILED", "firefox-tabs-dispose", "window.gBrowser.tabContainer", e);
 			return !0;
 		},
 		snapshot() {
@@ -4369,12 +4504,12 @@ function Kr({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 				tabCount: f.length
 			});
 		},
-		tabs: le
+		tabs: ue
 	});
 }
 //#endregion
 //#region src/firefox/toolbar-widgets/native-support.ts
-var qr = "nav-bar", Jr = "unified-extensions-area", Yr = "fennevia.customize.layout", Xr = "fennevia.customize.style", Zr = "fennevia.customize.", Qr = "after_start", $r = Object.freeze({ capture: !0 }), ei = /^rgba?\([0-9\s.,%]{1,48}\)$/u, ti = /url\(\s*"((?:[^"\\]|\\.){1,512})"\s*\)/u, ni = /url\(\s*'((?:[^'\\]|\\.){1,512})'\s*\)/u, ri = /url\(\s*((?:[^"')\\]|\\.){1,512})\s*\)/u, ii = "moz-extension://", ai = "-browser-action", oi = /["'\\<>\s]/u, si = /#([A-Za-z_][\w-]*)/gu, ci = /^(?:branding|browser|toolkit|preview)\/(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.ftl$/u, li = /^(?:[A-Za-z][\w-]*\.)?(?:label|tooltiptext\d*)$/u, ui = /%[0-9$]*[Ssd]/u, di = Object.freeze([
+var ci = "nav-bar", li = "unified-extensions-area", ui = "fennevia.customize.layout", di = "fennevia.customize.style", fi = "fennevia.customize.panels", pi = "fennevia.customize.", mi = "after_start", hi = Object.freeze({ capture: !0 }), gi = /^rgba?\([0-9\s.,%]{1,48}\)$/u, _i = /url\(\s*"((?:[^"\\]|\\.){1,512})"\s*\)/u, vi = /url\(\s*'((?:[^'\\]|\\.){1,512})'\s*\)/u, yi = /url\(\s*((?:[^"')\\]|\\.){1,512})\s*\)/u, bi = "moz-extension://", xi = "-browser-action", Si = /["'\\<>\s]/u, Ci = /#([A-Za-z_][\w-]*)/gu, wi = /^(?:branding|browser|toolkit|preview)\/(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.ftl$/u, Ti = /^(?:[A-Za-z][\w-]*\.)?(?:label|tooltiptext\d*)$/u, Ei = /%[0-9$]*[Ssd]/u, Di = Object.freeze([
 	"back-button",
 	"forward-button",
 	"stop-reload-button",
@@ -4387,7 +4522,7 @@ var qr = "nav-bar", Jr = "unified-extensions-area", Yr = "fennevia.customize.lay
 	"personal-bookmarks",
 	"menubar-items",
 	"tabbrowser-tabs"
-]), fi = new Set(di), pi = new Map([
+]), Oi = new Set(Di), ki = new Map([
 	["zoom-controls", Object.freeze([
 		Object.freeze({
 			fallbackLabel: "Zoom out",
@@ -4432,7 +4567,7 @@ var qr = "nav-bar", Jr = "unified-extensions-area", Yr = "fennevia.customize.lay
 		icon: "arrow-down",
 		nodeId: "profiler-button-dropmarker"
 	})])]
-]), mi = new Map([
+]), Ai = new Map([
 	["bookmarks-menu-button", "bookmark"],
 	["developer-button", "developer"],
 	["edit-controls", "edit"],
@@ -4450,12 +4585,12 @@ var qr = "nav-bar", Jr = "unified-extensions-area", Yr = "fennevia.customize.lay
 	["screenshot-button", "screenshot"],
 	["sidebar-button", "sidebar"],
 	["zoom-controls", "zoom"]
-]), hi = Object.freeze([
+]), ji = Object.freeze([
 	"browser/browser.ftl",
 	"browser/sidebar.ftl",
 	"browser/appmenu.ftl",
 	"browser/screenshots.ftl"
-]), gi = new Map([
+]), Mi = new Map([
 	["bookmarks-menu-button", "bookmarks-menu-button"],
 	["characterencoding-button", "repair-text-encoding-button"],
 	["email-link-button", "toolbar-button-email-link"],
@@ -4477,7 +4612,7 @@ var qr = "nav-bar", Jr = "unified-extensions-area", Yr = "fennevia.customize.lay
 	["sidebar-button", "show-sidebars"],
 	["sync-button", "toolbar-button-synced-tabs"],
 	["tab-groups-button", "toolbar-button-tab-groups"]
-]), _i = new Map([
+]), Ni = new Map([
 	["bookmarks-menu-button", "chrome://browser/skin/bookmark-star-on-tray.svg"],
 	["characterencoding-button", "chrome://browser/skin/characterEncoding.svg"],
 	["copy-button", "chrome://global/skin/icons/edit-copy.svg"],
@@ -4508,7 +4643,7 @@ var qr = "nav-bar", Jr = "unified-extensions-area", Yr = "fennevia.customize.lay
 	["tab-groups-button", "chrome://browser/skin/tabbrowser/tab-groups.svg"],
 	["zoom-in-button", "chrome://global/skin/icons/plus.svg"],
 	["zoom-out-button", "chrome://global/skin/icons/minus.svg"]
-]), vi = (e, t) => e === "send-tab-button" ? Number.parseInt(t.split(".", 1)[0] ?? "", 10) >= 154 ? "chrome://browser/skin/send-tab.svg" : "chrome://browser/skin/send-tab-20.svg" : _i.get(e) ?? "", yi = new Map([
+]), Pi = (e, t) => e === "send-tab-button" ? Number.parseInt(t.split(".", 1)[0] ?? "", 10) >= 154 ? "chrome://browser/skin/send-tab.svg" : "chrome://browser/skin/send-tab-20.svg" : Ni.get(e) ?? "", Fi = new Map([
 	["show-bookmarks", Object.freeze({
 		icon: "bookmark",
 		label: "Show bookmarks panel",
@@ -4524,69 +4659,69 @@ var qr = "nav-bar", Jr = "unified-extensions-area", Yr = "fennevia.customize.lay
 		label: "Translate this page",
 		tooltip: "Open Firefox built-in translations"
 	})]
-]), X = (e) => typeof e == "object" && !!e, Z = (e) => typeof e == "function", bi = (e) => X(e) && Z(e.getAttribute), xi = (e) => X(e) && Z(e.hidePopup) && Z(e.moveToAnchor), Si = (e) => xi(e) && Z(e.openPopup), Ci = (e, t) => typeof e == "string" ? e.slice(0, t) : "", wi = (e) => {
+]), Y = (e) => typeof e == "object" && !!e, X = (e) => typeof e == "function", Ii = (e) => Y(e) && X(e.getAttribute), Li = (e) => Y(e) && X(e.hidePopup) && X(e.moveToAnchor), Ri = (e) => Li(e) && X(e.openPopup), zi = (e, t) => typeof e == "string" ? e.slice(0, t) : "", Bi = (e) => {
 	let t = e.trim();
-	return ei.test(t) ? t : "";
-}, Ti = (e) => {
+	return gi.test(t) ? t : "";
+}, Vi = (e) => {
 	let t = e.CustomizableUI;
-	return !X(t) || !Z(t.getWidgetIdsInArea) || !Z(t.getWidget) || !Z(t.addListener) || !Z(t.removeListener) ? null : t;
-}, Ei = (e) => {
+	return !Y(t) || !X(t.getWidgetIdsInArea) || !X(t.getWidget) || !X(t.addListener) || !X(t.removeListener) ? null : t;
+}, Hi = (e) => {
 	let t = e.Services;
-	if (!X(t)) return null;
+	if (!Y(t)) return null;
 	let n = t.prefs;
-	return !X(n) || !Z(n.addObserver) || !Z(n.clearUserPref) || !Z(n.getStringPref) || !Z(n.removeObserver) || !Z(n.setStringPref) ? null : n;
-}, Di = (e, t) => {
+	return !Y(n) || !X(n.addObserver) || !X(n.clearUserPref) || !X(n.getStringPref) || !X(n.removeObserver) || !X(n.setStringPref) ? null : n;
+}, Ui = (e, t) => {
 	try {
 		let n = Reflect.apply(e.getStringPref, e, [t, ""]);
 		return typeof n == "string" && n.length <= 16384 ? n : "";
 	} catch {
 		return "";
 	}
-}, Oi = (e) => {
+}, Wi = (e) => {
 	try {
 		let t = e.AREA_ADDONS;
-		return typeof t == "string" && t !== "" ? t : Jr;
+		return typeof t == "string" && t !== "" ? t : li;
 	} catch {
-		return Jr;
+		return li;
 	}
-}, ki = (e, t) => {
-	if (Z(e.isWebExtensionWidget)) try {
+}, Gi = (e, t) => {
+	if (X(e.isWebExtensionWidget)) try {
 		return Reflect.apply(e.isWebExtensionWidget, e, [t]) === !0;
 	} catch {}
-	return t.endsWith(ai);
-}, Ai = (e) => {
+	return t.endsWith(xi);
+}, Ki = (e) => {
 	let t = e.PanelUI;
-	return !X(t) || !Z(t.showSubView) ? null : t.showSubView;
-}, ji = Object.freeze([
+	return !Y(t) || !X(t.showSubView) ? null : t.showSubView;
+}, qi = Object.freeze([
 	Object.freeze({
 		isAvailable: (e) => e !== null,
 		name: "toolbar-widgets.customizable-ui",
-		read: (e) => Ti(e),
+		read: (e) => Vi(e),
 		requirement: "optional",
 		symbol: "window.CustomizableUI.getWidgetIdsInArea.getWidget.addListener.removeListener"
 	}),
 	Object.freeze({
 		isAvailable: (e) => e !== null,
 		name: "toolbar-widgets.panel-ui-sub-view",
-		read: (e) => Ai(e),
+		read: (e) => Ki(e),
 		requirement: "optional",
 		symbol: "window.PanelUI.showSubView"
 	}),
 	Object.freeze({
 		isAvailable: (e) => e !== null,
 		name: "toolbar-widgets.prefs",
-		read: (e) => Ei(e),
+		read: (e) => Hi(e),
 		requirement: "optional",
 		symbol: "window.Services.prefs.getStringPref.setStringPref.clearUserPref.addObserver.removeObserver"
 	}),
 	Object.freeze({
-		isAvailable: (e) => X(e) && Z(e.addEventListener) && Z(e.removeEventListener) && Z(e.getElementById),
+		isAvailable: (e) => Y(e) && X(e.addEventListener) && X(e.removeEventListener) && X(e.getElementById),
 		name: "toolbar-widgets.document-events",
 		read: (e) => e.document,
 		requirement: "required",
 		symbol: "document.addEventListener.removeEventListener.getElementById"
 	})
-]), Mi = (e) => Object.freeze(ji.map((t) => {
+]), Ji = (e) => Object.freeze(qi.map((t) => {
 	let n = !1, r;
 	try {
 		n = t.isAvailable(t.read(e));
@@ -4602,26 +4737,26 @@ var qr = "nav-bar", Jr = "unified-extensions-area", Yr = "fennevia.customize.lay
 			symbol: t.symbol
 		})
 	});
-})), Ni = (e) => {
+})), Yi = (e) => {
 	let t = e.snapshot();
 	return Object.freeze({
 		buildId: t.buildId,
 		firefoxVersion: t.firefoxVersion,
 		windowKind: t.windowKind
 	});
-}, Q = (e, t, n, r, i) => new g({
+}, Z = (e, t, n, r, i) => new g({
 	cause: i,
 	code: t,
-	context: Ni(e),
+	context: Yi(e),
 	phase: n,
 	symbol: r
-}), Pi = (e) => {
+}), Xi = (e) => {
 	if (e.startsWith("customizableui-special-")) {
 		let t = /^customizableui-special-(spring|spacer|separator)/u.exec(e);
 		return t ? t[1] : null;
 	}
 	return e === "spring" || e === "spacer" || e === "separator" ? e : e === "vertical-spacer" ? "spacer" : null;
-}, Fi = (e, t) => {
+}, Zi = (e, t) => {
 	if (!e) return "";
 	try {
 		let n = e[t];
@@ -4629,178 +4764,178 @@ var qr = "nav-bar", Jr = "unified-extensions-area", Yr = "fennevia.customize.lay
 	} catch {
 		return "";
 	}
-}, Ii = (e, t) => {
+}, Qi = (e, t) => {
 	let n = e.document;
-	if (!(!X(n) || !Z(n.getElementById))) return Reflect.apply(n.getElementById, n, [t]);
-}, Li = (e, t) => {
-	if (Z(e.querySelector)) try {
+	if (!(!Y(n) || !X(n.getElementById))) return Reflect.apply(n.getElementById, n, [t]);
+}, $i = (e, t) => {
+	if (X(e.querySelector)) try {
 		return Reflect.apply(e.querySelector, e, [t]);
 	} catch {
 		return;
 	}
-}, Ri = (e, t) => {
+}, ea = (e, t) => {
 	try {
 		let n = Reflect.apply(e.getAttribute, e, [t]);
 		return typeof n == "string" ? n : "";
 	} catch {
 		return "";
 	}
-}, zi = (e) => {
+}, ta = (e) => {
 	if (e === "" || e === "none") return "";
-	let t = ti.exec(e);
+	let t = _i.exec(e);
 	if (t) return t[1].replace(/\\(.)/gu, "$1");
-	let n = ni.exec(e);
+	let n = vi.exec(e);
 	if (n) return n[1].replace(/\\(.)/gu, "$1");
-	let r = ri.exec(e);
+	let r = yi.exec(e);
 	return r ? r[1].replace(/\\(.)/gu, "$1") : "";
-}, Bi = (e, t) => e === "" || e.length > 512 || oi.test(e) ? !1 : t === "extension" ? e.startsWith(ii) : e.startsWith("chrome://") || e.startsWith("resource://"), Vi = (e) => {
-	if (bi(e)) return e;
+}, na = (e, t) => e === "" || e.length > 512 || Si.test(e) ? !1 : t === "extension" ? e.startsWith(bi) : e.startsWith("chrome://") || e.startsWith("resource://"), ra = (e) => {
+	if (Ii(e)) return e;
 	if (Array.isArray(e)) {
 		let t = e[0];
-		return bi(t) ? t : null;
+		return Ii(t) ? t : null;
 	}
-	if (!X(e)) return null;
+	if (!Y(e)) return null;
 	let t = e[0];
-	if (bi(t)) return t;
-	if (Z(e.item)) try {
+	if (Ii(t)) return t;
+	if (X(e.item)) try {
 		let t = Reflect.apply(e.item, e, [0]);
-		return bi(t) ? t : null;
+		return Ii(t) ? t : null;
 	} catch {
 		return null;
 	}
 	return null;
-}, Hi = (e) => {
-	if (!X(e)) return "";
+}, ia = (e) => {
+	if (!Y(e)) return "";
 	try {
 		let t = e.listStyleImage;
 		if (typeof t == "string" && t !== "") {
-			let e = zi(t);
+			let e = ta(t);
 			if (e) return e;
 		}
 	} catch {}
-	if (Z(e.getPropertyValue)) try {
+	if (X(e.getPropertyValue)) try {
 		let t = Reflect.apply(e.getPropertyValue, e, ["list-style-image"]);
-		if (typeof t == "string") return zi(t);
+		if (typeof t == "string") return ta(t);
 	} catch {
 		return "";
 	}
 	return "";
-}, Ui = (e) => {
+}, aa = (e) => {
 	try {
-		let t = e.style, n = Hi(t);
+		let t = e.style, n = ia(t);
 		if (n) return n;
 	} catch {}
 	return "";
-}, Wi = (e) => {
+}, oa = (e) => {
 	if (typeof e != "string" || e === "") return [];
 	let t = [];
-	si.lastIndex = 0;
-	for (let n of e.matchAll(si)) {
+	Ci.lastIndex = 0;
+	for (let n of e.matchAll(Ci)) {
 		let e = n[1];
 		e && t.push(e);
 	}
 	return t;
-}, Gi = (e, t, n = []) => {
-	if (!X(e)) return;
+}, sa = (e, t, n = []) => {
+	if (!Y(e)) return;
 	let r;
 	try {
 		r = e.selectorText;
 	} catch {
 		r = void 0;
 	}
-	let i = Wi(r), a = i.length > 0 ? i : n, o = Ui(e);
-	if (o && Bi(o, "builtin")) for (let e of a) t.set(e, o);
+	let i = oa(r), a = i.length > 0 ? i : n, o = aa(e);
+	if (o && na(o, "builtin")) for (let e of a) t.set(e, o);
 	let s;
 	try {
 		s = e.cssRules;
 	} catch {
 		s = void 0;
 	}
-	if (X(s) && typeof s.length == "number") {
+	if (Y(s) && typeof s.length == "number") {
 		let e = s.length;
-		for (let n = 0; n < e; n += 1) Gi(s[n], t, a);
+		for (let n = 0; n < e; n += 1) sa(s[n], t, a);
 	}
-}, Ki = (e, t) => {
-	if (Array.isArray(e) || X(e)) return e[t];
-}, qi = (e, t) => {
+}, ca = (e, t) => {
+	if (Array.isArray(e) || Y(e)) return e[t];
+}, la = (e, t) => {
 	if (Array.isArray(e)) {
-		for (let n of e) if (X(n) && n.name === t && typeof n.value == "string") return n.value;
+		for (let n of e) if (Y(n) && n.name === t && typeof n.value == "string") return n.value;
 		return "";
 	}
-	if (!X(e)) return "";
+	if (!Y(e)) return "";
 	if (typeof e.length == "number" && e.length > 0) {
 		let n = e.length;
 		for (let r = 0; r < n; r += 1) {
 			let n = e[r];
-			if (X(n) && n.name === t && typeof n.value == "string") return n.value;
+			if (Y(n) && n.name === t && typeof n.value == "string") return n.value;
 		}
 	}
 	let n = e[t];
 	return typeof n == "string" ? n : "";
-}, Ji = (e, t) => {
-	let n = Ki(e, 0);
-	if (!X(n)) return "";
-	let r = qi(n.attributes, "label") || qi(n.attributes, "tooltiptext"), i = typeof n.value == "string" ? n.value : "", a = r || i;
-	return !a || a === t ? "" : Ci(a, 200);
-}, Yi = (e, t) => {
-	if (Z(e.formatMessagesSync)) try {
-		let n = Ji(Reflect.apply(e.formatMessagesSync, e, [[{ id: t }]]), t);
+}, ua = (e, t) => {
+	let n = ca(e, 0);
+	if (!Y(n)) return "";
+	let r = la(n.attributes, "label") || la(n.attributes, "tooltiptext"), i = typeof n.value == "string" ? n.value : "", a = r || i;
+	return !a || a === t ? "" : zi(a, 200);
+}, da = (e, t) => {
+	if (X(e.formatMessagesSync)) try {
+		let n = ua(Reflect.apply(e.formatMessagesSync, e, [[{ id: t }]]), t);
 		if (n) return n;
 	} catch {}
-	if (!Z(e.formatValueSync)) return "";
+	if (!X(e.formatValueSync)) return "";
 	try {
 		let n = Reflect.apply(e.formatValueSync, e, [t]);
-		return typeof n != "string" || n === "" || n === t ? "" : Ci(n, 200);
+		return typeof n != "string" || n === "" || n === t ? "" : zi(n, 200);
 	} catch {
 		return "";
 	}
-}, Xi = (e) => e.length > 0 && e.length <= 128 && !e.includes("..") && ci.test(e), Zi = (e) => {
+}, fa = (e) => e.length > 0 && e.length <= 128 && !e.includes("..") && wi.test(e), pa = (e) => {
 	let t = [], n = new Set(), r = (e) => {
 		let r = e.trim();
-		n.has(r) || !Xi(r) || t.length >= 48 || (n.add(r), t.push(r));
+		n.has(r) || !fa(r) || t.length >= 48 || (n.add(r), t.push(r));
 	};
-	for (let e of hi) r(e);
-	if (!Z(e.querySelectorAll)) return t;
+	for (let e of ji) r(e);
+	if (!X(e.querySelectorAll)) return t;
 	try {
-		let t = Reflect.apply(e.querySelectorAll, e, ["link[rel=\"localization\"]"]), n = Array.isArray(t) || X(t) && typeof t.length == "number" ? t.length : 0;
+		let t = Reflect.apply(e.querySelectorAll, e, ["link[rel=\"localization\"]"]), n = Array.isArray(t) || Y(t) && typeof t.length == "number" ? t.length : 0;
 		for (let e = 0; e < n; e += 1) {
-			let n = Ki(t, e);
-			bi(n) && r(Ri(n, "href"));
+			let n = ca(t, e);
+			Ii(n) && r(ea(n, "href"));
 		}
 	} catch {}
 	return t;
-}, Qi = (e, t = "") => t && (e === t || e.startsWith(`${t}.`)) ? !0 : li.test(e), $i = (e, t, n = "") => !e || Qi(e, n) || ui.test(e) ? "" : Ci(e, t), ea = (e) => e.isConnected === !0, ta = (e) => {
-	let t = Li(e, ".unified-extensions-item-action-button");
-	return bi(t) ? t : null;
-}, na = (e) => {
+}, ma = (e, t = "") => t && (e === t || e.startsWith(`${t}.`)) ? !0 : Ti.test(e), ha = (e, t, n = "") => !e || ma(e, n) || Ei.test(e) ? "" : zi(e, t), ga = (e) => e.isConnected === !0, _a = (e) => {
+	let t = $i(e, ".unified-extensions-item-action-button");
+	return Ii(t) ? t : null;
+}, va = (e) => {
 	let t = "", n = e.style;
-	if (X(n) && Z(n.getPropertyValue)) try {
+	if (Y(n) && X(n.getPropertyValue)) try {
 		let e = Reflect.apply(n.getPropertyValue, n, ["--webextension-toolbar-image"]);
 		typeof e == "string" && (t = e);
 	} catch {
 		t = "";
 	}
-	t ||= Ri(e, "style");
-	let r = zi(t);
-	return Bi(r, "extension") ? r : "";
-}, ra = (e) => {
-	let t = Ci(Ri(e, "badge"), 8), n = "", r = "", i = Ri(e, "badgeStyle"), a = /background-color:\s*([^;]{1,64})/u.exec(i);
-	a && (n = wi(a[1]));
+	t ||= ea(e, "style");
+	let r = ta(t);
+	return na(r, "extension") ? r : "";
+}, ya = (e) => {
+	let t = zi(ea(e, "badge"), 8), n = "", r = "", i = ea(e, "badgeStyle"), a = /background-color:\s*([^;]{1,64})/u.exec(i);
+	a && (n = Bi(a[1]));
 	let o = /(?:^|;)\s*color:\s*([^;]{1,64})/u.exec(i);
-	return o && (r = wi(o[1])), Object.freeze({
+	return o && (r = Bi(o[1])), Object.freeze({
 		background: n,
 		text: t,
 		textColor: r
 	});
-}, ia = (e) => {
-	let t = Li(e, ".unified-extensions-item-name");
-	if (X(t) && typeof t.textContent == "string") {
+}, ba = (e) => {
+	let t = $i(e, ".unified-extensions-item-name");
+	if (Y(t) && typeof t.textContent == "string") {
 		let e = t.textContent.trim();
-		if (e) return Ci(e, 200);
+		if (e) return zi(e, 200);
 	}
 	return "";
-}, aa = (e) => e.disabled === !0 || Ri(e, "disabled") === "true", oa = "fxa-toolbar-menu-button", sa = "PanelUI-fxa", ca = "alltabs-button", la = "alltabs-button", ua = "library-button", da = "appMenu-libraryView";
-function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, popupListeners: i, registry: a, requireProjectHost: o, requireWindow: s }) {
+}, xa = (e) => e.disabled === !0 || ea(e, "disabled") === "true", Sa = "fxa-toolbar-menu-button", Ca = "PanelUI-fxa", wa = "alltabs-button", Ta = "alltabs-button", Ea = "library-button", Da = "appMenu-libraryView";
+function Oa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, popupListeners: i, registry: a, requireProjectHost: o, requireWindow: s }) {
 	let c = null, l = "", u = null, d = "", f = null, p = (e) => {
 		let t = Object.freeze({
 			open: e,
@@ -4812,7 +4947,7 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 		if (!n) return;
 		u = null;
 		let r = t();
-		if (r && Z(r.clearTimeout)) try {
+		if (r && X(r.clearTimeout)) try {
 			Reflect.apply(r.clearTimeout, r, [n.timeoutHandle]);
 		} catch {}
 		n.resolve(e);
@@ -4821,7 +4956,7 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 		if (!n) return;
 		f = null;
 		let r = t();
-		if (n.timeoutHandle !== void 0 && r && Z(r.clearTimeout)) try {
+		if (n.timeoutHandle !== void 0 && r && X(r.clearTimeout)) try {
 			Reflect.apply(r.clearTimeout, r, [n.timeoutHandle]);
 		} catch {}
 		n.resolve(e);
@@ -4829,9 +4964,9 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 		c = e, l = t, p(!0);
 	}, v = () => {
 		c && (c = null, l = "", p(!1));
-	}, y = (e) => X(e) ? X(e.originalTarget) ? e.originalTarget : X(e.target) ? e.target : null : null, b = (e, t) => {
+	}, y = (e) => Y(e) ? Y(e.originalTarget) ? e.originalTarget : Y(e.target) ? e.target : null : null, b = (e, t) => {
 		if (t === e) return !0;
-		if (!Z(e.contains)) return !1;
+		if (!X(e.contains)) return !1;
 		try {
 			return Reflect.apply(e.contains, e, [t]) === !0;
 		} catch {
@@ -4840,7 +4975,7 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 	}, x = (e) => {
 		if (n()) return;
 		let t = y(e);
-		if (!t || !xi(t)) return;
+		if (!t || !Li(t)) return;
 		let r = typeof t.id == "string" ? t.id : "";
 		if (u && r === "customizationui-widget-panel") {
 			let e = d;
@@ -4854,7 +4989,7 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 				if (r) try {
 					Reflect.apply(t.moveToAnchor, t, [
 						n,
-						Qr,
+						mi,
 						0,
 						0
 					]);
@@ -4883,7 +5018,7 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 			let i = () => {
 				u === r && (u = null, d = "", n(!1));
 			}, a = t.setTimeout;
-			Z(a) ? r.timeoutHandle = Reflect.apply(a, t, [i, 800]) : queueMicrotask(i);
+			X(a) ? r.timeoutHandle = Reflect.apply(a, t, [i, 800]) : queueMicrotask(i);
 		});
 	}, w = (e, t, n, r = !0) => {
 		let i = s();
@@ -4900,7 +5035,7 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 			let s = () => {
 				f === o && (f = null, a(!1));
 			}, c = i.setTimeout;
-			Z(c) ? o.timeoutHandle = Reflect.apply(c, i, [s, 800]) : queueMicrotask(s);
+			X(c) ? o.timeoutHandle = Reflect.apply(c, i, [s, 800]) : queueMicrotask(s);
 		});
 	}, T = () => {
 		let e = c;
@@ -4914,16 +5049,16 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 			e.open === !0 && (e.open = !1);
 		} catch {}
 	}, D = (e, t) => {
-		if (X(e) && Z(e.stopPropagation) && (e.type === "click" || e.type === "keypress" || e.type === "mousedown")) return e;
+		if (Y(e) && X(e.stopPropagation) && (e.type === "click" || e.type === "keypress" || e.type === "mousedown")) return e;
 		let n = s(), r = n.MouseEvent;
-		if (Z(r)) try {
+		if (X(r)) try {
 			let e = Reflect.construct(r, ["click", Object.freeze({
 				bubbles: !0,
 				button: 0,
 				cancelable: !0,
 				view: n
 			})]);
-			if (X(e) && Z(e.stopPropagation)) return e;
+			if (Y(e) && X(e.stopPropagation)) return e;
 		} catch {}
 		return Object.freeze({
 			button: 0,
@@ -4933,8 +5068,8 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 			view: n
 		});
 	}, O = async (t, n, r, i, a = "window.PanelUI.showSubView") => {
-		let o = s(), c = Ai(o);
-		if (!c || !X(o.PanelUI)) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING", "firefox-toolbar-widgets-action", a);
+		let o = s(), c = Ki(o);
+		if (!c || !Y(o.PanelUI)) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING", "firefox-toolbar-widgets-action", a);
 		let l = C(t);
 		try {
 			let e = Reflect.apply(c, o.PanelUI, [
@@ -4944,86 +5079,86 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 			]);
 			Promise.resolve(e).catch(() => {});
 		} catch (t) {
-			throw m(!1), d = "", Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", a, t);
+			throw m(!1), d = "", Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", a, t);
 		}
 		return await l;
 	}, k = (e) => {
-		if (Ri(e, "type") !== "menu") return null;
-		let t = Li(e, "menupopup");
-		return Si(t) ? t : null;
+		if (ea(e, "type") !== "menu") return null;
+		let t = $i(e, "menupopup");
+		return Ri(t) ? t : null;
 	}, A = async (t, n, r, i) => {
 		let a = w(t, n, n, !1);
 		try {
 			Reflect.apply(r.openPopup, r, [n, Object.freeze({
-				position: Qr,
+				position: mi,
 				triggerEvent: i
 			})]);
 		} catch (t) {
-			throw h(!1), Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "XULPopupElement.openPopup", t);
+			throw h(!1), Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "XULPopupElement.openPopup", t);
 		}
 		return await a;
-	}, j = async (t, n, r, i) => {
-		let a = s(), o = a.gSync, c = a.PanelUI, l = Ai(a);
-		if (!X(o) || !Z(o.toggleAccountPanel) || !X(c) || !l) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING", "firefox-toolbar-widgets-action", "window.gSync.toggleAccountPanel.PanelUI.showSubView");
+	}, ee = async (t, n, r, i) => {
+		let a = s(), o = a.gSync, c = a.PanelUI, l = Ki(a);
+		if (!Y(o) || !X(o.toggleAccountPanel) || !Y(c) || !l) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING", "firefox-toolbar-widgets-action", "window.gSync.toggleAccountPanel.PanelUI.showSubView");
 		let u = (...e) => {
 			let t = [...e];
-			return t[0] === sa && t[1] === r && (t[1] = n), Reflect.apply(l, c, t);
+			return t[0] === Ca && t[1] === r && (t[1] = n), Reflect.apply(l, c, t);
 		};
 		try {
 			c.showSubView = u;
 		} catch (t) {
-			throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "window.PanelUI.showSubView.route-account-anchor", t);
+			throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "window.PanelUI.showSubView.route-account-anchor", t);
 		}
 		let f = C(t);
 		try {
 			let e = Reflect.apply(o.toggleAccountPanel, o, [r, i]);
 			await Promise.resolve(e);
 		} catch (t) {
-			throw m(!1), d = "", _(t) ? t : Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "window.gSync.toggleAccountPanel", t);
+			throw m(!1), d = "", _(t) ? t : Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "window.gSync.toggleAccountPanel", t);
 		} finally {
 			c.showSubView === u && (c.showSubView = l);
 		}
 		return await f;
-	}, M = async (t, n, r) => {
+	}, j = async (t, n, r) => {
 		let i = s().gTabsPanel;
-		if (!X(i) || !Z(i.init) || !Z(i.showAllTabsPanel)) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING", "firefox-toolbar-widgets-action", "window.gTabsPanel.init.showAllTabsPanel");
+		if (!Y(i) || !X(i.init) || !X(i.showAllTabsPanel)) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING", "firefox-toolbar-widgets-action", "window.gTabsPanel.init.showAllTabsPanel");
 		let a;
 		try {
 			Reflect.apply(i.init, i, []), a = i.allTabsButton, i.allTabsButton = n;
 		} catch (t) {
-			throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "window.gTabsPanel.init.allTabsButton", t);
+			throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "window.gTabsPanel.init.allTabsButton", t);
 		}
 		let o = C(t);
 		try {
-			Reflect.apply(i.showAllTabsPanel, i, [r, la]);
+			Reflect.apply(i.showAllTabsPanel, i, [r, Ta]);
 		} catch (t) {
-			throw m(!1), d = "", Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "window.gTabsPanel.showAllTabsPanel", t);
+			throw m(!1), d = "", Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "window.gTabsPanel.showAllTabsPanel", t);
 		} finally {
 			i.allTabsButton = a;
 		}
 		return await o;
-	}, N = (t) => {
-		if (Z(t.doCommand)) try {
+	}, M = (t) => {
+		if (X(t.doCommand)) try {
 			Reflect.apply(t.doCommand, t, []);
 			return;
 		} catch {}
 		let n = s().CustomEvent;
-		if (!Z(n) || !Z(t.dispatchEvent)) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING", "firefox-toolbar-widgets-action", "toolbar-widgets.node-command");
+		if (!X(n) || !X(t.dispatchEvent)) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING", "firefox-toolbar-widgets-action", "toolbar-widgets.node-command");
 		let r = Reflect.construct(n, ["command", Object.freeze({
 			bubbles: !0,
 			cancelable: !0
 		})]);
 		Reflect.apply(t.dispatchEvent, t, [r]);
-	}, P = (e) => {
-		let t = Ti(s()), n = typeof e.id == "string" ? e.id : "";
+	}, N = (e) => {
+		let t = Vi(s()), n = typeof e.id == "string" ? e.id : "";
 		if (!t || !n) return "";
 		try {
 			let r = Reflect.apply(t.getWidget, t, [n]);
-			if (X(r) && typeof r.viewId == "string") return r.viewId;
-			let i = e.parentElement, a = X(i) && typeof i.id == "string" ? i.id : "";
+			if (Y(r) && typeof r.viewId == "string") return r.viewId;
+			let i = e.parentElement, a = Y(i) && typeof i.id == "string" ? i.id : "";
 			if (a && n === `${a}-dropmarker`) {
 				let e = Reflect.apply(t.getWidget, t, [a]);
-				if (X(e) && e.type === "button-and-view" && typeof e.viewId == "string") return e.viewId;
+				if (Y(e) && e.type === "button-and-view" && typeof e.viewId == "string") return e.viewId;
 			}
 		} catch {
 			return "";
@@ -5038,27 +5173,27 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 			} catch {}
 		},
 		invoke: async (t, n, i) => {
-			if (typeof t != "string" || t === "") throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_HANDLE_INVALID", "firefox-toolbar-widgets-action", "toolbar-widgets.handle");
+			if (typeof t != "string" || t === "") throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_HANDLE_INVALID", "firefox-toolbar-widgets-action", "toolbar-widgets.handle");
 			let s = o(n), u = a.resolve(t);
-			if (!ea(u)) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_HANDLE_STALE", "firefox-toolbar-widgets-action", "toolbar-widgets.native-node");
+			if (!ga(u)) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_HANDLE_STALE", "firefox-toolbar-widgets-action", "toolbar-widgets.native-node");
 			let d = D(i, s);
 			r(1);
 			try {
 				if (c && l === t) return T(), !0;
 				T(), E(s);
 				let n = typeof u.id == "string" ? u.id : "";
-				if (n === oa) return await j(t, s, u, d);
-				if (n === ua) return await O(t, s, da, d);
-				if (n === ca) return await M(t, s, d);
-				let r = P(u);
+				if (n === Sa) return await ee(t, s, u, d);
+				if (n === Ea) return await O(t, s, Da, d);
+				if (n === wa) return await j(t, s, d);
+				let r = N(u);
 				if (r) return await O(t, s, r, d);
 				let i = k(u);
 				if (i) return await A(t, s, i, d);
 				let a = w(t, s, u);
 				try {
-					N(u);
+					M(u);
 				} catch (t) {
-					throw h(!1), _(t) ? t : Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "toolbar-widgets.node-command", t);
+					throw h(!1), _(t) ? t : Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_ACTION_FAILED", "firefox-toolbar-widgets-action", "toolbar-widgets.node-command", t);
 				}
 				return await a;
 			} finally {
@@ -5071,100 +5206,100 @@ function fa({ boundary: e, getWindowOrNull: t, isDisposed: n, onActionDelta: r, 
 }
 //#endregion
 //#region src/firefox/toolbar-widgets/controller.ts
-function pa({ boundary: e, frame: t, window: n }) {
-	if (e.assertOwnsWindow(n), !X(n) || !X(t) || typeof t.contains != "function") throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_OPTIONS_INVALID", "firefox-toolbar-widgets-create", "window");
-	let r = (e) => Reflect.apply(t.contains, t, [e]) === !0, i = n, a = !1, o = 0, s = 0, c = !1, l = !1, u = !1, d = "", f = ct(), p = null, m = $e(), h = 0, g = new Map(), v = new Map(), y = null, b = null, x, S = new Set(), C = [], w = new Set(), T = new Set(), E = e.createHandleRegistry("toolbar-widget"), D = () => {
-		if (a || !i) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_DISPOSED", "firefox-toolbar-widgets-access", "window");
+function ka({ boundary: e, frame: t, window: n }) {
+	if (e.assertOwnsWindow(n), !Y(n) || !Y(t) || typeof t.contains != "function") throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_OPTIONS_INVALID", "firefox-toolbar-widgets-create", "window");
+	let r = (e) => Reflect.apply(t.contains, t, [e]) === !0, i = n, a = !1, o = 0, s = 0, c = !1, l = !1, u = !1, d = "", f = bt(), p = null, m = null, h = dt(), g = 0, v = new Map(), y = new Map(), b = null, x = null, S, C = new Set(), w = [], T = new Set(), E = new Set(), D = e.createHandleRegistry("toolbar-widget"), O = () => {
+		if (a || !i) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_DISPOSED", "firefox-toolbar-widgets-access", "window");
 		return i;
-	}, O = () => {
-		let t = Mi(D()), n = t.find((e) => e.snapshot.requirement === "required" && !e.snapshot.available);
-		if (n) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING", "firefox-toolbar-widgets-capability", n.snapshot.symbol, n.cause);
+	}, k = () => {
+		let t = Ji(O()), n = t.find((e) => e.snapshot.requirement === "required" && !e.snapshot.available);
+		if (n) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_CAPABILITY_MISSING", "firefox-toolbar-widgets-capability", n.snapshot.symbol, n.cause);
 		return Object.freeze(t.map((e) => e.snapshot));
-	}, k = fa({
+	}, A = Oa({
 		boundary: e,
 		getWindowOrNull: () => i,
 		isDisposed: () => a,
 		onActionDelta(e) {
 			o += e;
 		},
-		popupListeners: T,
-		registry: E,
+		popupListeners: E,
+		registry: D,
 		requireProjectHost: (t) => {
-			let n = D();
-			if (!X(t) || !Z(t.getBoundingClientRect) || t.ownerDocument !== n.document || r(t) !== !0) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_HOST_INVALID", "firefox-toolbar-widgets-action", "toolbar-widgets.host");
+			let n = O();
+			if (!Y(t) || !X(t.getBoundingClientRect) || t.ownerDocument !== n.document || r(t) !== !0) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_HOST_INVALID", "firefox-toolbar-widgets-action", "toolbar-widgets.host");
 			return t;
 		},
-		requireWindow: D
-	}), { invoke: A, onPopupHidden: j, onPopupShown: M } = k, N = e.snapshot().windowKind === "private", P = (e, t) => {
+		requireWindow: O
+	}), { invoke: ee, onPopupHidden: j, onPopupShown: M } = A, N = e.snapshot().windowKind === "private", P = (e, t) => {
 		try {
 			let n = Reflect.apply(e.getWidget, e, [t]);
-			return X(n) ? n : null;
-		} catch {
-			return null;
-		}
-	}, ee = (e) => {
-		let t = i;
-		if (!t) return null;
-		let n = t.gNavToolbox;
-		if (!X(n)) return null;
-		let r = n.palette;
-		if (!X(r) || !Z(r.getElementsByAttribute)) return null;
-		try {
-			return Vi(Reflect.apply(r.getElementsByAttribute, r, ["id", e]));
+			return Y(n) ? n : null;
 		} catch {
 			return null;
 		}
 	}, F = (e) => {
 		let t = i;
 		if (!t) return null;
-		let n = Ii(t, e);
-		return bi(n) ? n : ee(e);
-	}, te = () => {
-		if (x !== void 0) return x;
-		x = null;
-		let e = i;
-		if (!e || !Z(e.Localization)) return null;
-		let t = e.document, n = X(t) ? Zi(t) : [...hi];
+		let n = t.gNavToolbox;
+		if (!Y(n)) return null;
+		let r = n.palette;
+		if (!Y(r) || !X(r.getElementsByAttribute)) return null;
 		try {
-			let t = Reflect.construct(e.Localization, [n, !0]);
-			return !X(t) || !Z(t.formatMessagesSync) && !Z(t.formatValueSync) ? null : (x = t, t);
+			return ra(Reflect.apply(r.getElementsByAttribute, r, ["id", e]));
 		} catch {
 			return null;
 		}
-	}, ne = (e) => {
+	}, te = (e) => {
+		let t = i;
+		if (!t) return null;
+		let n = Qi(t, e);
+		return Ii(n) ? n : F(e);
+	}, ne = () => {
+		if (S !== void 0) return S;
+		S = null;
+		let e = i;
+		if (!e || !X(e.Localization)) return null;
+		let t = e.document, n = Y(t) ? pa(t) : [...ji];
+		try {
+			let t = Reflect.construct(e.Localization, [n, !0]);
+			return !Y(t) || !X(t.formatMessagesSync) && !X(t.formatValueSync) ? null : (S = t, t);
+		} catch {
+			return null;
+		}
+	}, I = (e) => {
 		if (!e) return "";
-		let t = te();
+		let t = ne();
 		if (t) {
-			let n = Yi(t, e);
+			let n = da(t, e);
 			if (n) return n;
 		}
 		let n = i;
 		if (!n) return "";
 		let r = n.document;
-		if (!X(r)) return "";
+		if (!Y(r)) return "";
 		let a = r.l10n;
-		return X(a) ? Yi(a, e) : "";
-	}, I = (e, t, n) => {
-		if (!Z(e.getLocalizedProperty)) return "";
+		return Y(a) ? da(a, e) : "";
+	}, re = (e, t, n) => {
+		if (!X(e.getLocalizedProperty)) return "";
 		try {
 			let r = Reflect.apply(e.getLocalizedProperty, e, [t, n]);
-			return typeof r != "string" || r === "" ? "" : $i(r, 200, t);
+			return typeof r != "string" || r === "" ? "" : ha(r, 200, t);
 		} catch {
 			return "";
 		}
-	}, L = (e, t, n, r, i) => {
-		let a = r ? $i(Ri(r, "label") || Fi(r, "label"), 200, t) : "", o = r ? $i(Ri(r, "title") || Fi(r, "title"), 200, t) : "", s = r ? $i(Ri(r, "tooltiptext") || Fi(r, "tooltiptext"), 200, t) : "", c = $i(Fi(n, "label"), 200, t), l = $i(Fi(n, "tooltiptext"), 200, t), u = r ? ne(Ri(r, "data-l10n-id")) : "", d = ne(gi.get(t) ?? "");
-		return a || o || c || u || I(e, t, "label") || d || s || l || I(e, t, "tooltiptext") || (i ? "Extension" : "Toolbar item");
-	}, re = (e, t, n, r) => {
-		let i = n ? $i(Ri(n, "tooltiptext") || Fi(n, "tooltiptext"), 300, e) : "", a = n ? $i(Ri(n, "title") || Fi(n, "title"), 300, e) : "", o = $i(Fi(t, "tooltiptext"), 300, e);
+	}, ie = (e, t, n, r, i) => {
+		let a = r ? ha(ea(r, "label") || Zi(r, "label"), 200, t) : "", o = r ? ha(ea(r, "title") || Zi(r, "title"), 200, t) : "", s = r ? ha(ea(r, "tooltiptext") || Zi(r, "tooltiptext"), 200, t) : "", c = ha(Zi(n, "label"), 200, t), l = ha(Zi(n, "tooltiptext"), 200, t), u = r ? I(ea(r, "data-l10n-id")) : "", d = I(Mi.get(t) ?? "");
+		return a || o || c || u || re(e, t, "label") || d || s || l || re(e, t, "tooltiptext") || (i ? "Extension" : "Toolbar item");
+	}, ae = (e, t, n, r) => {
+		let i = n ? ha(ea(n, "tooltiptext") || Zi(n, "tooltiptext"), 300, e) : "", a = n ? ha(ea(n, "title") || Zi(n, "title"), 300, e) : "", o = ha(Zi(t, "tooltiptext"), 300, e);
 		return i || a || o || r;
-	}, ie = () => {
+	}, oe = () => {
 		let e = new Map(), t = i;
 		if (!t) return e;
 		let n = t.document;
-		if (!X(n)) return e;
+		if (!Y(n)) return e;
 		let r = n.styleSheets;
-		if (!X(r) || typeof r.length != "number") return e;
+		if (!Y(r) || typeof r.length != "number") return e;
 		let a = r.length;
 		for (let t = 0; t < a; t += 1) {
 			let n;
@@ -5173,38 +5308,38 @@ function pa({ boundary: e, frame: t, window: n }) {
 			} catch {
 				continue;
 			}
-			if (!X(n)) continue;
+			if (!Y(n)) continue;
 			let i;
 			try {
 				i = n.cssRules;
 			} catch {
 				continue;
 			}
-			if (!X(i) || typeof i.length != "number") continue;
+			if (!Y(i) || typeof i.length != "number") continue;
 			let a = i.length;
-			for (let t = 0; t < a; t += 1) Gi(i[t], e);
+			for (let t = 0; t < a; t += 1) sa(i[t], e);
 		}
 		return e;
-	}, ae = (e) => (b ||= ie(), b.get(e) ?? ""), oe = (e) => {
+	}, se = (e) => (x ||= oe(), x.get(e) ?? ""), ce = (e) => {
 		let t = i;
-		if (!t || !Z(t.getComputedStyle)) return "";
-		let n = [e], r = Li(e, "toolbarbutton");
-		bi(r) && n.unshift(r);
+		if (!t || !X(t.getComputedStyle)) return "";
+		let n = [e], r = $i(e, "toolbarbutton");
+		Ii(r) && n.unshift(r);
 		for (let e of n) try {
-			let n = Hi(Reflect.apply(t.getComputedStyle, t, [e]));
-			if (Bi(n, "builtin")) return n;
+			let n = ia(Reflect.apply(t.getComputedStyle, t, [e]));
+			if (na(n, "builtin")) return n;
 		} catch {}
 		return "";
-	}, se = (t, n) => {
+	}, le = (t, n) => {
 		if (n) {
-			let e = oe(n);
+			let e = ce(n);
 			if (e) return e;
 		}
-		let r = ae(t);
+		let r = se(t);
 		if (r) return r;
-		let i = vi(t, e.snapshot().firefoxVersion);
-		return Bi(i, "builtin") ? i : "";
-	}, ce = (e) => Object.freeze({
+		let i = Pi(t, e.snapshot().firefoxVersion);
+		return na(i, "builtin") ? i : "";
+	}, ue = (e) => Object.freeze({
 		badgeBackground: "",
 		badgeText: "",
 		badgeTextColor: "",
@@ -5218,8 +5353,8 @@ function pa({ boundary: e, frame: t, window: n }) {
 		missing: !1,
 		parts: Object.freeze([]),
 		tooltip: ""
-	}), le = (e) => {
-		let t = yi.get(e);
+	}), de = (e) => {
+		let t = Fi.get(e);
 		return Object.freeze({
 			badgeBackground: "",
 			badgeText: "",
@@ -5235,12 +5370,12 @@ function pa({ boundary: e, frame: t, window: n }) {
 			parts: Object.freeze([]),
 			tooltip: t?.tooltip ?? t?.label ?? ""
 		});
-	}, ue = (e, t) => {
-		let n = P(e, t), r = n?.webExtension === !0 || ki(e, t), i = F(t), a = L(e, t, n, i, r), o = "";
+	}, fe = (e, t) => {
+		let n = P(e, t), r = n?.webExtension === !0 || Gi(e, t), i = te(t), a = ie(e, t, n, i, r), o = "";
 		if (r && i) {
-			let e = ta(i);
-			o = e ? na(e) : "";
-		} else r || (o = se(t, i));
+			let e = _a(i);
+			o = e ? va(e) : "";
+		} else r || (o = le(t, i));
 		return Object.freeze({
 			badgeBackground: "",
 			badgeText: "",
@@ -5248,112 +5383,112 @@ function pa({ boundary: e, frame: t, window: n }) {
 			disabled: !0,
 			fenneviaAction: "",
 			handle: "",
-			icon: r ? "extension" : mi.get(t) ?? "generic",
+			icon: r ? "extension" : Ai.get(t) ?? "generic",
 			iconUrl: o,
 			kind: r ? "extension-action" : "built-in",
 			label: a,
 			missing: !0,
 			parts: Object.freeze([]),
-			tooltip: re(t, n, i, a)
+			tooltip: ae(t, n, i, a)
 		});
-	}, de = (e, t, n) => {
-		let r = pi.get(t);
+	}, pe = (e, t, n) => {
+		let r = ki.get(t);
 		if (!r) return Object.freeze([]);
 		let i = [];
 		for (let e of r) {
-			let t = Li(n, `#${e.nodeId}`);
-			if (!bi(t) || !ea(t)) return null;
+			let t = $i(n, `#${e.nodeId}`);
+			if (!Ii(t) || !ga(t)) return null;
 			i.push(Object.freeze({
 				node: t,
 				specification: e
 			}));
 		}
 		return Object.freeze(i.map(({ node: t, specification: r }) => {
-			let i = $i(Ri(t, "label") || Fi(t, "label"), 200, r.nodeId), a = L(e, r.nodeId, null, t, !1) || r.fallbackLabel;
+			let i = ha(ea(t, "label") || Zi(t, "label"), 200, r.nodeId), a = ie(e, r.nodeId, null, t, !1) || r.fallbackLabel;
 			return Object.freeze({
-				disabled: aa(n) || aa(t),
-				handle: E.register(t),
+				disabled: xa(n) || xa(t),
+				handle: D.register(t),
 				icon: r.icon,
-				iconUrl: se(r.nodeId, t),
+				iconUrl: le(r.nodeId, t),
 				kind: "built-in",
 				label: a,
-				tooltip: re(r.nodeId, null, t, a),
+				tooltip: ae(r.nodeId, null, t, a),
 				valueText: r.displayLabel ? i : ""
 			});
 		}));
-	}, fe = (e, t) => {
-		let n = Ii(D(), t);
-		if (!bi(n) || !ea(n)) return Object.freeze({
+	}, me = (e, t) => {
+		let n = Qi(O(), t);
+		if (!Ii(n) || !ga(n)) return Object.freeze({
 			node: null,
-			widget: ue(e, t)
+			widget: fe(e, t)
 		});
-		let r = P(e, t), i = r?.webExtension === !0 || ki(e, t), a = i ? Object.freeze([]) : de(e, t, n);
+		let r = P(e, t), i = r?.webExtension === !0 || Gi(e, t), a = i ? Object.freeze([]) : pe(e, t, n);
 		if (a === null) return Object.freeze({
 			node: n,
-			widget: ue(e, t)
+			widget: fe(e, t)
 		});
-		let o = E.register(n);
+		let o = D.register(n);
 		if (i) {
-			let i = ta(n), a = i ? ra(i) : Object.freeze({
+			let i = _a(n), a = i ? ya(i) : Object.freeze({
 				background: "",
 				text: "",
 				textColor: ""
-			}), s = ia(n) || L(e, t, r, n, !0);
+			}), s = ba(n) || ie(e, t, r, n, !0);
 			return Object.freeze({
 				node: n,
 				widget: Object.freeze({
 					badgeBackground: a.background,
 					badgeText: a.text,
 					badgeTextColor: a.textColor,
-					disabled: aa(i || n),
+					disabled: xa(i || n),
 					fenneviaAction: "",
 					handle: o,
 					icon: "extension",
-					iconUrl: i ? na(i) : "",
+					iconUrl: i ? va(i) : "",
 					kind: "extension-action",
 					label: s,
 					missing: !1,
 					parts: Object.freeze([]),
-					tooltip: re(t, r, n, s)
+					tooltip: ae(t, r, n, s)
 				})
 			});
 		}
-		let s = L(e, t, r, n, !1);
+		let s = ie(e, t, r, n, !1);
 		return Object.freeze({
 			node: n,
 			widget: Object.freeze({
 				badgeBackground: "",
 				badgeText: "",
 				badgeTextColor: "",
-				disabled: aa(n),
+				disabled: xa(n),
 				fenneviaAction: "",
 				handle: o,
-				icon: mi.get(t) ?? "generic",
-				iconUrl: se(t, n),
+				icon: Ai.get(t) ?? "generic",
+				iconUrl: le(t, n),
 				kind: "built-in",
 				label: s,
 				missing: !1,
 				parts: a,
-				tooltip: re(t, r, n, s)
+				tooltip: ae(t, r, n, s)
 			})
 		});
-	}, pe = (e, t) => t.type === "special" ? Object.freeze({
+	}, he = (e, t) => t.type === "special" ? Object.freeze({
 		node: null,
-		widget: ce(t.kind)
+		widget: ue(t.kind)
 	}) : t.type === "fennevia" ? Object.freeze({
 		node: null,
-		widget: le(t.id)
-	}) : fe(e, t.id), me = (e) => {
+		widget: de(t.id)
+	}) : me(e, t.id), ge = (e) => {
 		let t;
 		try {
-			t = Reflect.apply(e.getWidgetIdsInArea, e, [qr]);
+			t = Reflect.apply(e.getWidgetIdsInArea, e, [ci]);
 		} catch {
 			t = null;
 		}
 		let n = [];
 		if (Array.isArray(t)) for (let e of t) {
-			if (typeof e != "string" || fi.has(e)) continue;
-			let t = Pi(e);
+			if (typeof e != "string" || Oi.has(e)) continue;
+			let t = Xi(e);
 			if (t) {
 				n.push(Object.freeze({
 					kind: t,
@@ -5361,25 +5496,25 @@ function pa({ boundary: e, frame: t, window: n }) {
 				}));
 				continue;
 			}
-			vt(e) && n.push(Object.freeze({
+			At(e) && n.push(Object.freeze({
 				id: e,
 				type: "widget"
 			}));
 		}
-		return Ct({ top: n });
-	}, he = (e) => {
-		let t = g.get(e);
+		return Ft({ top: n });
+	}, _e = (e) => {
+		let t = v.get(e);
 		if (t) return t;
-		let n = `palette-${++h}`;
-		return g.set(e, n), n;
-	}, R = (e) => {
+		let n = `palette-${++g}`;
+		return v.set(e, n), n;
+	}, ve = (e) => {
 		let t;
 		try {
 			t = e.areas;
 		} catch {
 			t = void 0;
 		}
-		let n = Array.isArray(t) ? t : [qr], r = [], i = new Set();
+		let n = Array.isArray(t) ? t : [ci], r = [], i = new Set();
 		for (let t of n) {
 			if (typeof t != "string") continue;
 			let n;
@@ -5391,47 +5526,47 @@ function pa({ boundary: e, frame: t, window: n }) {
 			if (Array.isArray(n)) for (let e of n) typeof e == "string" && !i.has(e) && (i.add(e), r.push(e));
 		}
 		return r;
-	}, z = (e) => {
-		if (!Z(e.getUnusedWidgets)) return [];
-		let t = i?.gNavToolbox, n = X(t) ? t.palette : void 0;
-		if (!X(n)) return [];
+	}, L = (e) => {
+		if (!X(e.getUnusedWidgets)) return [];
+		let t = i?.gNavToolbox, n = Y(t) ? t.palette : void 0;
+		if (!Y(n)) return [];
 		try {
 			let t = Reflect.apply(e.getUnusedWidgets, e, [n]);
 			if (!Array.isArray(t)) return [];
 			let r = [];
-			for (let e of t) X(e) && typeof e.id == "string" && r.push(e.id);
+			for (let e of t) Y(e) && typeof e.id == "string" && r.push(e.id);
 			return r;
 		} catch {
 			return [];
 		}
-	}, ge = (e, t) => {
-		if (fi.has(t) || Pi(t) !== null || !vt(t)) return null;
+	}, R = (e, t) => {
+		if (Oi.has(t) || Xi(t) !== null || !At(t)) return null;
 		let n = P(e, t);
 		if (N && n?.showInPrivateBrowsing === !1) return null;
-		let r = n?.webExtension === !0 || ki(e, t), i = F(t), a = bi(i) && ea(i) ? i : null, o, s;
+		let r = n?.webExtension === !0 || Gi(e, t), i = te(t), a = Ii(i) && ga(i) ? i : null, o, s;
 		if (r) {
-			let r = a ? ta(a) : i ? ta(i) : null;
-			s = r ? na(r) : "", o = (a ? ia(a) : "") || L(e, t, n, i, !0);
-		} else o = L(e, t, n, i, !1), s = se(t, i);
-		let c = he(`w:${t}`);
-		return v.set(c, Object.freeze({
+			let r = a ? _a(a) : i ? _a(i) : null;
+			s = r ? va(r) : "", o = (a ? ba(a) : "") || ie(e, t, n, i, !0);
+		} else o = ie(e, t, n, i, !1), s = le(t, i);
+		let c = _e(`w:${t}`);
+		return y.set(c, Object.freeze({
 			id: t,
 			type: "widget"
 		})), Object.freeze({
-			icon: r ? "extension" : mi.get(t) ?? "generic",
+			icon: r ? "extension" : Ai.get(t) ?? "generic",
 			iconUrl: s,
 			kind: r ? "extension-action" : "built-in",
 			label: o,
 			token: c
 		});
-	}, _e = (e, t) => {
-		v.clear();
+	}, ye = (e, t) => {
+		y.clear();
 		let n = [], r = new Set(), i = new Set();
-		for (let e of Pe) for (let n of t.zones[e]) n.type === "widget" ? r.add(n.id) : n.type === "fennevia" && i.add(n.id);
-		for (let e of Fe) {
+		for (let e of Le) for (let n of t.zones[e]) n.type === "widget" ? r.add(n.id) : n.type === "fennevia" && i.add(n.id);
+		for (let e of Re) {
 			if (i.has(e)) continue;
-			let t = yi.get(e), r = he(`f:${e}`);
-			v.set(r, Object.freeze({
+			let t = Fi.get(e), r = _e(`f:${e}`);
+			y.set(r, Object.freeze({
 				id: e,
 				type: "fennevia"
 			})), n.push(Object.freeze({
@@ -5442,11 +5577,11 @@ function pa({ boundary: e, frame: t, window: n }) {
 				token: r
 			}));
 		}
-		let a = [...R(e), ...z(e)], o = new Set();
+		let a = [...ve(e), ...L(e)], o = new Set();
 		for (let t of a) {
 			if (o.has(t) || r.has(t) || n.length >= 256) continue;
 			o.add(t);
-			let i = ge(e, t);
+			let i = R(e, t);
 			i && n.push(i);
 		}
 		for (let [e, t] of [
@@ -5454,8 +5589,8 @@ function pa({ boundary: e, frame: t, window: n }) {
 			["spacer", "Space"],
 			["spring", "Flexible space"]
 		]) {
-			let r = he(`s:${e}`);
-			v.set(r, Object.freeze({
+			let r = _e(`s:${e}`);
+			y.set(r, Object.freeze({
 				kind: e,
 				type: "special"
 			})), n.push(Object.freeze({
@@ -5467,19 +5602,19 @@ function pa({ boundary: e, frame: t, window: n }) {
 			}));
 		}
 		return Object.freeze(n);
-	}, ve = (e) => {
-		if (X(y) && Z(y.disconnect)) try {
-			Reflect.apply(y.disconnect, y, []);
+	}, be = (e) => {
+		if (Y(b) && X(b.disconnect)) try {
+			Reflect.apply(b.disconnect, b, []);
 		} catch {}
-		y = null;
+		b = null;
 		let t = i;
 		if (!t) return;
 		let n = t.MutationObserver;
-		if (Z(n)) try {
+		if (X(n)) try {
 			let t = Reflect.construct(n, [() => {
-				V();
+				B();
 			}]);
-			if (!Z(t.observe)) return;
+			if (!X(t.observe)) return;
 			for (let n of e) n && Reflect.apply(t.observe, t, [n, Object.freeze({
 				attributeFilter: Object.freeze([
 					"badge",
@@ -5492,47 +5627,49 @@ function pa({ boundary: e, frame: t, window: n }) {
 				attributes: !0,
 				subtree: !0
 			})]);
-			y = t;
+			b = t;
 		} catch {
-			y = null;
+			b = null;
 		}
-	}, B = () => {
-		let e = D(), t = Ti(e);
-		if (!t) return v.clear(), ve([]), Object.freeze({
+	}, xe = () => {
+		let e = O(), t = Vi(e);
+		if (!t) return y.clear(), be([]), Object.freeze({
 			serialized: "unavailable",
-			snapshot: ct()
+			snapshot: bt()
 		});
-		let n = p ?? me(t), r = [], i = [], a = new Set();
-		for (let e of Pe) {
+		let n = p ?? ge(t), r = [], i = [], a = new Set();
+		for (let e of Le) {
 			let o = [];
 			for (let r of n.zones[e]) {
-				let e = pe(t, r);
+				let e = he(t, r);
 				o.push(e.widget), i.push(e.node), e.widget.handle !== "" && a.add(e.widget.handle);
 				for (let t of e.widget.parts) a.add(t.handle);
 			}
 			r.push([e, Object.freeze(o)]);
 		}
-		for (let e of S) if (!a.has(e)) try {
-			E.release(e);
+		for (let e of C) if (!a.has(e)) try {
+			D.release(e);
 		} catch {}
-		S.clear();
-		for (let e of a) S.add(e);
-		ve(i);
-		let o = Ei(e), s = Object.freeze({
+		C.clear();
+		for (let e of a) C.add(e);
+		be(i);
+		let o = Hi(e), s = Object.freeze({
 			available: !0,
 			canEdit: o !== null,
 			layoutCustomized: p !== null,
-			palette: _e(t, n),
-			style: at(m),
+			palette: ye(t, n),
+			panels: lt(m ?? ct()),
+			panelsCustomized: m !== null,
+			style: _t(h),
 			zones: Object.freeze(Object.fromEntries(r))
 		});
 		return Object.freeze({
 			serialized: JSON.stringify(s),
 			snapshot: s
 		});
-	}, ye = () => {
+	}, z = () => {
 		if (a) return;
-		let e = B();
+		let e = xe();
 		if (e.serialized === d) return;
 		d = e.serialized, f = e.snapshot, s += 1;
 		let t = Object.freeze({
@@ -5540,220 +5677,234 @@ function pa({ boundary: e, frame: t, window: n }) {
 			snapshot: f,
 			type: "snapshot"
 		});
-		for (let e of Array.from(w)) e(t);
-	}, V = () => {
+		for (let e of Array.from(T)) e(t);
+	}, B = () => {
 		if (a || c) return;
 		c = !0;
 		let e = () => {
-			c = !1, !a && ye();
+			c = !1, !a && z();
 		}, t = i, n = t?.setTimeout;
-		if (t && Z(n)) {
+		if (t && X(n)) {
 			Reflect.apply(n, t, [e, 0]);
 			return;
 		}
 		queueMicrotask(e);
-	}, be = Object.freeze({
-		onAreaReset: () => V(),
-		onCustomizeEnd: () => V(),
-		onWidgetAdded: () => V(),
-		onWidgetCreated: () => V(),
-		onWidgetDestroyed: () => V(),
-		onWidgetInstanceRemoved: () => V(),
-		onWidgetMoved: () => V(),
-		onWidgetOverflow: () => V(),
-		onWidgetRemoved: () => V(),
-		onWidgetReset: () => V(),
-		onWidgetUndoMove: () => V(),
-		onWidgetUnderflow: () => V()
-	}), H = () => {
+	}, Se = Object.freeze({
+		onAreaReset: () => B(),
+		onCustomizeEnd: () => B(),
+		onWidgetAdded: () => B(),
+		onWidgetCreated: () => B(),
+		onWidgetDestroyed: () => B(),
+		onWidgetInstanceRemoved: () => B(),
+		onWidgetMoved: () => B(),
+		onWidgetOverflow: () => B(),
+		onWidgetRemoved: () => B(),
+		onWidgetReset: () => B(),
+		onWidgetUndoMove: () => B(),
+		onWidgetUnderflow: () => B()
+	}), Ce = () => {
 		if (!l) return;
 		l = !1;
 		let e = i;
 		if (!e) return;
-		let t = Ti(e);
+		let t = Vi(e);
 		if (t) try {
-			Reflect.apply(t.removeListener, t, [be]);
+			Reflect.apply(t.removeListener, t, [Se]);
 		} catch {}
-	}, xe = () => {
+	}, V = () => {
 		let e = i;
 		if (!e) return;
-		let t = Ei(e);
+		let t = Hi(e);
 		if (!t) {
-			p = null, m = $e();
+			p = null, m = null, h = dt();
 			return;
 		}
-		p = wt(Di(t, Yr)), m = Et(Di(t, "fennevia.customize.style")) ?? $e();
-	}, U = Object.freeze({ observe: () => {
-		a || (xe(), V());
-	} }), Se = () => {
+		p = It(Ui(t, ui)), m = Vt(Ui(t, fi)), h = Rt(Ui(t, "fennevia.customize.style")) ?? dt();
+	}, we = Object.freeze({ observe: () => {
+		a || (V(), B());
+	} }), H = () => {
 		if (!u) return;
 		u = !1;
-		let e = i, t = e ? Ei(e) : null;
+		let e = i, t = e ? Hi(e) : null;
 		if (t) try {
-			Reflect.apply(t.removeObserver, t, [Zr, U]);
+			Reflect.apply(t.removeObserver, t, [pi, we]);
 		} catch {}
-	}, Ce = () => {
-		let t = Ei(D());
-		if (!t) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_UNAVAILABLE", "firefox-toolbar-widgets-edit", "window.Services.prefs");
+	}, Te = () => {
+		let t = Hi(O());
+		if (!t) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_UNAVAILABLE", "firefox-toolbar-widgets-edit", "window.Services.prefs");
 		return t;
-	}, we = (e) => {
-		let t = Ce();
-		Reflect.apply(t.setStringPref, t, [Yr, Tt(e)]), p = e;
-	}, W = (e) => {
-		let t = Ce();
-		Reflect.apply(t.setStringPref, t, [Xr, Dt(e)]), m = e;
-	}, Te = (t, n, r) => {
+	}, Ee = (e) => {
+		let t = Te();
+		Reflect.apply(t.setStringPref, t, [ui, Lt(e)]), p = e;
+	}, De = (e) => {
+		let t = Te();
+		Reflect.apply(t.setStringPref, t, [di, zt(e)]), h = e;
+	}, U = (e) => {
+		let t = Te();
+		Reflect.apply(t.setStringPref, t, [fi, Ht(e)]), m = e;
+	}, Oe = (t, n, r) => {
 		let i = "";
-		if (Z(t.getPlacementOfWidget)) try {
+		if (X(t.getPlacementOfWidget)) try {
 			let e = Reflect.apply(t.getPlacementOfWidget, t, [r]);
-			X(e) && typeof e.area == "string" && (i = e.area);
+			Y(e) && typeof e.area == "string" && (i = e.area);
 		} catch {
 			i = "";
 		}
-		if (i !== "" && i !== Oi(t)) return n;
-		if (!Z(t.addWidgetToArea)) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_UNAVAILABLE", "firefox-toolbar-widgets-edit", "window.CustomizableUI.addWidgetToArea");
-		return Reflect.apply(t.addWidgetToArea, t, [r, qr]), It(n, r);
-	}, Ee = (e, t, n) => {
+		if (i !== "" && i !== Wi(t)) return n;
+		if (!X(t.addWidgetToArea)) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_UNAVAILABLE", "firefox-toolbar-widgets-edit", "window.CustomizableUI.addWidgetToArea");
+		return Reflect.apply(t.addWidgetToArea, t, [r, ci]), Zt(n, r);
+	}, ke = (e, t, n) => {
 		if (!t.adopted.includes(n)) return t;
-		if (ki(e, n)) {
-			if (Z(e.addWidgetToArea)) try {
-				Reflect.apply(e.addWidgetToArea, e, [n, Oi(e)]);
+		if (Gi(e, n)) {
+			if (X(e.addWidgetToArea)) try {
+				Reflect.apply(e.addWidgetToArea, e, [n, Wi(e)]);
 			} catch {}
-		} else if (Z(e.removeWidgetFromArea)) try {
+		} else if (X(e.removeWidgetFromArea)) try {
 			Reflect.apply(e.removeWidgetFromArea, e, [n]);
 		} catch {}
-		return Lt(t, n);
-	}, De = () => {
-		let t = Ti(D());
-		if (!t) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_UNAVAILABLE", "firefox-toolbar-widgets-edit", "window.CustomizableUI");
+		return Qt(t, n);
+	}, Ae = () => {
+		let t = Vi(O());
+		if (!t) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_UNAVAILABLE", "firefox-toolbar-widgets-edit", "window.CustomizableUI");
 		return t;
-	}, Oe = Object.freeze({
+	}, je = Object.freeze({
 		edit: async (t) => {
-			D();
+			O();
 			let n;
 			try {
-				n = dt(t);
+				n = Ct(t);
 			} catch (t) {
-				throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID", "firefox-toolbar-widgets-edit", "toolbar-widgets.edit", t);
+				throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID", "firefox-toolbar-widgets-edit", "toolbar-widgets.edit", t);
 			}
 			o += 1;
 			try {
-				if (n.type === "set-style") return W(at({
-					...m,
+				if (n.type === "set-style") return De(_t({
+					...h,
 					...n.style
-				})), ye(), !0;
+				})), z(), !0;
 				if (n.type === "reset-style") {
-					let e = Ce();
+					let e = Te();
 					try {
-						Reflect.apply(e.clearUserPref, e, [Xr]);
+						Reflect.apply(e.clearUserPref, e, [di]);
 					} catch {}
-					return m = $e(), ye(), !0;
+					return h = dt(), z(), !0;
 				}
-				let t = De();
-				if (Ce(), n.revision !== s) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_STALE", "firefox-toolbar-widgets-edit", "toolbar-widgets.edit-revision");
-				let r = p ?? me(t);
+				if (n.type === "set-panels") return U(lt({
+					...m ?? ct(),
+					...n.panels
+				})), z(), !0;
+				if (n.type === "reset-panels") {
+					let e = Te();
+					try {
+						Reflect.apply(e.clearUserPref, e, [fi]);
+					} catch {}
+					return m = null, z(), !0;
+				}
+				let t = Ae();
+				if (Te(), n.revision !== s) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_STALE", "firefox-toolbar-widgets-edit", "toolbar-widgets.edit-revision");
+				let r = p ?? ge(t);
 				try {
 					switch (n.type) {
 						case "add": {
-							let i = v.get(n.token);
-							if (!i) throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID", "firefox-toolbar-widgets-edit", "toolbar-widgets.palette-token");
+							let i = y.get(n.token);
+							if (!i) throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID", "firefox-toolbar-widgets-edit", "toolbar-widgets.palette-token");
 							let a = r;
-							i.type === "widget" && (a = Te(t, a, i.id)), a = Mt(a, i, n.zone, n.index), we(a);
+							i.type === "widget" && (a = Oe(t, a, i.id)), a = qt(a, i, n.zone, n.index), Ee(a);
 							break;
 						}
 						case "move":
-							we(Ft(r, n.fromZone, n.fromIndex, n.toZone, n.toIndex));
+							Ee(Xt(r, n.fromZone, n.fromIndex, n.toZone, n.toIndex));
 							break;
 						case "remove": {
-							let e = Pt(r, n.zone, n.index), i = Nt(r, n.zone, n.index);
-							e.type === "widget" && !Rt(i, e.id) && (i = Ee(t, i, e.id)), we(i);
+							let e = Yt(r, n.zone, n.index), i = Jt(r, n.zone, n.index);
+							e.type === "widget" && !$t(i, e.id) && (i = ke(t, i, e.id)), Ee(i);
 							break;
 						}
 						case "reset-layout": {
 							let e = r;
-							for (let n of [...r.adopted]) e = Ee(t, e, n);
-							let n = Ce();
+							for (let n of [...r.adopted]) e = ke(t, e, n);
+							let n = Te();
 							try {
-								Reflect.apply(n.clearUserPref, n, [Yr]);
+								Reflect.apply(n.clearUserPref, n, [ui]);
 							} catch {}
 							p = null;
 							break;
 						}
 					}
 				} catch (t) {
-					throw _(t) ? t : Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_FAILED", "firefox-toolbar-widgets-edit", "toolbar-widgets.edit", t);
+					throw _(t) ? t : Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_FAILED", "firefox-toolbar-widgets-edit", "toolbar-widgets.edit", t);
 				}
-				return ye(), !0;
+				return z(), !0;
 			} finally {
 				--o;
 			}
 		},
-		invoke: A,
+		invoke: ee,
 		snapshot() {
-			D();
-			let e = B();
+			O();
+			let e = xe();
 			return d = e.serialized, f = e.snapshot, f;
 		},
 		subscribe(t) {
-			if (D(), typeof t != "function") throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_LISTENER_INVALID", "firefox-toolbar-widgets-subscribe", "toolbar-widgets.subscribe");
-			w.add(t);
-			let n = !0;
-			return Object.freeze(() => n ? (n = !1, w.delete(t), !0) : !1);
-		},
-		subscribePopup(t) {
-			if (D(), typeof t != "function") throw Q(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_LISTENER_INVALID", "firefox-toolbar-widgets-subscribe", "toolbar-widgets.subscribe");
+			if (O(), typeof t != "function") throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_LISTENER_INVALID", "firefox-toolbar-widgets-subscribe", "toolbar-widgets.subscribe");
 			T.add(t);
 			let n = !0;
 			return Object.freeze(() => n ? (n = !1, T.delete(t), !0) : !1);
+		},
+		subscribePopup(t) {
+			if (O(), typeof t != "function") throw Z(e, "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_LISTENER_INVALID", "firefox-toolbar-widgets-subscribe", "toolbar-widgets.subscribe");
+			E.add(t);
+			let n = !0;
+			return Object.freeze(() => n ? (n = !1, E.delete(t), !0) : !1);
 		}
 	});
 	try {
-		O();
-		let t = D().document;
-		C.push(e.subscribe(t, "popupshown", M, $r), e.subscribe(t, "popuphidden", j, $r));
-		let n = Ti(D());
-		n && (Reflect.apply(n.addListener, n, [be]), l = !0);
-		let r = Ei(D());
-		r && (Reflect.apply(r.addObserver, r, [Zr, U]), u = !0), xe();
-		let i = B();
+		k();
+		let t = O().document;
+		w.push(e.subscribe(t, "popupshown", M, hi), e.subscribe(t, "popuphidden", j, hi));
+		let n = Vi(O());
+		n && (Reflect.apply(n.addListener, n, [Se]), l = !0);
+		let r = Hi(O());
+		r && (Reflect.apply(r.addObserver, r, [pi, we]), u = !0), V();
+		let i = xe();
 		d = i.serialized, f = i.snapshot;
 	} catch (e) {
-		a = !0, Se(), x = null, i = null;
-		for (let e of C.reverse()) try {
+		a = !0, H(), S = null, i = null;
+		for (let e of w.reverse()) try {
 			e();
 		} catch {}
-		throw C.length = 0, e;
+		throw w.length = 0, e;
 	}
 	return Object.freeze({
-		assertRequiredCapabilities: O,
+		assertRequiredCapabilities: k,
 		dispose() {
 			if (a) return !1;
-			if (a = !0, k.dispose(), H(), Se(), X(y) && Z(y.disconnect)) try {
-				Reflect.apply(y.disconnect, y, []);
+			if (a = !0, A.dispose(), Ce(), H(), Y(b) && X(b.disconnect)) try {
+				Reflect.apply(b.disconnect, b, []);
 			} catch {}
-			y = null, w.clear(), T.clear(), S.clear(), g.clear(), v.clear(), b = null, x = null, E.dispose(), i = null;
-			for (let e of C.reverse()) try {
+			b = null, T.clear(), E.clear(), C.clear(), v.clear(), y.clear(), x = null, S = null, D.dispose(), i = null;
+			for (let e of w.reverse()) try {
 				e();
 			} catch {}
-			return C.length = 0, !0;
+			return w.length = 0, !0;
 		},
 		refresh() {
-			return !a && (ye(), !0);
+			return !a && (z(), !0);
 		},
 		snapshot() {
 			return Object.freeze({
 				disposed: a,
 				pendingActionCount: o,
 				revision: s,
-				widgetCount: Pe.reduce((e, t) => e + f.zones[t].length, 0)
+				widgetCount: Le.reduce((e, t) => e + f.zones[t].length, 0)
 			});
 		},
-		toolbarWidgets: Oe
+		toolbarWidgets: je
 	});
 }
 //#endregion
 //#region src/app/urlbar-coverage-state.ts
-var ma = Object.freeze([
+var Aa = Object.freeze([
 	"autoplay",
 	"camera",
 	"canvas",
@@ -5769,12 +5920,12 @@ var ma = Object.freeze([
 	"screen",
 	"serial",
 	"xr"
-]), ha = Object.freeze([
+]), ja = Object.freeze([
 	"location",
 	"media",
 	"serial",
 	"xr"
-]), ga = Object.freeze([
+]), Ma = Object.freeze([
 	"remote-control",
 	"search-mode",
 	"persisted-search",
@@ -5791,14 +5942,14 @@ var ma = Object.freeze([
 	"other-page-actions",
 	"more-page-actions"
 ]);
-new Set(ma), new Set(ha), new Set(ga);
+new Set(Aa), new Set(ja), new Set(Ma);
 //#endregion
 //#region src/firefox/urlbar-coverage/support.ts
-var _a = Object.freeze([
+var Na = Object.freeze([
 	"blocked-permissions-container",
 	"identity-permission-box",
 	"page-action-buttons"
-]), va = Object.freeze({
+]), Pa = Object.freeze({
 	"autoplay-media": "autoplay",
 	camera: "camera",
 	canvas: "canvas",
@@ -5814,7 +5965,7 @@ var _a = Object.freeze([
 	screen: "screen",
 	serial: "serial",
 	xr: "xr"
-}), ya = Object.freeze([
+}), Fa = Object.freeze([
 	Object.freeze({
 		id: "geo-sharing-icon",
 		kind: "location"
@@ -5831,7 +5982,7 @@ var _a = Object.freeze([
 		id: "xr-sharing-icon",
 		kind: "xr"
 	})
-]), ba = Object.freeze([
+]), Ia = Object.freeze([
 	Object.freeze({
 		id: "contextual-feature-recommendation",
 		kind: "recommendation"
@@ -5868,7 +6019,7 @@ var _a = Object.freeze([
 		id: "star-button-box",
 		kind: "bookmark"
 	})
-]), xa = new Set([
+]), La = new Set([
 	"contextual-feature-recommendation",
 	"pageActionButton",
 	"picture-in-picture-button",
@@ -5879,41 +6030,41 @@ var _a = Object.freeze([
 	"translations-button",
 	"urlbar-zoom-button",
 	"userContext-icons"
-]), Sa = (e) => typeof e == "object" && !!e, Ca = (e) => typeof e == "function", wa = (e) => Sa(e) && Ca(e.getAttribute) && Ca(e.hasAttribute), Ta = (e) => Sa(e) && Ca(e.getElementById), Ea = (e) => Ta(e.document) ? e.document : null, Da = (e, t) => {
-	let n = Ea(e);
+]), Ra = (e) => typeof e == "object" && !!e, za = (e) => typeof e == "function", Ba = (e) => Ra(e) && za(e.getAttribute) && za(e.hasAttribute), Va = (e) => Ra(e) && za(e.getElementById), Ha = (e) => Va(e.document) ? e.document : null, Ua = (e, t) => {
+	let n = Ha(e);
 	return n ? Reflect.apply(n.getElementById, n, [t]) : void 0;
-}, Oa = (e) => Ea(e)?.documentElement, ka = Object.freeze([
+}, Wa = (e) => Ha(e)?.documentElement, Ga = Object.freeze([
 	Object.freeze({
-		isAvailable: Ca,
+		isAvailable: za,
 		name: "firefox.urlbar-coverage-native-access",
 		read: (e) => e.openLocation,
 		symbol: "window.openLocation"
 	}),
 	Object.freeze({
-		isAvailable: Ca,
+		isAvailable: za,
 		name: "firefox.urlbar-coverage-mutation-observer",
 		read: (e) => e.MutationObserver,
 		symbol: "window.MutationObserver"
 	}),
 	Object.freeze({
-		isAvailable: wa,
+		isAvailable: Ba,
 		name: "firefox.urlbar-coverage-urlbar-state",
 		read: (e) => e.gURLBar,
 		symbol: "window.gURLBar.hasAttribute"
 	}),
 	Object.freeze({
-		isAvailable: wa,
+		isAvailable: Ba,
 		name: "firefox.urlbar-coverage-window-state",
-		read: Oa,
+		read: Wa,
 		symbol: "document.documentElement.hasAttribute"
 	}),
-	..._a.map((e) => Object.freeze({
-		isAvailable: wa,
+	...Na.map((e) => Object.freeze({
+		isAvailable: Ba,
 		name: `firefox.urlbar-coverage-${e}`,
-		read: (t) => Da(t, e),
+		read: (t) => Ua(t, e),
 		symbol: `document.elements[${e}]`
 	}))
-]), Aa = (e, t) => Object.freeze([...ka.map((t) => {
+]), Ka = (e, t) => Object.freeze([...Ga.map((t) => {
 	let n = !1, r;
 	try {
 		n = t.isAvailable(t.read(e));
@@ -5930,41 +6081,41 @@ var _a = Object.freeze([
 		})
 	});
 }), Object.freeze({ snapshot: Object.freeze({
-	available: Ca(t),
+	available: za(t),
 	name: "firefox.urlbar-coverage-native-ui-handoff",
 	requirement: "required",
 	symbol: "nativeUi.revealForUrlbar"
-}) })]), ja = (e) => {
+}) })]), qa = (e) => {
 	let t = e.snapshot();
 	return Object.freeze({
 		buildId: t.buildId,
 		firefoxVersion: t.firefoxVersion,
 		windowKind: t.windowKind
 	});
-}, Ma = (e, t, n, r, i) => new g({
+}, Ja = (e, t, n, r, i) => new g({
 	cause: i,
 	code: t,
-	context: ja(e),
+	context: qa(e),
 	phase: n,
 	symbol: r
-}), Na = (e, t) => {
+}), Ya = (e, t) => {
 	let n = Reflect.apply(e.getAttribute, e, [t]);
 	return typeof n == "string" ? n : null;
-}, Pa = (e, t) => !!Reflect.apply(e.hasAttribute, e, [t]), Fa = (e) => {
+}, Xa = (e, t) => !!Reflect.apply(e.hasAttribute, e, [t]), Za = (e) => {
 	if (e.hidden === !0) return !1;
-	let t = Na(e, "hidden");
-	return t !== null && t !== "false" ? !1 : Na(e, "collapsed") !== "true";
-}, Ia = (e) => {
+	let t = Ya(e, "hidden");
+	return t !== null && t !== "false" ? !1 : Ya(e, "collapsed") !== "true";
+}, Qa = (e) => {
 	let t = e.children;
 	return Object.freeze(!t || typeof t != "object" && !Array.isArray(t) ? [] : Array.from(t));
-}, La = (e, t) => {
+}, $a = (e, t) => {
 	let n = e.classList;
-	return Sa(n) && Ca(n.contains) && !!Reflect.apply(n.contains, n, [t]);
-}, Ra = (e, t) => e.permissions.available === t.permissions.available && e.permissions.hasPermissions === t.permissions.hasPermissions && e.permissions.blocked.length === t.permissions.blocked.length && e.permissions.blocked.every((e, n) => e === t.permissions.blocked[n]) && e.permissions.sharing.length === t.permissions.sharing.length && e.permissions.sharing.every((e, n) => e === t.permissions.sharing[n]) && e.items.length === t.items.length && e.items.every((e, n) => e === t.items[n]);
+	return Ra(n) && za(n.contains) && !!Reflect.apply(n.contains, n, [t]);
+}, eo = (e, t) => e.permissions.available === t.permissions.available && e.permissions.hasPermissions === t.permissions.hasPermissions && e.permissions.blocked.length === t.permissions.blocked.length && e.permissions.blocked.every((e, n) => e === t.permissions.blocked[n]) && e.permissions.sharing.length === t.permissions.sharing.length && e.permissions.sharing.every((e, n) => e === t.permissions.sharing[n]) && e.items.length === t.items.length && e.items.every((e, n) => e === t.items[n]);
 //#endregion
 //#region src/firefox/urlbar-coverage/controller.ts
-function za({ boundary: e, onError: t, requestNativeUiReveal: n, window: r }) {
-	if (e.assertOwnsWindow(r), !Sa(r) || typeof t != "function" || typeof n != "function") throw Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_OPTIONS_INVALID", "firefox-urlbar-coverage-create", "window");
+function to({ boundary: e, onError: t, requestNativeUiReveal: n, window: r }) {
+	if (e.assertOwnsWindow(r), !Ra(r) || typeof t != "function" || typeof n != "function") throw Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_OPTIONS_INVALID", "firefox-urlbar-coverage-create", "window");
 	let i = r, a = !1, o = null, s = 0, c = null, l = Object.freeze({
 		items: Object.freeze([]),
 		permissions: Object.freeze({
@@ -5974,62 +6125,62 @@ function za({ boundary: e, onError: t, requestNativeUiReveal: n, window: r }) {
 			sharing: Object.freeze([])
 		})
 	}), u = new Set(), d = () => {
-		if (a || !i) throw Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSED", "firefox-urlbar-coverage-access", "window.gURLBar");
+		if (a || !i) throw Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSED", "firefox-urlbar-coverage-access", "window.gURLBar");
 		if (o) throw o;
 		return e.assertOwnsWindow(i), i;
 	}, f = (t) => {
-		let n = Da(d(), t);
-		if (!wa(n)) throw Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-snapshot", `document.elements[${t}]`);
+		let n = Ua(d(), t);
+		if (!Ba(n)) throw Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-snapshot", `document.elements[${t}]`);
 		return n;
 	}, p = () => {
 		let t = d().gURLBar;
-		if (!wa(t)) throw Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-snapshot", "window.gURLBar.hasAttribute");
+		if (!Ba(t)) throw Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-snapshot", "window.gURLBar.hasAttribute");
 		return t;
 	}, m = () => {
-		let t = Oa(d());
-		if (!wa(t)) throw Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-snapshot", "document.documentElement.hasAttribute");
+		let t = Wa(d());
+		if (!Ba(t)) throw Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-snapshot", "document.documentElement.hasAttribute");
 		return t;
 	}, h = () => {
-		let t = Aa(d(), n), r = t.find((e) => !e.snapshot.available);
-		if (r) throw Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-capability", r.snapshot.symbol, r.cause);
+		let t = Ka(d(), n), r = t.find((e) => !e.snapshot.available);
+		if (r) throw Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-coverage-capability", r.snapshot.symbol, r.cause);
 		return Object.freeze(t.map((e) => e.snapshot));
 	}, g = () => {
-		let e = p(), t = f("identity-permission-box"), n = Object.freeze(ya.flatMap(({ id: e, kind: t }) => {
-			let n = Da(d(), e);
-			return wa(n) && Pa(n, "sharing") ? [t] : [];
+		let e = p(), t = f("identity-permission-box"), n = Object.freeze(Fa.flatMap(({ id: e, kind: t }) => {
+			let n = Ua(d(), e);
+			return Ba(n) && Xa(n, "sharing") ? [t] : [];
 		}));
-		if (!(Na(e, "pageproxystate") === "valid" || Pa(e, "persistsearchterms") || n.length > 0)) return Object.freeze({
+		if (!(Ya(e, "pageproxystate") === "valid" || Xa(e, "persistsearchterms") || n.length > 0)) return Object.freeze({
 			available: !1,
 			blocked: Object.freeze([]),
 			hasPermissions: !1,
 			sharing: Object.freeze([])
 		});
-		let r = Object.freeze(Ia(f("blocked-permissions-container")).flatMap((e) => {
-			if (!wa(e) || !Pa(e, "showing")) return [];
-			let t = Na(e, "data-permission-id"), n = t ? va[t] : void 0;
+		let r = Object.freeze(Qa(f("blocked-permissions-container")).flatMap((e) => {
+			if (!Ba(e) || !Xa(e, "showing")) return [];
+			let t = Ya(e, "data-permission-id"), n = t ? Pa[t] : void 0;
 			return n ? [n] : [];
 		}));
 		return Object.freeze({
 			available: !0,
 			blocked: r,
-			hasPermissions: Pa(t, "hasPermissions"),
+			hasPermissions: Xa(t, "hasPermissions"),
 			sharing: n
 		});
 	}, v = () => {
 		let e = d(), t = p(), n = new Set();
-		Pa(m(), "remotecontrol") && n.add("remote-control"), Pa(t, "searchmode") && n.add("search-mode"), Pa(t, "persistsearchterms") && n.add("persisted-search");
-		for (let { id: t, kind: r } of ba) {
-			let i = Da(e, t);
-			wa(i) && Fa(i) && n.add(r);
+		Xa(m(), "remotecontrol") && n.add("remote-control"), Xa(t, "searchmode") && n.add("search-mode"), Xa(t, "persistsearchterms") && n.add("persisted-search");
+		for (let { id: t, kind: r } of Ia) {
+			let i = Ua(e, t);
+			Ba(i) && Za(i) && n.add(r);
 		}
-		let r = Da(e, "pageActionButton");
-		wa(r) && Pa(r, "multiple-children") && n.add("more-page-actions");
-		for (let e of Ia(f("page-action-buttons"))) {
-			if (!wa(e) || !Fa(e) || !La(e, "urlbar-page-action")) continue;
+		let r = Ua(e, "pageActionButton");
+		Ba(r) && Xa(r, "multiple-children") && n.add("more-page-actions");
+		for (let e of Qa(f("page-action-buttons"))) {
+			if (!Ba(e) || !Za(e) || !$a(e, "urlbar-page-action")) continue;
 			let t = typeof e.id == "string" ? e.id : "";
-			xa.has(t) || (La(e, "urlbar-addon-page-action") ? n.add("extension-actions") : Pa(e, "actionid") && n.add("other-page-actions"));
+			La.has(t) || ($a(e, "urlbar-addon-page-action") ? n.add("extension-actions") : Xa(e, "actionid") && n.add("other-page-actions"));
 		}
-		return Object.freeze(ga.filter((e) => n.has(e)));
+		return Object.freeze(Ma.filter((e) => n.has(e)));
 	}, y = () => Object.freeze({
 		items: v(),
 		permissions: g()
@@ -6042,29 +6193,29 @@ function za({ boundary: e, onError: t, requestNativeUiReveal: n, window: r }) {
 		for (let r of Array.from(u)) try {
 			r(n);
 		} catch (n) {
-			t(Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_SUBSCRIBER_FAILED", "firefox-urlbar-coverage-notify", "urlbarCoverage.subscribe", n));
+			t(Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_SUBSCRIBER_FAILED", "firefox-urlbar-coverage-notify", "urlbarCoverage.subscribe", n));
 		}
 	}, S = (e) => {
 		let t = y();
-		return Ra(l, t) && s > 0 ? !1 : (l = t, s += 1, e && x(), !0);
+		return eo(l, t) && s > 0 ? !1 : (l = t, s += 1, e && x(), !0);
 	}, C = (n) => {
-		o = _(n) ? n : Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_EVENT_FAILED", "firefox-urlbar-coverage-event", "window.MutationObserver", n), t(o);
+		o = _(n) ? n : Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_EVENT_FAILED", "firefox-urlbar-coverage-event", "window.MutationObserver", n), t(o);
 	}, w = Object.freeze({
 		openNativeUrlbar() {
 			let t = d(), r = t.openLocation;
-			if (!Ca(r)) throw Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-native-access", "window.openLocation");
+			if (!za(r)) throw Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_CAPABILITY_MISSING", "firefox-urlbar-native-access", "window.openLocation");
 			try {
-				if (n() !== !0) throw Ma(e, "FENNEVIA_FIREFOX_URLBAR_NATIVE_UI_HANDOFF_REJECTED", "firefox-urlbar-native-access", "nativeUi.revealForUrlbar");
+				if (n() !== !0) throw Ja(e, "FENNEVIA_FIREFOX_URLBAR_NATIVE_UI_HANDOFF_REJECTED", "firefox-urlbar-native-access", "nativeUi.revealForUrlbar");
 				return Reflect.apply(r, t, []), !0;
 			} catch (t) {
-				throw _(t) ? t : Ma(e, "FENNEVIA_FIREFOX_URLBAR_NATIVE_ACCESS_FAILED", "firefox-urlbar-native-access", "window.openLocation", t);
+				throw _(t) ? t : Ja(e, "FENNEVIA_FIREFOX_URLBAR_NATIVE_ACCESS_FAILED", "firefox-urlbar-native-access", "window.openLocation", t);
 			}
 		},
 		snapshot() {
 			return d(), l;
 		},
 		subscribe(t) {
-			if (d(), typeof t != "function") throw Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_LISTENER_INVALID", "firefox-urlbar-coverage-subscribe", "urlbarCoverage.subscribe");
+			if (d(), typeof t != "function") throw Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_LISTENER_INVALID", "firefox-urlbar-coverage-subscribe", "urlbarCoverage.subscribe");
 			return u.add(t), b(() => {
 				u.delete(t);
 			});
@@ -6119,7 +6270,7 @@ function za({ boundary: e, onError: t, requestNativeUiReveal: n, window: r }) {
 		try {
 			c?.disconnect();
 		} catch (n) {
-			t(Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSE_FAILED", "firefox-urlbar-coverage-dispose", "window.MutationObserver.disconnect", n));
+			t(Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSE_FAILED", "firefox-urlbar-coverage-dispose", "window.MutationObserver.disconnect", n));
 		}
 		throw c = null, i = null, n;
 	}
@@ -6134,7 +6285,7 @@ function za({ boundary: e, onError: t, requestNativeUiReveal: n, window: r }) {
 			} catch (e) {
 				t = e;
 			}
-			if (c = null, u.clear(), i = null, t !== void 0) throw Ma(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSE_FAILED", "firefox-urlbar-coverage-dispose", "window.MutationObserver.disconnect", t);
+			if (c = null, u.clear(), i = null, t !== void 0) throw Ja(e, "FENNEVIA_FIREFOX_URLBAR_COVERAGE_DISPOSE_FAILED", "firefox-urlbar-coverage-dispose", "window.MutationObserver.disconnect", t);
 			return !0;
 		},
 		snapshot() {
@@ -6150,7 +6301,7 @@ function za({ boundary: e, onError: t, requestNativeUiReveal: n, window: r }) {
 }
 //#endregion
 //#region src/app/urlbar-suggestions-state.ts
-var Ba = 1024, Va = 2048, Ha = Object.freeze([
+var no = 1024, ro = 2048, io = Object.freeze([
 	"tab-switch",
 	"search",
 	"url",
@@ -6162,7 +6313,7 @@ var Ba = 1024, Va = 2048, Ha = Object.freeze([
 	"restrict",
 	"ai-chat",
 	"unknown"
-]), Ua = Object.freeze([
+]), ao = Object.freeze([
 	"bookmarks",
 	"history",
 	"search",
@@ -6172,15 +6323,15 @@ var Ba = 1024, Va = 2048, Ha = Object.freeze([
 	"addon",
 	"actions",
 	"unknown"
-]), Wa = Object.freeze(["direct", "native"]), Ga = Object.freeze([
+]), oo = Object.freeze(["direct", "native"]), so = Object.freeze([
 	"idle",
 	"querying",
 	"results",
 	"empty",
 	"failed"
 ]);
-new Set(Ha), new Set(Ua), new Set(Wa), new Set(Ga);
-function Ka(e) {
+new Set(io), new Set(ao), new Set(oo), new Set(so);
+function co(e) {
 	let t = Error(e);
 	return t.name = "FenneviaUrlbarSuggestionsStateError", Object.defineProperties(t, {
 		fenneviaCode: {
@@ -6193,8 +6344,8 @@ function Ka(e) {
 		}
 	}), t;
 }
-function qa(e) {
-	if (!e || typeof e != "object" || e.kind !== "keyboard" && e.kind !== "pointer" || e.button !== 0 && e.button !== 1 || typeof e.altKey != "boolean" || typeof e.ctrlKey != "boolean" || typeof e.metaKey != "boolean" || typeof e.shiftKey != "boolean" || e.kind === "keyboard" && e.button !== 0) throw Ka("FENNEVIA_URLBAR_SUGGESTIONS_GESTURE_INVALID");
+function lo(e) {
+	if (!e || typeof e != "object" || e.kind !== "keyboard" && e.kind !== "pointer" || e.button !== 0 && e.button !== 1 || typeof e.altKey != "boolean" || typeof e.ctrlKey != "boolean" || typeof e.metaKey != "boolean" || typeof e.shiftKey != "boolean" || e.kind === "keyboard" && e.button !== 0) throw co("FENNEVIA_URLBAR_SUGGESTIONS_GESTURE_INVALID");
 	return Object.freeze({
 		altKey: e.altKey,
 		button: e.button,
@@ -6206,7 +6357,7 @@ function qa(e) {
 }
 //#endregion
 //#region src/firefox/urlbar-suggestions/support.ts
-var Ja = Object.freeze({
+var Q = Object.freeze({
 	TAB_SWITCH: 1,
 	SEARCH: 2,
 	URL: 3,
@@ -6217,7 +6368,7 @@ var Ja = Object.freeze({
 	DYNAMIC: 8,
 	RESTRICT: 9,
 	AI_CHAT: 10
-}), Ya = Object.freeze({
+}), uo = Object.freeze({
 	BOOKMARKS: 1,
 	HISTORY: 2,
 	SEARCH: 3,
@@ -6226,79 +6377,79 @@ var Ja = Object.freeze({
 	OTHER_NETWORK: 6,
 	ADDON: 7,
 	ACTIONS: 8
-}), Xa = Object.freeze({
-	[Ja.TAB_SWITCH]: "tab-switch",
-	[Ja.SEARCH]: "search",
-	[Ja.URL]: "url",
-	[Ja.KEYWORD]: "keyword",
-	[Ja.OMNIBOX]: "omnibox",
-	[Ja.REMOTE_TAB]: "remote-tab",
-	[Ja.TIP]: "tip",
-	[Ja.DYNAMIC]: "dynamic",
-	[Ja.RESTRICT]: "restrict",
-	[Ja.AI_CHAT]: "ai-chat"
-}), Za = Object.freeze({
-	[Ya.BOOKMARKS]: "bookmarks",
-	[Ya.HISTORY]: "history",
-	[Ya.SEARCH]: "search",
-	[Ya.TABS]: "tabs",
-	[Ya.OTHER_LOCAL]: "other-local",
-	[Ya.OTHER_NETWORK]: "other-network",
-	[Ya.ADDON]: "addon",
-	[Ya.ACTIONS]: "actions"
-}), Qa = new Set([
-	Ja.TAB_SWITCH,
-	Ja.SEARCH,
-	Ja.URL,
-	Ja.KEYWORD,
-	Ja.OMNIBOX,
-	Ja.REMOTE_TAB
-]), $a = (e) => typeof e == "object" && !!e || typeof e == "function", eo = (e) => typeof e == "function", to = (e) => typeof e == "function", no = (e) => $a(e) && eo(e.close) && eo(e.telemetryTypeFromElement), ro = (e) => $a(e) && typeof e.value == "string" && $a(e.controller) && no(e.view) && eo(e.startQuery) && eo(e.pickResult) && eo(e.handleRevert), io = (e) => {
+}), fo = Object.freeze({
+	[Q.TAB_SWITCH]: "tab-switch",
+	[Q.SEARCH]: "search",
+	[Q.URL]: "url",
+	[Q.KEYWORD]: "keyword",
+	[Q.OMNIBOX]: "omnibox",
+	[Q.REMOTE_TAB]: "remote-tab",
+	[Q.TIP]: "tip",
+	[Q.DYNAMIC]: "dynamic",
+	[Q.RESTRICT]: "restrict",
+	[Q.AI_CHAT]: "ai-chat"
+}), po = Object.freeze({
+	[uo.BOOKMARKS]: "bookmarks",
+	[uo.HISTORY]: "history",
+	[uo.SEARCH]: "search",
+	[uo.TABS]: "tabs",
+	[uo.OTHER_LOCAL]: "other-local",
+	[uo.OTHER_NETWORK]: "other-network",
+	[uo.ADDON]: "addon",
+	[uo.ACTIONS]: "actions"
+}), mo = new Set([
+	Q.TAB_SWITCH,
+	Q.SEARCH,
+	Q.URL,
+	Q.KEYWORD,
+	Q.OMNIBOX,
+	Q.REMOTE_TAB
+]), ho = (e) => typeof e == "object" && !!e || typeof e == "function", go = (e) => typeof e == "function", _o = (e) => typeof e == "function", vo = (e) => ho(e) && go(e.close) && go(e.telemetryTypeFromElement), yo = (e) => ho(e) && typeof e.value == "string" && ho(e.controller) && vo(e.view) && go(e.startQuery) && go(e.pickResult) && go(e.handleRevert), bo = (e) => {
 	let t = e.parentController;
-	return $a(t) ? t : e;
-}, ao = (e) => $a(e) && eo(e.startQuery) && eo(e.cancelQuery), oo = (e) => {
+	return ho(t) ? t : e;
+}, xo = (e) => ho(e) && go(e.startQuery) && go(e.cancelQuery), So = (e) => {
 	let t = e.gURLBar, n = e.gBrowser;
-	if (!ro(t) || !$a(n)) return null;
-	let r = t.controller, i = io(r), a = i.manager, o = n.selectedBrowser;
-	return !ao(a) || !$a(o) ? null : Object.freeze({
+	if (!yo(t) || !ho(n)) return null;
+	let r = t.controller, i = bo(r), a = i.manager, o = n.selectedBrowser;
+	return !xo(a) || !ho(o) ? null : Object.freeze({
 		input: t,
 		manager: a,
 		nativeController: r,
 		parentController: i,
 		selectedBrowser: o
 	});
-}, so = Object.freeze([
+}, Co = Object.freeze([
 	Object.freeze({
-		isAvailable: ro,
+		isAvailable: yo,
 		name: "firefox.urlbar-suggestions-input",
 		read: (e) => e.gURLBar,
 		symbol: "window.gURLBar.startQuery"
 	}),
 	Object.freeze({
-		isAvailable: (e) => $a(e) ? ao(io(e).manager) : !1,
+		isAvailable: (e) => ho(e) ? xo(bo(e).manager) : !1,
 		name: "firefox.urlbar-suggestions-manager",
-		read: (e) => $a(e.gURLBar) ? e.gURLBar.controller : void 0,
+		read: (e) => ho(e.gURLBar) ? e.gURLBar.controller : void 0,
 		symbol: "window.gURLBar.controller.parentController.manager.startQuery"
 	}),
 	Object.freeze({
-		isAvailable: $a,
+		isAvailable: ho,
 		name: "firefox.urlbar-suggestions-selected-browser",
-		read: (e) => $a(e.gBrowser) ? e.gBrowser.selectedBrowser : void 0,
+		read: (e) => ho(e.gBrowser) ? e.gBrowser.selectedBrowser : void 0,
 		symbol: "window.gBrowser.selectedBrowser"
 	}),
 	Object.freeze({
-		isAvailable: to,
+		isAvailable: _o,
 		name: "firefox.urlbar-suggestions-keyboard-event",
 		read: (e) => e.KeyboardEvent,
 		symbol: "window.KeyboardEvent"
 	}),
 	Object.freeze({
-		isAvailable: to,
+		isAvailable: _o,
 		name: "firefox.urlbar-suggestions-mouse-event",
 		read: (e) => e.MouseEvent,
 		symbol: "window.MouseEvent"
 	})
-]), co = (e) => Object.freeze(so.map((t) => {
+]), wo = (e) => Object.freeze(Co.map((t) => {
 	let n = !1, r;
 	try {
 		n = t.isAvailable(t.read(e));
@@ -6314,7 +6465,7 @@ var Ja = Object.freeze({
 			symbol: t.symbol
 		})
 	});
-})), lo = (e) => {
+})), To = (e) => {
 	let t = e.snapshot();
 	return Object.freeze({
 		buildId: t.buildId,
@@ -6324,10 +6475,10 @@ var Ja = Object.freeze({
 }, $ = (e, t, n, r, i) => new g({
 	cause: i,
 	code: t,
-	context: lo(e),
+	context: To(e),
 	phase: n,
 	symbol: r
-}), uo = (e, t) => {
+}), Eo = (e, t) => {
 	if (typeof e != "string") return "";
 	let n = "";
 	for (let r of e.slice(0, t)) {
@@ -6335,21 +6486,21 @@ var Ja = Object.freeze({
 		n += e <= 8 || e === 11 || e === 12 || e >= 14 && e <= 31 || e === 127 ? " " : r;
 	}
 	return n;
-}, fo = (e) => $a(e.payload) ? e.payload : Object.create(null), po = (e, t, n = !1) => {
-	if (!eo(e.getDisplayableValueAndHighlights)) return "";
+}, Do = (e) => ho(e.payload) ? e.payload : Object.create(null), Oo = (e, t, n = !1) => {
+	if (!go(e.getDisplayableValueAndHighlights)) return "";
 	try {
 		let r = Reflect.apply(e.getDisplayableValueAndHighlights, e, [t, ...n ? [{ isURL: !0 }] : []]);
-		return $a(r) ? uo(r.value, 2048) : "";
+		return ho(r) ? Eo(r.value, 2048) : "";
 	} catch {
 		return "";
 	}
-}, mo = (e, t) => {
+}, ko = (e, t) => {
 	for (let n of e) {
-		let e = uo(n, t);
+		let e = Eo(n, t);
 		if (e.length > 0) return e;
 	}
 	return "";
-}, ho = (e) => {
+}, Ao = (e) => {
 	let t;
 	try {
 		t = e.icon;
@@ -6357,10 +6508,10 @@ var Ja = Object.freeze({
 		return null;
 	}
 	if (typeof t != "string" || t.length === 0 || t.length > 2048) return null;
-	let n = uo(t, Va);
+	let n = Eo(t, ro);
 	return n === t && (/^(?:chrome|resource|moz-extension|page-icon|moz-page-thumb):/iu.test(n) || /^data:image\/(?:png|gif|jpeg|webp);base64,[a-z0-9+/=]+$/iu.test(n)) ? n : null;
-}, go = (e) => Number.isInteger(e) ? Xa[e] ?? "unknown" : "unknown", _o = (e) => Number.isInteger(e) ? Za[e] ?? "unknown" : "unknown", vo = (e) => Number.isInteger(e.type) && Qa.has(e.type) ? "direct" : "native", yo = (e, t) => {
-	let n = fo(e), r = po(e, "title"), i = po(e, "url", !0), a = mo([
+}, jo = (e) => Number.isInteger(e) ? fo[e] ?? "unknown" : "unknown", Mo = (e) => Number.isInteger(e) ? po[e] ?? "unknown" : "unknown", No = (e) => Number.isInteger(e.type) && mo.has(e.type) ? "direct" : "native", Po = (e, t) => {
+	let n = Do(e), r = Oo(e, "title"), i = Oo(e, "url", !0), a = ko([
 		n.text,
 		r,
 		n.title,
@@ -6369,29 +6520,29 @@ var Ja = Object.freeze({
 		n.input,
 		i,
 		n.url
-	], 512), o = mo([
+	], 512), o = ko([
 		n.description,
 		n.subtitle,
 		n.device,
 		n.engine,
 		n.content,
 		i === a ? "" : i
-	], Ba);
+	], no);
 	return Object.freeze({
 		description: o,
-		execution: vo(e),
+		execution: No(e),
 		heuristic: e.heuristic === !0,
-		icon: ho(e),
-		source: _o(e.source),
+		icon: Ao(e),
+		source: Mo(e.source),
 		title: a,
 		token: t,
-		type: go(e.type)
+		type: jo(e.type)
 	});
 };
 //#endregion
 //#region src/firefox/urlbar-suggestions/controller.ts
-function bo({ boundary: e, onError: t, window: n }) {
-	if (e.assertOwnsWindow(n), !$a(n) || typeof t != "function") throw $(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_OPTIONS_INVALID", "firefox-urlbar-suggestions-create", "window.gURLBar");
+function Fo({ boundary: e, onError: t, window: n }) {
+	if (e.assertOwnsWindow(n), !ho(n) || typeof t != "function") throw $(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_OPTIONS_INVALID", "firefox-urlbar-suggestions-create", "window.gURLBar");
 	let r = n, i = !1, a = 0, o = 0, s = null, c = Object.freeze({
 		available: !0,
 		phase: "idle",
@@ -6401,11 +6552,11 @@ function bo({ boundary: e, onError: t, window: n }) {
 		if (i || !r) throw $(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_DISPOSED", "firefox-urlbar-suggestions-access", "window.gURLBar");
 		return e.assertOwnsWindow(r), r;
 	}, p = () => {
-		let t = co(f()), n = t.find((e) => !e.snapshot.available);
+		let t = wo(f()), n = t.find((e) => !e.snapshot.available);
 		if (n) throw $(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CAPABILITY_MISSING", "firefox-urlbar-suggestions-capability", n.snapshot.symbol, n.cause);
 		return Object.freeze(t.map((e) => e.snapshot));
 	}, m = () => {
-		let t = oo(f());
+		let t = So(f());
 		if (!t) throw $(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CAPABILITY_MISSING", "firefox-urlbar-suggestions-access", "window.gURLBar.controller.parentController.manager");
 		return t;
 	}, h = () => {
@@ -6448,11 +6599,11 @@ function bo({ boundary: e, onError: t, window: n }) {
 		let a = Array.isArray(e.results) ? e.results.slice(0, 20) : [], c = [], l = new Set();
 		_();
 		for (let e of a) {
-			if (!$a(e) || l.has(e)) continue;
+			if (!ho(e) || l.has(e)) continue;
 			l.add(e);
 			let r = e, i = u.register(r), a;
 			try {
-				a = yo(r, i);
+				a = Po(r, i);
 			} catch (e) {
 				throw u.release(i), e;
 			}
@@ -6490,7 +6641,7 @@ function bo({ boundary: e, onError: t, window: n }) {
 			};
 			if (a === "view") return r;
 			let o = Reflect.get(i, a, i);
-			return eo(o) ? o.bind(i) : o;
+			return go(o) ? o.bind(i) : o;
 		} });
 	}, C = (n) => {
 		try {
@@ -6500,7 +6651,7 @@ function bo({ boundary: e, onError: t, window: n }) {
 		}
 		s === n && (s = null, o === n.revision && c.phase === "querying" && g("empty"));
 	}, w = (t, n, r) => {
-		if (!$a(t)) throw $(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CONTEXT_INVALID", "firefox-urlbar-suggestions-query", "UrlbarQueryContext");
+		if (!ho(t)) throw $(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CONTEXT_INVALID", "firefox-urlbar-suggestions-query", "UrlbarQueryContext");
 		v(s);
 		let i = Object.freeze({
 			context: t,
@@ -6522,7 +6673,7 @@ function bo({ boundary: e, onError: t, window: n }) {
 			if (t === "cancelQuery") return () => v(s);
 			if (t === "startQuery") return (e) => n(e);
 			let r = Reflect.get(e, t, e);
-			return eo(r) ? r.bind(e) : r;
+			return go(r) ? r.bind(e) : r;
 		} }), a, o = !1, c;
 		try {
 			if (t.input.controller = i, t.input.controller !== i) throw $(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_PROXY_REJECTED", "firefox-urlbar-suggestions-proxy", "window.gURLBar.controller");
@@ -6593,7 +6744,7 @@ function bo({ boundary: e, onError: t, window: n }) {
 		execute: (e, t) => {
 			let n, r;
 			try {
-				n = qa(t), r = u.resolve(e);
+				n = lo(t), r = u.resolve(e);
 			} catch {
 				return Object.freeze({ status: "rejected" });
 			}
@@ -6619,7 +6770,7 @@ function bo({ boundary: e, onError: t, window: n }) {
 					null,
 					a.selectedBrowser
 				])), !c && a.input.searchMode !== l) {
-					let e = typeof a.input.value == "string" ? a.input.value.slice(0, Dn) : "";
+					let e = typeof a.input.value == "string" ? a.input.value.slice(0, Hn) : "";
 					_(), o += 1, g("querying"), T(a, (e) => {
 						c = !0, w(e, a, o);
 					}, () => Reflect.apply(a.input.startQuery, a.input, [Object.freeze({
@@ -6670,63 +6821,63 @@ function bo({ boundary: e, onError: t, window: n }) {
 }
 //#endregion
 //#region src/app/window-controls-state.ts
-var xo = Object.freeze([
+var Io = Object.freeze([
 	"close",
 	"minimize",
 	"toggle-maximize"
-]), So = new Set(xo);
-function Co(e) {
-	return typeof e == "string" && So.has(e);
+]), Lo = new Set(Io);
+function Ro(e) {
+	return typeof e == "string" && Lo.has(e);
 }
 //#endregion
 //#region src/firefox/window-controls.ts
-var wo = (e) => typeof e == "object" && !!e, To = (e) => typeof e == "function", Eo = (e, t) => {
+var zo = (e) => typeof e == "object" && !!e, Bo = (e) => typeof e == "function", Vo = (e, t) => {
 	let n = e.document;
-	if (!(!wo(n) || !To(n.getElementById))) return Reflect.apply(n.getElementById, n, [t]);
-}, Do = (e) => Object.freeze(e), Oo = Object.freeze([
-	Do({
-		isAvailable: To,
+	if (!(!zo(n) || !Bo(n.getElementById))) return Reflect.apply(n.getElementById, n, [t]);
+}, Ho = (e) => Object.freeze(e), Uo = Object.freeze([
+	Ho({
+		isAvailable: Bo,
 		name: "window-controls.minimize",
 		read: (e) => e.minimize,
 		symbol: "window.minimize"
 	}),
-	Do({
-		isAvailable: To,
+	Ho({
+		isAvailable: Bo,
 		name: "window-controls.maximize",
 		read: (e) => e.maximize,
 		symbol: "window.maximize"
 	}),
-	Do({
-		isAvailable: To,
+	Ho({
+		isAvailable: Bo,
 		name: "window-controls.restore",
 		read: (e) => e.restore,
 		symbol: "window.restore"
 	}),
-	Do({
+	Ho({
 		isAvailable: (e) => typeof e == "number",
 		name: "window-controls.window-state",
 		read: (e) => e.windowState,
 		symbol: "window.windowState"
 	}),
-	Do({
+	Ho({
 		isAvailable: (e) => typeof e == "number",
 		name: "window-controls.state-maximized",
 		read: (e) => e.STATE_MAXIMIZED,
 		symbol: "window.STATE_MAXIMIZED"
 	}),
-	Do({
-		isAvailable: To,
+	Ho({
+		isAvailable: Bo,
 		name: "window-controls.sizemode-events",
 		read: (e) => e.addEventListener,
 		symbol: "window.addEventListener"
 	}),
-	Do({
-		isAvailable: (e) => wo(e) && To(e.doCommand),
+	Ho({
+		isAvailable: (e) => zo(e) && Bo(e.doCommand),
 		name: "window-controls.close-command",
-		read: (e) => Eo(e, "cmd_closeWindow"),
+		read: (e) => Vo(e, "cmd_closeWindow"),
 		symbol: "document.cmd_closeWindow.doCommand"
 	})
-]), ko = (e) => Object.freeze(Oo.map((t) => {
+]), Wo = (e) => Object.freeze(Uo.map((t) => {
 	let n = !1, r;
 	try {
 		n = t.isAvailable(t.read(e));
@@ -6742,36 +6893,36 @@ var wo = (e) => typeof e == "object" && !!e, To = (e) => typeof e == "function",
 			symbol: t.symbol
 		})
 	});
-})), Ao = (e) => {
+})), Go = (e) => {
 	let t = e.snapshot();
 	return Object.freeze({
 		buildId: t.buildId,
 		firefoxVersion: t.firefoxVersion,
 		windowKind: t.windowKind
 	});
-}, jo = (e, t, n, r, i) => new g({
+}, Ko = (e, t, n, r, i) => new g({
 	cause: i,
 	code: t,
-	context: Ao(e),
+	context: Go(e),
 	phase: n,
 	symbol: r
-}), Mo = (e) => {
+}), qo = (e) => {
 	let t = e.windowState === e.STATE_MAXIMIZED || typeof e.STATE_FULLSCREEN == "number" && e.windowState === e.STATE_FULLSCREEN;
 	return Object.freeze({ maximized: t });
 };
-function No({ boundary: e, onError: t, window: n }) {
-	if (e.assertOwnsWindow(n), !wo(n) || typeof t != "function") throw jo(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_OPTIONS_INVALID", "firefox-window-controls-create", "window");
+function Jo({ boundary: e, onError: t, window: n }) {
+	if (e.assertOwnsWindow(n), !zo(n) || typeof t != "function") throw Ko(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_OPTIONS_INVALID", "firefox-window-controls-create", "window");
 	let r = n, i = !1, a = new Set(), o, s = () => {
-		if (i || !r) throw jo(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_DISPOSED", "firefox-window-controls-access", "window");
+		if (i || !r) throw Ko(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_DISPOSED", "firefox-window-controls-access", "window");
 		return r;
 	}, c = () => {
-		let t = ko(s()), n = t.find((e) => !e.snapshot.available);
-		if (n) throw jo(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_CAPABILITY_MISSING", "firefox-window-controls-capability", n.snapshot.symbol, n.cause);
+		let t = Wo(s()), n = t.find((e) => !e.snapshot.available);
+		if (n) throw Ko(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_CAPABILITY_MISSING", "firefox-window-controls-capability", n.snapshot.symbol, n.cause);
 		return Object.freeze(t.map((e) => e.snapshot));
 	}, l = () => {
 		let n;
 		try {
-			n = Mo(s());
+			n = qo(s());
 		} catch (e) {
 			t(e);
 			return;
@@ -6779,20 +6930,20 @@ function No({ boundary: e, onError: t, window: n }) {
 		for (let r of Array.from(a)) try {
 			r(n);
 		} catch (n) {
-			t(jo(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_SUBSCRIBER_FAILED", "firefox-window-controls-notify", "windowControls.subscribe", n));
+			t(Ko(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_SUBSCRIBER_FAILED", "firefox-window-controls-notify", "windowControls.subscribe", n));
 		}
 	}, u = (t) => {
-		if (!Co(t)) throw jo(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_ACTION_INVALID", "firefox-window-controls-action", "windowControls.action");
+		if (!Ro(t)) throw Ko(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_ACTION_INVALID", "firefox-window-controls-action", "windowControls.action");
 		c();
 		let n = s();
 		try {
 			if (t === "minimize") return Reflect.apply(n.minimize, n, []), !0;
-			if (t === "toggle-maximize") return Mo(n).maximized ? Reflect.apply(n.restore, n, []) : Reflect.apply(n.maximize, n, []), !0;
-			let r = Eo(n, "cmd_closeWindow");
-			if (!wo(r) || !To(r.doCommand)) throw jo(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_CAPABILITY_MISSING", "firefox-window-controls-action", "document.cmd_closeWindow.doCommand");
+			if (t === "toggle-maximize") return qo(n).maximized ? Reflect.apply(n.restore, n, []) : Reflect.apply(n.maximize, n, []), !0;
+			let r = Vo(n, "cmd_closeWindow");
+			if (!zo(r) || !Bo(r.doCommand)) throw Ko(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_CAPABILITY_MISSING", "firefox-window-controls-action", "document.cmd_closeWindow.doCommand");
 			return Reflect.apply(r.doCommand, r, []), !0;
 		} catch (n) {
-			throw n instanceof g ? n : jo(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_ACTION_FAILED", "firefox-window-controls-action", t === "close" ? "document.cmd_closeWindow.doCommand" : `window.${t}`, n);
+			throw n instanceof g ? n : Ko(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_ACTION_FAILED", "firefox-window-controls-action", t === "close" ? "document.cmd_closeWindow.doCommand" : `window.${t}`, n);
 		}
 	};
 	try {
@@ -6804,15 +6955,15 @@ function No({ boundary: e, onError: t, window: n }) {
 			type: "sizemodechange"
 		});
 	} catch (t) {
-		throw jo(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_SUBSCRIBE_FAILED", "firefox-window-controls-subscribe", "window.addEventListener", t);
+		throw Ko(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_SUBSCRIBE_FAILED", "firefox-window-controls-subscribe", "window.addEventListener", t);
 	}
 	let d = Object.freeze({
 		invoke: u,
 		snapshot() {
-			return Mo(s());
+			return qo(s());
 		},
 		subscribe(t) {
-			if (typeof t != "function") throw jo(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_LISTENER_INVALID", "firefox-window-controls-subscribe", "windowControls.subscribe");
+			if (typeof t != "function") throw Ko(e, "FENNEVIA_FIREFOX_WINDOW_CONTROLS_LISTENER_INVALID", "firefox-window-controls-subscribe", "windowControls.subscribe");
 			return s(), a.add(t), () => a.delete(t);
 		}
 	});
@@ -6828,4 +6979,4 @@ function No({ boundary: e, onError: t, window: n }) {
 	});
 }
 //#endregion
-export { g as FirefoxBridgeError, Mt as addCustomizeLayoutEntry, xt as copyCustomizeLayout, yt as copyCustomizeLayoutEntry, Ct as createCustomizeLayout, St as createEmptyCustomizeLayout, L as createFirefoxBookmarksBridge, T as createFirefoxBridgeBoundary, ke as createFirefoxBrowserToolsBridge, Xt as createFirefoxDownloadsBridge, Tn as createFirefoxLocaleBridge, ur as createFirefoxNavigationBridge, Wr as createFirefoxTabDragCoordinator, Kr as createFirefoxTabsBridge, pa as createFirefoxToolbarWidgetsBridge, za as createFirefoxUrlbarCoverageBridge, bo as createFirefoxUrlbarSuggestionsBridge, No as createFirefoxWindowControlsBridge, b as createIdempotentDisposer, S as createOpaqueHandleRegistry, sn as createStaticLocaleBridge, mt as customizeLayoutBounds, Rt as customizeLayoutContainsWidget, ft as customizeSpecialKinds, Qt as defaultFenneviaLocale, Ot as findCustomizeLayoutEntry, Pt as getCustomizeLayoutEntry, wn as getShellChromeHostLabel, _t as isCustomizeSpecialKind, vt as isCustomizeWidgetId, _ as isFirefoxBridgeError, Ft as moveCustomizeLayoutEntry, wt as parseCustomizeLayout, Et as parseCustomizeStyle, Nt as removeCustomizeLayoutEntry, Tt as serializeCustomizeLayout, Dt as serializeCustomizeStyle, fn as shellChromeHostNames, x as subscribeFirefoxEvent, v as toFirefoxBridgeDiagnostic, It as withCustomizeAdopted, Lt as withoutCustomizeAdopted };
+export { g as FirefoxBridgeError, qt as addCustomizeLayoutEntry, Nt as copyCustomizeLayout, jt as copyCustomizeLayoutEntry, Ft as createCustomizeLayout, Pt as createEmptyCustomizeLayout, ae as createFirefoxBookmarksBridge, T as createFirefoxBridgeBoundary, Me as createFirefoxBrowserToolsBridge, fn as createFirefoxDownloadsBridge, Bn as createFirefoxLocaleBridge, Tr as createFirefoxNavigationBridge, ai as createFirefoxTabDragCoordinator, si as createFirefoxTabsBridge, ka as createFirefoxToolbarWidgetsBridge, to as createFirefoxUrlbarCoverageBridge, Fo as createFirefoxUrlbarSuggestionsBridge, Jo as createFirefoxWindowControlsBridge, b as createIdempotentDisposer, S as createOpaqueHandleRegistry, Sn as createStaticLocaleBridge, Et as customizeLayoutBounds, $t as customizeLayoutContainsWidget, wt as customizeSpecialKinds, mn as defaultFenneviaLocale, Ut as findCustomizeLayoutEntry, Yt as getCustomizeLayoutEntry, zn as getShellChromeHostLabel, kt as isCustomizeSpecialKind, At as isCustomizeWidgetId, _ as isFirefoxBridgeError, Xt as moveCustomizeLayoutEntry, It as parseCustomizeLayout, Vt as parseCustomizePanels, Rt as parseCustomizeStyle, Jt as removeCustomizeLayoutEntry, Lt as serializeCustomizeLayout, Ht as serializeCustomizePanels, zt as serializeCustomizeStyle, Dn as shellChromeHostNames, x as subscribeFirefoxEvent, v as toFirefoxBridgeDiagnostic, Zt as withCustomizeAdopted, Qt as withoutCustomizeAdopted };

@@ -152,6 +152,12 @@
 }
 
 #fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-enabled="false"]
+  .fennevia-edge-trigger {
+  pointer-events: none;
+}
+
+#fennevia-shell-frame-host
   .fennevia-edge-root[data-fennevia-edge="top"]
   .fennevia-edge-trigger {
   inset-inline: 0;

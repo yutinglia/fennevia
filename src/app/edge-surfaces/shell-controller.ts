@@ -70,6 +70,9 @@ export function createEdgeShellController(
   options: ControllerOptions = {},
 ): EdgeShellController {
   const surfaces = createSurfaceRecord(options);
+  const edgeEnabled = Object.fromEntries(
+    edgeNames.map((edge) => [edge, true]),
+  ) as Record<EdgeName, boolean>;
   let activeEdge: EdgeName | null = null;
   let disposed = false;
   let enabled = true;
@@ -108,9 +111,8 @@ export function createEdgeShellController(
     interactionsEnabled() && !windowDragActive;
 
   const syncSurfaceEnabled = (): void => {
-    const nextEnabled = interactionsEnabled();
     for (const edge of edgeNames) {
-      surfaces[edge].setEnabled(nextEnabled);
+      surfaces[edge].setEnabled(interactionsEnabled() && edgeEnabled[edge]);
     }
   };
 
@@ -240,6 +242,23 @@ export function createEdgeShellController(
       }
       activeEdge = null;
       syncSurfaceEnabled();
+      return true;
+    },
+
+    setEdgeEnabled(edge, nextEnabled) {
+      requireUsable();
+      const surface = requireEdge(edge);
+      if (typeof nextEnabled !== "boolean") {
+        throw createEdgeSurfaceError("FENNEVIA_EDGE_ENABLED_INVALID");
+      }
+      if (edgeEnabled[edge] === nextEnabled) {
+        return false;
+      }
+      edgeEnabled[edge] = nextEnabled;
+      if (!nextEnabled && activeEdge === edge) {
+        activeEdge = null;
+      }
+      surface.setEnabled(interactionsEnabled() && nextEnabled);
       return true;
     },
 

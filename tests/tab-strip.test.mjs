@@ -339,7 +339,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /navigation\.reload\(gesture\)/u);
   assert.match(
     source,
-    /revealProgrammatically\("left", newTabHighlightDurationMs\)/u,
+    /revealProgrammatically\(\s*props\.edge,\s*newTabHighlightDurationMs/u,
   );
   assert.match(
     source,
@@ -349,7 +349,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /handleTabAuxClick/u);
   assert.match(
     tabSource,
-    /const restorePointerHoldAfterClose = async \([\s\S]*?await tick\(\);[\s\S]*?elementFromPoint\([\s\S]*?surfacePanel\.contains\(pointerTarget\)[\s\S]*?setPointerHeld\("left", true\);/u,
+    /const restorePointerHoldAfterClose = async \([\s\S]*?await tick\(\);[\s\S]*?elementFromPoint\([\s\S]*?surfacePanel\.contains\(pointerTarget\)[\s\S]*?setPointerHeld\(props\.edge, true\);/u,
   );
   assert.match(tabSource, /pointerType === "touch"/u);
   assert.match(tabSource, /event\.button !== 0 && event\.button !== 1/u);
@@ -420,7 +420,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
   );
   assert.match(source, /ondragleave=\{handleTabListDragLeave\}/u);
   assert.match(source, /clearTabDrag\(\)/u);
-  assert.match(source, /setPointerHeld\("left", active\)/u);
+  assert.match(source, /setPointerHeld\(props\.edge, active\)/u);
   assert.match(
     tabSource,
     /props\.tabs\.subscribe[\s\S]*?sourceDragId !== null[\s\S]*?isDraggedTabMissing\(nextState\.tabs, draggingTabId\)[\s\S]*?if \(sourceTabLeftWindow\) \{\s*clearTabDrag\(\);\s*reportAsyncError\(tick\(\)\.then\(releaseSurfaceFocus\)\);/u,

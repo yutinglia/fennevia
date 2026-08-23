@@ -99,8 +99,19 @@ class FakeElement {
     this._children = [];
     this._textContent = String(value);
     if (this.sheet) {
-      const matches = this._textContent.match(/\}/gu);
-      this.sheet.cssRules = Array.from({ length: matches?.length ?? 0 }, () =>
+      let depth = 0;
+      let ruleCount = 0;
+      for (const character of this._textContent) {
+        if (character === "{") {
+          if (depth === 0) {
+            ruleCount += 1;
+          }
+          depth += 1;
+        } else if (character === "}") {
+          depth -= 1;
+        }
+      }
+      this.sheet.cssRules = Array.from({ length: ruleCount }, () =>
         Object.freeze({}),
       );
     }
@@ -589,7 +600,7 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
     true,
   );
   assert.match(popupProxyAnchor.getAttribute("style"), /pointer-events: none/u);
-  assert.equal(style.sheet.cssRules.length, 7);
+  assert.equal(style.sheet.cssRules.length, 9);
   assert.match(style.textContent, /#browser > #tabbrowser-tabbox/u);
   assert.match(
     style.textContent,
@@ -608,6 +619,10 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
   assert.doesNotMatch(style.textContent, /data-fennevia-top-visible/u);
   assert.match(style.textContent, /z-index: 6 !important/u);
   assert.doesNotMatch(style.textContent, /#notifications-toolbar/u);
+  assert.match(style.textContent, /#statuspanel-label/u);
+  assert.match(style.textContent, /max-width: min\(42vw, 520px\) !important/u);
+  assert.match(style.textContent, /text-overflow: ellipsis !important/u);
+  assert.match(style.textContent, /@media \(forced-colors: active\)/u);
   assert.ok(
     controller
       .assertRequiredCapabilities()

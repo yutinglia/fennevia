@@ -382,12 +382,12 @@ test("address popup cancellation releases launcher focus back to content", () =>
     closeReason: "cancelled",
     draftValue: initialSnapshot.addressValue,
     error: null,
-    invocationSource: "left-launcher",
+    invocationSource: "tabs-launcher",
     phase: "closing",
     revision: 3,
   });
 
-  for (const invocationSource of ["left-launcher", "top-launcher"]) {
+  for (const invocationSource of ["tabs-launcher", "top-launcher"]) {
     for (const closeReason of ["cancelled", "focus-left", "outside"]) {
       assert.equal(
         getAddressPopupCloseFocusDestination(
@@ -441,7 +441,7 @@ test("address popup owns one draft, preserves it through updates, and discards i
     tabs: tabs.adapter,
   });
 
-  assert.equal(popup.requestOpen("left-launcher"), "opened");
+  assert.equal(popup.requestOpen("tabs-launcher"), "opened");
   assert.equal(popup.snapshot().draftValue, initialSnapshot.addressValue);
   assert.equal(popup.confirmOpen(), true);
   popup.updateDraft("draft search terms");
@@ -470,7 +470,7 @@ test("address popup owns one draft, preserves it through updates, and discards i
   popup.completeClose();
   assert.equal(popup.snapshot().phase, "hidden");
 
-  popup.requestOpen("left-launcher");
+  popup.requestOpen("tabs-launcher");
   popup.confirmOpen();
   popup.updateDraft("javascript:alert(1)");
   assert.deepEqual(popup.submit(), {

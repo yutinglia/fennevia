@@ -1,7 +1,8 @@
 # Current Project Status
 
 > Snapshot: 2026-08-23. This status review is based on `main` through PR #98
-> plus the `0.12.0-beta.1` release-hardening commits, alongside the public
+> plus the `0.12.0-beta.1` release-hardening commits and the current ADR-064
+> configurable-panel/favicon/status follow-up, alongside the public
 > `v0.12.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
 
@@ -44,14 +45,14 @@ and testing documents retain the complete engineering contract.
 
 - Hidden-at-rest top, left, right, and bottom surfaces with a shared reveal,
   focus, popup-hold, collision, accessibility, and cleanup contract.
-- Left-edge vertical tabs with selected state, Firefox's packaged loading icon,
+- Vertical tabs on the left by default, with selected state, Firefox's packaged loading icon,
   audio, containers, attention/PiP, closed camera/microphone/screen-sharing and crash
   indicators, fixed trailing action positions, middle-click close,
   drag/keyboard reorder with a pointer-aligned full-row ghost, animated neighbor
   gap, insertion marker, and polite move announcement, plus Firefox-owned tab
   context-menu handoff with complete lazy Fluent labels and no original-toolbar
   reveal.
-- Compact address/status launcher with one Firefox-style Trust shield embedded
+- Compact address/status launcher on the same configured tabs side, with one Firefox-style Trust shield embedded
   at the leading edge, plus a centred address/search popup backed by Firefox
   navigation, bounded connection/protection state, and the native Trust/Urlbar
   owners. ADR-061 adds an accessible bounded result list fed by Firefox's own
@@ -59,9 +60,10 @@ and testing documents retain the complete engineering contract.
   `pickResult`, while rich/unknown rows retain the complete native-Urlbar
   handoff. Fennevia adds no search engine, provider, ranking, persistence, or
   suggestion endpoint.
-- Top navigation, page status, Firefox tool handoffs, native-panel anchoring,
-  packaged Firefox icons including the Settings gear, gutter activity
-  indicators, and compact project-owned window controls.
+- Fixed top navigation, page status, Firefox tool handoffs, native-panel
+  anchoring, packaged Firefox icons including the Settings gear, independently
+  configurable loading/download/off top and bottom gutter indicators, a compact
+  active-only native corner-status capsule, and project-owned window controls.
 - Generic relationship-based anchoring for non-security Firefox-owned XUL
   popups opened from the hidden toolbox; unsupported movement remains
   fail-open to original Firefox chrome. ADR-057 pre-anchors the shared security
@@ -73,11 +75,14 @@ and testing documents retain the complete engineering contract.
   placeable widget for the Firefox-owned full-page translation panel; the
   2026-08-22 follow-up keeps its routing active until Firefox's asynchronously
   created panel is actually shown.
-- Lazy, event-driven right-edge bookmarks and anonymous bottom-edge download
-  progress/status while Firefox retains authoritative editing, safety, and file
-  management.
+- Lazy, event-driven bookmarks on the right by default, including Firefox-cached
+  bounded raster favicons and middle-click new-tab opening, plus anonymous
+  bottom-edge download progress/status while Firefox retains authoritative
+  editing, safety, and file management. The complete tabs/bookmarks side roles
+  can swap; the bottom owned panel and trigger can be disabled.
 - Useful pointer/keyboard right-click menus on all four edge panels: top
-  Settings, left New Tab/native tab actions, right bookmark/folder/Library
+  Settings, configured tabs-side New Tab/native tab actions, configured
+  bookmarks-side bookmark/folder/Library
   actions, bottom Firefox Downloads, plus available Fennevia/native customize
   and original-toolbar actions. The 2026-08-22 owner-reported follow-up fixes
   delegated tab-event interception and explicitly releases pointer-menu focus
@@ -97,6 +102,9 @@ and testing documents retain the complete engineering contract.
   backgrounds, text, borders, saturation, shadow, motion, separate
   in-window/window-leave hide timing, temporary reveal timing, zero-disable
   shortcut-tip timing, and edge trigger thickness.
+- Bounded profile-local panel controls for the complete tabs/bookmarks side
+  swap, bottom downloads-panel enablement, and top/bottom activity-light source;
+  the top role remains fixed.
 - Firefox chrome design tokens as the default color source, with solid,
   reduced-transparency, reduced-motion, and forced-colors fallbacks.
 - English and Traditional Chinese shell catalogs selected from Firefox's UI
@@ -150,6 +158,16 @@ deterministic frontend/bridge output, and 14/14 accepted production artifacts.
 The same fixed suite passed under Windows PowerShell 5.1. The real Firefox
 multi-window and external-application rows remain pending.
 
+ADR-064 implements bounded side-role swapping, optional bottom-download-panel
+presentation, configurable top/bottom activity lights, cached raster bookmark
+favicons, bookmark middle-click new-tab behavior, and the retained native status
+capsule. Its complete `npm run verify` gate passed with 351/351 Node tests,
+87.51% line coverage, 79.58% branch coverage, 95.30% function coverage, all
+fixed PowerShell 7 suites, dependency review, deterministic frontend/bridge
+output, and 14/14 accepted production artifacts. The same fixed suite passed
+under Windows PowerShell 5.1. The ADR-064 real-Firefox visual, interaction,
+multi-window, DPI, theme, and accessibility rows below remain pending.
+
 The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
 the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and
 failure-injection wrappers, SessionStore rehearsal, Urlbar provider/production
@@ -177,6 +195,9 @@ following remain explicitly pending in the current plans and testing document:
 - ADR-058 tab loading/capture/crash indicators and fixed action placement under
   real WebRTC, crash, narrow-panel, reduced-motion, forced-color, DPI, and
   multi-window conditions;
+- ADR-064 swapped-side focus/popup behavior, bottom disable/re-enable, cached
+  bookmark favicon and middle-click behavior, all activity-light mappings, and
+  native status-capsule theme/forced-colors/DPI behavior in real Firefox;
 - ADR-059 unified Trust-shield rendering/state, leading in-launcher placement,
   and native panel handoff across HTTP, HTTPS, ETP exception/restore, errors,
   forced colors, DPI, and multiple windows;

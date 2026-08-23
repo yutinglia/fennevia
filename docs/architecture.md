@@ -297,7 +297,7 @@ window-capture `dragleave.relatedTarget` clears a no-drop target exit, while
 non-null internal transitions preserve the shared hold. An otherwise
 unconsumed drag delegates to Firefox's `replaceTabWithWindow`. No window is
 inferred from screen geometry, normal/private transfer is rejected, and every
-terminal cleanup releases the shared left-edge hold. If adoption removes the
+terminal cleanup releases the shared configured-tabs-edge hold. If adoption removes the
 source row before `dragend` traverses that window, the next source tab snapshot
 detects the missing active ID and performs the same local cleanup without
 ending the transfer ahead of the target; after the DOM update it releases
@@ -365,7 +365,7 @@ background-tab preference, and private-window targeting. URLs never enter the
 public snapshot or DOM. Manage Bookmarks delegates to the owning window's
 `PlacesCommandHook.showPlacesOrganizer("UnfiledBookmarks")`, matching Firefox's
 current Library command without exposing its window. Bookmark/folder rows own
-a bounded text-only context menu using the existing opaque IDs and right-edge
+a bounded text-only context menu using the existing opaque IDs and configured-edge
 popup hold. See ADR-029,
 `docs/research/firefox-153-bookmarks-surface.md`, and
 `docs/research/firefox-153-154-panel-context-actions.md`.
@@ -494,8 +494,14 @@ duration, and edge-trigger size. Existing values without those fields receive
 the 300 ms, 800 ms, 1,200 ms, 600 ms, and 12 CSS px defaults. A non-null
 `PointerEvent.relatedTarget` selects the in-window delay; a null target or the
 existing window-blur fallback selects the window-leave delay. A zero
-shortcut-tip duration omits the footer from rendering. Both prefs are versioned
-JSON with a 16 KiB cap and fail safe to defaults. Glass, trigger, and
+shortcut-tip duration omits the footer from rendering. Those two prefs are versioned
+JSON with a 16 KiB cap and fail safe to defaults. ADR-064 adds a third strict
+version-1 `fennevia.customize.panels` preference containing only the complete
+`tabs-left`/`tabs-right` side-role selection, a bottom-download-panel boolean,
+and `loading`/`downloads`/`off` sources for the top and bottom gutter lights.
+Its defaults preserve tabs left, bookmarks right, bottom enabled, loading top,
+and downloads bottom. The pref observer republishes all three settings across
+windows. Glass, trigger, and
 shortcut-animation tokens apply on the project frame root; the validated reveal
 timing values update the one shared edge controller. Empty color tokens resolve
 to Firefox chrome design-system variables (ADR-051). The chrome background
@@ -512,9 +518,10 @@ hides the zones and missing `Services.prefs` disables editing; neither joins
 activation health. ADR-047 moves placement editing onto the live four-edge
 widget zones with HTML5 drag-and-drop; the top-host drawer is the palette and
 style editor, centered in the remaining content well so it does not cover the
-four-edge drop zones. See ADR-044, ADR-045, ADR-046, ADR-047,
-`docs/research/firefox-153-toolbar-widget-mirror.md`, and
-`docs/research/firefox-153-customize-mode.md`.
+four-edge drop zones. See ADR-044, ADR-045, ADR-046, ADR-047, ADR-064,
+`docs/research/firefox-153-toolbar-widget-mirror.md`,
+`docs/research/firefox-153-customize-mode.md`, and
+`docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.
 
 ## 5. Application and frontend layers
 
@@ -557,9 +564,9 @@ read the configured homepage URL. Middle-click on Back, Forward, Home, and
 Reload copies only pointer modifiers and lets Firefox open the result in a
 new tab. Primary `click` and middle-button `auxclick` are disjoint at the
 component boundary, so one physical middle click invokes the Firefox command
-exactly once. New-tab remains on the left tab strip, not
-the top row. Opening a tab after the left surface has its initial snapshot
-uses the shared programmatic reveal to show the left edge briefly and
+exactly once. New-tab remains on the configured tab strip, not
+the top row. Opening a tab after the configured tab surface has its initial snapshot
+uses the shared programmatic reveal to show that edge briefly and
 highlights only the newly added tab IDs.
 Shortcut hints float outside each revealed panel. Edge panels have no title chrome or hide buttons; they close
 through `Escape`, pointer leave, and the documented keyboard shortcut.
@@ -575,7 +582,7 @@ not inspect native DOM or create another trigger, timer, controller, or widget
 registry. ADR-043 overlays a decorative 2px load light in that same top root
 from the existing `loading` boolean; it is not a second chrome surface.
 
-Issue #13 replaces the old left address placeholder with a non-editable compact
+Issue #13 replaces the old default-left address placeholder with a non-editable compact
 launcher above tabs and mounts `AddressPopup.svelte` in the fifth root. The
 launcher displays bounded committed location plus one Firefox-style Trust
 shield embedded at the leading edge inside the shared address frame. ADR-059
@@ -599,23 +606,30 @@ only a validated image property with a fixed fallback. Enter with no selection
 still uses the existing native raw-submission path.
 ADR-037/ADR-042's Trust/identity, protections, and permission bridge actions
 remain available; ADR-059 presents the first two as one visible Trust control
-in the left launcher and centered popup rather than duplicate entries or a
+in the configured tabs-side launcher and centered popup rather than duplicate entries or a
 second top-row launcher. The complete original-toolbar action remains
 in the Firefox bridge for tests and recovery; the top row no longer shows a
 dedicated button. All complete security/permission/action panels and
 commands stay Firefox-owned, and no second popup, input, edge controller,
 timer, or provider stack is added.
 
-Issue #14 replaces the right placeholder with `BookmarksPanel.svelte`. It uses
-the existing right host, trigger, controller, focus restoration, collision
+Issue #14 replaces the default-right placeholder with `BookmarksPanel.svelte`.
+ADR-064 permits a complete role swap with the tabs/address surface, so it uses
+the configured left or right host, trigger, controller, focus restoration, collision
 rules, glass tokens, and disposer. A compact native four-root `select` fronts
 one ordinary nested list. Folder children load only on expansion; fixed Previous
 and Next controls replace rather than accumulate pages. The location dropdown
 switches roots; Arrow keys, Home/End, Enter/Space, Ctrl/Command+Enter, middle
 click, and an explicit new-tab control cover list traversal and opening. Separators are non-focusable, stable opaque IDs
 preserve focus across rename/reorder, and deletion moves focus to the nearest
-surviving item or selected root. No second trigger, timer, popup stack, URL,
-favicon request, bookmark-management action, or native Places DOM is added.
+surviving item or selected root. No second trigger, timer, popup stack,
+bookmark-management action, or native Places DOM is added. ADR-064 queries only
+Firefox's existing Places favicon cache through the optional
+`getFaviconForPage()` boundary, converts no remote URL into a project request,
+and assigns only bounded raster data URIs to an image property with the fixed
+packaged icon behind it. `favicon-changed` collapses to the existing bounded
+all-scope refresh signal without exposing its URL. Middle click uses the
+existing `new-tab` disposition and suppresses browser autoscroll.
 
 Issue #32 replaces the bottom placeholder with `DownloadsPanel.svelte`. It uses
 the existing bottom host, reveal/focus controller, collision policy, glass
@@ -626,9 +640,10 @@ is no feature timer, action, filename, path, remote asset, native-panel
 mutation, or permanent content padding. Firefox's native Downloads panel,
 notifications, safety, reputation, and management remain authoritative.
 
-ADR-043 adds two decorative gutter lights in those same roots: a top load beam
-driven by the existing navigation `loading` boolean, and a bottom download beam
-driven by the existing anonymous aggregate. They overlay the 7px content gutter,
+ADR-043 adds two decorative gutter lights in those same roots. ADR-064 makes
+each source independently configurable as the existing navigation `loading`
+boolean, the existing anonymous download aggregate, or off; defaults remain
+loading on top and downloads on the bottom. They overlay the 7px content gutter,
 use `pointer-events: none`, stay `aria-hidden`, and do not add a trigger,
 timer, z-index system, or content margin. Accessible loading and download
 status remain Reload/Stop, tab busy, and the bottom panel.
@@ -697,11 +712,12 @@ active, and focus-visible behavior remains the common owned-control policy. No
 selector targets the native navbar, Urlbar, command set, or toolbox from
 component CSS; ADR-032 owns the separate reversible native sheet.
 
-The issue #14 right panel likewise uses only frame-rooted project classes and
-the existing responsive right-edge bounds. ADR-060 renders its exact folder,
-bookmark, disclosure, and external-open meanings with packaged icons rather
-than remote favicons, uses text/property bindings for hostile titles, and
-provides
+The issue #14 bookmark panel likewise uses only frame-rooted project classes and
+the existing responsive side-edge bounds. ADR-060 renders its exact folder,
+bookmark fallback, disclosure, and external-open meanings with packaged icons.
+ADR-064 layers only a sanitized Firefox-cached raster favicon through
+property-only `img.src`, keeps the packaged fallback behind failed/missing
+values, uses text/property bindings for hostile titles, and provides
 solid, reduced-motion, and forced-colors states through the shared shell
 contract. No selector targets Firefox's bookmarks toolbar, sidebar, Library,
 popup set, or Places views from component CSS. ADR-032 independently owns the
@@ -714,7 +730,7 @@ animation. Responsive and forced-colors rules remain inside the existing bottom
 surface. No selector targets Firefox's Downloads button, panel, notifications,
 or browser content.
 
-ADR-043's gutter lights are also frame-rooted. Thickness is the independently
+ADR-043/ADR-064's gutter lights are also frame-rooted. Thickness is the independently
 selected 2px token. Determinate download width uses a scoped custom property
 from the validated integer percentage. Unknown-size load/download activity is a
 full-width pulse, not a fake fill, so it cannot stall at an invented percent.
@@ -752,8 +768,8 @@ DOM marker: disposal removes every project state attribute. Safe start exits in
 AutoConfig before a browser-window controller exists and therefore deliberately
 sets no DOM attribute and never registers the startup hide sheet.
 
-ADR-032, as extended by ADR-037, ADR-038, ADR-042, ADR-050, ADR-056, and ADR-057,
-implements the gate with a seven-rule
+ADR-032, as extended by ADR-037, ADR-038, ADR-042, ADR-050, ADR-056, ADR-057,
+and ADR-064, implements the gate with a nine-rule
 project-owned style, a process-scoped first-paint author sheet, and two temporary root markers:
 
 ```text
@@ -805,7 +821,7 @@ ownership follows `#window-modal-dialog.open` (and tab-dialog markers) rather
 than a leftover `window-modal-open` attribute after the HTML dialog has
 closed. DOM fullscreen also suspends project hiding
 while Firefox's own fullscreen CSS remains authoritative; browser fullscreen
-retains active mode. The controller validates exact nodes, seven parsed rules,
+retains active mode. The controller validates exact nodes, nine parsed rules,
 and the proxy anchor's fixed identity/parent/style before health, then watches
 integrity. Invalid or partial CSS, proxy mutation, and stable target drift
 suspend first and request per-window fail-open disposal. Clearing active
@@ -816,7 +832,12 @@ integration.
 The complete owner/replacement/fallback inventory and Firefox 153 evidence are
 in `docs/research/firefox-153-content-only-activation.md`; the Firefox 153/154
 popup-proxy extension is in
-`docs/research/firefox-153-154-native-popup-proxy.md`.
+`docs/research/firefox-153-154-native-popup-proxy.md`. ADR-064's two additional
+rules style only Firefox's retained `#statuspanel-label` while the active root
+is not suspended: a bounded theme-token capsule plus a forced-colors override.
+The selector changes no status text, visibility, timing, placement owner, or
+pointer behavior and disappears immediately with `data-fennevia-active`; see
+`docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.
 
 ## 8. Override policy
 

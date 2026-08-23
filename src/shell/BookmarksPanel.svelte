@@ -21,6 +21,7 @@
 
   type Props = Readonly<{
     bookmarks: BrowserBookmarksStateAdapter;
+    edge: "left" | "right";
     localeId?: FenneviaLocale;
     onDismiss: () => void;
     onFatalError: (error: unknown) => void;
@@ -89,7 +90,7 @@
     }
     contextMenu = null;
     contextMenuRestoreTarget = null;
-    props.shell.setPopupHeld("right", false);
+    props.shell.setPopupHeld(props.edge, false);
   };
 
   const openBookmarkContextMenu = async (
@@ -115,7 +116,7 @@
       top: Math.max(6, clientY - panelBounds.top),
     };
     if (wasClosed) {
-      props.shell.setPopupHeld("right", true);
+      props.shell.setPopupHeld(props.edge, true);
     }
     await tick();
     if (
@@ -291,6 +292,9 @@
   };
 
   const handleBookmarkClick = (event: MouseEvent, bookmarkId: string): void => {
+    if (event.button !== 0) {
+      return;
+    }
     const disposition = event.ctrlKey || event.metaKey ? "new-tab" : "current";
     void openBookmark(bookmarkId, disposition);
   };
@@ -305,6 +309,31 @@
     event.preventDefault();
     event.stopPropagation();
     void openBookmark(bookmarkId, "new-tab");
+  };
+
+  const preventMiddleAutoscroll = (event: MouseEvent): void => {
+    if (event.button === 1) {
+      event.preventDefault();
+    }
+  };
+
+  const setFaviconSource = (node: HTMLImageElement, source: string) => {
+    const assign = (nextSource: string): void => {
+      node.hidden = false;
+      node.src = nextSource;
+    };
+    node.onerror = () => {
+      node.hidden = true;
+      node.removeAttribute("src");
+    };
+    assign(source);
+    return {
+      destroy() {
+        node.onerror = null;
+        node.removeAttribute("src");
+      },
+      update: assign,
+    };
   };
 
   const handleBookmarkContextMenu = (
@@ -621,18 +650,33 @@
                     : handleBookmarkClick(event, row.node.id)}
                 onfocus={() => (rovingBookmarkId = row.node.id)}
                 onkeydown={(event) => void handleItemKeydown(event, row)}
+                onmousedown={(event) =>
+                  row.node.kind === "bookmark" &&
+                  preventMiddleAutoscroll(event)}
                 tabindex={rovingBookmarkId === row.node.id ? 0 : -1}
                 title={displayTitle(row.node)}
                 type="button"
               >
                 <span aria-hidden="true" class="fennevia-bookmarks__item-icon">
-                  <FirefoxIcon
-                    name={row.node.kind === "folder"
-                      ? row.expanded
-                        ? "arrow-down"
-                        : "arrow-right"
-                      : "bookmark-item"}
-                  />
+                  <span class="fennevia-bookmarks__item-fallback">
+                    <FirefoxIcon
+                      name={row.node.kind === "folder"
+                        ? row.expanded
+                          ? "arrow-down"
+                          : "arrow-right"
+                        : "bookmark-item"}
+                    />
+                  </span>
+                  {#if row.node.kind === "bookmark" && row.node.faviconUrl}
+                    <img
+                      use:setFaviconSource={row.node.faviconUrl}
+                      alt=""
+                      class="fennevia-bookmarks__item-favicon"
+                      decoding="async"
+                      draggable="false"
+                      referrerpolicy="no-referrer"
+                    />
+                  {/if}
                 </span>
                 <span class="fennevia-bookmarks__item-title" dir="auto">
                   {displayTitle(row.node)}

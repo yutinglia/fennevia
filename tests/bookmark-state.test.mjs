@@ -5,8 +5,10 @@ import {
   bookmarkPageSize,
   createBrowserBookmarksStateAdapter,
   getVisibleBookmarkRows,
+  maximumBookmarkFaviconUrlLength,
   resolveBookmarkFocusId,
 } from "../src/app/bookmark-state.ts";
+import { copyNode } from "../src/app/bookmarks/validation.ts";
 
 const folder = (id, title, hasChildren = true) =>
   Object.freeze({ hasChildren, id, kind: "folder", title });
@@ -151,6 +153,84 @@ test("bookmark state accepts the bridge's full code-point title bound", async ()
     );
   } finally {
     adapter.dispose();
+  }
+});
+
+test("bookmark state accepts only bounded raster data favicon values", async (t) => {
+  const faviconUrl = "data:image/png;base64,iVBORw0KGgo=";
+  const valid = createBridge();
+  valid.children.set("root-toolbar", [
+    Object.freeze({
+      ...bookmark("bookmark-favicon", "Favicon"),
+      faviconUrl,
+    }),
+  ]);
+  const adapter = createBrowserBookmarksStateAdapter(valid.bridge);
+  try {
+    await adapter.ready();
+    assert.equal(
+      adapter.snapshot().branches["root-toolbar"].items[0].faviconUrl,
+      faviconUrl,
+    );
+  } finally {
+    adapter.dispose();
+  }
+
+  for (const [name, node] of [
+    [
+      "remote URL",
+      {
+        ...bookmark("bookmark-remote", "Remote"),
+        faviconUrl: "https://example.invalid/favicon.ico",
+      },
+    ],
+    [
+      "SVG data",
+      {
+        ...bookmark("bookmark-svg", "SVG"),
+        faviconUrl: "data:image/svg+xml;base64,AAAA",
+      },
+    ],
+    [
+      "malformed base64",
+      {
+        ...bookmark("bookmark-malformed", "Malformed"),
+        faviconUrl: "data:image/png;base64,***",
+      },
+    ],
+    [
+      "invalid base64 length",
+      {
+        ...bookmark("bookmark-invalid-length", "Invalid length"),
+        faviconUrl: "data:image/png;base64,AAAAA",
+      },
+    ],
+    [
+      "oversized data",
+      {
+        ...bookmark("bookmark-large", "Large"),
+        faviconUrl: `data:image/png;base64,${"A".repeat(maximumBookmarkFaviconUrlLength)}`,
+      },
+    ],
+    ["folder favicon", { ...folder("folder-favicon", "Folder"), faviconUrl }],
+  ]) {
+    await t.test(name, async () => {
+      assert.throws(
+        () => copyNode(node),
+        /FENNEVIA_BOOKMARK_STATE_NODE_INVALID/u,
+      );
+      const invalid = createBridge();
+      invalid.children.set("root-toolbar", [Object.freeze(node)]);
+      const invalidAdapter = createBrowserBookmarksStateAdapter(invalid.bridge);
+      try {
+        await assert.rejects(
+          () => invalidAdapter.ready(),
+          /FENNEVIA_BOOKMARK_STATE_INITIAL_PAGE_FAILED/u,
+        );
+      } finally {
+        invalidAdapter.dispose();
+      }
+    });
   }
 });
 

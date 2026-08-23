@@ -10,10 +10,11 @@ and project-owned Svelte UI.
 
 The target interface has four independent floating edge surfaces:
 
-- **Top:** one-line primary browser controls and fixed native Firefox handoffs.
-- **Left:** vertical tabs and a compact address/status launcher.
-- **Right:** bookmarks.
-- **Bottom:** download progress and status.
+- **Top:** fixed one-line primary browser controls and native Firefox handoffs.
+- **Left/right:** exactly one vertical-tabs/address-launcher role and one
+  bookmarks role, defaulting to tabs left and bookmarks right, with a bounded
+  whole-role swap.
+- **Bottom:** download progress and status, optionally disabled.
 
 The launcher opens a centered project-owned address/search popup. Compact and
 detailed Trust status combines current Firefox connection/HTTPS and
@@ -69,14 +70,19 @@ Completed:
   a real target-row layout slot plus visible generic row without spurious
   short-list overflow, no-drop target-exit cleanup, browser-content append,
   native detach outside Firefox, and capture plus source-snapshot hold cleanup;
+- ADR-064: bookmark rows use Firefox's cached bounded raster favicon data and
+  middle-click new-tab opening; a third bounded customize preference swaps the
+  paired side roles, disables the bottom panel, and maps either top/bottom light
+  to loading/download/off; the native status label receives an active-only
+  theme-aware capsule without changing its content or owner;
 - #31: zero-layout four-edge frame, shared reveal controller, corner/collision
   policy, glass tokens, accessibility fallbacks, and complete cleanup;
 - #12: event-driven selected-navigation bridge and top-edge Back, Forward,
   Reload/Stop, and New Tab controls with bounded page status;
-- #13: compact left address/status launcher, centered address/search popup,
+- #13: compact default-left address/status launcher, centered address/search popup,
   native Urlbar submission and healthy-only `Ctrl+L`, real Firefox connection
   and tracking-protection state, and a fifth owned overlay root.
-- #14: bounded/lazy typed Places bridge, event-driven right-edge bookmarks,
+- #14: bounded/lazy typed Places bridge, event-driven default-right bookmarks,
   opaque opening actions, and keyboard-accessible hierarchy;
 - #32: per-window typed Downloads list views, bounded anonymous state,
   event-driven bottom-edge aggregate progress/status, and native
@@ -96,7 +102,7 @@ Completed:
   executable Firefox stable-update rehearsal.
 
 Current fast branch enhancement under ADR-037, ADR-042, ADR-044 through
-ADR-047, and ADR-054 through ADR-063:
+ADR-047, and ADR-054 through ADR-064:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   Firefox tools, and progressive disclosure;
@@ -119,8 +125,9 @@ ADR-047, and ADR-054 through ADR-063:
 - retained Firefox caption controls styled in place as a compact island;
 - a 7px browser-content gutter, gap-free edge contact, transient shortcut hint,
   panel drag regions, and `top > sides > bottom` collision priority;
-- 2px decorative gutter lights for selected-tab loading and active download
-  aggregate, without a second trigger or filename text;
+- 2px decorative gutter lights whose top/bottom sources independently select
+  selected-tab loading, active download aggregate, or off, without a second
+  trigger or filename text;
 - an ADR-044 read-only mirror of the user's nav-bar `CustomizableUI`
   placements as the default top-zone layout, superseded as the only widget
   source by ADR-045: a Fennevia-owned customize mode with four-edge widget
@@ -133,8 +140,10 @@ ADR-047, and ADR-054 through ADR-063:
   session (palette plus appearance/interaction settings stay in the top-host
   drawer). ADR-054 lets the user tune separate in-window and window-leave hide
   delays, temporary reveal duration, shortcut-tip duration (including zero to
-  disable), and edge trigger thickness within fixed bounds. Native customize
-  mode stays available
+  disable), and edge trigger thickness within fixed bounds. ADR-064 lets
+  Fennevia customize mode persist a strict third preference for the complete
+  side-role swap, bottom-panel enablement, and top/bottom light sources. Native
+  customize mode stays available
   through the Firefox application menu, complete native reveal, and fail-open;
   it is not a fixed top-row control.
 
@@ -189,9 +198,9 @@ claim.
   reduced-transparency, and forced-colors fallbacks.
 - A frontend framework that manages only project-owned descendants.
 - Firefox internal APIs isolated behind small typed bridge modules.
-- A usable top navigation surface, combined left tabs/address-launcher surface,
-  centered address popup, right bookmarks surface, and bottom download-status
-  surface.
+- A usable fixed top navigation surface, one tabs/address-launcher side role,
+  one bookmarks side role, a centered address popup, and an optionally enabled
+  bottom download-status surface.
 - Fixed actions that open Firefox's authoritative native detail panels, menu,
   Settings, customization, Unified Extensions, Downloads, and original toolbar
   without copying their private or dynamic data.
@@ -449,7 +458,7 @@ Evidence: ADR-027 and
 
 #### Compact address launcher and centered popup — complete (#13)
 
-- non-editable bounded committed location in a compact left launcher;
+- non-editable bounded committed location in the compact configured tabs-side launcher;
 - one compact Firefox-style Trust shield combining real connection/HTTPS and
   tracking-protection status at the leading edge inside the address frame;
 - one centered project-owned popup with independent draft/editing state and
@@ -485,13 +494,13 @@ not run. Evidence: ADR-061,
 - bounded/lazy roots and child queries;
 - event-driven native bookmark updates;
 - current-tab and source-validated new-tab opening;
-- right-edge tree/list accessibility;
+- configured bookmark-side tree/list accessibility;
 - pointer/keyboard bookmark and folder actions plus Firefox-owned Library
   management.
 
 The implementation uses four localized roots, 32-item replaceable pages,
 depth/expansion caps, per-window opaque IDs and observers, native
-`PlacesUIUtils` opening, and the shared #31 right-edge/focus contract. Native
+`PlacesUIUtils` opening, and the shared #31 configured-edge/focus contract. Native
 bookmark UI remains visible. Normal, second, private, live-mutation,
 Browser-Toolbox, cleanup, and fail-open recovery evidence passed.
 
@@ -524,7 +533,7 @@ Evidence: ADR-030 and
 #### Detailed Urlbar coverage and native handoff — complete (#37)
 
 - exact Firefox 153 leading/trailing item and notification-anchor inventory;
-- compact left launcher still limited to one bounded Trust summary derived
+- compact configured tabs-side launcher still limited to one bounded Trust summary derived
   from real connection/HTTPS and ETP status;
 - centered popup adds fixed sharing/blocked-permission and applicable-action
   labels;
@@ -606,7 +615,7 @@ clauses are superseded by ADR-045 below. Evidence: ADR-044,
 - four-edge widget zones driven by `fennevia.customize.layout`, falling back
   to the ADR-044 nav-bar mirror until the first edit;
 - opaque-token palette of every current CustomizableUI widget plus Fennevia
-  `show-bookmarks` (right-edge bookmarks), `show-downloads` (Firefox
+  `show-bookmarks` (configured bookmark side), `show-downloads` (Firefox
   `#downloadsPanel`), and `show-translate` (Firefox built-in full-page
   translations) widgets and spacer/spring/separator specials;
 - project-owned editor: ADR-047 live four-edge HTML5 drag-and-drop with the
@@ -672,7 +681,7 @@ recovery path.
 Delivered by ADR-032 and extended by ADR-037:
 
 - the production initializer activates only after the complete health check;
-- one exact seven-rule per-window controller collapses reviewed toolbox and
+- one exact nine-rule per-window controller collapses reviewed toolbox and
   toolbar geometry, exact non-caption content, bookmarks toolbar, and exact
   native sidebar surfaces, and applies the 7px content gutter;
 - native vertical-tab mode retains its navbar titlebar owner;

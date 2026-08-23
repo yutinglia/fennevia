@@ -1,11 +1,14 @@
 import {
   copyToolbarStyleSnapshot,
+  copyShellPanelConfigSnapshot,
+  createDefaultShellPanelConfig,
   createDefaultToolbarStyle,
   isFenneviaToolbarAction,
   isToolbarZoneName,
   toolbarZoneNames,
   type FenneviaToolbarAction,
   type ToolbarStyleSnapshot,
+  type ShellPanelConfigSnapshot,
   type ToolbarZoneName,
 } from "../app/toolbar-widgets-state.ts";
 
@@ -37,6 +40,7 @@ export type CustomizeLayout = Readonly<{
 }>;
 
 export type CustomizeStyle = ToolbarStyleSnapshot;
+export type CustomizePanels = ShellPanelConfigSnapshot;
 
 export const customizeLayoutBounds = Object.freeze({
   adoptedMaxEntries: 64,
@@ -208,6 +212,49 @@ export function parseCustomizeStyle(text: string): CustomizeStyle | null {
 
 export function serializeCustomizeStyle(style: CustomizeStyle): string {
   return JSON.stringify({ ...copyToolbarStyleSnapshot(style), version: 1 });
+}
+
+const customizePanelKeys = new Set([
+  "bottomDownloadsEnabled",
+  "bottomProgressLight",
+  "sidePanelLayout",
+  "topProgressLight",
+  "version",
+]);
+
+export function parseCustomizePanels(text: string): CustomizePanels | null {
+  if (
+    typeof text !== "string" ||
+    text === "" ||
+    text.length > customizeLayoutBounds.serializedMaxLength
+  ) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      parsed.version !== 1 ||
+      Object.keys(parsed).some((key) => !customizePanelKeys.has(key))
+    ) {
+      return null;
+    }
+    return copyShellPanelConfigSnapshot({
+      ...createDefaultShellPanelConfig(),
+      ...parsed,
+      version: undefined,
+    } as unknown as ShellPanelConfigSnapshot);
+  } catch {
+    return null;
+  }
+}
+
+export function serializeCustomizePanels(panels: CustomizePanels): string {
+  return JSON.stringify({
+    ...copyShellPanelConfigSnapshot(panels),
+    version: 1,
+  });
 }
 
 export function findCustomizeLayoutEntry(

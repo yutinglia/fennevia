@@ -15,14 +15,19 @@ import {
   isCustomizeWidgetId,
   moveCustomizeLayoutEntry,
   parseCustomizeLayout,
+  parseCustomizePanels,
   parseCustomizeStyle,
   removeCustomizeLayoutEntry,
   serializeCustomizeLayout,
+  serializeCustomizePanels,
   serializeCustomizeStyle,
   withCustomizeAdopted,
   withoutCustomizeAdopted,
 } from "../src/firefox/customize-model.ts";
-import { createDefaultToolbarStyle } from "../src/app/toolbar-widgets-state.ts";
+import {
+  createDefaultShellPanelConfig,
+  createDefaultToolbarStyle,
+} from "../src/app/toolbar-widgets-state.ts";
 
 const widgetEntry = Object.freeze({ id: "print-button", type: "widget" });
 const springEntry = Object.freeze({ kind: "spring", type: "special" });
@@ -301,6 +306,36 @@ test("style serialization round-trips with versioning and fails safe", () => {
   assert.equal(
     parseCustomizeStyle(
       JSON.stringify({ windowLeaveHideDelay: 5_001, version: 1 }),
+    ),
+    null,
+  );
+});
+
+test("panel serialization is versioned, bounded, and fails safe", () => {
+  const panels = Object.freeze({
+    ...createDefaultShellPanelConfig(),
+    bottomDownloadsEnabled: false,
+    bottomProgressLight: "loading",
+    sidePanelLayout: "tabs-right",
+    topProgressLight: "off",
+  });
+  const serialized = serializeCustomizePanels(panels);
+  assert.ok(serialized.includes('"version":1'));
+  assert.deepEqual(parseCustomizePanels(serialized), panels);
+  assert.ok(Object.isFrozen(parseCustomizePanels(serialized)));
+
+  assert.equal(parseCustomizePanels(""), null);
+  assert.equal(parseCustomizePanels("{not json"), null);
+  assert.equal(parseCustomizePanels('{"version":2}'), null);
+  assert.equal(
+    parseCustomizePanels(
+      JSON.stringify({ ...panels, unexpected: true, version: 1 }),
+    ),
+    null,
+  );
+  assert.equal(
+    parseCustomizePanels(
+      JSON.stringify({ ...panels, topProgressLight: "network", version: 1 }),
     ),
     null,
   );

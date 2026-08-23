@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   copyToolbarStylePartial,
+  copyShellPanelConfigPartial,
+  copyShellPanelConfigSnapshot,
   copyToolbarPaletteEntrySnapshot,
   copyToolbarWidgetPartSnapshot,
   copyToolbarWidgetSnapshot,
@@ -11,10 +13,13 @@ import {
   createBrowserToolbarWidgetsState,
   createBrowserToolbarWidgetsStateAdapter,
   createDefaultToolbarStyle,
+  createDefaultShellPanelConfig,
   createEmptyToolbarWidgetZones,
   createUnavailableToolbarWidgetsSnapshot,
   isInteractiveToolbarWidget,
   isToolbarWidgetKind,
+  getSidePanelEdge,
+  getSidePanelRole,
   reduceBrowserToolbarWidgetsState,
 } from "../src/app/toolbar-widgets-state.ts";
 
@@ -123,6 +128,8 @@ const makeSnapshot = (topWidgets, overrides = {}) =>
     canEdit: true,
     layoutCustomized: false,
     palette: Object.freeze([paletteEntry]),
+    panels: createDefaultShellPanelConfig(),
+    panelsCustomized: false,
     style: createDefaultToolbarStyle(),
     zones: Object.freeze({
       ...createEmptyToolbarWidgetZones(),
@@ -468,6 +475,43 @@ test("style partials validate every provided key", () => {
   );
 });
 
+test("panel config stays closed, immutable, and maps one role per side", () => {
+  const defaults = createDefaultShellPanelConfig();
+  assert.deepEqual(defaults, {
+    bottomDownloadsEnabled: true,
+    bottomProgressLight: "downloads",
+    sidePanelLayout: "tabs-left",
+    topProgressLight: "loading",
+  });
+  assert.equal(getSidePanelRole(defaults, "left"), "tabs");
+  assert.equal(getSidePanelEdge(defaults, "bookmarks"), "right");
+
+  const swapped = copyShellPanelConfigSnapshot({
+    ...defaults,
+    bottomDownloadsEnabled: false,
+    bottomProgressLight: "loading",
+    sidePanelLayout: "tabs-right",
+    topProgressLight: "off",
+  });
+  assert.equal(getSidePanelRole(swapped, "left"), "bookmarks");
+  assert.equal(getSidePanelEdge(swapped, "tabs"), "right");
+  assert.ok(Object.isFrozen(swapped));
+  assert.deepEqual(
+    copyShellPanelConfigPartial({ topProgressLight: "downloads" }),
+    {
+      topProgressLight: "downloads",
+    },
+  );
+  assert.throws(
+    () => copyShellPanelConfigPartial({ topProgressLight: "network" }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID/u,
+  );
+  assert.throws(
+    () => copyShellPanelConfigPartial({}),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID/u,
+  );
+});
+
 test("edit operations validate their shape before crossing the bridge", () => {
   const add = copyToolbarWidgetsEditOperation({
     index: 0,
@@ -501,6 +545,28 @@ test("edit operations validate their shape before crossing the bridge", () => {
     type: "set-style",
   });
   copyToolbarWidgetsEditOperation({ type: "reset-style" });
+  copyToolbarWidgetsEditOperation({
+    panels: { sidePanelLayout: "tabs-right" },
+    type: "set-panels",
+  });
+  copyToolbarWidgetsEditOperation({ type: "reset-panels" });
+
+  assert.throws(
+    () =>
+      copyToolbarWidgetsEditOperation({
+        panels: JSON.parse('{"constructor":"invalid"}'),
+        type: "set-panels",
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarWidgetsEditOperation({
+        style: JSON.parse('{"constructor":"invalid"}'),
+        type: "set-style",
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_STYLE_INVALID/u,
+  );
 
   assert.throws(
     () => copyToolbarWidgetsEditOperation(null),

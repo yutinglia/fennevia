@@ -87,6 +87,7 @@ export type EdgeShellController = Readonly<{
   revealFromPointer: (edge: EdgeName) => boolean;
   revealProgrammatically: (edge: EdgeName, durationMs?: number) => boolean;
   setEnabled: (enabled: boolean) => boolean;
+  setEdgeEnabled: (edge: EdgeName, enabled: boolean) => boolean;
   setFocusHeld: (edge: EdgeName, held: boolean) => boolean;
   setInteractionConfig: (config: EdgeInteractionConfig) => boolean;
   setInteractionSuppressed: (suppressed: boolean) => boolean;

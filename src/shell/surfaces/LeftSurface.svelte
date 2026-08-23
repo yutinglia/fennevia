@@ -18,6 +18,7 @@
   import type {
     BrowserToolbarWidgetsState,
     BrowserToolbarWidgetsStateAdapter,
+    SidePanelEdge,
   } from "../../app/toolbar-widgets-state";
   import { resolveBrowserToolHost } from "../browser-tool-host";
   import FirefoxTrustIcon from "../FirefoxTrustIcon.svelte";
@@ -30,6 +31,7 @@
     browserTools?: BrowserToolsStateAdapter;
     customizeOpen: boolean;
     customizeSession?: CustomizeSessionController;
+    edge: SidePanelEdge;
     localeId: FenneviaLocale;
     navigation: BrowserNavigationStateAdapter;
     onDismiss: () => void;
@@ -93,10 +95,10 @@
       if (!browserTools) {
         throw new Error("FENNEVIA_BROWSER_TOOLS_UNAVAILABLE");
       }
-      props.shell.setPopupHeld("left", true);
+      props.shell.setPopupHeld(props.edge, true);
       await browserTools.invoke(action, resolveBrowserToolHost(event));
     } catch (error) {
-      props.shell.setPopupHeld("left", false);
+      props.shell.setPopupHeld(props.edge, false);
       if (!props.browserTools) {
         props.onFatalError(error);
       }
@@ -156,6 +158,7 @@
 </section>
 
 <TabStrip
+  edge={props.edge}
   localeId={props.localeId}
   onFatalError={props.onFatalError}
   shell={props.shell}
@@ -166,7 +169,7 @@
   browserTools={props.browserTools}
   customizeOpen={props.customizeOpen}
   customizeSession={props.customizeSession}
-  edge="left"
+  edge={props.edge}
   localeId={props.localeId}
   onDismiss={() => props.onDismiss()}
   onFatalError={props.onFatalError}

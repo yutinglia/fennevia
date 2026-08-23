@@ -13,6 +13,7 @@
   import type { FenneviaLocale } from "../../../app/locale-state";
   import type { BrowserTabsStateAdapter } from "../../../app/tab-state";
   import type { BrowserToolbarWidgetsStateAdapter } from "../../../app/toolbar-widgets-state";
+  import type { SidePanelRole } from "../../../app/toolbar-widgets-state";
 
   type Props = Readonly<{
     bookmarks?: BrowserBookmarksStateAdapter;
@@ -26,6 +27,7 @@
     onSetCustomizeOpen: (open: boolean) => void;
     panel?: HTMLDivElement;
     shell: EdgeShellController;
+    sidePanelRole: SidePanelRole | null;
     tabs?: BrowserTabsStateAdapter;
     toolbarWidgets?: BrowserToolbarWidgetsStateAdapter;
     visible: boolean;
@@ -60,9 +62,9 @@
     ),
   );
   let hasPanelAction = $derived(
-    props.edge === "left"
+    props.sidePanelRole === "tabs"
       ? Boolean(props.tabs)
-      : props.edge === "right"
+      : props.sidePanelRole === "bookmarks"
         ? Boolean(props.bookmarks)
         : props.edge === "bottom"
           ? browserToolsSnapshot?.downloads === true
@@ -73,7 +75,13 @@
       browserToolsSnapshot?.customize === true ||
       browserToolsSnapshot?.nativeToolbar === true,
   );
-  let edgeLabel = $derived(t(`surface.${props.edge}`));
+  let edgeLabel = $derived(
+    props.sidePanelRole === "tabs"
+      ? t("surface.tabs")
+      : props.sidePanelRole === "bookmarks"
+        ? t("surface.bookmarks")
+        : t(`surface.${props.edge}`),
+  );
 
   const itemContextOwnerSelector =
     "[data-fennevia-tab-item], [data-fennevia-bookmark-item], [data-fennevia-edge-context-menu], [data-fennevia-bookmark-context-menu]";
@@ -349,13 +357,13 @@
     style:top={`${contextMenu.top}px`}
     tabindex="-1"
   >
-    {#if props.edge === "left" && props.tabs}
+    {#if props.sidePanelRole === "tabs" && props.tabs}
       <button
         onclick={() => void runContextAction("new-tab")}
         role="menuitem"
         type="button">{t("panelContext.newTab")}</button
       >
-    {:else if props.edge === "right" && props.bookmarks}
+    {:else if props.sidePanelRole === "bookmarks" && props.bookmarks}
       <button
         onclick={() => void runContextAction("manage-bookmarks")}
         role="menuitem"

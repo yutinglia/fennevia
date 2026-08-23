@@ -118,16 +118,29 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
   );
   assert.doesNotMatch(css, /247 250 252/u);
 
-  const [component, progressLight, toolbarWidgets, mountShell, customizeStyle] =
-    await Promise.all([
-      readProjectFile("src/shell/App.svelte"),
-      readProjectFile("src/shell/surfaces/EdgeProgressLight.svelte"),
-      readProjectFile(
-        "src/shell/features/toolbar-widgets/ToolbarWidgetZone.svelte",
-      ),
-      readProjectFile("src/shell/runtime/mount-shell.ts"),
-      readProjectFile("src/shell/runtime/customize-style.ts"),
-    ]);
+  const [
+    component,
+    progressLight,
+    toolbarWidgets,
+    mountShell,
+    customizeStyle,
+    customizePanels,
+    edgeInteractions,
+    health,
+  ] = await Promise.all([
+    readProjectFile("src/shell/App.svelte"),
+    readProjectFile("src/shell/surfaces/EdgeProgressLight.svelte"),
+    readProjectFile(
+      "src/shell/features/toolbar-widgets/ToolbarWidgetZone.svelte",
+    ),
+    readProjectFile("src/shell/runtime/mount-shell.ts"),
+    readProjectFile("src/shell/runtime/customize-style.ts"),
+    readProjectFile(
+      "src/shell/features/customize/CustomizePanelsSection.svelte",
+    ),
+    readProjectFile("src/shell/runtime/edge-app-interactions.ts"),
+    readProjectFile("src/shell/runtime/health.ts"),
+  ]);
   assert.match(
     component,
     /handlePanelPointerDown[\s\S]*?setWindowDragActive\(true\)/u,
@@ -137,13 +150,23 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
     component,
     /handlePanelPointerRelease[\s\S]*?setWindowDragActive\(false\)/u,
   );
-  assert.match(component, /handleTriggerPointer[\s\S]*?event\.buttons !== 0/u);
+  assert.match(component, /handleTriggerPointer[\s\S]*?pointerActivatesEdge/u);
+  assert.match(
+    edgeInteractions,
+    /pointerActivatesEdge[\s\S]*?event\.buttons !== 0/u,
+  );
   assert.match(component, /onpointercancel=\{handlePanelPointerRelease\}/u);
   assert.match(component, /onpointerup=\{handlePanelPointerRelease\}/u);
   assert.match(component, /<EdgeProgressLight/u);
   assert.match(progressLight, /resolveLoadProgressLight/u);
   assert.match(progressLight, /resolveDownloadProgressLight/u);
+  assert.match(progressLight, /props\.source !== "loading"/u);
+  assert.match(progressLight, /props\.source !== "downloads"/u);
+  assert.match(progressLight, /props\.source === "downloads"[\s\S]*?: null/u);
   assert.match(progressLight, /<ProgressLight \{presentation\} \/>/u);
+  assert.match(component, /getSidePanelRole/u);
+  assert.match(component, /data-fennevia-side-role=\{sidePanelRole/u);
+  assert.match(component, /data-fennevia-enabled=\{surfaceState\.enabled\}/u);
   assert.match(toolbarWidgets, /<ToolbarWidgetGlyph \{widget\} \/>/u);
   assert.match(toolbarWidgets, /widget\.parts\.length > 0/u);
   assert.match(
@@ -163,6 +186,34 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
     /shell\.snapshot\(\)\.interaction\.triggerThicknessCssPixels/u,
   );
   assert.match(mountShell, /shell\.setInteractionConfig/u);
+  assert.match(
+    mountShell,
+    /getSidePanelEdge\(state\.snapshot\.panels, "tabs"\)/u,
+  );
+  assert.match(
+    mountShell,
+    /shell\.setEdgeEnabled\("bottom", nextBottomEnabled\)/u,
+  );
+  assert.match(
+    mountShell,
+    /releaseSurfaceFocusIfActive[\s\S]*?activeElementFor\(edge\)[\s\S]*?restoreFocus\(edge\)[\s\S]*?discardFocusOrigin\(edge\)/u,
+  );
+  assert.match(
+    mountShell,
+    /releaseSurfaceFocusIfActive\("left"\)[\s\S]*?releaseSurfaceFocusIfActive\("right"\)/u,
+  );
+  assert.match(
+    mountShell,
+    /!nextBottomEnabled[\s\S]*?releaseSurfaceFocusIfActive\("bottom"\)/u,
+  );
+  assert.match(
+    health,
+    /shellSnapshot\.surfaces\.bottom\.enabled[\s\S]*?panels\.bottomDownloadsEnabled/u,
+  );
+  assert.match(
+    health,
+    /data-fennevia-enabled[\s\S]*?String\(panels\.bottomDownloadsEnabled\)/u,
+  );
   assert.match(mountShell, /shell\.releasePointer\(edge, "outside-window"\)/u);
   assert.match(mountShell, /shell\.setWindowDragActive\(false\)/u);
   assert.match(
@@ -182,6 +233,15 @@ test("edge panels touch the trigger gutter, release native drags, and float visi
     mountShell,
     /addEventListener\("pointercancel", releaseWindowDrag\)/u,
   );
+  assert.match(customizePanels, /value="tabs-left"/u);
+  assert.match(customizePanels, /value="tabs-right"/u);
+  assert.equal(customizePanels.match(/<option value="loading">/gu)?.length, 2);
+  assert.equal(
+    customizePanels.match(/<option value="downloads">/gu)?.length,
+    2,
+  );
+  assert.equal(customizePanels.match(/<option value="off">/gu)?.length, 2);
+  assert.match(customizePanels, /bottomDownloadsEnabled/u);
   assert.match(
     mountShell,
     /removeEventListener\(WINDOW_DRAG_START_EVENT, beginWindowDrag\)/u,

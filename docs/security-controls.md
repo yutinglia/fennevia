@@ -24,9 +24,10 @@ Current validated baseline:
   Windows x64; later majors may install after an explicit no-promise warning;
 - copied Firefox program plus marker-owned development profile;
 - native Firefox DOM and complete transient access retained;
-- functional left-edge vertical tabs and compact address/status launcher,
-  centered address/search popup, top-edge navigation controls, right-edge
-  bookmarks, bottom-edge anonymous download status, and detailed Urlbar
+- functional vertical tabs/compact address launcher and bookmarks on a bounded
+  owner-configurable side-role pair (tabs left/bookmarks right by default),
+  centered address/search popup, fixed top-edge navigation controls, optional
+  bottom-edge anonymous download status, and detailed Urlbar
   permission/action coverage with native handoff;
 - four-edge frame/reveal/design foundation complete;
 - exact health-gated content-only activation complete;
@@ -72,7 +73,7 @@ remains pending.
 | Startup cache/stale installed code   | Removed or fixed privileged code may continue to run                                                                                             | Exact inventory and evidence-first cache policy; validated changes took effect without routine clearing                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Cache action only after observed stale symptom                                                                                                                                                                                             | #3, #4, #16                                                                           |
 | External implementation/design       | Unlicensed or copied code/design can create legal and maintenance risk                                                                           | MPL-2.0 project/inbound policy; root third-party inventory; exact source/file/commit/license/modification record; preserved notices; `my-firefox-custom` no-copy boundary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Repeat gate before every included external item or distribution                                                                                                                                                                            | #18; `docs/licensing-and-provenance.md`                                               |
 | Runtime network/update/telemetry     | Remote party can change privileged behavior or receive browsing data                                                                             | Prohibited; scanner detects common endpoints/APIs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | New issue + ADR + security review for any exception                                                                                                                                                                                        | ADR-012                                                                               |
-| Native UI hiding                     | Broad selectors can remove uncovered actions or leave no recovery                                                                                | Production durable hide activates only after health; ADR-032/ADR-037/ADR-038/ADR-042/ADR-056/ADR-057 use one exact seven-rule per-window controller, retained caption-node validation, project-owned top-row window commands, Urlbar/original-toolbar reveal, Fennevia host/token and health-checked generic popup anchors, a pre-open security-notification anchor route with complete-native fallback, CSS/anchor integrity checks, and suspension-first fail-open; ADR-050 adds a 2,000 ms self-expiring first-paint `AUTHOR_SHEET`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Run the changed real geometry/caption/popup/prompt matrix and the ADR-050 cold-start/watchdog/skeleton checks, then revalidate exact target graph, popup API, notification timing, and both tab-layout branches on every supported Firefox | #15, #16; ADR-032, ADR-037, ADR-038, ADR-042, ADR-050, ADR-056, ADR-057               |
+| Native UI hiding                     | Broad selectors can remove uncovered actions or leave no recovery                                                                                | Production durable hide activates only after health; ADR-032/ADR-037/ADR-038/ADR-042/ADR-056/ADR-057/ADR-064 use one exact nine-rule per-window controller, retained caption-node validation, project-owned top-row window commands, Urlbar/original-toolbar reveal, Fennevia host/token and health-checked generic popup anchors, a pre-open security-notification anchor route with complete-native fallback, two active-only fixed `#statuspanel-label` presentation rules, CSS/anchor integrity checks, and suspension-first fail-open; ADR-050 adds a 2,000 ms self-expiring first-paint `AUTHOR_SHEET`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Run the changed real geometry/caption/popup/prompt/status-label matrix and the ADR-050 cold-start/watchdog/skeleton checks, then revalidate exact target graph, popup API, notification timing, status owner, and both tab-layout branches on every supported Firefox | #15, #16; ADR-032, ADR-037, ADR-038, ADR-042, ADR-050, ADR-056, ADR-057, ADR-064      |
 
 Every unresolved high-risk row has an owner. An unimplemented control is a
 blocker, not an implicit risk acceptance.
@@ -430,7 +431,9 @@ ADR-059, and
 
 ### 7.5 Bookmarks — #14 validated gate
 
-Implemented and validated on Firefox 153.0.4:
+The core #14 control was implemented and validated on Firefox 153.0.4;
+ADR-064's favicon extension has focused automated coverage and Firefox 154
+source evidence, while its real-browser rows remain `not run`:
 
 - current source for Places roots/query/observer/open behavior;
 - bounded/lazy query and depth/page limits;
@@ -438,7 +441,8 @@ Implemented and validated on Firefox 153.0.4:
 - URL remains private when possible;
 - text-only title;
 - no bookmarklet execution;
-- no remote favicon/metadata;
+- optional Firefox-cached, bounded raster bookmark favicons through
+  property-only `img.src`, with no remote project request or metadata;
 - live update reconciliation;
 - no unbounded mirror/polling;
 - native management paths retained;
@@ -456,7 +460,13 @@ ownership matrix passed. Evidence: ADR-029 and
 owner, row context actions, missing-owner fail-open, and hold/listener cleanup
 are covered by automated tests; their real interaction rows remain not run.
 Evidence: ADR-055 and
-`docs/research/firefox-153-154-panel-context-actions.md`.
+`docs/research/firefox-153-154-panel-context-actions.md`. ADR-064 resolves the
+bookmark URL only inside `src/firefox/`, asks Firefox's existing Places cache
+for a 16–64 px DPI-bounded icon, accepts only base64 raster data up to 262,144
+characters, drops malformed/SVG/remote values to the packaged fallback, and
+never logs or persists the page or favicon URL. `favicon-changed` is reduced to
+an all-scope refresh with no event value crossing the bridge. Evidence:
+`docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.
 
 ### 7.6 Downloads — #32 validated control
 
@@ -627,6 +637,12 @@ shortcut-tip duration, and trigger thickness. These are global shell
 preferences, never observations of private-window activity; they use the
 existing 16 KiB cap, preference observer, reset path, and fail-safe defaults
 rather than a new persistence owner.
+
+ADR-064 uses the same privileged preference owner for one additional strict
+version-1 `fennevia.customize.panels` value. It stores only the complete side
+role enum, bottom-enabled boolean, and two loading/download/off light enums;
+it stores no browsing observation, URL, title, bookmark, download state, CSS,
+or private-window activity.
 
 Prohibited persistence:
 

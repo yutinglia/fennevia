@@ -191,6 +191,50 @@
   line-height: 1.35;
 }
 
+#fennevia-shell-frame-host .fennevia-customize__panel-config {
+  min-inline-size: 0;
+  margin: 0;
+  padding-inline: 0;
+  padding-block-end: 0;
+  border-inline: 0;
+  border-block-end: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__panel-config > legend {
+  padding: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__panel-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(168px, 1.15fr);
+  align-items: center;
+  gap: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__panel-toggle {
+  display: flex;
+  min-block-size: 28px;
+  align-items: center;
+  gap: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__panel-toggle > input {
+  inline-size: 16px;
+  block-size: 16px;
+  margin: 0;
+  accent-color: var(--fennevia-focus-color);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__select {
+  min-block-size: 28px;
+  min-inline-size: 0;
+  padding: 3px 24px 3px 8px;
+  color: var(--fennevia-glass-text);
+  background-color: var(--fennevia-glass-surface);
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+}
+
 #fennevia-shell-frame-host
   :is(
     .fennevia-customize__option,

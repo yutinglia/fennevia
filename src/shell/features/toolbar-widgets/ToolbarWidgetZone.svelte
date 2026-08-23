@@ -29,6 +29,8 @@
     type ToolbarWidgetDropTarget,
   } from "../../../app/toolbar-widget-drag";
   import {
+    createDefaultShellPanelConfig,
+    getSidePanelEdge,
     isInteractiveToolbarWidget,
     type BrowserToolbarWidgetsState,
     type BrowserToolbarWidgetsStateAdapter,
@@ -62,6 +64,12 @@
   const t = (key: MessageKey, vars?: MessageVars): string =>
     translate(props.localeId, key, vars);
   let browserToolsSnapshot = $derived(props.browserTools?.snapshot());
+  let bookmarksEdge = $derived(
+    getSidePanelEdge(
+      props.state?.snapshot.panels ?? createDefaultShellPanelConfig(),
+      "bookmarks",
+    ),
+  );
   let dropPreview: Readonly<{
     insertBefore: number;
     zone: ToolbarZoneName;
@@ -109,7 +117,7 @@
   const runFenneviaWidgetAction = (action: string, event?: MouseEvent) => {
     try {
       if (action === "show-bookmarks") {
-        props.shell.revealProgrammatically("right");
+        props.shell.revealProgrammatically(bookmarksEdge);
         return;
       }
       if (action === "show-downloads") {

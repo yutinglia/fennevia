@@ -32,6 +32,7 @@ import {
   asBookmarkRecord,
   getNodeKind,
   getUrlProtocol,
+  sanitizeBookmarkFaviconUrl,
 } from "./support.ts";
 import type {
   NativeRecord,
@@ -184,6 +185,23 @@ export function createFirefoxBookmarksBridge({
             : undefined,
         symbol: "window.PlacesCommandHook.showPlacesOrganizer",
       }),
+      Object.freeze({
+        isAvailable: isFunction,
+        name: "firefox.places-favicon-query",
+        read: () => nativePlacesUtils?.favicons?.getFaviconForPage,
+        requirement: "optional" as const,
+        symbol: "PlacesUtils.favicons.getFaviconForPage",
+      }),
+      Object.freeze({
+        isAvailable: isFunction,
+        name: "firefox.places-favicon-uri",
+        read: () =>
+          isNativeRecord(window.Services) && isNativeRecord(window.Services.io)
+            ? window.Services.io.newURI
+            : undefined,
+        requirement: "optional" as const,
+        symbol: "window.Services.io.newURI",
+      }),
     ]);
 
   let nativeWindow: NativeRecord | null = window;
@@ -228,7 +246,7 @@ export function createFirefoxBookmarksBridge({
           snapshot: Object.freeze({
             available,
             name: specification.name,
-            requirement: "required" as const,
+            requirement: specification.requirement ?? ("required" as const),
             symbol: specification.symbol,
           }),
         });
@@ -239,7 +257,9 @@ export function createFirefoxBookmarksBridge({
     requireWindow();
     const evaluations = evaluateCapabilities();
     const missing = evaluations.find(
-      (evaluation) => !evaluation.snapshot.available,
+      (evaluation) =>
+        evaluation.snapshot.requirement === "required" &&
+        !evaluation.snapshot.available,
     );
     if (missing) {
       throw createBookmarksError(
@@ -294,12 +314,63 @@ export function createFirefoxBookmarksBridge({
     return registry.resolve(id).guid;
   };
 
-  const createNodeSnapshot = (
+  const readFaviconUrl = async (
+    record: NativeBookmarkRecord,
+  ): Promise<string | undefined> => {
+    if (record.type !== nativePlacesUtils.bookmarks.TYPE_BOOKMARK) {
+      return undefined;
+    }
+    const ownerWindow = requireWindow();
+    const faviconService = nativePlacesUtils.favicons;
+    const services = ownerWindow.Services;
+    const io = isNativeRecord(services) ? services.io : undefined;
+    const newUri = isNativeRecord(io) ? io.newURI : undefined;
+    const getFaviconForPage = faviconService?.getFaviconForPage;
+    const href = isNativeRecord(record.url) ? record.url.href : undefined;
+    if (
+      !faviconService ||
+      !isFunction(getFaviconForPage) ||
+      !isNativeRecord(io) ||
+      !isFunction(newUri) ||
+      typeof href !== "string"
+    ) {
+      return undefined;
+    }
+    try {
+      const pageUri = Reflect.apply(newUri, io, [href]);
+      const ratio =
+        typeof ownerWindow.devicePixelRatio === "number" &&
+        Number.isFinite(ownerWindow.devicePixelRatio)
+          ? ownerWindow.devicePixelRatio
+          : 1;
+      const preferredWidth = Math.min(64, Math.max(16, Math.round(16 * ratio)));
+      const favicon = await Reflect.apply(getFaviconForPage, faviconService, [
+        pageUri,
+        preferredWidth,
+      ]);
+      requireWindow();
+      const dataUri = isNativeRecord(favicon) ? favicon.dataURI : undefined;
+      return sanitizeBookmarkFaviconUrl(
+        isNativeRecord(dataUri) ? dataUri.spec : undefined,
+      );
+    } catch (error) {
+      if (isFirefoxBridgeError(error)) {
+        throw error;
+      }
+      // Favicons are optional cached presentation. A missing or unreadable
+      // icon keeps the packaged bookmark fallback without exposing its URL.
+      return undefined;
+    }
+  };
+
+  const createNodeSnapshot = async (
     record: NativeBookmarkRecord,
     title = record.title,
-  ): BookmarkNodeSnapshot => {
+  ): Promise<BookmarkNodeSnapshot> => {
     const kind = getNodeKind(boundary, record, nativePlacesUtils.bookmarks);
+    const faviconUrl = await readFaviconUrl(record);
     return Object.freeze({
+      ...(faviconUrl === undefined ? {} : { faviconUrl }),
       hasChildren:
         kind === "folder" &&
         Number.isSafeInteger(record.childCount) &&
@@ -406,11 +477,25 @@ export function createFirefoxBookmarksBridge({
       }
       const affectedIds = new Set<string>();
       const removedGuids: string[] = [];
+      let faviconChanged = false;
       for (const candidate of candidateEvents) {
         if (
           !isNativeRecord(candidate) ||
           typeof candidate.type !== "string" ||
-          !BOOKMARK_EVENT_TYPES.includes(candidate.type) ||
+          !BOOKMARK_EVENT_TYPES.includes(candidate.type)
+        ) {
+          throw createBookmarksError(
+            boundary,
+            "FENNEVIA_FIREFOX_BOOKMARKS_EVENT_INVALID",
+            "firefox-bookmarks-observer",
+            "PlacesEvent",
+          );
+        }
+        if (candidate.type === "favicon-changed") {
+          faviconChanged = true;
+          continue;
+        }
+        if (
           typeof candidate.parentGuid !== "string" ||
           typeof candidate.isTagging !== "boolean"
         ) {
@@ -458,7 +543,7 @@ export function createFirefoxBookmarksBridge({
         }
       }
       const ids = Array.from(affectedIds);
-      if (ids.length > MAXIMUM_EVENT_PARENTS) {
+      if (faviconChanged || ids.length > MAXIMUM_EVENT_PARENTS) {
         notifySubscribers(Object.freeze([]), "all");
       } else if (ids.length > 0) {
         notifySubscribers(Object.freeze(ids), "parents");
@@ -542,7 +627,7 @@ export function createFirefoxBookmarksBridge({
           ? 0
           : Math.min(offset, Math.floor((totalCount - 1) / limit) * limit);
       const end = Math.min(totalCount, pageOffset + limit);
-      const items: BookmarkNodeSnapshot[] = [];
+      const childRecords: NativeBookmarkRecord[] = [];
       for (let index = pageOffset; index < end; index += 1) {
         const child = await fetchRecord(
           { index, parentGuid },
@@ -555,8 +640,12 @@ export function createFirefoxBookmarksBridge({
         ) {
           return Object.freeze({ parentId, status: "stale" });
         }
-        items.push(createNodeSnapshot(child));
+        childRecords.push(child);
       }
+      const items = await Promise.all(
+        childRecords.map((child) => createNodeSnapshot(child)),
+      );
+      requireWindow();
       return Object.freeze({
         items: Object.freeze(items),
         offset: pageOffset,
@@ -710,7 +799,7 @@ export function createFirefoxBookmarksBridge({
             "PlacesUtils.bookmarks.getLocalizedTitle",
           );
         }
-        roots.push(createNodeSnapshot(record, localizedTitle));
+        roots.push(await createNodeSnapshot(record, localizedTitle));
       }
       return Object.freeze(roots);
     },

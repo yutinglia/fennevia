@@ -12,6 +12,7 @@ import {
 export type SurfaceFocusCoordinator = Readonly<{
   activeElementFor: (edge: EdgeName) => FocusableElement | null;
   clear: () => void;
+  discardFocusOrigin: (edge: EdgeName) => void;
   focusCustomizeToggle: () => void;
   focusSurface: (edge: EdgeName, selectText?: boolean) => boolean;
   onFrameFocusIn: (event: FocusEvent) => void;
@@ -48,6 +49,10 @@ export function createSurfaceFocusCoordinator({
 
     clear(): void {
       focusOrigins.clear();
+    },
+
+    discardFocusOrigin(edge: EdgeName): void {
+      focusOrigins.delete(edge);
     },
 
     focusCustomizeToggle(): void {

@@ -8,6 +8,7 @@
   import type {
     BrowserToolbarWidgetsState,
     BrowserToolbarWidgetsStateAdapter,
+    SidePanelEdge,
   } from "../../app/toolbar-widgets-state";
   import BookmarksPanel from "../BookmarksPanel.svelte";
   import ToolbarWidgetZone from "../features/toolbar-widgets/ToolbarWidgetZone.svelte";
@@ -17,6 +18,7 @@
     browserTools?: BrowserToolsStateAdapter;
     customizeOpen: boolean;
     customizeSession?: CustomizeSessionController;
+    edge: SidePanelEdge;
     localeId: FenneviaLocale;
     onDismiss: () => void;
     onFatalError: (error: unknown) => void;
@@ -30,6 +32,7 @@
 
 <BookmarksPanel
   bookmarks={props.bookmarks}
+  edge={props.edge}
   localeId={props.localeId}
   onDismiss={props.onDismiss}
   onFatalError={props.onFatalError}
@@ -40,7 +43,7 @@
   browserTools={props.browserTools}
   customizeOpen={props.customizeOpen}
   customizeSession={props.customizeSession}
-  edge="right"
+  edge={props.edge}
   localeId={props.localeId}
   onDismiss={() => props.onDismiss()}
   onFatalError={props.onFatalError}
