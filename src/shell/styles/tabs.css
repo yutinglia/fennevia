@@ -165,18 +165,14 @@
   .fennevia-tab-strip__item[data-fennevia-drag-following="true"][data-fennevia-drag-stack="true"] {
   box-shadow:
     var(--fennevia-glass-shadow),
-    2px 3px 0 0 color-mix(
-      in srgb,
-      var(--fennevia-selected-surface) 92%,
-      transparent
-    ),
-    2px 3px 0 1px color-mix(in srgb, var(--fennevia-focus-color) 70%, transparent),
-    4px 6px 0 0 color-mix(
-      in srgb,
-      var(--fennevia-selected-surface) 78%,
-      transparent
-    ),
-    4px 6px 0 1px color-mix(in srgb, var(--fennevia-focus-color) 45%, transparent);
+    2px 3px 0 0
+      color-mix(in srgb, var(--fennevia-selected-surface) 92%, transparent),
+    2px 3px 0 1px
+      color-mix(in srgb, var(--fennevia-focus-color) 70%, transparent),
+    4px 6px 0 0
+      color-mix(in srgb, var(--fennevia-selected-surface) 78%, transparent),
+    4px 6px 0 1px
+      color-mix(in srgb, var(--fennevia-focus-color) 45%, transparent);
 }
 
 #fennevia-shell-frame-host

@@ -742,10 +742,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
     styles,
     /data-fennevia-drag-collapsed="true"[\s\S]*?display: none;/u,
   );
-  assert.match(
-    styles,
-    /data-fennevia-drag-stack="true"[\s\S]*?box-shadow:/u,
-  );
+  assert.match(styles, /data-fennevia-drag-stack="true"[\s\S]*?box-shadow:/u);
   assert.match(styles, /\.fennevia-tab-strip__tab \{[\s\S]*?cursor: default;/u);
   assert.doesNotMatch(
     styles,

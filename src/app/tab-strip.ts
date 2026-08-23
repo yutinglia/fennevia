@@ -347,10 +347,7 @@ export function resolveTabDropIndex(
   let insertBefore = tabs.length;
   for (const [index, midpoint] of itemMids.entries()) {
     const tab = tabs[index];
-    if (
-      tab &&
-      isCollapsedDragMember(tabs, draggingTabId, tab.id)
-    ) {
+    if (tab && isCollapsedDragMember(tabs, draggingTabId, tab.id)) {
       continue;
     }
     if (pointerY < midpoint) {
