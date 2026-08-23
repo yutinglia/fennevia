@@ -583,7 +583,11 @@ test("the component uses semantic sibling controls and property-safe rendering o
   );
   assert.match(
     styles,
-    /\.fennevia-tab-strip__item \{[\s\S]*?transition:[\s\S]*?transform var\(--fennevia-motion-duration\)/u,
+    /\.fennevia-tab-strip__item \{[\s\S]*?transition:[\s\S]*?opacity 100ms ease-out/u,
+  );
+  assert.match(
+    styles,
+    /data-fennevia-drag-active="true"[\s\S]*?fennevia-tab-strip__item:not\(\[data-fennevia-drag-following="true"\]\)[\s\S]*?transition:[\s\S]*?transform var\(--fennevia-motion-duration\)/u,
   );
   assert.match(
     styles,
