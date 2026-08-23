@@ -465,11 +465,15 @@ export function createFirefoxTabsBridge({
     options: OpenTabOptions | undefined,
   ): Required<OpenTabOptions> => {
     if (options === undefined) {
-      return Object.freeze({ selected: true });
+      return Object.freeze({ relatedToCurrent: false, selected: true });
     }
     if (
       !isNativeRecord(options) ||
-      Object.keys(options).some((key) => key !== "selected") ||
+      Object.keys(options).some(
+        (key) => key !== "relatedToCurrent" && key !== "selected",
+      ) ||
+      (options.relatedToCurrent !== undefined &&
+        typeof options.relatedToCurrent !== "boolean") ||
       (options.selected !== undefined && typeof options.selected !== "boolean")
     ) {
       throw createTabsError(
@@ -479,7 +483,10 @@ export function createFirefoxTabsBridge({
         "tabs.open.options",
       );
     }
-    return Object.freeze({ selected: options.selected ?? true });
+    return Object.freeze({
+      relatedToCurrent: options.relatedToCurrent ?? false,
+      selected: options.selected ?? true,
+    });
   };
 
   const normalizeContextMenuPoint = (
@@ -864,9 +871,16 @@ export function createFirefoxTabsBridge({
           "window.BROWSER_NEW_TAB_URL",
         );
       }
+      const nativeOptions: {
+        inBackground: boolean;
+        relatedToCurrent?: boolean;
+      } = { inBackground: !normalized.selected };
+      if (normalized.relatedToCurrent) {
+        nativeOptions.relatedToCurrent = true;
+      }
       const candidate = callTabMethod("addTrustedTab", [
         newTabUrl,
-        { inBackground: !normalized.selected },
+        nativeOptions,
       ]);
       const tab = asNativeTab(boundary, candidate);
       if (!readOpenTabs().includes(tab)) {

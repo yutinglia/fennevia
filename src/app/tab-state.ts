@@ -68,6 +68,7 @@ export type TabContextMenuEvent = Readonly<{
 export type TabStateEvent = TabContextMenuEvent | TabSnapshotEvent;
 
 export type OpenTabOptions = Readonly<{
+  relatedToCurrent?: boolean;
   selected?: boolean;
 }>;
 

@@ -383,13 +383,23 @@ test("the component uses semantic sibling controls and property-safe rendering o
     tabSource,
     /restorePointerInteractionAfterMutation\(pointerInteraction, false\)/u,
   );
+  assert.match(tabSource, /onclick=\{handleNewTabClick\}/u);
+  assert.match(tabSource, /onauxclick=\{handleNewTabAuxClick\}/u);
   assert.match(
     tabSource,
-    /onclick=\{\(event\) =>\s*openTab\(pointerInteractionFromMouseEvent\(event\)\)\}/u,
+    /data-fennevia-action="new-tab"[\s\S]*?onmousedown=\{preventMiddleAutoscroll\}/u,
   );
   assert.match(
     tabSource,
-    /const openTab = \([\s\S]*?if \(pointerInteraction\) \{\s*props\.shell\.setPointerHeld\(props\.edge, true\);[\s\S]*?props\.tabs\.open\(\{ selected: true \}\)/u,
+    /const handleNewTabClick = \([\s\S]*?if \(event\.button !== 0\) \{\s*return;[\s\S]*?event\.ctrlKey \|\| event\.metaKey[\s\S]*?relatedToCurrent[\s\S]*?selected: !\(relatedToCurrent && event\.shiftKey\)/u,
+  );
+  assert.match(
+    tabSource,
+    /const handleNewTabAuxClick = \([\s\S]*?if \(event\.button !== 1\) \{\s*return;[\s\S]*?relatedToCurrent: true[\s\S]*?selected: !event\.shiftKey/u,
+  );
+  assert.match(
+    tabSource,
+    /const openTab = \([\s\S]*?if \(pointerInteraction\) \{\s*props\.shell\.setPointerHeld\(props\.edge, true\);[\s\S]*?props\.tabs\.open\([\s\S]*?options\.relatedToCurrent === true[\s\S]*?relatedToCurrent: true/u,
   );
   assert.match(
     tabSource,

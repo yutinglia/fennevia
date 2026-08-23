@@ -47,6 +47,7 @@ and testing documents retain the complete engineering contract.
 - Vertical tabs on the left by default, with selected state, Firefox's packaged loading icon,
   audio, containers, attention/PiP, closed camera/microphone/screen-sharing and crash
   indicators, fixed trailing action positions, middle-click close,
+  middle-click/accel New Tab insertion after the current tab,
   drag/keyboard reorder with a pointer-aligned full-row ghost, animated neighbor
   gap, insertion marker, and polite move announcement, plus Firefox-owned tab
   context-menu handoff with complete lazy Fluent labels and no original-toolbar

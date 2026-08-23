@@ -4214,9 +4214,15 @@ function ai({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		if (typeof i != "function") throw X(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", `window.gBrowser.${e}`);
 		return Reflect.apply(i, r, n);
 	}, re = (e) => {
-		if (e === void 0) return Object.freeze({ selected: !0 });
-		if (!Y(e) || Object.keys(e).some((e) => e !== "selected") || e.selected !== void 0 && typeof e.selected != "boolean") throw X(t, "FENNEVIA_FIREFOX_TAB_OPEN_OPTIONS_INVALID", "firefox-tabs-action", "tabs.open.options");
-		return Object.freeze({ selected: e.selected ?? !0 });
+		if (e === void 0) return Object.freeze({
+			relatedToCurrent: !1,
+			selected: !0
+		});
+		if (!Y(e) || Object.keys(e).some((e) => e !== "relatedToCurrent" && e !== "selected") || e.relatedToCurrent !== void 0 && typeof e.relatedToCurrent != "boolean" || e.selected !== void 0 && typeof e.selected != "boolean") throw X(t, "FENNEVIA_FIREFOX_TAB_OPEN_OPTIONS_INVALID", "firefox-tabs-action", "tabs.open.options");
+		return Object.freeze({
+			relatedToCurrent: e.relatedToCurrent ?? !1,
+			selected: e.selected ?? !0
+		});
 	}, ie = (e) => {
 		if (!Y(e) || Object.keys(e).some((e) => e !== "screenX" && e !== "screenY") || typeof e.screenX != "number" || typeof e.screenY != "number" || !Number.isFinite(e.screenX) || !Number.isFinite(e.screenY) || Math.abs(e.screenX) > 1e5 || Math.abs(e.screenY) > 1e5) throw X(t, "FENNEVIA_FIREFOX_TAB_CONTEXT_MENU_POINT_INVALID", "firefox-tabs-action", "tabs.openContextMenu.point");
 		return Object.freeze({
@@ -4372,11 +4378,13 @@ function ai({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		open(e) {
 			let n = re(e), r = T().BROWSER_NEW_TAB_URL;
 			if (typeof r != "string" || r.length === 0) throw X(t, "FENNEVIA_FIREFOX_TABS_CAPABILITY_MISSING", "firefox-tabs-action", "window.BROWSER_NEW_TAB_URL");
-			let i = Jr(t, R("addTrustedTab", [r, { inBackground: !n.selected }]));
-			if (!O().includes(i)) throw X(t, "FENNEVIA_FIREFOX_TAB_OPEN_REJECTED", "firefox-tabs-action", "window.gBrowser.addTrustedTab");
-			let a = g.register(i);
-			if (F(!0), n.selected && E().selectedTab !== i) throw X(t, "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED", "firefox-tabs-action", "window.gBrowser.selectedTab");
-			return a;
+			let i = { inBackground: !n.selected };
+			n.relatedToCurrent && (i.relatedToCurrent = !0);
+			let a = Jr(t, R("addTrustedTab", [r, i]));
+			if (!O().includes(a)) throw X(t, "FENNEVIA_FIREFOX_TAB_OPEN_REJECTED", "firefox-tabs-action", "window.gBrowser.addTrustedTab");
+			let o = g.register(a);
+			if (F(!0), n.selected && E().selectedTab !== a) throw X(t, "FENNEVIA_FIREFOX_TAB_SELECT_REJECTED", "firefox-tabs-action", "window.gBrowser.selectedTab");
+			return o;
 		},
 		openContextMenu(e, n) {
 			let r = L(e), i = ie(n), a = se(), s = a.openPopup, c = a.moveTo;

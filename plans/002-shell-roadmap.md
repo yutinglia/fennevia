@@ -334,6 +334,7 @@ scroll inside the bounded left panel.
 Issue #60 completes the remaining flat-list parity on that same strip:
 
 - middle-click close;
+- middle-click/accel New Tab insertion after the current tab (ADR-070);
 - audio playing/muted/blocked plus a sibling mute toggle;
 - camera, microphone, and screen-sharing status plus crashed-tab state through
   closed optional snapshot fields;
@@ -358,14 +359,15 @@ Deferred:
 - container icon loads from `resource://usercontext-content/`.
 
 Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063,
-ADR-065, and ADR-066, plus
+ADR-065, ADR-066, and ADR-070, plus
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,
 `docs/research/firefox-153-154-native-shell-icons.md`,
 `docs/research/firefox-154-tab-drag-spatial-preview.md`,
-`docs/research/firefox-154-tabbar-interaction-follow-up.md`, and
-`docs/research/firefox-154-shell-interaction-second-follow-up.md`, plus ADR-055
+`docs/research/firefox-154-tabbar-interaction-follow-up.md`,
+`docs/research/firefox-154-shell-interaction-second-follow-up.md`, and
+`docs/research/firefox-153-154-related-new-tab.md`, plus ADR-055
 and `docs/research/firefox-153-154-panel-context-actions.md`.
 
 ## Milestone F: Shared four-edge interaction and design frame — complete
