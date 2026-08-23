@@ -339,4 +339,29 @@ test("panel serialization is versioned, bounded, and fails safe", () => {
     ),
     null,
   );
+  assert.equal(
+    parseCustomizePanels(
+      JSON.stringify({
+        bottomDownloadsEnabled: true,
+        bottomProgressLight: "downloads",
+        sidePanelLayout: "tabs-left",
+        topProgressLight: "loading",
+        version: 1,
+      }),
+    )?.allowCompactWindow,
+    false,
+  );
+  assert.equal(
+    parseCustomizePanels(
+      JSON.stringify({
+        allowCompactWindow: true,
+        bottomDownloadsEnabled: true,
+        bottomProgressLight: "downloads",
+        sidePanelLayout: "tabs-left",
+        topProgressLight: "loading",
+        version: 1,
+      }),
+    )?.allowCompactWindow,
+    true,
+  );
 });

@@ -2944,3 +2944,62 @@ panel on focus or blocking a real leave at a flush panel edge.
 Exact report evidence, rejected alternatives, privacy review, validation, and
 pending real-browser rows are recorded in
 `docs/research/firefox-154-tab-select-pointer-hold.md`.
+
+## ADR-068: Optional compact chrome window; drop persistent bookmark hint; tab the customize drawer
+
+**Status:** Accepted for the project-owner request on 2026-08-24; implementation
+and ordinary automation are complete; the real Firefox compact-window,
+bookmarks-status, and tabbed-drawer matrices remain pending
+
+Firefox chrome
+[`browser.css`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/base/content/browser.css)
+sets `:root` `min-width`/`min-height` and a larger
+`:root:not([chromehidden~="toolbar"])` `min-width` so caption buttons and
+toolbar chrome do not clip. That floor is independent of Fennevia's
+content-only layout. Owners who want a smaller window than that chrome floor
+may opt in.
+
+Extend ADR-064's closed version-1 `fennevia.customize.panels` object with one
+additional boolean, `allowCompactWindow`, default false. Missing keys still
+merge documented defaults; unknown keys still fail the object. The preference
+still contains no browsing-derived state, CSS, URL, or arbitrary geometry.
+
+When the boolean is true and NativeUi is active and not suspended, NativeUi
+sets `data-fennevia-compact-window` on `:root#main-window`. The existing
+project stylesheet includes one additional top-level rule:
+
+```css
+:root#main-window[data-fennevia-active][data-fennevia-compact-window]:not([data-fennevia-native-ui-suspended]) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+```
+
+This raises the exact NativeUi stylesheet health contract from nine to ten
+parsed top-level rules. Compact-window is not a required health capability: a
+false value, a suspended or failed window, and disposal all clear the
+attribute and restore Firefox's chrome floor immediately. The operating-system
+window floor remains. Caption buttons and some chrome may clip; the customize
+help text states that.
+
+The bookmarks panel no longer uses a persistent Ctrl/Command+Enter hint in
+its status row (`data-fennevia-bookmark-status`). That row remains a health
+target and still reports actual notices (stale, unsupported, open-failed, or
+a local message). Empty status occupies no layout. Every edge, including
+bookmarks, still honors `shortcutHintDuration` for the `.fennevia-edge-panel__footer`
+`<kbd>` shortcut tip; zero omits that footer everywhere.
+
+The customize drawer uses one `tablist` with four tabs: widgets, panels,
+interaction, and appearance. `CustomizePanel.svelte` remains wiring. Tablist
+implementation lives in `features/customize/CustomizeTabList.svelte`.
+Arrow/Home/End move tabs. Each tabpanel scrolls; the dialog itself does not
+become a single stacked form. Footer reset-layout and status remain on every
+tab.
+
+**Reasoning:** The chrome min-size is a Firefox layout floor, not a Fennevia
+health invariant. An opt-in, active-only CSS override is the minimum change
+that preserves fail-open. The persistent bookmarks Ctrl/Command+Enter status
+copy was a nonessential hint, not an access path; actual notices still use the
+status row, and edge `<kbd>` tips remain on every surface. Splitting the
+drawer keeps composition hosts as wiring and prevents the settings form from
+growing into one scrolling catch-all.

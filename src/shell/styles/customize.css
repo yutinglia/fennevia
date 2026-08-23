@@ -24,7 +24,7 @@
   );
   margin: auto;
   padding: var(--fennevia-space-3);
-  overflow-y: auto;
+  overflow: hidden;
   color: var(--fennevia-glass-text);
   background: var(--fennevia-glass-surface);
   border: 1px solid var(--fennevia-glass-border);
@@ -53,6 +53,46 @@
   margin: 0;
   font-size: 13px;
   font-weight: 650;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__tabs {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__tab {
+  min-block-size: 28px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__tab[aria-selected="true"] {
+  color: var(--fennevia-glass-text);
+  background: var(--fennevia-selected-surface);
+  border-color: var(--fennevia-focus-color);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__tabpanel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--fennevia-space-3);
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__tabpanel
+  > .fennevia-customize__section:first-child,
+#fennevia-shell-frame-host
+  .fennevia-customize__tabpanel
+  > .fennevia-customize__panel-config {
+  padding-block-start: 0;
+  border-block-start: 0;
 }
 
 #fennevia-shell-frame-host .fennevia-customize__note {

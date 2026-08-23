@@ -147,7 +147,9 @@ Requirements:
   owners, and coordinates are neither persisted nor logged;
 - shortcut-tip duration is bounded to 0–10,000 ms and controls only the
   existing frame-scoped CSS animation; zero omits the nonessential footer and
-  creates no JavaScript timer;
+  creates no JavaScript timer. The bookmarks status row no longer shows a
+  persistent Ctrl/Command+Enter hint; it remains a health target for actual
+  notices only;
 - focus cannot remain inside a hidden, failed, or disposed surface;
 - a focused surface stays open until focus leaves or an explicit close action;
 - `Escape` respects higher-priority native/project popup handling;
@@ -605,8 +607,11 @@ bounded integers for blur, radius, density, surface opacity, saturation,
 shadow, motion, font size, in-window hide delay, window-leave hide delay,
 temporary reveal duration, shortcut-tip duration, and edge trigger size). The
 panel pref contains only one closed side-layout enum, one bottom-enabled
-boolean, and two closed activity-light enums; it cannot encode arbitrary
-geometry, CSS, a URL, or feature activity.
+boolean, two closed activity-light enums, and ADR-068's `allowCompactWindow`
+boolean (default false); it cannot encode arbitrary geometry, CSS, a URL, or
+feature activity. Compact-window only toggles a root attribute and one
+active/not-suspended `min-width`/`min-height` override; it stores no browsing
+data and is not a health input. Missing keys keep documented defaults.
 ADR-054 keeps those interaction values at 100–5,000 ms, 100–5,000 ms,
 400–10,000 ms, 0–10,000 ms, and 6–24 CSS px respectively; old version-1 values
 receive the defaults. Empty color tokens resolve through CSS
@@ -990,7 +995,8 @@ customization, and window-control owner.
 
 Issue #15 implements the narrow active-only boundary in ADR-032. One privileged
 controller validates exact Firefox toolbar/sidebar/titlebar nodes and one
-nine-rule project style. ADR-050 adds one process-scoped author stylesheet
+ten-rule project style. ADR-068's compact-window rule is opt-in and not a
+health capability. ADR-050 adds one process-scoped author stylesheet
 with no browsing data, scoped by `@-moz-document` to
 `chrome://browser/content/browser.xhtml`. Neither the controller nor that sheet
 reads URLs, labels, principals, certificates,

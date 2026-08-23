@@ -478,6 +478,7 @@ test("style partials validate every provided key", () => {
 test("panel config stays closed, immutable, and maps one role per side", () => {
   const defaults = createDefaultShellPanelConfig();
   assert.deepEqual(defaults, {
+    allowCompactWindow: false,
     bottomDownloadsEnabled: true,
     bottomProgressLight: "downloads",
     sidePanelLayout: "tabs-left",

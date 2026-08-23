@@ -74,6 +74,7 @@ export type SidePanelRole = "bookmarks" | "tabs";
 export type SidePanelEdge = "left" | "right";
 
 export type ShellPanelConfigSnapshot = Readonly<{
+  allowCompactWindow: boolean;
   bottomDownloadsEnabled: boolean;
   bottomProgressLight: ProgressLightSource;
   sidePanelLayout: SidePanelLayout;

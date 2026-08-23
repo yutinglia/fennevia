@@ -1433,6 +1433,7 @@ const mountProductionShell = ({
       try {
         const applyChromeBackground = (snapshot) => {
           nativeUi.setChromeBackground(snapshot.style.chromeBackground);
+          nativeUi.setCompactWindow(snapshot.panels.allowCompactWindow === true);
         };
         applyChromeBackground(toolbarWidgetsBridge.toolbarWidgets.snapshot());
         unsubscribeChromeStyle = toolbarWidgetsBridge.toolbarWidgets.subscribe(

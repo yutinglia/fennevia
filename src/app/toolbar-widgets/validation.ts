@@ -128,6 +128,7 @@ export function isProgressLightSource(
 
 export function createDefaultShellPanelConfig(): ShellPanelConfigSnapshot {
   return Object.freeze({
+    allowCompactWindow: false,
     bottomDownloadsEnabled: true,
     bottomProgressLight: "downloads" as const,
     sidePanelLayout: "tabs-left" as const,
@@ -141,6 +142,7 @@ export function copyShellPanelConfigSnapshot(
   if (
     !candidate ||
     typeof candidate !== "object" ||
+    typeof candidate.allowCompactWindow !== "boolean" ||
     typeof candidate.bottomDownloadsEnabled !== "boolean" ||
     !isProgressLightSource(candidate.bottomProgressLight) ||
     !isSidePanelLayout(candidate.sidePanelLayout) ||
@@ -151,6 +153,7 @@ export function copyShellPanelConfigSnapshot(
     );
   }
   return Object.freeze({
+    allowCompactWindow: candidate.allowCompactWindow,
     bottomDownloadsEnabled: candidate.bottomDownloadsEnabled,
     bottomProgressLight: candidate.bottomProgressLight,
     sidePanelLayout: candidate.sidePanelLayout,

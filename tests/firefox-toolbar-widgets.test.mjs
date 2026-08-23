@@ -2033,6 +2033,7 @@ test("panel and progress-light edits persist, observe, and reset", async () => {
     let snapshot = pair.controller.toolbarWidgets.snapshot();
     assert.equal(snapshot.panelsCustomized, false);
     assert.deepEqual(snapshot.panels, {
+      allowCompactWindow: false,
       bottomDownloadsEnabled: true,
       bottomProgressLight: "downloads",
       sidePanelLayout: "tabs-left",

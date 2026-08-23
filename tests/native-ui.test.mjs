@@ -600,7 +600,7 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
     true,
   );
   assert.match(popupProxyAnchor.getAttribute("style"), /pointer-events: none/u);
-  assert.equal(style.sheet.cssRules.length, 9);
+  assert.equal(style.sheet.cssRules.length, 10);
   assert.match(style.textContent, /#browser > #tabbrowser-tabbox/u);
   assert.match(
     style.textContent,
@@ -623,6 +623,8 @@ test("native UI activation reserves an edge gutter and hides native toolbox cont
   assert.match(style.textContent, /max-width: min\(42vw, 520px\) !important/u);
   assert.match(style.textContent, /text-overflow: ellipsis !important/u);
   assert.match(style.textContent, /@media \(forced-colors: active\)/u);
+  assert.match(style.textContent, /data-fennevia-compact-window/u);
+  assert.match(style.textContent, /min-width: 0 !important/u);
   assert.ok(
     controller
       .assertRequiredCapabilities()
@@ -689,6 +691,27 @@ test("native UI applies a bounded chrome background token on the window root", (
     "",
   );
   assert.equal(controller.setChromeBackground("#ffffff"), false);
+  assert.deepEqual(errors, []);
+});
+
+test("native UI toggles the compact-window chrome floor while active", () => {
+  const fixture = createFixture();
+  const errors = [];
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: (error) => errors.push(error),
+  });
+  const root = fixture.document.documentElement;
+
+  assert.equal(controller.setCompactWindow(true), true);
+  assert.equal(root.hasAttribute("data-fennevia-compact-window"), true);
+  assert.equal(controller.setCompactWindow(false), true);
+  assert.equal(root.hasAttribute("data-fennevia-compact-window"), false);
+  assert.equal(controller.setCompactWindow(true), true);
+  assert.equal(controller.dispose(), true);
+  assert.equal(root.hasAttribute("data-fennevia-compact-window"), false);
+  assert.equal(controller.setCompactWindow(true), false);
   assert.deepEqual(errors, []);
 });
 
