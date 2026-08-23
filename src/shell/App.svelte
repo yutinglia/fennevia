@@ -225,11 +225,13 @@
   };
 
   const handleSurfacePointerOut = (event: PointerEvent) => {
-    if (edgeUi.crossedPointerBoundary(event)) {
-      props.shell.releasePointer(
-        props.edge,
-        event.relatedTarget === null ? "outside-window" : "inside-window",
-      );
+    const reason = edgeUi.resolveOwnedSurfacePointerOutRelease(
+      event,
+      rootElement,
+      panelElement,
+    );
+    if (reason) {
+      props.shell.releasePointer(props.edge, reason);
     }
   };
 

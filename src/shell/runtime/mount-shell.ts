@@ -89,6 +89,10 @@ import {
   resolveWindowDragEdge,
   type WindowDragPosition,
 } from "./edge-app-interactions";
+import {
+  isPointInsideVisibleEdgePanel,
+  isPointInsideWindowViewport,
+} from "./pointer-geometry";
 
 const WINDOW_DRAG_START_EVENT = "draggableregionleftmousedown";
 
@@ -109,6 +113,7 @@ export function mountShellApp({
   urlbarSuggestions,
   windowControls,
   windowKind,
+  isChromeWindowActive,
 }: MountOptions): () => boolean {
   if (
     typeof onFatalError !== "function" ||
@@ -351,13 +356,23 @@ export function mountShellApp({
 
   const releaseWindowInteraction = (): void => {
     releaseWindowDrag();
+    if (typeof isChromeWindowActive === "function" && isChromeWindowActive()) {
+      return;
+    }
     releaseWindowPointer();
   };
 
   const onPointerOut = (event: PointerEvent): void => {
-    if (event.relatedTarget === null) {
-      releaseWindowPointer();
+    if (event.relatedTarget !== null) {
+      return;
     }
+    if (
+      isPointInsideWindowViewport(view, event.clientX, event.clientY) &&
+      isPointInsideVisibleEdgePanel(frame, event.clientX, event.clientY)
+    ) {
+      return;
+    }
+    releaseWindowPointer();
   };
 
   const removeDomListeners = (): void => {

@@ -138,9 +138,13 @@ Requirements:
   window-leave hide delays plus a 400–10,000 ms default temporary reveal; these
   values reconfigure only the existing tracked hide/programmatic timers;
 - standard `PointerEvent.relatedTarget` distinguishes a non-null destination
-  inside the Firefox window from a null window exit, with the existing window
-  `blur` listener as a stuck-pointer fallback; this classification is neither
-  persisted nor logged;
+  inside the Firefox window from a null window exit; a null destination is a
+  window leave only when the coordinates are also outside the window viewport
+  or outside every visible owned panel. Window `blur` skips pointer-hold
+  release while `Services.focus.activeWindow` is still this chrome window, so
+  focusing a selected `<browser>` is not treated as leaving Firefox. The
+  privileged callback returns only a boolean; chrome window objects, focus
+  owners, and coordinates are neither persisted nor logged;
 - shortcut-tip duration is bounded to 0–10,000 ms and controls only the
   existing frame-scoped CSS animation; zero omits the nonessential footer and
   creates no JavaScript timer;

@@ -6,6 +6,12 @@ import {
 } from "../../app/edge-surfaces";
 import type { MessageKey } from "../../app/i18n";
 import type { SidePanelRole } from "../../app/toolbar-widgets-state";
+import {
+  isIgnoredOwnedSurfacePointerOut,
+  isPointInsideElement,
+  isPointInsideVisibleEdgePanel,
+  isPointInsideWindowViewport,
+} from "./pointer-geometry";
 export {
   captureWindowDragPosition,
   createWindowDragCandidateController,
@@ -16,6 +22,12 @@ export type {
   WindowDragCandidateController,
   WindowDragPosition,
 } from "./window-drag";
+export {
+  isIgnoredOwnedSurfacePointerOut,
+  isPointInsideElement,
+  isPointInsideVisibleEdgePanel,
+  isPointInsideWindowViewport,
+};
 
 export const pointerActivatesEdge = ({
   edge,
@@ -50,6 +62,20 @@ export const crossedPointerBoundary = (event: PointerEvent): boolean => {
     boundary instanceof Node &&
     (!(related instanceof Node) || !boundary.contains(related))
   );
+};
+
+export const resolveOwnedSurfacePointerOutRelease = (
+  event: PointerEvent,
+  root: HTMLElement | null | undefined,
+  panel: HTMLElement | null | undefined,
+): "inside-window" | "outside-window" | null => {
+  if (
+    !crossedPointerBoundary(event) ||
+    isIgnoredOwnedSurfacePointerOut(event, root, panel)
+  ) {
+    return null;
+  }
+  return event.relatedTarget === null ? "outside-window" : "inside-window";
 };
 
 export const isInteractivePointerTarget = (

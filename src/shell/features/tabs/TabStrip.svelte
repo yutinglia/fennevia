@@ -40,6 +40,7 @@
   } from "../../../app/tab-strip";
   import FirefoxIcon, { type FirefoxIconName } from "../../FirefoxIcon.svelte";
   import { createTabStripLabels } from "../../locale-ui";
+  import { isPointInsideElement } from "../../runtime/pointer-geometry";
 
   type Props = Readonly<{
     edge: "left" | "right";
@@ -249,6 +250,20 @@
     rovingTabId = resolveRovingTabId(currentTabs.tabs);
   };
 
+  const blurOwnedSurfaceControl = () => {
+    const surfaceRoot = tabStripElement?.closest<HTMLElement>(
+      "[data-fennevia-surface-root]",
+    );
+    const activeElement = surfaceRoot?.ownerDocument.activeElement;
+    if (
+      activeElement instanceof HTMLElement &&
+      surfaceRoot?.contains(activeElement)
+    ) {
+      activeElement.blur();
+    }
+    releaseSurfaceFocus();
+  };
+
   const restoreFocusAfterClose = (tabId: string | null) => {
     cancelDelayedFocus();
     reportAsyncError(focusTab(tabId));
@@ -297,6 +312,7 @@
 
   const restorePointerInteractionAfterMutation = async (
     interaction: PointerInteraction,
+    releaseIfOutside = true,
   ) => {
     await tick();
     const surfacePanel = tabStripElement?.closest<HTMLElement>(
@@ -305,22 +321,19 @@
     if (!surfacePanel?.isConnected) {
       return;
     }
-    const pointerTarget = surfacePanel.ownerDocument.elementFromPoint(
-      interaction.clientX,
-      interaction.clientY,
-    );
-    if (pointerTarget && surfacePanel.contains(pointerTarget)) {
+    if (
+      !releaseIfOutside ||
+      isPointInsideElement(
+        surfacePanel,
+        interaction.clientX,
+        interaction.clientY,
+      )
+    ) {
       props.shell.setPointerHeld(props.edge, true);
     } else {
       props.shell.releasePointer(props.edge, "inside-window");
     }
-    if (
-      interaction.focusTarget?.isConnected &&
-      surfacePanel.ownerDocument.activeElement === interaction.focusTarget
-    ) {
-      interaction.focusTarget.blur();
-    }
-    releaseSurfaceFocus();
+    blurOwnedSurfaceControl();
   };
 
   const selectTab = (
@@ -335,15 +348,22 @@
     props.tabs.select(tabId);
     reportAsyncError(
       pointerInteraction
-        ? restorePointerInteractionAfterMutation(pointerInteraction)
+        ? restorePointerInteractionAfterMutation(pointerInteraction, false)
         : focusTab(tabId),
     );
   };
 
-  const openTab = () => {
+  const openTab = (pointerInteraction: PointerInteraction | null = null) => {
     cancelDelayedFocus();
+    if (pointerInteraction) {
+      props.shell.setPointerHeld(props.edge, true);
+    }
     const openedTabId = props.tabs.open({ selected: true });
-    reportAsyncError(focusTab(openedTabId));
+    reportAsyncError(
+      pointerInteraction
+        ? restorePointerInteractionAfterMutation(pointerInteraction, false)
+        : focusTab(openedTabId),
+    );
   };
 
   const closeTab = (
@@ -475,11 +495,16 @@
   };
 
   const setDragHold = (active: boolean) => {
-    if (dragHoldActive === active) {
+    if (active) {
+      dragHoldActive = true;
+      props.shell.setPointerHeld(props.edge, true);
       return;
     }
-    dragHoldActive = active;
-    props.shell.setPointerHeld(props.edge, active);
+    if (!dragHoldActive) {
+      return;
+    }
+    dragHoldActive = false;
+    props.shell.setPointerHeld(props.edge, false);
   };
 
   const clearDragGeometry = () => {
@@ -501,13 +526,19 @@
     dropMarkerTop = null;
   };
 
-  function clearTabDrag() {
+  function clearTabDrag(retainPointer = false) {
     draggingTabId = null;
     sourceDragId = null;
     externalDrag = null;
     clearDropTarget();
     clearDragGeometry();
-    setDragHold(false);
+    if (retainPointer) {
+      dragHoldActive = false;
+      props.shell.setPointerHeld(props.edge, true);
+    } else {
+      setDragHold(false);
+    }
+    blurOwnedSurfaceControl();
   }
 
   const captureDragGeometry = (
@@ -644,10 +675,18 @@
       ? Math.min(100_000, Math.max(-100_000, coordinate))
       : 0;
 
+  const finishOwnedTabDrag = () => {
+    clearTabDrag(true);
+    reportAsyncError(
+      tick().then(() => {
+        props.shell.setPointerHeld(props.edge, true);
+      }),
+    );
+  };
+
   const endSourceDrag = (event?: DragEvent, cancelled = false) => {
     const dragId = sourceDragId;
     if (!dragId) {
-      clearTabDrag();
       return;
     }
     const firefoxTransfer = event?.dataTransfer as
@@ -665,7 +704,7 @@
     } catch (error) {
       props.onFatalError(error);
     } finally {
-      clearTabDrag();
+      finishOwnedTabDrag();
     }
   };
 
@@ -706,6 +745,7 @@
         }
       }
       setDragHold(true);
+      blurOwnedSurfaceControl();
     } catch (error) {
       event.preventDefault();
       if (dragId) {
@@ -841,6 +881,7 @@
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = "move";
     }
+    setDragHold(true);
     holdExternalDrag(drag);
     draggedTabTranslateY =
       drag.source === "same-window" && draggingTabId
@@ -901,19 +942,19 @@
       if (drag.source === "same-window") {
         endSourceDrag(undefined, true);
       } else {
-        clearTabDrag();
+        finishOwnedTabDrag();
       }
       return;
     }
     try {
       const result = props.tabs.dropDrag(targetIndex);
-      clearTabDrag();
+      finishOwnedTabDrag();
       announceTabMove(result.tabId, result.index);
     } catch (error) {
       if (drag.source === "same-window") {
         endSourceDrag(undefined, true);
       } else {
-        clearTabDrag();
+        finishOwnedTabDrag();
       }
       props.onFatalError(error);
     }
@@ -965,7 +1006,9 @@
       }
       holdExternalDrag(drag);
       if (isInsideProjectFrame(event)) {
-        if (!isInsideTabList(event)) {
+        if (isInsideTabList(event)) {
+          setDragHold(true);
+        } else {
           clearDropTarget();
         }
         return;
@@ -1342,7 +1385,7 @@
     aria-label={t("tab.newTabAria")}
     class="fennevia-control fennevia-tab-strip__new"
     data-fennevia-action="new-tab"
-    onclick={openTab}
+    onclick={(event) => openTab(pointerInteractionFromMouseEvent(event))}
     title={t("tab.newTab")}
     type="button"
   >

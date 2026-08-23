@@ -94,6 +94,7 @@ export type MountOptions = Readonly<{
   locale?: BrowserLocaleBridge;
   windowControls: BrowserWindowControlsBridge;
   windowKind: ShellWindowKind;
+  isChromeWindowActive?: () => boolean;
 }>;
 
 export type HealthOptions = Readonly<{

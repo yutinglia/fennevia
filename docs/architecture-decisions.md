@@ -2027,7 +2027,8 @@ fail-closed behavior instead of replacing monoliths with discovery mechanisms.
 
 **Status:** Accepted after the project owner's explicit configuration request
 (2026-08-21); amends ADR-026 and ADR-045 without relaxing keyboard, focus,
-popup-hold, fail-open, privacy, or native-UI ownership rules
+popup-hold, fail-open, privacy, or native-UI ownership rules; ADR-067 refines
+only the in-viewport in-panel null-`relatedTarget` window-leave classification
 
 Extend the existing `fennevia.customize.style` version-1 JSON object with five
 optional bounded integers:
@@ -2827,9 +2828,11 @@ in `docs/research/firefox-154-tabbar-interaction-follow-up.md`.
 
 ## ADR-066: Reconcile shell click candidates and make fallback visuals exclusive
 
-**Status:** Accepted for the project-owner follow-up on 2026-08-23; Firefox 154
-source review, focused automation, and complete ordinary automation are
-complete; the real Firefox interaction/visual matrix remains pending
+**Status:** Accepted for the project-owner follow-up on 2026-08-23; partially
+superseded by ADR-067 for post-select hit testing and null-`relatedTarget`
+window-leave classification; Firefox 154 source review, focused automation, and
+complete ordinary automation are complete; the real Firefox interaction/visual
+matrix remains pending
 
 Refine ADR-065 without changing the #31 shared edge owner. A neutral primary
 press on owned top/side/bottom chrome starts a transient drag candidate and
@@ -2890,3 +2893,54 @@ Fennevia reads only those bounded current-tab properties and independently
 authors its XHTML/CSS. Exact report evidence, rejected alternatives, privacy
 review, validation, and pending real-browser rows are recorded in
 `docs/research/firefox-154-shell-interaction-second-follow-up.md`.
+
+## ADR-067: Keep pointer-origin tab select held until a geometric pointer exit
+
+**Status:** Accepted for the project-owner correction on 2026-08-23; Firefox 154
+source review and focused automation are the required gate; the real Firefox
+select/hide, new-tab highlight, second-window, and private-window matrix remains
+pending
+
+Refine ADR-066 without adding a second hide timer, edge trigger, or
+window-global flag. Pointer-origin tab select still acquires the configured
+edge's shared pointer hold before `gBrowser.selectedTab` mutates. After one
+Svelte tick it reasserts that hold and never releases from the select
+reconciliation path. Close still uses a post-render geometric panel hit test
+(`getBoundingClientRect`) rather than `elementFromPoint` to retain or release
+the same hold. Pointer-origin restore blurs any remaining owned surface
+control so a leftover focus hold cannot pin the panel, then drops the stale
+focus/keyboard hold.
+
+A surface or window `pointerout` with `relatedTarget === null` is a window leave
+only when the event coordinates are outside the window viewport or outside every
+visible owned edge panel. Coordinates still inside both the viewport and a
+visible panel are chrome-to-content or mutation noise and must not clear the
+pointer hold. A non-null `relatedTarget` is an in-window leave even when those
+coordinates remain on the panel edge, because a real `pointerout` reports the
+last point inside the element. Applying the same geometry skip to every
+in-panel `pointerout` blocked auto-hide. Negative `clientX`/`clientY` at a
+flush panel edge is a real window leave: the panel border box can still contain
+that point, so the skip also requires the point to remain inside
+`window.innerWidth`/`innerHeight`. Pointer-origin restore blurs any remaining
+owned surface control so a leftover `focus-held` state cannot outrank a later
+pointer leave. Window `blur` still uses the shared window-leave delay only when
+this Firefox chrome window is no longer OS-active
+(`Services.focus.activeWindow` is not this window). Focusing the selected
+chrome `<browser>` after a tab select keeps this window active and must not
+clear the pointer hold. Pointer-origin tab drag reasserts the shared pointer
+hold on every `dragover` while the pointer remains in the tab list, blurs
+leftover surface focus, and does not trust `dragend` client coordinates. After
+a source drag it reasserts that hold, including one Svelte tick later, so a
+trailing post-drag `pointerout` cannot hide the panel. New-tab highlight and
+its explicit programmatic reveal stay coupled at 500 ms.
+
+**Reasoning:** ADR-066's `elementFromPoint` restore and the null-`relatedTarget`
+window-leave rule treated Firefox tab-select focus handoff as an exit. The
+clicked tab row does not leave the pointer, so releasing that hold hid the
+panel while the mouse was still inside it. Geometric bounds, an explicit
+select-path retain, viewport-gated null-`relatedTarget` classification, and
+OS-active window `blur` filtering remove those false exits without pinning the
+panel on focus or blocking a real leave at a flush panel edge.
+Exact report evidence, rejected alternatives, privacy review, validation, and
+pending real-browser rows are recorded in
+`docs/research/firefox-154-tab-select-pointer-hold.md`.
