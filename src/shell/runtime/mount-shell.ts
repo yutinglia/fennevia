@@ -83,7 +83,12 @@ import {
   type AddressPopupCoordinator,
 } from "./address-popup-coordinator";
 import { createSurfaceFocusCoordinator } from "./surface-focus";
-import { resolveWindowDragEdge } from "./edge-app-interactions";
+import {
+  captureWindowDragPosition,
+  hasWindowDragMoved,
+  resolveWindowDragEdge,
+  type WindowDragPosition,
+} from "./edge-app-interactions";
 
 const WINDOW_DRAG_START_EVENT = "draggableregionleftmousedown";
 
@@ -123,6 +128,9 @@ export function mountShellApp({
   let disposed = false;
   let environmentObserver: MutationObserver | undefined;
   let listenersRegistered = false;
+  let windowDragCandidate:
+    | Readonly<{ edge: EdgeName | null; position: WindowDragPosition }>
+    | undefined;
   let addressPopupCoordinator: AddressPopupCoordinator | undefined;
   let bookmarksState: BrowserBookmarksStateAdapter | undefined;
   let browserToolsState: BrowserToolsStateAdapter | undefined;
@@ -303,17 +311,42 @@ export function mountShellApp({
     if (disposed) {
       return;
     }
-    shell.setWindowDragActive(
-      true,
-      resolveWindowDragEdge(event.target) ?? undefined,
-    );
+    const snapshot = shell.snapshot();
+    const edge =
+      resolveWindowDragEdge(event.target) ??
+      edgeNames.find(
+        (candidate) => snapshot.surfaces[candidate].holds.pointer,
+      ) ??
+      null;
+    windowDragCandidate = Object.freeze({
+      edge,
+      position: captureWindowDragPosition(event, view),
+    });
+    shell.setWindowDragActive(true, edge ?? undefined);
   };
 
-  const releaseWindowDrag = (): void => {
+  const releaseWindowDrag = (event?: Event, cancelled = false): void => {
     if (disposed) {
       return;
     }
+    const candidate = windowDragCandidate;
+    windowDragCandidate = undefined;
     shell.setWindowDragActive(false);
+    if (
+      candidate &&
+      candidate.edge &&
+      !cancelled &&
+      !hasWindowDragMoved(
+        candidate.position,
+        captureWindowDragPosition(event, view),
+      )
+    ) {
+      shell.releasePointer(candidate.edge, "inside-window");
+    }
+  };
+
+  const cancelWindowDrag = (event: Event): void => {
+    releaseWindowDrag(event, true);
   };
 
   const releaseWindowInteraction = (): void => {
@@ -336,7 +369,7 @@ export function mountShellApp({
     view.removeEventListener("keydown", onKeyDown, KEYBOARD_LISTENER_OPTIONS);
     view.removeEventListener("mouseup", releaseWindowDrag);
     view.removeEventListener("pointerout", onPointerOut);
-    view.removeEventListener("pointercancel", releaseWindowDrag);
+    view.removeEventListener("pointercancel", cancelWindowDrag);
     view.removeEventListener("pointerup", releaseWindowDrag);
     view.removeEventListener("blur", releaseWindowInteraction);
     frame.removeEventListener("focusin", surfaceFocus.onFrameFocusIn);
@@ -719,7 +752,7 @@ export function mountShellApp({
     view.addEventListener("keydown", onKeyDown, KEYBOARD_LISTENER_OPTIONS);
     view.addEventListener("mouseup", releaseWindowDrag);
     view.addEventListener("pointerout", onPointerOut);
-    view.addEventListener("pointercancel", releaseWindowDrag);
+    view.addEventListener("pointercancel", cancelWindowDrag);
     view.addEventListener("pointerup", releaseWindowDrag);
     view.addEventListener("blur", releaseWindowInteraction);
     frame.addEventListener("focusin", surfaceFocus.onFrameFocusIn);

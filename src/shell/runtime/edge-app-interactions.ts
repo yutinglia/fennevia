@@ -6,6 +6,16 @@ import {
 } from "../../app/edge-surfaces";
 import type { MessageKey } from "../../app/i18n";
 import type { SidePanelRole } from "../../app/toolbar-widgets-state";
+export {
+  captureWindowDragPosition,
+  createWindowDragCandidateController,
+  hasWindowDragMoved,
+  minimumWindowDragDistanceCssPixels,
+} from "./window-drag";
+export type {
+  WindowDragCandidateController,
+  WindowDragPosition,
+} from "./window-drag";
 
 export const pointerActivatesEdge = ({
   edge,

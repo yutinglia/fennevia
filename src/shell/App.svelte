@@ -102,8 +102,20 @@
   );
   let customizeOpen = $state(false);
   let panelElement: HTMLDivElement | undefined = $state();
-  let panelDragCandidate = false;
   let focusReleaseTimer: DelayedFocusTimer | undefined;
+
+  const panelWindowDrag = edgeUi.createWindowDragCandidateController({
+    canStart: (event) =>
+      event.button === 0 && !edgeUi.isInteractivePointerTarget(event.target),
+    getView: () => panelElement?.ownerDocument.defaultView,
+    onEnd: (clickOnly) => {
+      props.shell.setWindowDragActive(false);
+      if (clickOnly) {
+        props.shell.releasePointer(props.edge, "inside-window");
+      }
+    },
+    onStart: () => props.shell.setWindowDragActive(true, props.edge),
+  });
 
   let surfaceLabel = $derived(t(edgeUi.labelKey(props.edge, sidePanelRole)));
 
@@ -221,22 +233,6 @@
     }
   };
 
-  const handlePanelPointerDown = (event: PointerEvent) => {
-    panelDragCandidate =
-      event.button === 0 && !edgeUi.isInteractivePointerTarget(event.target);
-    if (panelDragCandidate) {
-      props.shell.setWindowDragActive(true, props.edge);
-    }
-  };
-
-  const handlePanelPointerRelease = () => {
-    if (!panelDragCandidate) {
-      return;
-    }
-    panelDragCandidate = false;
-    props.shell.setWindowDragActive(false);
-  };
-
   const cancelFocusRelease = () => {
     const timer = focusReleaseTimer;
     if (!timer) {
@@ -287,9 +283,7 @@
 
   onDestroy(() => {
     cancelFocusRelease();
-    if (panelDragCandidate) {
-      props.shell.setWindowDragActive(false);
-    }
+    panelWindowDrag.dispose();
     clearToolbarWidgetDrag();
     props.onDisposed(props.edge);
   });
@@ -334,10 +328,10 @@
     class="fennevia-edge-panel"
     data-fennevia-edge-panel={props.edge}
     inert={!surfaceState.visible}
-    onpointercancel={handlePanelPointerRelease}
-    onpointerdown={handlePanelPointerDown}
+    onpointercancel={(event) => panelWindowDrag.release(event, true)}
+    onpointerdown={panelWindowDrag.begin}
     onpointerover={handlePanelPointerOver}
-    onpointerup={handlePanelPointerRelease}
+    onpointerup={panelWindowDrag.release}
     role="region"
   >
     {#if (props.edge === "left" || props.edge === "right") && sidePanelRole === "tabs" && props.addressPopup && props.navigation && props.tabs}

@@ -303,7 +303,10 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /aria-selected=\{tab\.selected\}/u);
   assert.match(source, /tabindex=\{rovingTabId === tab\.id \? 0 : -1\}/u);
   assert.match(source, /use:setFaviconSource=\{tab\.faviconUrl\}/u);
+  assert.match(source, /node\.hidden = true;[\s\S]*?node\.src = nextSource/u);
+  assert.match(source, /node\.onload = \(\) => \{\s*node\.hidden = false;/u);
   assert.match(source, /node\.src = nextSource/u);
+  assert.match(source, /node\.onload = null/u);
   assert.match(source, /node\.onerror = null/u);
   assert.doesNotMatch(source, /src=\{tab\.faviconUrl\}|onerror=\{/u);
   assert.match(source, /onfocusin=\{handleRootFocusIn\}/u);
@@ -349,10 +352,14 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /handleTabAuxClick/u);
   assert.match(
     tabSource,
-    /const restorePointerInteractionAfterMutation = async \([\s\S]*?await tick\(\);[\s\S]*?elementFromPoint\([\s\S]*?surfacePanel\.contains\(pointerTarget\)[\s\S]*?setPointerHeld\(props\.edge, true\);[\s\S]*?activeElement === interaction\.focusTarget[\s\S]*?interaction\.focusTarget\.blur\(\);[\s\S]*?releaseSurfaceFocus\(\);/u,
+    /const restorePointerInteractionAfterMutation = async \([\s\S]*?await tick\(\);[\s\S]*?elementFromPoint\([\s\S]*?surfacePanel\.contains\(pointerTarget\)[\s\S]*?setPointerHeld\(props\.edge, true\);[\s\S]*?releasePointer\(props\.edge, "inside-window"\);[\s\S]*?activeElement === interaction\.focusTarget[\s\S]*?interaction\.focusTarget\.blur\(\);[\s\S]*?releaseSurfaceFocus\(\);/u,
   );
   assert.match(tabSource, /pointerType === "touch"/u);
   assert.match(tabSource, /event\.button !== 0 && event\.button !== 1/u);
+  assert.match(
+    tabSource,
+    /event\.detail === 0[\s\S]*?event\.clientX === 0[\s\S]*?event\.clientY === 0/u,
+  );
   assert.equal(
     tabSource.match(
       /closeTab\([^\n]+, pointerInteractionFromMouseEvent\(event\)\)/gu,
@@ -362,6 +369,14 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(
     tabSource,
     /selectTab\(tab\.id, pointerInteractionFromMouseEvent\(event\)\)/u,
+  );
+  assert.match(
+    tabSource,
+    /const selectTab = \([\s\S]*?if \(pointerInteraction\) \{\s*props\.shell\.setPointerHeld\(props\.edge, true\);[\s\S]*?props\.tabs\.select\(tabId\);/u,
+  );
+  assert.match(
+    tabSource,
+    /const closeTab = \([\s\S]*?if \(pointerInteraction\) \{\s*props\.shell\.setPointerHeld\(props\.edge, true\);[\s\S]*?props\.tabs\.close\(tabId\);/u,
   );
   assert.match(
     tabSource,
@@ -382,20 +397,32 @@ test("the component uses semantic sibling controls and property-safe rendering o
     /data-fennevia-container-color=\{tab\.container\?\.color\}/u,
   );
   assert.match(
+    tabSource,
+    /class="fennevia-tab-strip__container-bar"[\s\S]*?data-fennevia-container-bar=\{tab\.container\.color\}/u,
+  );
+  assert.match(
     styles,
     /data-fennevia-container-color="blue"[\s\S]*?--fennevia-tab-container-color: #37adff;/u,
   );
   assert.match(
     styles,
-    /data-fennevia-container-color\]::before \{[\s\S]*?inset-inline-start: 0;[\s\S]*?inline-size: 3px;[\s\S]*?background: var\(--fennevia-tab-container-color\);/u,
+    /\.fennevia-tab-strip__container-bar \{[\s\S]*?inset-inline-start: 0;[\s\S]*?inline-size: 3px;[\s\S]*?background: var\(--fennevia-tab-container-color\);/u,
   );
   assert.match(
     styles,
-    /forced-colors: active[\s\S]*?data-fennevia-container-color\]::before[\s\S]*?background: Highlight;/u,
+    /forced-colors: active[\s\S]*?\.fennevia-tab-strip__container-bar[\s\S]*?background: Highlight;/u,
   );
   assert.doesNotMatch(
     styles,
-    /data-fennevia-container-color(?:="[^"]+")?\][^}]*box-shadow:/u,
+    /data-fennevia-container-color(?:="[^"]+")?\][^}]*box-shadow:|data-fennevia-container-color\]::before/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__favicon:not\(\[hidden\]\)\s*\+ \.fennevia-tab-strip__fallback \{\s*visibility: hidden;/u,
+  );
+  assert.match(
+    tabSource,
+    /class="fennevia-tab-strip__favicon"[\s\S]*?class="fennevia-tab-strip__fallback"/u,
   );
   assert.match(source, /findTabMoveIndex/u);
   assert.match(source, /resolveTabDropIndex/u);

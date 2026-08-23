@@ -102,7 +102,7 @@ Completed:
   executable Firefox stable-update rehearsal.
 
 Current fast branch enhancement under ADR-037, ADR-042, ADR-044 through
-ADR-047, and ADR-054 through ADR-064:
+ADR-047, and ADR-054 through ADR-066:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   Firefox tools, and progressive disclosure;
@@ -124,7 +124,8 @@ ADR-047, and ADR-054 through ADR-064:
   external detach;
 - retained Firefox caption controls styled in place as a compact island;
 - a 7px browser-content gutter, gap-free edge contact, transient shortcut hint,
-  panel drag regions, and `top > sides > bottom` collision priority;
+  click-versus-drag reconciliation for panel drag regions, and
+  `top > sides > bottom` collision priority;
 - 2px decorative gutter lights whose top/bottom sources independently select
   selected-tab loading, active download aggregate, or off, without a second
   trigger or filename text;
@@ -434,12 +435,15 @@ Evidence: ADR-026 and
 - native tab strip retained.
 
 Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063,
+ADR-065, ADR-066,
 `docs/research/firefox-153-tab-strip.md`, and
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,
 `docs/research/firefox-153-154-native-shell-icons.md`,
-`docs/research/firefox-154-tab-drag-spatial-preview.md`, plus ADR-055 and
-`docs/research/firefox-153-154-panel-context-actions.md`.
+`docs/research/firefox-154-tab-drag-spatial-preview.md`,
+`docs/research/firefox-154-tabbar-interaction-follow-up.md`, and
+`docs/research/firefox-154-shell-interaction-second-follow-up.md`, plus ADR-055
+and `docs/research/firefox-153-154-panel-context-actions.md`.
 
 #### Top primary controls — complete (#12)
 

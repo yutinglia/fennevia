@@ -200,10 +200,7 @@
     cancelHighlight();
     highlightedTabIds = tabIds;
     try {
-      props.shell.revealProgrammatically(
-        props.edge,
-        newTabHighlightDurationMs,
-      );
+      props.shell.revealProgrammatically(props.edge, newTabHighlightDurationMs);
     } catch (error) {
       props.onFatalError(error);
       return;
@@ -281,7 +278,10 @@
     if (
       pointerType === "touch" ||
       (event.button !== 0 && event.button !== 1) ||
-      (event.button === 0 && event.detail === 0) ||
+      (event.button === 0 &&
+        event.detail === 0 &&
+        event.clientX === 0 &&
+        event.clientY === 0) ||
       !Number.isFinite(event.clientX) ||
       !Number.isFinite(event.clientY)
     ) {
@@ -311,6 +311,8 @@
     );
     if (pointerTarget && surfacePanel.contains(pointerTarget)) {
       props.shell.setPointerHeld(props.edge, true);
+    } else {
+      props.shell.releasePointer(props.edge, "inside-window");
     }
     if (
       interaction.focusTarget?.isConnected &&
@@ -327,6 +329,9 @@
   ) => {
     cancelDelayedFocus();
     rovingTabId = tabId;
+    if (pointerInteraction) {
+      props.shell.setPointerHeld(props.edge, true);
+    }
     props.tabs.select(tabId);
     reportAsyncError(
       pointerInteraction
@@ -348,6 +353,9 @@
     cancelDelayedFocus();
     const focusTarget = findCloseFocusTarget(currentTabs.tabs, tabId);
     rovingTabId = focusTarget;
+    if (pointerInteraction) {
+      props.shell.setPointerHeld(props.edge, true);
+    }
     props.tabs.close(tabId);
     if (pointerInteraction) {
       reportAsyncError(
@@ -1034,8 +1042,12 @@
 
   const setFaviconSource = (node: HTMLImageElement, source: string) => {
     const assign = (nextSource: string) => {
-      node.hidden = false;
+      node.hidden = true;
+      node.removeAttribute("src");
       node.src = nextSource;
+    };
+    node.onload = () => {
+      node.hidden = false;
     };
     node.onerror = () => {
       node.hidden = true;
@@ -1044,7 +1056,9 @@
     assign(source);
     return {
       destroy() {
+        node.onload = null;
         node.onerror = null;
+        node.hidden = true;
         node.removeAttribute("src");
       },
       update: assign,
@@ -1152,6 +1166,13 @@
           ? `translateY(${draggedTabTranslateY}px)`
           : undefined}
       >
+        {#if tab.container}
+          <span
+            aria-hidden="true"
+            class="fennevia-tab-strip__container-bar"
+            data-fennevia-container-bar={tab.container.color}
+          ></span>
+        {/if}
         <button
           use:registerTabButton={tab.id}
           aria-busy={tab.loading}
@@ -1177,9 +1198,6 @@
           type="button"
         >
           <span class="fennevia-tab-strip__visual" aria-hidden="true">
-            <span class="fennevia-tab-strip__fallback">
-              <FirefoxIcon name="tab" />
-            </span>
             {#if tab.faviconUrl}
               <img
                 use:setFaviconSource={tab.faviconUrl}
@@ -1190,6 +1208,9 @@
                 referrerpolicy="no-referrer"
               />
             {/if}
+            <span class="fennevia-tab-strip__fallback">
+              <FirefoxIcon name="tab" />
+            </span>
             {#if tab.loading}
               <span class="fennevia-tab-strip__loading">
                 <FirefoxIcon name="loading" />

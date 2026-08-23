@@ -126,6 +126,7 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     customizeStyle,
     customizePanels,
     edgeInteractions,
+    windowDrag,
     health,
   ] = await Promise.all([
     readProjectFile("src/shell/App.svelte"),
@@ -139,24 +140,28 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
       "src/shell/features/customize/CustomizePanelsSection.svelte",
     ),
     readProjectFile("src/shell/runtime/edge-app-interactions.ts"),
+    readProjectFile("src/shell/runtime/window-drag.ts"),
     readProjectFile("src/shell/runtime/health.ts"),
   ]);
   assert.match(
     component,
-    /handlePanelPointerDown[\s\S]*?setWindowDragActive\(true, props\.edge\)/u,
+    /createWindowDragCandidateController[\s\S]*?onStart: \(\) => props\.shell\.setWindowDragActive\(true, props\.edge\)/u,
   );
-  assert.match(component, /handlePanelPointerRelease/u);
   assert.match(
     component,
-    /handlePanelPointerRelease[\s\S]*?setWindowDragActive\(false\)/u,
+    /onEnd: \(clickOnly\) => \{[\s\S]*?setWindowDragActive\(false\)[\s\S]*?if \(clickOnly\)[\s\S]*?releasePointer\(props\.edge, "inside-window"\)/u,
   );
   assert.match(component, /handleTriggerPointer[\s\S]*?pointerActivatesEdge/u);
   assert.match(
     edgeInteractions,
     /pointerActivatesEdge[\s\S]*?event\.buttons !== 0/u,
   );
-  assert.match(component, /onpointercancel=\{handlePanelPointerRelease\}/u);
-  assert.match(component, /onpointerup=\{handlePanelPointerRelease\}/u);
+  assert.match(
+    component,
+    /onpointercancel=\{\(event\) => panelWindowDrag\.release\(event, true\)\}/u,
+  );
+  assert.match(component, /onpointerdown=\{panelWindowDrag\.begin\}/u);
+  assert.match(component, /onpointerup=\{panelWindowDrag\.release\}/u);
   assert.match(component, /<EdgeProgressLight/u);
   assert.match(progressLight, /resolveLoadProgressLight/u);
   assert.match(progressLight, /resolveDownloadProgressLight/u);
@@ -218,7 +223,11 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(mountShell, /shell\.setWindowDragActive\(false\)/u);
   assert.match(
     mountShell,
-    /resolveWindowDragEdge\(event\.target\) \?\? undefined/u,
+    /resolveWindowDragEdge\(event\.target\) \?\?[\s\S]*?snapshot\.surfaces\[candidate\]\.holds\.pointer/u,
+  );
+  assert.match(
+    mountShell,
+    /hasWindowDragMoved\([\s\S]*?shell\.releasePointer\(candidate\.edge, "inside-window"\)/u,
   );
   assert.match(
     mountShell,
@@ -243,7 +252,12 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.match(
     mountShell,
-    /addEventListener\("pointercancel", releaseWindowDrag\)/u,
+    /addEventListener\("pointercancel", cancelWindowDrag\)/u,
+  );
+  assert.match(windowDrag, /minimumWindowDragDistanceCssPixels = 4/u);
+  assert.match(
+    windowDrag,
+    /createWindowDragCandidateController[\s\S]*?hasWindowDragMoved[\s\S]*?onEnd/u,
   );
   assert.match(customizePanels, /value="tabs-left"/u);
   assert.match(customizePanels, /value="tabs-right"/u);

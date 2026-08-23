@@ -319,8 +319,12 @@
 
   const setFaviconSource = (node: HTMLImageElement, source: string) => {
     const assign = (nextSource: string): void => {
-      node.hidden = false;
+      node.hidden = true;
+      node.removeAttribute("src");
       node.src = nextSource;
+    };
+    node.onload = () => {
+      node.hidden = false;
     };
     node.onerror = () => {
       node.hidden = true;
@@ -329,7 +333,9 @@
     assign(source);
     return {
       destroy() {
+        node.onload = null;
         node.onerror = null;
+        node.hidden = true;
         node.removeAttribute("src");
       },
       update: assign,
@@ -658,15 +664,6 @@
                 type="button"
               >
                 <span aria-hidden="true" class="fennevia-bookmarks__item-icon">
-                  <span class="fennevia-bookmarks__item-fallback">
-                    <FirefoxIcon
-                      name={row.node.kind === "folder"
-                        ? row.expanded
-                          ? "arrow-down"
-                          : "arrow-right"
-                        : "bookmark-item"}
-                    />
-                  </span>
                   {#if row.node.kind === "bookmark" && row.node.faviconUrl}
                     <img
                       use:setFaviconSource={row.node.faviconUrl}
@@ -677,6 +674,15 @@
                       referrerpolicy="no-referrer"
                     />
                   {/if}
+                  <span class="fennevia-bookmarks__item-fallback">
+                    <FirefoxIcon
+                      name={row.node.kind === "folder"
+                        ? row.expanded
+                          ? "arrow-down"
+                          : "arrow-right"
+                        : "bookmark-item"}
+                    />
+                  </span>
                 </span>
                 <span class="fennevia-bookmarks__item-title" dir="auto">
                   {displayTitle(row.node)}

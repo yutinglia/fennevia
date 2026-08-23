@@ -121,14 +121,18 @@ pointer strips stay on the #31 trigger contract. Their default is 12px, and
 ADR-054 lets the existing bounded customize preference select 6–24 CSS px so
 the hit target can remain distinct from the visible gutter without becoming an
 unbounded content overlay. On Windows, Firefox's chrome-only
-`draggableregionleftmousedown` event starts a pointer-only native-window-drag
-lock in the same shared controller. Firefox's synthesized mouse-up after its
-hidden move loop, plus pointer-up/cancel and blur fallbacks, releases that lock.
-This coordinates all four independent roots so dragging neutral left/right
-chrome cannot reveal the top edge. The controller retains the source edge's
-pointer hold through Firefox's native move loop, ignores source pointer-release
-noise until the lock ends, and then leaves the ordinary delayed-hide path to
-the next real pointer exit; keyboard, focus, and popup holds are not suppressed.
+`draggableregionleftmousedown` event and the owned-panel pointer fallback start
+one transient native-window-drag candidate in the same shared controller. The
+candidate retains its source edge's pointer hold, suppresses every other edge,
+and records only pointer/window screen positions. Firefox's synthesized
+mouse-up after its hidden move loop, plus pointer-up/cancel and blur fallbacks,
+ends the lock. A changed window position or at least 4 CSS px of pointer motion
+confirms a drag and leaves the source held until the next real pointer exit. A
+stationary or sub-threshold press is a click instead, so release explicitly
+enters the existing inside-window delayed-hide path. This coordinates all four
+independent roots so dragging neutral left/right chrome cannot reveal the top
+edge without letting a click-only candidate leave a permanent hold. Keyboard,
+focus, popup, and programmatic holds are not suppressed.
 
 Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
 owns the only root-state transition table: `created -> mounted -> healthy ->
@@ -274,13 +278,18 @@ read-only states inside that button, while pin, mute, and close remain sibling
 controls in fixed trailing grid areas. Titles
 stay bounded text, favicon values use a strict internal/raster allowlist with a
 property-only image and explicit fallback, and no browsing value enters logs or
-diagnostics. Container identity uses the existing closed color enum on an
-independent logical-inline-start pseudo-element instead of sharing a row shadow
-with drag presentation; forced colors replaces it with `Highlight`. After a
-pointer select or close mutates native and Svelte tab state, the strip performs
-one post-render hit test against its configured panel, reacquires the shared
-pointer hold only while the pointer is still inside, and clears action-induced
-focus after verifying that no surviving surface control owns it. Keyboard and
+diagnostics. The image stays hidden until its current source loads; an adjacent
+selector then hides the fallback, so a real favicon and fallback never paint in
+the same icon slot. Container identity uses the existing closed color enum on
+an explicit project-owned logical-inline-start element instead of sharing a row
+shadow with drag presentation; forced-colors mode replaces it with `Highlight`.
+The optional identity service remains the primary color/label source, while a
+positive native `userContextId` plus Firefox's closed `identity-color-*` tab
+class preserves the color when that service cannot load. Before a pointer
+select or close mutates native and Svelte tab state, the strip synchronously
+acquires the configured edge's shared pointer hold. One post-render hit test
+then explicitly retains or releases that hold and clears action-induced focus
+after verifying that no surviving surface control owns it. Keyboard and
 touch paths retain deterministic roving-focus recovery. The bridge synchronously
 activates Firefox's lazy tab-menu Fluent
 IDs before opening and acquires a NativeUi handoff token for the popup lifetime,
@@ -320,8 +329,10 @@ Current source and runtime evidence is in
 `docs/research/firefox-153-154-panel-context-actions.md`,
 `docs/research/firefox-153-154-native-shell-icons.md`,
 `docs/research/firefox-154-tab-drag-spatial-preview.md`,
-`docs/research/firefox-154-cross-window-tab-drag.md`, ADR-024, ADR-025, and
-ADR-041/ADR-058/ADR-060/ADR-062/ADR-063.
+`docs/research/firefox-154-cross-window-tab-drag.md`,
+`docs/research/firefox-154-tabbar-interaction-follow-up.md`, and
+`docs/research/firefox-154-shell-interaction-second-follow-up.md`, plus ADR-024,
+ADR-025, and ADR-041/ADR-058/ADR-060/ADR-062/ADR-063/ADR-065/ADR-066.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather
@@ -636,9 +647,11 @@ surviving item or selected root. No second trigger, timer, popup stack,
 bookmark-management action, or native Places DOM is added. ADR-064 queries only
 Firefox's existing Places favicon cache through the optional
 `getFaviconForPage()` boundary, converts no remote URL into a project request,
-and assigns only bounded raster data URIs to an image property with the fixed
-packaged icon behind it. `favicon-changed` collapses to the existing bounded
-all-scope refresh signal without exposing its URL. Middle click uses the
+and assigns only bounded raster data URIs to an image property. The image
+remains hidden until load succeeds and then hides its adjacent fixed packaged
+fallback, so failure/loading and success have exactly one visible icon owner.
+`favicon-changed` collapses to the existing bounded all-scope refresh signal
+without exposing its URL. Middle click uses the
 existing `new-tab` disposition and suppresses browser autoscroll.
 
 Issue #32 replaces the bottom placeholder with `DownloadsPanel.svelte`. It uses
@@ -726,8 +739,9 @@ The issue #14 bookmark panel likewise uses only frame-rooted project classes and
 the existing responsive side-edge bounds. ADR-060 renders its exact folder,
 bookmark fallback, disclosure, and external-open meanings with packaged icons.
 ADR-064 layers only a sanitized Firefox-cached raster favicon through
-property-only `img.src`, keeps the packaged fallback behind failed/missing
-values, uses text/property bindings for hostile titles, and provides
+property-only `img.src`, keeps the packaged fallback visible only for
+loading/failed/missing values, uses text/property bindings for hostile titles,
+and provides
 solid, reduced-motion, and forced-colors states through the shared shell
 contract. No selector targets Firefox's bookmarks toolbar, sidebar, Library,
 popup set, or Places views from component CSS. ADR-032 independently owns the

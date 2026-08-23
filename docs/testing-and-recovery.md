@@ -278,6 +278,10 @@ For each edge:
   pointer reveal until the matching mouse/pointer release, ignores source
   pointer-out noise during the native move loop, and then hides only after a
   real post-drag pointer exit without revealing top after a side drag;
+- pressing and releasing the same neutral draggable chrome without moving the
+  window, including sub-threshold pointer jitter, ends the drag candidate and
+  schedules the one shared inside-window hide path instead of retaining a stale
+  pointer hold;
 - `Escape` priority and dismissal;
 - focus transfer into the surface;
 - focus restoration to the prior valid target;
@@ -326,7 +330,9 @@ Validate:
 - one tab, many tabs, and bounded vertical overflow, with New tab following the
   last tab and remaining pinned below the scroller when the list overflows;
 - exact native order;
-- selected, title, safe favicon/fallback, pinned, and loading state;
+- selected, title, safe favicon/fallback, pinned, and loading state; a loaded
+  favicon hides the adjacent fallback while loading/error restores only the
+  fallback, so both layers are never visible together;
 - native and custom select/new/close/pin/unpin used alternately;
 - after the tab surface's initial snapshot, a newly opened tab briefly reveals
   its configured edge and highlights only the new tab IDs;
@@ -342,8 +348,9 @@ Validate:
   delayed-hide path on a real pointer exit; keyboard and touch activation do
   not synthesize a pointer hold and retain deterministic focus recovery;
 - mouse-initiated tab selection remains held across native/Svelte selection
-  reconciliation until the pointer actually exits, without leaving the clicked
-  tab focused as a second persistent hold;
+  reconciliation because the pointer hold is acquired before the native action
+  and explicitly retained after the DOM update while the pointer remains in the
+  panel, without leaving the clicked tab focused as a second persistent hold;
 - drag reorder and `Ctrl+Shift+ArrowUp/Down` within the pinned partition;
 - pointer-aligned full-row browser drag image, an actual source row that follows
   the pointer without transform lag while inside its strip, stable pre-transform
@@ -372,8 +379,10 @@ Validate:
   text-symbol placeholder icons;
 - native `loading.svg` while `busy`, with no second project rotation and its
   packaged reduced-motion behavior left intact;
-- container color stripe on an independent logical-inline-start layer, bounded
-  label, and visible forced-colors fallback; private windows omit container;
+- container color stripe as an explicit independent logical-inline-start
+  element, bounded label, optional identity-service lookup with the closed
+  native `identity-color-*` class fallback, and visible forced-colors fallback;
+  private windows omit container;
 - attention indicator;
 - deterministic close-focus recovery;
 - selected item remains reachable;
@@ -423,7 +432,8 @@ Evidence:
 - `docs/research/firefox-153-154-native-shell-icons.md`;
 - `docs/research/firefox-154-tab-drag-spatial-preview.md`;
 - `docs/research/firefox-154-cross-window-tab-drag.md`;
-- `docs/research/firefox-154-tabbar-interaction-follow-up.md`.
+- `docs/research/firefox-154-tabbar-interaction-follow-up.md`;
+- `docs/research/firefox-154-shell-interaction-second-follow-up.md`.
 
 ADR-062 focused validation passed the complete `npm run verify` gate with
 318/318 Node tests, 87.49% line coverage, 95.11% function coverage, all fixed
@@ -467,6 +477,16 @@ PowerShell 7 suites, dependency audit, deterministic frontend/bridge builds,
 and 14/14 accepted production artifacts. The fixed suite also passed under
 Windows PowerShell 5.1. Real Firefox results are not inferred from this
 automation.
+
+ADR-066 adds click-versus-drag candidate reconciliation, synchronous pointer
+retention before tab mutation, explicit container markup with a closed native
+class fallback, and mutually exclusive favicon/fallback layers. Its focused
+edge/tab/bookmark/frontend suite passed 56/56. The complete `npm run verify`
+gate passed with 356/356 Node tests, 87.51% line coverage, 79.75% branch
+coverage, 95.32% function coverage, all fixed PowerShell 7 suites, dependency
+audit, deterministic frontend/bridge builds, and 14/14 accepted production
+artifacts. The fixed suite also passed under Windows PowerShell 5.1. Real
+Firefox results are not inferred from this automation.
 
 Issue #60 real Firefox rows (middle-click, audio/mute, container stripe,
 background-tab native menu, drag/keyboard reorder, menu popup hold, private
@@ -718,7 +738,9 @@ Validate:
 - middle-click new-tab opening with `mousedown` autoscroll prevention;
 - Firefox-cached favicon success, missing/throw fallback, malformed/non-raster/
   oversized rejection, DPI width bounds, property-only image assignment, and
-  no URL-bearing diagnostics;
+  no URL-bearing diagnostics; the sanitized image stays hidden until load and
+  then exclusively replaces its adjacent packaged fallback, while error
+  restores the fallback without a second painted layer;
 - unsupported/special scheme policy;
 - observer event bursts without continuous polling;
 - keyboard traversal and focus stability during live changes;
@@ -757,6 +779,10 @@ capabilities and `favicon-changed` all-scope refresh. Its real Firefox cache,
 theme/DPI, failure-fallback, middle-click, and swapped-side rows are `not run`;
 see
 `docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.
+
+ADR-066 adds the shared exclusive-load presentation contract to both bookmark
+and tab favicons. Its focused state/static tests pass; the real Firefox cached
+favicon, theme/DPI, swapped-side, and failure-fallback rows remain `not run`.
 
 ### 6.6 Bottom downloads — validated for #32
 
