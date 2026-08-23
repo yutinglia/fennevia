@@ -82,7 +82,7 @@
   .fennevia-tab-strip__item[data-fennevia-just-opened="true"] {
   background: color-mix(in srgb, var(--fennevia-focus-color) 22%, transparent);
   border-color: var(--fennevia-focus-color);
-  animation: fennevia-tab-opened 1600ms var(--fennevia-motion-easing) both;
+  animation: fennevia-tab-opened 500ms var(--fennevia-motion-easing) both;
 }
 
 @keyframes fennevia-tab-opened {

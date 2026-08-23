@@ -41,6 +41,7 @@ const tabDragCoordinator = createFirefoxTabDragCoordinator({
 });
 
 const EDGE_NAMES = Object.freeze(["top", "left", "right", "bottom"]);
+
 const HOST_IDS = Object.freeze({
   frame: "fennevia-shell-frame-host",
   top: "fennevia-shell-top-host",
@@ -1472,6 +1473,13 @@ const mountProductionShell = ({
       locale: localeApi,
       windowControls: windowControlsBridge.windowControls,
       windowKind,
+      isChromeWindowActive() {
+        try {
+          return Services.focus.activeWindow === browserWindow;
+        } catch {
+          return false;
+        }
+      },
       onFatalError(error) {
         requestFallback(
           annotateShellLifecycleError(error, {
@@ -1609,7 +1617,7 @@ const mountProductionShell = ({
     try {
       disposeApp();
     } catch (error) {
-      firstError = error;
+      firstError ??= error;
     }
     productionShellByFrame.delete(frame);
     try {

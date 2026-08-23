@@ -16,6 +16,11 @@ export type {
   WindowDragCandidateController,
   WindowDragPosition,
 } from "./window-drag";
+export {
+  isPointInsideElement,
+  isPointInsideVisibleEdgePanel,
+  isPointInsideWindowViewport,
+} from "./pointer-geometry";
 
 export const pointerActivatesEdge = ({
   edge,

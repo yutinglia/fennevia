@@ -2,7 +2,7 @@ import type { TabSnapshot } from "./tab-state";
 import { interpolate } from "./i18n.ts";
 
 export const untitledTabLabel = "Untitled tab";
-export const newTabHighlightDurationMs = 1_600;
+export const newTabHighlightDurationMs = 500;
 
 export type TabStripLabels = Readonly<{
   allowMedia: string;

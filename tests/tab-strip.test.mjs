@@ -219,7 +219,7 @@ test("opened-tab detection ignores reorder and reports only new ids", () => {
   assert.deepEqual(findOpenedTabIds([first], [first, opened]), ["opened"]);
   assert.deepEqual(findOpenedTabIds([first, second], [second, first]), []);
   assert.deepEqual(findOpenedTabIds([], [first, second]), ["first", "second"]);
-  assert.equal(newTabHighlightDurationMs, 1_600);
+  assert.equal(newTabHighlightDurationMs, 500);
 });
 
 test("keyboard navigation wraps, respects direction, and produces explicit actions", () => {
@@ -352,7 +352,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /handleTabAuxClick/u);
   assert.match(
     tabSource,
-    /const restorePointerInteractionAfterMutation = async \([\s\S]*?await tick\(\);[\s\S]*?elementFromPoint\([\s\S]*?surfacePanel\.contains\(pointerTarget\)[\s\S]*?setPointerHeld\(props\.edge, true\);[\s\S]*?releasePointer\(props\.edge, "inside-window"\);[\s\S]*?activeElement === interaction\.focusTarget[\s\S]*?interaction\.focusTarget\.blur\(\);[\s\S]*?releaseSurfaceFocus\(\);/u,
+    /const restorePointerInteractionAfterMutation = async \([\s\S]*?releaseIfOutside = true,[\s\S]*?await tick\(\);[\s\S]*?isPointInsideElement\([\s\S]*?setPointerHeld\(props\.edge, true\);[\s\S]*?releasePointer\(props\.edge, "inside-window"\);[\s\S]*?blurOwnedSurfaceControl\(\);/u,
   );
   assert.match(tabSource, /pointerType === "touch"/u);
   assert.match(tabSource, /event\.button !== 0 && event\.button !== 1/u);
@@ -369,6 +369,19 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(
     tabSource,
     /selectTab\(tab\.id, pointerInteractionFromMouseEvent\(event\)\)/u,
+  );
+  assert.match(tabSource, /from "\.\.\/\.\.\/runtime\/pointer-geometry"/u);
+  assert.match(
+    tabSource,
+    /restorePointerInteractionAfterMutation\(pointerInteraction, false\)/u,
+  );
+  assert.match(
+    tabSource,
+    /onclick=\{\(event\) =>\s*openTab\(pointerInteractionFromMouseEvent\(event\)\)\}/u,
+  );
+  assert.match(
+    tabSource,
+    /const openTab = \([\s\S]*?if \(pointerInteraction\) \{\s*props\.shell\.setPointerHeld\(props\.edge, true\);[\s\S]*?props\.tabs\.open\(\{ selected: true \}\)/u,
   );
   assert.match(
     tabSource,
@@ -471,7 +484,34 @@ test("the component uses semantic sibling controls and property-safe rendering o
   );
   assert.match(source, /ondragleave=\{handleTabListDragLeave\}/u);
   assert.match(source, /clearTabDrag\(\)/u);
-  assert.match(source, /setPointerHeld\(props\.edge, active\)/u);
+  assert.match(
+    tabSource,
+    /function clearTabDrag\(retainPointer = false\) \{[\s\S]*?if \(retainPointer\) \{[\s\S]*?dragHoldActive = false;[\s\S]*?setPointerHeld\(props\.edge, true\);[\s\S]*?setDragHold\(false\);[\s\S]*?blurOwnedSurfaceControl\(\);/u,
+  );
+  assert.match(
+    tabSource,
+    /const finishOwnedTabDrag = \(\) => \{[\s\S]*?clearTabDrag\(true\);[\s\S]*?tick\(\)\.then\(\(\) => \{[\s\S]*?setPointerHeld\(props\.edge, true\);/u,
+  );
+  assert.match(
+    tabSource,
+    /const endSourceDrag = \([\s\S]*?if \(!dragId\) \{\s*return;[\s\S]*?finally \{\s*finishOwnedTabDrag\(\);/u,
+  );
+  assert.match(
+    tabSource,
+    /const result = props\.tabs\.dropDrag\(targetIndex\);[\s\S]*?finishOwnedTabDrag\(\);[\s\S]*?announceTabMove/u,
+  );
+  assert.match(
+    tabSource,
+    /setDragHold\(true\);\s*blurOwnedSurfaceControl\(\);/u,
+  );
+  assert.match(
+    tabSource,
+    /const setDragHold = \(active: boolean\) => \{[\s\S]*?if \(active\) \{[\s\S]*?dragHoldActive = true;[\s\S]*?setPointerHeld\(props\.edge, true\);/u,
+  );
+  assert.match(
+    tabSource,
+    /const handleTabListDragOver = \(event: DragEvent\) => \{[\s\S]*?setDragHold\(true\);[\s\S]*?holdExternalDrag\(drag\);/u,
+  );
   assert.match(
     tabSource,
     /props\.tabs\.subscribe[\s\S]*?sourceDragId !== null[\s\S]*?isDraggedTabMissing\(nextState\.tabs, draggingTabId\)[\s\S]*?if \(sourceTabLeftWindow\) \{\s*clearTabDrag\(\);\s*reportAsyncError\(tick\(\)\.then\(releaseSurfaceFocus\)\);/u,
@@ -485,7 +525,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
   );
   assert.match(
     tabSource,
-    /handleWindowDragOver[\s\S]*?isInsideProjectFrame\(event\)[\s\S]*?!isInsideTabList\(event\)[\s\S]*?clearDropTarget\(\)[\s\S]*?previewExternalDragAtEnd\(drag\)/u,
+    /handleWindowDragOver[\s\S]*?isInsideProjectFrame\(event\)[\s\S]*?isInsideTabList\(event\)[\s\S]*?setDragHold\(true\)[\s\S]*?clearDropTarget\(\)[\s\S]*?previewExternalDragAtEnd\(drag\)/u,
   );
   assert.match(
     tabSource,
@@ -633,7 +673,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
     [
       "fennevia-progress-light-pulse 1.4s ease-in-out infinite alternate",
       "fennevia-shortcut-tip var(--fennevia-shortcut-tip-duration) ease-out both",
-      "fennevia-tab-opened 1600ms var(--fennevia-motion-easing) both",
+      "fennevia-tab-opened 500ms var(--fennevia-motion-easing) both",
       "fennevia-shortcut-tip-reduced-motion var(--fennevia-shortcut-tip-duration) step-end both",
       "none",
       "none",

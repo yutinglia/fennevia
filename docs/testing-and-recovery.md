@@ -334,8 +334,9 @@ Validate:
   favicon hides the adjacent fallback while loading/error restores only the
   fallback, so both layers are never visible together;
 - native and custom select/new/close/pin/unpin used alternately;
-- after the tab surface's initial snapshot, a newly opened tab briefly reveals
-  its configured edge and highlights only the new tab IDs;
+- after the tab surface's initial snapshot, a newly opened tab reveals its
+  configured edge for 500 ms and highlights only the new tab IDs for the same
+  duration;
 - selected/background/last-tab close behavior;
 - rapid event/action bursts;
 - long, empty, emoji, markup-like, Unicode, and bidirectional titles;
@@ -347,10 +348,12 @@ Validate:
   removed, clears an action-induced stale focus hold, and still uses the shared
   delayed-hide path on a real pointer exit; keyboard and touch activation do
   not synthesize a pointer hold and retain deterministic focus recovery;
-- mouse-initiated tab selection remains held across native/Svelte selection
-  reconciliation because the pointer hold is acquired before the native action
-  and explicitly retained after the DOM update while the pointer remains in the
-  panel, without leaving the clicked tab focused as a second persistent hold;
+- mouse-initiated tab selection remains held until a real pointer exit because
+  the pointer hold is acquired before the native action, reasserted after the
+  DOM update, and not released from the select path, from a still-active
+  chrome window `blur`, or from a null-`relatedTarget` `pointerout` whose
+  coordinates remain inside both the window viewport and the visible panel,
+  without leaving the clicked tab focused as a second persistent hold;
 - drag reorder and `Ctrl+Shift+ArrowUp/Down` within the pinned partition;
 - pointer-aligned full-row browser drag image, an actual source row that follows
   the pointer without transform lag while inside its strip, stable pre-transform
@@ -433,7 +436,8 @@ Evidence:
 - `docs/research/firefox-154-tab-drag-spatial-preview.md`;
 - `docs/research/firefox-154-cross-window-tab-drag.md`;
 - `docs/research/firefox-154-tabbar-interaction-follow-up.md`;
-- `docs/research/firefox-154-shell-interaction-second-follow-up.md`.
+- `docs/research/firefox-154-shell-interaction-second-follow-up.md`;
+- `docs/research/firefox-154-tab-select-pointer-hold.md`.
 
 ADR-062 focused validation passed the complete `npm run verify` gate with
 318/318 Node tests, 87.49% line coverage, 95.11% function coverage, all fixed
@@ -488,6 +492,18 @@ audit, deterministic frontend/bridge builds, and 14/14 accepted production
 artifacts. The fixed suite also passed under Windows PowerShell 5.1. Real
 Firefox results are not inferred from this automation.
 
+ADR-067 keeps pointer-origin tab select on the shared pointer hold until a
+geometric exit, classifies only in-viewport in-panel null-`relatedTarget`
+pointerouts as chrome noise rather than a window leave, ignores window `blur`
+while `Services.focus.activeWindow` is still this chrome window, reasserts the
+pointer hold during in-list tab drag and after source `dragend` without using
+those event coordinates, blurs leftover surface focus after a
+pointer-origin restore or tab drag, and shortens the coupled new-tab highlight
+and programmatic reveal to 500 ms. Focused tab/edge-interaction/frontend
+automation passed 22/22 and `npm run typecheck` reported zero diagnostics.
+Real Firefox select-while-hovering, new-tab highlight timing, second-window,
+and private-window rows: **not run**.
+
 Issue #60 real Firefox rows (middle-click, audio/mute, container stripe,
 background-tab native menu, drag/keyboard reorder, menu popup hold, private
 window without containers, fail-open, disposal during menu/drag): **not run**.
@@ -530,7 +546,7 @@ Validate:
 - one physical middle click invokes exactly one navigation action even if
   browser chrome dispatches both `click` and `auxclick`;
 - New Tab;
-- configured-tab-edge programmatic reveal and a short new-tab highlight after
+- configured-tab-edge programmatic reveal and a 500 ms new-tab highlight after
   `TabOpen`;
 - selected-browser handoff;
 - redirects, same-document navigation, error pages, and tab close;

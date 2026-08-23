@@ -287,10 +287,18 @@ The optional identity service remains the primary color/label source, while a
 positive native `userContextId` plus Firefox's closed `identity-color-*` tab
 class preserves the color when that service cannot load. Before a pointer
 select or close mutates native and Svelte tab state, the strip synchronously
-acquires the configured edge's shared pointer hold. One post-render hit test
-then explicitly retains or releases that hold and clears action-induced focus
-after verifying that no surviving surface control owns it. Keyboard and
-touch paths retain deterministic roving-focus recovery. The bridge synchronously
+acquires the configured edge's shared pointer hold. Pointer select reasserts
+that hold after the Svelte mutation and does not release it from the select
+path; close uses the panel border box to retain or release the same hold.
+A null-`relatedTarget` `pointerout` whose coordinates remain inside both the
+window viewport and a visible owned panel is not a window leave. Coordinates
+outside the viewport, including a negative `clientX` at a flush left panel
+edge, are a window leave even when they still intersect the panel border box.
+A non-null destination is an in-window leave even when those coordinates remain
+on the panel edge. Window `blur` releases the pointer hold only when this
+chrome window is no longer OS-active. Pointer-origin restore
+blurs any remaining owned surface control so action-induced focus cannot pin the
+panel. Keyboard and touch paths retain deterministic roving-focus recovery. The bridge synchronously
 activates Firefox's lazy tab-menu Fluent
 IDs before opening and acquires a NativeUi handoff token for the popup lifetime,
 so the real native-tab trigger neither produces blank static labels nor reveals
@@ -330,9 +338,10 @@ Current source and runtime evidence is in
 `docs/research/firefox-153-154-native-shell-icons.md`,
 `docs/research/firefox-154-tab-drag-spatial-preview.md`,
 `docs/research/firefox-154-cross-window-tab-drag.md`,
-`docs/research/firefox-154-tabbar-interaction-follow-up.md`, and
-`docs/research/firefox-154-shell-interaction-second-follow-up.md`, plus ADR-024,
-ADR-025, and ADR-041/ADR-058/ADR-060/ADR-062/ADR-063/ADR-065/ADR-066.
+`docs/research/firefox-154-tabbar-interaction-follow-up.md`,
+`docs/research/firefox-154-shell-interaction-second-follow-up.md`, and
+`docs/research/firefox-154-tab-select-pointer-hold.md`, plus ADR-024,
+ADR-025, and ADR-041/ADR-058/ADR-060/ADR-062/ADR-063/ADR-065/ADR-066/ADR-067.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather
@@ -513,8 +522,9 @@ ADR-054 extends that same version-1 style object with bounded in-window and
 window-leave hide delays, temporary programmatic-reveal duration, shortcut-tip
 duration, and edge-trigger size. Existing values without those fields receive
 the 300 ms, 800 ms, 1,200 ms, 600 ms, and 12 CSS px defaults. A non-null
-`PointerEvent.relatedTarget` selects the in-window delay; a null target or the
-existing window-blur fallback selects the window-leave delay. A zero
+`PointerEvent.relatedTarget` selects the in-window delay; a null target or a
+true window-deactivation `blur` selects the window-leave delay. Focusing the
+selected chrome `<browser>` after a tab select is not a window leave. A zero
 shortcut-tip duration omits the footer from rendering. Those two prefs are versioned
 JSON with a 16 KiB cap and fail safe to defaults. ADR-064 adds a third strict
 version-1 `fennevia.customize.panels` preference containing only the complete
@@ -587,8 +597,8 @@ new tab. Primary `click` and middle-button `auxclick` are disjoint at the
 component boundary, so one physical middle click invokes the Firefox command
 exactly once. New-tab remains on the configured tab strip, not
 the top row. Opening a tab after the configured tab surface has its initial snapshot
-uses the shared programmatic reveal to show that edge briefly and
-highlights only the newly added tab IDs.
+uses the shared programmatic reveal to show that edge for 500 ms and
+highlights only the newly added tab IDs for the same duration.
 Shortcut hints float outside each revealed panel. Edge panels have no title chrome or hide buttons; they close
 through `Escape`, pointer leave, and the documented keyboard shortcut.
 Responsive rules progressively hide secondary controls

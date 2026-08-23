@@ -60,6 +60,17 @@ automation passes; the real Firefox visual, input-modality, drag, theme, and
 second/private-window rows remain pending in
 `docs/testing-and-recovery.md` §§6.1 and 6.5.
 
+ADR-067 refines that pointer-select hold so a click on a tab item does not hide
+the configured side surface while the pointer remains inside the panel. It
+replaces `elementFromPoint` restore-and-release with a geometric panel hit test,
+ignores only in-viewport in-panel null-`relatedTarget` pointerouts, ignores
+window `blur` while this chrome window remains OS-active, reasserts the pointer
+hold during in-list tab drag and after source `dragend` without using those
+event coordinates, blurs leftover surface focus after a
+pointer-origin restore or tab drag, and shortens the coupled
+new-tab highlight/reveal to 500 ms. Focused automation is required; the real
+Firefox rows remain pending.
+
 ADR-044 (#64) adds the read-only nav-bar widget mirror in the top surface with
 owner-approved rendering of extension identity data. ADR-045 deprecates that
 mirror as the only widget source and adds a Fennevia-owned customize mode with

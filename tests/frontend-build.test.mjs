@@ -127,6 +127,7 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     customizePanels,
     edgeInteractions,
     windowDrag,
+    pointerGeometry,
     health,
   ] = await Promise.all([
     readProjectFile("src/shell/App.svelte"),
@@ -141,6 +142,7 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     ),
     readProjectFile("src/shell/runtime/edge-app-interactions.ts"),
     readProjectFile("src/shell/runtime/window-drag.ts"),
+    readProjectFile("src/shell/runtime/pointer-geometry.ts"),
     readProjectFile("src/shell/runtime/health.ts"),
   ]);
   assert.match(
@@ -231,8 +233,9 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.match(
     mountShell,
-    /releaseWindowInteraction[\s\S]*?releaseWindowDrag\(\);\s*releaseWindowPointer\(\);/u,
+    /releaseWindowInteraction[\s\S]*?releaseWindowDrag\(\);[\s\S]*?typeof isChromeWindowActive === "function" && isChromeWindowActive\(\)[\s\S]*?releaseWindowPointer\(\);/u,
   );
+  assert.match(mountShell, /isChromeWindowActive/u);
   assert.match(
     edgeInteractions,
     /resolveWindowDragEdge[\s\S]*?closest<HTMLElement>\("\[data-fennevia-edge-panel\]"\)[\s\S]*?isEdgeName\(edge\)/u,
@@ -284,6 +287,34 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(
     component,
     /event\.relatedTarget === null \? "outside-window" : "inside-window"/u,
+  );
+  assert.match(
+    component,
+    /event\.relatedTarget === null &&[\s\S]*?isPointInsideWindowViewport\([\s\S]*?isPointInsideElement\(\s*rootElement,[\s\S]*?isPointInsideElement\(\s*panelElement,/u,
+  );
+  assert.match(
+    mountShell,
+    /isPointInsideWindowViewport\(view, event\.clientX, event\.clientY\) &&[\s\S]*?isPointInsideVisibleEdgePanel\(frame, event\.clientX, event\.clientY\)/u,
+  );
+  assert.match(
+    edgeInteractions,
+    /export \{[\s\S]*?isPointInsideElement,[\s\S]*?isPointInsideVisibleEdgePanel,[\s\S]*?isPointInsideWindowViewport,[\s\S]*?\} from "\.\/pointer-geometry"/u,
+  );
+  assert.match(
+    pointerGeometry,
+    /export const isPointInsideElement = [\s\S]*?getBoundingClientRect\(\)/u,
+  );
+  assert.match(
+    pointerGeometry,
+    /export const isPointInsideVisibleEdgePanel = [\s\S]*?data-fennevia-visible='true'/u,
+  );
+  assert.match(
+    pointerGeometry,
+    /export const isPointInsideWindowViewport = [\s\S]*?clientX >= 0[\s\S]*?clientX <= view\.innerWidth/u,
+  );
+  assert.match(
+    mountShell,
+    /import \{[\s\S]*?isPointInsideVisibleEdgePanel,[\s\S]*?isPointInsideWindowViewport,[\s\S]*?\} from "\.\/pointer-geometry"/u,
   );
   assert.match(css, /data-fennevia-customize-active/u);
   assert.match(css, /--fennevia-bottom-clearance/u);
@@ -647,6 +678,10 @@ test("the privileged adapter loads only the fixed per-window bundle", async () =
   assert.match(runtime, /Reflect\.deleteProperty\(/u);
   assert.doesNotMatch(runtime, /ShellApp\.sys\.mjs|import\s*\(/u);
 
+  assert.match(
+    runtime,
+    /isChromeWindowActive\(\) \{[\s\S]*?Services\.focus\.activeWindow === browserWindow/u,
+  );
   assert.match(runtime, /createFirefoxLocaleBridge/u);
   assert.match(runtime, /createStaticLocaleBridge/u);
   assert.match(runtime, /getShellChromeHostLabel/u);

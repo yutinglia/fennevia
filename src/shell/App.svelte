@@ -225,12 +225,25 @@
   };
 
   const handleSurfacePointerOut = (event: PointerEvent) => {
-    if (edgeUi.crossedPointerBoundary(event)) {
-      props.shell.releasePointer(
-        props.edge,
-        event.relatedTarget === null ? "outside-window" : "inside-window",
-      );
+    if (!edgeUi.crossedPointerBoundary(event)) {
+      return;
     }
+    if (
+      event.relatedTarget === null &&
+      edgeUi.isPointInsideWindowViewport(
+        rootElement?.ownerDocument.defaultView,
+        event.clientX,
+        event.clientY,
+      ) &&
+      (edgeUi.isPointInsideElement(rootElement, event.clientX, event.clientY) ||
+        edgeUi.isPointInsideElement(panelElement, event.clientX, event.clientY))
+    ) {
+      return;
+    }
+    props.shell.releasePointer(
+      props.edge,
+      event.relatedTarget === null ? "outside-window" : "inside-window",
+    );
   };
 
   const cancelFocusRelease = () => {
