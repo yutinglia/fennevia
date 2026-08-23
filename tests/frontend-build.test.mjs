@@ -286,11 +286,15 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(component, /shortcutHintDuration !== 0/u);
   assert.match(
     component,
-    /event\.relatedTarget === null \? "outside-window" : "inside-window"/u,
+    /resolveOwnedSurfacePointerOutRelease\(\s*event,\s*rootElement,\s*panelElement/u,
   );
   assert.match(
-    component,
-    /event\.relatedTarget === null &&[\s\S]*?isPointInsideWindowViewport\([\s\S]*?isPointInsideElement\(\s*rootElement,[\s\S]*?isPointInsideElement\(\s*panelElement,/u,
+    edgeInteractions,
+    /resolveOwnedSurfacePointerOutRelease[\s\S]*?crossedPointerBoundary\(event\)[\s\S]*?isIgnoredOwnedSurfacePointerOut\(event, root, panel\)[\s\S]*?event\.relatedTarget === null \? "outside-window" : "inside-window"/u,
+  );
+  assert.match(
+    pointerGeometry,
+    /export const isIgnoredOwnedSurfacePointerOut = [\s\S]*?relatedTarget === null[\s\S]*?isPointInsideWindowViewport\([\s\S]*?isPointInsideElement\(root,[\s\S]*?isPointInsideElement\(panel,/u,
   );
   assert.match(
     mountShell,
@@ -298,7 +302,7 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.match(
     edgeInteractions,
-    /export \{[\s\S]*?isPointInsideElement,[\s\S]*?isPointInsideVisibleEdgePanel,[\s\S]*?isPointInsideWindowViewport,[\s\S]*?\} from "\.\/pointer-geometry"/u,
+    /export \{[\s\S]*?isIgnoredOwnedSurfacePointerOut,[\s\S]*?isPointInsideElement,[\s\S]*?isPointInsideVisibleEdgePanel,[\s\S]*?isPointInsideWindowViewport,[\s\S]*?\}/u,
   );
   assert.match(
     pointerGeometry,

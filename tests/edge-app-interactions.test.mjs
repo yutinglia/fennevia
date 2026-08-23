@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  isIgnoredOwnedSurfacePointerOut,
   isPointInsideElement,
   isPointInsideVisibleEdgePanel,
   isPointInsideWindowViewport,
@@ -150,4 +151,54 @@ test("window viewport checks reject coordinates outside the inner box", () => {
   assert.equal(isPointInsideWindowViewport(view, 1201, 40), false);
   assert.equal(isPointInsideWindowViewport(null, 40, 40), false);
   assert.equal(isPointInsideWindowViewport(view, Number.NaN, 40), false);
+});
+
+test("owned-surface pointerout skips only in-viewport null destinations", () => {
+  const view = { innerHeight: 800, innerWidth: 1200 };
+  const root = {
+    ...boxAt(0, 0, 80, 400),
+    ownerDocument: { defaultView: view },
+  };
+  const panel = boxAt(0, 0, 80, 400);
+
+  assert.equal(
+    isIgnoredOwnedSurfacePointerOut(
+      { clientX: 40, clientY: 40, relatedTarget: null },
+      root,
+      panel,
+    ),
+    true,
+  );
+  assert.equal(
+    isIgnoredOwnedSurfacePointerOut(
+      { clientX: 40, clientY: 40, relatedTarget: {} },
+      root,
+      panel,
+    ),
+    false,
+  );
+  assert.equal(
+    isIgnoredOwnedSurfacePointerOut(
+      { clientX: -2, clientY: 40, relatedTarget: null },
+      root,
+      panel,
+    ),
+    false,
+  );
+  assert.equal(
+    isIgnoredOwnedSurfacePointerOut(
+      { clientX: 200, clientY: 40, relatedTarget: null },
+      root,
+      panel,
+    ),
+    false,
+  );
+  assert.equal(
+    isIgnoredOwnedSurfacePointerOut(
+      { clientX: 100, clientY: 40, relatedTarget: null },
+      root,
+      boxAt(80, 0, 160, 400),
+    ),
+    true,
+  );
 });

@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0
 
+type PointerGeometryBox = {
+  getBoundingClientRect(): DOMRectReadOnly;
+};
+
+type PointerGeometryView = {
+  innerHeight: number;
+  innerWidth: number;
+};
+
 export const isPointInsideElement = (
-  element: { getBoundingClientRect(): DOMRectReadOnly } | null | undefined,
+  element: PointerGeometryBox | null | undefined,
   clientX: number,
   clientY: number,
 ): boolean => {
@@ -23,7 +32,7 @@ export const isPointInsideElement = (
 };
 
 export const isPointInsideWindowViewport = (
-  view: { innerHeight: number; innerWidth: number } | null | undefined,
+  view: PointerGeometryView | null | undefined,
   clientX: number,
   clientY: number,
 ): boolean => {
@@ -43,6 +52,31 @@ export const isPointInsideWindowViewport = (
     clientY <= view.innerHeight
   );
 };
+
+export const isIgnoredOwnedSurfacePointerOut = (
+  event: Readonly<{
+    clientX: number;
+    clientY: number;
+    relatedTarget: unknown;
+  }>,
+  root:
+    | (PointerGeometryBox & {
+        ownerDocument?: {
+          defaultView: PointerGeometryView | null;
+        };
+      })
+    | null
+    | undefined,
+  panel: PointerGeometryBox | null | undefined,
+): boolean =>
+  event.relatedTarget === null &&
+  isPointInsideWindowViewport(
+    root?.ownerDocument?.defaultView,
+    event.clientX,
+    event.clientY,
+  ) &&
+  (isPointInsideElement(root, event.clientX, event.clientY) ||
+    isPointInsideElement(panel, event.clientX, event.clientY));
 
 export const isPointInsideVisibleEdgePanel = (
   root: ParentNode | null | undefined,
