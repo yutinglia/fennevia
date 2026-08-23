@@ -56,7 +56,8 @@ Completed:
 - #9 and #10: enforceable Firefox boundary and typed tab-state bridge;
 - #11: accessible custom tab UI, now rendered vertically in the left edge;
 - #60: left-edge flat-list native parity (audio, container, attention,
-  middle-click close, drag/keyboard reorder, Firefox `#tabContextMenu`);
+  middle-click close, middle-click/accel related New Tab, drag/keyboard reorder,
+  Firefox `#tabContextMenu`);
 - ADR-058: fixed tab action placement and closed camera/microphone/screen-sharing
   plus crash indicators; ADR-060 supersedes its custom icon-animation clause;
 - ADR-060: exact native-equivalent shell controls use installed Firefox icon

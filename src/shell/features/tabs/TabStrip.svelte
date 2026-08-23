@@ -14,6 +14,7 @@
     createBrowserTabsState,
     type BrowserTabsState,
     type BrowserTabsStateAdapter,
+    type OpenTabOptions,
     type TabDragSnapshot,
     type TabSharingState,
     type TabSnapshot,
@@ -353,17 +354,48 @@
     );
   };
 
-  const openTab = (pointerInteraction: PointerInteraction | null = null) => {
+  const openTab = (
+    pointerInteraction: PointerInteraction | null = null,
+    options: OpenTabOptions = { selected: true },
+  ) => {
     cancelDelayedFocus();
     if (pointerInteraction) {
       props.shell.setPointerHeld(props.edge, true);
     }
-    const openedTabId = props.tabs.open({ selected: true });
+    const selected = options.selected ?? true;
+    const openedTabId = props.tabs.open(
+      options.relatedToCurrent === true
+        ? { relatedToCurrent: true, selected }
+        : { selected },
+    );
     reportAsyncError(
       pointerInteraction
         ? restorePointerInteractionAfterMutation(pointerInteraction, false)
         : focusTab(openedTabId),
     );
+  };
+
+  const handleNewTabClick = (event: MouseEvent) => {
+    if (event.button !== 0) {
+      return;
+    }
+    const relatedToCurrent = event.ctrlKey || event.metaKey;
+    openTab(pointerInteractionFromMouseEvent(event), {
+      relatedToCurrent,
+      selected: !(relatedToCurrent && event.shiftKey),
+    });
+  };
+
+  const handleNewTabAuxClick = (event: MouseEvent) => {
+    if (event.button !== 1) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    openTab(pointerInteractionFromMouseEvent(event), {
+      relatedToCurrent: true,
+      selected: !event.shiftKey,
+    });
   };
 
   const closeTab = (
@@ -1389,7 +1421,9 @@
     aria-label={t("tab.newTabAria")}
     class="fennevia-control fennevia-tab-strip__new"
     data-fennevia-action="new-tab"
-    onclick={(event) => openTab(pointerInteractionFromMouseEvent(event))}
+    onauxclick={handleNewTabAuxClick}
+    onclick={handleNewTabClick}
+    onmousedown={preventMiddleAutoscroll}
     title={t("tab.newTab")}
     type="button"
   >

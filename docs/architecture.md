@@ -269,7 +269,8 @@ copies exact snapshot fields into a Svelte-independent reactive adapter, drops
 unknown properties, owns frontend subscriptions, and releases the public bridge
 on unmount. Issue #11 renders that ordinary state as one accessible project-owned
 tab strip. Issue #60 extends the same strip with audio/container/attention
-indicators, middle-click close, drag and keyboard reorder, and Firefox-owned
+indicators, middle-click close, middle-click/accel New Tab insertion after the
+current tab, drag and keyboard reorder, and Firefox-owned
 `#tabContextMenu` handoff. ADR-058 adds closed camera/microphone/screen-sharing
 and crash state. ADR-060 replaces exact native-equivalent tab visuals with
 fixed packaged Firefox resources rendered as decorative masks. Primary tab buttons
@@ -339,9 +340,10 @@ Current source and runtime evidence is in
 `docs/research/firefox-154-tab-drag-spatial-preview.md`,
 `docs/research/firefox-154-cross-window-tab-drag.md`,
 `docs/research/firefox-154-tabbar-interaction-follow-up.md`,
-`docs/research/firefox-154-shell-interaction-second-follow-up.md`, and
-`docs/research/firefox-154-tab-select-pointer-hold.md`, plus ADR-024,
-ADR-025, and ADR-041/ADR-058/ADR-060/ADR-062/ADR-063/ADR-065/ADR-066/ADR-067.
+`docs/research/firefox-154-shell-interaction-second-follow-up.md`,
+`docs/research/firefox-154-tab-select-pointer-hold.md`, and
+`docs/research/firefox-153-154-related-new-tab.md`, plus ADR-024,
+ADR-025, and ADR-041/ADR-058/ADR-060/ADR-062/ADR-063/ADR-065/ADR-066/ADR-067/ADR-070.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather
@@ -607,7 +609,11 @@ exactly once. ADR-069 blurs those activated top controls so leftover
 `focus-held` cannot pin the top surface after the pointer leaves. Firefox chrome
 may also dispatch `click` with `button === 1`; the tab strip ignores that
 primary handler and closes only from `auxclick`. Bookmark `new-tab` opens still
-go through Places, then restore the previously selected tab. New-tab remains on the configured tab strip, not
+go through Places, then restore the previously selected tab. ADR-070 middle-click
+and Ctrl/Command-click on the strip New Tab control pass `relatedToCurrent` through
+the existing `addTrustedTab` path so Firefox inserts after the current tab; ordinary
+left-click New Tab still appends at the end. Primary `click` and middle `auxclick`
+on that control are disjoint, and middle `mousedown` prevents autoscroll. New-tab remains on the configured tab strip, not
 the top row. Opening a tab after the configured tab surface has its initial snapshot
 uses the shared programmatic reveal to show that edge for 500 ms and
 highlights only the newly added tab IDs for the same duration.

@@ -3040,3 +3040,35 @@ navigation clicks leaving `phase: "focus-held"` with `hasFocus: true` after
 pointer hold had already cleared. Primary-button-only select, post-open
 selection restore, and activate-then-blur reuse the existing tab/bookmark/top
 owners.
+
+## ADR-070: Middle-click New Tab inserts a related tab after the current tab
+
+**Status:** Accepted; Firefox 153/154 source-backed; real Firefox matrix remains
+`not run`
+
+Keep the configured tab strip's New Tab control on the existing `tabs.open()` /
+`gBrowser.addTrustedTab(BROWSER_NEW_TAB_URL)` path. Do not route that button
+through `BrowserCommands.openTab`. Left click continues to omit
+`relatedToCurrent`, so Firefox appends at the default end of the strip.
+
+Middle-click and Ctrl/Command-click copy only `button` and modifier booleans in
+the Svelte host. The bridge then passes a fresh writable `{ inBackground,
+relatedToCurrent: true }` record. `addTab` remains the owner of
+`browser.tabs.insertRelatedAfterCurrent` / `insertAfterCurrent`, the related-tab
+map, and container inheritance. Shift plus that related gesture sets
+`inBackground: true` to match `whereToOpenLink`'s `tabshifted` result. Primary
+`click` ignores non-primary buttons so chrome's `click`+`auxclick` pair cannot
+open two tabs. Middle `mousedown` still prevents autoscroll. No `MouseEvent`,
+URL, or tab index crosses the public contract.
+
+Windows-first development does not implement Linux
+`browser.tabs.searchclipboardfor.middleclick`. Empty tab-list middle-click and
+unconditional `insertAfterCurrent` for ordinary left-click New Tab stay out of
+scope.
+
+**Reasoning:** Firefox 153 `BrowserCommands.openTab` already sets
+`relatedToCurrent` for accel-click and middle-click, while `addTab` performs the
+insertion. Fennevia's New Tab control already used `addTrustedTab` so it could
+return an opaque tab ID for focus and highlight. Extending that same writable
+options record is the minimum change that restores native related placement
+without adding a second new-tab owner or inventing an insertion index.

@@ -345,6 +345,10 @@ Validate:
 - rejected/failed favicon;
 - Up/Down, Home/End, Enter/Space, Delete, sibling pin/close/mute controls;
 - middle-click close without autoscroll and without first selecting that tab;
+- middle-click or Ctrl/Command-click on New Tab opens a related tab after the
+  current tab without autoscroll and without a duplicate `click`+`auxclick`
+  open; Shift plus that related gesture opens it in the background; ordinary
+  left-click New Tab still appends at the end;
 - mouse-initiated close by middle button or the close control keeps the tab
   surface held when the pointer remains inside the panel after the tab row is
   removed, clears an action-induced stale focus hold, and still uses the shared
@@ -439,7 +443,8 @@ Evidence:
 - `docs/research/firefox-154-cross-window-tab-drag.md`;
 - `docs/research/firefox-154-tabbar-interaction-follow-up.md`;
 - `docs/research/firefox-154-shell-interaction-second-follow-up.md`;
-- `docs/research/firefox-154-tab-select-pointer-hold.md`.
+- `docs/research/firefox-154-tab-select-pointer-hold.md`;
+- `docs/research/firefox-153-154-related-new-tab.md`.
 
 ADR-062 focused validation passed the complete `npm run verify` gate with
 318/318 Node tests, 87.49% line coverage, 95.11% function coverage, all fixed

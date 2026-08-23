@@ -513,6 +513,10 @@ test("bridge actions synchronize both directions and reject stale or foreign IDs
     assert.equal(first.controller.tabs.snapshot().at(-1).id, openedId);
     assert.equal(firstNative.gBrowser.actionCalls.at(-1)[2].inBackground, true);
     assert.equal(
+      firstNative.gBrowser.actionCalls.at(-1)[2].relatedToCurrent,
+      undefined,
+    );
+    assert.equal(
       firstNative.gBrowser.actionCalls.at(-1)[2].triggeringPrincipal
         .testPrincipal,
       true,
@@ -555,6 +559,74 @@ test("bridge actions synchronize both directions and reject stale or foreign IDs
   } finally {
     disposePair(first);
     disposePair(second);
+  }
+});
+
+test("relatedToCurrent reaches addTrustedTab and invalid open options fail closed", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    const relatedId = pair.controller.tabs.open({
+      relatedToCurrent: true,
+      selected: true,
+    });
+    const relatedCall = native.gBrowser.actionCalls.findLast(
+      ([action]) => action === "addTrustedTab",
+    );
+    assert.equal(pair.controller.tabs.snapshot().at(-1).id, relatedId);
+    assert.equal(relatedCall[2].inBackground, false);
+    assert.equal(relatedCall[2].relatedToCurrent, true);
+    assert.equal(Object.isFrozen(relatedCall[2]), false);
+
+    const backgroundRelatedId = pair.controller.tabs.open({
+      relatedToCurrent: true,
+      selected: false,
+    });
+    const backgroundCall = native.gBrowser.actionCalls.findLast(
+      ([action]) => action === "addTrustedTab",
+    );
+    assert.equal(
+      pair.controller.tabs.snapshot().at(-1).id,
+      backgroundRelatedId,
+    );
+    assert.equal(backgroundCall[2].inBackground, true);
+    assert.equal(backgroundCall[2].relatedToCurrent, true);
+
+    const defaultId = pair.controller.tabs.open();
+    const defaultCall = native.gBrowser.actionCalls.findLast(
+      ([action]) => action === "addTrustedTab",
+    );
+    assert.equal(pair.controller.tabs.snapshot().at(-1).id, defaultId);
+    assert.equal(defaultCall[2].inBackground, false);
+    assert.equal(defaultCall[2].relatedToCurrent, undefined);
+
+    assert.throws(
+      () => pair.controller.tabs.open({ selected: "yes" }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TAB_OPEN_OPTIONS_INVALID" &&
+        error.fenneviaPhase === "firefox-tabs-action" &&
+        error.fenneviaSymbol === "tabs.open.options",
+    );
+    assert.throws(
+      () => pair.controller.tabs.open({ relatedToCurrent: 1 }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TAB_OPEN_OPTIONS_INVALID",
+    );
+    assert.throws(
+      () =>
+        pair.controller.tabs.open({
+          relatedToCurrent: true,
+          selected: true,
+          url: "about:newtab",
+        }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TAB_OPEN_OPTIONS_INVALID",
+    );
+  } finally {
+    disposePair(pair);
   }
 });
 
