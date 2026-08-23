@@ -708,8 +708,10 @@ bridge re-fetches the current native record, rejects stale/foreign/folder/
 separator handles and `javascript:`, `data:`, `vbscript:`, or `place:` schemes,
 then delegates node conversion and opening to current `PlacesUIUtils`.
 Firefox retains its URL security check, trusted-link principal behavior,
-bookmark transition data, background-tab preference, native-window/default
-context policy, and private targeting. Fennevia does not provide a `loadURI` shortcut,
+bookmark transition data, native-window/default
+context policy, and private targeting. After a `new-tab` open, Fennevia
+restores the previously selected native tab so the current tab does not change;
+that restore reads no URL or title. Fennevia does not provide a `loadURI` shortcut,
 bookmarklet execution, or project-owned principal.
 
 The fixed Manage Bookmarks action accepts no identifier or user text and calls

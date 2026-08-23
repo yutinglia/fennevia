@@ -603,13 +603,13 @@ function re({ boundary: e, moduleLoader: t, onError: n, window: r }) {
 			let o;
 			try {
 				o = await Reflect.apply(l.promiseNodeLikeFromFetchInfo, l, [i]);
-				let t = S();
+				let t = S(), r = j(t.gBrowser) ? t.gBrowser : void 0, a = n === "new-tab" ? r?.selectedTab : void 0;
 				Reflect.apply(l.openNodeIn, l, [
 					o,
 					n === "new-tab" ? "tab" : "current",
 					{ ownerWindow: t },
 					e.snapshot().windowKind === "private"
-				]);
+				]), a !== void 0 && r && r.selectedTab !== a && Reflect.set(r, "selectedTab", a);
 			} catch (t) {
 				throw N(e, "FENNEVIA_FIREFOX_BOOKMARK_OPEN_FAILED", "firefox-bookmarks-open", "PlacesUIUtils.openNodeIn", t);
 			}

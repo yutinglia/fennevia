@@ -334,6 +334,10 @@ test("the component uses semantic sibling controls and property-safe rendering o
     topSource,
     /const handlePrimaryNavigationClick = \([\s\S]*?if \(event\.button !== 0\) \{\s*return;[\s\S]*?runNavigationAction\(action\);/u,
   );
+  assert.match(
+    topSource,
+    /const blurActivatedControl = \([\s\S]*?target\.blur\(\);[\s\S]*?runNavigationAction\(action\);[\s\S]*?blurActivatedControl\(event\);/u,
+  );
   assert.equal(
     topSource.match(/handlePrimaryNavigationClick\(event,/gu)?.length,
     4,
@@ -369,6 +373,10 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(
     tabSource,
     /selectTab\(tab\.id, pointerInteractionFromMouseEvent\(event\)\)/u,
+  );
+  assert.match(
+    tabSource,
+    /if \(event\.button !== 0\) \{\s*return;[\s\S]*?selectTab\(tab\.id, pointerInteractionFromMouseEvent\(event\)\)/u,
   );
   assert.match(tabSource, /from "\.\.\/\.\.\/runtime\/pointer-geometry"/u);
   assert.match(

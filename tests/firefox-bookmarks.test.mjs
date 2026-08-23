@@ -47,6 +47,7 @@ function createNativeWindow({ privateWindow = false } = {}) {
     document,
     gBrowser: {
       selectedBrowser: { webNavigation: {} },
+      selectedTab: { id: "current-tab" },
       tabContainer: createEventTarget(),
       tabs: [],
     },
@@ -206,6 +207,9 @@ function createPlacesFixture({
   const PlacesUIUtils = {
     openNodeIn(node, where, view, isPrivate) {
       openCalls.push({ isPrivate, node, view, where });
+      if (where === "tab" && view?.ownerWindow?.gBrowser) {
+        view.ownerWindow.gBrowser.selectedTab = { id: "opened-tab" };
+      }
     },
     async promiseNodeLikeFromFetchInfo(record) {
       return Object.freeze({
@@ -542,6 +546,7 @@ test("opening delegates current/new-tab and private behavior to PlacesUIUtils", 
       ],
     );
     assert.equal(normal.fixture.openCalls[0].view.ownerWindow, normal.window);
+    assert.equal(normal.window.gBrowser.selectedTab.id, "current-tab");
 
     const folderId = normalPage.items.find((item) => item.kind === "folder").id;
     const nestedPage = await normal.controller.bookmarks.children(folderId);

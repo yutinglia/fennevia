@@ -2739,8 +2739,9 @@ persistence, CSS URL, dataset, log value, or new process-global state is added.
 Treat a bookmark row's middle button like the existing explicit new-tab action:
 prevent default autoscroll on `mousedown`, then invoke the opaque bookmark ID
 with the closed `new-tab` disposition on `auxclick`. Re-fetch, scheme rejection,
-principal, background-tab preference, and normal/private policy remain owned by
-the existing Places boundary and Firefox.
+principal, and normal/private policy remain owned by the existing Places
+boundary and Firefox. ADR-069 restores the previously selected tab after that
+Places `new-tab` open so the current tab does not change.
 
 Style Firefox's retained corner status owner only while Fennevia is active and
 not suspended. Add one exact `#statuspanel-label` capsule rule using bounded
@@ -3003,3 +3004,39 @@ copy was a nonessential hint, not an access path; actual notices still use the
 status row, and edge `<kbd>` tips remain on every surface. Splitting the
 drawer keeps composition hosts as wiring and prevents the settings form from
 growing into one scrolling catch-all.
+
+## ADR-069: Keep current tab on auxiliary pointer actions; blur top navigation after activate
+
+**Status:** Accepted for the project-owner correction on 2026-08-24; Firefox 154
+runtime evidence and focused automation are the required gate; the real Firefox
+middle-click, bookmark-background, top-auto-hide, second-window, and
+private-window matrix remains pending
+
+Refine ADR-064 and ADR-067 without adding a second hide timer, edge trigger, or
+window-global flag. Firefox chrome dispatches both `click` and `auxclick` for
+one physical middle button press. The tab row's primary `click` path must ignore
+non-primary buttons so middle-click close does not first select that tab. The
+item `auxclick` path remains the only middle-button close.
+
+Places `openNodeIn(..., "tab")` still owns URL security, trusted-link principal
+behavior, and private targeting. Its `inBackground` value follows
+`browser.tabs.loadBookmarksInBackground` (default false), which selects the new
+tab. After a Fennevia `new-tab` open, restore the previously selected native tab
+through `gBrowser.selectedTab` when Places changed it. Do not invent
+`loadURI`, a custom principal, or a second Places opener. Missing `selectedTab`
+skips restore rather than failing the open.
+
+Primary and middle-button activation of the top Back/Forward/Reload/Home
+controls blurs the activated project-owned button so a leftover `focus-held`
+state cannot pin the top surface after the pointer leaves. Pointer hold while
+the pointer remains inside the panel is unchanged. Do not call `dismiss()` from
+those navigation clicks.
+
+**Reasoning:** Runtime logs on Firefox 154 showed a middle-click tab close
+sequence of `click` (`button: 1`) → `selectTab` (`targetWasSelected: false`) →
+`auxclick` → `closeTab` (`closingSelected: true`), a bookmark `new-tab` open
+with `changed: true` while the primary `click` was correctly ignored, and top
+navigation clicks leaving `phase: "focus-held"` with `hasFocus: true` after
+pointer hold had already cleared. Primary-button-only select, post-open
+selection restore, and activate-then-blur reuse the existing tab/bookmark/top
+owners.
