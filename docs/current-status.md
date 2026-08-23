@@ -1,8 +1,8 @@
 # Current Project Status
 
-> Snapshot: 2026-08-24. This status review is based on `main` through PR #103
-> plus the `0.13.0-beta.1` version identity, alongside the public
-> `v0.13.0-beta.1` prerelease.
+> Snapshot: 2026-08-24. This status review is based on `main` through PR #110
+> plus the `0.14.0-beta.1` version identity, alongside the public
+> `v0.14.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
@@ -13,13 +13,13 @@ and testing documents retain the complete engineering contract.
 
 | Area                            | Current state                                                                                                                                               |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public release                  | `v0.13.0-beta.1`, Windows x64 prerelease                                                                                                                    |
+| Public release                  | `v0.14.0-beta.1`, Windows x64 prerelease                                                                                                                    |
 | Tested Firefox                  | Stock Firefox 153.0.4 BuildID `20260810162159` and 154.0 BuildID `20260812182057`, release channel                                                          |
 | Installer compatibility gate    | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested                                                                                |
 | Core four-edge MVP              | Implemented and released                                                                                                                                    |
-| Post-MVP shell work             | Included in `v0.13.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, and tab-panel hold |
+| Post-MVP shell work             | Included in `v0.14.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, and Firefox-owned tab multi-select |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending |
-| Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.13.0-beta.1` package does not re-run that matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending |
+| Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.14.0-beta.1` package does not re-run that matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                             |
 
 ## Implemented product surface
@@ -48,6 +48,8 @@ and testing documents retain the complete engineering contract.
   audio, containers, attention/PiP, closed camera/microphone/screen-sharing and crash
   indicators, fixed trailing action positions, middle-click close,
   middle-click/accel New Tab insertion after the current tab,
+  Firefox-owned multi-select with Accel toggle, Shift range, group drag, and
+  row close/mute/pin,
   drag/keyboard reorder with a pointer-aligned full-row ghost, animated neighbor
   gap, insertion marker, and polite move announcement, plus Firefox-owned tab
   context-menu handoff with complete lazy Fluent labels and no original-toolbar
@@ -176,7 +178,7 @@ control, deterministic dual-archive preflight, Unicode-path extraction, and the
 extracted package's update/disable/recovery/uninstall/stock-start/install
 lifecycle. See
 [`docs/research/firefox-154-0.12.0-beta.1-release-validation.md`](research/firefox-154-0.12.0-beta.1-release-validation.md).
-This `0.13.0-beta.1` package does not re-run that matrix and does not convert
+This `0.14.0-beta.1` package does not re-run that matrix and does not convert
 the pending real-Firefox rows below into observed evidence.
 
 That automated evidence does **not** complete every real-browser claim. The
@@ -199,6 +201,12 @@ following remain explicitly pending in the current plans and testing document:
 - ADR-064 swapped-side focus/popup behavior, bottom disable/re-enable, cached
   bookmark favicon and middle-click behavior, all activity-light mappings, and
   native status-capsule theme/forced-colors/DPI behavior in real Firefox;
+- ADR-069 auxiliary-pointer keep-current, related bookmark background restore,
+  and top-navigation blur-after-activate behavior in real Firefox;
+- ADR-070 related New Tab insertion after the current tab for middle-click and
+  Accel-click, including Shift-background, in real Firefox;
+- ADR-071 Firefox-owned tab multi-select, group drag/keyboard move, row
+  close/mute/pin, and native context-menu plural actions in real Firefox;
 - ADR-059 unified Trust-shield rendering/state, leading in-launcher placement,
   and native panel handoff across HTTP, HTTPS, ETP exception/restore, errors,
   forced colors, DPI, and multiple windows;
@@ -221,7 +229,7 @@ following remain explicitly pending in the current plans and testing document:
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.
 
-Accordingly, `v0.13.0-beta.1` should be described as an implemented experimental
+Accordingly, `v0.14.0-beta.1` should be described as an implemented experimental
 prerelease with validation debt, not as a stable product. The largest remaining
 risk is Firefox-internal compatibility and real-environment coverage rather
 than absence of the core shell.

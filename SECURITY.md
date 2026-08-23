@@ -18,7 +18,7 @@ The current public security-reporting scope is:
 
 | Fennevia | Firefox | Platform | Status |
 | --- | --- | --- | --- |
-| `0.13.0-beta.1` | Stock Firefox 153.0.4 and 154.0 release; Build IDs `20260810162159` / `20260812182057` | Windows x64 | Current public prerelease; later majors install only after an explicit no-promise warning |
+| `0.14.0-beta.1` | Stock Firefox 153.0.4 and 154.0 release; Build IDs `20260810162159` / `20260812182057` | Windows x64 | Current public prerelease; later majors install only after an explicit no-promise warning |
 
 The installer rejects Firefox older than 153 for install, update, repair, and
 enable operations. Firefox 153, 154, and newer majors may be installed after
