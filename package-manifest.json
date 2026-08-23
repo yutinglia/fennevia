@@ -82,7 +82,7 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/runtime/WindowShell.sys.mjs",
-      "sha256": "16067f5a0fb34352999f5e33891ab04eedbfb22accff37c3178e2f60878586df"
+      "sha256": "f1352588e578b91aca715a445c2d5ca8621978a457854025a9c6408e548aada6"
     },
     {
       "scope": "profile",
