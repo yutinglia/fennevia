@@ -344,7 +344,7 @@ Validate:
 - long, empty, emoji, markup-like, Unicode, and bidirectional titles;
 - rejected/failed favicon;
 - Up/Down, Home/End, Enter/Space, Delete, sibling pin/close/mute controls;
-- middle-click close without autoscroll;
+- middle-click close without autoscroll and without first selecting that tab;
 - mouse-initiated close by middle button or the close control keeps the tab
   surface held when the pointer remains inside the panel after the tab row is
   removed, clears an action-induced stale focus hold, and still uses the shared
@@ -557,6 +557,8 @@ Validate:
 - bounded text-only title and display-URI state;
 - current Firefox command/controller semantics;
 - top-edge pointer/keyboard/focus/popup behavior;
+- Back/Forward/Reload/Home activation blurs the control so leftover
+  `focus-held` cannot block auto-hide after the pointer leaves;
 - no editable address field in the top surface;
 - native navbar/Urlbar/toolbox retained;
 - direct frontend unmount/remount and window/runtime disposal;
@@ -753,7 +755,8 @@ Validate:
 - separator, malformed, stale, deleted, and missing-parent state;
 - native create, rename, move, reorder, and remove while hidden/open;
 - current-tab and supported new-tab opening;
-- middle-click new-tab opening with `mousedown` autoscroll prevention;
+- middle-click new-tab opening with `mousedown` autoscroll prevention and
+  without selecting the new tab;
 - Firefox-cached favicon success, missing/throw fallback, malformed/non-raster/
   oversized rejection, DPI width bounds, property-only image assignment, and
   no URL-bearing diagnostics; the sanitized image stays hidden until load and

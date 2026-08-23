@@ -1230,8 +1230,12 @@
           class="fennevia-tab-strip__tab"
           data-fennevia-tab=""
           draggable="true"
-          onclick={(event) =>
-            selectTab(tab.id, pointerInteractionFromMouseEvent(event))}
+          onclick={(event) => {
+            if (event.button !== 0) {
+              return;
+            }
+            selectTab(tab.id, pointerInteractionFromMouseEvent(event));
+          }}
           ondragstart={(event) => handleTabDragStart(event, tab.id)}
           onfocus={() => (rovingTabId = tab.id)}
           onkeydown={(event) => handleTabKeydown(event, tab.id)}

@@ -737,12 +737,24 @@ export function createFirefoxBookmarksBridge({
           [record],
         );
         const ownerWindow = requireWindow();
+        const browser = isNativeRecord(ownerWindow.gBrowser)
+          ? ownerWindow.gBrowser
+          : undefined;
+        const selectedBefore =
+          disposition === "new-tab" ? browser?.selectedTab : undefined;
         Reflect.apply(nativePlacesUiUtils.openNodeIn, nativePlacesUiUtils, [
           node,
           disposition === "new-tab" ? "tab" : "current",
           { ownerWindow },
           boundary.snapshot().windowKind === "private",
         ]);
+        if (
+          selectedBefore !== undefined &&
+          browser &&
+          browser.selectedTab !== selectedBefore
+        ) {
+          Reflect.set(browser, "selectedTab", selectedBefore);
+        }
       } catch (error) {
         throw createBookmarksError(
           boundary,

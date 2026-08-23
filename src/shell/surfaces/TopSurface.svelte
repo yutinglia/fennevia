@@ -108,6 +108,13 @@
     }
   };
 
+  const blurActivatedControl = (event: MouseEvent): void => {
+    const target = event.currentTarget;
+    if (target instanceof HTMLElement) {
+      target.blur();
+    }
+  };
+
   const handleNavigationAuxClick = (
     event: MouseEvent,
     action: (
@@ -122,6 +129,7 @@
     event.stopPropagation();
     const gesture = pointerGestureFromMouseEvent(event);
     runNavigationAction((navigation) => action(navigation, gesture));
+    blurActivatedControl(event);
   };
 
   const handlePrimaryNavigationClick = (
@@ -132,6 +140,7 @@
       return;
     }
     runNavigationAction(action);
+    blurActivatedControl(event);
   };
 
   const runBrowserToolAction = async (

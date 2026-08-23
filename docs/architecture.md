@@ -603,7 +603,11 @@ read the configured homepage URL. Middle-click on Back, Forward, Home, and
 Reload copies only pointer modifiers and lets Firefox open the result in a
 new tab. Primary `click` and middle-button `auxclick` are disjoint at the
 component boundary, so one physical middle click invokes the Firefox command
-exactly once. New-tab remains on the configured tab strip, not
+exactly once. ADR-069 blurs those activated top controls so leftover
+`focus-held` cannot pin the top surface after the pointer leaves. Firefox chrome
+may also dispatch `click` with `button === 1`; the tab strip ignores that
+primary handler and closes only from `auxclick`. Bookmark `new-tab` opens still
+go through Places, then restore the previously selected tab. New-tab remains on the configured tab strip, not
 the top row. Opening a tab after the configured tab surface has its initial snapshot
 uses the shared programmatic reveal to show that edge for 500 ms and
 highlights only the newly added tab IDs for the same duration.
