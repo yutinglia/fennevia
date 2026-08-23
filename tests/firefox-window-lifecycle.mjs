@@ -5682,6 +5682,10 @@ async function exerciseFrontendUnmountRemount(client) {
         openContextMenu() {},
         pin() {},
         select() {},
+        selectRange() {},
+        clearMultiSelect() {},
+        toggleMultiSelect() {},
+        activateKeepingMultiSelect() {},
         snapshot() { return Object.freeze([testTab]); },
         subscribe() {
           tabSubscriptionCount += 1;
@@ -7962,9 +7966,7 @@ async function run() {
         // A clean application quit may close Marionette before its response arrives.
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
-      console.log(
-        `performanceStockBaseline=${JSON.stringify(baseline)}`,
-      );
+      console.log(`performanceStockBaseline=${JSON.stringify(baseline)}`);
       console.log(
         "PASS: hard-disabled Firefox produced a privacy-safe five-second " +
           "idle-resource control with zero Fennevia records or project hosts.",

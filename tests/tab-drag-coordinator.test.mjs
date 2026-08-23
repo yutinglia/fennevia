@@ -38,6 +38,7 @@ test("the coordinator exposes only ordinary drag metadata across same-kind windo
   assert.deepEqual(
     coordinator.inspect({ contextId: "window-source", windowKind: "normal" }),
     {
+      count: 1,
       id: dragId,
       pinned: true,
       source: "same-window",
@@ -46,6 +47,7 @@ test("the coordinator exposes only ordinary drag metadata across same-kind windo
   assert.deepEqual(
     coordinator.inspect({ contextId: "window-target", windowKind: "normal" }),
     {
+      count: 1,
       id: dragId,
       pinned: true,
       source: "other-window",

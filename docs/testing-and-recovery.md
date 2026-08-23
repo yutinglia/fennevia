@@ -515,6 +515,12 @@ Issue #60 real Firefox rows (middle-click, audio/mute, container stripe,
 background-tab native menu, drag/keyboard reorder, menu popup hold, private
 window without containers, fail-open, disposal during menu/drag): **not run**.
 
+Issue #109 / ADR-071 real Firefox rows (Accel toggle, Shift range, keep-multi
+click, group drag/adopt/detach, one-row collapsed group-drag preview that
+expands on drop, row close/mute/pin on a multi-selected set,
+Ctrl+Shift+Arrow block move, Shift+Arrow range, Accel+Space toggle, native
+menu plural actions): **not run**.
+
 ADR-058 real Firefox rows (camera/microphone/screen capture transitions,
 crashed tab, simultaneous audio/PiP/capture status, narrow-panel control
 alignment, reduced motion, forced colors, high DPI, normal/second/private

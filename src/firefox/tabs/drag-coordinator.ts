@@ -7,6 +7,7 @@ const DRAG_ID_PATTERN = /^tab-transfer-[A-Za-z0-9-]{8,128}$/u;
 export type FirefoxTabDragTransfer = Readonly<{
   id: string;
   isActive: () => boolean;
+  movingTabs: readonly NativeTab[];
   pinned: boolean;
   sourceContextId: string;
   sourceWindowKind: FirefoxWindowKind;
@@ -14,6 +15,7 @@ export type FirefoxTabDragTransfer = Readonly<{
 }>;
 
 export type FirefoxTabDragInspection = Readonly<{
+  count: number;
   id: string;
   pinned: boolean;
   source: "other-window" | "same-window";
@@ -135,7 +137,14 @@ export function createFirefoxTabDragCoordinator({
         typeof candidate.pinned !== "boolean" ||
         typeof candidate.isActive !== "function" ||
         !candidate.tab ||
-        typeof candidate.tab !== "object"
+        typeof candidate.tab !== "object" ||
+        (candidate.movingTabs !== undefined &&
+          (!Array.isArray(candidate.movingTabs) ||
+            candidate.movingTabs.length === 0 ||
+            candidate.movingTabs.length > 1000 ||
+            candidate.movingTabs.some(
+              (tab) => !tab || typeof tab !== "object",
+            )))
       ) {
         throw createCoordinatorError("FENNEVIA_TAB_DRAG_SOURCE_INVALID");
       }
@@ -147,7 +156,12 @@ export function createFirefoxTabDragCoordinator({
         throw createCoordinatorError("FENNEVIA_TAB_DRAG_TOKEN_INVALID");
       }
       completed = null;
-      active = Object.freeze({ id, ...candidate });
+      const movingTabs = Object.freeze(
+        Array.isArray(candidate.movingTabs) && candidate.movingTabs.length > 0
+          ? candidate.movingTabs.slice()
+          : [candidate.tab],
+      );
+      active = Object.freeze({ id, ...candidate, movingTabs });
       return id;
     },
 
@@ -186,6 +200,7 @@ export function createFirefoxTabDragCoordinator({
       const transfer = resolve(target);
       return transfer
         ? Object.freeze({
+            count: transfer.movingTabs.length,
             id: transfer.id,
             pinned: transfer.pinned,
             source:

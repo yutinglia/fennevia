@@ -114,6 +114,9 @@ function createNativeWindow({ privateWindow = false } = {}) {
     }),
   ];
   let selectedTab = tabs[0];
+  selectedTab.setAttribute("selected", "true");
+  let lastMultiSelectedTab = selectedTab;
+  let lockClearMultiSelection = false;
   let openTabsReads = 0;
   const actionCalls = [];
   const selectedBrowser = { webNavigation: {} };
@@ -233,6 +236,104 @@ function createNativeWindow({ privateWindow = false } = {}) {
       tabContainer.dispatch("TabMove", tab, {});
       tabContainer.dispatch("TabUnpinned", tab, {});
     },
+    addToMultiSelectedTabs(tab) {
+      actionCalls.push(["addToMultiSelectedTabs", tab]);
+      tab.setAttribute("multiselected", "true");
+      lastMultiSelectedTab = tab;
+      this.finishMultiSelectChange();
+    },
+    removeFromMultiSelectedTabs(tab) {
+      actionCalls.push(["removeFromMultiSelectedTabs", tab]);
+      tab.removeAttribute("multiselected");
+      this.finishMultiSelectChange();
+    },
+    addRangeToMultiSelectedTabs(anchor, target) {
+      actionCalls.push(["addRangeToMultiSelectedTabs", anchor, target]);
+      const open = tabs.filter((tab) => !tab.closing);
+      const start = open.indexOf(anchor);
+      const end = open.indexOf(target);
+      if (start < 0 || end < 0) {
+        return;
+      }
+      const from = Math.min(start, end);
+      const to = Math.max(start, end);
+      for (let index = from; index <= to; index += 1) {
+        open[index].setAttribute("multiselected", "true");
+      }
+      lastMultiSelectedTab = target;
+      this.finishMultiSelectChange();
+    },
+    clearMultiSelectedTabs() {
+      actionCalls.push(["clearMultiSelectedTabs"]);
+      for (const tab of tabs) {
+        tab.removeAttribute("multiselected");
+      }
+      this.finishMultiSelectChange();
+    },
+    finishMultiSelectChange() {
+      if (selectedTab && !selectedTab.hasAttribute("multiselected")) {
+        selectedTab.setAttribute("multiselected", "true");
+      }
+      this.dispatch("TabMultiSelect", this);
+    },
+    lockClearMultiSelectionOnce() {
+      actionCalls.push(["lockClearMultiSelectionOnce"]);
+      lockClearMultiSelection = true;
+    },
+    unlockClearMultiSelection() {
+      actionCalls.push(["unlockClearMultiSelection"]);
+      lockClearMultiSelection = false;
+    },
+    pinMultiSelectedTabs() {
+      actionCalls.push(["pinMultiSelectedTabs"]);
+      for (const tab of this.selectedTabs) {
+        if (!tab.hasAttribute("pinned")) {
+          this.pinTab(tab);
+        }
+      }
+    },
+    unpinMultiSelectedTabs() {
+      actionCalls.push(["unpinMultiSelectedTabs"]);
+      for (const tab of this.selectedTabs) {
+        if (tab.hasAttribute("pinned")) {
+          this.unpinTab(tab);
+        }
+      }
+    },
+    removeMultiSelectedTabs() {
+      actionCalls.push(["removeMultiSelectedTabs"]);
+      for (const tab of this.selectedTabs.slice()) {
+        this.removeTab(tab, { animate: true, isUserTriggered: true });
+      }
+    },
+    toggleMuteAudioOnMultiSelectedTabs(tab) {
+      actionCalls.push(["toggleMuteAudioOnMultiSelectedTabs", tab]);
+      for (const selected of this.selectedTabs) {
+        selected.toggleMuteAudio();
+      }
+    },
+    replaceTabsWithWindow(tab, options) {
+      actionCalls.push(["replaceTabsWithWindow", tab, options]);
+      const moving = this.selectedTabs.filter(
+        (candidate) =>
+          candidate.hasAttribute("pinned") === tab.hasAttribute("pinned"),
+      );
+      if (moving.length === 0 || moving.length >= tabs.length) {
+        return null;
+      }
+      const detachedTabs = [];
+      for (const mover of moving.slice()) {
+        const index = tabs.indexOf(mover);
+        if (index < 0) {
+          continue;
+        }
+        tabs.splice(index, 1);
+        tabContainer.dispatch("TabClose", mover, {});
+        nativeTabOwners.delete(mover);
+        detachedTabs.push(mover);
+      }
+      return { detachedTabs };
+    },
     updateAttribute(tab, name, value) {
       if (value === undefined) {
         tab.removeAttribute(name);
@@ -243,6 +344,15 @@ function createNativeWindow({ privateWindow = false } = {}) {
     },
   };
   Object.defineProperties(gBrowser, {
+    lastMultiSelectedTab: {
+      configurable: true,
+      get() {
+        return lastMultiSelectedTab;
+      },
+      set(tab) {
+        lastMultiSelectedTab = tab;
+      },
+    },
     openTabs: {
       configurable: true,
       get() {
@@ -257,10 +367,40 @@ function createNativeWindow({ privateWindow = false } = {}) {
       },
       set(tab) {
         const previousTab = selectedTab;
+        if (!lockClearMultiSelection) {
+          for (const item of tabs) {
+            item.removeAttribute("multiselected");
+          }
+        }
+        lockClearMultiSelection = false;
+        if (previousTab && previousTab !== tab) {
+          previousTab.removeAttribute("selected");
+        }
         selectedTab = tab;
+        if (tab) {
+          tab.setAttribute("selected", "true");
+        }
         if (tab && tab !== previousTab) {
           tabContainer.dispatch("TabSelect", tab, { previousTab });
         }
+      },
+    },
+    selectedTabs: {
+      configurable: true,
+      get() {
+        const selected = tabs.filter(
+          (tab) => !tab.closing && tab.hasAttribute("multiselected"),
+        );
+        if (
+          selectedTab &&
+          !selected.includes(selectedTab) &&
+          !selectedTab.closing
+        ) {
+          selected.push(selectedTab);
+        }
+        return selected.sort(
+          (left, right) => tabs.indexOf(left) - tabs.indexOf(right),
+        );
       },
     },
     tabs: {
@@ -665,7 +805,7 @@ test("disposal removes listeners, clears mappings, and prevents callbacks", () =
     callbackCount += 1;
   });
   assert.equal(native.tabContainer.listenerCount(), 8);
-  assert.equal(native.gBrowser.listenerCount(), 2);
+  assert.equal(native.gBrowser.listenerCount(), 3);
   assert.equal(native.tabContextMenu.listenerCount(), 2);
 
   assert.equal(pair.controller.dispose(), true);
@@ -986,6 +1126,7 @@ test("same-window tab drag reorders once and records the transfer as consumed", 
     const secondId = pair.controller.tabs.snapshot()[1].id;
     const dragId = pair.controller.tabs.beginDrag(secondId);
     assert.deepEqual(pair.controller.tabs.inspectDrag(), {
+      count: 1,
       id: dragId,
       pinned: false,
       source: "same-window",
@@ -1038,6 +1179,7 @@ test("a shared drag coordinator adopts a tab into another same-kind window", () 
     const sourceId = sourcePair.controller.tabs.snapshot()[1].id;
     const dragId = sourcePair.controller.tabs.beginDrag(sourceId);
     assert.deepEqual(targetPair.controller.tabs.inspectDrag(), {
+      count: 1,
       id: dragId,
       pinned: false,
       source: "other-window",
@@ -1354,5 +1496,225 @@ test("missing gBrowser event-target capability fails before crash listeners atta
     assert.equal(native.gBrowser.listenerCount(), 0);
   } finally {
     boundary.dispose();
+  }
+});
+
+test("Accel toggle and Shift range keep the active tab and snapshot multiselected", () => {
+  const native = createNativeWindow();
+  native.gBrowser.addTrustedTab("about:newtab", { inBackground: true });
+  const pair = createController(native);
+  try {
+    const [, secondId, thirdId] = pair.controller.tabs
+      .snapshot()
+      .map((tab) => tab.id);
+    const activeTab = native.gBrowser.selectedTab;
+
+    pair.controller.tabs.toggleMultiSelect(secondId);
+    assert.equal(native.gBrowser.selectedTab, activeTab);
+    assert.equal(pair.controller.tabs.snapshot()[0].multiselected, true);
+    assert.equal(pair.controller.tabs.snapshot()[1].multiselected, true);
+    assert.equal(pair.controller.tabs.snapshot()[1].selected, false);
+    assert.ok(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "addToMultiSelectedTabs",
+      ),
+    );
+
+    pair.controller.tabs.selectRange(thirdId);
+    assert.equal(native.gBrowser.selectedTab, native.tabs[1]);
+    assert.equal(pair.controller.tabs.snapshot()[2].selected, false);
+    assert.deepEqual(
+      pair.controller.tabs.snapshot().map((tab) => tab.multiselected === true),
+      [false, true, true],
+    );
+    assert.ok(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "addRangeToMultiSelectedTabs",
+      ),
+    );
+
+    pair.controller.tabs.activateKeepingMultiSelect(thirdId);
+    const afterKeep = pair.controller.tabs.snapshot();
+    assert.equal(afterKeep[2].selected, true);
+    assert.equal(afterKeep.filter((tab) => tab.multiselected).length, 2);
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("row close, pin, and mute on a multiselected tab use native multi-select APIs", () => {
+  const native = createNativeWindow();
+  native.gBrowser.addTrustedTab("about:newtab", { inBackground: true });
+  const pair = createController(native);
+  try {
+    const [, secondId] = pair.controller.tabs.snapshot().map((tab) => tab.id);
+    pair.controller.tabs.toggleMultiSelect(secondId);
+    native.gBrowser.actionCalls.length = 0;
+
+    pair.controller.tabs.toggleMute(secondId);
+    assert.ok(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "toggleMuteAudioOnMultiSelectedTabs",
+      ),
+    );
+
+    pair.controller.tabs.pin(secondId);
+    assert.ok(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "pinMultiSelectedTabs",
+      ),
+    );
+
+    native.gBrowser.actionCalls.length = 0;
+    pair.controller.tabs.close(secondId);
+    assert.ok(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "removeMultiSelectedTabs",
+      ),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("clearing multi-select calls the native clear API", () => {
+  const native = createNativeWindow();
+  native.gBrowser.addTrustedTab("about:newtab", { inBackground: true });
+  const pair = createController(native);
+  try {
+    const [, secondId] = pair.controller.tabs.snapshot().map((tab) => tab.id);
+    pair.controller.tabs.toggleMultiSelect(secondId);
+    native.gBrowser.actionCalls.length = 0;
+    pair.controller.tabs.clearMultiSelect();
+    assert.ok(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "clearMultiSelectedTabs",
+      ),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("group drag captures count and moves the block with moveTabTo", () => {
+  const native = createNativeWindow();
+  native.gBrowser.addTrustedTab("about:newtab", { inBackground: true });
+  const pair = createController(native);
+  try {
+    const [, secondId, thirdId] = pair.controller.tabs
+      .snapshot()
+      .map((tab) => tab.id);
+    pair.controller.tabs.select(secondId);
+    pair.controller.tabs.toggleMultiSelect(thirdId);
+    const dragId = pair.controller.tabs.beginDrag(thirdId);
+    assert.deepEqual(pair.controller.tabs.inspectDrag(), {
+      count: 2,
+      id: dragId,
+      pinned: false,
+      source: "same-window",
+    });
+
+    const moved = pair.controller.tabs.dropDrag(0);
+    assert.equal(moved.kind, "moved");
+    const moveCalls = native.gBrowser.actionCalls.filter(
+      ([action]) => action === "moveTabTo",
+    );
+    assert.ok(moveCalls.length >= 1);
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("group drag uses the insertion index not the single-tab destination", () => {
+  const native = createNativeWindow();
+  for (let index = 0; index < 5; index += 1) {
+    native.gBrowser.addTrustedTab("about:newtab", { inBackground: true });
+  }
+  const pair = createController(native);
+  try {
+    const ids = pair.controller.tabs.snapshot().map((tab) => tab.id);
+    assert.equal(ids.length, 7);
+    pair.controller.tabs.select(ids[0]);
+    pair.controller.tabs.toggleMultiSelect(ids[1]);
+    pair.controller.tabs.toggleMultiSelect(ids[2]);
+    pair.controller.tabs.beginDrag(ids[0]);
+    pair.controller.tabs.dropDrag(3);
+    assert.deepEqual(
+      pair.controller.tabs.snapshot().map((tab) => tab.id),
+      [ids[3], ids[0], ids[1], ids[2], ids[4], ids[5], ids[6]],
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("adopting a multi-selected set sends the selected tab last", () => {
+  const coordinator = createTestDragCoordinator();
+  const sourceNative = createNativeWindow();
+  sourceNative.gBrowser.addTrustedTab("about:newtab", { inBackground: true });
+  const targetNative = createNativeWindow();
+  const sourcePair = createController(
+    sourceNative,
+    [],
+    undefined,
+    {},
+    { dragCoordinator: coordinator },
+  );
+  const targetPair = createController(
+    targetNative,
+    [],
+    undefined,
+    {},
+    { dragCoordinator: coordinator },
+  );
+  try {
+    const [, secondId] = sourcePair.controller.tabs
+      .snapshot()
+      .map((tab) => tab.id);
+    sourcePair.controller.tabs.toggleMultiSelect(secondId);
+    sourcePair.controller.tabs.beginDrag(secondId);
+    assert.equal(targetPair.controller.tabs.inspectDrag().count, 2);
+    targetNative.gBrowser.actionCalls.length = 0;
+    targetPair.controller.tabs.dropDrag(0);
+    const adoptCalls = targetNative.gBrowser.actionCalls.filter(
+      ([action]) => action === "adoptTab",
+    );
+    assert.equal(adoptCalls.length, 2);
+    assert.equal(adoptCalls[0][2].selectTab, false);
+    assert.equal(adoptCalls[1][2].selectTab, true);
+  } finally {
+    disposePair(targetPair);
+    disposePair(sourcePair);
+  }
+});
+
+test("detaching a captured multi-select set uses replaceTabsWithWindow", () => {
+  const native = createNativeWindow();
+  native.gBrowser.addTrustedTab("about:newtab", { inBackground: true });
+  const pair = createController(native);
+  try {
+    const [, secondId] = pair.controller.tabs.snapshot().map((tab) => tab.id);
+    pair.controller.tabs.toggleMultiSelect(secondId);
+    const dragId = pair.controller.tabs.beginDrag(secondId);
+    native.gBrowser.actionCalls.length = 0;
+    const result = pair.controller.tabs.endDrag(dragId, {
+      cancelled: false,
+      screenX: 40,
+      screenY: 50,
+    });
+    assert.equal(result, "detached");
+    assert.ok(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "replaceTabsWithWindow",
+      ),
+    );
+    assert.equal(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "replaceTabWithWindow",
+      ),
+      false,
+    );
+  } finally {
+    disposePair(pair);
   }
 });

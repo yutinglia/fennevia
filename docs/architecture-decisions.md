@@ -1398,8 +1398,9 @@ Undo close in Svelte. Do not put native tab, menu, identity, or principal
 objects in stores, datasets, or diagnostics. Do not expose `userContextId`.
 Treat `ContextualIdentityService.getPublicIdentityFromId` as optional: missing
 service, private windows, or unknown colors omit container fields and do not
-fail the window. Tab groups, split view, workspaces, multi-select, thumbnails,
-and `resource://usercontext-content/` icons remain out of scope.
+fail the window. Tab groups, split view, workspaces, thumbnails, and
+`resource://usercontext-content/` icons remain out of scope. Multi-select is
+specified by ADR-071.
 
 **Reasoning:** `TabContextMenu.updateContextMenu` only accepts
 `triggerNode.tab`, `triggerNode.closest("tab")`, or `selectedTab`. A Svelte
@@ -3072,3 +3073,46 @@ insertion. Fennevia's New Tab control already used `addTrustedTab` so it could
 return an opaque tab ID for focus and highlight. Extending that same writable
 options record is the minimum change that restores native related placement
 without adding a second new-tab owner or inventing an insertion index.
+
+## ADR-071: Drive Firefox-owned tab multi-select from the vertical strip
+
+**Status:** Accepted; Firefox 153/154 source-backed; real Firefox matrix remains
+`not run`
+
+Keep `gBrowser` as the only owner of tab multi-select. The Fennevia strip
+forwards Accel-click, Shift-click, and keep-multi activate to
+`addToMultiSelectedTabs` / `removeFromMultiSelectedTabs` /
+`addRangeToMultiSelectedTabs` / `lockClearMultiSelectionOnce` plus
+`selectedTab`. Snapshot `multiselected` from the native attribute and
+reconcile on `TabMultiSelect`. Do not keep a second selected-id set in Svelte.
+
+Accel (Ctrl on Windows, Command on macOS) toggles a non-active tab without
+activating it. Accel on the active tab with no multi-select is a no-op. Shift
+selects the `visibleTabs` range from `lastMultiSelectedTab`. A plain click
+activates and clears. A plain click on an already multi-selected background
+tab activates that tab and keeps the set. Apply Accel/Shift on pointerdown so
+a following drag already has the native set.
+
+When the drag handle is `multiselected`, capture same-pinned `selectedTabs` at
+`beginDrag` and move/adopt/detach that list. Cross-window adopt moves
+non-selected tabs first and the selected tab last. Detach of more than one tab
+uses `replaceTabsWithWindow`. Row close, mute, and pin call
+`removeMultiSelectedTabs`, `toggleMuteAudioOnMultiSelectedTabs`, and
+`pinMultiSelectedTabs` / `unpinMultiSelectedTabs` when the row is
+`multiselected`. `Ctrl+Shift+Arrow` moves that same-pinned set as a block.
+
+The owned vertical strip may collapse non-handle moving rows while the pointer
+is down so the group follows as one stacked row, then native move/adopt expands
+the set on drop. That collapse is presentation only: it does not regroup tabs
+at drag start and does not change the captured native set.
+
+Shift+Arrow range and Accel+Space toggle are Fennevia accessibility extensions
+of the same native methods. They are not claimed as Firefox tab-strip
+shortcuts. Tab groups, split view, and workspaces remain out of scope.
+
+**Reasoning:** `#tabContextMenu` already branches on `contextTab.multiselected`.
+Reimplementing Close Tabs / Bookmark Tabs / Mute Tabs in Svelte would violate
+ADR-041. Capturing `movingTabs` at drag start matches Firefox `tabs.js`
+dragstart and avoids a drop-time reread if the set changes. Opaque tab IDs and
+an integer `count` are the only drag metadata that leave the privileged
+boundary.

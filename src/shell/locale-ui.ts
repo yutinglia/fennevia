@@ -24,6 +24,7 @@ export function createTabStripLabels(locale: FenneviaLocale): TabStripLabels {
     attention: translate(locale, "tab.attention"),
     cameraInUse: translate(locale, "tab.cameraInUse"),
     close: translate(locale, "tab.close"),
+    closeCount: translate(locale, "tab.closeCount"),
     crashed: translate(locale, "tab.crashed"),
     indexOf: translate(locale, "tab.indexOf"),
     loading: translate(locale, "tab.loading"),

@@ -259,6 +259,8 @@ runtime code or license obligation was introduced.
   `#tabContextMenu` handoff) without rewriting this #11 record. See
   `docs/research/firefox-153-tab-strip-parity.md` and ADR-041. Tab groups,
   split view, workspaces, multi-select, and thumbnails remain separate.
+  Issue #109 later added native-backed multi-select; see
+  `docs/research/firefox-153-154-tab-multiselect.md` and ADR-071.
 - Issue #12 should add selected-browser navigation through a separately
   researched privileged adapter without importing Firefox internals into the
   Svelte/app layers.

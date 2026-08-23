@@ -342,6 +342,7 @@ export const en = {
   "tab.attention": "Attention",
   "tab.cameraInUse": "Using camera",
   "tab.close": "Close",
+  "tab.closeCount": "Close {count} tabs",
   "tab.closeTab": "Close tab",
   "tab.crashed": "Crashed",
   "tab.dragPreview": "Moving tab",

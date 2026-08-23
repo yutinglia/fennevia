@@ -9,16 +9,22 @@ import { readShellStyles } from "./support/shell-styles.mjs";
 import {
   findCloseFocusTarget,
   findOpenedTabIds,
+  findTabGroupMoveIndex,
   findTabMoveIndex,
   getDisplayTabTitle,
   getTabAccessibleName,
   getTabActionAccessibleName,
   getTabAudioAction,
   getTabStripKeyAction,
+  countMultiSelectedTabs,
+  hasAccelModifier,
   isDraggedTabMissing,
+  isCollapsedDragMember,
+  isTabInDragGroup,
   newTabHighlightDurationMs,
   resolveDraggedTabTranslateY,
   resolveRovingTabId,
+  resolveTabPointerAction,
   resolveExternalTabDragShift,
   resolveExternalTabDropIndex,
   resolveTabDragShift,
@@ -58,6 +64,10 @@ test("tab labels preserve page text as text and expose bounded ordinary state", 
   assert.equal(
     getTabActionAccessibleName("close", candidate),
     `Close ${bidiTitle}`,
+  );
+  assert.equal(
+    getTabActionAccessibleName("close", candidate, undefined, 3),
+    "Close 3 tabs",
   );
   assert.equal(
     getTabActionAccessibleName("unpin", candidate),
@@ -137,9 +147,149 @@ test("move helpers stay inside the pinned partition and ignore no-op drops", () 
   assert.equal(findTabMoveIndex(tabs, "open-a", -1), null);
   assert.equal(findTabMoveIndex(tabs, "pinned-b", 1), null);
   assert.equal(findTabMoveIndex(tabs, "pinned-a", 1), 1);
+  assert.equal(findTabGroupMoveIndex(tabs, ["open-a", "open-b"], 1), null);
+  assert.equal(
+    findTabGroupMoveIndex(
+      [
+        tab({ id: "open-a", multiselected: true }),
+        tab({ id: "open-b", multiselected: true }),
+        tab({ id: "open-c" }),
+      ],
+      ["open-a", "open-b"],
+      1,
+    ),
+    1,
+  );
+  assert.equal(
+    findTabGroupMoveIndex(
+      [
+        tab({ id: "open-a" }),
+        tab({ id: "open-b", multiselected: true }),
+        tab({ id: "open-c", multiselected: true }),
+      ],
+      ["open-b", "open-c"],
+      -1,
+    ),
+    0,
+  );
+  assert.equal(
+    countMultiSelectedTabs([
+      tab({ id: "open-a", multiselected: true }),
+      tab({ id: "open-b" }),
+      tab({ id: "open-c", multiselected: true }),
+    ]),
+    2,
+  );
+  assert.equal(
+    isTabInDragGroup(
+      [
+        tab({ id: "open-a", multiselected: true }),
+        tab({ id: "open-b", multiselected: true }),
+      ],
+      "open-a",
+      "open-b",
+    ),
+    true,
+  );
+  assert.equal(
+    isCollapsedDragMember(
+      [
+        tab({ id: "open-a", multiselected: true }),
+        tab({ id: "open-b", multiselected: true }),
+      ],
+      "open-a",
+      "open-b",
+    ),
+    true,
+  );
+  assert.equal(
+    isCollapsedDragMember(
+      [
+        tab({ id: "open-a", multiselected: true }),
+        tab({ id: "open-b", multiselected: true }),
+      ],
+      "open-a",
+      "open-a",
+    ),
+    false,
+  );
+  assert.equal(
+    resolveTabPointerAction(
+      { altKey: false, ctrlKey: true, metaKey: false, shiftKey: false },
+      tab(),
+    ),
+    "toggle-multi",
+  );
+  assert.equal(
+    resolveTabPointerAction(
+      { altKey: false, ctrlKey: false, metaKey: false, shiftKey: true },
+      tab(),
+    ),
+    "range",
+  );
+  assert.equal(
+    resolveTabPointerAction(
+      { altKey: false, ctrlKey: false, metaKey: false, shiftKey: false },
+      tab({ multiselected: true, selected: false }),
+    ),
+    "activate-keep-multi",
+  );
+  assert.equal(
+    resolveTabPointerAction(
+      {
+        altKey: false,
+        ctrlKey: false,
+        getModifierState: (key) => key === "Accel",
+        metaKey: false,
+        shiftKey: false,
+      },
+      tab(),
+    ),
+    "toggle-multi",
+  );
+  assert.equal(hasAccelModifier({ ctrlKey: false, metaKey: true }), true);
   assert.equal(resolveTabDropIndex(tabs, "open-b", [10, 30, 50, 70], 20), 2);
   assert.equal(resolveTabDropIndex(tabs, "open-b", [10, 30, 50, 70], 80), null);
   assert.equal(resolveTabDropIndex(tabs, "pinned-a", [10, 30, 50, 70], 80), 1);
+  assert.equal(
+    resolveTabDropIndex(
+      [
+        tab({ id: "open-a", multiselected: true, selected: true }),
+        tab({ id: "open-b", multiselected: true }),
+        tab({ id: "open-c", multiselected: true }),
+        tab({ id: "open-d" }),
+      ],
+      "open-a",
+      [20, 0, 0, 64],
+      50,
+    ),
+    2,
+  );
+  assert.equal(
+    resolveTabDragShift(
+      [
+        tab({ id: "open-a", multiselected: true, selected: true }),
+        tab({ id: "open-b", multiselected: true }),
+        tab({ id: "open-c" }),
+      ],
+      "open-a",
+      2,
+      1,
+    ),
+    null,
+  );
+  assert.deepEqual(
+    resolveTabDropPreview(
+      [
+        tab({ id: "open-a", multiselected: true, selected: true }),
+        tab({ id: "open-b", multiselected: true }),
+        tab({ id: "open-c" }),
+      ],
+      "open-a",
+      1,
+    ),
+    { index: 2, position: "before" },
+  );
   assert.deepEqual(resolveTabDropPreview(tabs, "open-b", 2), {
     index: 2,
     position: "before",
@@ -298,9 +448,13 @@ test("the component uses semantic sibling controls and property-safe rendering o
   const source = [frameSource, tabSource, topSource].join("\n");
 
   assert.match(source, /role="tablist"/u);
+  assert.match(source, /aria-multiselectable="true"/u);
   assert.match(source, /aria-orientation="vertical"/u);
   assert.match(source, /role="tab"/u);
-  assert.match(source, /aria-selected=\{tab\.selected\}/u);
+  assert.match(
+    source,
+    /aria-selected=\{tab\.selected \|\| tab\.multiselected === true\}/u,
+  );
   assert.match(source, /tabindex=\{rovingTabId === tab\.id \? 0 : -1\}/u);
   assert.match(source, /use:setFaviconSource=\{tab\.faviconUrl\}/u);
   assert.match(source, /node\.hidden = true;[\s\S]*?node\.src = nextSource/u);
@@ -370,13 +524,17 @@ test("the component uses semantic sibling controls and property-safe rendering o
     )?.length,
     2,
   );
+  assert.match(tabSource, /handleTabClick\(event, tab\)/u);
+  assert.match(tabSource, /handleTabPointerDown\(event, tab\)/u);
   assert.match(
     tabSource,
-    /selectTab\(tab\.id, pointerInteractionFromMouseEvent\(event\)\)/u,
+    /onpointerdown=\{\(event\) => handleTabPointerDown\(event, tab\)\}/u,
   );
+  assert.match(tabSource, /resolveTabPointerAction/u);
+  assert.match(tabSource, /findTabGroupMoveIndex/u);
   assert.match(
     tabSource,
-    /if \(event\.button !== 0\) \{\s*return;[\s\S]*?selectTab\(tab\.id, pointerInteractionFromMouseEvent\(event\)\)/u,
+    /data-fennevia-multiselected=\{tab\.multiselected === true\}/u,
   );
   assert.match(tabSource, /from "\.\.\/\.\.\/runtime\/pointer-geometry"/u);
   assert.match(
@@ -456,6 +614,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
     /class="fennevia-tab-strip__favicon"[\s\S]*?class="fennevia-tab-strip__fallback"/u,
   );
   assert.match(source, /findTabMoveIndex/u);
+  assert.match(source, /findTabGroupMoveIndex/u);
   assert.match(source, /resolveTabDropIndex/u);
   assert.match(source, /resolveTabDropPreview/u);
   assert.match(source, /transfer\.setDragImage/u);
@@ -485,6 +644,9 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /aria-live="polite"/u);
   assert.match(source, /data-fennevia-drag-active/u);
   assert.match(source, /data-fennevia-drag-following/u);
+  assert.match(source, /data-fennevia-drag-collapsed/u);
+  assert.match(source, /data-fennevia-drag-stack/u);
+  assert.match(tabSource, /tab\.id === draggingTabId/u);
   assert.match(source, /data-fennevia-drag-shift/u);
   assert.match(source, /resolveDraggedTabTranslateY/u);
   assert.match(source, /style:transform/u);
@@ -562,11 +724,11 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /style:inset-block-start/u);
   assert.match(
     styles,
-    /data-fennevia-drag-shift="up"[\s\S]*?translateY\(calc\(-100% - var\(--fennevia-space-1\)\)\)/u,
+    /data-fennevia-drag-shift="up"[\s\S]*?translateY\(\s*calc\(-100% - var\(--fennevia-space-1\)\)/u,
   );
   assert.match(
     styles,
-    /data-fennevia-drag-shift="down"[\s\S]*?translateY\(calc\(100% \+ var\(--fennevia-space-1\)\)\)/u,
+    /data-fennevia-drag-shift="down"[\s\S]*?translateY\(\s*calc\(100% \+ var\(--fennevia-space-1\)\)/u,
   );
   assert.match(
     styles,
@@ -575,6 +737,14 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(
     styles,
     /\.fennevia-tab-strip__external-preview \{[\s\S]*?position: absolute;[\s\S]*?block-size: 38px;[\s\S]*?pointer-events: none;[\s\S]*?transition: transform var\(--fennevia-motion-duration\)/u,
+  );
+  assert.match(
+    styles,
+    /data-fennevia-drag-collapsed="true"[\s\S]*?display: none;/u,
+  );
+  assert.match(
+    styles,
+    /data-fennevia-drag-stack="true"[\s\S]*?box-shadow:/u,
   );
   assert.match(styles, /\.fennevia-tab-strip__tab \{[\s\S]*?cursor: default;/u);
   assert.doesNotMatch(

@@ -311,6 +311,12 @@
     opacity: 1;
   }
 
+  #fennevia-shell-frame-host
+    .fennevia-tab-strip__item[data-fennevia-drag-stack="true"] {
+    outline: 2px solid Highlight;
+    outline-offset: 3px;
+  }
+
   #fennevia-shell-frame-host .fennevia-tab-strip__drop-indicator {
     background: Highlight;
     box-shadow: none;

@@ -25,6 +25,7 @@ export const TAB_EVENT_TYPES = Object.freeze([
 export const GBROWSER_TAB_EVENT_TYPES = Object.freeze([
   "oop-browser-crashed",
   "oop-browser-buildid-mismatch",
+  "TabMultiSelect",
 ]);
 export const SNAPSHOT_ATTRIBUTES = new Set([
   "activemedia-blocked",
@@ -34,6 +35,7 @@ export const SNAPSHOT_ATTRIBUTES = new Set([
   "image",
   "label",
   "muted",
+  "multiselected",
   "pictureinpicture",
   "selected",
   "sharing",
@@ -149,6 +151,20 @@ export const tabsCapabilitySpecifications: readonly TabsCapabilitySpecification[
       ["adopt-tab", "adoptTab"],
       ["detach-tab", "replaceTabWithWindow"],
       ["translate-tab-context-menu", "translateTabContextMenu"],
+      ["add-to-multi-selected-tabs", "addToMultiSelectedTabs"],
+      ["remove-from-multi-selected-tabs", "removeFromMultiSelectedTabs"],
+      ["add-range-to-multi-selected-tabs", "addRangeToMultiSelectedTabs"],
+      ["clear-multi-selected-tabs", "clearMultiSelectedTabs"],
+      ["lock-clear-multi-selection-once", "lockClearMultiSelectionOnce"],
+      ["unlock-clear-multi-selection", "unlockClearMultiSelection"],
+      ["remove-multi-selected-tabs", "removeMultiSelectedTabs"],
+      [
+        "toggle-mute-audio-on-multi-selected-tabs",
+        "toggleMuteAudioOnMultiSelectedTabs",
+      ],
+      ["pin-multi-selected-tabs", "pinMultiSelectedTabs"],
+      ["unpin-multi-selected-tabs", "unpinMultiSelectedTabs"],
+      ["detach-tabs", "replaceTabsWithWindow"],
     ].map(([name, member]) =>
       Object.freeze({
         isAvailable: isFunction,
@@ -157,6 +173,20 @@ export const tabsCapabilitySpecifications: readonly TabsCapabilitySpecification[
         symbol: `window.gBrowser.${member}`,
       }),
     ),
+    Object.freeze({
+      isAvailable: Array.isArray,
+      name: "firefox.selected-tabs",
+      read: (window: NativeRecord) =>
+        readGBrowserMember(window, "selectedTabs"),
+      symbol: "window.gBrowser.selectedTabs",
+    }),
+    Object.freeze({
+      isAvailable: isNativeObject,
+      name: "firefox.last-multi-selected-tab",
+      read: (window: NativeRecord) =>
+        readGBrowserMember(window, "lastMultiSelectedTab"),
+      symbol: "window.gBrowser.lastMultiSelectedTab",
+    }),
     Object.freeze({
       isAvailable: (value: unknown) =>
         typeof value === "string" && value.length > 0 && value.length <= 2048,
@@ -276,6 +306,7 @@ export const snapshotsEqual = (
       tab.id === candidate.id &&
       tab.title === candidate.title &&
       tab.selected === candidate.selected &&
+      tab.multiselected === candidate.multiselected &&
       tab.pinned === candidate.pinned &&
       tab.loading === candidate.loading &&
       tab.faviconUrl === candidate.faviconUrl &&

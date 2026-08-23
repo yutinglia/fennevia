@@ -22,22 +22,29 @@
   import {
     findCloseFocusTarget,
     findOpenedTabIds,
+    findTabGroupMoveIndex,
     findTabMoveIndex,
     getDisplayTabTitle,
     getTabAccessibleName,
     getTabActionAccessibleName,
     getTabAudioAction,
     getTabStripKeyAction,
+    countMultiSelectedTabs,
+    hasAccelModifier,
     isDraggedTabMissing,
+    isCollapsedDragMember,
+    isTabInDragGroup,
     newTabHighlightDurationMs,
     resolveDraggedTabTranslateY,
     resolveRovingTabId,
+    resolveTabPointerAction,
     resolveExternalTabDragShift,
     resolveExternalTabDropIndex,
     resolveTabDragShift,
     resolveTabDropIndex,
     resolveTabDropPreview,
     type TabDropPreview,
+    type TabPointerAction,
   } from "../../../app/tab-strip";
   import FirefoxIcon, { type FirefoxIconName } from "../../FirefoxIcon.svelte";
   import { createTabStripLabels } from "../../locale-ui";
@@ -72,7 +79,17 @@
   let highlightedTabIds: readonly string[] = $state([]);
   let draggingTabId: string | null = $state(null);
   let sourceDragId: string | null = $state(null);
-  let externalDrag: TabDragSnapshot | null = $state(null);
+  let externalDrag = $state<TabDragSnapshot | null>(null);
+  let pendingPointerAction: TabPointerAction | null = null;
+  let dragCount = $derived(
+    externalDrag === null
+      ? draggingTabId
+        ? currentTabs.tabs.filter((tab) =>
+            isTabInDragGroup(currentTabs.tabs, draggingTabId, tab.id),
+          ).length
+        : 1
+      : externalDrag.count,
+  );
   let dragTargetIndex: number | null = $state(null);
   let draggedTabTranslateY: number | null = $state(null);
   let dropPreview: TabDropPreview = $state(null);
@@ -354,6 +371,68 @@
     );
   };
 
+  const applyTabPointerAction = (
+    tab: TabSnapshot,
+    action: TabPointerAction,
+    pointerInteraction: PointerInteraction | null,
+  ) => {
+    cancelDelayedFocus();
+    rovingTabId = tab.id;
+    if (pointerInteraction) {
+      props.shell.setPointerHeld(props.edge, true);
+    }
+    try {
+      if (action === "toggle-multi") {
+        props.tabs.toggleMultiSelect(tab.id);
+      } else if (action === "range") {
+        props.tabs.selectRange(tab.id);
+      } else if (action === "activate-keep-multi") {
+        props.tabs.activateKeepingMultiSelect(tab.id);
+      }
+    } catch (error) {
+      props.onFatalError(error);
+      return;
+    }
+    reportAsyncError(
+      pointerInteraction
+        ? restorePointerInteractionAfterMutation(pointerInteraction, false)
+        : focusTab(tab.id),
+    );
+  };
+
+  const handleTabPointerDown = (event: PointerEvent, tab: TabSnapshot) => {
+    if (event.button !== 0) {
+      pendingPointerAction = null;
+      return;
+    }
+    const action = resolveTabPointerAction(event, tab);
+    pendingPointerAction = action;
+    if (action === "activate") {
+      return;
+    }
+    event.preventDefault();
+    applyTabPointerAction(
+      tab,
+      action,
+      pointerInteractionFromMouseEvent(event),
+    );
+  };
+
+  const handleTabClick = (event: MouseEvent, tab: TabSnapshot) => {
+    if (event.button !== 0) {
+      return;
+    }
+    const pending = pendingPointerAction;
+    pendingPointerAction = null;
+    if (pending && pending !== "activate") {
+      return;
+    }
+    if (resolveTabPointerAction(event, tab) !== "activate") {
+      return;
+    }
+    selectTab(tab.id, pointerInteractionFromMouseEvent(event));
+  };
+
   const openTab = (
     pointerInteraction: PointerInteraction | null = null,
     options: OpenTabOptions = { selected: true },
@@ -443,17 +522,27 @@
 
   const handleTabKeydown = (event: KeyboardEvent, tabId: string) => {
     if (
-      event.ctrlKey &&
+      hasAccelModifier(event) &&
       event.shiftKey &&
       !event.altKey &&
-      !event.metaKey &&
       (event.key === "ArrowUp" || event.key === "ArrowDown")
     ) {
-      const targetIndex = findTabMoveIndex(
-        currentTabs.tabs,
-        tabId,
-        event.key === "ArrowDown" ? 1 : -1,
-      );
+      const tab = currentTabs.tabs.find((candidate) => candidate.id === tabId);
+      const movingIds =
+        tab?.multiselected === true
+          ? currentTabs.tabs
+              .filter(
+                (candidate) =>
+                  candidate.multiselected === true &&
+                  candidate.pinned === tab.pinned,
+              )
+              .map((candidate) => candidate.id)
+          : [tabId];
+      const delta = event.key === "ArrowDown" ? 1 : -1;
+      const targetIndex =
+        movingIds.length > 1
+          ? findTabGroupMoveIndex(currentTabs.tabs, movingIds, delta)
+          : findTabMoveIndex(currentTabs.tabs, tabId, delta);
       if (targetIndex === null) {
         return;
       }
@@ -461,8 +550,56 @@
       event.stopPropagation();
       cancelDelayedFocus();
       try {
-        props.tabs.move(tabId, targetIndex);
-        announceTabMove(tabId, targetIndex);
+        props.tabs.move(movingIds[0] ?? tabId, targetIndex);
+        announceTabMove(movingIds[0] ?? tabId, targetIndex);
+      } catch (error) {
+        props.onFatalError(error);
+        return;
+      }
+      reportAsyncError(focusTab(tabId));
+      return;
+    }
+    if (
+      event.shiftKey &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      (event.key === "ArrowUp" || event.key === "ArrowDown")
+    ) {
+      const currentIndex = currentTabs.tabs.findIndex(
+        (candidate) => candidate.id === tabId,
+      );
+      const next =
+        currentTabs.tabs[
+          currentIndex + (event.key === "ArrowDown" ? 1 : -1)
+        ];
+      if (!next) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      cancelDelayedFocus();
+      rovingTabId = next.id;
+      try {
+        props.tabs.selectRange(next.id);
+      } catch (error) {
+        props.onFatalError(error);
+        return;
+      }
+      reportAsyncError(focusTab(next.id));
+      return;
+    }
+    if (
+      hasAccelModifier(event) &&
+      !event.altKey &&
+      !event.shiftKey &&
+      event.key === " "
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelDelayedFocus();
+      try {
+        props.tabs.toggleMultiSelect(tabId);
       } catch (error) {
         props.onFatalError(error);
         return;
@@ -576,7 +713,11 @@
   const captureDragGeometry = (
     list: HTMLElement,
     dragId: string,
-    localDrag?: Readonly<{ pointerY: number; tabId: string }>,
+    localDrag?: Readonly<{
+      pointerY: number;
+      preservePointerOffset?: boolean;
+      tabId: string;
+    }>,
   ): boolean => {
     const listBounds = list.getBoundingClientRect();
     const items = Array.from(
@@ -597,8 +738,21 @@
       clearDragGeometry();
       return false;
     }
+    let lastVisibleIndex = itemBounds.length - 1;
+    while (lastVisibleIndex > 0) {
+      const tab = currentTabs.tabs[lastVisibleIndex];
+      const height = itemBounds[lastVisibleIndex]?.height ?? 0;
+      if (
+        !tab ||
+        height >= 1 ||
+        !isCollapsedDragMember(currentTabs.tabs, draggingTabId, tab.id)
+      ) {
+        break;
+      }
+      lastVisibleIndex -= 1;
+    }
     dragGeometry.appendTop =
-      (itemBounds.at(-1)?.bottom ?? listBounds.top) -
+      (itemBounds[lastVisibleIndex]?.bottom ?? listBounds.top) -
       listBounds.top +
       list.scrollTop;
     dragGeometry.dragId = dragId;
@@ -612,13 +766,15 @@
     dragGeometry.listScrollTop = list.scrollTop;
     dragGeometry.listTop = listBounds.top;
     const localDragBounds = itemBounds[localDragIndex];
-    dragGeometry.pointerOffsetY =
-      localDrag && localDragBounds
-        ? Math.min(
-            localDragBounds.height,
-            Math.max(0, localDrag.pointerY - localDragBounds.top),
-          )
-        : null;
+    if (!localDrag?.preservePointerOffset) {
+      dragGeometry.pointerOffsetY =
+        localDrag && localDragBounds
+          ? Math.min(
+              localDragBounds.height,
+              Math.max(0, localDrag.pointerY - localDragBounds.top),
+            )
+          : null;
+    }
     dragGeometry.tabIds = currentTabs.tabs.map((tab) => tab.id);
     return true;
   };
@@ -663,9 +819,35 @@
     const partitionEnd = dragging.pinned
       ? pinnedCount - 1
       : currentTabs.tabs.length - 1;
-    const minimumTop = dragGeometry.itemTops[partitionStart];
-    const finalTop = dragGeometry.itemTops[partitionEnd];
-    const finalHeight = dragGeometry.itemHeights[partitionEnd];
+    let visualStart = partitionStart;
+    while (visualStart < partitionEnd) {
+      const tab = currentTabs.tabs[visualStart];
+      const height = dragGeometry.itemHeights[visualStart] ?? 0;
+      if (
+        tab &&
+        (height >= 1 ||
+          !isCollapsedDragMember(currentTabs.tabs, tabId, tab.id))
+      ) {
+        break;
+      }
+      visualStart += 1;
+    }
+    let visualEnd = partitionEnd;
+    while (visualEnd > visualStart) {
+      const tab = currentTabs.tabs[visualEnd];
+      const height = dragGeometry.itemHeights[visualEnd] ?? 0;
+      if (
+        tab &&
+        (height >= 1 ||
+          !isCollapsedDragMember(currentTabs.tabs, tabId, tab.id))
+      ) {
+        break;
+      }
+      visualEnd -= 1;
+    }
+    const minimumTop = dragGeometry.itemTops[visualStart];
+    const finalTop = dragGeometry.itemTops[visualEnd];
+    const finalHeight = dragGeometry.itemHeights[visualEnd];
     if (
       minimumTop === undefined ||
       finalTop === undefined ||
@@ -773,6 +955,20 @@
           captureDragGeometry(list, dragId, {
             pointerY: event.clientY,
             tabId,
+          });
+          void tick().then(() => {
+            if (
+              sourceDragId !== dragId ||
+              draggingTabId !== tabId ||
+              !list.isConnected
+            ) {
+              return;
+            }
+            captureDragGeometry(list, dragId, {
+              pointerY: event.clientY,
+              preservePointerOffset: true,
+              tabId,
+            });
           });
         }
       }
@@ -915,6 +1111,18 @@
     }
     setDragHold(true);
     holdExternalDrag(drag);
+    if (
+      drag.source === "same-window" &&
+      draggingTabId &&
+      dragCount > 1 &&
+      draggedTabTranslateY === null
+    ) {
+      captureDragGeometry(list, drag.id, {
+        pointerY: event.clientY,
+        preservePointerOffset: true,
+        tabId: draggingTabId,
+      });
+    }
     draggedTabTranslateY =
       drag.source === "same-window" && draggingTabId
         ? resolveLocalDraggedTranslateY(
@@ -1189,6 +1397,7 @@
 >
   <div
     aria-label={t("tab.openHeading")}
+    aria-multiselectable="true"
     aria-orientation="vertical"
     class="fennevia-tab-strip__list"
     data-fennevia-drag-active={sourceDragId !== null || externalDrag !== null}
@@ -1201,14 +1410,30 @@
   >
     {#each currentTabs.tabs as tab, index (tab.id)}
       {@const audioAction = getTabAudioAction(tab)}
-      {@const isDraggedTab = draggingTabId === tab.id}
+      {@const isDraggedTab = isTabInDragGroup(
+        currentTabs.tabs,
+        draggingTabId,
+        tab.id,
+      )}
+      {@const isDragHandle = tab.id === draggingTabId}
+      {@const isCollapsedMember = isCollapsedDragMember(
+        currentTabs.tabs,
+        draggingTabId,
+        tab.id,
+      )}
       <div
         class="fennevia-tab-strip__item"
         data-fennevia-attention={tab.attention === true}
         data-fennevia-audio={tab.audio}
         data-fennevia-container-color={tab.container?.color}
-        data-fennevia-drag-following={isDraggedTab &&
+        data-fennevia-drag-collapsed={isCollapsedMember ? true : undefined}
+        data-fennevia-drag-following={isDragHandle &&
           draggedTabTranslateY !== null}
+        data-fennevia-drag-stack={isDragHandle &&
+        dragCount > 1 &&
+        draggedTabTranslateY !== null
+          ? true
+          : undefined}
         data-fennevia-dragging={isDraggedTab}
         data-fennevia-drag-shift={externalDrag
           ? (resolveExternalTabDragShift(
@@ -1230,6 +1455,7 @@
         data-fennevia-just-opened={highlightedTabIds.includes(tab.id)}
         data-fennevia-loading={tab.loading}
         data-fennevia-picture-in-picture={tab.pictureInPicture === true}
+        data-fennevia-multiselected={tab.multiselected === true}
         data-fennevia-pinned={tab.pinned}
         data-fennevia-selected={tab.selected}
         data-fennevia-tab-item=""
@@ -1237,7 +1463,7 @@
         oncontextmenu={(event) => handleTabContextMenu(event, tab.id)}
         onmousedown={preventMiddleAutoscroll}
         role="presentation"
-        style:transform={isDraggedTab && draggedTabTranslateY !== null
+        style:transform={isDragHandle && draggedTabTranslateY !== null
           ? `translateY(${draggedTabTranslateY}px)`
           : undefined}
       >
@@ -1258,19 +1484,15 @@
             currentTabs.tabs.length,
             tabLabels,
           )}
-          aria-selected={tab.selected}
+          aria-selected={tab.selected || tab.multiselected === true}
           class="fennevia-tab-strip__tab"
           data-fennevia-tab=""
           draggable="true"
-          onclick={(event) => {
-            if (event.button !== 0) {
-              return;
-            }
-            selectTab(tab.id, pointerInteractionFromMouseEvent(event));
-          }}
+          onclick={(event) => handleTabClick(event, tab)}
           ondragstart={(event) => handleTabDragStart(event, tab.id)}
           onfocus={() => (rovingTabId = tab.id)}
           onkeydown={(event) => handleTabKeydown(event, tab.id)}
+          onpointerdown={(event) => handleTabPointerDown(event, tab)}
           role="tab"
           tabindex={rovingTabId === tab.id ? 0 : -1}
           title={getDisplayTabTitle(tab, tabLabels)}
@@ -1362,7 +1584,14 @@
         >
 
         <button
-          aria-label={getTabActionAccessibleName("close", tab, tabLabels)}
+          aria-label={getTabActionAccessibleName(
+            "close",
+            tab,
+            tabLabels,
+            tab.multiselected === true
+              ? countMultiSelectedTabs(currentTabs.tabs)
+              : 1,
+          )}
           class="fennevia-control fennevia-tab-strip__action"
           data-fennevia-action="close-tab"
           onclick={(event) => {

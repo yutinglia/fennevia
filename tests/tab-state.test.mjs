@@ -42,12 +42,23 @@ test("tab state copies bounded indicator fields and rejects invalid values", () 
       audio: "playing",
       container: { color: "blue", label: "Personal".repeat(20) },
       crashed: true,
+      multiselected: true,
       pictureInPicture: true,
       sharing: "microphone",
     },
   ]);
   assert.equal(state.tabs[0].audio, "playing");
   assert.equal(state.tabs[0].attention, true);
+  assert.equal(state.tabs[0].multiselected, true);
+  assert.equal(
+    "multiselected" in createBrowserTabsState([{ ...firstTab }]).tabs[0],
+    false,
+  );
+  assert.equal(
+    "multiselected" in
+      createBrowserTabsState([{ ...firstTab, multiselected: false }]).tabs[0],
+    false,
+  );
   assert.equal(state.tabs[0].crashed, true);
   assert.equal(state.tabs[0].pictureInPicture, true);
   assert.equal(state.tabs[0].sharing, "microphone");
@@ -133,6 +144,9 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
       actions.push(["beginDrag", tabId]);
       return "tab-transfer-00000001";
     },
+    clearMultiSelect() {
+      actions.push(["clearMultiSelect"]);
+    },
     close(tabId) {
       actions.push(["close", tabId]);
     },
@@ -147,6 +161,7 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
     inspectDrag() {
       actions.push(["inspectDrag"]);
       return {
+        count: 1,
         id: "tab-transfer-00000001",
         pinned: false,
         source: "same-window",
@@ -167,6 +182,15 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
     },
     select(tabId) {
       actions.push(["select", tabId]);
+    },
+    selectRange(tabId) {
+      actions.push(["selectRange", tabId]);
+    },
+    activateKeepingMultiSelect(tabId) {
+      actions.push(["activateKeepingMultiSelect", tabId]);
+    },
+    toggleMultiSelect(tabId) {
+      actions.push(["toggleMultiSelect", tabId]);
     },
     snapshot() {
       return [firstTab];
@@ -214,6 +238,7 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
   const openedId = adapter.open({ selected: false });
   const dragId = adapter.beginDrag(openedId);
   assert.deepEqual(adapter.inspectDrag(), {
+    count: 1,
     id: dragId,
     pinned: false,
     source: "same-window",
@@ -232,6 +257,9 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
     "consumed",
   );
   adapter.select(openedId);
+  adapter.selectRange(openedId);
+  adapter.toggleMultiSelect(openedId);
+  adapter.activateKeepingMultiSelect(openedId);
   adapter.pin(openedId);
   adapter.unpin(openedId);
   adapter.move(openedId, 1);
@@ -249,6 +277,9 @@ test("the adapter forwards actions, publishes reactive state, and disposes once"
       { cancelled: false, screenX: 30, screenY: 40 },
     ],
     ["select", openedId],
+    ["selectRange", openedId],
+    ["toggleMultiSelect", openedId],
+    ["activateKeepingMultiSelect", openedId],
     ["pin", openedId],
     ["unpin", openedId],
     ["move", openedId, 1],
