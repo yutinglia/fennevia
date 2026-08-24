@@ -38,7 +38,7 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-24, public prerelease package `0.14.0-beta.1` remains published
+As of 2026-08-25, public prerelease package `0.15.0-beta.1` remains published
 for Windows x64. Validated evidence is Firefox 153.0.4 BuildID 20260810162159
 and owner-confirmed ordinary runtime on Firefox 154.0 BuildID 20260812182057.
 The installer accepts Firefox 153 and newer after an explicit warning that only

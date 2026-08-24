@@ -76,9 +76,9 @@ fallback; this is an accepted safety behavior rather than a custom prompt.
 ## Current release
 
 The current public prerelease is
-[`v0.14.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.14.0-beta.1).
+[`v0.15.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.15.0-beta.1).
 It follows
-[`v0.13.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.13.0-beta.1).
+[`v0.14.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.14.0-beta.1).
 Its tested environment is intentionally narrow:
 
 | Requirement      | Tested value                                         |
@@ -86,7 +86,7 @@ Its tested environment is intentionally narrow:
 | Operating system | Windows x64                                          |
 | Firefox          | Stock Firefox 153.0.4 and 154.0, release channel     |
 | Firefox Build ID | `20260810162159` (153.0.4), `20260812182057` (154.0) |
-| Package          | `fennevia-0.14.0-beta.1-windows.zip`                 |
+| Package          | `fennevia-0.15.0-beta.1-windows.zip`                 |
 
 Install, update, repair, and re-enable reject Firefox older than 153. Firefox
 153, 154, and newer majors may be installed after the installer warning: only
@@ -103,7 +103,8 @@ Firefox from source.
 Fennevia has moved beyond the first four-edge MVP. The current prerelease also
 includes a Fennevia-owned widget editor with live drag-and-drop across all four
 edges, a tabbed customize drawer, optional compact windows, Firefox-owned tab
-multi-select, related New Tab insertion after the current tab, bounded appearance,
+multi-select, a fixed bounded pinned-tabs area, related New Tab insertion after
+the current tab, bounded appearance,
 panel-role/activity-light, and edge-interaction
 controls, cached bookmark favicons with middle-click open, Firefox design-token
 defaults, English and Traditional Chinese shell catalogs, first-paint
@@ -125,7 +126,7 @@ pending.
 
 The last recorded automated Firefox 154 lifecycle, recovery,
 performance-control, deterministic archive, and extracted-package installer
-matrix is the `0.12.0-beta.1` candidate; this `0.14.0-beta.1` package does not
+matrix is the `0.12.0-beta.1` candidate; this `0.15.0-beta.1` package does not
 re-run that matrix. The remaining real-Firefox visual, assistive-technology,
 account/device, popup-placement, customize, first-paint, complete GUI installer,
 and representative Urlbar-provider rows are still pending. The main remaining
@@ -156,14 +157,14 @@ the wizard.
 
 Download both files from the same GitHub Release:
 
-- `fennevia-0.14.0-beta.1-windows.zip`
-- `fennevia-0.14.0-beta.1-windows.zip.sha256`
+- `fennevia-0.15.0-beta.1-windows.zip`
+- `fennevia-0.15.0-beta.1-windows.zip.sha256`
 
 Before extracting the ZIP, run this in PowerShell from the download directory:
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.14.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.14.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.15.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.15.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 
