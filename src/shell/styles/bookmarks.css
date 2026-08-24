@@ -15,11 +15,6 @@
   border-block-end: 1px solid var(--fennevia-glass-separator);
 }
 
-#fennevia-shell-frame-host .fennevia-bookmarks__roots-label {
-  color: var(--fennevia-glass-muted);
-  font-size: 11px;
-}
-
 #fennevia-shell-frame-host .fennevia-bookmarks__root-select,
 #fennevia-shell-frame-host .fennevia-bookmarks__item-button,
 #fennevia-shell-frame-host .fennevia-bookmarks__new-tab,

@@ -54,7 +54,6 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "bookmarks.listAria": "所選位置中的書籤",
   "bookmarks.loading": "正在載入書籤位置…",
   "bookmarks.loadingShort": "載入中…",
-  "bookmarks.location": "位置",
   "bookmarks.locationTitle": "書籤位置",
   "bookmarks.manage": "管理書籤",
   "bookmarks.next": "下一頁",

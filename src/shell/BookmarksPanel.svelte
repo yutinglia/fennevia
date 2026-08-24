@@ -570,15 +570,10 @@
   data-fennevia-bookmarks=""
 >
   <div class="fennevia-bookmarks__roots">
-    <label
-      class="fennevia-bookmarks__roots-label"
-      for="fennevia-bookmark-roots"
-    >
-      {t("bookmarks.location")}
-    </label>
     <select
       bind:this={rootSelect}
       aria-controls="fennevia-bookmark-list"
+      aria-label={t("bookmarks.locationTitle")}
       class="fennevia-control fennevia-bookmarks__root-select"
       data-fennevia-bookmark-roots=""
       data-fennevia-default-focus=""

@@ -25,7 +25,8 @@
 #fennevia-shell-frame-host .fennevia-tab-strip__list {
   position: relative;
   display: flex;
-  flex: 1 1 auto;
+  /* Keep this intrinsic basis paired with the regular partition below. */
+  flex: 0 1 auto;
   flex-direction: column;
   min-block-size: 0;
   overflow: hidden;
@@ -90,7 +91,7 @@
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip__partition--regular {
-  flex: 1 1 0;
+  flex: 1 1 auto;
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip__item {

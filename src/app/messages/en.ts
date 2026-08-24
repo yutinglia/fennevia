@@ -56,7 +56,6 @@ export const en = {
   "bookmarks.listAria": "Bookmarks in selected location",
   "bookmarks.loading": "Loading bookmark locations…",
   "bookmarks.loadingShort": "Loading…",
-  "bookmarks.location": "Location",
   "bookmarks.locationTitle": "Bookmark location",
   "bookmarks.manage": "Manage bookmarks",
   "bookmarks.next": "Next",

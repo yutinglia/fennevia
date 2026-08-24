@@ -38,6 +38,23 @@ const projectRoot = path.resolve(
   "..",
 );
 
+test("regular tabs keep intrinsic height above the new-tab button", async () => {
+  const styles = await readShellStyles(projectRoot);
+  const listRule = styles.match(/\.fennevia-tab-strip__list \{([^}]*)\}/u)?.[1];
+  const regularPartitionRule = styles.match(
+    /\.fennevia-tab-strip__partition--regular \{([^}]*)\}/u,
+  )?.[1];
+
+  assert.ok(listRule, "expected the outer tab-list sizing rule");
+  assert.ok(
+    regularPartitionRule,
+    "expected the regular tab-partition sizing rule",
+  );
+  assert.match(listRule, /flex: 0 1 auto;/u);
+  assert.match(regularPartitionRule, /flex: 1 1 auto;/u);
+  assert.doesNotMatch(regularPartitionRule, /flex: 1 1 0;/u);
+});
+
 const tab = (overrides = {}) =>
   Object.freeze({
     id: "tab-1",
@@ -903,7 +920,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(styles, /unicode-bidi: plaintext/u);
   assert.match(
     styles,
-    /\.fennevia-tab-strip__list \{[\s\S]*?flex: 1 1 auto;[\s\S]*?overflow: hidden;/u,
+    /\.fennevia-tab-strip__list \{[^}]*flex: 0 1 auto;[^}]*overflow: hidden;/u,
   );
   assert.match(
     styles,
@@ -915,7 +932,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
   );
   assert.match(
     styles,
-    /\.fennevia-tab-strip__partition--regular \{\s*flex: 1 1 0;/u,
+    /\.fennevia-tab-strip__partition--regular \{\s*flex: 1 1 auto;/u,
   );
   assert.match(
     styles,

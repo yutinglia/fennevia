@@ -9,6 +9,26 @@ const projectRoot = path.resolve(
   "..",
 );
 
+test("bookmark root selector stays accessible without a visible location title", async () => {
+  const [source, styles] = await Promise.all([
+    readFile(
+      path.join(projectRoot, "src", "shell", "BookmarksPanel.svelte"),
+      "utf8",
+    ),
+    readFile(
+      path.join(projectRoot, "src", "shell", "styles", "bookmarks.css"),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(
+    source,
+    /aria-label=\{t\("bookmarks\.locationTitle"\)\}[\s\S]*?data-fennevia-bookmark-roots=""/u,
+  );
+  assert.doesNotMatch(source, /bookmarks\.location"/u);
+  assert.doesNotMatch(styles, /fennevia-bookmarks__roots-label/u);
+});
+
 test("bookmark rows expose bounded pointer and keyboard context actions", async () => {
   const [source, styles] = await Promise.all([
     readFile(
