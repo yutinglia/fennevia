@@ -45,10 +45,10 @@ import {
 } from "../../app/tab-state";
 import {
   createBrowserToolbarWidgetsStateAdapter,
-  getSidePanelEdge,
+  isToolbarOptionalPanelEnabled,
+  toolbarLayoutContainsProjectWidget,
   type BrowserToolbarWidgetsState,
   type BrowserToolbarWidgetsStateAdapter,
-  type SidePanelEdge,
 } from "../../app/toolbar-widgets-state";
 import {
   createBrowserUrlbarCoverageStateAdapter,
@@ -148,10 +148,12 @@ export function mountShellApp({
   let urlbarCoverageState: BrowserUrlbarCoverageStateAdapter | undefined;
   let urlbarSuggestionsState: BrowserUrlbarSuggestionsStateAdapter | undefined;
   let windowControlsState: BrowserWindowControlsStateAdapter | undefined;
-  let tabsEdge: SidePanelEdge = "left";
-  let bookmarksEdge: SidePanelEdge = "right";
-  let bottomDownloadsEnabled = true;
-  let tabContextMenuEdge: SidePanelEdge | null = null;
+  const optionalPanelEnabled: Record<"bottom" | "left" | "right", boolean> = {
+    bottom: true,
+    left: true,
+    right: true,
+  };
+  let tabContextMenuEdge: EdgeName | null = null;
   const components: MountedComponent[] = [];
   const controllerSubscriptions: Array<() => boolean> = [];
   const scheduler = Object.freeze({
@@ -558,7 +560,21 @@ export function mountShellApp({
       }),
       tabsState.subscribeContextMenu((open) => {
         if (open) {
-          tabContextMenuEdge = tabsEdge;
+          const active = frame.ownerDocument.activeElement;
+          const edgeValue =
+            active instanceof Element
+              ? active
+                  .closest<HTMLElement>("[data-fennevia-surface-root]")
+                  ?.getAttribute("data-fennevia-edge")
+              : null;
+          tabContextMenuEdge = edgeNames.includes(edgeValue as EdgeName)
+            ? (edgeValue as EdgeName)
+            : (edgeNames.find((edge) =>
+                toolbarLayoutContainsProjectWidget(
+                  toolbarWidgetsState?.snapshot().snapshot.layout[edge] ?? [],
+                  "tabs",
+                ),
+              ) ?? "top");
           shell.setPopupHeld(tabContextMenuEdge, true);
           return;
         }
@@ -591,31 +607,47 @@ export function mountShellApp({
           ? view.matchMedia("(prefers-reduced-motion: reduce)")
           : null;
       const applyCustomizeState = (state: BrowserToolbarWidgetsState): void => {
-        const nextTabsEdge = getSidePanelEdge(state.snapshot.panels, "tabs");
-        const nextBookmarksEdge = getSidePanelEdge(
-          state.snapshot.panels,
-          "bookmarks",
-        );
-        if (nextTabsEdge !== tabsEdge || nextBookmarksEdge !== bookmarksEdge) {
-          releaseSurfaceFocusIfActive("left");
-          releaseSurfaceFocusIfActive("right");
-          shell.dismiss("left");
-          shell.dismiss("right");
-          if (tabContextMenuEdge) {
+        if (tabContextMenuEdge) {
+          const nextTabsEdge = edgeNames.find((edge) =>
+            toolbarLayoutContainsProjectWidget(
+              state.snapshot.layout[edge],
+              "tabs",
+            ),
+          );
+          if (nextTabsEdge && nextTabsEdge !== tabContextMenuEdge) {
             shell.setPopupHeld(tabContextMenuEdge, false);
             tabContextMenuEdge = nextTabsEdge;
             shell.setPopupHeld(tabContextMenuEdge, true);
           }
-          tabsEdge = nextTabsEdge;
-          bookmarksEdge = nextBookmarksEdge;
         }
-        const nextBottomEnabled = state.snapshot.panels.bottomDownloadsEnabled;
-        if (bottomDownloadsEnabled !== nextBottomEnabled) {
-          if (!nextBottomEnabled) {
-            releaseSurfaceFocusIfActive("bottom");
+        const showEmptyCustomizeTargets = customizeSession?.isOpen() === true;
+        const nextPanelEnabled = {
+          bottom: isToolbarOptionalPanelEnabled(
+            state.snapshot.panels.bottomPanelEnabled,
+            state.snapshot.layout.bottom.length,
+            showEmptyCustomizeTargets,
+          ),
+          left: isToolbarOptionalPanelEnabled(
+            state.snapshot.panels.leftPanelEnabled,
+            state.snapshot.layout.left.length,
+            showEmptyCustomizeTargets,
+          ),
+          right: isToolbarOptionalPanelEnabled(
+            state.snapshot.panels.rightPanelEnabled,
+            state.snapshot.layout.right.length,
+            showEmptyCustomizeTargets,
+          ),
+        } as const;
+        for (const edge of ["left", "right", "bottom"] as const) {
+          const enabled = nextPanelEnabled[edge];
+          if (optionalPanelEnabled[edge] === enabled) {
+            continue;
           }
-          bottomDownloadsEnabled = nextBottomEnabled;
-          shell.setEdgeEnabled("bottom", nextBottomEnabled);
+          if (!enabled) {
+            releaseSurfaceFocusIfActive(edge);
+          }
+          optionalPanelEnabled[edge] = enabled;
+          shell.setEdgeEnabled(edge, enabled);
         }
         shell.setInteractionConfig({
           hideDelayMs: state.snapshot.style.autoHideDelay,
@@ -644,6 +676,9 @@ export function mountShellApp({
           shell.setPopupHeld("top", false);
         }),
         widgetsState.subscribe(applyCustomizeState),
+        customizeSession.subscribe(() => {
+          applyCustomizeState(widgetsState.snapshot());
+        }),
       );
       const mediaQueries = [forcedColorsQuery, reducedMotionQuery].filter(
         (query): query is MediaQueryList => query !== null,
@@ -696,11 +731,7 @@ export function mountShellApp({
           navigation: navigationState,
           onOpenAddress: () => openAddressPopup("tabs-launcher"),
           tabs: tabsState,
-          ...(edge === "top"
-            ? {
-                windowControls: windowControlsState,
-              }
-            : {}),
+          windowControls: windowControlsState,
           onDismiss: dismissSurface,
           onFatalError,
           onDisposed(disposedEdge: EdgeName) {

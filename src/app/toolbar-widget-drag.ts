@@ -1,6 +1,9 @@
 import {
+  copyToolbarLayoutPath,
+  findToolbarLayoutInstance,
   isToolbarPaletteToken,
   isToolbarZoneName,
+  type ToolbarLayoutZonesSnapshot,
   type ToolbarWidgetsEditOperation,
   type ToolbarZoneName,
 } from "./toolbar-widgets-state.ts";
@@ -9,9 +12,11 @@ export const toolbarWidgetDragMimeType =
   "application/x-fennevia-toolbar-widget";
 
 const ZONE_MAX_ENTRIES = 48;
+const LAYOUT_INSTANCE_PATTERN = /^layout-[1-9][0-9]{0,5}$/u;
 
 export type ToolbarWidgetDragSource =
   | Readonly<{ token: string; type: "palette" }>
+  | Readonly<{ instanceId: string; type: "layout-node" }>
   | Readonly<{
       index: number;
       type: "zone";
@@ -22,11 +27,26 @@ export type ToolbarWidgetDropTarget =
   | Readonly<{ type: "palette" }>
   | Readonly<{
       insertBefore: number;
+      parentPath: readonly number[];
+      type: "layout";
+      zone: ToolbarZoneName;
+    }>
+  | Readonly<{
+      insertBefore: number;
       type: "zone";
       zone: ToolbarZoneName;
     }>;
 
 let activeDrag: ToolbarWidgetDragSource | null = null;
+const dragListeners = new Set<
+  (source: ToolbarWidgetDragSource | null) => void
+>();
+
+function publishToolbarWidgetDrag(): void {
+  for (const listener of dragListeners) {
+    listener(activeDrag);
+  }
+}
 
 function isBoundedIndex(value: unknown): value is number {
   return (
@@ -50,6 +70,16 @@ export function copyToolbarWidgetDragSource(
   const source = candidate as Record<string, unknown>;
   if (source.type === "palette" && isToolbarPaletteToken(source.token)) {
     return Object.freeze({ token: source.token, type: "palette" as const });
+  }
+  if (
+    source.type === "layout-node" &&
+    typeof source.instanceId === "string" &&
+    LAYOUT_INSTANCE_PATTERN.test(source.instanceId)
+  ) {
+    return Object.freeze({
+      instanceId: source.instanceId,
+      type: "layout-node" as const,
+    });
   }
   if (
     source.type === "zone" &&
@@ -89,6 +119,7 @@ export function startToolbarWidgetDrag(
 ): ToolbarWidgetDragSource {
   const copied = copyToolbarWidgetDragSource(source);
   activeDrag = copied;
+  publishToolbarWidgetDrag();
   return copied;
 }
 
@@ -97,7 +128,21 @@ export function getActiveToolbarWidgetDrag(): ToolbarWidgetDragSource | null {
 }
 
 export function clearToolbarWidgetDrag(): void {
+  if (activeDrag === null) {
+    return;
+  }
   activeDrag = null;
+  publishToolbarWidgetDrag();
+}
+
+export function subscribeToolbarWidgetDrag(
+  listener: (source: ToolbarWidgetDragSource | null) => void,
+): () => void {
+  dragListeners.add(listener);
+  listener(activeDrag);
+  return () => {
+    dragListeners.delete(listener);
+  };
 }
 
 export function resolveWidgetInsertBefore(
@@ -135,6 +180,7 @@ export function createToolbarWidgetDropEdit(
   source: ToolbarWidgetDragSource,
   target: ToolbarWidgetDropTarget,
   revision: number,
+  layout?: ToolbarLayoutZonesSnapshot,
 ): ToolbarWidgetsEditOperation | null {
   let copiedSource: ToolbarWidgetDragSource;
   try {
@@ -147,6 +193,18 @@ export function createToolbarWidgetDropEdit(
   }
 
   if (target.type === "palette") {
+    if (copiedSource.type === "layout-node") {
+      const location = layout
+        ? findToolbarLayoutInstance(layout, copiedSource.instanceId)
+        : null;
+      return location
+        ? Object.freeze({
+            location,
+            revision,
+            type: "remove-node" as const,
+          })
+        : null;
+    }
     if (copiedSource.type !== "zone") {
       return null;
     }
@@ -156,6 +214,47 @@ export function createToolbarWidgetDropEdit(
       type: "remove" as const,
       zone: copiedSource.zone,
     });
+  }
+
+  if (
+    target.type === "layout" &&
+    isToolbarZoneName(target.zone) &&
+    isBoundedIndex(target.insertBefore)
+  ) {
+    let parentPath: readonly number[];
+    try {
+      parentPath = copyToolbarLayoutPath(target.parentPath);
+    } catch {
+      return null;
+    }
+    if (copiedSource.type === "palette") {
+      return Object.freeze({
+        index: target.insertBefore,
+        parentPath,
+        revision,
+        token: copiedSource.token,
+        type: "add-node" as const,
+        zone: target.zone,
+      });
+    }
+    if (copiedSource.type === "layout-node") {
+      const from = layout
+        ? findToolbarLayoutInstance(layout, copiedSource.instanceId)
+        : null;
+      return from
+        ? Object.freeze({
+            from,
+            revision,
+            to: Object.freeze({
+              index: target.insertBefore,
+              parentPath,
+              zone: target.zone,
+            }),
+            type: "move-node" as const,
+          })
+        : null;
+    }
+    return null;
   }
 
   if (
@@ -174,6 +273,10 @@ export function createToolbarWidgetDropEdit(
       type: "add" as const,
       zone: target.zone,
     });
+  }
+
+  if (copiedSource.type !== "zone") {
+    return null;
   }
 
   if (copiedSource.zone === target.zone) {

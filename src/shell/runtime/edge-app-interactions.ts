@@ -84,7 +84,7 @@ export const isInteractivePointerTarget = (
   target instanceof Element &&
   Boolean(
     target.closest(
-      'a, button, input, select, textarea, [contenteditable="true"], [role="button"], [role="link"], [role="tab"], [tabindex]',
+      'a, button, input, select, textarea, [contenteditable="true"], [role="button"], [role="link"], [role="tab"], [tabindex]:not([tabindex="-1"])',
     ),
   );
 

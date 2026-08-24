@@ -6,6 +6,7 @@ export const toolbarWidgetKinds = Object.freeze([
   "built-in",
   "extension-action",
   "fennevia",
+  "project",
   "separator",
   "spacer",
   "spring",
@@ -30,10 +31,54 @@ export const fenneviaToolbarActions = Object.freeze([
 
 export type FenneviaToolbarAction = (typeof fenneviaToolbarActions)[number];
 
+export const projectWidgetIds = Object.freeze([
+  "address-launcher",
+  "application-menu",
+  "back",
+  "bookmarks",
+  "close-window",
+  "customize-shell",
+  "downloads-status",
+  "extensions",
+  "forward",
+  "home",
+  "minimize-window",
+  "new-tab",
+  "private-indicator",
+  "reload-stop",
+  "settings",
+  "show-bookmarks",
+  "show-downloads",
+  "show-translate",
+  "tabs",
+  "toggle-maximize-window",
+  "trust",
+] as const);
+
+export type ProjectWidgetId = (typeof projectWidgetIds)[number];
+
+export const projectWidgetIdSet = new Set<ProjectWidgetId>(projectWidgetIds);
+
+export const singletonProjectWidgetIds = Object.freeze([
+  "address-launcher",
+  "bookmarks",
+  "customize-shell",
+  "downloads-status",
+  "private-indicator",
+  "tabs",
+] as const satisfies readonly ProjectWidgetId[]);
+
+export const singletonProjectWidgetIdSet = new Set<ProjectWidgetId>(
+  singletonProjectWidgetIds,
+);
+
 export const toolbarPaletteKinds = Object.freeze([
   "built-in",
   "extension-action",
   "fennevia",
+  "project",
+  "container",
+  "wrapper",
   "special",
 ] as const);
 
@@ -73,10 +118,29 @@ export type ProgressLightSource = (typeof progressLightSources)[number];
 export type SidePanelRole = "bookmarks" | "tabs";
 export type SidePanelEdge = "left" | "right";
 
+export const toolbarLayoutDirections = Object.freeze([
+  "row",
+  "column",
+] as const);
+
+export type ToolbarLayoutDirection = (typeof toolbarLayoutDirections)[number];
+
+export const toolbarLayoutWrapperKinds = Object.freeze([
+  "center",
+  "expanded",
+  "padding",
+] as const);
+
+export type ToolbarLayoutWrapperKind =
+  (typeof toolbarLayoutWrapperKinds)[number];
+
 export type ShellPanelConfigSnapshot = Readonly<{
   allowCompactWindow: boolean;
-  bottomDownloadsEnabled: boolean;
+  bottomPanelEnabled: boolean;
   bottomProgressLight: ProgressLightSource;
+  leftPanelEnabled: boolean;
+  rightPanelEnabled: boolean;
+  /** @deprecated Retained only as a version-1 layout migration hint. */
   sidePanelLayout: SidePanelLayout;
   topProgressLight: ProgressLightSource;
 }>;
@@ -233,9 +297,46 @@ export type ToolbarWidgetZones = Readonly<
   Record<ToolbarZoneName, readonly ToolbarWidgetSnapshot[]>
 >;
 
+export type ToolbarLayoutItemSnapshot = Readonly<{
+  instanceId: string;
+  projectId: ProjectWidgetId | "";
+  type: "item";
+  widget: ToolbarWidgetSnapshot;
+}>;
+
+export type ToolbarLayoutContainerSnapshot = Readonly<{
+  children: readonly ToolbarLayoutNodeSnapshot[];
+  direction: ToolbarLayoutDirection;
+  instanceId: string;
+  type: "container";
+}>;
+
+export type ToolbarLayoutWrapperSnapshot = Readonly<{
+  children: readonly ToolbarLayoutNodeSnapshot[];
+  instanceId: string;
+  kind: ToolbarLayoutWrapperKind;
+  type: "wrapper";
+}>;
+
+export type ToolbarLayoutNodeSnapshot =
+  | ToolbarLayoutContainerSnapshot
+  | ToolbarLayoutItemSnapshot
+  | ToolbarLayoutWrapperSnapshot;
+
+export type ToolbarLayoutZonesSnapshot = Readonly<
+  Record<ToolbarZoneName, readonly ToolbarLayoutNodeSnapshot[]>
+>;
+
+export type ToolbarLayoutLocation = Readonly<{
+  path: readonly number[];
+  zone: ToolbarZoneName;
+}>;
+
 export type ToolbarWidgetsSnapshot = Readonly<{
+  allowMultiplePlacements: boolean;
   available: boolean;
   canEdit: boolean;
+  layout: ToolbarLayoutZonesSnapshot;
   layoutCustomized: boolean;
   palette: readonly ToolbarPaletteEntrySnapshot[];
   panels: ShellPanelConfigSnapshot;
@@ -253,6 +354,22 @@ export type ToolbarWidgetsEditOperation =
       zone: ToolbarZoneName;
     }>
   | Readonly<{
+      index: number;
+      parentPath: readonly number[];
+      revision: number;
+      token: string;
+      type: "add-node";
+      zone: ToolbarZoneName;
+    }>
+  | Readonly<{
+      direction: ToolbarLayoutDirection;
+      index: number;
+      parentPath: readonly number[];
+      revision: number;
+      type: "add-container";
+      zone: ToolbarZoneName;
+    }>
+  | Readonly<{
       fromIndex: number;
       fromZone: ToolbarZoneName;
       revision: number;
@@ -266,6 +383,33 @@ export type ToolbarWidgetsEditOperation =
       type: "remove";
       zone: ToolbarZoneName;
     }>
+  | Readonly<{
+      from: ToolbarLayoutLocation;
+      revision: number;
+      to: Readonly<{
+        index: number;
+        parentPath: readonly number[];
+        zone: ToolbarZoneName;
+      }>;
+      type: "move-node";
+    }>
+  | Readonly<{
+      location: ToolbarLayoutLocation;
+      revision: number;
+      type: "remove-node";
+    }>
+  | Readonly<{
+      allow: boolean;
+      revision: number;
+      type: "set-multiple-placements";
+    }>
+  | Readonly<{
+      direction: ToolbarLayoutDirection;
+      location: ToolbarLayoutLocation;
+      revision: number;
+      type: "set-container-direction";
+    }>
+  | Readonly<{ revision: number; type: "clean-layout" }>
   | Readonly<{ revision: number; type: "reset-layout" }>
   | Readonly<{
       style: Readonly<Partial<ToolbarStyleSnapshot>>;

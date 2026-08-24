@@ -9,7 +9,9 @@ Status: implementation and documentation complete on
 native built-in icons; ADR-047 replaces the drawer list editor with live
 four-edge HTML5 drag-and-drop; ADR-054 adds bounded global edge-interaction
 settings; ADR-064 adds bounded panel-role, bottom-panel, and activity-light
-settings. The manual real-Firefox checklist in
+settings; ADR-074 supersedes the flat-zone and fixed-feature composition with
+the bounded recursive layout in `plans/009-composable-widget-layout.md`. The
+manual real-Firefox checklist in
 `docs/testing-and-recovery.md` §6.9 is still `not run`.
 
 This pass deprecates the ADR-044 read-only nav-bar widget mirror as the only
@@ -32,6 +34,17 @@ complete native reveal, and fail-open; it is not a fixed top-row control.
 Fennevia never writes
 `browser.uiCustomization.state` directly and never edits placements the user
 made natively.
+
+ADR-074 keeps these ownership/write boundaries but replaces the current
+presentation contract: all primary controls/features are widgets in strict
+version-2 Row/Column trees; safe duplicates are opt-in; structural items are
+always repeatable; Top is mandatory; Left/Right/Bottom are independently
+enabled; one Customize widget remains reachable; and Downloads status is a
+movable singleton. Enabled empty optional panels reappear as customize targets,
+all unused panel space remains an ordinary window-drag region, stale drag
+outlines are cleared on every terminal path, and per-node edit buttons are
+contextual rather than always visible. A confirmed Clean-all operation leaves
+only one Top Customize instance while preserving unrelated settings.
 
 ## 2. Owner-approved rule update
 
@@ -63,8 +76,10 @@ activation contract.
 - [x] Add ADR-045 and annotate the superseded ADR-044 clauses.
 - [x] Keep `src/firefox/toolbar-widgets.ts` as the per-window engine; add
       `src/firefox/customize-model.ts` for bounded layout/style JSON.
-- [x] Default top zone falls back to the live nav-bar mirror; first edit
-      materializes `fennevia.customize.layout`.
+- [x] Historical ADR-045 default top zone fell back to the live nav-bar mirror
+      and materialized `fennevia.customize.layout` on first edit. ADR-074 now
+      supersedes that no-preference behavior with an explicit native-v2
+      four-edge default; valid v1 preferences still migrate in memory.
 - [x] Palette enumerates placed areas plus `getUnusedWidgets`, Fennevia
       widgets, and specials behind opaque tokens.
 - [x] Editor drawer under the top panel with add/move/remove/reset, including
@@ -98,6 +113,9 @@ activation contract.
 - [x] ADR-046 localized palette/zone names and native chrome/resource icons
       via CSS mask; unit coverage for palette lookup, dedicated sync
       Localization, CSSOM, and forbidden `forWindow`.
+- [x] ADR-074 composes all four roots from bounded recursive widgets and links
+      this historical flat-zone plan to the current checklist in
+      `plans/009-composable-widget-layout.md`.
 - [ ] Real-Firefox matrix in `docs/testing-and-recovery.md` §6.9.
 
 ## 5. Explicit non-goals

@@ -132,7 +132,10 @@ stationary or sub-threshold press is a click instead, so release explicitly
 enters the existing inside-window delayed-hide path. This coordinates all four
 independent roots so dragging neutral left/right chrome cannot reveal the top
 edge without letting a click-only candidate leave a permanent hold. Keyboard,
-focus, popup, and programmatic holds are not suppressed.
+focus, popup, and programmatic holds are not suppressed. ADR-074 marks Space,
+Flexible space, Separator, empty Row/Column containers, and unoccupied layout
+gaps as inputs to this same drag path. Interactive descendants remain no-drag,
+and the whole composable layout becomes no-drag while customize mode is active.
 
 Issue #7 adds a per-window controller around those hosts. `HealthState.sys.mjs`
 owns the only root-state transition table: `created -> mounted -> healthy ->
@@ -534,22 +537,54 @@ per-window reference on unmount. See ADR-037, ADR-042, ADR-057,
 The current source-structure review is recorded in
 `docs/research/codebase-structure-audit-2026-08-25.md`.
 
-ADR-044 and ADR-045 add `src/firefox/toolbar-widgets.ts` and
-`src/firefox/customize-model.ts` to the same generated private ESM. One
-optional controller per window reads the current `CustomizableUI` inventory,
-keeps widget ids and native nodes in a privileged handle/token registry, and
-renders project-owned widget zones on all four edges. The top zone sits
-between the fixed navigation cluster and the Firefox-tools cluster and grows
-to fill the remaining toolbar width so `spring` placements can pack like the
-Firefox nav-bar (widgets before a spring stay left; widgets after it stay
-right). Left, right, and bottom widget zones are the same kind of horizontal
-row at full panel width, so `spring` can pack leftover space there too,
-without changing the tabs, bookmarks, or downloads panel sizes. With no
-layout preference the top zone falls back to the live nav-bar placement
-list. The first edit materializes a Fennevia layout into
-`fennevia.customize.layout`; `fennevia.customize.style` stores bounded style
-tokens (theme, accent, panel surface, chrome background, text, border, blur,
-radius, density, surface opacity, saturation, shadow, motion, and font size).
+ADR-044, ADR-045, and ADR-074 add `src/firefox/toolbar-widgets.ts`,
+`src/firefox/customize-model.ts`, and `src/firefox/customize-layout/` to the
+same generated private ESM. One optional controller per window reads the
+current `CustomizableUI` inventory and keeps Firefox widget ids and native
+nodes in privileged handle/token registries. Its ordinary snapshot projects a
+strict version-2 tree under each existing Top, Left, Right, and Bottom root.
+Tree nodes are layout-local instances of project widgets, Firefox toolbar
+widgets, Separator/Space/Flexible space, nested Row/Column containers, or
+one-child Center/Expanded/Padding wrappers. Top and Bottom default to Row; Left
+and Right default to Column; wrappers preserve the nearest flow orientation.
+Ordinary children keep natural main-axis size and start order; Row/Column own
+the bounded flow space, and only Expanded or Flexible space consumes remaining
+main-axis space. Bounds are three levels below an edge, 48 direct container
+children, one wrapper child, 128 total nodes, 64 adopted Firefox ids, and 16 KiB
+serialized state. Unknown keys, invalid paths, cycles, duplicate instance ids,
+missing Customize, over-capacity wrappers, and unsafe duplicate definitions
+fail safe.
+
+The surface root itself is the non-removable base flow (Top/Bottom Row,
+Left/Right Column). A sole matching root container from existing version-2
+state is rendered as that compatibility base without node chrome or an
+out-of-base move path; its instance and child paths remain unchanged until an
+actual edit persists a later tree. Empty roots keep their complete drop hitbox
+but render a compact centered prompt rather than a second full-panel inset box.
+
+The version-2 layout stores `allowMultiplePlacements`, default false. When
+enabled, compatible project actions and Firefox mirrors may create multiple
+project-rendered instances that resolve the same current native owner; no
+native node or panel is cloned or reparented. Stateful feature widgets (Tabs,
+Bookmarks, Downloads status, address launcher, private indicator, and
+Customize) stay singleton. Row, Column, Center, Expanded, Padding, Separator,
+Space, and Flexible space are always repeatable. Adopted Firefox widgets return
+to their native area only after the final Fennevia instance disappears. A
+valid version-1 preference migrates in memory around its prior four-zone order
+and is written as version 2 only after the first edit. With no preference,
+malformed state, or Reset layout, a dedicated native-v2 default places
+navigation, Trust, `Expanded(Address launcher)`, Firefox handoffs, Customize,
+and window controls directly in the Top base Row; New Tab plus
+`Expanded(Tabs)` on the configured tabs-side base Column;
+`Expanded(Bookmarks)` on the other side; and
+`Expanded(Center(Downloads status))` in Bottom. Live Firefox nav-bar built-ins,
+extensions, spacers, and springs remain palette candidates but are not copied
+into this deterministic default. A valid saved version-2 tree remains
+user-owned and is not rewritten when the default changes.
+
+`fennevia.customize.style` stores bounded style tokens (theme, accent, panel
+surface, chrome background, text, border, blur, radius, density, surface
+opacity, saturation, shadow, motion, and font size).
 ADR-054 extends that same version-1 style object with bounded in-window and
 window-leave hide delays, temporary programmatic-reveal duration, shortcut-tip
 duration, and edge-trigger size. Existing values without those fields receive
@@ -559,15 +594,24 @@ true window-deactivation `blur` selects the window-leave delay. Focusing the
 selected chrome `<browser>` after a tab select is not a window leave. A zero
 shortcut-tip duration omits the footer from rendering. Those two prefs are versioned
 JSON with a 16 KiB cap and fail safe to defaults. ADR-064 adds a third strict
-version-1 `fennevia.customize.panels` preference containing the complete
-`tabs-left`/`tabs-right` side-role selection, a bottom-download-panel boolean,
-and `loading`/`downloads`/`off` sources for the top and bottom gutter lights.
+panel preference; ADR-074 advances it to version 2 with independent
+`leftPanelEnabled`, `rightPanelEnabled`, and `bottomPanelEnabled` booleans.
+Top has no enabled field and cannot be disabled. The old side-role and
+`bottomDownloadsEnabled` values remain migration hints only. The same closed
+object retains `loading`/`downloads`/`off` sources for the top and bottom
+gutter lights.
 ADR-068 extends that same closed object with `allowCompactWindow`, default
 false, so NativeUi can optionally clear Firefox chrome `:root` min-width and
 min-height while Fennevia is active. Missing keys keep the documented
-defaults. Its defaults preserve tabs left, bookmarks right, bottom enabled,
-loading top, downloads bottom, and the official Firefox window floor. The pref
-observer republishes all three settings across windows. The customize drawer
+defaults. Its defaults enable all optional panels, preserve the migrated
+tabs-left/bookmarks-right tree, select loading top and downloads bottom, and
+retain the official Firefox window floor. A panel edit that would make the
+only Customize widget unreachable is rejected. An optional edge with no
+layout nodes is runtime-disabled without losing its saved tree during ordinary
+browsing; while customize mode is open, every preference-enabled empty edge is
+re-enabled, held visible, and rendered as a labelled first-drop/keyboard-add
+target. The pref observer republishes all three settings across windows. The
+customize drawer
 uses one tablist for widgets, panels, interaction, and appearance so the
 stacked editor does not grow into a single scrolling form. Shortcut-tip
 footers still honor the duration pref on every edge, including the
@@ -585,14 +629,23 @@ adoption; removing the last Fennevia placement restores extensions to
 ordinary snapshots only. Extension identity may exist in that window's
 in-memory DOM for rendering; it never enters logs, diagnostics, serialized
 frontend state, CSS variables, or root datasets. Missing `CustomizableUI`
-hides the zones and missing `Services.prefs` disables editing; neither joins
-activation health. ADR-047 moves placement editing onto the live four-edge
-widget zones with HTML5 drag-and-drop; the top-host drawer is the palette and
-style editor, centered in the remaining content well so it does not cover the
-four-edge drop zones. See ADR-044, ADR-045, ADR-046, ADR-047, ADR-064, ADR-068,
+hides the layouts and missing `Services.prefs` disables editing; neither joins
+activation health. ADR-047/ADR-074 move placement editing onto the live
+recursive layouts with HTML5 drag-and-drop, opaque instance ids, and bounded
+paths. Visible and keyboard move-before/after/into/out/remove controls remain
+available without drag, but each node's control strip is visually revealed only
+for the deepest hovered node or when one of its direct controls has focus. One
+shared opaque drag lifecycle plus real-boundary leave handling clears all panel
+and palette outlines after exit, drop, cancel, drag end, customize close, and
+disposal. **Clean all panels** is a separate confirmed atomic edit: it restores
+adopted Firefox widgets, removes every node, and creates one Top Customize
+instance while retaining panel/style/interaction/duplicate settings. The
+top-host drawer is the palette and settings editor, centered in the remaining
+content well so it does not cover the four edge roots. See ADR-044, ADR-045,
+ADR-046, ADR-047, ADR-064, ADR-068, ADR-074,
 `docs/research/firefox-153-toolbar-widget-mirror.md`,
 `docs/research/firefox-153-customize-mode.md`, and
-`docs/research/firefox-154-configurable-panels-bookmark-favicons-status.md`.
+`plans/009-composable-widget-layout.md`.
 
 ## 5. Application and frontend layers
 
@@ -614,6 +667,20 @@ no Firefox handle, `Services`, browsing value, or Firefox-owned DOM node. One
 shared framework-independent controller coordinates edge visibility, while
 each root retains independent component ownership. Mount, health, official
 unmount, and fresh-state remount are explicit frontend API operations.
+
+ADR-074 keeps those five roots and replaces only fixed edge composition.
+`App.svelte` renders one `ComposableLayout` under each edge and routes ordinary
+adapter state into extracted project-widget components. Row/Column and
+Center/Expanded/Padding nodes are presentational groups inside that root, not
+extra mounts or landmarks. The nearest flow axis controls Tabs, Bookmarks,
+Downloads status, address,
+navigation/tool, and window-control presentation. In customize mode every
+placed node exposes drag plus visible/keyboard path operations, and every
+preference-enabled empty optional edge remains a labelled pointer-drop and
+keyboard-add target. Outside customize mode, empty optional edges are disabled
+and reserve no space. The
+feature paragraphs below define component/data behavior; ADR-074 determines
+their current placement.
 
 ADR-055 gives every edge root one project-owned common context-menu pattern.
 Neutral top/left/right/bottom content exposes a fixed useful action for that
@@ -1022,6 +1089,11 @@ The normative policy is in `docs/security-and-privacy.md`. The threat model, log
 src/
   firefox/
     bridge-boundary.ts
+    customize-layout.ts        # stable v2 layout facade
+    customize-layout/
+      contracts.ts
+      migration.ts
+      model.ts
     customize-model.ts
     index.ts
     locale.ts
@@ -1078,6 +1150,7 @@ src/
     toolbar-widgets/
       contracts.ts
       validation.ts
+      layout.ts
       state.ts
       adapter.ts
       errors.ts
@@ -1098,6 +1171,11 @@ src/
     toolbar-widget-icons.ts
     urlbar-suggestions-labels.ts
     features/
+      composable-layout/
+        ComposableLayout.svelte
+        ProjectWidget.svelte
+        FirefoxToolbarWidget.svelte
+        <project-widget>.svelte
       customize/CustomizeInteractionSection.svelte
       customize/CustomizeStyleSection.svelte
       tabs/TabStrip.svelte
@@ -1123,6 +1201,7 @@ src/
       toolbar.css
       bookmarks.css
       downloads.css
+      composable-layout.css
       customize.css
       window-controls.css
       responsive-accessibility.css

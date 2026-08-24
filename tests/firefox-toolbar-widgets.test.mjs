@@ -993,12 +993,63 @@ function createController(native, windowKind = "normal") {
   return { boundary, controller };
 }
 
+function createLegacyNavbarController(native, windowKind = "normal") {
+  const skipped = new Set([
+    "back-button",
+    "urlbar-container",
+    "unified-extensions-button",
+    "PanelUI-menu-button",
+  ]);
+  const top = native
+    .getAreaWidgetIds()
+    .filter((id) => !skipped.has(id))
+    .map((id) => {
+      if (id.startsWith("customizableui-special-spring")) {
+        return { kind: "spring", type: "special" };
+      }
+      if (id.startsWith("customizableui-special-spacer")) {
+        return { kind: "spacer", type: "special" };
+      }
+      if (id.startsWith("customizableui-special-separator")) {
+        return { kind: "separator", type: "special" };
+      }
+      return { id, type: "widget" };
+    });
+  native.setPrefValue(
+    "fennevia.customize.layout",
+    JSON.stringify({
+      adopted: [],
+      version: 1,
+      zones: { bottom: [], left: [], right: [], top },
+    }),
+  );
+  return createController(native, windowKind);
+}
+
 function disposePair(pair) {
   pair.controller.dispose();
   pair.boundary.dispose();
 }
 
-test("default snapshot mirrors nav-bar placements into the top zone", () => {
+function findLayoutItems(layout, predicate) {
+  const matches = [];
+  const visit = (nodes, zone, parentPath) => {
+    for (const [index, node] of nodes.entries()) {
+      const path = [...parentPath, index];
+      if (node.type !== "item") {
+        visit(node.children, zone, path);
+      } else if (predicate(node)) {
+        matches.push({ node, path, zone });
+      }
+    }
+  };
+  for (const zone of ["top", "left", "right", "bottom"]) {
+    visit(layout[zone], zone, []);
+  }
+  return matches;
+}
+
+test("default snapshot uses the explicit native-v2 base-flow composition", () => {
   const native = createNativeWindow();
   const pair = createController(native);
   try {
@@ -1008,42 +1059,58 @@ test("default snapshot mirrors nav-bar placements into the top zone", () => {
     assert.equal(snapshot.layoutCustomized, false);
     assert.deepEqual(
       snapshot.zones.top.map((widget) => widget.kind),
-      ["spring", "built-in", "extension-action", "spacer", "built-in"],
+      ["fennevia"],
     );
     assert.deepEqual(snapshot.zones.left, []);
     assert.deepEqual(snapshot.zones.right, []);
     assert.deepEqual(snapshot.zones.bottom, []);
 
-    const [spring, sidebar, extension, spacer, history] = snapshot.zones.top;
-    assert.equal(spring.handle, "");
-    assert.equal(spacer.handle, "");
-
-    assert.equal(sidebar.label, "Sidebar");
-    assert.equal(sidebar.icon, "sidebar");
-    assert.equal(sidebar.tooltip, "Show sidebars");
-    assert.equal(
-      sidebar.iconUrl,
-      "chrome://browser/skin/sidebar-collapsed.svg",
+    assert.ok(snapshot.layout.top.every((node) => node.type !== "container"));
+    assert.ok(snapshot.layout.left.every((node) => node.type !== "container"));
+    assert.ok(snapshot.layout.right.every((node) => node.type !== "container"));
+    assert.ok(
+      snapshot.layout.bottom.every((node) => node.type !== "container"),
     );
-    assert.match(sidebar.handle, /^toolbar-widget-registry-\d+-handle-\d+$/u);
-
-    assert.equal(extension.label, "Test Extension");
-    assert.equal(extension.tooltip, "Test Extension tooltip");
-    assert.equal(extension.icon, "extension");
-    assert.equal(extension.iconUrl, EXTENSION_ICON_URL);
-    assert.equal(extension.badgeText, "3");
-    assert.equal(extension.badgeBackground, "rgb(217, 0, 0)");
-    assert.equal(extension.badgeTextColor, "rgb(255, 255, 255)");
-    assert.equal(extension.disabled, false);
-
-    assert.equal(history.icon, "history");
-    assert.equal(history.label, "History");
+    assert.deepEqual(
+      findLayoutItems(snapshot.layout, (node) => node.projectId !== "")
+        .filter((location) => location.zone === "top")
+        .map((location) => location.node.projectId),
+      [
+        "back",
+        "forward",
+        "reload-stop",
+        "home",
+        "trust",
+        "address-launcher",
+        "show-downloads",
+        "extensions",
+        "settings",
+        "customize-shell",
+        "application-menu",
+        "private-indicator",
+        "minimize-window",
+        "toggle-maximize-window",
+        "close-window",
+      ],
+    );
+    assert.equal(snapshot.layout.left[0].projectId, "new-tab");
+    assert.equal(snapshot.layout.left[1].type, "wrapper");
+    assert.equal(snapshot.layout.left[1].kind, "expanded");
+    assert.equal(snapshot.layout.left[1].children[0].projectId, "tabs");
+    assert.equal(snapshot.layout.right[0].type, "wrapper");
+    assert.equal(snapshot.layout.right[0].children[0].projectId, "bookmarks");
+    assert.equal(snapshot.layout.bottom[0].kind, "expanded");
+    assert.equal(snapshot.layout.bottom[0].children[0].kind, "center");
+    assert.equal(
+      snapshot.layout.bottom[0].children[0].children[0].projectId,
+      "downloads-status",
+    );
 
     assert.deepEqual(snapshot.style, createDefaultToolbarStyle());
 
     const paletteLabels = snapshot.palette.map((entry) => entry.label);
     assert.ok(paletteLabels.includes("Show bookmarks panel"));
-    assert.ok(paletteLabels.includes("Open Firefox downloads"));
+    assert.ok(!paletteLabels.includes("Open Firefox downloads"));
     assert.ok(paletteLabels.includes("Translate this page"));
     assert.ok(paletteLabels.includes("Print"));
     assert.ok(paletteLabels.includes("Save Page"));
@@ -1059,6 +1126,9 @@ test("default snapshot mirrors nav-bar placements into the top zone", () => {
     assert.ok(paletteLabels.includes("Zoom"));
     assert.ok(paletteLabels.includes("Edit"));
     assert.ok(paletteLabels.includes("Addons Extension"));
+    assert.ok(paletteLabels.includes("Sidebar"));
+    assert.ok(paletteLabels.includes("Test Extension"));
+    assert.ok(paletteLabels.includes("History"));
     assert.ok(paletteLabels.includes("Flexible space"));
     assert.ok(
       snapshot.palette.every((entry) => /^palette-\d+$/u.test(entry.token)),
@@ -1068,8 +1138,6 @@ test("default snapshot mirrors nav-bar placements into the top zone", () => {
         (entry) => !/\.(?:label|tooltiptext\d*)$/u.test(entry.label),
       ),
     );
-    assert.equal(history.tooltip, "History");
-
     const savePage = snapshot.palette.find(
       (entry) => entry.label === "Save Page",
     );
@@ -1269,7 +1337,7 @@ test("missing CustomizableUI degrades to an unavailable optional capability", ()
 
 test("CustomizableUI events and node mutations publish revised snapshots", () => {
   const native = createNativeWindow();
-  const pair = createController(native);
+  const pair = createLegacyNavbarController(native);
   const events = [];
   const unsubscribe = pair.controller.toolbarWidgets.subscribe((event) =>
     events.push(event),
@@ -1283,19 +1351,6 @@ test("CustomizableUI events and node mutations publish revised snapshots", () =>
     native.runTimers();
     assert.equal(events.length, 0);
 
-    native.removeAreaWidget("extension-widget_example_com-browser-action");
-    listener.onWidgetRemoved();
-    native.runTimers();
-    assert.equal(events.length, 1);
-    assert.equal(events[0].type, "snapshot");
-    assert.equal(events[0].revision, 1);
-    assert.equal(events[0].snapshot.zones.top.length, 4);
-    assert.ok(
-      events[0].snapshot.zones.top.every(
-        (widget) => widget.kind !== "extension-action",
-      ),
-    );
-
     native.extensionActionButton.badge = "9";
     const activeObserver = native.observers.findLast(
       (observer) => !observer.disconnected,
@@ -1304,6 +1359,14 @@ test("CustomizableUI events and node mutations publish revised snapshots", () =>
     activeObserver.trigger();
     native.runTimers();
     assert.equal(events.length, 1);
+    assert.equal(events[0].type, "snapshot");
+    assert.equal(events[0].revision, 1);
+    assert.equal(
+      events[0].snapshot.zones.top.find(
+        (widget) => widget.kind === "extension-action",
+      )?.badgeText,
+      "9",
+    );
 
     listener.onCustomizeEnd();
     native.runTimers();
@@ -1318,7 +1381,7 @@ test("CustomizableUI events and node mutations publish revised snapshots", () =>
 
 test("extension invoke anchors the widget subview on the project host", async () => {
   const native = createNativeWindow();
-  const pair = createController(native);
+  const pair = createLegacyNavbarController(native);
   const host = native.addHost();
   const popupEvents = [];
   pair.controller.toolbarWidgets.subscribePopup((event) =>
@@ -1380,7 +1443,7 @@ test("delegated account, Library, and All Tabs widgets use their Firefox owners"
       "alltabs-button",
     ],
   });
-  const pair = createController(native);
+  const pair = createLegacyNavbarController(native);
   const host = native.addHost();
   const triggerEvent = {
     button: 0,
@@ -1474,7 +1537,7 @@ test("native menu widgets open their Firefox-owned menupopup on the project host
   const native = createNativeWindow({
     extraAreaWidgetIds: ["bookmarks-menu-button"],
   });
-  const pair = createController(native);
+  const pair = createLegacyNavbarController(native);
   const host = native.addHost();
   const popupEvents = [];
   const triggerEvent = {
@@ -1522,7 +1585,7 @@ test("compound Zoom, Edit, and Profiler widgets expose every native child action
   const native = createNativeWindow({
     extraAreaWidgetIds: ["zoom-controls", "edit-controls", "profiler-button"],
   });
-  const pair = createController(native);
+  const pair = createLegacyNavbarController(native);
   const host = native.addHost();
   try {
     const snapshot = pair.controller.toolbarWidgets.snapshot();
@@ -1657,7 +1720,7 @@ test("compound Zoom, Edit, and Profiler widgets expose every native child action
 
 test("built-in invoke re-anchors node panels and settles without one", async () => {
   const native = createNativeWindow();
-  const pair = createController(native);
+  const pair = createLegacyNavbarController(native);
   const host = native.addHost();
   try {
     const snapshot = pair.controller.toolbarWidgets.snapshot();
@@ -1696,7 +1759,7 @@ test("built-in invoke re-anchors node panels and settles without one", async () 
 
 test("invoke rejects stale handles and foreign hosts", async () => {
   const native = createNativeWindow();
-  const pair = createController(native);
+  const pair = createLegacyNavbarController(native);
   const host = native.addHost();
   try {
     const snapshot = pair.controller.toolbarWidgets.snapshot();
@@ -1736,7 +1799,7 @@ test("invoke rejects stale handles and foreign hosts", async () => {
 
 test("dispose detaches listeners, observers, timers, and held panels", async () => {
   const native = createNativeWindow();
-  const pair = createController(native);
+  const pair = createLegacyNavbarController(native);
   const host = native.addHost();
   const snapshot = pair.controller.toolbarWidgets.snapshot();
   const extension = snapshot.zones.top.find(
@@ -1783,11 +1846,11 @@ test("dispose detaches listeners, observers, timers, and held panels", async () 
 
 test("refresh publishes at most one coalesced snapshot per change", () => {
   const native = createNativeWindow();
-  const pair = createController(native);
+  const pair = createLegacyNavbarController(native);
   const events = [];
   pair.controller.toolbarWidgets.subscribe((event) => events.push(event));
   try {
-    native.removeAreaWidget("sidebar-button");
+    native.sidebarNode.isConnected = false;
     assert.equal(pair.controller.refresh(), true);
     assert.equal(events.length, 1);
     assert.equal(events[0].revision, 1);
@@ -1834,7 +1897,7 @@ test("edit adopts a palette widget into the collapsed nav-bar and persists", asy
     assert.ok(!next.palette.some((entry) => entry.label === "Print"));
 
     const persisted = native.getPrefValue("fennevia.customize.layout");
-    assert.ok(persisted.includes('"version":1'));
+    assert.ok(persisted.includes('"version":2'));
     assert.ok(persisted.includes("print-button"));
     // Raw widget ids stay in the privileged pref, never in the snapshot.
     assert.doesNotMatch(JSON.stringify(next), /print-button/u);
@@ -1863,8 +1926,10 @@ test("edit moves entries between zones and restores adopted extensions", async (
     native.runTimers();
     snapshot = pair.controller.toolbarWidgets.snapshot();
     assert.equal(snapshot.zones.left.length, 1);
-    assert.equal(snapshot.zones.left[0].kind, "extension-action");
-    assert.equal(snapshot.zones.left[0].label, "Addons Extension");
+    const placedExtension = snapshot.zones.left.find(
+      (widget) => widget.kind === "extension-action",
+    );
+    assert.equal(placedExtension.label, "Addons Extension");
 
     await pair.controller.toolbarWidgets.edit({
       fromIndex: 0,
@@ -1933,8 +1998,77 @@ test("reset-layout clears the pref and restores adopted placements", async () =>
     const next = pair.controller.toolbarWidgets.snapshot();
     assert.equal(next.layoutCustomized, false);
     assert.equal(next.zones.right.length, 0);
-    assert.equal(next.zones.top.length, 5);
+    assert.equal(next.zones.top.length, 1);
+    assert.equal(
+      next.zones.top.find((widget) => widget.kind === "fennevia")
+        ?.fenneviaAction,
+      "show-downloads",
+    );
+    assert.ok(next.layout.top.every((node) => node.type !== "container"));
     assert.ok(next.palette.some((entry) => entry.label === "Print"));
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("clean-layout atomically empties every panel and preserves one Top Customize", async () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  const addonsId = "extension-addons_example_com-browser-action";
+  try {
+    let snapshot = pair.controller.toolbarWidgets.snapshot();
+    const addonsEntry = snapshot.palette.find(
+      (entry) => entry.label === "Addons Extension",
+    );
+    assert.ok(addonsEntry);
+    await pair.controller.toolbarWidgets.edit({
+      index: 0,
+      revision: pair.controller.snapshot().revision,
+      token: addonsEntry.token,
+      type: "add",
+      zone: "left",
+    });
+    native.runTimers();
+    await pair.controller.toolbarWidgets.edit({
+      allow: true,
+      revision: pair.controller.snapshot().revision,
+      type: "set-multiple-placements",
+    });
+    await pair.controller.toolbarWidgets.edit({
+      panels: { bottomPanelEnabled: false },
+      type: "set-panels",
+    });
+
+    await pair.controller.toolbarWidgets.edit({
+      revision: pair.controller.snapshot().revision,
+      type: "clean-layout",
+    });
+    assert.ok(native.getAddonsWidgetIds().includes(addonsId));
+    assert.ok(!native.getAreaWidgetIds().includes(addonsId));
+    native.runTimers();
+
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    const allItems = findLayoutItems(snapshot.layout, () => true);
+    assert.deepEqual(
+      allItems.map(({ node, path, zone }) => ({
+        path,
+        projectId: node.projectId,
+        zone,
+      })),
+      [{ path: [0], projectId: "customize-shell", zone: "top" }],
+    );
+    assert.deepEqual(snapshot.zones.left, []);
+    assert.deepEqual(snapshot.zones.right, []);
+    assert.deepEqual(snapshot.zones.bottom, []);
+    assert.equal(snapshot.allowMultiplePlacements, true);
+    assert.equal(snapshot.panels.bottomPanelEnabled, false);
+    assert.equal(snapshot.layoutCustomized, true);
+    assert.ok(
+      snapshot.palette.some((entry) => entry.label === "Addons Extension"),
+    );
+    const persisted = native.getPrefValue("fennevia.customize.layout");
+    assert.match(persisted, /"allowMultiplePlacements":true/u);
+    assert.doesNotMatch(persisted, new RegExp(addonsId, "u"));
   } finally {
     disposePair(pair);
   }
@@ -2034,27 +2168,29 @@ test("panel and progress-light edits persist, observe, and reset", async () => {
     assert.equal(snapshot.panelsCustomized, false);
     assert.deepEqual(snapshot.panels, {
       allowCompactWindow: false,
-      bottomDownloadsEnabled: true,
+      bottomPanelEnabled: true,
       bottomProgressLight: "downloads",
+      leftPanelEnabled: true,
+      rightPanelEnabled: true,
       sidePanelLayout: "tabs-left",
       topProgressLight: "loading",
     });
 
     await pair.controller.toolbarWidgets.edit({
       panels: {
-        bottomDownloadsEnabled: false,
-        sidePanelLayout: "tabs-right",
+        bottomPanelEnabled: false,
+        rightPanelEnabled: false,
         topProgressLight: "downloads",
       },
       type: "set-panels",
     });
     snapshot = pair.controller.toolbarWidgets.snapshot();
     assert.equal(snapshot.panelsCustomized, true);
-    assert.equal(snapshot.panels.bottomDownloadsEnabled, false);
-    assert.equal(snapshot.panels.sidePanelLayout, "tabs-right");
+    assert.equal(snapshot.panels.bottomPanelEnabled, false);
+    assert.equal(snapshot.panels.rightPanelEnabled, false);
     assert.equal(snapshot.panels.topProgressLight, "downloads");
     assert.ok(
-      native.getPrefValue("fennevia.customize.panels").includes('"version":1'),
+      native.getPrefValue("fennevia.customize.panels").includes('"version":2'),
     );
 
     native.setPrefValue(
@@ -2069,7 +2205,10 @@ test("panel and progress-light edits persist, observe, and reset", async () => {
     );
     native.runTimers();
     snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(snapshot.panels.bottomPanelEnabled, true);
     assert.equal(snapshot.panels.bottomProgressLight, "off");
+    assert.equal(snapshot.panels.leftPanelEnabled, true);
+    assert.equal(snapshot.panels.rightPanelEnabled, true);
     assert.equal(snapshot.panels.topProgressLight, "off");
 
     await pair.controller.toolbarWidgets.edit({ type: "reset-panels" });
@@ -2082,18 +2221,18 @@ test("panel and progress-light edits persist, observe, and reset", async () => {
   }
 });
 
-test("fennevia widgets place into any zone and edits require fresh revisions", async () => {
+test("project widgets place into any zone and edits require fresh revisions", async () => {
   const native = createNativeWindow();
   const pair = createController(native);
   try {
     const snapshot = pair.controller.toolbarWidgets.snapshot();
     const bookmarksWidget = snapshot.palette.find(
       (entry) =>
-        entry.kind === "fennevia" && entry.label === "Show bookmarks panel",
+        entry.kind === "project" && entry.label === "Show bookmarks panel",
     );
     const translateWidget = snapshot.palette.find(
       (entry) =>
-        entry.kind === "fennevia" && entry.label === "Translate this page",
+        entry.kind === "project" && entry.label === "Translate this page",
     );
     assert.ok(bookmarksWidget);
     assert.ok(translateWidget);
@@ -2142,6 +2281,216 @@ test("fennevia widgets place into any zone and edits require fresh revisions", a
   }
 });
 
+test("repeatable structure stays available and duplicate-safe window controls are opt-in", async () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    let snapshot = pair.controller.toolbarWidgets.snapshot();
+    const initialSeparatorCount = findLayoutItems(
+      snapshot.layout,
+      (node) => node.widget.kind === "separator",
+    ).length;
+    assert.equal(snapshot.allowMultiplePlacements, false);
+    for (const label of [
+      "Row",
+      "Column",
+      "Center",
+      "Expanded",
+      "Padding",
+      "Separator",
+      "Space",
+      "Flexible space",
+    ]) {
+      assert.ok(
+        snapshot.palette.some((entry) => entry.label === label),
+        label,
+      );
+    }
+
+    for (let count = 0; count < 2; count += 1) {
+      const center = snapshot.palette.find(
+        (entry) => entry.kind === "wrapper" && entry.label === "Center",
+      );
+      assert.ok(center);
+      await pair.controller.toolbarWidgets.edit({
+        index: snapshot.layout.top.length,
+        parentPath: [],
+        revision: pair.controller.snapshot().revision,
+        token: center.token,
+        type: "add-node",
+        zone: "top",
+      });
+      native.runTimers();
+      snapshot = pair.controller.toolbarWidgets.snapshot();
+    }
+    assert.equal(
+      snapshot.layout.top.filter(
+        (node) => node.type === "wrapper" && node.kind === "center",
+      ).length,
+      2,
+    );
+    assert.ok(
+      snapshot.palette.some(
+        (entry) => entry.kind === "wrapper" && entry.label === "Center",
+      ),
+    );
+
+    for (let count = 0; count < 2; count += 1) {
+      const separator = snapshot.palette.find(
+        (entry) => entry.label === "Separator",
+      );
+      assert.ok(separator);
+      await pair.controller.toolbarWidgets.edit({
+        index: snapshot.layout.top.length,
+        parentPath: [],
+        revision: pair.controller.snapshot().revision,
+        token: separator.token,
+        type: "add-node",
+        zone: "top",
+      });
+      native.runTimers();
+      snapshot = pair.controller.toolbarWidgets.snapshot();
+    }
+    assert.equal(
+      findLayoutItems(
+        snapshot.layout,
+        (node) => node.widget.kind === "separator",
+      ).length,
+      initialSeparatorCount + 2,
+    );
+    assert.ok(snapshot.palette.some((entry) => entry.label === "Separator"));
+
+    await pair.controller.toolbarWidgets.edit({
+      allow: true,
+      revision: pair.controller.snapshot().revision,
+      type: "set-multiple-placements",
+    });
+    native.runTimers();
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(snapshot.allowMultiplePlacements, true);
+    const minimize = snapshot.palette.find(
+      (entry) => entry.kind === "project" && entry.label === "Minimize window",
+    );
+    assert.ok(minimize);
+    await pair.controller.toolbarWidgets.edit({
+      index: snapshot.layout.left.length,
+      parentPath: [],
+      revision: pair.controller.snapshot().revision,
+      token: minimize.token,
+      type: "add-node",
+      zone: "left",
+    });
+    native.runTimers();
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(
+      findLayoutItems(
+        snapshot.layout,
+        (node) => node.projectId === "minimize-window",
+      ).length,
+      2,
+    );
+    assert.ok(
+      findLayoutItems(
+        snapshot.layout,
+        (node) => node.projectId === "minimize-window",
+      ).some((location) => location.zone === "left"),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("Customize remains reachable while download status moves independently of Bottom", async () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    let snapshot = pair.controller.toolbarWidgets.snapshot();
+    const download = findLayoutItems(
+      snapshot.layout,
+      (node) => node.projectId === "downloads-status",
+    )[0];
+    assert.ok(download);
+    assert.equal(download.zone, "bottom");
+    await pair.controller.toolbarWidgets.edit({
+      from: { path: download.path, zone: download.zone },
+      revision: pair.controller.snapshot().revision,
+      to: {
+        index: snapshot.layout.top.length,
+        parentPath: [],
+        zone: "top",
+      },
+      type: "move-node",
+    });
+    native.runTimers();
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(
+      findLayoutItems(
+        snapshot.layout,
+        (node) => node.projectId === "downloads-status",
+      )[0]?.zone,
+      "top",
+    );
+    await pair.controller.toolbarWidgets.edit({
+      panels: { bottomPanelEnabled: false },
+      type: "set-panels",
+    });
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(snapshot.panels.bottomPanelEnabled, false);
+    assert.equal(
+      findLayoutItems(
+        snapshot.layout,
+        (node) => node.projectId === "downloads-status",
+      )[0]?.zone,
+      "top",
+    );
+
+    const customize = findLayoutItems(
+      snapshot.layout,
+      (node) => node.projectId === "customize-shell",
+    )[0];
+    assert.ok(customize);
+    await pair.controller.toolbarWidgets.edit({
+      from: { path: customize.path, zone: customize.zone },
+      revision: pair.controller.snapshot().revision,
+      to: {
+        index: snapshot.layout.right.length,
+        parentPath: [],
+        zone: "right",
+      },
+      type: "move-node",
+    });
+    native.runTimers();
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    const movedCustomize = findLayoutItems(
+      snapshot.layout,
+      (node) => node.projectId === "customize-shell",
+    )[0];
+    assert.equal(movedCustomize.zone, "right");
+
+    await assert.rejects(
+      pair.controller.toolbarWidgets.edit({
+        location: { path: movedCustomize.path, zone: movedCustomize.zone },
+        revision: pair.controller.snapshot().revision,
+        type: "remove-node",
+      }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID",
+    );
+    await assert.rejects(
+      pair.controller.toolbarWidgets.edit({
+        panels: { rightPanelEnabled: false },
+        type: "set-panels",
+      }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID",
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
 test("missing prefs disable editing while zones stay available", async () => {
   const native = createNativeWindow({ withPrefs: false });
   const pair = createController(native);
@@ -2149,7 +2498,7 @@ test("missing prefs disable editing while zones stay available", async () => {
     const snapshot = pair.controller.toolbarWidgets.snapshot();
     assert.equal(snapshot.available, true);
     assert.equal(snapshot.canEdit, false);
-    assert.equal(snapshot.zones.top.length, 5);
+    assert.equal(snapshot.zones.top.length, 1);
     await assert.rejects(
       pair.controller.toolbarWidgets.edit({
         style: { theme: "dark" },

@@ -9,6 +9,7 @@
   import type { BrowserDownloadsStateAdapter } from "../app/download-state";
   import {
     edgeKeyboardBindings,
+    edgeNames,
     type EdgeName,
     type EdgeShellController,
     type EdgeSurfaceController,
@@ -26,21 +27,19 @@
     BrowserToolbarWidgetsState,
     BrowserToolbarWidgetsStateAdapter,
     ProgressLightSource,
+    ProjectWidgetId,
     SidePanelRole,
   } from "../app/toolbar-widgets-state";
   import {
     createDefaultShellPanelConfig,
-    getSidePanelRole,
+    toolbarLayoutContainsProjectWidget,
   } from "../app/toolbar-widgets-state";
   import type { BrowserWindowControlsStateAdapter } from "../app/window-controls-state";
   import CustomizePanel from "./CustomizePanel.svelte";
   import EdgePanelContextMenu from "./features/context-menu/EdgePanelContextMenu.svelte";
+  import ComposableLayout from "./features/composable-layout/ComposableLayout.svelte";
   import * as edgeUi from "./runtime/edge-app-interactions";
-  import BottomSurface from "./surfaces/BottomSurface.svelte";
   import EdgeProgressLight from "./surfaces/EdgeProgressLight.svelte";
-  import LeftSurface from "./surfaces/LeftSurface.svelte";
-  import RightSurface from "./surfaces/RightSurface.svelte";
-  import TopSurface from "./surfaces/TopSurface.svelte";
 
   type Props = Readonly<{
     addressPopup?: AddressPopupController;
@@ -85,9 +84,26 @@
       .panels ?? createDefaultShellPanelConfig(),
   );
   let sidePanelRole: SidePanelRole | null = $derived(
-    props.edge === "left" || props.edge === "right"
-      ? getSidePanelRole(panelConfig, props.edge)
-      : null,
+    toolbarLayoutContainsProjectWidget(
+      (currentToolbarWidgets ?? props.toolbarWidgets?.snapshot())?.snapshot
+        .layout[props.edge] ?? [],
+      "tabs",
+    )
+      ? "tabs"
+      : toolbarLayoutContainsProjectWidget(
+            (currentToolbarWidgets ?? props.toolbarWidgets?.snapshot())
+              ?.snapshot.layout[props.edge] ?? [],
+            "bookmarks",
+          )
+        ? "bookmarks"
+        : null,
+  );
+  let hasDownloadsStatus = $derived(
+    toolbarLayoutContainsProjectWidget(
+      (currentToolbarWidgets ?? props.toolbarWidgets?.snapshot())?.snapshot
+        .layout[props.edge] ?? [],
+      "downloads-status",
+    ),
   );
   let progressLightSource: ProgressLightSource = $derived(
     props.edge === "top"
@@ -106,7 +122,9 @@
 
   const panelWindowDrag = edgeUi.createWindowDragCandidateController({
     canStart: (event) =>
-      event.button === 0 && !edgeUi.isInteractivePointerTarget(event.target),
+      !customizeOpen &&
+      event.button === 0 &&
+      !edgeUi.isInteractivePointerTarget(event.target),
     getView: () => panelElement?.ownerDocument.defaultView,
     onEnd: (clickOnly) => {
       props.shell.setWindowDragActive(false);
@@ -116,6 +134,25 @@
     },
     onStart: () => props.shell.setWindowDragActive(true, props.edge),
   });
+
+  const customizeToggle = (): HTMLButtonElement | null =>
+    props.frame.querySelector<HTMLButtonElement>(
+      'button[data-fennevia-action="customize-shell"]',
+    );
+
+  const revealCustomizeToggle = (): void => {
+    const toggle = customizeToggle();
+    const edge = toggle
+      ?.closest<HTMLElement>("[data-fennevia-surface-root]")
+      ?.getAttribute("data-fennevia-edge");
+    if (
+      !edgeNames.includes(edge as EdgeName) ||
+      !props.shell.snapshot().surfaces[edge as EdgeName].enabled
+    ) {
+      return;
+    }
+    props.shell.revealProgrammatically(edge as EdgeName);
+  };
 
   let surfaceLabel = $derived(t(edgeUi.labelKey(props.edge, sidePanelRole)));
 
@@ -173,6 +210,9 @@
       if (props.edge !== "top") {
         return;
       }
+      if (!snapshot.open && wasOpen) {
+        revealCustomizeToggle();
+      }
       void tick()
         .then(() => {
           if (snapshot.open && !wasOpen) {
@@ -184,11 +224,7 @@
             return;
           }
           if (!snapshot.open && wasOpen) {
-            rootElement
-              ?.querySelector<HTMLButtonElement>(
-                'button[data-fennevia-action="customize-shell"]',
-              )
-              ?.focus();
+            customizeToggle()?.focus();
           }
         })
         .catch(props.onFatalError);
@@ -216,6 +252,20 @@
     } catch (error) {
       props.onFatalError(error);
     }
+  };
+
+  const revealProjectWidget = (id: ProjectWidgetId): boolean => {
+    const layout = currentToolbarWidgets?.snapshot.layout;
+    if (!layout) {
+      return false;
+    }
+    for (const edge of ["top", "left", "right", "bottom"] as const) {
+      if (toolbarLayoutContainsProjectWidget(layout[edge], id)) {
+        props.shell.revealProgrammatically(edge);
+        return true;
+      }
+    }
+    return false;
   };
 
   const handleTriggerPointer = (event: PointerEvent) => {
@@ -352,65 +402,28 @@
     onpointerup={panelWindowDrag.release}
     role="region"
   >
-    {#if (props.edge === "left" || props.edge === "right") && sidePanelRole === "tabs" && props.addressPopup && props.navigation && props.tabs}
-      <LeftSurface
+    {#if props.addressPopup && props.bookmarks && props.downloads && props.navigation && props.tabs && props.windowControls}
+      <ComposableLayout
         addressPopup={props.addressPopup}
-        browserTools={props.browserTools}
-        {customizeOpen}
-        customizeSession={props.customizeSession}
-        edge={props.edge}
-        {localeId}
-        navigation={props.navigation}
-        onDismiss={() => props.onDismiss(props.edge)}
-        onFatalError={props.onFatalError}
-        onOpenAddress={() => props.onOpenAddress?.() ?? false}
-        shell={props.shell}
-        tabs={props.tabs}
-        toolbarWidgets={props.toolbarWidgets}
-        toolbarWidgetsState={currentToolbarWidgets}
-      />
-    {:else if props.edge === "top" && props.navigation && props.windowControls}
-      <TopSurface
-        browserTools={props.browserTools}
-        {customizeOpen}
-        customizeSession={props.customizeSession}
-        {localeId}
-        navigation={props.navigation}
-        onDismiss={() => props.onDismiss("top")}
-        onFatalError={props.onFatalError}
-        onSetCustomizeOpen={setCustomizeOpen}
-        shell={props.shell}
-        toolbarWidgets={props.toolbarWidgets}
-        toolbarWidgetsState={currentToolbarWidgets}
-        windowControls={props.windowControls}
-        windowKind={props.windowKind}
-      />
-    {:else if (props.edge === "left" || props.edge === "right") && sidePanelRole === "bookmarks" && props.bookmarks}
-      <RightSurface
         bookmarks={props.bookmarks}
         browserTools={props.browserTools}
         {customizeOpen}
         customizeSession={props.customizeSession}
+        downloads={props.downloads}
         edge={props.edge}
         {localeId}
-        onDismiss={() => props.onDismiss(props.edge)}
+        navigation={props.navigation}
+        onDismiss={props.onDismiss}
         onFatalError={props.onFatalError}
+        onOpenAddress={() => props.onOpenAddress?.() ?? false}
+        onRevealProject={revealProjectWidget}
+        onSetCustomizeOpen={setCustomizeOpen}
         shell={props.shell}
+        state={currentToolbarWidgets}
+        tabs={props.tabs}
         toolbarWidgets={props.toolbarWidgets}
-        toolbarWidgetsState={currentToolbarWidgets}
-      />
-    {:else if props.edge === "bottom" && props.downloads}
-      <BottomSurface
-        browserTools={props.browserTools}
-        {customizeOpen}
-        customizeSession={props.customizeSession}
-        downloads={props.downloads}
-        {localeId}
-        onDismiss={() => props.onDismiss("bottom")}
-        onFatalError={props.onFatalError}
-        shell={props.shell}
-        toolbarWidgets={props.toolbarWidgets}
-        toolbarWidgetsState={currentToolbarWidgets}
+        windowControls={props.windowControls}
+        windowKind={props.windowKind}
       />
     {/if}
 
@@ -420,6 +433,7 @@
       customizeSession={props.customizeSession}
       edge={props.edge}
       frame={props.frame}
+      {hasDownloadsStatus}
       {localeId}
       onDismiss={props.onDismiss}
       onFatalError={props.onFatalError}

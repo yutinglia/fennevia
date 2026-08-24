@@ -42,9 +42,9 @@ test("all four edge panels expose useful bounded context menus", async () => {
   assert.match(source, /role="menu"/u);
   assert.match(source, /role="menuitem"/u);
   assert.match(source, /props\.edge === "top"/u);
-  assert.match(source, /props\.edge === "left"/u);
-  assert.match(source, /props\.edge === "right"/u);
-  assert.match(source, /props\.edge === "bottom"/u);
+  assert.match(appSource, /hasDownloadsStatus/u);
+  assert.match(menuSource, /props\.hasDownloadsStatus/u);
+  assert.doesNotMatch(menuSource, /props\.edge === "bottom"/u);
   for (const action of [
     "customize-fennevia",
     "customize-firefox",

@@ -22,6 +22,102 @@
   overflow: hidden;
 }
 
+#fennevia-shell-frame-host .fennevia-tab-strip--horizontal {
+  flex-direction: row;
+  min-inline-size: min(260px, 100%);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__list {
+  flex: 1 1 auto;
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__pinned-section {
+  max-block-size: none;
+  max-inline-size: min(42vw, 520px);
+  flex-direction: row;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__pinned-heading {
+  inline-size: 54px;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--fennevia-space-1);
+  text-align: center;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__partition {
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: auto;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__item {
+  inline-size: clamp(132px, 18vw, 260px);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__partition-divider {
+  inline-size: 1px;
+  block-size: auto;
+  margin: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__item[data-fennevia-drag-shift="up"] {
+  transform: translateX(calc(-100% - var(--fennevia-space-1)));
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__item[data-fennevia-drag-shift="down"] {
+  transform: translateX(calc(100% + var(--fennevia-space-1)));
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__external-drop-slot {
+  inline-size: 132px;
+  block-size: auto;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__external-preview {
+  inset-block: 2px;
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  inline-size: 132px;
+  block-size: auto;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-tab-strip--horizontal
+  .fennevia-tab-strip__drop-indicator {
+  inset-block: 9px;
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  inline-size: 3px;
+  block-size: auto;
+}
+
 #fennevia-shell-frame-host .fennevia-tab-strip__list {
   position: relative;
   display: flex;

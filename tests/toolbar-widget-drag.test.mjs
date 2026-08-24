@@ -11,6 +11,7 @@ import {
   resolveWidgetInsertBefore,
   serializeToolbarWidgetDrag,
   startToolbarWidgetDrag,
+  subscribeToolbarWidgetDrag,
   toolbarWidgetDragMimeType,
 } from "../src/app/toolbar-widget-drag.ts";
 
@@ -54,6 +55,22 @@ test("drag payload is opaque zone or palette state without widget ids", () => {
   );
   clearToolbarWidgetDrag();
   assert.equal(getActiveToolbarWidgetDrag(), null);
+});
+
+test("drag lifecycle notifies every target so stale hover feedback can clear", () => {
+  clearToolbarWidgetDrag();
+  const transitions = [];
+  const unsubscribe = subscribeToolbarWidgetDrag((source) => {
+    transitions.push(source?.type ?? null);
+  });
+
+  startToolbarWidgetDrag({ token: "palette-2", type: "palette" });
+  clearToolbarWidgetDrag();
+  unsubscribe();
+  startToolbarWidgetDrag({ token: "palette-3", type: "palette" });
+  clearToolbarWidgetDrag();
+
+  assert.deepEqual(transitions, [null, "palette", null]);
 });
 
 test("insert-before uses item midpoints on both axes", () => {
@@ -155,6 +172,96 @@ test("drop mapping produces add, move, and remove edits", () => {
       { token: "palette-1", type: "palette" },
       { insertBefore: 0, type: "zone", zone: "top" },
       -1,
+    ),
+    null,
+  );
+});
+
+test("recursive layout drags use opaque instance ids and nested paths", () => {
+  const layout = Object.freeze({
+    bottom: Object.freeze([]),
+    left: Object.freeze([]),
+    right: Object.freeze([]),
+    top: Object.freeze([
+      Object.freeze({
+        children: Object.freeze([
+          Object.freeze({
+            instanceId: "layout-2",
+            projectId: "back",
+            type: "item",
+            widget: Object.freeze({}),
+          }),
+        ]),
+        direction: "row",
+        instanceId: "layout-1",
+        type: "container",
+      }),
+    ]),
+  });
+  const source = copyToolbarWidgetDragSource({
+    instanceId: "layout-2",
+    type: "layout-node",
+  });
+  assert.equal(
+    serializeToolbarWidgetDrag(source),
+    JSON.stringify({ instanceId: "layout-2", type: "layout-node" }),
+  );
+  assert.doesNotMatch(serializeToolbarWidgetDrag(source), /back-button/u);
+
+  assert.deepEqual(
+    createToolbarWidgetDropEdit(
+      source,
+      {
+        insertBefore: 0,
+        parentPath: [],
+        type: "layout",
+        zone: "left",
+      },
+      7,
+      layout,
+    ),
+    {
+      from: { path: [0, 0], zone: "top" },
+      revision: 7,
+      to: { index: 0, parentPath: [], zone: "left" },
+      type: "move-node",
+    },
+  );
+  assert.deepEqual(
+    createToolbarWidgetDropEdit(
+      { token: "palette-3", type: "palette" },
+      {
+        insertBefore: 1,
+        parentPath: [0],
+        type: "layout",
+        zone: "top",
+      },
+      7,
+      layout,
+    ),
+    {
+      index: 1,
+      parentPath: [0],
+      revision: 7,
+      token: "palette-3",
+      type: "add-node",
+      zone: "top",
+    },
+  );
+  assert.deepEqual(
+    createToolbarWidgetDropEdit(source, { type: "palette" }, 7, layout),
+    {
+      location: { path: [0, 0], zone: "top" },
+      revision: 7,
+      type: "remove-node",
+    },
+  );
+  assert.equal(
+    createToolbarWidgetDropEdit(
+      { instanceId: "layout-99", type: "layout-node" },
+      { type: "palette" },
+      7,
+      layout,
     ),
     null,
   );

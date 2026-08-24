@@ -1,8 +1,8 @@
 #fennevia-shell-frame-host .fennevia-downloads {
   display: grid;
   grid-template-columns:
-    minmax(156px, 0.85fr) minmax(100px, 1.25fr)
-    minmax(84px, 1fr);
+    minmax(0, 0.85fr) minmax(0, 1.25fr)
+    minmax(0, 1fr);
   flex: 1 1 auto;
   align-items: center;
   min-block-size: 0;
@@ -10,6 +10,20 @@
   gap: var(--fennevia-space-3);
   padding: var(--fennevia-space-2) var(--fennevia-space-3);
   overflow: hidden;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-downloads:not(.fennevia-downloads--horizontal) {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  min-inline-size: 180px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-downloads:not(.fennevia-downloads--horizontal)
+  .fennevia-downloads__items {
+  flex-wrap: wrap;
+  justify-content: start;
 }
 
 #fennevia-shell-frame-host .fennevia-downloads__summary {

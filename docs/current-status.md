@@ -1,8 +1,9 @@
 # Current Project Status
 
 > Snapshot: 2026-08-25. This status review is based on `main` through commit
-> `beb61d9`, plus the `0.15.0-beta.1` version identity, alongside the public
-> `v0.15.0-beta.1` prerelease.
+> `beb61d9`, plus the current ADR-074 worktree implementation and the
+> `0.15.0-beta.1` version identity, alongside the public `v0.15.0-beta.1`
+> prerelease. ADR-074 is source-only and is not claimed as part of that release.
 > Historical research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
@@ -11,17 +12,18 @@ and testing documents retain the complete engineering contract.
 
 ## At a glance
 
-| Area                            | Current state                                                                                                                                               |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public release                  | `v0.15.0-beta.1`, Windows x64 prerelease                                                                                                                    |
-| Tested Firefox                  | Stock Firefox 153.0.4 BuildID `20260810162159` and 154.0 BuildID `20260812182057`, release channel                                                          |
-| Installer compatibility gate    | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested                                                                                |
-| Core four-edge MVP              | Implemented and released                                                                                                                                    |
-| Post-MVP shell work             | Included in `v0.15.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, and ADR-073 pinned-tab partitioning |
-| Latest released follow-up       | ADR-072 corrects drop placement and enlarges owned edge targets; ADR-073 separates bounded pinned and regular scrolling; the side-panel layout fix keeps rows visible and New Tab after the last row |
-| Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending |
-| Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.15.0-beta.1` package does not re-run that matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending |
-| Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                             |
+| Area                            | Current state                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public release                  | `v0.15.0-beta.1`, Windows x64 prerelease                                                                                                                                                                                                                                                                                           |
+| Tested Firefox                  | Stock Firefox 153.0.4 BuildID `20260810162159` and 154.0 BuildID `20260812182057`, release channel                                                                                                                                                                                                                                 |
+| Installer compatibility gate    | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested                                                                                                                                                                                                                                                       |
+| Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                                                           |
+| Post-MVP shell work             | Included in `v0.15.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, and ADR-073 pinned-tab partitioning                                                                                      |
+| Latest released follow-up       | ADR-072 corrects drop placement and enlarges owned edge targets; ADR-073 separates bounded pinned and regular scrolling; the side-panel layout fix keeps rows visible and New Tab after the last row                                                                                                                               |
+| Latest source-only follow-up    | ADR-074 composes every edge from bounded recursive widgets, adds a deterministic native-v2 default, fixed base flows, independent optional panels, safe duplicate placement, empty customize targets, confirmed Clean all, clean contextual editing chrome, and complete drag-feedback cleanup; real Firefox validation is pending |
+| Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending                                                                                                          |
+| Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.15.0-beta.1` package does not re-run that matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending                                                                            |
+| Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                                                                                                                                                                                                    |
 
 ## Implemented product surface
 
@@ -45,7 +47,8 @@ and testing documents retain the complete engineering contract.
 
 - Hidden-at-rest top, left, right, and bottom surfaces with a shared reveal,
   focus, popup-hold, collision, accessibility, and cleanup contract.
-- Vertical tabs on the left by default, with a fixed, height-capped pinned area
+- Vertical tabs in Left by default, but movable as a singleton and axis-aware,
+  with a fixed, height-capped pinned area
   above an independently scrolling regular-tab area, selected state, Firefox's packaged loading icon,
   audio, containers, attention/PiP, closed camera/microphone/screen-sharing and crash
   indicators, fixed trailing action positions, middle-click close,
@@ -57,18 +60,20 @@ and testing documents retain the complete engineering contract.
   single/group native order, and polite move announcement, plus Firefox-owned tab
   context-menu handoff with complete lazy Fluent labels and no original-toolbar
   reveal.
-- Compact address/status launcher on the same configured tabs side, with one Firefox-style Trust shield embedded
-  at the leading edge, plus a centred address/search popup backed by Firefox
+- Compact address/status launcher expanded in Top by default but independently
+  movable as a singleton, with one adjacent Firefox-style Trust shield plus a
+  centred address/search popup backed by Firefox
   navigation, bounded connection/protection state, and the native Trust/Urlbar
   owners. ADR-061 adds an accessible bounded result list fed by Firefox's own
   per-window Urlbar provider manager: ordinary rows execute through native
   `pickResult`, while rich/unknown rows retain the complete native-Urlbar
   handoff. Fennevia adds no search engine, provider, ranking, persistence, or
   suggestion endpoint.
-- Fixed top navigation, page status, Firefox tool handoffs, native-panel
-  anchoring, packaged Firefox icons including the Settings gear, independently
-  configurable loading/download/off top and bottom gutter indicators, a compact
-  active-only native corner-status capsule, and project-owned window controls.
+- Default-Top navigation, page status, Firefox tool handoffs, native-panel
+  anchoring, packaged Firefox icons including the Settings gear, and project-
+  owned window controls, all projected as placeable widgets. Top and Bottom
+  retain independently configurable loading/download/off gutter indicators,
+  and Firefox's native corner status keeps its compact active-only capsule.
 - Generic relationship-based anchoring for non-security Firefox-owned XUL
   popups opened from the hidden toolbox; unsupported movement remains
   fail-open to original Firefox chrome. ADR-057 pre-anchors the shared security
@@ -80,11 +85,11 @@ and testing documents retain the complete engineering contract.
   placeable widget for the Firefox-owned full-page translation panel; the
   2026-08-22 follow-up keeps its routing active until Firefox's asynchronously
   created panel is actually shown.
-- Lazy, event-driven bookmarks on the right by default, including Firefox-cached
+- Lazy, event-driven Bookmarks in Right by default, including Firefox-cached
   bounded raster favicons and middle-click new-tab opening, plus anonymous
-  bottom-edge download progress/status while Firefox retains authoritative
-  editing, safety, and file management. The complete tabs/bookmarks side roles
-  can swap; the bottom owned panel and trigger can be disabled.
+  Downloads status in Bottom by default while Firefox retains authoritative
+  editing, safety, and file management. Both are movable singleton widgets;
+  Left, Right, and Bottom are independently enabled while Top is mandatory.
 - Useful pointer/keyboard right-click menus on all four edge panels: top
   Settings, configured tabs-side New Tab/native tab actions, configured
   bookmarks-side bookmark/folder/Library
@@ -98,18 +103,46 @@ and testing documents retain the complete engineering contract.
 
 ### Customization and presentation
 
-- Fennevia-owned customize mode with the current `CustomizableUI` inventory.
-- Live drag-and-drop placement of supported toolbar widgets across all four
-  edge zones.
-- Localized widget names, Firefox-native built-in icons, spacers, separators,
-  and flexible-space behavior.
+- Fennevia-owned customize mode with the current `CustomizableUI` inventory and
+  project browser/feature/window controls in one strict recursive version-2
+  layout contract.
+- Live drag-and-drop plus keyboard/button placement across all four edge roots,
+  with nested Row/Column containers and nearest-container horizontal/vertical
+  feature semantics.
+- Localized widget names, Firefox-native built-in icons, and always-repeatable
+  Row, Column, Center, Expanded, Padding, Separator, Space, and Flexible-space
+  structure. Ordinary children retain natural size/start order; Expanded is the
+  explicit remaining-space wrapper.
+- Fixed panel base flows (Top/Bottom Row, Left/Right Column) suppress redundant
+  outer-container chrome, while empty roots retain a full drop hitbox behind a
+  compact centered prompt.
+- Fresh/reset/fallback state uses one explicit native-v2 tree: navigation,
+  Trust, expanded address, handoffs, Customize, and window controls in Top;
+  New Tab plus expanded Tabs on the configured tabs side; expanded Bookmarks
+  opposite; and centered Downloads status in Bottom. Profile-specific native
+  toolbar entries remain palette choices instead of destabilizing the default.
+- Opt-in compatible duplicate placements—including window controls in Top and
+  Left—while stateful features remain singleton and at least one Customize
+  widget remains on an enabled edge.
+- Independent Left/Right/Bottom enablement with no Top toggle. Enabled empty
+  optional panels are hidden ordinarily but reappear as labelled customize
+  drop/keyboard-add targets.
+- Confirmed Clean all restores adopted Firefox widgets, empties every root,
+  preserves unrelated settings, and leaves one Top Customize; Reset layout
+  remains separate.
+- Drag outlines clear after actual edge exit and every terminal path. Per-node
+  move/containment/axis/remove controls, boundaries, and compact structure
+  labels are hidden until the deepest node is hovered or its direct control has
+  keyboard focus.
+- Ordinary unoccupied project chrome—including structural space and empty
+  containers/gaps—uses the shared Firefox-window drag path; customize mode is
+  explicitly no-drag.
 - Bounded profile-local appearance and interaction controls for panel/window
   backgrounds, text, borders, saturation, shadow, motion, separate
   in-window/window-leave hide timing, temporary reveal timing, zero-disable
   shortcut-tip timing, and edge trigger thickness.
-- Bounded profile-local panel controls for the complete tabs/bookmarks side
-  swap, bottom downloads-panel enablement, and top/bottom activity-light source;
-  the top role remains fixed.
+- Bounded profile-local panel controls for independent Left/Right/Bottom
+  enablement and top/bottom activity-light sources; Top remains enabled.
 - Firefox chrome design tokens as the default color source, with solid,
   reduced-transparency, reduced-motion, and forced-colors fallbacks.
 - English and Traditional Chinese shell catalogs selected from Firefox's UI
@@ -183,6 +216,14 @@ layout correction then passed `npm run verify` and a Firefox 154 headless layout
 probe. These are pre-release-commit results from the included changes; the
 `0.15.0-beta.1` identity bump itself does not re-run them.
 
+The current source-only ADR-074 implementation passed the complete
+`npm run verify` gate on 2026-08-25 with 395/395 Node tests, 87.92% line
+coverage, 80.29% branch coverage, 95.37% function coverage, every fixed
+PowerShell 7 suite, dependency audit, deterministic frontend/bridge rebuilds,
+and 14/14 accepted production artifacts. This is ordinary automated evidence;
+the ADR-074 real-Firefox visual, input, accessibility, multi-window, private-
+window, caption, popup, and recovery rows remain `not run`.
+
 The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
 the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and
 failure-injection wrappers, SessionStore rehearsal, Urlbar provider/production
@@ -227,6 +268,12 @@ following remain explicitly pending in the current plans and testing document:
   pin/unpin focus transfer, same- and cross-window drag, constrained layouts,
   accessibility modes, multi-window isolation, fail-open, and disposal in real
   Firefox;
+- ADR-074 recursive Row/Column composition, horizontal/vertical primary
+  features, compatible duplicate placements, independent optional panels,
+  initially empty customize targets, confirmed Clean all, contextual node
+  controls, complete drag-outline cleanup, empty-space window dragging, popup/
+  focus ownership, caption behavior, accessibility modes, multiple/private
+  windows, fail-open, and disposal in real Firefox;
 - ADR-059 unified Trust-shield rendering/state, leading in-launcher placement,
   and native panel handoff across HTTP, HTTPS, ETP exception/restore, errors,
   forced colors, DPI, and multiple windows;

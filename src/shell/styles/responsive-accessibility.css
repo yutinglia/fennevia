@@ -10,7 +10,9 @@
     padding: var(--fennevia-space-2);
   }
 
-  #fennevia-shell-frame-host .fennevia-address-launcher__button {
+  #fennevia-shell-frame-host
+    .fennevia-address-launcher
+    .fennevia-address-launcher__button {
     min-block-size: 36px;
   }
 
@@ -38,7 +40,7 @@
   }
 
   #fennevia-shell-frame-host .fennevia-downloads {
-    grid-template-columns: minmax(126px, 0.9fr) minmax(88px, 1.2fr) auto;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr) auto;
     gap: var(--fennevia-space-2);
     padding-block: 3px;
   }
@@ -65,7 +67,7 @@
 }
 
 @media (max-width: 900px) {
-  #fennevia-shell-frame-host .fennevia-navigation__private,
+  #fennevia-shell-frame-host .fennevia-navigation .fennevia-navigation__private,
   #fennevia-shell-frame-host [data-fennevia-toolbar-widgets="top"] {
     display: none;
   }
@@ -97,6 +99,7 @@
   }
 
   #fennevia-shell-frame-host
+    .fennevia-navigation
     .fennevia-browser-tools__button:not(
       [data-fennevia-browser-tool="extensions"],
       [data-fennevia-browser-tool="application-menu"],
@@ -123,10 +126,13 @@
   }
 
   #fennevia-shell-frame-host
+    .fennevia-navigation
     .fennevia-navigation__button[data-fennevia-action="forward"],
   #fennevia-shell-frame-host
+    .fennevia-navigation
     .fennevia-navigation__button[data-fennevia-action="home"],
   #fennevia-shell-frame-host
+    .fennevia-navigation
     .fennevia-browser-tools__button[data-fennevia-browser-tool="extensions"] {
     display: none;
   }
@@ -139,7 +145,7 @@
 
 @media (max-width: 430px) {
   #fennevia-shell-frame-host .fennevia-downloads {
-    grid-template-columns: minmax(126px, 1fr) minmax(70px, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   #fennevia-shell-frame-host .fennevia-downloads__items {
@@ -275,6 +281,14 @@
     background: transparent;
     border-color: transparent;
     box-shadow: none;
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-layout-address
+    > .fennevia-layout-address-launcher {
+    color: FieldText;
+    background: Field;
+    border-color: FieldText;
   }
 
   #fennevia-shell-frame-host .fennevia-address-popup__field-shell:focus-within {

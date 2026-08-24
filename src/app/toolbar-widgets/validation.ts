@@ -3,6 +3,8 @@
 import { edgeInteractionDefaults } from "../edge-surfaces/contracts.ts";
 import {
   toolbarZoneNames,
+  toolbarLayoutDirections,
+  toolbarLayoutWrapperKinds,
   toolbarStyleBounds,
   toolbarStyleColorInputPattern,
   toolbarStyleColorKeys,
@@ -26,11 +28,13 @@ import {
   sidePanelLayoutSet,
   progressLightSourceSet,
   nonInteractiveKindSet,
+  projectWidgetIdSet,
 } from "./contracts.ts";
 import type {
   ToolbarWidgetKind,
   ToolbarZoneName,
   FenneviaToolbarAction,
+  ProjectWidgetId,
   ToolbarPaletteKind,
   ToolbarStyleTheme,
   ToolbarStyleDensity,
@@ -45,6 +49,11 @@ import type {
   ToolbarPaletteEntrySnapshot,
   ToolbarStyleSnapshot,
   ToolbarWidgetZones,
+  ToolbarLayoutDirection,
+  ToolbarLayoutWrapperKind,
+  ToolbarLayoutNodeSnapshot,
+  ToolbarLayoutZonesSnapshot,
+  ToolbarLayoutLocation,
   ToolbarWidgetsSnapshot,
   ToolbarWidgetsEditOperation,
 } from "./contracts.ts";
@@ -65,6 +74,32 @@ export function isToolbarZoneName(
   return (
     typeof candidate === "string" &&
     toolbarZoneNameSet.has(candidate as ToolbarZoneName)
+  );
+}
+
+const toolbarLayoutDirectionSet = new Set<ToolbarLayoutDirection>(
+  toolbarLayoutDirections,
+);
+
+const toolbarLayoutWrapperKindSet = new Set<ToolbarLayoutWrapperKind>(
+  toolbarLayoutWrapperKinds,
+);
+
+export function isToolbarLayoutDirection(
+  candidate: unknown,
+): candidate is ToolbarLayoutDirection {
+  return (
+    typeof candidate === "string" &&
+    toolbarLayoutDirectionSet.has(candidate as ToolbarLayoutDirection)
+  );
+}
+
+export function isToolbarLayoutWrapperKind(
+  candidate: unknown,
+): candidate is ToolbarLayoutWrapperKind {
+  return (
+    typeof candidate === "string" &&
+    toolbarLayoutWrapperKindSet.has(candidate as ToolbarLayoutWrapperKind)
   );
 }
 
@@ -129,8 +164,10 @@ export function isProgressLightSource(
 export function createDefaultShellPanelConfig(): ShellPanelConfigSnapshot {
   return Object.freeze({
     allowCompactWindow: false,
-    bottomDownloadsEnabled: true,
+    bottomPanelEnabled: true,
     bottomProgressLight: "downloads" as const,
+    leftPanelEnabled: true,
+    rightPanelEnabled: true,
     sidePanelLayout: "tabs-left" as const,
     topProgressLight: "loading" as const,
   });
@@ -143,8 +180,10 @@ export function copyShellPanelConfigSnapshot(
     !candidate ||
     typeof candidate !== "object" ||
     typeof candidate.allowCompactWindow !== "boolean" ||
-    typeof candidate.bottomDownloadsEnabled !== "boolean" ||
+    typeof candidate.bottomPanelEnabled !== "boolean" ||
     !isProgressLightSource(candidate.bottomProgressLight) ||
+    typeof candidate.leftPanelEnabled !== "boolean" ||
+    typeof candidate.rightPanelEnabled !== "boolean" ||
     !isSidePanelLayout(candidate.sidePanelLayout) ||
     !isProgressLightSource(candidate.topProgressLight)
   ) {
@@ -154,8 +193,10 @@ export function copyShellPanelConfigSnapshot(
   }
   return Object.freeze({
     allowCompactWindow: candidate.allowCompactWindow,
-    bottomDownloadsEnabled: candidate.bottomDownloadsEnabled,
+    bottomPanelEnabled: candidate.bottomPanelEnabled,
     bottomProgressLight: candidate.bottomProgressLight,
+    leftPanelEnabled: candidate.leftPanelEnabled,
+    rightPanelEnabled: candidate.rightPanelEnabled,
     sidePanelLayout: candidate.sidePanelLayout,
     topProgressLight: candidate.topProgressLight,
   });
@@ -486,8 +527,9 @@ export function copyToolbarWidgetSnapshot(
   }
   const nonInteractive = nonInteractiveKindSet.has(candidate.kind);
   const isFennevia = candidate.kind === "fennevia";
+  const isProject = candidate.kind === "project";
   if (
-    (nonInteractive || isFennevia || candidate.missing) &&
+    (nonInteractive || isFennevia || isProject || candidate.missing) &&
     candidate.handle !== ""
   ) {
     throw createToolbarWidgetsStateError(
@@ -497,6 +539,7 @@ export function copyToolbarWidgetSnapshot(
   if (
     !nonInteractive &&
     !isFennevia &&
+    !isProject &&
     !candidate.missing &&
     candidate.handle === ""
   ) {
@@ -513,7 +556,7 @@ export function copyToolbarWidgetSnapshot(
       "FENNEVIA_TOOLBAR_WIDGETS_STATE_ACTION_INVALID",
     );
   }
-  if (isFennevia && candidate.missing) {
+  if ((isFennevia || isProject) && candidate.missing) {
     throw createToolbarWidgetsStateError(
       "FENNEVIA_TOOLBAR_WIDGETS_STATE_WIDGET_INVALID",
     );
@@ -616,10 +659,192 @@ export function createEmptyToolbarWidgetZones(): ToolbarWidgetZones {
   });
 }
 
+const TOOLBAR_LAYOUT_INSTANCE_PATTERN = /^layout-[1-9][0-9]{0,5}$/u;
+const TOOLBAR_LAYOUT_MAX_DEPTH = 3;
+const TOOLBAR_LAYOUT_MAX_NODES = 128;
+
+export function copyToolbarLayoutPath(candidate: unknown): readonly number[] {
+  if (
+    !Array.isArray(candidate) ||
+    candidate.length > TOOLBAR_LAYOUT_MAX_DEPTH + 1 ||
+    candidate.some(
+      (index) =>
+        !Number.isSafeInteger(index) || index < 0 || index > ZONE_MAX_ENTRIES,
+    )
+  ) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_PATH_INVALID",
+    );
+  }
+  return Object.freeze([...(candidate as number[])]);
+}
+
+export function copyToolbarLayoutLocation(
+  candidate: ToolbarLayoutLocation,
+): ToolbarLayoutLocation {
+  if (
+    !candidate ||
+    typeof candidate !== "object" ||
+    !isToolbarZoneName(candidate.zone)
+  ) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_PATH_INVALID",
+    );
+  }
+  return Object.freeze({
+    path: copyToolbarLayoutPath(candidate.path),
+    zone: candidate.zone,
+  });
+}
+
+function copyToolbarLayoutNodes(
+  candidate: unknown,
+  depth: number,
+  state: Readonly<{
+    instanceIds: Set<string>;
+    total: { value: number };
+  }>,
+): readonly ToolbarLayoutNodeSnapshot[] {
+  if (!Array.isArray(candidate) || candidate.length > ZONE_MAX_ENTRIES) {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID",
+    );
+  }
+  const nodes: ToolbarLayoutNodeSnapshot[] = [];
+  for (const rawNode of candidate) {
+    if (!rawNode || typeof rawNode !== "object") {
+      throw createToolbarWidgetsStateError(
+        "FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID",
+      );
+    }
+    const node = rawNode as Record<string, unknown>;
+    state.total.value += 1;
+    if (
+      state.total.value > TOOLBAR_LAYOUT_MAX_NODES ||
+      typeof node.instanceId !== "string" ||
+      !TOOLBAR_LAYOUT_INSTANCE_PATTERN.test(node.instanceId) ||
+      state.instanceIds.has(node.instanceId)
+    ) {
+      throw createToolbarWidgetsStateError(
+        "FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID",
+      );
+    }
+    state.instanceIds.add(node.instanceId);
+    if (node.type === "item") {
+      const projectId = node.projectId;
+      if (
+        typeof projectId !== "string" ||
+        (projectId !== "" &&
+          !projectWidgetIdSet.has(projectId as ProjectWidgetId))
+      ) {
+        throw createToolbarWidgetsStateError(
+          "FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID",
+        );
+      }
+      const widget = copyToolbarWidgetSnapshot(
+        node.widget as ToolbarWidgetSnapshot,
+      );
+      if (
+        (projectId === "") === (widget.kind === "project") ||
+        Object.keys(node).some(
+          (key) => !["instanceId", "projectId", "type", "widget"].includes(key),
+        )
+      ) {
+        throw createToolbarWidgetsStateError(
+          "FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID",
+        );
+      }
+      nodes.push(
+        Object.freeze({
+          instanceId: node.instanceId,
+          projectId: projectId as ProjectWidgetId | "",
+          type: "item" as const,
+          widget,
+        }),
+      );
+      continue;
+    }
+    if (
+      node.type === "wrapper" &&
+      isToolbarLayoutWrapperKind(node.kind) &&
+      depth < TOOLBAR_LAYOUT_MAX_DEPTH &&
+      Array.isArray(node.children) &&
+      node.children.length <= 1 &&
+      !Object.keys(node).some(
+        (key) => !["children", "instanceId", "kind", "type"].includes(key),
+      )
+    ) {
+      nodes.push(
+        Object.freeze({
+          children: copyToolbarLayoutNodes(node.children, depth + 1, state),
+          instanceId: node.instanceId,
+          kind: node.kind,
+          type: "wrapper" as const,
+        }),
+      );
+      continue;
+    }
+    if (
+      node.type !== "container" ||
+      !isToolbarLayoutDirection(node.direction) ||
+      depth >= TOOLBAR_LAYOUT_MAX_DEPTH ||
+      Object.keys(node).some(
+        (key) => !["children", "direction", "instanceId", "type"].includes(key),
+      )
+    ) {
+      throw createToolbarWidgetsStateError(
+        "FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID",
+      );
+    }
+    nodes.push(
+      Object.freeze({
+        children: copyToolbarLayoutNodes(node.children, depth + 1, state),
+        direction: node.direction,
+        instanceId: node.instanceId,
+        type: "container" as const,
+      }),
+    );
+  }
+  return Object.freeze(nodes);
+}
+
+export function createEmptyToolbarLayoutZones(): ToolbarLayoutZonesSnapshot {
+  return Object.freeze({
+    bottom: Object.freeze([]),
+    left: Object.freeze([]),
+    right: Object.freeze([]),
+    top: Object.freeze([]),
+  });
+}
+
+export function copyToolbarLayoutZonesSnapshot(
+  candidate: ToolbarLayoutZonesSnapshot,
+): ToolbarLayoutZonesSnapshot {
+  if (!candidate || typeof candidate !== "object") {
+    throw createToolbarWidgetsStateError(
+      "FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID",
+    );
+  }
+  const state = {
+    instanceIds: new Set<string>(),
+    total: { value: 0 },
+  };
+  return Object.freeze(
+    Object.fromEntries(
+      toolbarZoneNames.map((zone) => [
+        zone,
+        copyToolbarLayoutNodes(candidate[zone], 0, state),
+      ]),
+    ),
+  ) as ToolbarLayoutZonesSnapshot;
+}
+
 export function createUnavailableToolbarWidgetsSnapshot(): ToolbarWidgetsSnapshot {
   return Object.freeze({
+    allowMultiplePlacements: false,
     available: false,
     canEdit: false,
+    layout: createEmptyToolbarLayoutZones(),
     layoutCustomized: false,
     palette: Object.freeze([]),
     panels: createDefaultShellPanelConfig(),
@@ -636,11 +861,14 @@ export function copyToolbarWidgetsSnapshot(
     !candidate ||
     typeof candidate !== "object" ||
     typeof candidate.available !== "boolean" ||
+    typeof candidate.allowMultiplePlacements !== "boolean" ||
     typeof candidate.canEdit !== "boolean" ||
     typeof candidate.layoutCustomized !== "boolean" ||
     typeof candidate.panelsCustomized !== "boolean" ||
     !Array.isArray(candidate.palette) ||
     candidate.palette.length > PALETTE_MAX_ENTRIES ||
+    !candidate.layout ||
+    typeof candidate.layout !== "object" ||
     !candidate.zones ||
     typeof candidate.zones !== "object"
   ) {
@@ -664,8 +892,10 @@ export function copyToolbarWidgetsSnapshot(
     ]);
   }
   return Object.freeze({
+    allowMultiplePlacements: candidate.allowMultiplePlacements,
     available: candidate.available,
     canEdit: candidate.canEdit,
+    layout: copyToolbarLayoutZonesSnapshot(candidate.layout),
     layoutCustomized: candidate.layoutCustomized,
     palette: Object.freeze(
       candidate.palette.map(copyToolbarPaletteEntrySnapshot),
@@ -715,6 +945,47 @@ export function copyToolbarWidgetsEditOperation(
         zone: candidate.zone,
       });
     }
+    case "add-node": {
+      if (
+        typeof candidate.token !== "string" ||
+        !PALETTE_TOKEN_PATTERN.test(candidate.token) ||
+        !isToolbarZoneName(candidate.zone) ||
+        !isBoundedIndex(candidate.index) ||
+        !isEditRevision(candidate.revision)
+      ) {
+        throw createToolbarWidgetsStateError(
+          "FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID",
+        );
+      }
+      return Object.freeze({
+        index: candidate.index,
+        parentPath: copyToolbarLayoutPath(candidate.parentPath),
+        revision: candidate.revision,
+        token: candidate.token,
+        type: "add-node" as const,
+        zone: candidate.zone,
+      });
+    }
+    case "add-container": {
+      if (
+        !isToolbarLayoutDirection(candidate.direction) ||
+        !isToolbarZoneName(candidate.zone) ||
+        !isBoundedIndex(candidate.index) ||
+        !isEditRevision(candidate.revision)
+      ) {
+        throw createToolbarWidgetsStateError(
+          "FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID",
+        );
+      }
+      return Object.freeze({
+        direction: candidate.direction,
+        index: candidate.index,
+        parentPath: copyToolbarLayoutPath(candidate.parentPath),
+        revision: candidate.revision,
+        type: "add-container" as const,
+        zone: candidate.zone,
+      });
+    }
     case "move": {
       if (
         !isToolbarZoneName(candidate.fromZone) ||
@@ -753,6 +1024,78 @@ export function copyToolbarWidgetsEditOperation(
         zone: candidate.zone,
       });
     }
+    case "move-node": {
+      const from = copyToolbarLayoutLocation(candidate.from);
+      if (
+        from.path.length === 0 ||
+        !candidate.to ||
+        typeof candidate.to !== "object" ||
+        !isToolbarZoneName(candidate.to.zone) ||
+        !isBoundedIndex(candidate.to.index) ||
+        !isEditRevision(candidate.revision)
+      ) {
+        throw createToolbarWidgetsStateError(
+          "FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID",
+        );
+      }
+      return Object.freeze({
+        from,
+        revision: candidate.revision,
+        to: Object.freeze({
+          index: candidate.to.index,
+          parentPath: copyToolbarLayoutPath(candidate.to.parentPath),
+          zone: candidate.to.zone,
+        }),
+        type: "move-node" as const,
+      });
+    }
+    case "remove-node": {
+      const location = copyToolbarLayoutLocation(candidate.location);
+      if (location.path.length === 0 || !isEditRevision(candidate.revision)) {
+        throw createToolbarWidgetsStateError(
+          "FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID",
+        );
+      }
+      return Object.freeze({
+        location,
+        revision: candidate.revision,
+        type: "remove-node" as const,
+      });
+    }
+    case "set-multiple-placements": {
+      if (
+        typeof candidate.allow !== "boolean" ||
+        !isEditRevision(candidate.revision)
+      ) {
+        throw createToolbarWidgetsStateError(
+          "FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID",
+        );
+      }
+      return Object.freeze({
+        allow: candidate.allow,
+        revision: candidate.revision,
+        type: "set-multiple-placements" as const,
+      });
+    }
+    case "set-container-direction": {
+      const location = copyToolbarLayoutLocation(candidate.location);
+      if (
+        location.path.length === 0 ||
+        !isToolbarLayoutDirection(candidate.direction) ||
+        !isEditRevision(candidate.revision)
+      ) {
+        throw createToolbarWidgetsStateError(
+          "FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID",
+        );
+      }
+      return Object.freeze({
+        direction: candidate.direction,
+        location,
+        revision: candidate.revision,
+        type: "set-container-direction" as const,
+      });
+    }
+    case "clean-layout":
     case "reset-layout": {
       if (!isEditRevision(candidate.revision)) {
         throw createToolbarWidgetsStateError(
@@ -761,7 +1104,7 @@ export function copyToolbarWidgetsEditOperation(
       }
       return Object.freeze({
         revision: candidate.revision,
-        type: "reset-layout" as const,
+        type: candidate.type,
       });
     }
     case "set-style": {

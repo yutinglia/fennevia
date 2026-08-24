@@ -538,7 +538,8 @@ matrix are recorded in `docs/research/firefox-153-tab-strip.md`.
 ## ADR-026: Use one zero-layout frame with four independently owned edge surfaces
 
 **Status:** Accepted and validated on Firefox 153.0.4; default color values
-amended by ADR-051 and interaction defaults made user-configurable by ADR-054
+amended by ADR-051 and interaction defaults made user-configurable by ADR-054;
+ADR-074 supersedes only the fixed feature composition inside these four roots
 
 Insert one project-owned XHTML frame as an absolute child of `#browser`
 immediately before `#tabbrowser-tabbox`. The frame reserves no layout space and
@@ -607,7 +608,8 @@ security effects, first causal failures, and real validation are in
 
 ## ADR-027: Mirror native command state and invoke current `BrowserCommands` for navigation
 
-**Status:** Accepted and validated on Firefox 153.0.4
+**Status:** Accepted and validated on Firefox 153.0.4; ADR-074 supersedes only
+the requirement that this presentation remain fixed in the bottom root
 
 Create one selected-navigation controller per issue #9 window boundary. Expose
 only an immutable ordinary snapshot containing `canGoBack`, `canGoForward`,
@@ -1188,7 +1190,8 @@ popup-action toolbar reveal superseded by ADR-042; the widget/identity
 enumeration prohibition partially superseded by ADR-044; the fixed
 browser-tools contract is extended by ADR-057; separate visible
 site-information and protections controls are superseded by ADR-059; native
-window-drag pointer-release behavior is superseded by ADR-065
+window-drag pointer-release behavior is superseded by ADR-065; ADR-074
+supersedes the remaining fixed top-row placement clauses
 
 Render the top edge as one project-owned, non-wrapping toolbar row. Expose only
 nine fixed browser-tool availability booleans and nine fixed actions through a
@@ -1262,7 +1265,8 @@ reference provenance, and the manual-test boundary are recorded in
 ## ADR-038: Project-owned window controls with retained native caption nodes
 
 **Status:** Accepted as an explicit owner exception on the Firefox 153.0.4
-Windows prerelease boundary
+Windows prerelease boundary; ADR-074 supersedes only the fixed top-right
+placement while retaining these commands and native-caption recovery
 
 Replace the ADR-037 native caption island with project-owned minimize,
 maximize/restore, and close buttons on the right side of the custom top row.
@@ -1602,7 +1606,8 @@ bounded rule relaxations below; partially supersedes ADR-044's
 mirror-as-sole-model and "native customize mode is the only editor" clauses;
 the "editor drawer performs all editing" clause is superseded by ADR-047; the
 style preference schema is extended by ADR-054; the owned-widget list is
-extended by ADR-057
+extended by ADR-057; ADR-074 supersedes the flat-zone, fixed-feature, and
+dedicated-top-Customize clauses with a strict composable version-2 layout
 
 Deprecate the ADR-044 read-only nav-bar mirror as the only widget source and
 replace it with a Fennevia-owned customize mode. The `toolbar-widgets`
@@ -1732,7 +1737,8 @@ uses in `toolbarbutton-icons.css` keeps theme/forced-colors coupling on
 ## ADR-047: Live four-edge HTML5 drag-and-drop for Fennevia customize mode
 
 **Status:** Accepted for the Firefox 153.0.4 Windows prerelease boundary;
-supersedes ADR-045's "editor drawer performs all editing" clause
+supersedes ADR-045's "editor drawer performs all editing" clause; ADR-074
+supersedes flat zone indexes with opaque instance ids and bounded tree paths
 
 Placement editing happens on the live four-edge widget zones, not in a
 duplicate zone list. Opening Fennevia customize is a frontend session owned by
@@ -2695,7 +2701,9 @@ privacy analysis, validation, and pending real-browser rows are recorded in
 **Status:** Accepted for the project-owner request on 2026-08-23; Firefox 154
 source review, implementation, and complete ordinary automation are complete;
 the real Firefox visual, multi-window preference, favicon, and accessibility
-matrix remains pending
+matrix remains pending; ADR-074 supersedes the fixed paired-side roles and
+bottom-as-sole-download-panel clauses while retaining favicons, lights, and
+native-status styling
 
 Revise the fixed-role clauses of ADR-026, ADR-029, ADR-030, ADR-043, and ADR-055
 without revising their ownership, privacy, or fail-open rules. The top role
@@ -2976,7 +2984,9 @@ sets `data-fennevia-compact-window` on `:root#main-window`. The existing
 project stylesheet includes one additional top-level rule:
 
 ```css
-:root#main-window[data-fennevia-active][data-fennevia-compact-window]:not([data-fennevia-native-ui-suspended]) {
+:root#main-window[data-fennevia-active][data-fennevia-compact-window]:not(
+    [data-fennevia-native-ui-suspended]
+  ) {
   min-width: 0 !important;
   min-height: 0 !important;
 }
@@ -3200,3 +3210,158 @@ dependency, bridge field, browsing-data flow, native DOM mutation, edge
 trigger, timer, persistence, network request, dependency, or shipped external
 asset. Evidence and rejected alternatives are recorded in
 `docs/research/firefox-154-pinned-tabs-area.md`.
+
+## ADR-074: Compose every edge from bounded widgets, flows, and wrappers
+
+**Status:** Accepted by direct project-owner request on 2026-08-25;
+implementation and ordinary automated coverage are complete; the real Firefox
+layout, accessibility, popup, caption, multi-window, and recovery matrix
+remains `not run`
+
+Keep ADR-026's one zero-layout frame, four independently owned edge hosts, one
+shared reveal/collision/focus/popup/window-drag controller, and one disposer per
+root. Supersede only their fixed child composition. Each edge now renders one
+strict version-2 layout tree whose nodes are project/Firefox widget instances,
+bounded Row/Column containers, or one-child Center/Expanded/Padding wrappers.
+Top and Bottom roots default to a row axis;
+Left and Right roots default to a column axis. A nested container explicitly
+overrides that axis for its descendants. Tabs, Bookmarks, Downloads status,
+the non-editable address launcher, navigation and Firefox handoffs, Trust,
+window controls, the private indicator, and Customize are project widget
+definitions rather than hard-coded edge children. Feature adapters and popup
+owners remain single per-window owners; moving a widget changes presentation,
+not Firefox state ownership.
+
+The four root axes are fixed base flows rather than removable palette nodes.
+To preserve existing version-2 paths without rewriting preferences on read, a
+sole root-level Row/Column whose direction matches its edge is promoted to the
+compatibility base at render time: its children remain editable and droppable,
+but the redundant outer node has no dashed chrome, drag handle, axis toggle,
+remove action, or move-out path. Root-padding drops are redirected into it.
+Only additional nested Row/Column nodes retain ordinary widget chrome. Empty
+roots remain full-size drop targets while their visible empty-state affordance
+is compact and centered.
+
+Row and Column follow Flutter's documented Flex defaults: the flow occupies
+the bounded space it receives, ordinary children keep their natural main-axis
+size in DOM order from start, and children center on the cross axis. Only an
+explicit Expanded wrapper claims remaining main-axis space. Center fills
+bounded dimensions and centers its child; Padding applies one existing spacing
+token. Each wrapper permits zero or one child, inherits the nearest flow axis,
+and counts toward the same nesting bound. This behavior follows the official
+[Row](https://api.flutter.dev/flutter/widgets/Row-class.html),
+[Column](https://api.flutter.dev/flutter/widgets/Column-class.html),
+[Expanded](https://api.flutter.dev/flutter/widgets/Expanded-class.html), and
+[Center](https://api.flutter.dev/flutter/widgets/Center-class.html) contracts.
+
+Persist only a closed tree with four fixed roots, layout-local
+`layout-<positive integer>` instance ids, fixed project ids, privileged Firefox
+widget ids, `row`/`column`, `center`/`expanded`/`padding`, and
+`separator`/`spacer`/`spring`. Bound nesting to three levels below an edge,
+direct children to 48, wrapper children to one, total nodes to 128, adopted
+Firefox ids to 64, and the existing preference to 16 KiB. Reject unknown keys,
+cycles, invalid paths, repeated instance ids, over-capacity wrappers, and
+out-of-bound trees. Valid version-1 layouts migrate in memory around their
+explicit four-zone order and are written as version 2 only after an edit;
+malformed state fails safe to the default rather than becoming a health
+substitute.
+
+Use a dedicated deterministic version-2 default instead of treating an absent
+layout preference as a live version-1 Firefox nav-bar mirror. Top directly
+contains navigation, Trust, `Expanded(Address launcher)`, Firefox handoffs,
+Customize, private state, and window controls. The configured tabs-side Column
+contains New Tab and `Expanded(Tabs)`; the other side contains
+`Expanded(Bookmarks)`; Bottom contains
+`Expanded(Center(Downloads status))`. Profile-specific Firefox built-ins,
+extension actions, spacers, and springs remain palette candidates. Fresh,
+malformed-fallback, and Reset states use this tree; a valid saved version-2
+tree is never silently replaced.
+
+Expose a profile-local `allowMultiplePlacements` switch, default false. When
+enabled, stateless project actions and Firefox toolbar mirrors may have more
+than one project-rendered instance while resolving the same current per-window
+owner; Fennevia never clones or reparents the native node or panel. An adopted
+Firefox widget returns to its original area only after its final Fennevia
+instance is removed. Tabs, Bookmarks, Downloads status, the address launcher,
+private indicator, and Customize remain singleton because each owns unique
+focus, feature, or semantic state. Row, Column, Center, Expanded, Padding,
+Separator, Space, and Flexible space are structural and always remain
+repeatable, independent of the switch.
+Turning duplication off is rejected while incompatible duplicate instances
+remain.
+
+Require at least one Customize widget in every valid layout and require one of
+its instances to be in an enabled edge. Customize remains singleton under the
+current policy, but it may move to any edge. Removing the last instance or
+disabling the optional edge that contains it is a bounded invalid edit. Closing
+the shared top-host drawer reveals and restores focus to the surviving
+instance's actual edge. Top has no enabled preference and cannot be disabled;
+Left, Right, and Bottom have independent booleans. An optional empty edge is
+runtime-disabled in ordinary browsing without discarding its saved tree. While
+customize mode is open, every preference-enabled empty optional edge is
+re-enabled, popup-held, and rendered as a labelled pointer-drop and keyboard-
+add target; a preference-disabled edge remains absent until the user enables
+it. The old `bottomDownloadsEnabled` field migrates to
+`bottomPanelEnabled`; missing Left and Right values default enabled. Downloads
+status is a movable singleton and does not determine whether Bottom exists.
+
+Expose **Clean all panels** as a separate destructive operation, not an alias
+for Reset layout. It requires a project-owned accessible confirmation alert.
+Cancel sends no edit. Confirm atomically restores every adopted Firefox widget,
+empties all four trees, and creates exactly one Customize instance in Top while
+preserving panel enablement, light, compact-window, appearance, interaction,
+and duplicate-placement settings. Enabled empty optional edges therefore
+remain immediately available as customize targets after the clean operation.
+
+Use opaque palette tokens and layout instance ids in ordinary snapshots and
+drag payloads. Nested add/move/remove operations cross the bridge as bounded
+tree paths with a revision guard. The live editor exposes visible move-before,
+move-after, move-into, move-out, remove, and container-axis controls in addition
+to drag and Ctrl+axis reordering. Those per-node controls are visually hidden
+at rest and appear only for the deepest hovered node or the node whose direct
+control owns keyboard focus, keeping the recursive canvas legible without
+removing any keyboard action. Every drop preview clears on a true panel/palette
+exit and on drop, cancel, drag end, customize close, or component disposal, so
+no completed or abandoned drag can retain its blue target outline. DOM order
+remains visual and focus order.
+Main feature widgets receive the nearest flow axis through any wrappers: Tabs changes its ARIA
+orientation, keyboard direction, drag geometry, and overflow axis; Bookmarks
+and Downloads change between bar and list presentation; other groups pack on
+the same axis without rotated text. No container creates another Svelte root,
+landmark, trigger, timer, popup owner, or browser observer.
+
+In ordinary browsing mode, unoccupied project chrome is a window-drag region:
+Space, Flexible space, Separator, empty Row/Column containers, empty wrapper
+geometry, and gaps inside layout containers use Firefox's existing
+`-moz-window-dragging` path and the shared ADR-065 candidate. Buttons, inputs,
+selects, links, enabled focus targets, and other interactive descendants remain
+explicit no-drag targets.
+The complete composable layout is no-drag while Fennevia customize mode is
+active so layout editing cannot move the OS window.
+
+The layout preference may contain the already owner-approved privileged
+Firefox widget ids, but ordinary frontend state, payloads, datasets, and logs
+still receive no raw id, URL, title, download detail, or extension identity
+beyond ADR-044/ADR-046's bounded in-memory presentation. Native security,
+permission, extension, menu, translation, and download panels stay
+Firefox-owned. Missing optional widgets remain unavailable; a missing required
+adapter, malformed required layout, rendering exception, or failed health check
+retains the existing native-visible fail-open behavior.
+
+**Reasoning:** Flat edge zones could reorder accessory toolbar buttons but left
+the primary browser interface hard-coded, so users could not build a vertical
+topology, move Downloads status, or repeat safe controls such as window buttons
+on Top and Left. A bounded recursive tree gives the requested composition
+without arbitrary CSS/JSON execution or a second surface system. Definition-
+versus-instance identity makes repeatability explicit, while singleton policy
+preserves stateful feature ownership. The mandatory reachable Customize widget
+prevents a valid saved layout from removing its own editor. Empty-space window
+dragging preserves titlebar usability after flexible composition without making
+interactive or editor regions draggable. Contextual node controls and complete
+drag-feedback cleanup keep a deeply nested editor usable without making drag
+the only editing path. Implementation and focused evidence are in
+`plans/009-composable-widget-layout.md`,
+`tests/customize-layout-v2.test.mjs`,
+`tests/firefox-toolbar-widgets.test.mjs`,
+`tests/toolbar-widget-drag.test.mjs`, and
+`tests/frontend-build.test.mjs`.

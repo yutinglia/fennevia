@@ -214,10 +214,21 @@ export function serializeCustomizeStyle(style: CustomizeStyle): string {
   return JSON.stringify({ ...copyToolbarStyleSnapshot(style), version: 1 });
 }
 
-const customizePanelKeys = new Set([
+const customizePanelV1Keys = new Set([
   "allowCompactWindow",
   "bottomDownloadsEnabled",
   "bottomProgressLight",
+  "sidePanelLayout",
+  "topProgressLight",
+  "version",
+]);
+
+const customizePanelV2Keys = new Set([
+  "allowCompactWindow",
+  "bottomPanelEnabled",
+  "bottomProgressLight",
+  "leftPanelEnabled",
+  "rightPanelEnabled",
   "sidePanelLayout",
   "topProgressLight",
   "version",
@@ -233,11 +244,29 @@ export function parseCustomizePanels(text: string): CustomizePanels | null {
   }
   try {
     const parsed = JSON.parse(text) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
     if (
-      !parsed ||
-      typeof parsed !== "object" ||
-      parsed.version !== 1 ||
-      Object.keys(parsed).some((key) => !customizePanelKeys.has(key))
+      parsed.version === 1 &&
+      Object.keys(parsed).every((key) => customizePanelV1Keys.has(key))
+    ) {
+      const defaults = createDefaultShellPanelConfig();
+      return copyShellPanelConfigSnapshot({
+        ...defaults,
+        allowCompactWindow:
+          parsed.allowCompactWindow ?? defaults.allowCompactWindow,
+        bottomPanelEnabled:
+          parsed.bottomDownloadsEnabled ?? defaults.bottomPanelEnabled,
+        bottomProgressLight:
+          parsed.bottomProgressLight ?? defaults.bottomProgressLight,
+        sidePanelLayout: parsed.sidePanelLayout ?? defaults.sidePanelLayout,
+        topProgressLight: parsed.topProgressLight ?? defaults.topProgressLight,
+      } as ShellPanelConfigSnapshot);
+    }
+    if (
+      parsed.version !== 2 ||
+      Object.keys(parsed).some((key) => !customizePanelV2Keys.has(key))
     ) {
       return null;
     }
@@ -254,7 +283,7 @@ export function parseCustomizePanels(text: string): CustomizePanels | null {
 export function serializeCustomizePanels(panels: CustomizePanels): string {
   return JSON.stringify({
     ...copyShellPanelConfigSnapshot(panels),
-    version: 1,
+    version: 2,
   });
 }
 

@@ -111,10 +111,12 @@ export const en = {
   "connection.unavailable.badge": "Info",
   "connection.unavailable.label": "Connection information is unavailable",
   "customize.addWidgetAria": "Add {label} to the {zone} panel",
+  "customize.addToPanel": "Add widgets to",
   "customize.autoHideDelay": "Hide after entering page",
   "customize.autoHideDelayHelp":
     "How long a panel remains visible after the pointer moves into page content or another area inside Firefox.",
   "customize.bottomDownloadsPanel": "Enable bottom Downloads panel",
+  "customize.bottomPanel": "Enable Bottom panel",
   "customize.bottomProgressLight": "Bottom light",
   "customize.closeAria": "Close customize panel",
   "customize.colorAccent": "Accent color",
@@ -127,19 +129,29 @@ export const en = {
   "customize.colorSwatchCustom": "Custom color",
   "customize.colorText": "Text color",
   "customize.colorWindow": "Window background",
+  "customize.cleanPanels": "Clean all panels",
+  "customize.cleanPanelsCancel": "Cancel",
+  "customize.cleanPanelsConfirm": "Clean panels",
+  "customize.cleanPanelsConfirmDescription":
+    "This removes every widget, row, column, wrapper, and space from all four panels. Customize will remain in the Top panel, and panel settings will not change.",
+  "customize.cleanPanelsConfirmTitle": "Clean all panels?",
   "customize.density": "Density",
   "customize.density.comfortable": "Comfortable",
   "customize.density.compact": "Compact",
   "customize.density.cozy": "Cozy",
   "customize.editFailed":
     "That change could not be applied. The layout may have just changed; try again.",
+  "customize.required": "Customize must remain on an enabled panel.",
   "customize.edgeTriggerSize": "Edge trigger size",
   "customize.edgeTriggerSizeHelp":
     "Width of the invisible edge target. Larger values are easier to hit but cover more of the page edge.",
   "customize.emptyPalette":
     "Every available widget is already placed. Drop a widget here to remove it from a panel.",
+  "customize.emptyPanelDrop":
+    "Drop widgets here or select this panel for keyboard adds",
+  "customize.emptyPanelSelected": "This panel is now the keyboard add target.",
   "customize.followingFirefox":
-    "Following your Firefox toolbar until you make a change. Drag widgets onto the four edge panels.",
+    "Using the Fennevia default layout. Drag widgets onto the four edge panels.",
   "customize.interaction": "Interaction",
   "customize.interactionHelp":
     "These settings apply to all four edge panels. Focus, keyboard access, and open popups always keep a panel visible.",
@@ -158,7 +170,11 @@ export const en = {
   "customize.labelType": "Type",
   "customize.labelWindow": "Window",
   "customize.layoutCustomized":
-    "Using your Fennevia layout. Drag widgets onto the four edge panels. Drop them here to remove. Reset to follow the Firefox toolbar again.",
+    "Using your Fennevia layout. Drag widgets onto the four edge panels. Drop them here to remove. Reset to restore the Fennevia default layout.",
+  "customize.multiplePlacements":
+    "Allow compatible widgets in multiple positions",
+  "customize.multiplePlacementsHelp":
+    "Window controls and other compatible actions may be repeated. Tabs, bookmarks, download status, the address launcher, private indicator, and Customize remain single-instance. Rows, columns, Center, Expanded, Padding, separators, spaces, and flexible spaces are always repeatable.",
   "customize.paletteAria": "Available widgets",
   "customize.panelAria": "Customize Fennevia shell",
   "customize.allowCompactWindow":
@@ -167,7 +183,7 @@ export const en = {
     "Firefox chrome normally refuses to shrink below its official minimum. Enable this to resize smaller while Fennevia is active. Caption buttons and some chrome may clip. The operating system still keeps its own floor.",
   "customize.panels": "Panels and progress lights",
   "customize.panelsHelp":
-    "Swap the two side roles, disable the bottom Downloads panel, choose what each gutter light reports, or allow a smaller-than-Firefox window size.",
+    "Enable the optional Left, Right, and Bottom panels, choose what each gutter light reports, or allow a smaller-than-Firefox window size. The Top panel always remains enabled.",
   "customize.progressLight.downloads": "Downloads",
   "customize.progressLight.loading": "Page loading",
   "customize.progressLight.off": "Off",
@@ -181,6 +197,8 @@ export const en = {
   "customize.sidePanels": "Side panel roles",
   "customize.sidePanels.tabsLeft": "Tabs left · bookmarks right",
   "customize.sidePanels.tabsRight": "Bookmarks left · tabs right",
+  "customize.leftPanel": "Enable Left panel",
+  "customize.rightPanel": "Enable Right panel",
   "customize.style": "Appearance",
   "customize.tab.appearance": "Appearance",
   "customize.tab.interaction": "Interaction",
@@ -383,6 +401,16 @@ export const en = {
   "urlbar.translations": "Translate page",
   "urlbar.zoom": "Reset page zoom",
   "widget.dropHere": "Drop widgets here",
+  "widget.row": "Row",
+  "widget.column": "Column",
+  "widget.center": "Center",
+  "widget.expanded": "Expanded",
+  "widget.padding": "Padding",
+  "widget.addressLauncher": "Address launcher",
+  "widget.downloadStatus": "Download status",
+  "widget.privateIndicator": "Private browsing",
+  "widget.tabs": "Tabs",
+  "widget.trust": "Site trust",
   "widget.droppableAria": "{zone} panel widgets, droppable",
   "widget.fenneviaControl": "Fennevia control",
   "widget.flexibleSpace": "Flexible space",

@@ -55,8 +55,14 @@ test("shell composition and CSS retain explicit module ownership", async () => {
     readProjectFile("src/shell/CustomizePanel.svelte"),
     readProjectFile("src/shell/styles/edge-shell.css"),
   ]);
-  assert.match(app, /\.\/surfaces\/TopSurface\.svelte/u);
-  assert.match(app, /\.\/surfaces\/LeftSurface\.svelte/u);
+  assert.doesNotMatch(
+    app,
+    /\.\/surfaces\/(?:Top|Left|Right|Bottom)Surface\.svelte/u,
+  );
+  assert.match(
+    app,
+    /\.\/features\/composable-layout\/ComposableLayout\.svelte/u,
+  );
   assert.match(
     app,
     /\.\/features\/context-menu\/EdgePanelContextMenu\.svelte/u,
@@ -86,6 +92,7 @@ test("shell composition and CSS retain explicit module ownership", async () => {
     '@import "./address.css";',
     '@import "./tabs.css";',
     '@import "./toolbar.css";',
+    '@import "./composable-layout.css";',
     '@import "./customize.css";',
     '@import "./window-controls.css";',
     '@import "./responsive-accessibility.css";',

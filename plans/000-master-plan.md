@@ -8,13 +8,31 @@ platform and continues to own security-sensitive browser infrastructure.
 Fennevia provides a small privileged integration runtime, typed bridge modules,
 and project-owned Svelte UI.
 
-The target interface has four independent floating edge surfaces:
+The target interface has four independent floating edge surfaces whose content
+is composed from bounded widgets, nested Row/Column containers, and one-child
+Center/Expanded/Padding wrappers:
 
-- **Top:** fixed one-line primary browser controls and native Firefox handoffs.
-- **Left/right:** exactly one vertical-tabs/address-launcher role and one
-  bookmarks role, defaulting to tabs left and bookmarks right, with a bounded
-  whole-role swap.
-- **Bottom:** download progress and status, optionally disabled.
+- **Top:** always enabled; defaults to primary browser controls, Trust, an
+  expanded address launcher, Firefox handoffs, Customize, and project-owned
+  window controls.
+- **Left/right:** independently optional; default to New Tab plus expanded
+  vertical Tabs on Left and expanded Bookmarks on Right.
+- **Bottom:** independently optional; defaults to centered movable
+  Downloads status.
+
+Main feature widgets follow the nearest Row/Column axis. Ordinary children keep
+natural main-axis size and start order; only Expanded or Flexible space claims
+remaining space. Compatible stateless
+controls may be repeated when the user opts in; stateful feature widgets remain
+singleton, while Row, Column, Center, Expanded, Padding, Separator, Space, and Flexible space are always
+repeatable. At least one Customize widget must remain in an enabled edge.
+
+Each edge root is the fixed base flow (Top/Bottom Row, Left/Right Column).
+Palette Row/Column widgets create only nested groups; existing sole matching
+root containers render as that base without redundant editing chrome.
+Fresh/reset/fallback state uses one deterministic native-v2 tree; current
+Firefox nav-bar items remain palette candidates instead of becoming
+profile-dependent defaults. Valid saved v2 trees remain untouched.
 
 The launcher opens a centered project-owned address/search popup. Compact and
 detailed Trust status combines current Firefox connection/HTTPS and
@@ -157,6 +175,17 @@ ADR-047, and ADR-054 through ADR-072:
   customize mode stays available
   through the Firefox application menu, complete native reveal, and fail-open;
   it is not a fixed top-row control.
+- ADR-074 advances the flat zones to a bounded version-2 tree: every principal
+  browser feature/control is a movable widget, Row/Column drives orientation,
+  compatible duplicate actions are opt-in, structural primitives are always
+  repeatable, Downloads status is a movable singleton, Left/Right/Bottom are
+  independently optional, and Top plus one reachable Customize instance are
+  mandatory. A confirmed Clean-all action leaves only Top Customize, while
+  preference-enabled empty edges remain live drop targets during customize
+  mode. Space/Flexible space/Separator/empty containers and gaps drag the
+  Firefox window outside the editor. Drag-target feedback clears on every
+  leave/terminal path, and per-node edit controls appear contextually instead
+  of covering every widget at once.
 
 Focused type/build/unit/static checks cover this enhancement. Its real Firefox
 manual matrix remains pending and is not part of the earlier #15 validation.
@@ -209,9 +238,13 @@ claim.
   reduced-transparency, and forced-colors fallbacks.
 - A frontend framework that manages only project-owned descendants.
 - Firefox internal APIs isolated behind small typed bridge modules.
-- A usable fixed top navigation surface, one tabs/address-launcher side role,
-  one bookmarks side role, a centered address popup, and an optionally enabled
-  bottom download-status surface.
+- A usable strict composable layout across all four edges, including movable
+  navigation, address launcher, Tabs, Bookmarks, Downloads status, Firefox
+  handoffs, window controls, and a mandatory reachable Customize widget.
+- Independent Left/Right/Bottom enablement with Top always enabled, enabled
+  empty drop targets during customize mode, confirmed clean-all recovery, and
+  empty ordinary chrome available for native window dragging, plus deterministic
+  drag-outline cleanup and contextual node controls.
 - Fixed actions that open Firefox's authoritative native detail panels, menu,
   Settings, customization, Unified Extensions, Downloads, and original toolbar
   without copying their private or dynamic data.
@@ -234,8 +267,9 @@ claim.
 - A complete Urlbar suggestion/provider ecosystem.
 - Complete Firefox View, identity, permission, extension-action, bookmarks,
   history, Downloads, or SessionStore replacement.
-- Replacement titlebar/window buttons or custom OS window commands; styling the
-  retained Firefox-owned caption group in place is allowed by ADR-037.
+- New OS window semantics or deletion/reparenting of native caption controls;
+  ADR-038/ADR-074's project-rendered command buttons retain Firefox command
+  ownership and native fail-open copies.
 - Overriding the complete `browser.xhtml`.
 - A branded Firefox fork, automatic update channel, Inno/NSIS/MSI product
   installer, or commercial support product.
@@ -659,6 +693,22 @@ Evidence: ADR-045, ADR-046, ADR-047, ADR-054,
 `plans/006-customize-mode.md`, and
 `docs/research/firefox-153-customize-mode.md`. The real-Firefox customize
 matrix is recorded as pending in `docs/testing-and-recovery.md` §6.9.
+
+ADR-074 supersedes this milestone's fixed controls plus flat-zone composition.
+The current version-2 tree makes navigation, Trust/address, Tabs, Bookmarks,
+Downloads status, Firefox handoffs, private indicator, window controls, and
+Customize placeable under nested Row/Column containers. It adds bounded path
+edits, orientation-aware feature presentation, opt-in safe duplication,
+always-repeatable structural primitives, independent Left/Right/Bottom enable
+state, enabled empty-edge drop targets while editing, a confirmed Clean-all
+operation that preserves one Top Customize instance, and ordinary-mode window
+dragging from empty project chrome. Shared drag lifecycle cleanup prevents
+stale target outlines. Node boundaries, structure labels, and edit controls
+appear only on deepest hover or direct keyboard focus. The native-v2 default is
+explicit rather than a live nav-bar mirror: Top owns the expanded address
+composition, the configured side roots own expanded Tabs/Bookmarks, and Bottom
+centers Downloads status. Plan and checklist:
+`plans/009-composable-widget-layout.md`.
 
 ADR-046 (2026-08-19) restores localized widget names and native built-in
 icons in the customize palette and widget zones: palette-node / dedicated

@@ -86,9 +86,16 @@ export function createSurfaceFocusCoordinator({
         }
       }
       flushSync();
-      const focusTarget = targets[edge].querySelector<FocusableElement>(
-        "[data-fennevia-default-focus]",
-      );
+      const focusTarget =
+        targets[edge].querySelector<FocusableElement>(
+          "[data-fennevia-default-focus]",
+        ) ??
+        targets[edge].querySelector<FocusableElement>(
+          'button:not(:disabled):not([tabindex="-1"]), select:not(:disabled):not([tabindex="-1"]), input:not(:disabled):not([tabindex="-1"])',
+        ) ??
+        targets[edge].querySelector<FocusableElement>(
+          "[data-fennevia-focus-fallback]",
+        );
       if (!focusTarget) {
         throw createFrontendError("FENNEVIA_EDGE_FOCUS_TARGET_MISSING");
       }

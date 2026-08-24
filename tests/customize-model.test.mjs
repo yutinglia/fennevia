@@ -314,43 +314,52 @@ test("style serialization round-trips with versioning and fails safe", () => {
 test("panel serialization is versioned, bounded, and fails safe", () => {
   const panels = Object.freeze({
     ...createDefaultShellPanelConfig(),
-    bottomDownloadsEnabled: false,
+    bottomPanelEnabled: false,
     bottomProgressLight: "loading",
+    leftPanelEnabled: false,
     sidePanelLayout: "tabs-right",
     topProgressLight: "off",
   });
   const serialized = serializeCustomizePanels(panels);
-  assert.ok(serialized.includes('"version":1'));
+  assert.ok(serialized.includes('"version":2'));
   assert.deepEqual(parseCustomizePanels(serialized), panels);
   assert.ok(Object.isFrozen(parseCustomizePanels(serialized)));
 
   assert.equal(parseCustomizePanels(""), null);
   assert.equal(parseCustomizePanels("{not json"), null);
-  assert.equal(parseCustomizePanels('{"version":2}'), null);
+  assert.equal(parseCustomizePanels('{"version":3}'), null);
   assert.equal(
     parseCustomizePanels(
-      JSON.stringify({ ...panels, unexpected: true, version: 1 }),
+      JSON.stringify({ ...panels, unexpected: true, version: 2 }),
     ),
     null,
   );
   assert.equal(
     parseCustomizePanels(
-      JSON.stringify({ ...panels, topProgressLight: "network", version: 1 }),
+      JSON.stringify({ ...panels, topProgressLight: "network", version: 2 }),
     ),
     null,
   );
-  assert.equal(
-    parseCustomizePanels(
-      JSON.stringify({
-        bottomDownloadsEnabled: true,
-        bottomProgressLight: "downloads",
-        sidePanelLayout: "tabs-left",
-        topProgressLight: "loading",
-        version: 1,
-      }),
-    )?.allowCompactWindow,
-    false,
+
+  const migrated = parseCustomizePanels(
+    JSON.stringify({
+      bottomDownloadsEnabled: false,
+      bottomProgressLight: "downloads",
+      sidePanelLayout: "tabs-right",
+      topProgressLight: "loading",
+      version: 1,
+    }),
   );
+  assert.deepEqual(migrated, {
+    allowCompactWindow: false,
+    bottomPanelEnabled: false,
+    bottomProgressLight: "downloads",
+    leftPanelEnabled: true,
+    rightPanelEnabled: true,
+    sidePanelLayout: "tabs-right",
+    topProgressLight: "loading",
+  });
+
   assert.equal(
     parseCustomizePanels(
       JSON.stringify({

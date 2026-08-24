@@ -4,6 +4,7 @@
 @import "./address.css";
 @import "./tabs.css";
 @import "./toolbar.css";
+@import "./composable-layout.css";
 @import "./customize.css";
 @import "./window-controls.css";
 @import "./responsive-accessibility.css";

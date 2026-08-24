@@ -7,6 +7,51 @@
   overflow: hidden;
 }
 
+#fennevia-shell-frame-host .fennevia-bookmarks--horizontal {
+  min-inline-size: min(300px, 100%);
+  flex-direction: row;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks--horizontal
+  .fennevia-bookmarks__roots {
+  inline-size: min(180px, 24vw);
+  border-block-end: 0;
+  border-inline-end: 1px solid var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks--horizontal
+  .fennevia-bookmarks__list {
+  display: flex;
+  align-items: stretch;
+  gap: var(--fennevia-space-1);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks--horizontal
+  .fennevia-bookmarks__item {
+  inline-size: clamp(140px, 18vw, 240px);
+  margin: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks--horizontal
+  .fennevia-bookmarks__separator {
+  inline-size: 1px;
+  block-size: auto;
+  margin: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-bookmarks--horizontal
+  .fennevia-bookmarks__branch {
+  inline-size: 180px;
+  margin: 0;
+}
+
 #fennevia-shell-frame-host .fennevia-bookmarks__roots {
   display: grid;
   flex: 0 0 auto;

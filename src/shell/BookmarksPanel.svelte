@@ -11,7 +11,7 @@
     type BrowserBookmarksState,
     type BrowserBookmarksStateAdapter,
   } from "../app/bookmark-state";
-  import type { EdgeShellController } from "../app/edge-surfaces";
+  import type { EdgeName, EdgeShellController } from "../app/edge-surfaces";
   import { translate, type MessageKey, type MessageVars } from "../app/i18n";
   import {
     defaultFenneviaLocale,
@@ -21,10 +21,11 @@
 
   type Props = Readonly<{
     bookmarks: BrowserBookmarksStateAdapter;
-    edge: "left" | "right";
+    edge: EdgeName;
     localeId?: FenneviaLocale;
     onDismiss: () => void;
     onFatalError: (error: unknown) => void;
+    orientation?: "column" | "row";
     shell: EdgeShellController;
   }>;
 
@@ -567,7 +568,11 @@
   aria-label={t("bookmarks.panelAria")}
   lang={localeId}
   class="fennevia-bookmarks"
+  class:fennevia-bookmarks--horizontal={props.orientation === "row"}
   data-fennevia-bookmarks=""
+  data-fennevia-orientation={props.orientation === "row"
+    ? "horizontal"
+    : "vertical"}
 >
   <div class="fennevia-bookmarks__roots">
     <select

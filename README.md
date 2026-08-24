@@ -4,7 +4,7 @@
 
 ![Stylized map of Fennevia's four-edge interface](docs/media/fennevia-overview.svg)
 
-*A stylized interface map, not a Firefox compatibility or validation screenshot.*
+_A stylized interface map, not a Firefox compatibility or validation screenshot._
 
 Fennevia is an experimental, content-first interface for **stock Firefox**. It
 keeps the web page in the foreground and places browser controls in four
@@ -23,23 +23,43 @@ floating edge panels that stay hidden until you need them.
 At rest, Firefox mostly shows the current page. Move the pointer to an edge, or
 use the keyboard, to reveal:
 
-- **Top:** Back, Forward, Reload/Stop, Firefox tools, a widget zone that
-  follows your Firefox toolbar until you customize it in Fennevia, and
-  project-owned window controls. Fennevia customize mode can drag widgets onto
-  all four edges; Firefox's native customize mode remains available from the
-  Firefox application menu.
-- **Left (default):** vertical tabs with a fixed, bounded pinned-tabs area above
-  the independently scrolling regular tabs, plus loading, media-sharing, and
-  crash indicators, a compact address/status launcher, and any widgets placed
-  there.
-- **Right (default):** bookmarks with cached site favicons, plus any widgets
-  placed there. Fennevia customize mode can swap the complete left/right roles.
-- **Bottom:** download progress and status, plus any widgets placed there. This
-  panel can be disabled without leaving an active trigger.
+- **Top:** the always-enabled primary panel. Its explicit default Row contains
+  Back, Forward, Reload/Stop, Home, Trust, an expanded address launcher,
+  Firefox handoffs, Customize, and project-owned window controls.
+- **Left (default):** a Column containing New Tab and expanded vertical
+  tabs—with a bounded pinned area above the independently scrolling regular
+  tabs. It is a general widget panel and can be disabled.
+- **Right (default):** a Column containing bookmarks with cached site favicons.
+  It is independently configurable and can be disabled.
+- **Bottom:** a general Row centering anonymous download progress/status in the
+  available width by default. Downloads status is a movable widget; Bottom can
+  be disabled even after that widget moves elsewhere.
 - **Centre:** an address/search popup opened from the launcher or with
   <kbd>Ctrl</kbd>+<kbd>L</kbd>. Its accessible
   result list comes from Firefox's own enabled Urlbar providers and search
   suggestions; Fennevia does not add a search engine or suggestion service.
+
+Every edge layout can contain nested Row and Column widgets plus one-child
+Center, Expanded, and Padding wrappers, so feature areas adapt to horizontal or
+vertical placement. Ordinary children keep their natural size and start order;
+Expanded is the explicit way to consume remaining space. Compatible controls—including the
+window buttons—can appear in multiple positions when the opt-in duplicate
+setting is enabled; stateful Tabs, Bookmarks, Downloads status, address
+launcher, private indicator, and Customize remain singletons. Row, Column,
+Center, Expanded, Padding, Separator, Space, and Flexible space are always repeatable. At least one
+Customize widget must remain on an enabled panel, and Top cannot be disabled.
+Preference-enabled empty optional panels stay out of the way during ordinary
+browsing but reappear as labelled drop/add targets while customizing.
+
+Each panel itself supplies a fixed base flow—Top/Bottom use Row and Left/Right
+use Column—so users do not need a giant removable outer container. Palette
+Rows and Columns are only nested groups. Empty panels keep their full drop area
+but show a compact centered prompt.
+
+Fresh profiles and Reset layout use this deterministic Fennevia composition.
+Profile-specific Firefox built-ins, extensions, spaces, and flexible spaces
+remain available in the palette but are not copied into the default tree.
+Valid saved layouts remain untouched.
 
 Right-click works across all four edge panels. It offers a useful action for
 that edge plus available Fennevia/Firefox customization and original-toolbar
@@ -114,6 +134,19 @@ same-kind transfer and Firefox-owned detach, native-safe extension-install
 prompts, a placeable
 Firefox built-in translation widget, and the `FenneviaSetup.exe` Windows setup
 wizard.
+
+The current source adds ADR-074's recursive everything-is-a-widget editor on
+top of that released baseline: nested Row/Column layouts, Flutter-style
+natural-size children, Center/Expanded/Padding wrappers, axis-aware primary
+features, opt-in compatible duplicates, independent Left/Right/Bottom panel
+switches, a movable Downloads-status widget, and an always-reachable Customize
+widget. A confirmed **Clean all panels** action restores adopted Firefox
+widgets and leaves only Customize in Top; Reset layout still restores the
+default composition. Empty enabled panels are usable targets during customize,
+drag target outlines are cleared on every exit/end path, and each widget's
+move/remove controls appear only on hover or keyboard focus. In ordinary mode,
+Space, Flexible space, separators, empty containers, and other unoccupied
+project chrome can drag the Firefox window.
 
 The current prerelease also projects bounded results from Firefox's own
 per-window Urlbar provider manager into the centred combobox. Firefox still
@@ -268,21 +301,21 @@ Firefox itself.
 
 ## Opinionated structure, bounded customization
 
-Fennevia still follows the author's content-first product direction: the fixed
-top role, paired side roles, optional bottom panel, hidden-at-rest behavior,
-reveal model, native-ownership boundaries, and overall interaction hierarchy
-are deliberate product decisions rather than an arbitrary layout system.
+Fennevia still follows the author's content-first product direction: four fixed
+edge hosts, an always-enabled Top recovery/customize path, hidden-at-rest
+behavior, the shared reveal model, native-ownership boundaries, and the overall
+interaction hierarchy are deliberate product decisions rather than an
+arbitrary extension platform.
 
 The interface is no longer accurately described as non-configurable. Fennevia
-customize mode can place supported Firefox toolbar widgets on any edge and can
-adjust a bounded set of profile-local panel/window backgrounds, text, border,
-saturation, shadow, motion, separate in-window/window-leave hide timing,
-temporary reveal timing, zero-disable shortcut-tip timing, and edge trigger
-thickness. It can also swap the complete tabs/bookmarks side roles, disable the
-bottom downloads panel, and select loading/download/off for each top/bottom
-activity light. It is
-intentionally not a general CSS editor, extension platform, or unlimited
-geometry builder.
+customize mode can compose supported project features and Firefox toolbar
+widgets across all four edges with bounded Row/Column trees, switch feature
+orientation, enable Left/Right/Bottom independently, and opt into safe multiple
+placements. It can also adjust a bounded set of profile-local panel/window
+backgrounds, text, border, saturation, shadow, motion, reveal timing, shortcut-
+tip timing, edge-trigger thickness, and top/bottom activity-light sources. It
+is intentionally not a general CSS editor, arbitrary command loader, extension
+platform, or unlimited geometry builder.
 
 Mirrored Account, Library, All Tabs, and native menu widgets delegate to their
 Firefox owners. Compound Zoom, Edit, and Profiler placements stay grouped but

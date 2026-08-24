@@ -7,16 +7,19 @@ import {
   createDefaultShellPanelConfig,
   createDefaultToolbarStyle,
   createUnavailableToolbarWidgetsSnapshot,
-  fenneviaToolbarActions,
+  projectWidgetIds,
   toolbarZoneNames,
   type BrowserToolbarWidgetsBridge,
   type FenneviaToolbarAction,
+  type ProjectWidgetId,
   type ShellPanelConfigSnapshot,
   type ToolbarPaletteEntrySnapshot,
   type ToolbarWidgetKind,
   type ToolbarWidgetPartSnapshot,
   type ToolbarWidgetSnapshot,
   type ToolbarWidgetZones,
+  type ToolbarLayoutNodeSnapshot,
+  type ToolbarLayoutZonesSnapshot,
   type ToolbarWidgetsEditOperation,
   type ToolbarWidgetsPopupEvent,
   type ToolbarWidgetsSnapshot,
@@ -24,26 +27,42 @@ import {
   type ToolbarZoneName,
 } from "../../app/toolbar-widgets-state.ts";
 import {
-  addCustomizeLayoutEntry,
-  createCustomizeLayout,
-  customizeLayoutContainsWidget,
-  getCustomizeLayoutEntry,
   isCustomizeWidgetId,
-  moveCustomizeLayoutEntry,
   parseCustomizeLayout,
   parseCustomizePanels,
   parseCustomizeStyle,
-  removeCustomizeLayoutEntry,
-  serializeCustomizeLayout,
   serializeCustomizePanels,
   serializeCustomizeStyle,
-  withCustomizeAdopted,
-  withoutCustomizeAdopted,
   type CustomizeLayout,
-  type CustomizeLayoutEntry,
   type CustomizePanels,
   type CustomizeStyle,
 } from "../customize-model.ts";
+import {
+  composableLayoutContainsFirefoxWidget,
+  countComposableLayoutTarget,
+  createComposableCustomizeLayout,
+  createDefaultComposableCustomizeLayout,
+  findComposableLayoutTarget,
+  getComposableLayoutNode,
+  hasAccessibleComposableCustomize,
+  insertComposableLayoutContainer,
+  insertComposableLayoutTarget,
+  insertComposableLayoutWrapper,
+  isComposableSingletonTarget,
+  migrateCustomizeLayoutV1,
+  moveComposableLayoutNode,
+  parseComposableCustomizeLayout,
+  removeComposableLayoutNode,
+  serializeComposableCustomizeLayout,
+  setComposableLayoutContainerDirection,
+  setComposableMultiplePlacements,
+  withComposableAdopted,
+  withoutComposableAdopted,
+  type ComposableCustomizeLayout,
+  type ComposableLayoutNode,
+  type ComposableLayoutTarget,
+  type ComposableLayoutWrapperKind,
+} from "../customize-layout.ts";
 import {
   isFirefoxBridgeError,
   type FirefoxBridgeBoundary,
@@ -98,6 +117,146 @@ import {
 } from "./support.ts";
 import type { NativeRecord, NativeNode, NativePrefs } from "./support.ts";
 
+function isComposableLayoutError(error: unknown): error is Error {
+  if (
+    !(error instanceof Error) ||
+    error.name !== "FenneviaComposableLayoutError"
+  ) {
+    return false;
+  }
+  return (
+    Reflect.get(error, "fenneviaPhase") === "customize-layout" &&
+    typeof Reflect.get(error, "fenneviaCode") === "string"
+  );
+}
+
+const projectWidgetPresentation: ReadonlyMap<
+  ProjectWidgetId,
+  Readonly<{ icon: string; label: string; tooltip: string }>
+> = new Map([
+  [
+    "address-launcher",
+    {
+      icon: "search",
+      label: "Address launcher",
+      tooltip: "Open address and search",
+    },
+  ],
+  [
+    "application-menu",
+    {
+      icon: "menu",
+      label: "Firefox menu",
+      tooltip: "Open the Firefox application menu",
+    },
+  ],
+  ["back", { icon: "back", label: "Back", tooltip: "Go back" }],
+  [
+    "bookmarks",
+    { icon: "bookmark", label: "Bookmarks", tooltip: "Browse bookmarks" },
+  ],
+  [
+    "close-window",
+    { icon: "close", label: "Close window", tooltip: "Close this window" },
+  ],
+  [
+    "customize-shell",
+    {
+      icon: "customize",
+      label: "Customize Fennevia",
+      tooltip: "Customize panels and widgets",
+    },
+  ],
+  [
+    "downloads-status",
+    {
+      icon: "download",
+      label: "Download status",
+      tooltip: "Show download progress and status",
+    },
+  ],
+  [
+    "extensions",
+    {
+      icon: "extension",
+      label: "Extensions",
+      tooltip: "Open Unified Extensions",
+    },
+  ],
+  ["forward", { icon: "forward", label: "Forward", tooltip: "Go forward" }],
+  ["home", { icon: "home", label: "Home", tooltip: "Open the home page" }],
+  [
+    "minimize-window",
+    {
+      icon: "minimize",
+      label: "Minimize window",
+      tooltip: "Minimize this window",
+    },
+  ],
+  ["new-tab", { icon: "plus", label: "New tab", tooltip: "Open a new tab" }],
+  [
+    "private-indicator",
+    {
+      icon: "private",
+      label: "Private browsing",
+      tooltip: "Private browsing window",
+    },
+  ],
+  [
+    "reload-stop",
+    {
+      icon: "reload",
+      label: "Reload or stop",
+      tooltip: "Reload or stop loading",
+    },
+  ],
+  [
+    "settings",
+    { icon: "settings", label: "Settings", tooltip: "Open Firefox settings" },
+  ],
+  [
+    "show-bookmarks",
+    {
+      icon: "bookmark",
+      label: "Show bookmarks panel",
+      tooltip: "Reveal the Fennevia bookmarks panel",
+    },
+  ],
+  [
+    "show-downloads",
+    {
+      icon: "download",
+      label: "Open Firefox downloads",
+      tooltip: "Open the Firefox downloads panel",
+    },
+  ],
+  [
+    "show-translate",
+    {
+      icon: "translate",
+      label: "Translate this page",
+      tooltip: "Open Firefox built-in translations",
+    },
+  ],
+  ["tabs", { icon: "tab", label: "Tabs", tooltip: "Browse open tabs" }],
+  [
+    "toggle-maximize-window",
+    {
+      icon: "maximize",
+      label: "Maximize or restore window",
+      tooltip: "Maximize or restore this window",
+    },
+  ],
+  [
+    "trust",
+    {
+      icon: "shield",
+      label: "Site trust",
+      tooltip: "Open site information and protections",
+    },
+  ],
+]);
+
 export type FirefoxToolbarWidgetsBridgeController = Readonly<{
   assertRequiredCapabilities: () => readonly FirefoxCapabilitySnapshot[];
   dispose: () => boolean;
@@ -149,12 +308,18 @@ export function createFirefoxToolbarWidgetsBridge({
   let lastSerializedWidgets = "";
   let lastSnapshot: ToolbarWidgetsSnapshot =
     createUnavailableToolbarWidgetsSnapshot();
-  let persistedLayout: CustomizeLayout | null = null;
+  let persistedLayout: ComposableCustomizeLayout | null = null;
+  let persistedLegacyLayout: CustomizeLayout | null = null;
   let persistedPanels: CustomizePanels | null = null;
   let persistedStyle: CustomizeStyle = createDefaultToolbarStyle();
   let nextPaletteTokenSequence = 0;
   const paletteTokenByKey = new Map<string, string>();
-  const paletteTargetByToken = new Map<string, CustomizeLayoutEntry>();
+  const paletteTargetByToken = new Map<
+    string,
+    | ComposableLayoutTarget
+    | Readonly<{ direction: "column" | "row"; source: "container" }>
+    | Readonly<{ kind: ComposableLayoutWrapperKind; source: "wrapper" }>
+  >();
   let mutationObserver: NativeRecord | null = null;
   let builtinIconUrlCache: Map<string, string> | null = null;
   let fluentLocalization: NativeRecord | null | undefined;
@@ -597,6 +762,27 @@ export function createFirefoxToolbarWidgetsBridge({
     });
   };
 
+  const widgetSnapshotForProject = (
+    id: ProjectWidgetId,
+  ): ToolbarWidgetSnapshot => {
+    const presentation = projectWidgetPresentation.get(id);
+    return Object.freeze({
+      badgeBackground: "",
+      badgeText: "",
+      badgeTextColor: "",
+      disabled: false,
+      fenneviaAction: "",
+      handle: "",
+      icon: presentation?.icon ?? "generic",
+      iconUrl: "",
+      kind: "project" as const,
+      label: presentation?.label ?? "Fennevia widget",
+      missing: false,
+      parts: Object.freeze([]),
+      tooltip: presentation?.tooltip ?? presentation?.label ?? "",
+    });
+  };
+
   const widgetSnapshotForMissing = (
     customizableUi: NativeRecord,
     widgetId: string,
@@ -780,58 +966,112 @@ export function createFirefoxToolbarWidgetsBridge({
     });
   };
 
-  const readLayoutEntrySnapshot = (
-    customizableUi: NativeRecord,
-    entry: CustomizeLayoutEntry,
-  ): Readonly<{ node: NativeRecord | null; widget: ToolbarWidgetSnapshot }> => {
-    if (entry.type === "special") {
-      return Object.freeze({
-        node: null,
-        widget: widgetSnapshotForSpecial(entry.kind),
-      });
+  const resolveComposableLayout = (): ComposableCustomizeLayout => {
+    if (persistedLayout) {
+      return persistedLayout;
     }
-    if (entry.type === "fennevia") {
-      return Object.freeze({
-        node: null,
-        widget: widgetSnapshotForFennevia(entry.id),
-      });
-    }
-    return readWidgetEntryForId(customizableUi, entry.id);
+    const sidePanelLayout = (persistedPanels ?? createDefaultShellPanelConfig())
+      .sidePanelLayout;
+    return persistedLegacyLayout
+      ? migrateCustomizeLayoutV1(persistedLegacyLayout, sidePanelLayout)
+      : createDefaultComposableCustomizeLayout(sidePanelLayout);
   };
 
-  const createDefaultLayoutFromNavbar = (
+  const readComposableLayoutNodeSnapshot = (
     customizableUi: NativeRecord,
-  ): CustomizeLayout => {
-    let widgetIds: unknown;
-    try {
-      widgetIds = Reflect.apply(
-        customizableUi.getWidgetIdsInArea as (...args: unknown[]) => unknown,
-        customizableUi,
-        [NAVBAR_AREA],
-      );
-    } catch {
-      widgetIds = null;
+    node: ComposableLayoutNode,
+    observedNodes: Array<NativeRecord | null>,
+    nextHandleIds: Set<string>,
+  ): ToolbarLayoutNodeSnapshot => {
+    if (node.type === "container") {
+      return Object.freeze({
+        children: Object.freeze(
+          node.children.map((child) =>
+            readComposableLayoutNodeSnapshot(
+              customizableUi,
+              child,
+              observedNodes,
+              nextHandleIds,
+            ),
+          ),
+        ),
+        direction: node.direction,
+        instanceId: node.instanceId,
+        type: "container" as const,
+      });
     }
-    const entries: CustomizeLayoutEntry[] = [];
-    if (Array.isArray(widgetIds)) {
-      for (const widgetId of widgetIds) {
-        if (typeof widgetId !== "string" || skippedWidgetIdSet.has(widgetId)) {
-          continue;
+    if (node.type === "wrapper") {
+      return Object.freeze({
+        children: Object.freeze(
+          node.children.map((child) =>
+            readComposableLayoutNodeSnapshot(
+              customizableUi,
+              child,
+              observedNodes,
+              nextHandleIds,
+            ),
+          ),
+        ),
+        instanceId: node.instanceId,
+        kind: node.kind,
+        type: "wrapper" as const,
+      });
+    }
+    let built: Readonly<{
+      node: NativeRecord | null;
+      widget: ToolbarWidgetSnapshot;
+    }>;
+    let projectId: ProjectWidgetId | "" = "";
+    if (node.target.source === "project") {
+      projectId = node.target.id;
+      built = Object.freeze({
+        node: null,
+        widget: widgetSnapshotForProject(node.target.id),
+      });
+    } else if (node.target.source === "special") {
+      built = Object.freeze({
+        node: null,
+        widget: widgetSnapshotForSpecial(node.target.kind),
+      });
+    } else {
+      built = readWidgetEntryForId(customizableUi, node.target.id);
+    }
+    observedNodes.push(built.node);
+    if (built.widget.handle !== "") {
+      nextHandleIds.add(built.widget.handle);
+    }
+    for (const part of built.widget.parts) {
+      nextHandleIds.add(part.handle);
+    }
+    return Object.freeze({
+      instanceId: node.instanceId,
+      projectId,
+      type: "item" as const,
+      widget: built.widget,
+    });
+  };
+
+  const flattenToolbarLayoutWidgets = (
+    nodes: readonly ToolbarLayoutNodeSnapshot[],
+  ): readonly ToolbarWidgetSnapshot[] => {
+    const widgets: ToolbarWidgetSnapshot[] = [];
+    const visit = (children: readonly ToolbarLayoutNodeSnapshot[]): void => {
+      for (const child of children) {
+        if (child.type !== "item") {
+          visit(child.children);
+        } else if (child.projectId === "") {
+          widgets.push(child.widget);
+        } else if (
+          child.projectId === "show-bookmarks" ||
+          child.projectId === "show-downloads" ||
+          child.projectId === "show-translate"
+        ) {
+          widgets.push(widgetSnapshotForFennevia(child.projectId));
         }
-        const specialKind = readSpecialKind(widgetId);
-        if (specialKind) {
-          entries.push(
-            Object.freeze({ kind: specialKind, type: "special" as const }),
-          );
-          continue;
-        }
-        if (!isCustomizeWidgetId(widgetId)) {
-          continue;
-        }
-        entries.push(Object.freeze({ id: widgetId, type: "widget" as const }));
       }
-    }
-    return createCustomizeLayout({ top: entries });
+    };
+    visit(nodes);
+    return Object.freeze(widgets);
   };
 
   const paletteTokenFor = (key: string): string => {
@@ -970,7 +1210,7 @@ export function createFirefoxToolbarWidgetsBridge({
     const token = paletteTokenFor(`w:${widgetId}`);
     paletteTargetByToken.set(
       token,
-      Object.freeze({ id: widgetId, type: "widget" as const }),
+      Object.freeze({ id: widgetId, source: "firefox" as const }),
     );
     return Object.freeze({
       icon: isExtension
@@ -985,37 +1225,41 @@ export function createFirefoxToolbarWidgetsBridge({
 
   const buildPalette = (
     customizableUi: NativeRecord,
-    layout: CustomizeLayout,
+    layout: ComposableCustomizeLayout,
   ): readonly ToolbarPaletteEntrySnapshot[] => {
     paletteTargetByToken.clear();
     const entries: ToolbarPaletteEntrySnapshot[] = [];
     const placedInLayout = new Set<string>();
-    const fenneviaPlaced = new Set<string>();
-    for (const zone of toolbarZoneNames) {
-      for (const entry of layout.zones[zone]) {
-        if (entry.type === "widget") {
-          placedInLayout.add(entry.id);
-        } else if (entry.type === "fennevia") {
-          fenneviaPlaced.add(entry.id);
+    const visit = (nodes: readonly ComposableLayoutNode[]): void => {
+      for (const node of nodes) {
+        if (node.type !== "item") {
+          visit(node.children);
+        } else if (node.target.source === "firefox") {
+          placedInLayout.add(node.target.id);
         }
       }
+    };
+    for (const zone of toolbarZoneNames) {
+      visit(layout.zones[zone]);
     }
-    for (const id of fenneviaToolbarActions) {
-      if (fenneviaPlaced.has(id)) {
+    for (const id of projectWidgetIds) {
+      const target = Object.freeze({ id, source: "project" as const });
+      const placed = countComposableLayoutTarget(layout, target) > 0;
+      if (
+        placed &&
+        (!layout.allowMultiplePlacements || isComposableSingletonTarget(target))
+      ) {
         continue;
       }
-      const presentation = fenneviaWidgetPresentation.get(id);
-      const token = paletteTokenFor(`f:${id}`);
-      paletteTargetByToken.set(
-        token,
-        Object.freeze({ id, type: "fennevia" as const }),
-      );
+      const presentation = projectWidgetPresentation.get(id);
+      const token = paletteTokenFor(`p:${id}`);
+      paletteTargetByToken.set(token, target);
       entries.push(
         Object.freeze({
           icon: presentation?.icon ?? "generic",
           iconUrl: "",
-          kind: "fennevia" as const,
-          label: presentation?.label ?? "Fennevia control",
+          kind: "project" as const,
+          label: presentation?.label ?? "Fennevia widget",
           token,
         }),
       );
@@ -1028,7 +1272,7 @@ export function createFirefoxToolbarWidgetsBridge({
     for (const widgetId of candidateIds) {
       if (
         seen.has(widgetId) ||
-        placedInLayout.has(widgetId) ||
+        (placedInLayout.has(widgetId) && !layout.allowMultiplePlacements) ||
         entries.length >= PALETTE_MAX_ENTRIES
       ) {
         continue;
@@ -1050,13 +1294,52 @@ export function createFirefoxToolbarWidgetsBridge({
       const token = paletteTokenFor(`s:${kind}`);
       paletteTargetByToken.set(
         token,
-        Object.freeze({ kind, type: "special" as const }),
+        Object.freeze({ kind, source: "special" as const }),
       );
       entries.push(
         Object.freeze({
           icon: "",
           iconUrl: "",
           kind: "special" as const,
+          label,
+          token,
+        }),
+      );
+    }
+    for (const [direction, label] of [
+      ["row", "Row"],
+      ["column", "Column"],
+    ] as const) {
+      const token = paletteTokenFor(`c:${direction}`);
+      paletteTargetByToken.set(
+        token,
+        Object.freeze({ direction, source: "container" as const }),
+      );
+      entries.push(
+        Object.freeze({
+          icon: direction === "row" ? "row" : "column",
+          iconUrl: "",
+          kind: "container" as const,
+          label,
+          token,
+        }),
+      );
+    }
+    for (const [kind, label] of [
+      ["center", "Center"],
+      ["expanded", "Expanded"],
+      ["padding", "Padding"],
+    ] as const) {
+      const token = paletteTokenFor(`r:${kind}`);
+      paletteTargetByToken.set(
+        token,
+        Object.freeze({ kind, source: "wrapper" as const }),
+      );
+      entries.push(
+        Object.freeze({
+          icon: kind,
+          iconUrl: "",
+          kind: "wrapper" as const,
           label,
           token,
         }),
@@ -1136,27 +1419,28 @@ export function createFirefoxToolbarWidgetsBridge({
         snapshot: createUnavailableToolbarWidgetsSnapshot(),
       });
     }
-    const layout =
-      persistedLayout ?? createDefaultLayoutFromNavbar(customizableUi);
+    const layout = resolveComposableLayout();
     const zoneEntries: Array<
       readonly [ToolbarZoneName, readonly ToolbarWidgetSnapshot[]]
+    > = [];
+    const layoutEntries: Array<
+      readonly [ToolbarZoneName, readonly ToolbarLayoutNodeSnapshot[]]
     > = [];
     const nodes: Array<NativeRecord | null> = [];
     const nextHandleIds = new Set<string>();
     for (const zone of toolbarZoneNames) {
-      const widgets: ToolbarWidgetSnapshot[] = [];
-      for (const entry of layout.zones[zone]) {
-        const built = readLayoutEntrySnapshot(customizableUi, entry);
-        widgets.push(built.widget);
-        nodes.push(built.node);
-        if (built.widget.handle !== "") {
-          nextHandleIds.add(built.widget.handle);
-        }
-        for (const part of built.widget.parts) {
-          nextHandleIds.add(part.handle);
-        }
-      }
-      zoneEntries.push([zone, Object.freeze(widgets)]);
+      const projected = Object.freeze(
+        layout.zones[zone].map((node) =>
+          readComposableLayoutNodeSnapshot(
+            customizableUi,
+            node,
+            nodes,
+            nextHandleIds,
+          ),
+        ),
+      );
+      layoutEntries.push([zone, projected]);
+      zoneEntries.push([zone, flattenToolbarLayoutWidgets(projected)]);
     }
     for (const staleId of currentHandleIds) {
       if (!nextHandleIds.has(staleId)) {
@@ -1174,9 +1458,14 @@ export function createFirefoxToolbarWidgetsBridge({
     observeWidgetNodes(nodes);
     const prefs = readPrefs(ownerWindow);
     const snapshot: ToolbarWidgetsSnapshot = Object.freeze({
+      allowMultiplePlacements: layout.allowMultiplePlacements,
       available: true,
       canEdit: prefs !== null,
-      layoutCustomized: persistedLayout !== null,
+      layout: Object.freeze(
+        Object.fromEntries(layoutEntries),
+      ) as ToolbarLayoutZonesSnapshot,
+      layoutCustomized:
+        persistedLayout !== null || persistedLegacyLayout !== null,
       palette: buildPalette(customizableUi, layout),
       panels: copyShellPanelConfigSnapshot(
         persistedPanels ?? createDefaultShellPanelConfig(),
@@ -1282,11 +1571,16 @@ export function createFirefoxToolbarWidgetsBridge({
     const prefs = readPrefs(ownerWindow);
     if (!prefs) {
       persistedLayout = null;
+      persistedLegacyLayout = null;
       persistedPanels = null;
       persistedStyle = createDefaultToolbarStyle();
       return;
     }
-    persistedLayout = parseCustomizeLayout(readStringPref(prefs, LAYOUT_PREF));
+    const serializedLayout = readStringPref(prefs, LAYOUT_PREF);
+    persistedLayout = parseComposableCustomizeLayout(serializedLayout);
+    persistedLegacyLayout = persistedLayout
+      ? null
+      : parseCustomizeLayout(serializedLayout);
     persistedPanels = parseCustomizePanels(readStringPref(prefs, PANELS_PREF));
     persistedStyle =
       parseCustomizeStyle(readStringPref(prefs, STYLE_PREF)) ??
@@ -1336,13 +1630,14 @@ export function createFirefoxToolbarWidgetsBridge({
     return prefs;
   };
 
-  const persistLayout = (layout: CustomizeLayout): void => {
+  const persistLayout = (layout: ComposableCustomizeLayout): void => {
     const prefs = requirePrefsForEdit();
     Reflect.apply(prefs.setStringPref, prefs, [
       LAYOUT_PREF,
-      serializeCustomizeLayout(layout),
+      serializeComposableCustomizeLayout(layout),
     ]);
     persistedLayout = layout;
+    persistedLegacyLayout = null;
   };
 
   const persistStyle = (style: CustomizeStyle): void => {
@@ -1365,9 +1660,9 @@ export function createFirefoxToolbarWidgetsBridge({
 
   const adoptWidgetForPlacement = (
     customizableUi: NativeRecord,
-    layout: CustomizeLayout,
+    layout: ComposableCustomizeLayout,
     widgetId: string,
-  ): CustomizeLayout => {
+  ): ComposableCustomizeLayout => {
     let placementArea = "";
     if (isFunction(customizableUi.getPlacementOfWidget)) {
       try {
@@ -1400,14 +1695,14 @@ export function createFirefoxToolbarWidgetsBridge({
       widgetId,
       NAVBAR_AREA,
     ]);
-    return withCustomizeAdopted(layout, widgetId);
+    return withComposableAdopted(layout, widgetId);
   };
 
   const restoreAdoptedWidget = (
     customizableUi: NativeRecord,
-    layout: CustomizeLayout,
+    layout: ComposableCustomizeLayout,
     widgetId: string,
-  ): CustomizeLayout => {
+  ): ComposableCustomizeLayout => {
     if (!layout.adopted.includes(widgetId)) {
       return layout;
     }
@@ -1433,7 +1728,7 @@ export function createFirefoxToolbarWidgetsBridge({
         // The widget keeps its current native placement.
       }
     }
-    return withoutCustomizeAdopted(layout, widgetId);
+    return withoutComposableAdopted(layout, widgetId);
   };
 
   const requireCustomizableUiForEdit = (): NativeRecord => {
@@ -1447,6 +1742,155 @@ export function createFirefoxToolbarWidgetsBridge({
       );
     }
     return customizableUi;
+  };
+
+  const collectFirefoxTargets = (
+    node: ComposableLayoutNode,
+  ): readonly string[] => {
+    if (node.type === "item") {
+      return node.target.source === "firefox"
+        ? Object.freeze([node.target.id])
+        : Object.freeze([]);
+    }
+    return Object.freeze(node.children.flatMap(collectFirefoxTargets));
+  };
+
+  const isLegacyFlatTarget = (target: ComposableLayoutTarget): boolean =>
+    target.source !== "project" ||
+    target.id === "show-bookmarks" ||
+    target.id === "show-downloads" ||
+    target.id === "show-translate";
+
+  const legacyFlatLocations = (
+    layout: ComposableCustomizeLayout,
+    zone: ToolbarZoneName,
+  ): readonly Readonly<{
+    path: readonly number[];
+    zone: ToolbarZoneName;
+  }>[] => {
+    const locations: Array<
+      Readonly<{ path: readonly number[]; zone: ToolbarZoneName }>
+    > = [];
+    const visit = (
+      nodes: readonly ComposableLayoutNode[],
+      parentPath: readonly number[],
+    ): void => {
+      for (const [index, node] of nodes.entries()) {
+        const path = Object.freeze([...parentPath, index]);
+        if (node.type !== "item") {
+          visit(node.children, path);
+        } else if (isLegacyFlatTarget(node.target)) {
+          locations.push(Object.freeze({ path, zone }));
+        }
+      }
+    };
+    visit(layout.zones[zone], []);
+    return Object.freeze(locations);
+  };
+
+  const legacyFlatDestination = (
+    layout: ComposableCustomizeLayout,
+    zone: ToolbarZoneName,
+    index: number,
+  ): Readonly<{
+    index: number;
+    parentPath: readonly number[];
+    zone: ToolbarZoneName;
+  }> => {
+    const locations = legacyFlatLocations(layout, zone);
+    const before = locations[index];
+    if (before) {
+      return Object.freeze({
+        index: before.path.at(-1) as number,
+        parentPath: Object.freeze(before.path.slice(0, -1)),
+        zone,
+      });
+    }
+    const last = locations.at(-1);
+    if (last && index === locations.length) {
+      return Object.freeze({
+        index: (last.path.at(-1) as number) + 1,
+        parentPath: Object.freeze(last.path.slice(0, -1)),
+        zone,
+      });
+    }
+    const root = layout.zones[zone];
+    if (index === 0 && root.length === 1 && root[0]?.type === "container") {
+      return Object.freeze({
+        index: root[0].children.length,
+        parentPath: Object.freeze([0]),
+        zone,
+      });
+    }
+    if (index === locations.length) {
+      return Object.freeze({
+        index: root.length,
+        parentPath: Object.freeze([]),
+        zone,
+      });
+    }
+    throw new Error("FENNEVIA_COMPOSABLE_LAYOUT_INDEX_INVALID");
+  };
+
+  const placeComposableTarget = (
+    customizableUi: NativeRecord,
+    base: ComposableCustomizeLayout,
+    target: ComposableLayoutTarget,
+    destination: Readonly<{
+      index: number;
+      parentPath: readonly number[];
+      zone: ToolbarZoneName;
+    }>,
+  ): ComposableCustomizeLayout => {
+    const existing = findComposableLayoutTarget(base, target);
+    if (
+      existing &&
+      target.source !== "special" &&
+      (!base.allowMultiplePlacements || isComposableSingletonTarget(target))
+    ) {
+      return moveComposableLayoutNode(base, existing, destination);
+    }
+    let layout = base;
+    if (
+      target.source === "firefox" &&
+      !composableLayoutContainsFirefoxWidget(layout, target.id)
+    ) {
+      layout = adoptWidgetForPlacement(customizableUi, layout, target.id);
+    }
+    return insertComposableLayoutTarget(layout, target, destination);
+  };
+
+  const removeComposableNodeAndRestore = (
+    customizableUi: NativeRecord,
+    base: ComposableCustomizeLayout,
+    location: Readonly<{ path: readonly number[]; zone: ToolbarZoneName }>,
+  ): ComposableCustomizeLayout => {
+    const removed = getComposableLayoutNode(base, location);
+    let layout = removeComposableLayoutNode(base, location);
+    for (const widgetId of new Set(collectFirefoxTargets(removed))) {
+      if (!composableLayoutContainsFirefoxWidget(layout, widgetId)) {
+        layout = restoreAdoptedWidget(customizableUi, layout, widgetId);
+      }
+    }
+    return layout;
+  };
+
+  const enabledPanelMap = (
+    panels: ShellPanelConfigSnapshot,
+  ): Readonly<Record<ToolbarZoneName, boolean>> =>
+    Object.freeze({
+      bottom: panels.bottomPanelEnabled,
+      left: panels.leftPanelEnabled,
+      right: panels.rightPanelEnabled,
+      top: true,
+    });
+
+  const persistAccessibleLayout = (layout: ComposableCustomizeLayout): void => {
+    const panels = persistedPanels ?? createDefaultShellPanelConfig();
+    if (!hasAccessibleComposableCustomize(layout, enabledPanelMap(panels))) {
+      throw new Error("FENNEVIA_COMPOSABLE_LAYOUT_CUSTOMIZE_INACCESSIBLE");
+    }
+    persistLayout(layout);
   };
 
   const edit = async (
@@ -1486,12 +1930,25 @@ export function createFirefoxToolbarWidgetsBridge({
         return true;
       }
       if (validated.type === "set-panels") {
-        persistPanels(
-          copyShellPanelConfigSnapshot({
-            ...(persistedPanels ?? createDefaultShellPanelConfig()),
-            ...validated.panels,
-          } as ShellPanelConfigSnapshot),
-        );
+        const panels = copyShellPanelConfigSnapshot({
+          ...(persistedPanels ?? createDefaultShellPanelConfig()),
+          ...validated.panels,
+        } as ShellPanelConfigSnapshot);
+        requireCustomizableUiForEdit();
+        if (
+          !hasAccessibleComposableCustomize(
+            resolveComposableLayout(),
+            enabledPanelMap(panels),
+          )
+        ) {
+          throw createToolbarWidgetsError(
+            boundary,
+            "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID",
+            "firefox-toolbar-widgets-edit",
+            "toolbar-widgets.customize-access",
+          );
+        }
+        persistPanels(panels);
         publishSnapshotIfChanged();
         return true;
       }
@@ -1516,8 +1973,7 @@ export function createFirefoxToolbarWidgetsBridge({
           "toolbar-widgets.edit-revision",
         );
       }
-      const base =
-        persistedLayout ?? createDefaultLayoutFromNavbar(customizableUi);
+      const base = resolveComposableLayout();
       try {
         switch (validated.type) {
           case "add": {
@@ -1530,53 +1986,167 @@ export function createFirefoxToolbarWidgetsBridge({
                 "toolbar-widgets.palette-token",
               );
             }
-            let layout = base;
-            if (target.type === "widget") {
-              layout = adoptWidgetForPlacement(
-                customizableUi,
-                layout,
-                target.id,
-              );
-            }
-            layout = addCustomizeLayoutEntry(
-              layout,
-              target,
+            const destination = legacyFlatDestination(
+              base,
               validated.zone,
               validated.index,
             );
-            persistLayout(layout);
+            persistAccessibleLayout(
+              target.source === "container"
+                ? insertComposableLayoutContainer(
+                    base,
+                    target.direction,
+                    destination,
+                  )
+                : target.source === "wrapper"
+                  ? insertComposableLayoutWrapper(
+                      base,
+                      target.kind,
+                      destination,
+                    )
+                  : placeComposableTarget(
+                      customizableUi,
+                      base,
+                      target,
+                      destination,
+                    ),
+            );
+            break;
+          }
+          case "add-node": {
+            const target = paletteTargetByToken.get(validated.token);
+            if (!target) {
+              throw new Error("FENNEVIA_COMPOSABLE_LAYOUT_PALETTE_INVALID");
+            }
+            const destination = {
+              index: validated.index,
+              parentPath: validated.parentPath,
+              zone: validated.zone,
+            } as const;
+            persistAccessibleLayout(
+              target.source === "container"
+                ? insertComposableLayoutContainer(
+                    base,
+                    target.direction,
+                    destination,
+                  )
+                : target.source === "wrapper"
+                  ? insertComposableLayoutWrapper(
+                      base,
+                      target.kind,
+                      destination,
+                    )
+                  : placeComposableTarget(
+                      customizableUi,
+                      base,
+                      target,
+                      destination,
+                    ),
+            );
+            break;
+          }
+          case "add-container": {
+            persistAccessibleLayout(
+              insertComposableLayoutContainer(base, validated.direction, {
+                index: validated.index,
+                parentPath: validated.parentPath,
+                zone: validated.zone,
+              }),
+            );
             break;
           }
           case "move": {
-            persistLayout(
-              moveCustomizeLayoutEntry(
+            const from = legacyFlatLocations(base, validated.fromZone)[
+              validated.fromIndex
+            ];
+            if (!from) {
+              throw new Error("FENNEVIA_COMPOSABLE_LAYOUT_INDEX_INVALID");
+            }
+            persistAccessibleLayout(
+              moveComposableLayoutNode(
                 base,
-                validated.fromZone,
-                validated.fromIndex,
-                validated.toZone,
-                validated.toIndex,
+                from,
+                legacyFlatDestination(
+                  base,
+                  validated.toZone,
+                  validated.toIndex,
+                ),
               ),
             );
             break;
           }
+          case "move-node": {
+            persistAccessibleLayout(
+              moveComposableLayoutNode(base, validated.from, validated.to),
+            );
+            break;
+          }
           case "remove": {
-            const entry = getCustomizeLayoutEntry(
-              base,
-              validated.zone,
-              validated.index,
-            );
-            let layout = removeCustomizeLayoutEntry(
-              base,
-              validated.zone,
-              validated.index,
-            );
-            if (
-              entry.type === "widget" &&
-              !customizeLayoutContainsWidget(layout, entry.id)
-            ) {
-              layout = restoreAdoptedWidget(customizableUi, layout, entry.id);
+            const location = legacyFlatLocations(base, validated.zone)[
+              validated.index
+            ];
+            if (!location) {
+              throw new Error("FENNEVIA_COMPOSABLE_LAYOUT_INDEX_INVALID");
             }
-            persistLayout(layout);
+            persistAccessibleLayout(
+              removeComposableNodeAndRestore(customizableUi, base, location),
+            );
+            break;
+          }
+          case "remove-node": {
+            persistAccessibleLayout(
+              removeComposableNodeAndRestore(
+                customizableUi,
+                base,
+                validated.location,
+              ),
+            );
+            break;
+          }
+          case "set-multiple-placements": {
+            persistAccessibleLayout(
+              setComposableMultiplePlacements(base, validated.allow),
+            );
+            break;
+          }
+          case "set-container-direction": {
+            persistAccessibleLayout(
+              setComposableLayoutContainerDirection(
+                base,
+                validated.location,
+                validated.direction,
+              ),
+            );
+            break;
+          }
+          case "clean-layout": {
+            let restored = base;
+            for (const adoptedId of [...base.adopted]) {
+              restored = restoreAdoptedWidget(
+                customizableUi,
+                restored,
+                adoptedId,
+              );
+            }
+            persistAccessibleLayout(
+              createComposableCustomizeLayout(
+                {
+                  top: [
+                    {
+                      target: {
+                        id: "customize-shell",
+                        source: "project",
+                      },
+                      type: "item",
+                    },
+                  ],
+                },
+                {
+                  adopted: restored.adopted,
+                  allowMultiplePlacements: base.allowMultiplePlacements,
+                },
+              ),
+            );
             break;
           }
           case "reset-layout": {
@@ -1591,12 +2161,22 @@ export function createFirefoxToolbarWidgetsBridge({
               // The pref may already be at its default value.
             }
             persistedLayout = null;
+            persistedLegacyLayout = null;
             break;
           }
         }
       } catch (error) {
         if (isFirefoxBridgeError(error)) {
           throw error;
+        }
+        if (isComposableLayoutError(error)) {
+          throw createToolbarWidgetsError(
+            boundary,
+            "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID",
+            "firefox-toolbar-widgets-edit",
+            "toolbar-widgets.composable-layout",
+            error,
+          );
         }
         throw createToolbarWidgetsError(
           boundary,

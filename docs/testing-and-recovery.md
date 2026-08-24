@@ -1032,10 +1032,11 @@ Implementation/source evidence is in
 
 ADR-045 adds focused unit/static/build coverage for:
 
-- layout-driven four-zone snapshots with the ADR-044 nav-bar mirror as the
-  default top zone until the first edit;
-- opaque palette tokens for unused/placed CustomizableUI widgets, Fennevia
-  `show-bookmarks` / `show-downloads` / `show-translate` widgets
+- version-1 flat four-zone snapshots retained as migration input, with the
+  ADR-044 nav-bar mirror incorporated into the default version-2 Top tree;
+- opaque palette tokens for unused/placed CustomizableUI widgets, fixed
+  project feature/control widgets, and Fennevia `show-bookmarks` /
+  `show-downloads` / `show-translate` widgets
   (`show-downloads` opens Firefox's `#downloadsPanel`; `show-translate`
   delegates to Firefox's built-in translation panel), and spacer/spring/separator
   specials, with the fixed skip list (including Unified Extensions and app-menu
@@ -1043,9 +1044,9 @@ ADR-045 adds focused unit/static/build coverage for:
 - versioned `fennevia.customize.layout` / `fennevia.customize.style` /
   `fennevia.customize.panels` JSON bounded to 16 KiB each, fail-safe parse, and
   preference-observer republish;
-- validated `add` / `move` / `remove` / `reset-layout` / `set-style` /
-  `reset-style` / `set-panels` / `reset-panels` operations with the existing
-  revision policy where applicable;
+- validated legacy and path-based add/move/remove, container-axis,
+  duplicate-setting, confirmed clean, reset-layout, style, and panel operations
+  with the existing revision policy where applicable;
 - bounded adopt/restore writes: `addWidgetToArea(id, "nav-bar")` for widgets
   with no live node, restore to `AREA_ADDONS` for extensions and
   `removeWidgetFromArea` otherwise;
@@ -1080,29 +1081,91 @@ ADR-045 adds focused unit/static/build coverage for:
 - deterministic disposal of the CustomizableUI listener, preference observer,
   MutationObserver, popup listeners, pending waiters, handle/token registries,
   and frame style properties.
-- ADR-047 live-zone HTML5 drag-and-drop: customize session popup-holds all
-  four edges, opaque drag payload, drop mapping to `add`/`move`/`remove`,
+- ADR-047/ADR-074 live recursive HTML5 drag-and-drop: customize session
+  popup-holds all four edges, opaque drag payload, drop mapping to bounded
+  path add/move/remove,
   keyboard Delete/Ctrl+Arrow/palette Enter, and popup-close re-hold.
-- ADR-064 defaults and strict enums for the complete tabs/bookmarks side swap,
-  bottom downloads enablement, and independent top/bottom activity-light
-  sources; disabled edge state survives global suppression/re-enable.
+- ADR-064 version-1 migration defaults plus ADR-074 strict independent
+  Left/Right/Bottom enablement and top/bottom activity-light sources; disabled
+  edge state survives global suppression/re-enable and Top has no toggle.
 - ADR-068 `allowCompactWindow` default false, missing-key defaults, NativeUi
   ten parsed rules, compact-window attribute on/off plus dispose restore, and
   the customize drawer tablist (widgets/panels/interaction/appearance) with
   Arrow/Home/End.
+- ADR-074 strict version-2 recursive layout parsing/serialization, version-1
+  in-memory migration, three-level/48-child/128-node/64-adopted bounds,
+  layout-local instance ids, path lookup/insertion/move/removal, same-parent
+  boundary correction, cycle rejection, mandatory reachable Customize, and
+  zero-or-one-child Center/Expanded/Padding wrapper validation;
+- deterministic native-v2 fresh/reset/fallback composition with direct fixed-
+  base children, tabs-side swap preservation, no implicit live nav-bar mirror,
+  valid-v1 order/adoption migration, and valid saved-v2 ownership;
+- recursive ordinary projection and rendering for navigation, Trust/address,
+  Tabs, Bookmarks, Downloads status, Firefox handoffs, private indicator,
+  window controls, Row/Column, Center/Expanded/Padding, Separator, Space, and
+  Flexible space on all four roots, with raw Firefox ids absent from snapshots
+  and drag payloads;
+- Flutter-style flow CSS: Row/Column owns bounded space, ordinary children keep
+  natural main-axis size and start order, cross-axis content is centered, and
+  only Expanded/Flexible space grows into remaining main-axis space;
+- fixed Top/Bottom Row and Left/Right Column base-flow rendering, including
+  compatibility promotion of a sole same-axis root container, redirected root
+  drops, blocked move-out, subdued ordinary outlines, compact empty-root
+  affordances, and a natural-width address launcher;
+- transparent-at-rest non-empty customize nodes with deepest-hover/focus
+  boundaries and compact structural labels, while active drop targets retain
+  the focus-color outline;
+- nearest-container orientation for tab ARIA/keyboard/drag/overflow geometry
+  and axis-aware Bookmarks, Downloads, address, tools, and window-control CSS;
+- opt-in compatible duplicate placement, including simultaneous Top/Left
+  window controls, with stateful feature singletons, always-repeatable
+  Row/Column/Center/Expanded/Padding/Separator/Space/Flexible space, shared native activation owners,
+  and restore only after the last adopted instance;
+- independent Left/Right/Bottom enablement with no Top toggle, rejection of
+  disabling the only Customize edge, ordinary-mode empty-edge disablement, and
+  customize-mode re-enable/hold of every preference-enabled empty root as a
+  labelled pointer-drop and keyboard-add target;
+- confirmed `clean-layout`: Cancel issues no operation; Confirm restores every
+  adopted Firefox widget, empties all four roots, preserves panel/style/
+  interaction and duplicate settings, and persists only one Top Customize;
+- visible and keyboard move-before/after/into/out/remove alternatives, focus by
+  instance id, and scoped empty-space window dragging for Separator/Space/
+  Flexible space/empty containers/gaps with interactive descendants and the
+  active editor forced no-drag;
+- shared opaque drag-lifecycle notification plus real-boundary `dragleave`
+  cleanup, so every panel/palette preview clears after exit, drop, cancel, drag
+  end, customize close, and disposal instead of retaining a stale blue outline;
+- contextual per-node controls: move/containment/axis/remove buttons are in DOM
+  and keyboard order but visually hidden until the deepest node is hovered or a
+  direct control owns focus.
+
+The current ADR-074 source passed the complete `npm run verify` gate on
+2026-08-25 with 395/395 Node tests, 87.92% line coverage, 80.29% branch
+coverage, 95.37% function coverage, every fixed PowerShell 7 suite, dependency
+audit, deterministic frontend/bridge output, and 14/14 accepted production
+artifacts.
 
 The following are `not run`, not passed: live Fennevia customize drawer against
-a collapsed navbar, four-edge placement round-trips, **live-zone drag from
-palette onto each edge and back**, adopt/restore of an
-installed extension, style tokens under forced colors and reduced motion,
-default Firefox Light/Dark design-token colors on owned surfaces,
-minimum/default/maximum trigger hit testing and live hide/reveal timings,
-multi-window pref observation, side-role swap with open popups/focus,
-bottom-panel disable/re-enable, all light-source combinations, native status
-capsule under theme/forced-colors/DPI, layout reset restoring native placements, and
+a collapsed navbar; recursive Row/Column creation, nesting, orientation,
+natural-child/start alignment, `Expanded > Center`, Padding, wrapper drop and
+capacity behavior, and
+four-edge placement round-trips; **drag from the palette into an initially
+empty enabled edge and back**; Clean-all Cancel/Confirm behavior and immediate
+repopulation of the resulting empty edges; compatible Top/Left duplicate
+window controls; dragging across several panels, abandoning with Escape or
+outside the window, and verifying every blue target outline clears; pointer and
+keyboard reveal of only the intended node's contextual controls in deeply
+nested layouts; ordinary-mode window movement from every empty-space kind;
+adopt/restore of an installed extension; style tokens under forced colors and
+reduced motion; default Firefox Light/Dark design-token colors on owned
+surfaces; minimum/default/maximum trigger hit testing and live hide/reveal
+timings; multi-window pref observation; Left/Right/Bottom disable/re-enable
+with open popups/focus; all light-source combinations; native status capsule
+under theme/forced-colors/DPI; layout reset restoring native placements; and
 Escape/focus restoration while a widget popup is also held. Implementation/
-source evidence is in `docs/research/firefox-153-customize-mode.md` and
-`plans/006-customize-mode.md`.
+source evidence is in `docs/research/firefox-153-customize-mode.md`,
+`plans/006-customize-mode.md`, and
+`plans/009-composable-widget-layout.md`.
 
 ### 6.10 Four-panel context menus — focused automation complete, real Firefox pending
 
@@ -1271,8 +1334,10 @@ the health phase requires:
 - five frontend roots;
 - attached parsed project CSS;
 - edge reveal controller;
-- initialized four-root bookmarks state and a successful first bounded page;
-- a ready PUBLIC/PRIVATE Downloads list view and valid bottom-panel state;
+- initialized bookmarks state and a successful first bounded page, regardless
+  of whether its singleton widget is currently placed;
+- a ready PUBLIC/PRIVATE Downloads list view regardless of Downloads-status
+  placement;
 - a valid Urlbar-coverage snapshot, one owner-state observer, and native
   `openLocation()` handoff capability;
 - a valid Urlbar-suggestions snapshot, required input/controller/shared-manager
@@ -1280,8 +1345,11 @@ the health phase requires:
 - a valid browser-tools snapshot, all fixed native-panel/tool actions, and
   host-anchored popup placement plus synchronous original-toolbar reveal
   capability;
-- a valid window-controls snapshot and project-owned top-row min/max/close
-  buttons;
+- a valid window-controls snapshot and every currently placed project window-
+  control instance;
+- a strict recursively rendered four-root layout, exact instance ids and
+  container orientations, optional-edge enabled/empty state, and one Customize
+  widget in an enabled edge;
 - exact Firefox native target/titlebar ownership, an attached exact activation
   style with ten parsed rules, and synchronous native Urlbar reveal capability;
 - environment/suspension handling;

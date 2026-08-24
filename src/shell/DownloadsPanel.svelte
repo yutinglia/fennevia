@@ -17,6 +17,7 @@
     downloads: BrowserDownloadsStateAdapter;
     localeId?: FenneviaLocale;
     onFatalError: (error: unknown) => void;
+    orientation?: "column" | "row";
   }>;
 
   type DownloadPresentation = Readonly<{
@@ -177,6 +178,10 @@
   aria-label={t("downloads.panelAria")}
   lang={localeId}
   class="fennevia-downloads"
+  class:fennevia-downloads--horizontal={props.orientation === "row"}
+  data-fennevia-orientation={props.orientation === "row"
+    ? "horizontal"
+    : "vertical"}
   data-fennevia-default-focus=""
   data-fennevia-downloads=""
   data-fennevia-downloads-phase={current.phase}

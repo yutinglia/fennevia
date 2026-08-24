@@ -6,6 +6,7 @@
     getActiveToolbarWidgetDrag,
     serializeToolbarWidgetDrag,
     startToolbarWidgetDrag,
+    subscribeToolbarWidgetDrag,
     toolbarWidgetDragMimeType,
   } from "../app/toolbar-widget-drag";
   import {
@@ -50,6 +51,12 @@
   let paletteDropActive = $state(false);
   let selectedTab: CustomizeTabId = $state("widgets");
 
+  $effect(() =>
+    subscribeToolbarWidgetDrag(() => {
+      paletteDropActive = false;
+    }),
+  );
+
   const paletteLabel = (entry: ToolbarPaletteEntrySnapshot): string =>
     localizeWidgetLabel(localeId, {
       kind: entry.kind,
@@ -84,14 +91,35 @@
 
   const addFromPalette = (token: string) => {
     const zone = props.customizeSession?.lastFocusedZone() ?? "top";
-    const index = snapshot?.zones[zone].length ?? 0;
+    const rootNodes = snapshot?.layout[zone] ?? [];
+    const rootContainer =
+      rootNodes.length === 1 && rootNodes[0]?.type === "container"
+        ? rootNodes[0]
+        : null;
     void runEdit({
-      index,
+      index: rootContainer?.children.length ?? rootNodes.length,
+      parentPath: rootContainer ? [0] : [],
       revision,
       token,
-      type: "add",
+      type: "add-node",
       zone,
     });
+  };
+
+  const setAddZone = (event: Event): void => {
+    const value =
+      event.currentTarget instanceof HTMLSelectElement
+        ? event.currentTarget.value
+        : "";
+    if (
+      value === "top" ||
+      value === "left" ||
+      value === "right" ||
+      value === "bottom"
+    ) {
+      props.customizeSession?.setLastFocusedZone(value);
+      addZoneLabel = value;
+    }
   };
 
   const resetLayout = () => void runEdit({ revision, type: "reset-layout" });
@@ -126,7 +154,7 @@
 
   const handlePaletteDragOver = (event: DragEvent) => {
     const source = getActiveToolbarWidgetDrag();
-    if (source?.type !== "zone") {
+    if (source?.type !== "zone" && source?.type !== "layout-node") {
       return;
     }
     event.preventDefault();
@@ -160,6 +188,7 @@
       source,
       { type: "palette" },
       revision,
+      snapshot?.layout,
     );
     clearToolbarWidgetDrag();
     if (operation) {
@@ -234,6 +263,21 @@
         <p class="fennevia-customize__note">
           {t("customize.keyboardAdd", { zone: addZoneName })}
         </p>
+        <label class="fennevia-customize__panel-field">
+          <span>{t("customize.addToPanel")}</span>
+          <select
+            class="fennevia-control fennevia-customize__select"
+            data-fennevia-customize-add-zone=""
+            onchange={setAddZone}
+            value={addZoneLabel}
+          >
+            <option value="top">{zoneDisplayName(localeId, "top")}</option>
+            <option value="left">{zoneDisplayName(localeId, "left")}</option>
+            <option value="right">{zoneDisplayName(localeId, "right")}</option>
+            <option value="bottom">{zoneDisplayName(localeId, "bottom")}</option
+            >
+          </select>
+        </label>
 
         <section
           aria-label={t("customize.paletteAria")}
@@ -245,9 +289,13 @@
           ondragover={handlePaletteDragOver}
           ondrop={handlePaletteDrop}
         >
-          <h3 class="fennevia-customize__heading">{t("customize.paletteAria")}</h3>
+          <h3 class="fennevia-customize__heading">
+            {t("customize.paletteAria")}
+          </h3>
           {#if snapshot.palette.length === 0}
-            <p class="fennevia-customize__empty">{t("customize.emptyPalette")}</p>
+            <p class="fennevia-customize__empty">
+              {t("customize.emptyPalette")}
+            </p>
           {:else}
             <ul class="fennevia-customize__grid">
               {#each snapshot.palette as entry (entry.token)}
@@ -261,13 +309,17 @@
                     data-fennevia-customize-add={entry.token}
                     draggable="true"
                     ondragend={handlePaletteDragEnd}
-                    ondragstart={(event) => handlePaletteDragStart(event, entry)}
+                    ondragstart={(event) =>
+                      handlePaletteDragStart(event, entry)}
                     onkeydown={(event) => handlePaletteKeydown(event, entry)}
                     onclick={() => addFromPalette(entry.token)}
                     title={paletteLabel(entry)}
                     type="button"
                   >
-                    <span aria-hidden="true" class="fennevia-customize__item-icon">
+                    <span
+                      aria-hidden="true"
+                      class="fennevia-customize__item-icon"
+                    >
                       {#if entry.kind === "special"}
                         <span class="fennevia-customize__item-space">·</span>
                       {:else}
@@ -293,11 +345,18 @@
         role="tabpanel"
       >
         <CustomizePanelsSection
+          allowMultiplePlacements={snapshot.allowMultiplePlacements}
           customized={snapshot.panelsCustomized}
           {localeId}
+          onCleanLayout={() => void runEdit({ revision, type: "clean-layout" })}
           onResetPanels={() => void runEdit({ type: "reset-panels" })}
-          onSetPanels={(panels) =>
-            void runEdit({ panels, type: "set-panels" })}
+          onSetPanels={(panels) => void runEdit({ panels, type: "set-panels" })}
+          onSetMultiplePlacements={(allow) =>
+            void runEdit({
+              allow,
+              revision,
+              type: "set-multiple-placements",
+            })}
           panels={snapshot.panels}
         />
       </div>

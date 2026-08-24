@@ -25,6 +25,7 @@
     resolveWidgetInsertBefore,
     serializeToolbarWidgetDrag,
     startToolbarWidgetDrag,
+    subscribeToolbarWidgetDrag,
     toolbarWidgetDragMimeType,
     type ToolbarWidgetDropTarget,
   } from "../../../app/toolbar-widget-drag";
@@ -77,6 +78,12 @@
     insertBefore: number;
     zone: ToolbarZoneName;
   }> | null = $state(null);
+
+  $effect(() =>
+    subscribeToolbarWidgetDrag(() => {
+      dropPreview = null;
+    }),
+  );
 
   let zoneWidgets = $derived(
     props.customizeOpen

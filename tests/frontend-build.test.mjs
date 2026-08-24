@@ -58,6 +58,108 @@ test("visible edge transforms override every directional off-screen transform", 
   assert.ok(visibleRule > lastDirectionalRule);
 });
 
+test("composable widget chrome stays centered, compact, and axis-aware", async () => {
+  const [
+    layoutCss,
+    responsiveCss,
+    tabsCss,
+    bookmarksCss,
+    downloadsCss,
+    projectWidget,
+  ] = await Promise.all([
+    readProjectFile("src/shell/styles/composable-layout.css"),
+    readProjectFile("src/shell/styles/responsive-accessibility.css"),
+    readProjectFile("src/shell/styles/tabs.css"),
+    readProjectFile("src/shell/styles/bookmarks.css"),
+    readProjectFile("src/shell/styles/downloads.css"),
+    readProjectFile(
+      "src/shell/features/composable-layout/ProjectWidget.svelte",
+    ),
+  ]);
+
+  assert.match(projectWidget, /class="fennevia-layout-address"/u);
+  assert.doesNotMatch(
+    projectWidget,
+    /class="fennevia-address-launcher fennevia-layout-address"/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-node__content \{[\s\S]*?align-items: center;[\s\S]*?justify-content: center;/u,
+  );
+  assert.match(
+    layoutCss,
+    /button\.fennevia-layout-control \{[\s\S]*?inline-size: var\(--fennevia-control-height\);[\s\S]*?block-size: var\(--fennevia-control-height\);[\s\S]*?align-items: center;[\s\S]*?justify-content: center;/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-container--row,[\s\S]*?\.fennevia-layout-wrapper--row[\s\S]*?> \.fennevia-layout-node__content \{\s*flex-direction: row;/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-container--column,[\s\S]*?\.fennevia-layout-wrapper--column[\s\S]*?> \.fennevia-layout-node__content \{\s*flex-direction: column;/u,
+  );
+  assert.match(layoutCss, /\.fennevia-layout-node \{[\s\S]*?flex: 0 0 auto;/u);
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-node--container \{\s*flex: 1 1 auto;\s*align-self: stretch;/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-node--expanded \{\s*flex: 1 1 0;\s*align-self: stretch;/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-wrapper--center \{\s*align-items: center;\s*justify-content: center;/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-wrapper--padding \{\s*padding: var\(--fennevia-space-2\);/u,
+  );
+  assert.doesNotMatch(layoutCss, /flex: 1 1 (?:180px|260px|280px);/u);
+  assert.match(
+    layoutCss,
+    /\.fennevia-tabs-summary \{\s*inline-size: 100%;\s*align-self: stretch;/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-toolbar-widgets__separator,[\s\S]*?\.fennevia-toolbar-widgets__spacer,[\s\S]*?\.fennevia-toolbar-widgets__spring[\s\S]*?align-self: stretch;/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-toolbar-widgets__spring[\s\S]*?\) \{\s*flex: 1 1 16px;/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-address \{[\s\S]*?padding: 0;[\s\S]*?background: none;[\s\S]*?border: 0;/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-address \{[\s\S]*?inline-size: min\(320px, 100%\);/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-address[\s\S]*?> \.fennevia-layout-address-launcher \{[\s\S]*?max-inline-size: min\(680px, 100%\);[\s\S]*?block-size: var\(--fennevia-control-height\);/u,
+  );
+  assert.match(tabsCss, /min-inline-size: min\(260px, 100%\);/u);
+  assert.match(bookmarksCss, /min-inline-size: min\(300px, 100%\);/u);
+  assert.match(
+    downloadsCss,
+    /grid-template-columns:\s*minmax\(0, 0\.85fr\) minmax\(0, 1\.25fr\)\s*minmax\(0, 1fr\);/u,
+  );
+  assert.match(
+    responsiveCss,
+    /\.fennevia-address-launcher\s+\.fennevia-address-launcher__button \{\s*min-block-size: 36px;/u,
+  );
+  assert.match(
+    responsiveCss,
+    /\.fennevia-navigation\s+\.fennevia-browser-tools__button:not/u,
+  );
+  assert.match(
+    responsiveCss,
+    /\.fennevia-layout-address\s*> \.fennevia-layout-address-launcher \{\s*color: FieldText;\s*background: Field;\s*border-color: FieldText;/u,
+  );
+});
+
 test("edge panels touch the trigger gutter, coordinate native drags, and float visible transient shortcuts", async () => {
   const css = await readShellStyles(projectRoot);
 
@@ -120,8 +222,10 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
 
   const [
     component,
+    customizePanelSource,
     progressLight,
     toolbarWidgets,
+    composableLayout,
     mountShell,
     customizeStyle,
     customizePanels,
@@ -131,9 +235,13 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     health,
   ] = await Promise.all([
     readProjectFile("src/shell/App.svelte"),
+    readProjectFile("src/shell/CustomizePanel.svelte"),
     readProjectFile("src/shell/surfaces/EdgeProgressLight.svelte"),
     readProjectFile(
-      "src/shell/features/toolbar-widgets/ToolbarWidgetZone.svelte",
+      "src/shell/features/composable-layout/FirefoxToolbarWidget.svelte",
+    ),
+    readProjectFile(
+      "src/shell/features/composable-layout/ComposableLayout.svelte",
     ),
     readProjectFile("src/shell/runtime/mount-shell.ts"),
     readProjectFile("src/shell/runtime/customize-style.ts"),
@@ -148,6 +256,10 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(
     component,
     /createWindowDragCandidateController[\s\S]*?onStart: \(\) => props\.shell\.setWindowDragActive\(true, props\.edge\)/u,
+  );
+  assert.match(
+    component,
+    /canStart: \(event\) =>[\s\S]*?!customizeOpen[\s\S]*?!edgeUi\.isInteractivePointerTarget\(event\.target\)/u,
   );
   assert.match(
     component,
@@ -171,23 +283,89 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(progressLight, /props\.source !== "downloads"/u);
   assert.match(progressLight, /props\.source === "downloads"[\s\S]*?: null/u);
   assert.match(progressLight, /<ProgressLight \{presentation\} \/>/u);
-  assert.match(component, /getSidePanelRole/u);
+  assert.match(component, /toolbarLayoutContainsProjectWidget/u);
   assert.match(component, /data-fennevia-side-role=\{sidePanelRole/u);
   assert.match(component, /data-fennevia-enabled=\{surfaceState\.enabled\}/u);
-  assert.match(toolbarWidgets, /<ToolbarWidgetGlyph \{widget\} \/>/u);
-  assert.match(toolbarWidgets, /widget\.parts\.length > 0/u);
+  assert.match(
+    component,
+    /const revealCustomizeToggle[\s\S]*?closest<HTMLElement>\("\[data-fennevia-surface-root\]"\)[\s\S]*?shell\.revealProgrammatically\(edge as EdgeName\)/u,
+  );
+  assert.match(
+    toolbarWidgets,
+    /<ToolbarWidgetGlyph widget=\{props\.widget\} \/>/u,
+  );
+  assert.match(toolbarWidgets, /props\.widget\.parts\.length > 0/u);
   assert.match(
     toolbarWidgets,
     /data-fennevia-browser-tool="toolbar-widget-part"/u,
   );
   assert.match(toolbarWidgets, /part\.valueText/u);
   assert.match(toolbarWidgets, /fennevia-toolbar-widgets__compound-value/u);
-  assert.match(toolbarWidgets, /toolbarWidgetPartAccessibleLabel/u);
+  assert.match(toolbarWidgets, /const partLabel/u);
   assert.match(
     toolbarWidgets,
     /toolbarWidgets\.invoke\([\s\S]*?resolveBrowserToolHost\(event\),[\s\S]*?event/u,
   );
-  assert.match(toolbarWidgets, /toolbarWidgetDragMimeType/u);
+  assert.match(composableLayout, /toolbarWidgetDragMimeType/u);
+  assert.match(composableLayout, /data-fennevia-layout-container/u);
+  assert.match(composableLayout, /data-fennevia-layout-wrapper/u);
+  assert.match(composableLayout, /baseContainerInstanceId/u);
+  assert.match(composableLayout, /data-fennevia-layout-base/u);
+  assert.match(
+    composableLayout,
+    /class:fennevia-layout-node--editing=\{props\.customizeOpen &&\s*!isBaseContainer\}/u,
+  );
+  assert.match(
+    composableLayout,
+    /handleDragOver\(event, rootDropParentPath, rootDirection\)/u,
+  );
+  assert.match(composableLayout, /node\.type === "wrapper"/u);
+  assert.match(composableLayout, /node\.children\.length === 0/u);
+  assert.match(composableLayout, /data-fennevia-layout-node-content/u);
+  assert.match(composableLayout, /data-fennevia-layout-structure-label/u);
+  assert.match(composableLayout, /class:fennevia-layout-node--special/u);
+  assert.match(composableLayout, /data-fennevia-empty-panel-drop-target/u);
+  assert.match(
+    composableLayout,
+    /const selectEmptyPanel[\s\S]*?setLastFocusedZone\(props\.edge\)/u,
+  );
+  assert.match(
+    composableLayout,
+    /node\.projectId === "customize-shell"[\s\S]*?"customize\.required"/u,
+  );
+  assert.match(composableLayout, /subscribeToolbarWidgetDrag/u);
+  assert.match(composableLayout, /ondragleave=\{handleDragLeave\}/u);
+  assert.match(composableLayout, /data-fennevia-window-drag-region/u);
+  assert.match(toolbarWidgets, /data-fennevia-window-drag-region/u);
+  assert.match(edgeInteractions, /\[tabindex\]:not\(\[tabindex="-1"\]\)/u);
+  assert.match(
+    css,
+    /data-fennevia-window-drag-region[\s\S]*?-moz-window-dragging: drag;[\s\S]*?data-fennevia-customize-active[\s\S]*?-moz-window-dragging: no-drag;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-layout-node__controls \{[\s\S]*?opacity: 0;[\s\S]*?pointer-events: none;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-layout-node--editing \{[\s\S]*?border: 1px solid transparent;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-layout-node__structure-label \{[\s\S]*?opacity: 0;[\s\S]*?pointer-events: none;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-layout-node--editing:hover:not\([\s\S]*?> \.fennevia-layout-node__controls[\s\S]*?opacity: 1;[\s\S]*?pointer-events: auto;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-layout-container__placeholder--root \{[\s\S]*?flex: 0 1 auto;[\s\S]*?margin: auto;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-layout-wrapper--expanded[\s\S]*?> :is\(\.fennevia-tab-strip, \.fennevia-bookmarks, \.fennevia-downloads\)[\s\S]*?inline-size: 100%;[\s\S]*?align-self: stretch;/u,
+  );
   assert.match(
     component,
     /shell\.snapshot\(\)\.interaction\.triggerThicknessCssPixels/u,
@@ -195,11 +373,11 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(mountShell, /shell\.setInteractionConfig/u);
   assert.match(
     mountShell,
-    /getSidePanelEdge\(state\.snapshot\.panels, "tabs"\)/u,
+    /toolbarLayoutContainsProjectWidget\([\s\S]*?state\.snapshot\.layout\[edge\],[\s\S]*?"tabs"/u,
   );
   assert.match(
     mountShell,
-    /shell\.setEdgeEnabled\("bottom", nextBottomEnabled\)/u,
+    /for \(const edge of \["left", "right", "bottom"\] as const\)[\s\S]*?shell\.setEdgeEnabled\(edge, enabled\)/u,
   );
   assert.match(
     mountShell,
@@ -207,19 +385,21 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.match(
     mountShell,
-    /releaseSurfaceFocusIfActive\("left"\)[\s\S]*?releaseSurfaceFocusIfActive\("right"\)/u,
+    /if \(!enabled\) \{\s*releaseSurfaceFocusIfActive\(edge\);/u,
   );
+  assert.match(mountShell, /showEmptyCustomizeTargets/u);
+  assert.match(mountShell, /isToolbarOptionalPanelEnabled/u);
   assert.match(
     mountShell,
-    /!nextBottomEnabled[\s\S]*?releaseSurfaceFocusIfActive\("bottom"\)/u,
+    /customizeSession\.subscribe\(\(\) => \{\s*applyCustomizeState\(widgetsState\.snapshot\(\)\);/u,
   );
   assert.match(
     health,
-    /shellSnapshot\.surfaces\.bottom\.enabled[\s\S]*?panels\.bottomDownloadsEnabled/u,
+    /const panelEnabledFor[\s\S]*?snapshot\.panels\.leftPanelEnabled[\s\S]*?snapshot\.panels\.rightPanelEnabled[\s\S]*?snapshot\.panels\.bottomPanelEnabled/u,
   );
   assert.match(
     health,
-    /data-fennevia-enabled[\s\S]*?String\(panels\.bottomDownloadsEnabled\)/u,
+    /verifyLayoutNodes[\s\S]*?data-fennevia-layout-instance/u,
   );
   assert.match(mountShell, /shell\.releasePointer\(edge, "outside-window"\)/u);
   assert.match(mountShell, /shell\.setWindowDragActive\(false\)/u);
@@ -262,17 +442,29 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     windowDrag,
     /createWindowDragCandidateController[\s\S]*?hasWindowDragMoved[\s\S]*?onEnd/u,
   );
-  assert.match(customizePanels, /value="tabs-left"/u);
-  assert.match(customizePanels, /value="tabs-right"/u);
+  assert.doesNotMatch(customizePanels, /value="tabs-left"|value="tabs-right"/u);
   assert.equal(customizePanels.match(/<option value="loading">/gu)?.length, 2);
   assert.equal(
     customizePanels.match(/<option value="downloads">/gu)?.length,
     2,
   );
   assert.equal(customizePanels.match(/<option value="off">/gu)?.length, 2);
-  assert.match(customizePanels, /bottomDownloadsEnabled/u);
+  assert.match(customizePanels, /leftPanelEnabled/u);
+  assert.match(customizePanels, /rightPanelEnabled/u);
+  assert.match(customizePanels, /bottomPanelEnabled/u);
+  assert.match(customizePanels, /data-fennevia-customize-multiple-placements/u);
   assert.match(customizePanels, /allowCompactWindow/u);
   assert.match(customizePanels, /data-fennevia-customize-compact-window/u);
+  assert.match(customizePanels, /data-fennevia-customize-clean-layout/u);
+  assert.match(customizePanels, /role="alertdialog"/u);
+  assert.match(
+    customizePanels,
+    /const cancelClean[\s\S]*?cleanConfirmOpen = false;[\s\S]*?const confirmClean[\s\S]*?props\.onCleanLayout\(\)/u,
+  );
+  assert.match(
+    customizePanelSource,
+    /onCleanLayout=\{\(\) =>\s*void runEdit\(\{ revision, type: "clean-layout" \}\)\}/u,
+  );
   assert.match(
     mountShell,
     /removeEventListener\(WINDOW_DRAG_START_EVENT, beginWindowDrag\)/u,
@@ -592,7 +784,9 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /^\(function\(\)\{/u);
   assert.match(bundle, /__fenneviaRegisterShellFrontend/u);
   assert.match(bundle, /FENNEVIA_SVELTE_RUNTIME_/u);
-  assert.match(bundle, /data-fennevia-window-controls/u);
+  assert.match(bundle, /data-fennevia-composable-layout/u);
+  assert.match(bundle, /data-fennevia-layout-instance/u);
+  assert.match(bundle, /data-fennevia-window-drag-region/u);
   assert.match(bundle, /data-fennevia-bookmark-roots/u);
   assert.match(bundle, /data-fennevia-bookmark-list/u);
   assert.match(bundle, /data-fennevia-bookmark-status/u);
@@ -607,7 +801,6 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /data-fennevia-progress-mode/u);
   assert.match(bundle, /data-fennevia-download-state/u);
   assert.match(bundle, /data-fennevia-window-control/u);
-  assert.match(bundle, /data-fennevia-browser-tools/u);
   assert.match(bundle, /data-fennevia-browser-tool/u);
   assert.match(bundle, /site-information/u);
   assert.match(bundle, /site-permissions/u);

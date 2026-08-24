@@ -21,18 +21,18 @@ Validated baseline as of 2026-08-25:
   `docs/research/firefox-154-stable-transition.md`;
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16,
   #17, #18, #22, #31, #32, #37, #39, #57, and #60 complete;
-- functional vertical tabs with a fixed, bounded pinned section above regular
-  tab overflow, plus a compact address/status launcher in the left surface by
-  default, with a bounded whole-role swap to the right;
+- functional Tabs with a fixed, bounded pinned section above regular overflow
+  in the default Left-column placement, plus a movable compact address/status
+  launcher; Row placement switches the feature to its horizontal semantics;
 - one centered address/search popup with a combined Trust summary, permission,
   applicable-action, native Firefox provider-result list, and native-handoff
   coverage in a fifth owned root;
-- one-line primary navigation/address/status plus fixed native Firefox handoffs
-  in the top surface;
-- bounded lazy Firefox Places bookmarks in the right surface by default, with
-  Firefox-cached raster favicons and middle-click new-tab opening;
-- event-driven anonymous aggregate Downloads status in the optionally disabled
-  bottom surface;
+- one-line primary navigation/address/status plus Firefox handoffs in the
+  default Top-row layout, all placeable through ADR-074;
+- bounded lazy Firefox Places Bookmarks in Right by default, with Firefox-cached
+  raster favicons and middle-click new-tab opening, but movable/orientable;
+- event-driven anonymous aggregate Downloads status as a movable singleton,
+  placed in Bottom by default;
 - exact Firefox native DOM and complete reveal/fallback paths retained;
 - production enters `active` only after the complete health gate;
 - ADR-050 first-paint native hide is implemented in source; the real Firefox
@@ -51,6 +51,18 @@ capsule. Focused automation covers the strict preference, role routing,
 disabled-edge controller state, favicon sanitization/update behavior, and exact
 native style count. The real Firefox visual, DPI/theme, multi-window preference,
 and native-status rows remain pending.
+
+ADR-074 supersedes only ADR-064's fixed role and sole-bottom-download clauses.
+The four hosts remain unchanged, but each now renders a strict recursive widget
+tree. Primary controls/features are movable and axis-aware; compatible action
+duplicates are opt-in; structural primitives are always repeatable; Top stays
+enabled; Left/Right/Bottom are independent; one Customize instance must remain
+reachable; and Clean all panels leaves only that button in Top. Empty enabled
+edges stay visible drop targets during customize mode and empty ordinary chrome
+continues to drag the Firefox window. Shared drag lifecycle cleanup removes
+stale target outlines, and node controls appear only on deepest hover or direct
+keyboard focus. Focused automation is complete; its real Firefox matrix remains
+pending.
 
 ADR-066 follows the first tabbar interaction correction with explicit
 click-versus-window-drag reconciliation, synchronous pointer holds around tab
@@ -938,6 +950,53 @@ names and native built-in icons in that palette and in widget zones. ADR-054
 adds the bounded interaction controls and their focused model/controller/build
 coverage.
 
+## Milestone P: Composable everything-is-a-widget layout — implementation complete, real Firefox smoke pending (ADR-074)
+
+Supersede Milestone O's flat four-zone presentation without adding another
+surface or Firefox-state owner. Each existing Top, Left, Right, and Bottom root
+now renders one bounded recursive version-2 tree made from project controls and
+features, Firefox toolbar mirrors, always-repeatable Row/Column/
+Center/Expanded/Padding/Separator/Space/Flexible-space structure, and nested
+orientation. Ordinary children keep natural main-axis size and start order;
+only Expanded and Flexible space consume remaining room. Tabs, Bookmarks, the address
+launcher, Downloads status, window controls, browser controls, Firefox
+handoffs, and Customize are placeable widgets. Compatible actions and Firefox
+mirrors may be repeated only behind an opt-in setting; stateful features remain
+singleton. At least one Customize instance must remain on an enabled edge.
+
+The panel roots themselves are fixed Top/Bottom Rows and Left/Right Columns.
+Sole matching compatibility containers have no removable outer chrome, and
+empty roots use a compact prompt over their complete drop hitbox.
+
+Fresh profiles, malformed fallback, and Reset use an explicit native-v2 tree:
+Top has navigation, Trust, expanded address, handoffs, Customize, and window
+controls; the configured tabs side has New Tab plus expanded Tabs; the other
+side has expanded Bookmarks; Bottom has centered Downloads status. Live
+Firefox toolbar items remain palette choices and valid v1 migration inputs,
+not profile-dependent defaults. Valid saved v2 state remains user-owned.
+
+Top remains always enabled. Left, Right, and Bottom have independent enable
+preferences and retain their saved trees while disabled. Preference-enabled
+empty optional roots stay hidden in ordinary browsing but are held visible as
+labelled pointer-drop and keyboard-add targets during customize mode. Empty
+layout chrome is an ordinary window-drag region; editing remains no-drag.
+Per-node boundaries, compact structure labels, and
+move/containment/axis/remove controls appear only for the deepest hovered or
+directly keyboard-focused node. Cross-panel drag lifecycle cleanup removes
+every target outline after exit, drop, cancel, drag end, customize close, or
+disposal.
+
+The Panels/Layout tab also has a confirmed **Clean all panels** action. Cancel
+does nothing; Confirm restores adopted Firefox widgets, removes every layout
+node, preserves unrelated settings, and leaves one mandatory Customize widget
+in Top. Reset layout remains the separate default-composition operation.
+
+Gate: focused model/controller/frontend tests and `npm run verify` pass; the
+real Firefox recursive layout, orientation, empty-panel, drag cleanup, window-
+drag, popup, caption, accessibility, multi-window, private-window, and recovery
+rows in `docs/testing-and-recovery.md` §6.9 remain honestly `not run`. Plan:
+`plans/009-composable-widget-layout.md`.
+
 ## Deferred work
 
 The following require separate plans and issues:
@@ -946,7 +1005,7 @@ The following require separate plans and issues:
   project-owned rich-row UI beyond ADR-061's explicit native handoff;
 - Firefox View replacement;
 - identity and permission panel replacement;
-- extension toolbar/action replacement beyond the ADR-045 Fennevia customize
+- extension toolbar/action replacement beyond the ADR-074 Fennevia customize
   mode (native-area drag-and-drop, panel-content cloning, overflow mirroring);
 - complete bookmarks/history manager;
 - complete Downloads manager and file actions;

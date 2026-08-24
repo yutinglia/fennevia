@@ -1,0 +1,521 @@
+#fennevia-shell-frame-host .fennevia-composable-layout,
+#fennevia-shell-frame-host .fennevia-layout-container,
+#fennevia-shell-frame-host .fennevia-layout-wrapper {
+  display: flex;
+  min-block-size: 0;
+  min-inline-size: 0;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+#fennevia-shell-frame-host .fennevia-composable-layout,
+#fennevia-shell-frame-host .fennevia-layout-container {
+  gap: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-composable-layout {
+  flex: 1 1 auto;
+  padding: var(--fennevia-space-2);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+#fennevia-shell-frame-host .fennevia-composable-layout:focus-visible {
+  outline: 2px solid var(--fennevia-focus-color);
+  outline-offset: 2px;
+}
+
+#fennevia-shell-frame-host [data-fennevia-window-drag-region] {
+  -moz-window-dragging: drag;
+}
+
+#fennevia-shell-frame-host[data-fennevia-customize-active]
+  [data-fennevia-window-drag-region] {
+  -moz-window-dragging: no-drag;
+}
+
+#fennevia-shell-frame-host
+  :is(.fennevia-composable-layout--row, .fennevia-layout-container--row) {
+  flex-direction: row;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-wrapper--row {
+  flex-direction: row;
+}
+
+#fennevia-shell-frame-host
+  :is(.fennevia-composable-layout--column, .fennevia-layout-container--column) {
+  flex-direction: column;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-wrapper--column {
+  flex-direction: column;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node {
+  position: relative;
+  display: flex;
+  min-block-size: 0;
+  min-inline-size: 0;
+  max-block-size: 100%;
+  max-inline-size: 100%;
+  flex: 0 0 auto;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node--container,
+#fennevia-shell-frame-host .fennevia-layout-node--wrapper,
+#fennevia-shell-frame-host .fennevia-layout-node__content {
+  min-block-size: 0;
+  min-inline-size: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node--container,
+#fennevia-shell-frame-host .fennevia-layout-node--wrapper,
+#fennevia-shell-frame-host .fennevia-layout-node__content {
+  display: flex;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node--container {
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node--base {
+  border: 0;
+  border-radius: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node--wrapper {
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node__content {
+  max-block-size: 100%;
+  max-inline-size: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+#fennevia-shell-frame-host button.fennevia-layout-control {
+  display: inline-flex;
+  inline-size: var(--fennevia-control-height);
+  min-inline-size: var(--fennevia-control-height);
+  block-size: var(--fennevia-control-height);
+  min-block-size: var(--fennevia-control-height);
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node__content
+  > :is(
+    .fennevia-toolbar-widgets__separator,
+    .fennevia-toolbar-widgets__spacer,
+    .fennevia-toolbar-widgets__spring
+  ) {
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--container
+  > .fennevia-layout-container {
+  flex: 1 1 auto;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--wrapper
+  > .fennevia-layout-wrapper {
+  flex: 1 1 auto;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node--expanded {
+  flex: 1 1 0;
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-wrapper--expanded {
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-wrapper--expanded
+  > .fennevia-layout-node {
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-wrapper--expanded
+  > .fennevia-layout-node
+  > :is(
+    .fennevia-layout-container,
+    .fennevia-layout-wrapper,
+    .fennevia-layout-node__content
+  ) {
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-wrapper--center {
+  align-items: center;
+  justify-content: center;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-wrapper--padding {
+  padding: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node--editing {
+  min-block-size: 40px;
+  min-inline-size: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--fennevia-control-radius);
+  -moz-window-dragging: no-drag;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--editing:hover:not(
+    :has(.fennevia-layout-node--editing:hover)
+  ) {
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 58%,
+    transparent
+  );
+  background: color-mix(in srgb, currentColor 3%, transparent);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--editing:has(> .fennevia-layout-node__controls :focus) {
+  border-style: solid;
+  box-shadow: 0 0 0 2px var(--fennevia-focus-color);
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node__controls {
+  position: absolute;
+  z-index: 5;
+  inset-block-start: 1px;
+  inset-inline-start: 1px;
+  display: flex;
+  gap: 1px;
+  padding: 1px;
+  color: var(--fennevia-glass-text);
+  background: var(--fennevia-glass-surface);
+  border-radius: calc(var(--fennevia-control-radius) - 1px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--fennevia-motion-duration)
+    var(--fennevia-motion-easing);
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node__structure-label {
+  position: absolute;
+  z-index: 4;
+  inset-block-start: 3px;
+  inset-inline-end: 3px;
+  max-inline-size: calc(100% - 8px);
+  padding: 1px 5px;
+  overflow: hidden;
+  color: var(--fennevia-glass-muted);
+  background: color-mix(
+    in srgb,
+    var(--fennevia-glass-surface) 92%,
+    transparent
+  );
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-chip-radius);
+  font-size: 10px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--fennevia-motion-duration)
+    var(--fennevia-motion-easing);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--editing:hover:not(
+    :has(.fennevia-layout-node--editing:hover)
+  )
+  > :is(
+    .fennevia-layout-node__controls,
+    .fennevia-layout-node__structure-label
+  ),
+#fennevia-shell-frame-host
+  .fennevia-layout-node--editing:has(> .fennevia-layout-node__controls :focus)
+  > :is(
+    .fennevia-layout-node__controls,
+    .fennevia-layout-node__structure-label
+  ) {
+  opacity: 1;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--editing:hover:not(
+    :has(.fennevia-layout-node--editing:hover)
+  )
+  > .fennevia-layout-node__controls,
+#fennevia-shell-frame-host
+  .fennevia-layout-node--editing:has(> .fennevia-layout-node__controls :focus)
+  > .fennevia-layout-node__controls {
+  pointer-events: auto;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node__controls button {
+  display: grid;
+  inline-size: 22px;
+  block-size: 20px;
+  place-items: center;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  font: inherit;
+  line-height: 1;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node__controls button:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+#fennevia-shell-frame-host .fennevia-layout-node__controls button:disabled {
+  opacity: 0.28;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-container[data-fennevia-layout-drop],
+#fennevia-shell-frame-host .fennevia-layout-wrapper[data-fennevia-layout-drop],
+#fennevia-shell-frame-host
+  .fennevia-composable-layout[data-fennevia-layout-drop] {
+  outline: 2px solid var(--fennevia-focus-color);
+  outline-offset: -2px;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-container__placeholder {
+  display: grid;
+  min-block-size: 36px;
+  min-inline-size: 72px;
+  flex: 1 1 auto;
+  place-items: center;
+  padding: var(--fennevia-space-2);
+  color: var(--fennevia-glass-muted);
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border: 1px dashed var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+  font: inherit;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-container__placeholder--root {
+  max-inline-size: min(420px, 100%);
+  max-block-size: 72px;
+  flex: 0 1 auto;
+  align-self: center;
+  margin: auto;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-announcement {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-composable-layout--row,
+    .fennevia-layout-container--row,
+    .fennevia-layout-wrapper--row
+  )
+  > .fennevia-layout-node
+  > .fennevia-layout-node__content {
+  flex-direction: row;
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-composable-layout--column,
+    .fennevia-layout-container--column,
+    .fennevia-layout-wrapper--column
+  )
+  > .fennevia-layout-node
+  > .fennevia-layout-node__content {
+  flex-direction: column;
+}
+
+#fennevia-shell-frame-host
+  :is(.fennevia-composable-layout--column, .fennevia-layout-container--column)
+  > .fennevia-layout-node:has(
+    > .fennevia-layout-node__content > .fennevia-tab-strip
+  )
+  > .fennevia-layout-node__content
+  > .fennevia-tabs-summary {
+  inline-size: 100%;
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-composable-layout--row,
+    .fennevia-layout-container--row,
+    .fennevia-layout-wrapper--row
+  )
+  > .fennevia-layout-node:has(
+    > .fennevia-layout-node__content > .fennevia-toolbar-widgets__spring
+  ),
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-composable-layout--column,
+    .fennevia-layout-container--column,
+    .fennevia-layout-wrapper--column
+  )
+  > .fennevia-layout-node:has(
+    > .fennevia-layout-node__content > .fennevia-toolbar-widgets__spring
+  ) {
+  flex: 1 1 16px;
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-composable-layout--row,
+    .fennevia-layout-container--row,
+    .fennevia-layout-wrapper--row
+  )
+  > .fennevia-layout-node--special {
+  min-block-size: 40px;
+  min-inline-size: 12px;
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host
+  :is(
+    .fennevia-composable-layout--column,
+    .fennevia-layout-container--column,
+    .fennevia-layout-wrapper--column
+  )
+  > .fennevia-layout-node--special {
+  inline-size: 100%;
+  min-block-size: 12px;
+  min-inline-size: 40px;
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--special
+  > .fennevia-layout-node__content {
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host
+  :is(.fennevia-composable-layout--column, .fennevia-layout-container--column)
+  .fennevia-toolbar-widgets__separator {
+  inline-size: auto;
+  block-size: 1px;
+  margin-inline: 4px;
+  margin-block: 0;
+}
+
+#fennevia-shell-frame-host
+  :is(.fennevia-composable-layout--column, .fennevia-layout-container--column)
+  .fennevia-toolbar-widgets__spacer {
+  inline-size: auto;
+  block-size: 16px;
+}
+
+#fennevia-shell-frame-host
+  :is(.fennevia-composable-layout--column, .fennevia-layout-container--column)
+  .fennevia-toolbar-widgets__spring {
+  min-block-size: 8px;
+  flex: 1 1 16px;
+}
+
+#fennevia-shell-frame-host .fennevia-layout-address {
+  display: flex;
+  inline-size: min(320px, 100%);
+  max-inline-size: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-wrapper--expanded
+  .fennevia-layout-address {
+  inline-size: 100%;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-wrapper--expanded
+  > .fennevia-layout-node
+  > .fennevia-layout-node__content
+  > :is(.fennevia-tab-strip, .fennevia-bookmarks, .fennevia-downloads) {
+  inline-size: 100%;
+  block-size: 100%;
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-address
+  > .fennevia-layout-address-launcher {
+  inline-size: 100%;
+  min-inline-size: min(180px, 100%);
+  max-inline-size: min(680px, 100%);
+  min-block-size: var(--fennevia-control-height);
+  block-size: var(--fennevia-control-height);
+  padding: 0 10px;
+  background: color-mix(
+    in srgb,
+    var(--fennevia-glass-surface) 78%,
+    transparent
+  );
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-address
+  > .fennevia-layout-address-launcher:is(:hover, [aria-expanded="true"]) {
+  background: color-mix(
+    in srgb,
+    var(--fennevia-glass-surface) 94%,
+    transparent
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 48%,
+    var(--fennevia-glass-separator)
+  );
+}
+
+#fennevia-shell-frame-host .fennevia-layout-private {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fennevia-space-1);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="top"]
+  .fennevia-edge-panel,
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="bottom"]
+  .fennevia-edge-panel {
+  block-size: auto;
+  min-block-size: var(--fennevia-edge-top-height);
+  max-block-size: min(70vh, 680px);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="bottom"]
+  .fennevia-edge-panel {
+  min-block-size: var(--fennevia-edge-bottom-height);
+}

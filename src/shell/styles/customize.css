@@ -293,6 +293,40 @@
   line-height: 1;
 }
 
+#fennevia-shell-frame-host .fennevia-customize__danger {
+  color: var(--fennevia-danger-color);
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-danger-color) 65%,
+    var(--fennevia-glass-separator)
+  );
+}
+
+#fennevia-shell-frame-host .fennevia-customize__confirm-alert {
+  display: grid;
+  gap: var(--fennevia-space-2);
+  padding: var(--fennevia-space-3);
+  color: var(--fennevia-glass-text);
+  background: color-mix(
+    in srgb,
+    var(--fennevia-danger-color) 10%,
+    var(--fennevia-glass-surface)
+  );
+  border: 1px solid var(--fennevia-danger-color);
+  border-radius: var(--fennevia-glass-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__confirm-alert :is(h3, p) {
+  margin: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--fennevia-space-2);
+}
+
 #fennevia-shell-frame-host .fennevia-customize__swatch {
   display: inline-flex;
   inline-size: 20px;

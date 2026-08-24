@@ -2,7 +2,10 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
 
-  import type { EdgeShellController } from "../../../app/edge-surfaces";
+  import type {
+    EdgeName,
+    EdgeShellController,
+  } from "../../../app/edge-surfaces";
   import {
     translate,
     type MessageKey,
@@ -52,10 +55,12 @@
   import { isPointInsideElement } from "../../runtime/pointer-geometry";
 
   type Props = Readonly<{
-    edge: "left" | "right";
+    edge: EdgeName;
     localeId: FenneviaLocale;
     onFatalError: (error: unknown) => void;
+    orientation?: "column" | "row";
     shell: EdgeShellController;
+    showNewTab?: boolean;
     tabs: BrowserTabsStateAdapter;
   }>;
 
@@ -123,12 +128,8 @@
   let tabEntries = $derived(
     currentTabs.tabs.map((tab, index) => Object.freeze({ index, tab })),
   );
-  let pinnedTabEntries = $derived(
-    tabEntries.filter(({ tab }) => tab.pinned),
-  );
-  let regularTabEntries = $derived(
-    tabEntries.filter(({ tab }) => !tab.pinned),
-  );
+  let pinnedTabEntries = $derived(tabEntries.filter(({ tab }) => tab.pinned));
+  let regularTabEntries = $derived(tabEntries.filter(({ tab }) => !tab.pinned));
   let externalPreviewTransform = $derived.by(() => {
     if (!externalDrag || dragTargetIndex === null || dropMarkerTop === null) {
       return undefined;
@@ -136,10 +137,35 @@
     const partitionEnd = externalDrag.pinned
       ? pinnedTabEntries.length
       : currentTabs.tabs.length;
+    const transform = props.orientation === "row" ? "translateX" : "translateY";
     return dragTargetIndex === partitionEnd && partitionEnd > 0
-      ? `translateY(calc(${dropMarkerTop}px + var(--fennevia-space-1)))`
-      : `translateY(${dropMarkerTop}px)`;
+      ? `${transform}(calc(${dropMarkerTop}px + var(--fennevia-space-1)))`
+      : `${transform}(${dropMarkerTop}px)`;
   });
+
+  const primaryPointerCoordinate = (event: DragEvent): number =>
+    props.orientation === "row" ? event.clientX : event.clientY;
+
+  type ElementBounds = ReturnType<HTMLElement["getBoundingClientRect"]>;
+
+  const primaryBoundsStart = (bounds: ElementBounds): number =>
+    props.orientation === "row" ? bounds.left : bounds.top;
+
+  const primaryBoundsEnd = (bounds: ElementBounds): number =>
+    props.orientation === "row" ? bounds.right : bounds.bottom;
+
+  const primaryBoundsSize = (bounds: ElementBounds): number =>
+    props.orientation === "row" ? bounds.width : bounds.height;
+
+  const primaryScrollPosition = (
+    element: HTMLElement | undefined,
+    fallback = 0,
+  ): number =>
+    element
+      ? props.orientation === "row"
+        ? element.scrollLeft
+        : element.scrollTop
+      : fallback;
 
   const getAudioIconName = (
     action: "mute" | "resume-media" | "unmute",
@@ -426,11 +452,7 @@
       return;
     }
     event.preventDefault();
-    applyTabPointerAction(
-      tab,
-      action,
-      pointerInteractionFromMouseEvent(event),
-    );
+    applyTabPointerAction(tab, action, pointerInteractionFromMouseEvent(event));
   };
 
   const handleTabClick = (event: MouseEvent, tab: TabSnapshot) => {
@@ -536,11 +558,13 @@
   };
 
   const handleTabKeydown = (event: KeyboardEvent, tabId: string) => {
+    const previousKey = props.orientation === "row" ? "ArrowLeft" : "ArrowUp";
+    const nextKey = props.orientation === "row" ? "ArrowRight" : "ArrowDown";
     if (
       hasAccelModifier(event) &&
       event.shiftKey &&
       !event.altKey &&
-      (event.key === "ArrowUp" || event.key === "ArrowDown")
+      (event.key === previousKey || event.key === nextKey)
     ) {
       const tab = currentTabs.tabs.find((candidate) => candidate.id === tabId);
       const movingIds =
@@ -553,7 +577,7 @@
               )
               .map((candidate) => candidate.id)
           : [tabId];
-      const delta = event.key === "ArrowDown" ? 1 : -1;
+      const delta = event.key === nextKey ? 1 : -1;
       const targetIndex =
         movingIds.length > 1
           ? findTabGroupMoveIndex(currentTabs.tabs, movingIds, delta)
@@ -579,15 +603,13 @@
       !event.altKey &&
       !event.ctrlKey &&
       !event.metaKey &&
-      (event.key === "ArrowUp" || event.key === "ArrowDown")
+      (event.key === previousKey || event.key === nextKey)
     ) {
       const currentIndex = currentTabs.tabs.findIndex(
         (candidate) => candidate.id === tabId,
       );
       const next =
-        currentTabs.tabs[
-          currentIndex + (event.key === "ArrowDown" ? 1 : -1)
-        ];
+        currentTabs.tabs[currentIndex + (event.key === nextKey ? 1 : -1)];
       if (!next) {
         return;
       }
@@ -630,7 +652,7 @@
       tabId,
       event.key,
       "ltr",
-      "vertical",
+      props.orientation === "row" ? "horizontal" : "vertical",
     );
     if (!action) {
       return;
@@ -755,23 +777,28 @@
       return false;
     }
     dragGeometry.dragId = dragId;
-    dragGeometry.itemHeights = itemBounds.map((bounds) => bounds.height);
+    dragGeometry.itemHeights = itemBounds.map(primaryBoundsSize);
     dragGeometry.itemMids = itemBounds.map(
-      (bounds) => bounds.top + bounds.height / 2,
+      (bounds) => primaryBoundsStart(bounds) + primaryBoundsSize(bounds) / 2,
     );
     dragGeometry.itemTops = itemBounds.map(
-      (bounds) => bounds.top - listBounds.top,
+      (bounds) => primaryBoundsStart(bounds) - primaryBoundsStart(listBounds),
     );
-    dragGeometry.listTop = listBounds.top;
-    dragGeometry.pinnedScrollTop = pinnedTabListElement?.scrollTop ?? 0;
-    dragGeometry.regularScrollTop = regularTabListElement?.scrollTop ?? 0;
+    dragGeometry.listTop = primaryBoundsStart(listBounds);
+    dragGeometry.pinnedScrollTop = primaryScrollPosition(pinnedTabListElement);
+    dragGeometry.regularScrollTop = primaryScrollPosition(
+      regularTabListElement,
+    );
     const localDragBounds = itemBounds[localDragIndex];
     if (!localDrag?.preservePointerOffset) {
       dragGeometry.pointerOffsetY =
         localDrag && localDragBounds
           ? Math.min(
-              localDragBounds.height,
-              Math.max(0, localDrag.pointerY - localDragBounds.top),
+              primaryBoundsSize(localDragBounds),
+              Math.max(
+                0,
+                localDrag.pointerY - primaryBoundsStart(localDragBounds),
+              ),
             )
           : null;
     }
@@ -792,12 +819,19 @@
   const partitionScrollDelta = (pinned: boolean): number =>
     pinned
       ? dragGeometry.pinnedScrollTop -
-        (pinnedTabListElement?.scrollTop ?? dragGeometry.pinnedScrollTop)
+        primaryScrollPosition(
+          pinnedTabListElement,
+          dragGeometry.pinnedScrollTop,
+        )
       : dragGeometry.regularScrollTop -
-        (regularTabListElement?.scrollTop ?? dragGeometry.regularScrollTop);
+        primaryScrollPosition(
+          regularTabListElement,
+          dragGeometry.regularScrollTop,
+        );
 
   const adjustedItemMids = (list: HTMLElement): readonly number[] => {
-    const listOffset = list.getBoundingClientRect().top - dragGeometry.listTop;
+    const listOffset =
+      primaryBoundsStart(list.getBoundingClientRect()) - dragGeometry.listTop;
     return dragGeometry.itemMids.map(
       (midpoint, index) =>
         midpoint +
@@ -814,17 +848,14 @@
   };
 
   const partitionBounds = (pinned: boolean) => {
-    const partition = pinned
-      ? pinnedTabListElement
-      : regularTabListElement;
+    const partition = pinned ? pinnedTabListElement : regularTabListElement;
     const bounds = partition?.getBoundingClientRect();
-    return bounds && bounds.bottom > bounds.top ? bounds : null;
+    return bounds && primaryBoundsEnd(bounds) > primaryBoundsStart(bounds)
+      ? bounds
+      : null;
   };
 
-  const partitionAppendTop = (
-    list: HTMLElement,
-    pinned: boolean,
-  ): number => {
+  const partitionAppendTop = (list: HTMLElement, pinned: boolean): number => {
     const itemTops = adjustedItemTops();
     const start = pinned ? 0 : pinnedTabEntries.length;
     const end = pinned ? pinnedTabEntries.length : currentTabs.tabs.length;
@@ -843,7 +874,11 @@
     }
     const bounds = partitionBounds(pinned);
     return bounds
-      ? Math.max(0, bounds.top - list.getBoundingClientRect().top)
+      ? Math.max(
+          0,
+          primaryBoundsStart(bounds) -
+            primaryBoundsStart(list.getBoundingClientRect()),
+        )
       : 0;
   };
 
@@ -875,8 +910,7 @@
       const height = dragGeometry.itemHeights[visualStart] ?? 0;
       if (
         tab &&
-        (height >= 1 ||
-          !isCollapsedDragMember(currentTabs.tabs, tabId, tab.id))
+        (height >= 1 || !isCollapsedDragMember(currentTabs.tabs, tabId, tab.id))
       ) {
         break;
       }
@@ -888,8 +922,7 @@
       const height = dragGeometry.itemHeights[visualEnd] ?? 0;
       if (
         tab &&
-        (height >= 1 ||
-          !isCollapsedDragMember(currentTabs.tabs, tabId, tab.id))
+        (height >= 1 || !isCollapsedDragMember(currentTabs.tabs, tabId, tab.id))
       ) {
         break;
       }
@@ -909,7 +942,8 @@
       minimumTop,
       finalTop + finalHeight - draggedHeight,
     );
-    const pointerContentY = pointerY - list.getBoundingClientRect().top;
+    const pointerContentY =
+      pointerY - primaryBoundsStart(list.getBoundingClientRect());
     return resolveDraggedTabTranslateY(
       originalTop,
       pointerContentY,
@@ -1003,7 +1037,7 @@
         const list = dragImage.closest<HTMLElement>("[data-fennevia-tab-list]");
         if (list) {
           captureDragGeometry(list, startedDragId, {
-            pointerY: event.clientY,
+            pointerY: primaryPointerCoordinate(event),
             tabId,
           });
           reportAsyncError(
@@ -1016,7 +1050,7 @@
                 return;
               }
               captureDragGeometry(list, startedDragId, {
-                pointerY: event.clientY,
+                pointerY: primaryPointerCoordinate(event),
                 preservePointerOffset: true,
                 tabId,
               });
@@ -1058,8 +1092,8 @@
       partitionBounds(tab?.pinned === true) ?? list.getBoundingClientRect();
     const normalizedPointerY = normalizeTabDropPointerY(
       pointerY,
-      bounds.top,
-      bounds.bottom,
+      primaryBoundsStart(bounds),
+      primaryBoundsEnd(bounds),
     );
     if (normalizedPointerY === null) {
       return null;
@@ -1083,8 +1117,8 @@
     const bounds = partitionBounds(drag.pinned) ?? list.getBoundingClientRect();
     const normalizedPointerY = normalizeTabDropPointerY(
       pointerY,
-      bounds.top,
-      bounds.bottom,
+      primaryBoundsStart(bounds),
+      primaryBoundsEnd(bounds),
     );
     if (normalizedPointerY === null) {
       return null;
@@ -1111,9 +1145,7 @@
         targetIndex,
       );
       dropMarkerTop =
-        dropPreview === null
-          ? null
-          : (itemTops[dropPreview.index] ?? null);
+        dropPreview === null ? null : (itemTops[dropPreview.index] ?? null);
       return;
     }
     if (targetIndex === null) {
@@ -1236,7 +1268,7 @@
       draggedTabTranslateY === null
     ) {
       captureDragGeometry(list, drag.id, {
-        pointerY: event.clientY,
+        pointerY: primaryPointerCoordinate(event),
         preservePointerOffset: true,
         tabId: draggingTabId,
       });
@@ -1247,7 +1279,7 @@
             list,
             draggingTabId,
             drag.id,
-            event.clientY,
+            primaryPointerCoordinate(event),
           )
         : null;
     const targetIndex =
@@ -1256,9 +1288,13 @@
             list,
             draggingTabId,
             drag.id,
-            event.clientY,
+            primaryPointerCoordinate(event),
           )
-        : resolveExternalDragTargetIndex(list, drag, event.clientY);
+        : resolveExternalDragTargetIndex(
+            list,
+            drag,
+            primaryPointerCoordinate(event),
+          );
     updateDropPreview(list, drag, targetIndex);
   };
 
@@ -1313,9 +1349,13 @@
             list,
             draggingTabId,
             drag.id,
-            event.clientY,
+            primaryPointerCoordinate(event),
           )
-        : resolveExternalDragTargetIndex(list, drag, event.clientY);
+        : resolveExternalDragTargetIndex(
+            list,
+            drag,
+            primaryPointerCoordinate(event),
+          );
     if (targetIndex === null) {
       clearDropTarget();
       if (drag.source === "same-window") {
@@ -1553,6 +1593,10 @@
   use:manageTabDragWindow
   bind:this={tabStripElement}
   class="fennevia-tab-strip"
+  class:fennevia-tab-strip--horizontal={props.orientation === "row"}
+  data-fennevia-orientation={props.orientation === "row"
+    ? "horizontal"
+    : "vertical"}
   data-fennevia-tab-drop-zone=""
   ondragover={handleTabDropZoneDragOver}
   ondrop={handleTabDropZoneDrop}
@@ -1562,7 +1606,7 @@
   <div
     aria-label={t("tab.openHeading")}
     aria-multiselectable="true"
-    aria-orientation="vertical"
+    aria-orientation={props.orientation === "row" ? "horizontal" : "vertical"}
     class="fennevia-tab-strip__list"
     data-fennevia-drag-active={sourceDragId !== null || externalDrag !== null}
     data-fennevia-tab-list=""
@@ -1630,7 +1674,7 @@
         onmousedown={preventMiddleAutoscroll}
         role="presentation"
         style:transform={isDragHandle && draggedTabTranslateY !== null
-          ? `translateY(${draggedTabTranslateY}px)`
+          ? `${props.orientation === "row" ? "translateX" : "translateY"}(${draggedTabTranslateY}px)`
           : undefined}
       >
         {#if tab.container}
@@ -1643,7 +1687,9 @@
         <button
           use:registerTabButton={tab.id}
           aria-busy={tab.loading}
-          aria-keyshortcuts="Control+Shift+ArrowUp Control+Shift+ArrowDown"
+          aria-keyshortcuts={props.orientation === "row"
+            ? "Control+Shift+ArrowLeft Control+Shift+ArrowRight"
+            : "Control+Shift+ArrowUp Control+Shift+ArrowDown"}
           aria-label={getTabAccessibleName(
             tab,
             index,
@@ -1851,7 +1897,12 @@
         aria-hidden="true"
         class="fennevia-tab-strip__drop-indicator"
         data-fennevia-drop-preview={dropPreview?.position ?? "before"}
-        style:inset-block-start={`${dropMarkerTop}px`}
+        style:inset-block-start={props.orientation === "column"
+          ? `${dropMarkerTop}px`
+          : undefined}
+        style:inset-inline-start={props.orientation === "row"
+          ? `${dropMarkerTop}px`
+          : undefined}
       ></span>
     {/if}
   </div>
@@ -1862,17 +1913,19 @@
     class="fennevia-tab-strip__announcement">{reorderAnnouncement}</output
   >
 
-  <button
-    aria-label={t("tab.newTabAria")}
-    class="fennevia-control fennevia-tab-strip__new"
-    data-fennevia-action="new-tab"
-    onauxclick={handleNewTabAuxClick}
-    onclick={handleNewTabClick}
-    onmousedown={preventMiddleAutoscroll}
-    title={t("tab.newTab")}
-    type="button"
-  >
-    <span aria-hidden="true"><FirefoxIcon name="plus" /></span>
-    <span>{t("tab.newTab")}</span>
-  </button>
+  {#if props.showNewTab !== false}
+    <button
+      aria-label={t("tab.newTabAria")}
+      class="fennevia-control fennevia-tab-strip__new"
+      data-fennevia-action="new-tab"
+      onauxclick={handleNewTabAuxClick}
+      onclick={handleNewTabClick}
+      onmousedown={preventMiddleAutoscroll}
+      title={t("tab.newTab")}
+      type="button"
+    >
+      <span aria-hidden="true"><FirefoxIcon name="plus" /></span>
+      <span>{t("tab.newTab")}</span>
+    </button>
+  {/if}
 </div>

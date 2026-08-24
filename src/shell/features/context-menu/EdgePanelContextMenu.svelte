@@ -21,6 +21,7 @@
     customizeSession?: CustomizeSessionController;
     edge: EdgeName;
     frame: HTMLElement;
+    hasDownloadsStatus: boolean;
     localeId: FenneviaLocale;
     onDismiss: (edge: EdgeName) => void;
     onFatalError: (error: unknown) => void;
@@ -66,7 +67,7 @@
       ? Boolean(props.tabs)
       : props.sidePanelRole === "bookmarks"
         ? Boolean(props.bookmarks)
-        : props.edge === "bottom"
+        : props.hasDownloadsStatus
           ? browserToolsSnapshot?.downloads === true
           : browserToolsSnapshot?.settings === true,
   );
@@ -369,13 +370,13 @@
         role="menuitem"
         type="button">{t("bookmarks.manage")}</button
       >
-    {:else if props.edge === "bottom" && browserToolsSnapshot?.downloads}
+    {:else if props.hasDownloadsStatus && browserToolsSnapshot?.downloads}
       <button
         onclick={() => void runContextAction("open-downloads")}
         role="menuitem"
         type="button">{t("panelContext.openDownloads")}</button
       >
-    {:else if props.edge === "top" && browserToolsSnapshot?.settings}
+    {:else if browserToolsSnapshot?.settings}
       <button
         onclick={() => void runContextAction("settings")}
         role="menuitem"

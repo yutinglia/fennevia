@@ -40,7 +40,9 @@ const projectRoot = path.resolve(
 
 test("regular tabs keep intrinsic height above the new-tab button", async () => {
   const styles = await readShellStyles(projectRoot);
-  const listRule = styles.match(/\.fennevia-tab-strip__list \{([^}]*)\}/u)?.[1];
+  const listRule = styles.match(
+    /^#fennevia-shell-frame-host \.fennevia-tab-strip__list \{([^}]*)\}/mu,
+  )?.[1];
   const regularPartitionRule = styles.match(
     /\.fennevia-tab-strip__partition--regular \{([^}]*)\}/u,
   )?.[1];
@@ -493,7 +495,10 @@ test("the component uses semantic sibling controls and property-safe rendering o
 
   assert.match(source, /role="tablist"/u);
   assert.match(source, /aria-multiselectable="true"/u);
-  assert.match(source, /aria-orientation="vertical"/u);
+  assert.match(
+    tabSource,
+    /aria-orientation=\{props\.orientation === "row" \? "horizontal" : "vertical"\}/u,
+  );
   assert.match(
     tabSource,
     /let pinnedTabEntries = \$derived\([\s\S]*?filter\(\(\{ tab \}\) => tab\.pinned\)/u,
@@ -574,7 +579,10 @@ test("the component uses semantic sibling controls and property-safe rendering o
     source,
     /data-fennevia-just-opened=\{highlightedTabIds\.includes\(tab\.id\)\}/u,
   );
-  assert.match(source, /"ltr",\s*"vertical"/u);
+  assert.match(
+    source,
+    /"ltr",\s*props\.orientation === "row" \? "horizontal" : "vertical"/u,
+  );
   assert.match(source, /handleTabAuxClick/u);
   assert.match(
     tabSource,
@@ -687,7 +695,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /resolveTabDropPreview/u);
   assert.match(
     tabSource,
-    /normalizeTabDropPointerY\([\s\S]*?bounds\.top,[\s\S]*?bounds\.bottom/u,
+    /normalizeTabDropPointerY\([\s\S]*?primaryBoundsStart\(bounds\),[\s\S]*?primaryBoundsEnd\(bounds\)/u,
   );
   assert.match(source, /transfer\.setDragImage/u);
   assert.match(tabSource, /transfer\.clearData\(\)/u);
@@ -712,11 +720,19 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(tabSource, /dragGeometry\.itemTops/u);
   assert.match(
     tabSource,
-    /dragGeometry\.pinnedScrollTop -[\s\S]*?pinnedTabListElement\?\.scrollTop/u,
+    /dragGeometry\.pinnedScrollTop -[\s\S]*?primaryScrollPosition\([\s\S]*?pinnedTabListElement/u,
   );
   assert.match(
     tabSource,
-    /dragGeometry\.regularScrollTop -[\s\S]*?regularTabListElement\?\.scrollTop/u,
+    /dragGeometry\.regularScrollTop -[\s\S]*?primaryScrollPosition\([\s\S]*?regularTabListElement/u,
+  );
+  assert.match(
+    tabSource,
+    /primaryPointerCoordinate[\s\S]*?props\.orientation === "row" \? event\.clientX : event\.clientY/u,
+  );
+  assert.match(
+    tabSource,
+    /primaryScrollPosition[\s\S]*?element\.scrollLeft[\s\S]*?element\.scrollTop/u,
   );
   assert.match(
     tabSource,
@@ -833,6 +849,8 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /#fennevia-shell-frame-host/u);
   assert.match(source, /class="fennevia-tab-strip__drop-indicator"/u);
   assert.match(source, /style:inset-block-start/u);
+  assert.match(source, /style:inset-inline-start/u);
+  assert.match(source, /"translateX" : "translateY"/u);
   assert.match(
     styles,
     /data-fennevia-drag-shift="up"[\s\S]*?translateY\(\s*calc\(-100% - var\(--fennevia-space-1\)\)/u,
@@ -840,6 +858,10 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(
     styles,
     /data-fennevia-drag-shift="down"[\s\S]*?translateY\(\s*calc\(100% \+ var\(--fennevia-space-1\)\)/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip--horizontal[\s\S]*?data-fennevia-drag-shift="up"[\s\S]*?translateX\(calc\(-100% - var\(--fennevia-space-1\)\)\)/u,
   );
   assert.match(
     styles,

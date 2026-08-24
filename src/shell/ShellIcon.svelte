@@ -1,11 +1,16 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
   export type ShellIconName =
+    | "center"
     | "close"
+    | "column"
+    | "expanded"
     | "generic"
     | "maximize"
     | "minimize"
+    | "padding"
     | "restore"
+    | "row"
     | "shield"
     | "zoom";
 
@@ -28,6 +33,20 @@
 >
   {#if name === "close"}
     <path d="m7 7 10 10M17 7 7 17" />
+  {:else if name === "center"}
+    <rect height="16" rx="2" width="16" x="4" y="4" />
+    <rect height="6" rx="1" width="6" x="9" y="9" />
+  {:else if name === "column"}
+    <rect height="7" rx="1" width="14" x="5" y="4" />
+    <rect height="7" rx="1" width="14" x="5" y="13" />
+  {:else if name === "row"}
+    <rect height="16" rx="1" width="6" x="4" y="4" />
+    <rect height="16" rx="1" width="6" x="14" y="4" />
+  {:else if name === "expanded"}
+    <path d="M4 12h16M4 12l4-4M4 12l4 4M20 12l-4-4M20 12l-4 4" />
+  {:else if name === "padding"}
+    <rect height="16" rx="2" width="16" x="4" y="4" />
+    <rect height="8" rx="1" stroke-dasharray="2 2" width="8" x="8" y="8" />
   {:else if name === "maximize"}
     <rect height="14" rx="1.5" width="14" x="5" y="5" />
   {:else if name === "minimize"}

@@ -506,7 +506,7 @@ counts/enums/booleans. Representative providers, remote-suggestion preference
 combinations, second/private real windows, and the release matrix remain not
 run. See `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
 
-### 7.5 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, widget zones and customize mode ADR-044/ADR-045/ADR-046/ADR-047
+### 7.5 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, composable widgets and customize mode ADR-044/ADR-045/ADR-046/ADR-047/ADR-074
 
 Each managed window owns one `browser-tools` Firefox controller and one ordinary
 application adapter. The controller validates twenty required current
@@ -575,20 +575,25 @@ or runtime load. See ADR-037, ADR-042, ADR-059, ADR-060,
 `docs/research/firefox-153-native-popup-anchoring.md`, and
 `docs/research/firefox-153-154-native-shell-icons.md`.
 
-Owner-approved ADR-044/ADR-045/ADR-046 widget-zone and customize flow: each managed
-window may own one optional `toolbar-widgets` controller. It renders the
-Fennevia-owned four-zone widget layout (default: a read-only mirror of the
-current `CustomizableUI` nav-bar placements in the top zone) and sends the
-frontend an immutable snapshot per placed widget of opaque handle, fixed kind,
+Owner-approved ADR-044/ADR-045/ADR-046/ADR-074 widget and customize flow: each
+managed window may own one optional `toolbar-widgets` controller. It renders a
+strict bounded version-2 tree under the four fixed edge roots. The default tree
+preserves the previous tabs-left/bookmarks-right/bottom-downloads composition
+and includes the current `CustomizableUI` nav-bar placement mirror in Top.
+Ordinary layout nodes expose only a layout-local instance id, closed
+project/container/wrapper/special kind, Row/Column direction, a fixed
+Center/Expanded/Padding wrapper kind, children, and immutable
+widget presentation. Each placed widget carries an opaque handle, fixed kind,
 bounded label and tooltip text, a bounded `moz-extension://` icon URL for
 extension actions, a bounded `chrome://` or `resource://` icon URL for
 built-ins (rendered as a CSS mask with `currentColor`, not `<img>`), bounded rgba-only
 badge text/colors, a fixed curated presentation token whose exact meanings now
 prefer ADR-060's packaged Firefox map, disabled/missing flags, and at most eight
 built-in compound-part records with separate opaque handles and the same
-bounded presentation fields, plus a widget palette of every remaining current `CustomizableUI` widget
-(placed areas and the unused palette), Fennevia-owned optional widgets, and the
-fixed specials, each behind an opaque palette token. Extension name, icon, and
+bounded presentation fields, plus a widget palette of every remaining current
+`CustomizableUI` widget (placed areas and the unused palette), fixed project
+widgets, Row/Column, Center/Expanded/Padding, and the fixed specials, each behind an opaque palette
+token. Extension name, icon, and
 badge are extension identity and may exist only in that window's in-memory
 frontend state and rendered DOM (`img src`, button label/tooltip, badge chip).
 Built-in chrome/resource icon URLs follow the same in-memory-only rule via
@@ -598,23 +603,25 @@ Extension identity never enters logs, diagnostics, serialized frontend state,
 CSS custom properties on shared roots, root datasets, clipboard, or network
 requests; diagnostics stay at widget counts, revisions, and fixed codes.
 
-ADR-045 adds two owner-approved bounded exceptions. ADR-064 extends only the
-first exception's closed schema. First, profile-local persistence: the
+ADR-045 adds two owner-approved bounded exceptions. ADR-064 and ADR-074 extend
+only the first exception's closed schema. First, profile-local persistence: the
 privileged controller stores the Fennevia layout, style, and panel policy as
 bounded versioned JSON in the `fennevia.customize.layout`,
 `fennevia.customize.style`, and `fennevia.customize.panels` string preferences
 (16 KiB cap each, strict schema,
-invalid values fail safe to the default mirror layout and default style). The
-layout pref contains Firefox widget ids — including extension widget ids — and
-the fixed Fennevia widget/special tokens; the style pref contains only the
+invalid values fail safe to the default composable layout and default style).
+The layout pref contains Firefox widget ids — including extension widget ids —
+fixed project/special/wrapper tokens, bounded node structure, layout-local instance ids,
+and `allowMultiplePlacements`; the style pref contains only the
 fixed style token set (theme, `#rrggbb` color tokens or empty defaults, and
 bounded integers for blur, radius, density, surface opacity, saturation,
 shadow, motion, font size, in-window hide delay, window-leave hide delay,
 temporary reveal duration, shortcut-tip duration, and edge trigger size). The
-panel pref contains only one closed side-layout enum, one bottom-enabled
-boolean, two closed activity-light enums, and ADR-068's `allowCompactWindow`
-boolean (default false); it cannot encode arbitrary geometry, CSS, a URL, or
-feature activity. Compact-window only toggles a root attribute and one
+panel pref version 2 contains independent Left/Right/Bottom enabled booleans,
+the legacy closed side-layout migration hint, two closed activity-light enums,
+and ADR-068's `allowCompactWindow` boolean (default false); Top has no enabled
+field. It cannot encode arbitrary geometry, CSS, a URL, or feature activity.
+Compact-window only toggles a root attribute and one
 active/not-suspended `min-width`/`min-height` override; it stores no browsing
 data and is not a health input. Missing keys keep documented defaults.
 ADR-054 keeps those interaction values at 100–5,000 ms, 100–5,000 ms,
@@ -630,15 +637,30 @@ writes: placing a widget that has no live node calls
 the id in the persisted `adopted` list; removing the last Fennevia placement of
 an adopted id restores it (`addWidgetToArea(id, AREA_ADDONS)` for extension
 widgets, `removeWidgetFromArea(id)` otherwise), and layout reset restores every
-adopted id and clears the pref. Fennevia never writes any other CustomizableUI
-state and never edits placements the user made natively.
+adopted id and clears the pref. Confirmed **Clean all panels** restores the same
+adopted ids, then persists a tree containing only Top Customize. Fennevia never
+writes any other CustomizableUI state and never edits placements the user made
+natively.
 
-ADR-047 adds a frontend-only customize session: HTML5 `dataTransfer` on
+ADR-047/ADR-074 add a frontend-only customize session: HTML5 `dataTransfer` on
 project-owned nodes may carry the MIME `application/x-fennevia-toolbar-widget`
-and a JSON payload of an opaque palette token or a zone name plus index.
-That payload never includes Firefox widget ids, extension identity, URLs, or
-labels. The session is not persisted; the frame marker
+and a JSON payload of an opaque palette token or layout-local instance id.
+Destination zone, bounded parent path, and insertion index are derived from the
+owned target rather than transferred as Firefox identity. The payload never
+includes Firefox widget ids, extension identity, URLs, or labels. The session
+is not persisted; the frame marker
 `data-fennevia-customize-active` is a boolean presence attribute.
+The in-process drag-lifecycle listeners receive only that same opaque source
+and are deterministically unsubscribed; target-outline and contextual-control
+visibility are transient component/CSS state with no persistence or log sink.
+
+Compatible duplicate placement resolves one current in-process owner and never
+duplicates a native node or panel. Stateful feature ids remain singleton;
+Row/Column/Center/Expanded/Padding/Separator/Space/Flexible space remain
+repeatable because they contain no browser identity. The Clean confirmation alert stores only a transient
+boolean and fixed localized text. Empty enabled drop targets, blank layout
+gaps, and ordinary-mode window-drag regions add no dataset value beyond fixed
+project attributes and no new log or persistence sink.
 
 Activation resolves only registry handles, validates the project host, and
 uses the transient in-process button event only while invoking a Firefox owner.
@@ -652,11 +674,11 @@ logged, persisted, or copied to a root dataset or CSS property. Remaining
 simple widgets dispatch the native node command. Any temporary per-window
 owner-anchor substitution is restored immediately after the call, and
 resulting Firefox-owned panels use the existing ADR-042 hold/release and
-re-anchor path. Fennevia-owned widgets run fixed frontend actions (reveal
-bookmarks/downloads panels) without touching the bridge. Edit operations accept
-only the validated fixed operation set with a revision guard.
+re-anchor path. Fennevia-owned widgets run fixed frontend actions without
+touching the bridge. Edit operations accept only the validated fixed operation
+set, bounded paths, and a revision guard.
 The capability is optional: a missing `CustomizableUI`/`PanelUI` hides the
-zones, a drifted compound child marks that placement missing, and a missing
+layouts, a drifted compound child marks that placement missing, and a missing
 `Services.prefs` disables editing, in every case without joining activation
 health. Disposal detaches the CustomizableUI listener, the
 preference observer, the attribute `MutationObserver`, popup listeners, pending
@@ -778,9 +800,11 @@ records remain in hidden transient state. Counts cap at 999 with explicit
 overflow. One exact list view supplies added/changed/removed/batch callbacks;
 there is no polling or feature timer, and disposal pairs `removeView()` once.
 
-Download events never reveal the panel. The bottom surface consumes only the
-existing #31 pointer/focus/keyboard controller. It contains no open, execute,
-reveal-in-folder, retry, pause, resume, cancel, delete, or file action. The
+Download events never reveal a panel. ADR-074's movable singleton Downloads
+status widget consumes only the existing controller of whichever edge contains
+it; moving or removing it does not duplicate or stop the per-window bridge. It
+contains no open, execute, reveal-in-folder, retry, pause, resume, cancel,
+delete, or file action. The
 ADR-043 bottom gutter light reuses the same anonymous aggregate and optional
 percentage; it is `aria-hidden`, `pointer-events: none`, and never receives a
 filename, path, source URL, or byte count. Native
@@ -1173,8 +1197,8 @@ A dedicated review is required before:
 - installer deletion-scope change;
 - telemetry, analytics, crash upload, or remote update;
 - hiding a native parent with uncovered descendants;
-- custom titlebar replacement beyond ADR-038's retained-native caption
-  exception.
+- custom titlebar replacement beyond ADR-038/ADR-074's retained-native caption
+  and project-rendered duplicate-placement exception.
 
 Use `docs/security-controls.md` for required evidence. An ordinary “no impact”
 checkbox is not a waiver.

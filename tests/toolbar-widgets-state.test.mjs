@@ -14,13 +14,19 @@ import {
   createBrowserToolbarWidgetsStateAdapter,
   createDefaultToolbarStyle,
   createDefaultShellPanelConfig,
+  createEmptyToolbarLayoutZones,
   createEmptyToolbarWidgetZones,
   createUnavailableToolbarWidgetsSnapshot,
+  defaultToolbarLayoutDirection,
+  findToolbarLayoutInstance,
   isInteractiveToolbarWidget,
+  isToolbarOptionalPanelEnabled,
   isToolbarWidgetKind,
   getSidePanelEdge,
   getSidePanelRole,
   reduceBrowserToolbarWidgetsState,
+  toolbarLayoutContainsProjectWidget,
+  toolbarLayoutParent,
 } from "../src/app/toolbar-widgets-state.ts";
 
 const extensionWidget = Object.freeze({
@@ -122,10 +128,88 @@ const paletteEntry = Object.freeze({
 
 const emptySnapshot = createUnavailableToolbarWidgetsSnapshot();
 
+test("recursive layout helpers preserve paths, parents, and container axes", () => {
+  const layout = Object.freeze({
+    ...createEmptyToolbarLayoutZones(),
+    top: Object.freeze([
+      Object.freeze({
+        children: Object.freeze([
+          Object.freeze({
+            instanceId: "layout-2",
+            projectId: "tabs",
+            type: "item",
+            widget: fenneviaWidget,
+          }),
+          Object.freeze({
+            children: Object.freeze([
+              Object.freeze({
+                children: Object.freeze([
+                  Object.freeze({
+                    instanceId: "layout-5",
+                    projectId: "customize-shell",
+                    type: "item",
+                    widget: fenneviaWidget,
+                  }),
+                ]),
+                instanceId: "layout-4",
+                kind: "center",
+                type: "wrapper",
+              }),
+            ]),
+            direction: "column",
+            instanceId: "layout-3",
+            type: "container",
+          }),
+        ]),
+        direction: "row",
+        instanceId: "layout-1",
+        type: "container",
+      }),
+    ]),
+  });
+
+  assert.deepEqual(findToolbarLayoutInstance(layout, "layout-5"), {
+    path: [0, 1, 0, 0],
+    zone: "top",
+  });
+  assert.equal(findToolbarLayoutInstance(layout, ""), null);
+  assert.equal(findToolbarLayoutInstance(layout, "layout-99"), null);
+  assert.equal(toolbarLayoutContainsProjectWidget(layout.top, "tabs"), true);
+  assert.equal(
+    toolbarLayoutContainsProjectWidget(layout.top, "downloads-status"),
+    false,
+  );
+  assert.deepEqual(
+    toolbarLayoutParent(layout, { path: [0, 1, 0, 0], zone: "top" }),
+    {
+      children: layout.top[0].children[1].children[0].children,
+      direction: "column",
+      parentPath: [0, 1, 0],
+    },
+  );
+  assert.deepEqual(toolbarLayoutParent(layout, { path: [0], zone: "top" }), {
+    children: layout.top,
+    direction: "row",
+    parentPath: [],
+  });
+  assert.equal(
+    toolbarLayoutParent(layout, { path: [0, 2, 0], zone: "top" }),
+    null,
+  );
+  assert.equal(defaultToolbarLayoutDirection("left"), "column");
+  assert.equal(defaultToolbarLayoutDirection("bottom"), "row");
+  assert.equal(isToolbarOptionalPanelEnabled(true, 0, false), false);
+  assert.equal(isToolbarOptionalPanelEnabled(true, 0, true), true);
+  assert.equal(isToolbarOptionalPanelEnabled(false, 3, true), false);
+  assert.equal(isToolbarOptionalPanelEnabled(true, 3, false), true);
+});
+
 const makeSnapshot = (topWidgets, overrides = {}) =>
   Object.freeze({
+    allowMultiplePlacements: false,
     available: true,
     canEdit: true,
+    layout: createEmptyToolbarLayoutZones(),
     layoutCustomized: false,
     palette: Object.freeze([paletteEntry]),
     panels: createDefaultShellPanelConfig(),
@@ -359,6 +443,55 @@ test("copyToolbarWidgetsSnapshot validates the container shape", () => {
   assert.ok(Object.isFrozen(copy.zones.top));
   assert.ok(Object.isFrozen(copy.palette));
 
+  const wrapped = copyToolbarWidgetsSnapshot(
+    makeSnapshot([], {
+      layout: Object.freeze({
+        ...createEmptyToolbarLayoutZones(),
+        top: Object.freeze([
+          Object.freeze({
+            children: Object.freeze([]),
+            instanceId: "layout-1",
+            kind: "expanded",
+            type: "wrapper",
+          }),
+        ]),
+      }),
+    }),
+  );
+  assert.equal(wrapped.layout.top[0].kind, "expanded");
+  assert.throws(
+    () =>
+      copyToolbarWidgetsSnapshot(
+        makeSnapshot([], {
+          layout: {
+            ...createEmptyToolbarLayoutZones(),
+            top: [
+              {
+                children: [
+                  {
+                    instanceId: "layout-2",
+                    projectId: "tabs",
+                    type: "item",
+                    widget: fenneviaWidget,
+                  },
+                  {
+                    instanceId: "layout-3",
+                    projectId: "bookmarks",
+                    type: "item",
+                    widget: fenneviaWidget,
+                  },
+                ],
+                instanceId: "layout-1",
+                kind: "center",
+                type: "wrapper",
+              },
+            ],
+          },
+        }),
+      ),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID/u,
+  );
+
   assert.throws(
     () => copyToolbarWidgetsSnapshot({ ...makeSnapshot([]), available: 1 }),
     /FENNEVIA_TOOLBAR_WIDGETS_STATE_SNAPSHOT_INVALID/u,
@@ -475,12 +608,14 @@ test("style partials validate every provided key", () => {
   );
 });
 
-test("panel config stays closed, immutable, and maps one role per side", () => {
+test("panel config stays closed, immutable, and keeps the legacy side migration hint", () => {
   const defaults = createDefaultShellPanelConfig();
   assert.deepEqual(defaults, {
     allowCompactWindow: false,
-    bottomDownloadsEnabled: true,
+    bottomPanelEnabled: true,
     bottomProgressLight: "downloads",
+    leftPanelEnabled: true,
+    rightPanelEnabled: true,
     sidePanelLayout: "tabs-left",
     topProgressLight: "loading",
   });
@@ -489,8 +624,9 @@ test("panel config stays closed, immutable, and maps one role per side", () => {
 
   const swapped = copyShellPanelConfigSnapshot({
     ...defaults,
-    bottomDownloadsEnabled: false,
+    bottomPanelEnabled: false,
     bottomProgressLight: "loading",
+    leftPanelEnabled: false,
     sidePanelLayout: "tabs-right",
     topProgressLight: "off",
   });
@@ -498,8 +634,12 @@ test("panel config stays closed, immutable, and maps one role per side", () => {
   assert.equal(getSidePanelEdge(swapped, "tabs"), "right");
   assert.ok(Object.isFrozen(swapped));
   assert.deepEqual(
-    copyShellPanelConfigPartial({ topProgressLight: "downloads" }),
+    copyShellPanelConfigPartial({
+      rightPanelEnabled: false,
+      topProgressLight: "downloads",
+    }),
     {
+      rightPanelEnabled: false,
       topProgressLight: "downloads",
     },
   );
@@ -541,13 +681,52 @@ test("edit operations validate their shape before crossing the bridge", () => {
     zone: "right",
   });
   copyToolbarWidgetsEditOperation({ revision: 1, type: "reset-layout" });
+  copyToolbarWidgetsEditOperation({ revision: 1, type: "clean-layout" });
+  copyToolbarWidgetsEditOperation({
+    index: 0,
+    parentPath: [],
+    revision: 1,
+    token: "palette-1",
+    type: "add-node",
+    zone: "top",
+  });
+  copyToolbarWidgetsEditOperation({
+    direction: "column",
+    index: 0,
+    parentPath: [],
+    revision: 1,
+    type: "add-container",
+    zone: "left",
+  });
+  copyToolbarWidgetsEditOperation({
+    from: { path: [0], zone: "top" },
+    revision: 1,
+    to: { index: 0, parentPath: [], zone: "left" },
+    type: "move-node",
+  });
+  copyToolbarWidgetsEditOperation({
+    location: { path: [0], zone: "left" },
+    revision: 1,
+    type: "remove-node",
+  });
+  copyToolbarWidgetsEditOperation({
+    allow: true,
+    revision: 1,
+    type: "set-multiple-placements",
+  });
+  copyToolbarWidgetsEditOperation({
+    direction: "row",
+    location: { path: [0], zone: "left" },
+    revision: 1,
+    type: "set-container-direction",
+  });
   copyToolbarWidgetsEditOperation({
     style: { theme: "dark" },
     type: "set-style",
   });
   copyToolbarWidgetsEditOperation({ type: "reset-style" });
   copyToolbarWidgetsEditOperation({
-    panels: { sidePanelLayout: "tabs-right" },
+    panels: { rightPanelEnabled: false },
     type: "set-panels",
   });
   copyToolbarWidgetsEditOperation({ type: "reset-panels" });
