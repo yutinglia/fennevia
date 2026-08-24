@@ -95,20 +95,23 @@
   let draggedTabTranslateY: number | null = $state(null);
   let dropPreview: TabDropPreview = $state(null);
   let dropMarkerTop: number | null = $state(null);
+  let pendingPinnedPartitionDragId: string | null = null;
   let reorderAnnouncement = $state("");
   let tabStripElement: HTMLDivElement | undefined = $state();
+  let pinnedTabListElement: HTMLDivElement | undefined = $state();
+  let regularTabListElement: HTMLDivElement | undefined = $state();
   let delayedFocusTimer: DelayedTimer | undefined;
   let highlightTimer: DelayedTimer | undefined;
   let dragHoldActive = false;
   const dragGeometry = {
-    appendTop: 0,
     dragId: null as string | null,
     itemHeights: [] as readonly number[],
     itemMids: [] as readonly number[],
     itemTops: [] as readonly number[],
-    listScrollTop: 0,
     listTop: 0,
+    pinnedScrollTop: 0,
     pointerOffsetY: null as number | null,
+    regularScrollTop: 0,
     tabIds: [] as readonly string[],
   };
   const tabButtons: Array<{
@@ -117,12 +120,23 @@
   }> = [];
 
   let tabLabels = $derived(createTabStripLabels(props.localeId));
+  let tabEntries = $derived(
+    currentTabs.tabs.map((tab, index) => Object.freeze({ index, tab })),
+  );
+  let pinnedTabEntries = $derived(
+    tabEntries.filter(({ tab }) => tab.pinned),
+  );
+  let regularTabEntries = $derived(
+    tabEntries.filter(({ tab }) => !tab.pinned),
+  );
   let externalPreviewTransform = $derived.by(() => {
     if (!externalDrag || dragTargetIndex === null || dropMarkerTop === null) {
       return undefined;
     }
-    return dragTargetIndex === currentTabs.tabs.length &&
-      currentTabs.tabs.length > 0
+    const partitionEnd = externalDrag.pinned
+      ? pinnedTabEntries.length
+      : currentTabs.tabs.length;
+    return dragTargetIndex === partitionEnd && partitionEnd > 0
       ? `translateY(calc(${dropMarkerTop}px + var(--fennevia-space-1)))`
       : `translateY(${dropMarkerTop}px)`;
   });
@@ -678,14 +692,14 @@
   };
 
   const clearDragGeometry = () => {
-    dragGeometry.appendTop = 0;
     dragGeometry.dragId = null;
     dragGeometry.itemHeights = [];
     dragGeometry.itemMids = [];
     dragGeometry.itemTops = [];
-    dragGeometry.listScrollTop = 0;
     dragGeometry.listTop = 0;
+    dragGeometry.pinnedScrollTop = 0;
     dragGeometry.pointerOffsetY = null;
+    dragGeometry.regularScrollTop = 0;
     dragGeometry.tabIds = [];
   };
 
@@ -697,6 +711,7 @@
   };
 
   function clearTabDrag(retainPointer = false) {
+    pendingPinnedPartitionDragId = null;
     draggingTabId = null;
     sourceDragId = null;
     externalDrag = null;
@@ -739,33 +754,17 @@
       clearDragGeometry();
       return false;
     }
-    let lastVisibleIndex = itemBounds.length - 1;
-    while (lastVisibleIndex > 0) {
-      const tab = currentTabs.tabs[lastVisibleIndex];
-      const height = itemBounds[lastVisibleIndex]?.height ?? 0;
-      if (
-        !tab ||
-        height >= 1 ||
-        !isCollapsedDragMember(currentTabs.tabs, draggingTabId, tab.id)
-      ) {
-        break;
-      }
-      lastVisibleIndex -= 1;
-    }
-    dragGeometry.appendTop =
-      (itemBounds[lastVisibleIndex]?.bottom ?? listBounds.top) -
-      listBounds.top +
-      list.scrollTop;
     dragGeometry.dragId = dragId;
     dragGeometry.itemHeights = itemBounds.map((bounds) => bounds.height);
     dragGeometry.itemMids = itemBounds.map(
       (bounds) => bounds.top + bounds.height / 2,
     );
     dragGeometry.itemTops = itemBounds.map(
-      (bounds) => bounds.top - listBounds.top + list.scrollTop,
+      (bounds) => bounds.top - listBounds.top,
     );
-    dragGeometry.listScrollTop = list.scrollTop;
     dragGeometry.listTop = listBounds.top;
+    dragGeometry.pinnedScrollTop = pinnedTabListElement?.scrollTop ?? 0;
+    dragGeometry.regularScrollTop = regularTabListElement?.scrollTop ?? 0;
     const localDragBounds = itemBounds[localDragIndex];
     if (!localDrag?.preservePointerOffset) {
       dragGeometry.pointerOffsetY =
@@ -790,13 +789,62 @@
       (dragTabId, index) => dragTabId === currentTabs.tabs[index]?.id,
     );
 
+  const partitionScrollDelta = (pinned: boolean): number =>
+    pinned
+      ? dragGeometry.pinnedScrollTop -
+        (pinnedTabListElement?.scrollTop ?? dragGeometry.pinnedScrollTop)
+      : dragGeometry.regularScrollTop -
+        (regularTabListElement?.scrollTop ?? dragGeometry.regularScrollTop);
+
   const adjustedItemMids = (list: HTMLElement): readonly number[] => {
-    const listOffset =
-      list.getBoundingClientRect().top -
-      dragGeometry.listTop +
-      dragGeometry.listScrollTop -
-      list.scrollTop;
-    return dragGeometry.itemMids.map((midpoint) => midpoint + listOffset);
+    const listOffset = list.getBoundingClientRect().top - dragGeometry.listTop;
+    return dragGeometry.itemMids.map(
+      (midpoint, index) =>
+        midpoint +
+        listOffset +
+        partitionScrollDelta(currentTabs.tabs[index]?.pinned === true),
+    );
+  };
+
+  const adjustedItemTops = (): readonly number[] => {
+    return dragGeometry.itemTops.map(
+      (top, index) =>
+        top + partitionScrollDelta(currentTabs.tabs[index]?.pinned === true),
+    );
+  };
+
+  const partitionBounds = (pinned: boolean) => {
+    const partition = pinned
+      ? pinnedTabListElement
+      : regularTabListElement;
+    const bounds = partition?.getBoundingClientRect();
+    return bounds && bounds.bottom > bounds.top ? bounds : null;
+  };
+
+  const partitionAppendTop = (
+    list: HTMLElement,
+    pinned: boolean,
+  ): number => {
+    const itemTops = adjustedItemTops();
+    const start = pinned ? 0 : pinnedTabEntries.length;
+    const end = pinned ? pinnedTabEntries.length : currentTabs.tabs.length;
+    for (let index = end - 1; index >= start; index -= 1) {
+      const tab = currentTabs.tabs[index];
+      const height = dragGeometry.itemHeights[index] ?? 0;
+      const top = itemTops[index];
+      if (
+        tab &&
+        top !== undefined &&
+        (height >= 1 ||
+          !isCollapsedDragMember(currentTabs.tabs, draggingTabId, tab.id))
+      ) {
+        return top + height;
+      }
+    }
+    const bounds = partitionBounds(pinned);
+    return bounds
+      ? Math.max(0, bounds.top - list.getBoundingClientRect().top)
+      : 0;
   };
 
   const resolveLocalDraggedTranslateY = (
@@ -811,7 +859,8 @@
     const draggingIndex = currentTabs.tabs.findIndex((tab) => tab.id === tabId);
     const dragging = currentTabs.tabs[draggingIndex];
     const draggedHeight = dragGeometry.itemHeights[draggingIndex];
-    const originalTop = dragGeometry.itemTops[draggingIndex];
+    const itemTops = adjustedItemTops();
+    const originalTop = itemTops[draggingIndex];
     if (!dragging || draggedHeight === undefined || originalTop === undefined) {
       return null;
     }
@@ -846,8 +895,8 @@
       }
       visualEnd -= 1;
     }
-    const minimumTop = dragGeometry.itemTops[visualStart];
-    const finalTop = dragGeometry.itemTops[visualEnd];
+    const minimumTop = itemTops[visualStart];
+    const finalTop = itemTops[visualEnd];
     const finalHeight = dragGeometry.itemHeights[visualEnd];
     if (
       minimumTop === undefined ||
@@ -860,8 +909,7 @@
       minimumTop,
       finalTop + finalHeight - draggedHeight,
     );
-    const pointerContentY =
-      pointerY - list.getBoundingClientRect().top + list.scrollTop;
+    const pointerContentY = pointerY - list.getBoundingClientRect().top;
     return resolveDraggedTabTranslateY(
       originalTop,
       pointerContentY,
@@ -1005,7 +1053,9 @@
     if (!geometryMatches(dragId)) {
       return null;
     }
-    const bounds = list.getBoundingClientRect();
+    const tab = currentTabs.tabs.find((candidate) => candidate.id === tabId);
+    const bounds =
+      partitionBounds(tab?.pinned === true) ?? list.getBoundingClientRect();
     const normalizedPointerY = normalizeTabDropPointerY(
       pointerY,
       bounds.top,
@@ -1030,7 +1080,7 @@
     if (!geometryMatches(drag.id) && !captureDragGeometry(list, drag.id)) {
       return null;
     }
-    const bounds = list.getBoundingClientRect();
+    const bounds = partitionBounds(drag.pinned) ?? list.getBoundingClientRect();
     const normalizedPointerY = normalizeTabDropPointerY(
       pointerY,
       bounds.top,
@@ -1048,9 +1098,11 @@
   };
 
   const updateDropPreview = (
+    list: HTMLElement,
     drag: TabDragSnapshot,
     targetIndex: number | null,
   ) => {
+    const itemTops = adjustedItemTops();
     dragTargetIndex = targetIndex;
     if (drag.source === "same-window" && draggingTabId) {
       dropPreview = resolveTabDropPreview(
@@ -1061,7 +1113,7 @@
       dropMarkerTop =
         dropPreview === null
           ? null
-          : (dragGeometry.itemTops[dropPreview.index] ?? null);
+          : (itemTops[dropPreview.index] ?? null);
       return;
     }
     if (targetIndex === null) {
@@ -1069,17 +1121,56 @@
       dropMarkerTop = null;
       return;
     }
-    const append = targetIndex === currentTabs.tabs.length;
+    const partitionEnd = drag.pinned
+      ? pinnedTabEntries.length
+      : currentTabs.tabs.length;
+    const append = targetIndex === partitionEnd;
     dropPreview =
-      currentTabs.tabs.length === 0
+      partitionEnd === 0
         ? null
         : Object.freeze({
-            index: append ? currentTabs.tabs.length - 1 : targetIndex,
+            index: append ? Math.max(partitionEnd - 1, 0) : targetIndex,
             position: append ? "after" : "before",
           });
     dropMarkerTop = append
-      ? dragGeometry.appendTop
-      : (dragGeometry.itemTops[targetIndex] ?? null);
+      ? partitionAppendTop(list, drag.pinned)
+      : (itemTops[targetIndex] ?? null);
+  };
+
+  const deferEmptyPinnedPartitionPreview = (
+    list: HTMLElement,
+    drag: TabDragSnapshot,
+  ): boolean => {
+    if (
+      drag.source !== "other-window" ||
+      !drag.pinned ||
+      pinnedTabEntries.length > 0 ||
+      pinnedTabListElement
+    ) {
+      return false;
+    }
+    if (pendingPinnedPartitionDragId === drag.id) {
+      return true;
+    }
+    pendingPinnedPartitionDragId = drag.id;
+    reportAsyncError(
+      tick().then(() => {
+        if (pendingPinnedPartitionDragId !== drag.id) {
+          return;
+        }
+        pendingPinnedPartitionDragId = null;
+        if (externalDrag?.id !== drag.id || !list.isConnected) {
+          return;
+        }
+        clearDragGeometry();
+        if (!captureDragGeometry(list, drag.id)) {
+          clearDropTarget();
+          return;
+        }
+        updateDropPreview(list, drag, 0);
+      }),
+    );
+    return true;
   };
 
   const holdExternalDrag = (drag: TabDragSnapshot): boolean => {
@@ -1103,6 +1194,9 @@
     const list = tabStripElement?.querySelector<HTMLElement>(
       "[data-fennevia-tab-list]",
     );
+    if (list && deferEmptyPinnedPartitionPreview(list, drag)) {
+      return;
+    }
     if (
       !list ||
       (!geometryMatches(drag.id) && !captureDragGeometry(list, drag.id))
@@ -1110,7 +1204,11 @@
       clearDropTarget();
       return;
     }
-    updateDropPreview(drag, currentTabs.tabs.length);
+    updateDropPreview(
+      list,
+      drag,
+      drag.pinned ? pinnedTabEntries.length : currentTabs.tabs.length,
+    );
   };
 
   const updateTabDropAtPointer = (event: DragEvent, list: HTMLElement) => {
@@ -1128,6 +1226,9 @@
     }
     setDragHold(true);
     holdExternalDrag(drag);
+    if (deferEmptyPinnedPartitionPreview(list, drag)) {
+      return;
+    }
     if (
       drag.source === "same-window" &&
       draggingTabId &&
@@ -1158,7 +1259,7 @@
             event.clientY,
           )
         : resolveExternalDragTargetIndex(list, drag, event.clientY);
-    updateDropPreview(drag, targetIndex);
+    updateDropPreview(list, drag, targetIndex);
   };
 
   const handleTabListDragOver = (event: DragEvent) => {
@@ -1347,7 +1448,9 @@
         return;
       }
       try {
-        const result = props.tabs.dropDrag(currentTabs.tabs.length);
+        const result = props.tabs.dropDrag(
+          drag.pinned ? pinnedTabEntries.length : currentTabs.tabs.length,
+        );
         clearTabDrag();
         announceTabMove(result.tabId, result.index);
       } catch (error) {
@@ -1469,7 +1572,7 @@
     role="tablist"
     tabindex="-1"
   >
-    {#each currentTabs.tabs as tab, index (tab.id)}
+    {#snippet renderTab(tab: TabSnapshot, index: number)}
       {@const audioAction = getTabAudioAction(tab)}
       {@const isDraggedTab = isTabInDragGroup(
         currentTabs.tabs,
@@ -1497,11 +1600,13 @@
           : undefined}
         data-fennevia-dragging={isDraggedTab}
         data-fennevia-drag-shift={externalDrag
-          ? (resolveExternalTabDragShift(
-              currentTabs.tabs,
-              dragTargetIndex,
-              index,
-            ) ?? undefined)
+          ? tab.pinned === externalDrag.pinned
+            ? (resolveExternalTabDragShift(
+                currentTabs.tabs,
+                dragTargetIndex,
+                index,
+              ) ?? undefined)
+            : undefined
           : draggingTabId
             ? (resolveTabDragShift(
                 currentTabs.tabs,
@@ -1664,15 +1769,65 @@
           type="button"><FirefoxIcon name="tab-close" /></button
         >
       </div>
-    {/each}
+    {/snippet}
 
-    {#if externalDrag && dragTargetIndex !== null}
+    {#if pinnedTabEntries.length > 0 || externalDrag?.pinned === true}
+      <div
+        aria-label={t("tab.pinnedCount", {
+          count: pinnedTabEntries.length,
+        })}
+        class="fennevia-tab-strip__pinned-section"
+        data-fennevia-tab-pinned-section=""
+        role="group"
+      >
+        <div class="fennevia-tab-strip__pinned-heading">
+          <span>{t("tab.pinned")}</span>
+          <span aria-hidden="true" class="fennevia-tab-strip__pinned-count"
+            >{pinnedTabEntries.length}</span
+          >
+        </div>
+        <div
+          bind:this={pinnedTabListElement}
+          class="fennevia-tab-strip__partition fennevia-tab-strip__partition--pinned"
+          data-fennevia-tab-partition="pinned"
+          role="presentation"
+        >
+          {#each pinnedTabEntries as entry (entry.tab.id)}
+            {@render renderTab(entry.tab, entry.index)}
+          {/each}
+          {#if externalDrag?.pinned === true && dragTargetIndex !== null}
+            <span
+              aria-hidden="true"
+              class="fennevia-tab-strip__external-drop-slot"
+              data-fennevia-external-drop-slot="pinned"
+            ></span>
+          {/if}
+        </div>
+      </div>
       <span
         aria-hidden="true"
-        class="fennevia-tab-strip__external-drop-slot"
-        data-fennevia-external-drop-slot=""
+        class="fennevia-tab-strip__partition-divider"
+        data-fennevia-tab-partition-divider=""
       ></span>
     {/if}
+
+    <div
+      bind:this={regularTabListElement}
+      class="fennevia-tab-strip__partition fennevia-tab-strip__partition--regular"
+      data-fennevia-tab-partition="regular"
+      role="presentation"
+    >
+      {#each regularTabEntries as entry (entry.tab.id)}
+        {@render renderTab(entry.tab, entry.index)}
+      {/each}
+      {#if externalDrag?.pinned === false && dragTargetIndex !== null}
+        <span
+          aria-hidden="true"
+          class="fennevia-tab-strip__external-drop-slot"
+          data-fennevia-external-drop-slot="regular"
+        ></span>
+      {/if}
+    </div>
 
     {#if externalDrag && externalPreviewTransform}
       <span

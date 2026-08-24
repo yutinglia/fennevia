@@ -298,6 +298,20 @@
     border-color: Highlight;
   }
 
+  #fennevia-shell-frame-host .fennevia-tab-strip__pinned-section {
+    background: Canvas;
+    box-shadow: inset 0 0 0 1px CanvasText;
+  }
+
+  #fennevia-shell-frame-host .fennevia-tab-strip__pinned-count {
+    color: HighlightText;
+    background: Highlight;
+  }
+
+  #fennevia-shell-frame-host .fennevia-tab-strip__partition-divider {
+    background: CanvasText;
+  }
+
   #fennevia-shell-frame-host .fennevia-tab-strip__container-bar {
     background: Highlight;
     forced-color-adjust: none;

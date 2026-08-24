@@ -4190,7 +4190,9 @@ async function exerciseTabStripMvp(client) {
       const newTab = root?.querySelector(
         '[data-fennevia-action="new-tab"]'
       );
-      const scroll = root?.querySelector(".fennevia-tab-strip__list");
+      const scroll = root?.querySelector(
+        '[data-fennevia-tab-partition="regular"]'
+      );
       if (!root || !newTab || !scroll) {
         throw new Error("FENNEVIA_FIREFOX_TEST_TAB_STRIP_MISSING");
       }
@@ -4370,6 +4372,29 @@ async function exerciseTabStripMvp(client) {
       const regularItem = customItems().find(
         item => item.getAttribute("data-fennevia-pinned") === "false"
       );
+      const pinnedSection = root.querySelector(
+        "[data-fennevia-tab-pinned-section]"
+      );
+      const pinnedPartition = root.querySelector(
+        '[data-fennevia-tab-partition="pinned"]'
+      );
+      const regularPartition = root.querySelector(
+        '[data-fennevia-tab-partition="regular"]'
+      );
+      const pinnedAreaSeparate =
+        Boolean(
+          pinnedItem &&
+            regularItem &&
+            pinnedSection &&
+            pinnedPartition &&
+            regularPartition
+        ) &&
+        pinnedItem.closest('[data-fennevia-tab-partition="pinned"]') ===
+          pinnedPartition &&
+        regularItem.closest('[data-fennevia-tab-partition="regular"]') ===
+          regularPartition &&
+        pinnedSection.getBoundingClientRect().bottom <=
+          regularPartition.getBoundingClientRect().top;
       const pinnedLayoutStable =
         Boolean(pinnedItem && regularItem) &&
         Math.abs(
@@ -4394,6 +4419,8 @@ async function exerciseTabStripMvp(client) {
           ) === "false",
         "FENNEVIA_FIREFOX_TEST_TAB_STRIP_UNPIN_TIMEOUT"
       );
+      const emptyPinnedAreaCollapsed =
+        !root.querySelector("[data-fennevia-tab-pinned-section]");
       const unpinDidNotSelect =
         gBrowser.selectedTab === selectedBeforeBackgroundAction;
 
@@ -4526,7 +4553,9 @@ async function exerciseTabStripMvp(client) {
         loadingStateCleared,
         loadingStateVisible,
         manyTabsOverflow,
+        emptyPinnedAreaCollapsed,
         pinDidNotSelect,
+        pinnedAreaSeparate,
         pinnedLayoutStable,
         rapidCleanupComplete,
         selectedCloseRestoredFocus,
@@ -4560,7 +4589,9 @@ function assertTabStripMvp(result) {
     loadingStateCleared: true,
     loadingStateVisible: true,
     manyTabsOverflow: true,
+    emptyPinnedAreaCollapsed: true,
     pinDidNotSelect: true,
+    pinnedAreaSeparate: true,
     pinnedLayoutStable: true,
     rapidCleanupComplete: true,
     selectedCloseRestoredFocus: true,

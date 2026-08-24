@@ -24,8 +24,10 @@ use the keyboard, to reveal:
   project-owned window controls. Fennevia customize mode can drag widgets onto
   all four edges; Firefox's native customize mode remains available from the
   Firefox application menu.
-- **Left (default):** vertical tabs with loading, media-sharing, and crash
-  indicators, a compact address/status launcher, and any widgets placed there.
+- **Left (default):** vertical tabs with a fixed, bounded pinned-tabs area above
+  the independently scrolling regular tabs, plus loading, media-sharing, and
+  crash indicators, a compact address/status launcher, and any widgets placed
+  there.
 - **Right (default):** bookmarks with cached site favicons, plus any widgets
   placed there. Fennevia customize mode can swap the complete left/right roles.
 - **Bottom:** download progress and status, plus any widgets placed there. This

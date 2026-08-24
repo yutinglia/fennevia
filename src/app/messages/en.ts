@@ -359,6 +359,7 @@ export const en = {
   "tab.pin": "Pin",
   "tab.pinTab": "Pin tab",
   "tab.pinned": "Pinned",
+  "tab.pinnedCount": "Pinned tabs ({count})",
   "tab.pip": "Picture in picture",
   "tab.playing": "Playing",
   "tab.reordered": "Moved {title} to position {index} of {total}",

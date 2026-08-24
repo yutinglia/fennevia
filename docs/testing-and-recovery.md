@@ -329,9 +329,15 @@ owned surfaces. The center content hit target must remain Firefox-owned.
 
 Validate:
 
-- one tab, many tabs, and bounded vertical overflow, with New tab following the
-  last tab and remaining pinned below the scroller when the list overflows;
-- exact native order;
+- one tab, many tabs, and bounded vertical overflow, with New Tab remaining
+  reachable outside both scroll partitions;
+- no pinned tabs collapses the pinned area completely; one and many pinned tabs
+  render in a labelled section fixed above the divider while regular-tab
+  scrolling does not move it;
+- many pinned tabs scroll only inside their height-capped partition, regular
+  tabs retain usable space below, and stable scrollbar gutters avoid row-width
+  jumps between partitions;
+- exact native order within the pinned-then-regular partition contract;
 - selected, title, safe favicon/fallback, pinned, and loading state; a loaded
   favicon hides the adjacent fallback while loading/error restores only the
   fallback, so both layers are never visible together;
@@ -571,6 +577,12 @@ source left-panel auto-hide after adoption even when source `dragend` is not
 observed, normal/second/private rejection/isolation, source/target window
 closure, missing-capability fail-open, and Browser Console/Toolbox ownership):
 **not run**.
+
+ADR-073 real Firefox rows (zero/one/many pinned tabs, independent pinned and
+regular overflow, pin/unpin focus transfer between partitions, selected pinned
+tab visibility, same- and cross-window drag in both partitions, short and
+narrow windows, reduced motion, forced colors, high DPI, normal/second/private
+isolation, fail-open, and disposal during drag): **not run**.
 
 ### 6.2 Top navigation — implemented
 

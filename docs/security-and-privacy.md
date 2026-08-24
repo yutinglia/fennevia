@@ -305,6 +305,11 @@ Rules:
   `_sharingState`, and WebRTC objects never cross the privileged boundary;
 - color names may appear in `data-fennevia-container-color` because they are
   allowlisted tokens;
+- ADR-073 derives pinned and regular presentation partitions only from the
+  existing `pinned` boolean and native snapshot order. Section counts and
+  independent scroll geometry stay in the owning project DOM; they add no URL,
+  title copy, persistence, diagnostics, native handle, Firefox DOM access, or
+  cross-window state;
 - native `#tabContextMenu` remains the owner of Duplicate, Close others, Send
   tab, Reopen in container, and Undo close;
 - the required synchronous Firefox translation owner activates lazy Fluent IDs

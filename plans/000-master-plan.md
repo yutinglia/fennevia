@@ -55,9 +55,11 @@ Completed:
 - #8: deterministic Svelte 5/TypeScript/Vite production build;
 - #9 and #10: enforceable Firefox boundary and typed tab-state bridge;
 - #11: accessible custom tab UI, now rendered vertically in the left edge;
-- #60: left-edge flat-list native parity (audio, container, attention,
+- #60: left-edge tab-row native parity (audio, container, attention,
   middle-click close, middle-click/accel related New Tab, drag/keyboard reorder,
   Firefox `#tabContextMenu`);
+- ADR-073: Firefox-like pinned-tab structure with a conditional fixed section
+  above the independently scrolling regular-tab partition;
 - ADR-058: fixed tab action placement and closed camera/microphone/screen-sharing
   plus crash indicators; ADR-060 supersedes its custom icon-animation clause;
 - ADR-060: exact native-equivalent shell controls use installed Firefox icon
@@ -426,12 +428,14 @@ Evidence: ADR-026 and
 
 #### Left vertical tabs — complete (#11, #60)
 
-- native-order vertical list;
+- native-order vertical rows split into a conditional fixed pinned section and
+  an independently scrolling regular section;
 - selected/title/favicon/pinned/loading/audio/attention/container state plus
   closed camera/microphone/screen-sharing, crash, and picture-in-picture
   indicators;
 - select, new, close, pin, unpin, mute, move, and native context-menu handoff;
-- bounded vertical overflow;
+- bounded independent pinned/regular overflow, with the pinned section capped
+  so regular tabs and the always-visible New Tab control remain reachable;
 - keyboard navigation, drag reorder with a pointer-aligned full-row ghost,
   animated neighbor gap, insertion marker, and polite move announcement, plus
   deterministic close-focus recovery; same-window drops use one verified
@@ -445,16 +449,17 @@ Evidence: ADR-026 and
 - ordinary bridge contracts only;
 - native tab strip retained.
 
-Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063,
-ADR-065, ADR-066, ADR-071, ADR-072,
+Evidence: ADR-025, ADR-026, ADR-041, ADR-055, ADR-058, ADR-060, ADR-062, ADR-063,
+ADR-065, ADR-066, ADR-071, ADR-072, ADR-073,
 `docs/research/firefox-153-tab-strip.md`, and
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,
 `docs/research/firefox-153-154-native-shell-icons.md`,
 `docs/research/firefox-154-tab-drag-spatial-preview.md`,
 `docs/research/firefox-154-tabbar-interaction-follow-up.md`, and
-`docs/research/firefox-154-shell-interaction-second-follow-up.md`, plus ADR-055
-and `docs/research/firefox-153-154-panel-context-actions.md`, and
+`docs/research/firefox-154-shell-interaction-second-follow-up.md`,
+`docs/research/firefox-154-pinned-tabs-area.md`,
+`docs/research/firefox-153-154-panel-context-actions.md`, and
 `docs/research/codebase-robustness-audit-2026-08-24.md`.
 
 #### Top primary controls — complete (#12)

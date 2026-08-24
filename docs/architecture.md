@@ -340,6 +340,15 @@ height, while the surrounding owned strip gap and New Tab region clamp to the
 nearest list end. This changes hit testing only: it adds no permanent space,
 payload data, privileged frontend state, edge trigger, or timer, and the
 keyboard reorder path remains available.
+ADR-073 supersedes ADR-041 only for its single flat scroller. The one owned
+ARIA tablist now presents native-order pinned rows in a conditional labelled,
+height-capped section above a divider, while regular rows fill an independent
+scroller below. Pin/unpin moves the same keyed row between those partitions and
+focus follows it. Each partition compensates its own scroll position during
+drag hit testing; final moves still use the same opaque-ID bridge and pinned
+boundary rules. The New Tab control remains outside both scrollers. No native
+tab DOM, Firefox scrollbox, bridge field, edge owner, hide timer, or z-index
+system is added.
 Current source and runtime evidence is in
 `docs/research/firefox-153-tabs-bridge.md`,
 `docs/research/firefox-153-tab-strip.md`,
@@ -353,10 +362,11 @@ Current source and runtime evidence is in
 `docs/research/firefox-154-shell-interaction-second-follow-up.md`,
 `docs/research/firefox-154-tab-select-pointer-hold.md`,
 `docs/research/firefox-153-154-related-new-tab.md`,
-`docs/research/firefox-153-154-tab-multiselect.md`, and
-`docs/research/codebase-robustness-audit-2026-08-24.md`, plus ADR-024,
+`docs/research/firefox-153-154-tab-multiselect.md`,
+`docs/research/codebase-robustness-audit-2026-08-24.md`,
+`docs/research/firefox-154-pinned-tabs-area.md`, plus ADR-024,
 ADR-025, and
-ADR-041/ADR-058/ADR-060/ADR-062/ADR-063/ADR-065/ADR-066/ADR-067/ADR-070/ADR-071/ADR-072.
+ADR-041/ADR-058/ADR-060/ADR-062/ADR-063/ADR-065/ADR-066/ADR-067/ADR-070/ADR-071/ADR-072/ADR-073.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather
@@ -756,10 +766,11 @@ Forced-colors still uses Canvas/CanvasText/Highlight. See
 `docs/research/firefox-153-design-tokens.md`.
 
 Issue #11 first proved the tab strip boundary horizontally; ADR-026 retains its
-data and accessibility contract but reorients it into the left edge. Pinned and
-regular items use bounded project-only layout, many tabs overflow inside one
-vertical scroller, and the New tab control stays outside that scroller so it
-follows the last tab and remains visible when the list overflows.
+data and accessibility contract but reorients it into the left edge. ADR-073
+keeps the rows full-width while placing pinned tabs in a conditional labelled
+and height-capped project-only section above the independently scrolling
+regular partition. Each partition has bounded overflow, and the New Tab
+control stays outside both so it remains visible when either overflows.
 Forced-colors/focus rules remain rooted at the frame. The
 Browser Toolbox ownership walk excludes Firefox-generated native-anonymous
 scrollbar descendants before asserting XHTML project ownership; it does not

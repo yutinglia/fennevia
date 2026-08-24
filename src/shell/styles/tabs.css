@@ -25,7 +25,55 @@
 #fennevia-shell-frame-host .fennevia-tab-strip__list {
   position: relative;
   display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__pinned-section {
+  display: flex;
   flex: 0 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+  max-block-size: min(34vh, 190px);
+  overflow: hidden;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+  border-radius: var(--fennevia-control-radius);
+  box-shadow: inset 0 0 0 1px var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__pinned-heading {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: 26px;
+  padding: 2px var(--fennevia-space-2) 0;
+  color: var(--fennevia-glass-muted);
+  font-size: 0.82em;
+  font-weight: 600;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__pinned-count {
+  min-inline-size: 22px;
+  padding: 1px 6px;
+  text-align: center;
+  background: color-mix(in srgb, var(--fennevia-focus-color) 12%, transparent);
+  border-radius: var(--fennevia-chip-radius);
+  font-variant-numeric: tabular-nums;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__partition-divider {
+  display: block;
+  flex: none;
+  block-size: 1px;
+  margin: var(--fennevia-space-2) var(--fennevia-space-2);
+  background: var(--fennevia-glass-separator);
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__partition {
+  display: flex;
   flex-direction: column;
   min-block-size: 0;
   gap: var(--fennevia-space-1);
@@ -33,7 +81,16 @@
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-color: color-mix(in srgb, currentColor 30%, transparent) transparent;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__partition--pinned {
+  flex: 1 1 auto;
+}
+
+#fennevia-shell-frame-host .fennevia-tab-strip__partition--regular {
+  flex: 1 1 0;
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip__item {

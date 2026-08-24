@@ -21,8 +21,9 @@ Validated baseline as of 2026-08-24:
   `docs/research/firefox-154-stable-transition.md`;
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16,
   #17, #18, #22, #31, #32, #37, #39, #57, and #60 complete;
-- functional vertical tabs and a compact address/status launcher in the left
-  surface by default, with a bounded whole-role swap to the right;
+- functional vertical tabs with a fixed, bounded pinned section above regular
+  tab overflow, plus a compact address/status launcher in the left surface by
+  default, with a bounded whole-role swap to the right;
 - one centered address/search popup with a combined Trust summary, permission,
   applicable-action, native Firefox provider-result list, and native-handoff
   coverage in a fifth owned root;
@@ -331,7 +332,8 @@ Issue #11 supplies:
 - select, new, close, pin, and unpin controls;
 - sibling interactive controls rather than invalid nesting;
 - roving keyboard focus, Home/End, activation, deletion, and focus recovery;
-- bounded overflow;
+- a conditional fixed pinned section and independently bounded pinned/regular
+  overflow;
 - text-only titles and property-only allowlisted favicons;
 - normal/second/private isolation;
 - native tab strip retained.
@@ -340,7 +342,7 @@ ADR-026 reorients the same data, action, and accessibility contract vertically
 inside the left edge. Up/Down replaces horizontal arrow movement, and many tabs
 scroll inside the bounded left panel.
 
-Issue #60 completes the remaining flat-list parity on that same strip:
+Issue #60 completes the remaining row-level native parity on that same strip:
 
 - middle-click close;
 - middle-click/accel New Tab insertion after the current tab (ADR-070);
@@ -378,8 +380,15 @@ project-owned top/bottom landing targets. The existing keyboard move path is
 unchanged. Evidence:
 `docs/research/codebase-robustness-audit-2026-08-24.md`.
 
+ADR-073 supersedes ADR-041 only where it required one flat scrolling list.
+Pinned rows now occupy a conditional, labelled, height-capped section above a
+divider; regular rows fill their own scroller below. Both retain the same full
+row controls, roving tab order, native snapshot order, pinned-boundary drag
+rules, and shared edge owner. Evidence:
+`docs/research/firefox-154-pinned-tabs-area.md`.
+
 Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063,
-ADR-065, ADR-066, ADR-070, ADR-071, and ADR-072, plus
+ADR-065, ADR-066, ADR-070, ADR-071, ADR-072, and ADR-073, plus
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,

@@ -3153,3 +3153,50 @@ already-correct block behavior. Enlarging only the owned hit-test zones makes
 the visually narrow ends easier to reach without reserving content space or
 changing Firefox's native drag ownership. See
 `docs/research/codebase-robustness-audit-2026-08-24.md`.
+
+## ADR-073: Separate pinned tabs from regular-tab scrolling
+
+**Status:** Accepted by direct owner request on 2026-08-24; Firefox 154
+source-backed; implementation and ordinary automation are complete; real
+Firefox matrix remains `not run`
+
+Supersede ADR-041 only where it requires one flat scrolling list. Retain one
+project-owned ARIA tablist and the existing full-width tab row, direct sibling
+pin/mute/close controls, roving focus, opaque bridge IDs, native snapshot
+order, shared configured-edge controller, and native menu handoff.
+
+Within that tablist, derive two keyed presentation collections from the
+existing ordered snapshots. Pinned rows occupy a conditional labelled section
+above a visual divider. The section is absent when no tab is pinned, is capped
+at 34 viewport-height percent or 190 CSS pixels, and owns its overflow. Regular
+rows fill a second independent scroller below it. Stable scrollbar gutters keep
+row width from changing as either partition begins to overflow. New Tab remains
+outside both scrollers and therefore remains reachable.
+
+Pin and unpin continue to call the existing bridge action; the keyed row moves
+between partitions after Firefox publishes its native order, and the existing
+post-mutation focus path follows it. Drag hit testing still clamps to the
+source tab's pinned state. Captured geometry records each partition's scroll
+position separately so scrolling one collection cannot offset the other one's
+midpoints or marker. Same-window, cross-window, grouped, keyboard, content-end,
+and fail-open paths retain ADR-062/ADR-063/ADR-071/ADR-072 ownership.
+
+Firefox 154's release-pinned source shows a distinct
+[`#pinned-tabs-container`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/base/content/navigator-toolbox.inc.xhtml)
+before its regular arrowscrollbox, and
+[`tabs.css`](https://github.com/mozilla-firefox/firefox/blob/032a9fc1ac0cc3209f7c142744ba2e40847c8086/browser/themes/shared/tabbrowser/tabs.css)
+gives that container independent bounded layout. Those files establish the
+separate-region behavior only. Fennevia does not query, style, move, mount into,
+or copy the native container, splitter, grid, selectors, dimensions, or
+icon-only composition.
+
+**Reasoning:** A sticky subgroup inside one scroller would still couple pinned
+visibility and drag geometry to regular-tab overflow. Copying Firefox's compact
+icon grid would hide titles and make direct unpin/mute/close access dependent
+on hover or a menu. Two bounded project-owned regions provide the requested
+Firefox-like persistence while preserving Fennevia's established accessible
+row controls and fail-open boundary. The change introduces no Firefox symbol
+dependency, bridge field, browsing-data flow, native DOM mutation, edge
+trigger, timer, persistence, network request, dependency, or shipped external
+asset. Evidence and rejected alternatives are recorded in
+`docs/research/firefox-154-pinned-tabs-area.md`.

@@ -477,6 +477,30 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /role="tablist"/u);
   assert.match(source, /aria-multiselectable="true"/u);
   assert.match(source, /aria-orientation="vertical"/u);
+  assert.match(
+    tabSource,
+    /let pinnedTabEntries = \$derived\([\s\S]*?filter\(\(\{ tab \}\) => tab\.pinned\)/u,
+  );
+  assert.match(
+    tabSource,
+    /let regularTabEntries = \$derived\([\s\S]*?filter\(\(\{ tab \}\) => !tab\.pinned\)/u,
+  );
+  assert.match(
+    tabSource,
+    /\{#if pinnedTabEntries\.length > 0 \|\| externalDrag\?\.pinned === true\}[\s\S]*?data-fennevia-tab-pinned-section=""[\s\S]*?role="group"/u,
+  );
+  assert.match(
+    tabSource,
+    /aria-label=\{t\("tab\.pinnedCount", \{[\s\S]*?count: pinnedTabEntries\.length/u,
+  );
+  assert.match(
+    tabSource,
+    /data-fennevia-tab-partition="pinned"[\s\S]*?\{#each pinnedTabEntries as entry \(entry\.tab\.id\)\}/u,
+  );
+  assert.match(
+    tabSource,
+    /data-fennevia-tab-partition-divider=""[\s\S]*?data-fennevia-tab-partition="regular"[\s\S]*?\{#each regularTabEntries as entry \(entry\.tab\.id\)\}/u,
+  );
   assert.match(source, /role="tab"/u);
   assert.match(
     source,
@@ -669,7 +693,30 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(tabSource, /dragGeometry\.itemMids/u);
   assert.match(tabSource, /dragGeometry\.itemHeights/u);
   assert.match(tabSource, /dragGeometry\.itemTops/u);
-  assert.match(tabSource, /dragGeometry\.listScrollTop -\s*list\.scrollTop/u);
+  assert.match(
+    tabSource,
+    /dragGeometry\.pinnedScrollTop -[\s\S]*?pinnedTabListElement\?\.scrollTop/u,
+  );
+  assert.match(
+    tabSource,
+    /dragGeometry\.regularScrollTop -[\s\S]*?regularTabListElement\?\.scrollTop/u,
+  );
+  assert.match(
+    tabSource,
+    /partitionBounds\(drag\.pinned\) \?\? list\.getBoundingClientRect\(\)/u,
+  );
+  assert.match(
+    tabSource,
+    /drag\.pinned \? pinnedTabEntries\.length : currentTabs\.tabs\.length/u,
+  );
+  assert.match(
+    tabSource,
+    /const deferEmptyPinnedPartitionPreview = \([\s\S]*?pinnedTabEntries\.length > 0[\s\S]*?tick\(\)\.then\(\(\) => \{[\s\S]*?clearDragGeometry\(\);[\s\S]*?captureDragGeometry\(list, drag\.id\)[\s\S]*?updateDropPreview\(list, drag, 0\)/u,
+  );
+  assert.match(
+    tabSource,
+    /function clearTabDrag\(retainPointer = false\) \{\s*pendingPinnedPartitionDragId = null;/u,
+  );
   assert.match(tabSource, /const geometryMatches/u);
   assert.match(source, /aria-keyshortcuts=/u);
   assert.match(source, /aria-live="polite"/u);
@@ -679,6 +726,10 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /data-fennevia-drag-stack/u);
   assert.match(tabSource, /tab\.id === draggingTabId/u);
   assert.match(source, /data-fennevia-drag-shift/u);
+  assert.match(
+    tabSource,
+    /data-fennevia-drag-shift=\{externalDrag[\s\S]*?tab\.pinned === externalDrag\.pinned[\s\S]*?resolveExternalTabDragShift/u,
+  );
   assert.match(source, /resolveDraggedTabTranslateY/u);
   assert.match(source, /style:transform/u);
   assert.match(source, /resolveTabDragShift/u);
@@ -687,7 +738,11 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /data-fennevia-drop-preview/u);
   assert.match(
     tabSource,
-    /\{#if externalDrag && dragTargetIndex !== null\}[\s\S]*?class="fennevia-tab-strip__external-drop-slot"[\s\S]*?data-fennevia-external-drop-slot=""[\s\S]*?\{\/if\}/u,
+    /\{#if externalDrag\?\.pinned === true && dragTargetIndex !== null\}[\s\S]*?data-fennevia-external-drop-slot="pinned"[\s\S]*?\{\/if\}/u,
+  );
+  assert.match(
+    tabSource,
+    /\{#if externalDrag\?\.pinned === false && dragTargetIndex !== null\}[\s\S]*?data-fennevia-external-drop-slot="regular"[\s\S]*?\{\/if\}/u,
   );
   assert.match(
     tabSource,
@@ -848,7 +903,23 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(styles, /unicode-bidi: plaintext/u);
   assert.match(
     styles,
-    /\.fennevia-tab-strip__list \{[\s\S]*?flex: 0 1 auto;[\s\S]*?overflow-y: auto;/u,
+    /\.fennevia-tab-strip__list \{[\s\S]*?flex: 1 1 auto;[\s\S]*?overflow: hidden;/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__pinned-section \{[\s\S]*?max-block-size: min\(34vh, 190px\);[\s\S]*?overflow: hidden;/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__partition \{[\s\S]*?overflow-y: auto;[\s\S]*?scrollbar-gutter: stable;/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip__partition--regular \{\s*flex: 1 1 0;/u,
+  );
+  assert.match(
+    styles,
+    /forced-colors: active[\s\S]*?\.fennevia-tab-strip__pinned-section[\s\S]*?background: Canvas;[\s\S]*?\.fennevia-tab-strip__pinned-count[\s\S]*?background: Highlight;/u,
   );
   assert.match(styles, /\.fennevia-tab-strip__new \{[\s\S]*?flex: none;/u);
   assert.match(styles, /:focus-visible/u);
@@ -920,8 +991,8 @@ test("the component uses semantic sibling controls and property-safe rendering o
     /\b(?:gBrowser|Services|PlacesUtils|SessionStore|ChromeUtils)\b/u,
   );
 
-  const itemBody = source.match(
-    /<div\s+class="fennevia-tab-strip__item"[\s\S]*?<\/div>\s*\{\/each\}/u,
+  const itemBody = tabSource.match(
+    /\{#snippet renderTab\(tab: TabSnapshot, index: number\)\}[\s\S]*?\{\/snippet\}/u,
   )?.[0];
   assert.ok(itemBody);
   const buttonOpenings = [...itemBody.matchAll(/<button\b/gu)].map(

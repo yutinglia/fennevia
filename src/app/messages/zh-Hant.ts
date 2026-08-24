@@ -342,6 +342,7 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "tab.pin": "釘選",
   "tab.pinTab": "釘選分頁",
   "tab.pinned": "已釘選",
+  "tab.pinnedCount": "已釘選分頁（{count}）",
   "tab.pip": "子母畫面",
   "tab.playing": "播放中",
   "tab.reordered": "已將「{title}」移至第 {index} 個，共 {total} 個",
