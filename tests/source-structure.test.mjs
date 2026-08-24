@@ -34,6 +34,21 @@ test("stable facades keep feature implementations out of public entry files", as
   assert.doesNotMatch(shell, /function mountShellApp/u);
 });
 
+test("browser tools separate lifecycle wiring from placement and popup actions", async () => {
+  const [controller, placement, popupActions] = await Promise.all([
+    readProjectFile("src/firefox/browser-tools/controller.ts"),
+    readProjectFile("src/firefox/browser-tools/panel-placement.ts"),
+    readProjectFile("src/firefox/browser-tools/popup-actions.ts"),
+  ]);
+
+  assert.match(controller, /createBrowserToolsPanelPlacement/u);
+  assert.match(controller, /createBrowserToolsPopupActionInvoker/u);
+  assert.doesNotMatch(controller, /FullPageTranslationsPanel|PanelMultiView/u);
+  assert.match(placement, /const openPanelOnHost/u);
+  assert.match(popupActions, /const invokeTranslate/u);
+  assert.match(popupActions, /const invokeApplicationMenu/u);
+});
+
 test("shell composition and CSS retain explicit module ownership", async () => {
   const [app, customize, css] = await Promise.all([
     readProjectFile("src/shell/App.svelte"),

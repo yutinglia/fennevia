@@ -9,26 +9,21 @@ import {
   type PopupBrowserToolAction,
 } from "../../app/browser-tools-state.ts";
 import {
-  isFirefoxBridgeError,
   type FirefoxBridgeBoundary,
   type FirefoxCapabilitySnapshot,
   type IdempotentDisposer,
 } from "../bridge-boundary.ts";
+import { createBrowserToolsPanelPlacement } from "./panel-placement.ts";
+import { createBrowserToolsPopupActionInvoker } from "./popup-actions.ts";
 import {
   LISTENER_OPTIONS,
   NATIVE_POPUP_PANEL_IDS,
   nativePopupPanelIdSet,
   popupPanelByAction,
-  popupPositionByAction,
-  isScreenPlacedPopupPosition,
   isNativeRecord,
   isFunction,
-  readPanelMultiViewOwner,
   isEventTarget,
   isPanelElement,
-  readFiniteNumber,
-  readHostViewportRect,
-  readWindowScreenOrigin,
   getDocumentElementById,
   evaluateBrowserToolCapabilities,
   createBrowserToolsError,
@@ -37,8 +32,6 @@ import {
   getPopupFromEvent,
 } from "./support.ts";
 import type { NativeRecord, NativePanel, PopupHandoff } from "./support.ts";
-
-const TRANSLATIONS_PANEL_OPEN_TIMEOUT_MS = 10_000;
 
 export type FirefoxBrowserToolsBridgeController = Readonly<{
   assertRequiredCapabilities: () => readonly FirefoxCapabilitySnapshot[];
@@ -237,16 +230,10 @@ export function createFirefoxBrowserToolsBridge({
     });
   };
 
-  const findOpenPanel = (panelIds: readonly string[]): NativePanel | null => {
-    const ownerWindow = requireWindow();
-    for (const panelId of panelIds) {
-      const panel = getDocumentElementById(ownerWindow, panelId);
-      if (isPanelElement(panel) && isPanelOpen(panel)) {
-        return panel;
-      }
-    }
-    return null;
-  };
+  const panelPlacement = createBrowserToolsPanelPlacement({
+    boundary,
+    requireWindow,
+  });
 
   const beginHandoff = (panelId: string): void => {
     let accepted: boolean;
@@ -277,392 +264,6 @@ export function createFirefoxBrowserToolsBridge({
     } catch {
       // Popup hide still proceeds; dispose records the first causal error.
     }
-  };
-
-  const hidePanel = (panel: NativePanel, symbol: string): void => {
-    try {
-      Reflect.apply(panel.hidePopup, panel, []);
-    } catch (error) {
-      throw createBrowserToolsError(
-        boundary,
-        "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED",
-        "firefox-browser-tools-action",
-        symbol,
-        error,
-      );
-    }
-  };
-
-  const openPopup = (
-    panel: NativePanel,
-    host: NativeRecord,
-    position: string,
-    symbol: string,
-  ): void => {
-    try {
-      Reflect.apply(panel.openPopup, panel, [host, position, 0, 0]);
-    } catch (error) {
-      throw createBrowserToolsError(
-        boundary,
-        "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED",
-        "firefox-browser-tools-action",
-        symbol,
-        error,
-      );
-    }
-  };
-
-  const moveToAnchor = (
-    panel: NativePanel,
-    host: NativeRecord,
-    position: string,
-    symbol: string,
-  ): void => {
-    try {
-      Reflect.apply(panel.moveToAnchor, panel, [host, position, 0, 0]);
-    } catch (error) {
-      throw createBrowserToolsError(
-        boundary,
-        "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED",
-        "firefox-browser-tools-action",
-        symbol,
-        error,
-      );
-    }
-  };
-
-  const placePanelBesideHost = (
-    panel: NativePanel,
-    host: NativeRecord,
-    position: string,
-    symbol: string,
-  ): void => {
-    if (isScreenPlacedPopupPosition(position)) {
-      const viewport = readHostViewportRect(host);
-      const screenOrigin = readWindowScreenOrigin(requireWindow());
-      const moveTo = panel.moveTo;
-      if (viewport && isFunction(moveTo)) {
-        try {
-          let x = screenOrigin.x + viewport.x;
-          const y = screenOrigin.y + viewport.y + viewport.height;
-          const getOuterScreenRect = panel.getOuterScreenRect;
-          if (isFunction(getOuterScreenRect)) {
-            const outer = Reflect.apply(getOuterScreenRect, panel, []);
-            if (isNativeRecord(outer)) {
-              const width = readFiniteNumber(outer.width);
-              if (width !== undefined) {
-                x =
-                  screenOrigin.x +
-                  viewport.x +
-                  viewport.width -
-                  Math.round(width);
-              }
-            }
-          }
-          Reflect.apply(moveTo, panel, [x, y]);
-          return;
-        } catch {
-          // Fall through to moveToAnchor.
-        }
-      }
-    }
-    moveToAnchor(panel, host, position, symbol);
-  };
-
-  const hideOtherPanels = (keepIds: ReadonlySet<string>): void => {
-    const ownerWindow = requireWindow();
-    for (const panelId of NATIVE_POPUP_PANEL_IDS) {
-      if (keepIds.has(panelId)) {
-        continue;
-      }
-      const panel = getDocumentElementById(ownerWindow, panelId);
-      if (isPanelElement(panel) && isPanelOpen(panel)) {
-        hidePanel(panel, `document.${panelId}.hidePopup`);
-      }
-    }
-  };
-
-  const resolvePopupPosition = (
-    host: NativeRecord,
-    action: PopupBrowserToolAction,
-  ): string => {
-    const closest = host.closest;
-    if (isFunction(closest)) {
-      try {
-        if (
-          Reflect.apply(closest, host, ["[data-fennevia-address-popup]"]) !=
-          null
-        ) {
-          return "after_end";
-        }
-        if (
-          Reflect.apply(closest, host, ['[data-fennevia-edge="left"]']) != null
-        ) {
-          return "end_before";
-        }
-      } catch {
-        // Fall through to the action default.
-      }
-    }
-    return popupPositionByAction[action];
-  };
-
-  const resolveActionPanel = (
-    action: PopupBrowserToolAction,
-  ): NativePanel | null => {
-    const ownerWindow = requireWindow();
-    for (const panelId of popupPanelByAction[action]) {
-      const panel = getDocumentElementById(ownerWindow, panelId);
-      if (isPanelElement(panel)) {
-        return panel;
-      }
-    }
-    return findOpenPanel(popupPanelByAction[action]);
-  };
-
-  const requireActionPanel = (action: PopupBrowserToolAction): NativePanel => {
-    const panel = resolveActionPanel(action);
-    if (!panel) {
-      throw createBrowserToolsError(
-        boundary,
-        "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING",
-        "firefox-browser-tools-action",
-        `document.${popupPanelByAction[action][0]}.openPopup.moveToAnchor.hidePopup`,
-      );
-    }
-    return panel;
-  };
-
-  const openPanelOnHost = async (
-    panel: NativePanel,
-    host: NativeRecord,
-    position: string,
-    symbol: string,
-  ): Promise<void> => {
-    const ownerWindow = requireWindow();
-    const PanelMultiView = readPanelMultiViewOwner(ownerWindow);
-    const viewport = readHostViewportRect(host);
-    const screenOrigin = readWindowScreenOrigin(ownerWindow);
-    let lastError: unknown;
-
-    const finishIfOpen = (): boolean => isPanelOpen(panel);
-
-    const runAttempt = async (
-      attempt: () => unknown | Promise<unknown>,
-    ): Promise<boolean> => {
-      try {
-        await attempt();
-      } catch (error) {
-        lastError = error;
-        return finishIfOpen();
-      }
-      return finishIfOpen();
-    };
-
-    const finishPlaced = (): void => {
-      if (isScreenPlacedPopupPosition(position)) {
-        try {
-          placePanelBesideHost(panel, host, position, `${symbol}.moveTo`);
-        } catch {
-          // The open panel remains Firefox-owned.
-        }
-      }
-    };
-
-    const panelMultiViewOpenPopup =
-      PanelMultiView && isFunction(PanelMultiView.openPopup)
-        ? PanelMultiView.openPopup
-        : undefined;
-
-    const tryMultiView = async (
-      anchor: unknown,
-      options: unknown,
-    ): Promise<boolean> => {
-      if (!PanelMultiView || !panelMultiViewOpenPopup) {
-        return false;
-      }
-      return runAttempt(() =>
-        Reflect.apply(panelMultiViewOpenPopup, PanelMultiView, [
-          panel,
-          anchor,
-          options,
-        ]),
-      );
-    };
-
-    const tryHostMultiView = (): Promise<boolean> =>
-      tryMultiView(host, Object.freeze({ position }));
-
-    const tryHostMultiViewString = (): Promise<boolean> =>
-      tryMultiView(host, position);
-
-    const tryDetachedMultiView = (): Promise<boolean> =>
-      viewport
-        ? tryMultiView(
-            null,
-            Object.freeze({
-              x: viewport.x,
-              y: viewport.y + viewport.height,
-            }),
-          )
-        : Promise.resolve(false);
-
-    const tryHostElement = (): Promise<boolean> =>
-      runAttempt(() => {
-        openPopup(panel, host, position, `${symbol}.openPopup`);
-      });
-
-    const tryScreenRect = (): Promise<boolean> => {
-      const openPopupAtScreenRect = panel.openPopupAtScreenRect;
-      if (!viewport || !isFunction(openPopupAtScreenRect)) {
-        return Promise.resolve(false);
-      }
-      return runAttempt(() =>
-        Reflect.apply(openPopupAtScreenRect, panel, [
-          position,
-          screenOrigin.x + viewport.x,
-          screenOrigin.y + viewport.y,
-          viewport.width,
-          viewport.height,
-          false,
-          false,
-        ]),
-      );
-    };
-
-    const tryScreenPoint = (): Promise<boolean> => {
-      const openPopupAtScreen = panel.openPopupAtScreen;
-      if (!viewport || !isFunction(openPopupAtScreen)) {
-        return Promise.resolve(false);
-      }
-      return runAttempt(() =>
-        Reflect.apply(openPopupAtScreen, panel, [
-          screenOrigin.x + viewport.x,
-          screenOrigin.y + viewport.y + viewport.height,
-          false,
-        ]),
-      );
-    };
-
-    const panelHasMultiView = (() => {
-      const querySelector = panel.querySelector;
-      if (!isFunction(querySelector)) {
-        return false;
-      }
-      try {
-        return Reflect.apply(querySelector, panel, ["panelmultiview"]) != null;
-      } catch {
-        return false;
-      }
-    })();
-    const openOnlyThroughMultiView =
-      Boolean(panelMultiViewOpenPopup) &&
-      (panelHasMultiView || isScreenPlacedPopupPosition(position));
-
-    const tryScreenRectThroughMultiView = async (): Promise<boolean> => {
-      const openPopupAtScreenRect = panel.openPopupAtScreenRect;
-      const originalOpenPopup = panel.openPopup;
-      if (
-        !viewport ||
-        !panelMultiViewOpenPopup ||
-        !isFunction(openPopupAtScreenRect) ||
-        !isFunction(originalOpenPopup)
-      ) {
-        return false;
-      }
-      const routedOpenPopup = () =>
-        Reflect.apply(openPopupAtScreenRect, panel, [
-          position,
-          screenOrigin.x + viewport.x,
-          screenOrigin.y + viewport.y,
-          viewport.width,
-          viewport.height,
-          false,
-          false,
-        ]);
-      try {
-        panel.openPopup = routedOpenPopup;
-      } catch {
-        return false;
-      }
-      try {
-        return await tryMultiView(host, Object.freeze({ position }));
-      } finally {
-        try {
-          panel.openPopup = originalOpenPopup;
-        } catch {
-          // Restore is best-effort so later attempts still use Firefox's method.
-        }
-      }
-    };
-
-    const attempts = openOnlyThroughMultiView
-      ? isScreenPlacedPopupPosition(position)
-        ? [
-            tryScreenRectThroughMultiView,
-            tryDetachedMultiView,
-            tryHostMultiView,
-            tryHostMultiViewString,
-          ]
-        : [tryHostMultiView, tryHostMultiViewString, tryDetachedMultiView]
-      : isScreenPlacedPopupPosition(position)
-        ? [
-            tryDetachedMultiView,
-            tryScreenRect,
-            tryHostMultiView,
-            tryHostMultiViewString,
-            tryHostElement,
-            tryScreenPoint,
-          ]
-        : [
-            tryHostMultiView,
-            tryHostMultiViewString,
-            tryDetachedMultiView,
-            tryHostElement,
-            tryScreenRect,
-            tryScreenPoint,
-          ];
-
-    for (const attempt of attempts) {
-      if (await attempt()) {
-        finishPlaced();
-        return;
-      }
-      await Promise.resolve();
-    }
-
-    if (finishIfOpen()) {
-      finishPlaced();
-      return;
-    }
-    if (isFirefoxBridgeError(lastError)) {
-      throw lastError;
-    }
-    throw createBrowserToolsError(
-      boundary,
-      "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED",
-      "firefox-browser-tools-action",
-      `${symbol}.openPopup`,
-      lastError,
-    );
-  };
-
-  const openOrMovePanel = async (
-    action: PopupBrowserToolAction,
-    host: NativeRecord,
-    position: string,
-  ): Promise<NativePanel> => {
-    const panel = requireActionPanel(action);
-    const panelId =
-      typeof panel.id === "string" && panel.id
-        ? panel.id
-        : popupPanelByAction[action][0];
-    if (isPanelOpen(panel)) {
-      moveToAnchor(panel, host, position, `document.${panelId}.moveToAnchor`);
-      return panel;
-    }
-    await openPanelOnHost(panel, host, position, `document.${panelId}`);
-    return panel;
   };
 
   const flushAfterPopupHide = async (): Promise<void> => {
@@ -749,8 +350,8 @@ export function createFirefoxBrowserToolsBridge({
   ): Promise<PopupHandoff> => {
     const resolvedHost = requireProjectHost(host);
     const panelId = popupPanelByAction[action][0];
-    const position = resolvePopupPosition(resolvedHost, action);
-    hideOtherPanels(new Set(popupPanelByAction[action]));
+    const position = panelPlacement.resolvePopupPosition(resolvedHost, action);
+    panelPlacement.hideOtherPanels(new Set(popupPanelByAction[action]));
     await flushAfterPopupHide();
     for (const id of popupPanelByAction[action]) {
       beginHandoff(id);
@@ -816,7 +417,7 @@ export function createFirefoxBrowserToolsBridge({
       }
       if (pendingHandoff && isPanelElement(popup)) {
         try {
-          placePanelBesideHost(
+          panelPlacement.placePanelBesideHost(
             popup,
             pendingHandoff.host,
             pendingHandoff.position,
@@ -842,6 +443,29 @@ export function createFirefoxBrowserToolsBridge({
     }
   };
 
+  const closeOpenPanel = (
+    action: PopupBrowserToolAction,
+    panel: NativePanel,
+    symbol: string,
+  ): void => {
+    panelPlacement.hidePanel(panel, symbol);
+    pendingHandoff = null;
+    for (const id of popupPanelByAction[action]) {
+      endHandoff(id);
+    }
+    publishPopup(false);
+  };
+
+  const popupActionInvoker = createBrowserToolsPopupActionInvoker({
+    beginHandoff,
+    boundary,
+    closeOpenPanel,
+    invokeMethod,
+    panelPlacement,
+    resolveTranslationTriggerEvent,
+    waitForPanelShown,
+  });
+
   const invokePopupAction = async (
     action: PopupBrowserToolAction,
     host: unknown,
@@ -853,376 +477,11 @@ export function createFirefoxBrowserToolsBridge({
       openingPanelIds.add(id);
     }
     try {
-      switch (action) {
-        case "site-information":
-        case "protections": {
-          if (!isNativeRecord(ownerWindow.gTrustPanelHandler)) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING",
-              "firefox-browser-tools-action",
-              "window.gTrustPanelHandler.showPopup",
-            );
-          }
-          try {
-            await invokeMethod(
-              ownerWindow.gTrustPanelHandler,
-              "showPopup",
-              "window.gTrustPanelHandler.showPopup",
-            );
-          } catch {
-            // #anchor() uses checkVisibility() on collapsed navbar nodes, so
-            // showPopup can throw after initializing the lazy panel.
-          }
-          const opened = findOpenPanel(popupPanelByAction[action]);
-          if (opened) {
-            moveToAnchor(
-              opened,
-              handoff.host,
-              handoff.position,
-              `document.${opened.id ?? handoff.panelId}.moveToAnchor`,
-            );
-            return true;
-          }
-          await openOrMovePanel(action, handoff.host, handoff.position);
-          return true;
-        }
-
-        case "site-permissions": {
-          if (!isNativeRecord(ownerWindow.gPermissionPanel)) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING",
-              "firefox-browser-tools-action",
-              "window.gPermissionPanel.setAnchor",
-            );
-          }
-          const setAnchor = ownerWindow.gPermissionPanel.setAnchor;
-          if (!isFunction(setAnchor)) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING",
-              "firefox-browser-tools-action",
-              "window.gPermissionPanel.setAnchor",
-            );
-          }
-          try {
-            Reflect.apply(setAnchor, ownerWindow.gPermissionPanel, [
-              handoff.host,
-              handoff.position,
-            ]);
-          } catch (error) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED",
-              "firefox-browser-tools-action",
-              "window.gPermissionPanel.setAnchor",
-              error,
-            );
-          }
-          try {
-            await invokeMethod(
-              ownerWindow.gPermissionPanel,
-              "openPopup",
-              "window.gPermissionPanel.openPopup",
-              [Object.freeze({})],
-            );
-          } catch {
-            // The lazy permission template may still need a host-anchored open.
-          }
-          const opened = findOpenPanel(popupPanelByAction[action]);
-          if (opened) {
-            moveToAnchor(
-              opened,
-              handoff.host,
-              handoff.position,
-              "document.permission-popup.moveToAnchor",
-            );
-            return true;
-          }
-          await openOrMovePanel(action, handoff.host, handoff.position);
-          return true;
-        }
-
-        case "downloads": {
-          if (!isNativeRecord(ownerWindow.DownloadsPanel)) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING",
-              "firefox-browser-tools-action",
-              "window.DownloadsPanel.initialize",
-            );
-          }
-          await invokeMethod(
-            ownerWindow.DownloadsPanel,
-            "initialize",
-            "window.DownloadsPanel.initialize",
-          );
-          await openOrMovePanel(action, handoff.host, handoff.position);
-          return true;
-        }
-
-        case "extensions": {
-          const panel = requireActionPanel(action);
-          if (isPanelOpen(panel)) {
-            hidePanel(panel, "document.unified-extensions-panel.hidePopup");
-            pendingHandoff = null;
-            for (const id of popupPanelByAction[action]) {
-              endHandoff(id);
-            }
-            publishPopup(false);
-            return true;
-          }
-          if (!isNativeRecord(ownerWindow.gUnifiedExtensions)) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING",
-              "firefox-browser-tools-action",
-              "window.gUnifiedExtensions.togglePanel",
-            );
-          }
-          const PanelMultiView = readPanelMultiViewOwner(ownerWindow);
-          const originalMultiViewOpenPopup =
-            PanelMultiView && isFunction(PanelMultiView.openPopup)
-              ? PanelMultiView.openPopup
-              : undefined;
-          // togglePanel fire-and-forgets PanelMultiView.openPopup on the native
-          // button. That in-flight open races the host-anchored open and
-          // popuphides the panel before popupshown.
-          if (PanelMultiView && originalMultiViewOpenPopup) {
-            try {
-              PanelMultiView.openPopup = (
-                candidatePanel: unknown,
-                ...rest: unknown[]
-              ) => {
-                if (
-                  isNativeRecord(candidatePanel) &&
-                  candidatePanel.id === "unified-extensions-panel"
-                ) {
-                  return undefined;
-                }
-                return Reflect.apply(
-                  originalMultiViewOpenPopup,
-                  PanelMultiView,
-                  [candidatePanel, ...rest],
-                );
-              };
-            } catch {
-              // Non-writable owners still host-open after togglePanel.
-            }
-          }
-          try {
-            await invokeMethod(
-              ownerWindow.gUnifiedExtensions,
-              "togglePanel",
-              "window.gUnifiedExtensions.togglePanel",
-            );
-          } catch {
-            // togglePanel still initializes lazy panel contents.
-          } finally {
-            if (PanelMultiView && originalMultiViewOpenPopup) {
-              try {
-                PanelMultiView.openPopup = originalMultiViewOpenPopup;
-              } catch {
-                // Host-open uses the restored or original owner.
-              }
-            }
-          }
-          await openOrMovePanel(action, handoff.host, handoff.position);
-          return true;
-        }
-
-        case "translate": {
-          const translations = ownerWindow.FullPageTranslationsPanel;
-          if (!isNativeRecord(translations) || !isFunction(translations.open)) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING",
-              "firefox-browser-tools-action",
-              "window.FullPageTranslationsPanel.open",
-            );
-          }
-          const panelMultiView = readPanelMultiViewOwner(ownerWindow);
-          const originalOpenPopup = panelMultiView?.openPopup;
-          let routedOpenPopup:
-            ((candidatePanel: unknown, ...rest: unknown[]) => unknown) | null =
-            null;
-          if (panelMultiView && isFunction(originalOpenPopup)) {
-            routedOpenPopup = (candidatePanel, ...rest) => {
-              if (
-                isNativeRecord(candidatePanel) &&
-                candidatePanel.id === "full-page-translations-panel"
-              ) {
-                const options = isNativeRecord(rest[1])
-                  ? Object.freeze({
-                      ...rest[1],
-                      position: handoff.position,
-                    })
-                  : Object.freeze({ position: handoff.position });
-                const result = Reflect.apply(
-                  originalOpenPopup,
-                  panelMultiView,
-                  [candidatePanel, handoff.host, options],
-                );
-                return result;
-              }
-              return Reflect.apply(originalOpenPopup, panelMultiView, [
-                candidatePanel,
-                ...rest,
-              ]);
-            };
-            try {
-              panelMultiView.openPopup = routedOpenPopup;
-            } catch {
-              routedOpenPopup = null;
-            }
-          }
-          let panelShown = false;
-          try {
-            await invokeMethod(
-              translations,
-              "open",
-              "window.FullPageTranslationsPanel.open",
-              [resolveTranslationTriggerEvent(triggerEvent, handoff.host)],
-            );
-            // Firefox 153/154's async open() starts its private #openPromise but
-            // returns without awaiting it. Keep the narrowly scoped route in
-            // place until the lazily materialized panel actually opens.
-            panelShown = await waitForPanelShown(
-              handoff.panelId,
-              TRANSLATIONS_PANEL_OPEN_TIMEOUT_MS,
-            );
-          } finally {
-            if (
-              panelMultiView &&
-              originalOpenPopup &&
-              routedOpenPopup &&
-              panelMultiView.openPopup === routedOpenPopup
-            ) {
-              try {
-                panelMultiView.openPopup = originalOpenPopup;
-              } catch {
-                // The popupshown handoff still places the Firefox-owned panel.
-              }
-            }
-          }
-          if (!panelShown) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED",
-              "firefox-browser-tools-action",
-              "document.full-page-translations-panel.popupshown",
-            );
-          }
-          const opened = resolveActionPanel(action);
-          if (!opened || !isPanelOpen(opened)) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED",
-              "firefox-browser-tools-action",
-              "document.full-page-translations-panel.openPopup",
-            );
-          }
-          if (opened.anchorNode !== handoff.host) {
-            placePanelBesideHost(
-              opened,
-              handoff.host,
-              handoff.position,
-              "document.full-page-translations-panel.moveToAnchor",
-            );
-          }
-          return true;
-        }
-
-        case "application-menu": {
-          const panel = requireActionPanel(action);
-          if (isPanelOpen(panel)) {
-            hidePanel(panel, "document.appMenu-popup.hidePopup");
-            pendingHandoff = null;
-            for (const id of popupPanelByAction[action]) {
-              endHandoff(id);
-            }
-            publishPopup(false);
-            return true;
-          }
-          if (!isNativeRecord(ownerWindow.PanelUI)) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING",
-              "firefox-browser-tools-action",
-              "window.PanelUI.ensureReady",
-            );
-          }
-          await invokeMethod(
-            ownerWindow.PanelUI,
-            "ensureReady",
-            "window.PanelUI.ensureReady",
-          );
-          const ensureShortcuts = ownerWindow.PanelUI._ensureShortcutsShown;
-          if (isFunction(ensureShortcuts)) {
-            try {
-              Reflect.apply(ensureShortcuts, ownerWindow.PanelUI, []);
-            } catch {
-              // Shortcut labels are optional for opening the panel.
-            }
-          }
-          try {
-            await openOrMovePanel(action, handoff.host, handoff.position);
-          } catch {
-            // Host-open can fail for arrow PanelMultiView; use PanelUI.show().
-          }
-          const openedOnHost = resolveActionPanel(action);
-          if (openedOnHost && isPanelOpen(openedOnHost)) {
-            return true;
-          }
-          beginHandoff("appMenu-popup");
-          if (!isFunction(ownerWindow.PanelUI.show)) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_CAPABILITY_MISSING",
-              "firefox-browser-tools-action",
-              "window.PanelUI.show",
-            );
-          }
-          const shown = waitForPanelShown("appMenu-popup");
-          try {
-            const result = Reflect.apply(
-              ownerWindow.PanelUI.show,
-              ownerWindow.PanelUI,
-              [],
-            );
-            void Promise.resolve(result).catch(() => {
-              // show() is fire-and-forget; popupshown re-anchors the host.
-            });
-          } catch (error) {
-            throw createBrowserToolsError(
-              boundary,
-              "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_FAILED",
-              "firefox-browser-tools-action",
-              "window.PanelUI.show",
-              error,
-            );
-          }
-          await shown;
-          const opened = resolveActionPanel(action);
-          if (opened && isPanelOpen(opened)) {
-            placePanelBesideHost(
-              opened,
-              handoff.host,
-              handoff.position,
-              "document.appMenu-popup.moveTo",
-            );
-            return true;
-          }
-          await openOrMovePanel(action, handoff.host, handoff.position);
-          return true;
-        }
-      }
-      throw createBrowserToolsError(
-        boundary,
-        "FENNEVIA_FIREFOX_BROWSER_TOOLS_ACTION_INVALID",
-        "firefox-browser-tools-action",
-        "browser-tools.action",
+      return await popupActionInvoker.invoke(
+        action,
+        ownerWindow,
+        handoff,
+        triggerEvent,
       );
     } finally {
       for (const id of popupPanelByAction[action]) {

@@ -486,9 +486,14 @@ One controller per window validates the current Firefox owners needed for ten
 actions: site information, protections, site permissions, native Downloads,
 Unified Extensions, built-in full-page translation, application menu, Settings,
 native customization, and complete original-toolbar access. It re-resolves
-every owner at action time. ADR-042/ADR-057's seven popup actions pass a
-project-owned XHTML host, keep native
-chrome hidden, and re-anchor the Firefox panel beside that host. If the
+every owner at action time. The feature folder keeps per-window lifecycle,
+handoff, listeners, and the public bridge in `controller.ts`; native panel
+resolution and ordered placement fallbacks live in `panel-placement.ts`; the
+seven fixed popup actions live in `popup-actions.ts`; and capability/native
+guards remain in `support.ts`. This source split does not change the public
+contract or the single generated private ESM. ADR-042/ADR-057's seven popup
+actions pass a project-owned XHTML host, keep native chrome hidden, and
+re-anchor the Firefox panel beside that host. If the
 current owner throws after initializing a lazy panel, the bridge still
 opens the existing panel on that host. Popup position follows the host
 surface: address overlay `after_end`, left rail `end_before`, otherwise
@@ -526,6 +531,8 @@ window. The unprivileged adapter validates results and releases its
 per-window reference on unmount. See ADR-037, ADR-042, ADR-057,
 `docs/research/firefox-153-native-popup-anchoring.md`, and
 `docs/research/firefox-153-154-install-notification-and-translations-widget.md`.
+The current source-structure review is recorded in
+`docs/research/codebase-structure-audit-2026-08-25.md`.
 
 ADR-044 and ADR-045 add `src/firefox/toolbar-widgets.ts` and
 `src/firefox/customize-model.ts` to the same generated private ESM. One
@@ -1022,6 +1029,10 @@ src/
     <feature>.ts              # stable public facade
     bookmarks/
     browser-tools/
+      controller.ts           # lifecycle, handoff, listeners, public bridge
+      panel-placement.ts      # native panel resolution and ordered fallbacks
+      popup-actions.ts        # fixed popup-action dispatch
+      support.ts              # capabilities and native-data guards
     downloads/
     navigation/
     tabs/
