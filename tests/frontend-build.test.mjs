@@ -535,6 +535,45 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.doesNotMatch(customize, /#3b82f6|#8b5cf6|#64748b|#f7fafc/u);
 });
 
+test("deferred UI work routes rejected promises to the fatal boundary", async () => {
+  const [app, customizePanel, customizeTabs, toolbarWidgets, top, left] =
+    await Promise.all([
+      readProjectFile("src/shell/App.svelte"),
+      readProjectFile("src/shell/CustomizePanel.svelte"),
+      readProjectFile("src/shell/features/customize/CustomizeTabList.svelte"),
+      readProjectFile(
+        "src/shell/features/toolbar-widgets/ToolbarWidgetZone.svelte",
+      ),
+      readProjectFile("src/shell/surfaces/TopSurface.svelte"),
+      readProjectFile("src/shell/surfaces/LeftSurface.svelte"),
+    ]);
+
+  assert.match(
+    app,
+    /<CustomizePanel[\s\S]*?onFatalError=\{props\.onFatalError\}/u,
+  );
+  assert.match(
+    customizePanel,
+    /<CustomizeTabList[\s\S]*?onFatalError=\{props\.onFatalError\}/u,
+  );
+  assert.match(
+    customizeTabs,
+    /focusSelectedTab\(tab\)\.catch\(props\.onFatalError\)/u,
+  );
+  for (const source of [toolbarWidgets, top, left]) {
+    assert.match(
+      source,
+      /const reportAsyncError = \(work: Promise<unknown>\).*work\.catch\(props\.onFatalError\)/su,
+    );
+  }
+  assert.doesNotMatch(
+    toolbarWidgets,
+    /\bvoid (?:runBrowserToolAction|runToolbarWidgetEdit|runToolbarWidgetPartAction|runToolbarWidgetAction)\(/u,
+  );
+  assert.doesNotMatch(top, /\bvoid runBrowserToolAction\(/u);
+  assert.doesNotMatch(left, /\bvoid runBrowserToolAction\(/u);
+});
+
 test("the installed frontend is one IIFE, one style module, and one notice", async () => {
   const [bundle, styleModule, notices, manifest] = await Promise.all([
     readProjectFile("profile/chrome/fennevia/content/shell/ShellApp.js"),

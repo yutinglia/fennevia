@@ -503,9 +503,9 @@ export function createFirefoxTabsBridge({
   const moveNativeTabsToIndex = (
     moving: readonly NativeTab[],
     destStart: number,
-  ): void => {
+  ): readonly NativeTab[] => {
     if (moving.length === 0) {
-      return;
+      return [];
     }
     const movingSet = new Set(moving);
     const openTabs = readOpenTabs();
@@ -537,6 +537,7 @@ export function createFirefoxTabsBridge({
         ]);
       }
     }
+    return desired;
   };
 
   const readLastMultiSelectedTab = (): NativeTab => {
@@ -852,17 +853,17 @@ export function createFirefoxTabsBridge({
             "tabs.dropDrag.source-tab",
           );
         }
-        const handlePos = moving.indexOf(transfer.tab);
         const handleIndex = nativeTabs.indexOf(transfer.tab);
         const destStart =
-          moving.length > 1
-            ? boundedIndex > handleIndex
-              ? boundedIndex + 1
-              : boundedIndex
-            : boundedIndex - Math.max(handlePos, 0);
-        moveNativeTabsToIndex(moving, destStart);
-        const actualIndex = readOpenTabs().indexOf(transfer.tab);
-        if (actualIndex < 0) {
+          boundedIndex > handleIndex ? boundedIndex + 1 : boundedIndex;
+        const expectedTabs = moveNativeTabsToIndex(moving, destStart);
+        const actualTabs = readOpenTabs();
+        const actualIndex = actualTabs.indexOf(transfer.tab);
+        if (
+          actualIndex < 0 ||
+          actualTabs.length !== expectedTabs.length ||
+          expectedTabs.some((tab, index) => actualTabs[index] !== tab)
+        ) {
           throw createTabsError(
             boundary,
             "FENNEVIA_FIREFOX_TAB_MOVE_REJECTED",

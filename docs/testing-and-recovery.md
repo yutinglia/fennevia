@@ -360,7 +360,8 @@ Validate:
   chrome window `blur`, or from a null-`relatedTarget` `pointerout` whose
   coordinates remain inside both the window viewport and the visible panel,
   without leaving the clicked tab focused as a second persistent hold;
-- drag reorder and `Ctrl+Shift+ArrowUp/Down` within the pinned partition;
+- single-tab upward and downward drag reorder, Firefox-owned multi-selected
+  block reorder, and `Ctrl+Shift+ArrowUp/Down` within the pinned partition;
 - pointer-aligned full-row browser drag image, an actual source row that follows
   the pointer without transform lag while inside its strip, stable pre-transform
   midpoint hit testing with scroll compensation, pinned-partition movement
@@ -369,6 +370,14 @@ Validate:
 - pinned boundary clamp, drag-leave shift/marker cleanup with valid re-entry,
   and drop/end/disposal cleanup of geometry, transforms, marker, and the
   existing left pointer hold;
+- the first and last 32 CSS pixels of the scrollable list resolve to their
+  boundary positions (capped at half-height for short lists), and dragging over
+  the surrounding owned strip gap or New Tab region reaches the nearest list
+  end without adding permanent space; the middle row thresholds remain
+  unchanged;
+- non-finite list/row geometry cancels the target, and a same-window drop whose
+  non-throwing native move does not produce the complete expected identity
+  order remains unconsumed and reports a typed rejected move;
 - ordinary default tab-drag cursor, hover/focus disclosure of secondary
   actions, declared reorder shortcuts, and one polite successful-move
   announcement;
@@ -411,7 +420,8 @@ Validate:
 - the accepted target index also shows one pointer-transparent, aria-hidden
   tab-shaped row at the exact insertion point, using only a fixed localized
   label and packaged tab icon; target-content dragover shows the append
-  position, while project-frame space outside the list shows no false preview;
+  position, the owned tab-drop wrapper snaps to its nearest end, and
+  project-frame space outside that wrapper shows no false preview;
 - leaving the target browser window again without dropping clears the visible
   preview, hidden layout slot, marker, external drag state, and left hold;
   nested/internal `dragleave` events with non-null `relatedTarget` do not clear
@@ -444,7 +454,9 @@ Evidence:
 - `docs/research/firefox-154-tabbar-interaction-follow-up.md`;
 - `docs/research/firefox-154-shell-interaction-second-follow-up.md`;
 - `docs/research/firefox-154-tab-select-pointer-hold.md`;
-- `docs/research/firefox-153-154-related-new-tab.md`.
+- `docs/research/firefox-153-154-related-new-tab.md`;
+- `docs/research/firefox-153-154-tab-multiselect.md`;
+- `docs/research/codebase-robustness-audit-2026-08-24.md`.
 
 ADR-062 focused validation passed the complete `npm run verify` gate with
 318/318 Node tests, 87.49% line coverage, 95.11% function coverage, all fixed
@@ -520,6 +532,19 @@ click, group drag/adopt/detach, one-row collapsed group-drag preview that
 expands on drop, row close/mute/pin on a multi-selected set,
 Ctrl+Shift+Arrow block move, Shift+Arrow range, Accel+Space toggle, native
 menu plural actions): **not run**.
+
+ADR-072 focused tests reproduce and correct single-tab downward placement,
+reject non-finite midpoint geometry and a silent native no-op, and cover the
+pure top/bottom magnetic-zone mapping plus owned wrapper event contract. The
+complete `npm run verify` gate passed with 373/373 Node tests, 87.49% line
+coverage, 79.85% branch coverage, 95.39% function coverage, all fixed
+PowerShell 7 suites, dependency audit, deterministic frontend/bridge builds,
+and all 14 production artifacts. The fixed suite also passed under Windows
+PowerShell 5.1. Full evidence is recorded in
+`docs/research/codebase-robustness-audit-2026-08-24.md`. Real Firefox
+single/multi upward and downward drops, top/bottom magnetic targeting,
+overflow/autoscroll interaction, second/private windows, and failure injection:
+**not run**.
 
 ADR-058 real Firefox rows (camera/microphone/screen capture transitions,
 crashed tab, simultaneous audio/PiP/capture status, narrow-panel control

@@ -46,6 +46,9 @@
   const props: Props = $props();
   const t = (key: MessageKey, vars?: MessageVars): string =>
     translate(props.localeId, key, vars);
+  const reportAsyncError = (work: Promise<unknown>): void => {
+    void work.catch(props.onFatalError);
+  };
 
   let addressPopupVisible = $state(false);
   let currentNavigation: BrowserNavigationState = $state(
@@ -128,7 +131,7 @@
         disabled={!browserToolsSnapshot?.siteInformation ||
           !browserToolsSnapshot.protections}
         onclick={(event) =>
-          void runBrowserToolAction("site-information", event)}
+          reportAsyncError(runBrowserToolAction("site-information", event))}
         title={t("nav.openTrust", {
           connection: trustStatus.connectionLabel,
           protection: trustStatus.protectionLabel,

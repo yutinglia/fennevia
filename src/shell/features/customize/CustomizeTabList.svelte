@@ -18,6 +18,7 @@
 
   type Props = Readonly<{
     localeId: FenneviaLocale;
+    onFatalError: (error: unknown) => void;
     onSelect: (tab: CustomizeTabId) => void;
     selected: CustomizeTabId;
   }>;
@@ -40,7 +41,7 @@
 
   const selectTab = (tab: CustomizeTabId): void => {
     props.onSelect(tab);
-    void focusSelectedTab(tab);
+    void focusSelectedTab(tab).catch(props.onFatalError);
   };
 
   const selectByOffset = (offset: number): void => {

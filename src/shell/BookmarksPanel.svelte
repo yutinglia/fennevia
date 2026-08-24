@@ -190,7 +190,7 @@
       );
       rovingBookmarkId = nextFocusId;
       if (focusedBookmarkId && focusedBookmarkId !== nextFocusId) {
-        void restoreFocusAfterLiveRemoval(nextFocusId);
+        reportAsyncError(restoreFocusAfterLiveRemoval(nextFocusId));
       }
     });
     return unsubscribe;
@@ -276,7 +276,7 @@
     if (!(target instanceof HTMLSelectElement) || !target.value) {
       return;
     }
-    void chooseRoot(target.value);
+    reportAsyncError(chooseRoot(target.value));
   };
 
   const toggleFolder = async (folderId: string): Promise<void> => {
@@ -296,7 +296,7 @@
       return;
     }
     const disposition = event.ctrlKey || event.metaKey ? "new-tab" : "current";
-    void openBookmark(bookmarkId, disposition);
+    reportAsyncError(openBookmark(bookmarkId, disposition));
   };
 
   const handleBookmarkAuxClick = (
@@ -308,7 +308,7 @@
     }
     event.preventDefault();
     event.stopPropagation();
-    void openBookmark(bookmarkId, "new-tab");
+    reportAsyncError(openBookmark(bookmarkId, "new-tab"));
   };
 
   const preventMiddleAutoscroll = (event: MouseEvent): void => {
@@ -652,10 +652,11 @@
                 oncontextmenu={(event) => handleBookmarkContextMenu(event, row)}
                 onclick={(event) =>
                   row.node.kind === "folder"
-                    ? void toggleFolder(row.node.id)
+                    ? reportAsyncError(toggleFolder(row.node.id))
                     : handleBookmarkClick(event, row.node.id)}
                 onfocus={() => (rovingBookmarkId = row.node.id)}
-                onkeydown={(event) => void handleItemKeydown(event, row)}
+                onkeydown={(event) =>
+                  reportAsyncError(handleItemKeydown(event, row))}
                 onmousedown={(event) =>
                   row.node.kind === "bookmark" &&
                   preventMiddleAutoscroll(event)}
@@ -696,7 +697,8 @@
                   class="fennevia-bookmarks__new-tab"
                   data-fennevia-action="open-bookmark-new-tab"
                   disabled={current.openingBookmarkId !== null}
-                  onclick={() => void openBookmark(row.node.id, "new-tab")}
+                  onclick={() =>
+                    reportAsyncError(openBookmark(row.node.id, "new-tab"))}
                   title={t("bookmarks.openNewTab")}
                   type="button"><FirefoxIcon name="open-in-new" /></button
                 >
@@ -717,7 +719,9 @@
               <span>{t("bookmarks.folderLoadError")}</span>
               <button
                 onclick={() =>
-                  void runAction(() => props.bookmarks.retry(row.parentId))}
+                  reportAsyncError(
+                    runAction(() => props.bookmarks.retry(row.parentId)),
+                  )}
                 type="button">{t("bookmarks.retry")}</button
               >
             {:else if row.branch.phase === "stale"}
@@ -733,8 +737,10 @@
                 <button
                   disabled={row.branch.offset === 0}
                   onclick={() =>
-                    void runAction(() =>
-                      props.bookmarks.page(row.parentId, "previous"),
+                    reportAsyncError(
+                      runAction(() =>
+                        props.bookmarks.page(row.parentId, "previous"),
+                      ),
                     )}
                   type="button">{t("bookmarks.previous")}</button
                 >
@@ -748,8 +754,10 @@
                 <button
                   disabled={!row.branch.truncated}
                   onclick={() =>
-                    void runAction(() =>
-                      props.bookmarks.page(row.parentId, "next"),
+                    reportAsyncError(
+                      runAction(() =>
+                        props.bookmarks.page(row.parentId, "next"),
+                      ),
                     )}
                   type="button">{t("bookmarks.next")}</button
                 >

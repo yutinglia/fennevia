@@ -71,6 +71,15 @@ pointer-origin restore or tab drag, and shortens the coupled
 new-tab highlight/reveal to 500 ms. Focused automation is required; the real
 Firefox rows remain pending.
 
+ADR-071 drives Firefox-owned tab multi-select from the same strip. ADR-072
+corrects the resulting single-tab downward-drop asymmetry by applying one
+insertion-boundary conversion to every move-set size and verifies the complete
+native order before consuming a same-window drag. It also rejects invalid
+geometry and enlarges the owned list's top/bottom landing zones, including the
+strip gap and New Tab region, without adding layout, a drag owner, or a timer.
+Focused automation passes; the real Firefox single/multi downward-drop and
+edge-target rows remain pending in `docs/testing-and-recovery.md` §6.1.
+
 ADR-044 (#64) adds the read-only nav-bar widget mirror in the top surface with
 owner-approved rendering of extension identity data. ADR-045 deprecates that
 mirror as the only widget source and adds a Fennevia-owned customize mode with
@@ -362,8 +371,15 @@ toggle, Shift range, group drag/keyboard move, row close/mute/pin, native
 menu). Evidence: ADR-071 and
 `docs/research/firefox-153-154-tab-multiselect.md`.
 
+ADR-072 applies the same pre-removal insertion-boundary conversion to single
+and multi-tab downward drops, rejects non-finite hit-test geometry, verifies
+the complete native order before consuming a transfer, and expands the
+project-owned top/bottom landing targets. The existing keyboard move path is
+unchanged. Evidence:
+`docs/research/codebase-robustness-audit-2026-08-24.md`.
+
 Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063,
-ADR-065, ADR-066, ADR-070, and ADR-071, plus
+ADR-065, ADR-066, ADR-070, ADR-071, and ADR-072, plus
 `docs/research/firefox-153-tab-strip.md`,
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,

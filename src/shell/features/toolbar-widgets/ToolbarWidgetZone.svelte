@@ -63,6 +63,9 @@
   const props: Props = $props();
   const t = (key: MessageKey, vars?: MessageVars): string =>
     translate(props.localeId, key, vars);
+  const reportAsyncError = (work: Promise<unknown>): void => {
+    void work.catch(props.onFatalError);
+  };
   let browserToolsSnapshot = $derived(props.browserTools?.snapshot());
   let bookmarksEdge = $derived(
     getSidePanelEdge(
@@ -121,11 +124,11 @@
         return;
       }
       if (action === "show-downloads") {
-        void runBrowserToolAction("downloads", event);
+        reportAsyncError(runBrowserToolAction("downloads", event));
         return;
       }
       if (action === "show-translate") {
-        void runBrowserToolAction("translate", event);
+        reportAsyncError(runBrowserToolAction("translate", event));
       }
     } catch (error) {
       props.onFatalError(error);
@@ -237,7 +240,7 @@
     dropPreview = null;
     clearToolbarWidgetDrag();
     if (operation) {
-      void runToolbarWidgetEdit(operation);
+      reportAsyncError(runToolbarWidgetEdit(operation));
     }
   };
 
@@ -321,12 +324,14 @@
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
       event.stopPropagation();
-      void runToolbarWidgetEdit({
-        index,
-        revision,
-        type: "remove",
-        zone: props.edge,
-      });
+      reportAsyncError(
+        runToolbarWidgetEdit({
+          index,
+          revision,
+          type: "remove",
+          zone: props.edge,
+        }),
+      );
       return;
     }
     const earlier = event.key === "ArrowLeft";
@@ -343,14 +348,16 @@
     }
     event.preventDefault();
     event.stopPropagation();
-    void runToolbarWidgetEdit({
-      fromIndex: index,
-      fromZone: props.edge,
-      revision,
-      toIndex,
-      toZone: props.edge,
-      type: "move",
-    });
+    reportAsyncError(
+      runToolbarWidgetEdit({
+        fromIndex: index,
+        fromZone: props.edge,
+        revision,
+        toIndex,
+        toZone: props.edge,
+        type: "move",
+      }),
+    );
   };
 
   onDestroy(() => {
@@ -427,7 +434,8 @@
               class="fennevia-control fennevia-toolbar-widgets__button fennevia-toolbar-widgets__compound-button"
               data-fennevia-browser-tool="toolbar-widget-part"
               disabled={part.disabled}
-              onclick={(event) => void runToolbarWidgetPartAction(part, event)}
+              onclick={(event) =>
+                reportAsyncError(runToolbarWidgetPartAction(part, event))}
               title={toolbarWidgetPartTooltip(part)}
               type="button"
             >
@@ -465,7 +473,8 @@
           ondragend={handleWidgetDragEnd}
           ondragstart={(event) => handleWidgetDragStart(event, index)}
           onkeydown={(event) => handleWidgetItemKeydown(event, index)}
-          onclick={(event) => void runToolbarWidgetAction(widget, event)}
+          onclick={(event) =>
+            reportAsyncError(runToolbarWidgetAction(widget, event))}
           title={localizeWidgetTooltip(
             props.localeId,
             widget.tooltip,

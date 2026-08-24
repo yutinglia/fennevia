@@ -34,6 +34,7 @@
     customizeSession?: CustomizeSessionController;
     localeId?: FenneviaLocale;
     onClose: () => void;
+    onFatalError: (error: unknown) => void;
     state: BrowserToolbarWidgetsState | null;
     toolbarWidgets: BrowserToolbarWidgetsStateAdapter;
   }>;
@@ -212,6 +213,7 @@
   {:else}
     <CustomizeTabList
       {localeId}
+      onFatalError={props.onFatalError}
       onSelect={(tab) => (selectedTab = tab)}
       selected={selectedTab}
     />

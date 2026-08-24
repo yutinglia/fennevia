@@ -3,6 +3,7 @@ import { interpolate } from "./i18n.ts";
 
 export const untitledTabLabel = "Untitled tab";
 export const newTabHighlightDurationMs = 500;
+export const tabDropEdgeTargetSizePx = 32;
 
 export type TabStripLabels = Readonly<{
   allowMedia: string;
@@ -60,6 +61,33 @@ export type TabDropPreview = Readonly<{
 }> | null;
 
 export type TabDragShift = "down" | "up" | null;
+
+export function normalizeTabDropPointerY(
+  pointerY: number,
+  listTop: number,
+  listBottom: number,
+): number | null {
+  if (
+    !Number.isFinite(pointerY) ||
+    !Number.isFinite(listTop) ||
+    !Number.isFinite(listBottom) ||
+    listBottom <= listTop
+  ) {
+    return null;
+  }
+
+  const edgeTargetSize = Math.min(
+    tabDropEdgeTargetSizePx,
+    (listBottom - listTop) / 2,
+  );
+  if (pointerY <= listTop + edgeTargetSize) {
+    return listTop;
+  }
+  if (pointerY >= listBottom - edgeTargetSize) {
+    return listBottom;
+  }
+  return pointerY;
+}
 
 export function getDisplayTabTitle(
   tab: TabSnapshot,
@@ -335,6 +363,7 @@ export function resolveTabDropIndex(
   if (
     draggingIndex < 0 ||
     itemMids.length !== tabs.length ||
+    itemMids.some((midpoint) => !Number.isFinite(midpoint)) ||
     !Number.isFinite(pointerY)
   ) {
     return null;

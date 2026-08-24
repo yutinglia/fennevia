@@ -2626,6 +2626,11 @@ height-constrained list keeps its ordinary scroll behavior. Clear both slot
 and visible preview on every terminal path, including a no-drop target-window
 exit.
 
+ADR-072 supersedes only the “outside the list” hit-test boundary above: the
+project-owned tab-strip wrapper now maps its gap and New Tab region to the
+nearest list end, while project-frame space outside that wrapper still has no
+landing preview.
+
 If no Fennevia target consumes a non-cancelled drag, honor
 `browser.tabs.allowTabDetach` and call `gBrowser.replaceTabWithWindow` with
 the bounded release point. A sole-tab source remains unchanged because it is
@@ -3116,3 +3121,35 @@ ADR-041. Capturing `movingTabs` at drag start matches Firefox `tabs.js`
 dragstart and avoids a drop-time reread if the set changes. Opaque tab IDs and
 an integer `count` are the only drag metadata that leave the privileged
 boundary.
+
+## ADR-072: Normalize tab-drop boundaries and enlarge owned edge targets
+
+**Status:** Accepted by direct owner request; Firefox 153/154 source contract
+unchanged; real Firefox matrix remains `not run`
+
+Treat a same-window drop index as the final strip position selected by the
+owned spatial preview. Before passing it to the existing block-move helper,
+convert a downward move back to the pre-removal native insertion boundary by
+adding one. Apply that conversion regardless of whether the captured move set
+contains one tab or multiple tabs. The block helper then removes every moving
+tab conceptually and inserts the ordered set once. A same-window drag is
+consumed only after the complete native `openTabs` identity order matches the
+computed order; a silent or partial `moveTabTo` result is a typed rejected move.
+
+Reject non-finite pointer, list-bound, and row-midpoint geometry. Within the
+project-owned tab list, normalize the first and last 32 CSS pixels to the
+respective list boundary, capped at half the list height for short lists. The
+owned strip wrapper, including its gap and New Tab region, is also a drop zone;
+coordinates above or below the scrollable list clamp to the first or last
+valid position. This adds no permanent layout, native DOM mutation, second edge
+trigger, timer, drag payload field, or privileged value in Svelte. The existing
+`Ctrl+Shift+ArrowUp/Down` route remains the non-drag alternative.
+
+**Reasoning:** Issue #109's multi-select change added the required downward
+insertion-boundary compensation only for move sets larger than one. A focused
+regression test showed a single first tab dropped at final index 1 remaining at
+index 0. The unified conversion fixes that asymmetry while retaining the
+already-correct block behavior. Enlarging only the owned hit-test zones makes
+the visually narrow ends easier to reach without reserving content space or
+changing Firefox's native drag ownership. See
+`docs/research/codebase-robustness-audit-2026-08-24.md`.
