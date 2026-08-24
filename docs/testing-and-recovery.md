@@ -29,9 +29,9 @@ ADR-039.
 
 ## 1. Current validated baseline
 
-As of 2026-08-24:
+As of 2026-08-25:
 
-- package: public `0.14.0-beta.1` prerelease;
+- package: public `0.15.0-beta.1` prerelease;
 - tested Firefox: 153.0.4 release, Build ID `20260810162159`, and 154.0
   release, Build ID `20260812182057`;
 - installer gate: Firefox 153+ after an explicit warning that only 153 and 154
@@ -44,10 +44,14 @@ As of 2026-08-24:
   development profile;
 - completed runtime/UI/distribution milestones: #3–#18, #31, #32, #37, #39,
   and #46;
+- `0.15.0-beta.1` identity-bump tests and release mass matrix: **not run** by
+  explicit owner instruction on 2026-08-25; the included changes retain their
+  earlier recorded checks, which are not relabelled as a package-level matrix;
 - current shell: one zero-layout frame with independent top, left, right, and
   bottom surfaces plus one centered address-overlay root;
-- current functional features: vertical tabs and compact address/status
-  launcher on the default-left/configurable tabs side, centered address/search popup, primary
+- current functional features: vertical tabs with separate bounded pinned and
+  regular scrolling partitions plus a compact address/status launcher on the
+  default-left/configurable tabs side, centered address/search popup, primary
   navigation controls with bounded page status in the top surface, bounded lazy
   bookmarks on the default-right/configurable bookmark side, and anonymous
   aggregate download status in the optionally disabled bottom surface; the
@@ -1256,7 +1260,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.14.0-beta.1` performs the sole production activation only after
+Current package `0.15.0-beta.1` performs the sole production activation only after
 the health phase requires:
 
 - exact frame identity and placement;

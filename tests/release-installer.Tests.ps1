@@ -213,7 +213,7 @@ try {
         -RepositoryRoot $repositoryRoot `
         -OutputDirectory (Join-Path $canonicalTestRoot "release output") `
         -SourceCommit "0123456789abcdef0123456789abcdef01234567" `
-        -ExpectedTag "v0.14.0-beta.1" `
+        -ExpectedTag "v0.15.0-beta.1" `
         -TestAllowDirtySource
     Remove-Module FenneviaRelease -ErrorAction SilentlyContinue
     Import-Module (Join-Path $repositoryRoot "scripts\lib\FenneviaInstaller.psm1") -Force
