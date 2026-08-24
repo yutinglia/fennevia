@@ -2,6 +2,10 @@
 
 [繁體中文](README.zh-Hant.md)
 
+![Stylized map of Fennevia's four-edge interface](docs/media/fennevia-overview.svg)
+
+*A stylized interface map, not a Firefox compatibility or validation screenshot.*
+
 Fennevia is an experimental, content-first interface for **stock Firefox**. It
 keeps the web page in the foreground and places browser controls in four
 floating edge panels that stay hidden until you need them.
