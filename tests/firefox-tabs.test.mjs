@@ -1153,6 +1153,54 @@ test("same-window tab drag reorders once and records the transfer as consumed", 
   }
 });
 
+test("same-window single-tab drag preserves a downward final index", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    const firstId = pair.controller.tabs.snapshot()[0].id;
+    pair.controller.tabs.beginDrag(firstId);
+
+    assert.deepEqual(pair.controller.tabs.dropDrag(1), {
+      index: 1,
+      kind: "moved",
+      tabId: firstId,
+    });
+    assert.deepEqual(
+      pair.controller.tabs.snapshot().map((tab) => tab.title),
+      ["Second", "First"],
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("same-window drag rejects a native move that leaves the order unchanged", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    native.gBrowser.moveTabTo = (tab, options) => {
+      native.gBrowser.actionCalls.push(["moveTabTo", tab, options]);
+    };
+    const firstId = pair.controller.tabs.snapshot()[0].id;
+    const dragId = pair.controller.tabs.beginDrag(firstId);
+
+    assert.throws(
+      () => pair.controller.tabs.dropDrag(1),
+      /FENNEVIA_FIREFOX_TAB_MOVE_REJECTED/u,
+    );
+    assert.equal(
+      pair.controller.tabs.endDrag(dragId, {
+        cancelled: true,
+        screenX: 0,
+        screenY: 0,
+      }),
+      "cancelled",
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
 test("a shared drag coordinator adopts a tab into another same-kind window", () => {
   const coordinator = createTestDragCoordinator();
   const sourceNative = createNativeWindow();

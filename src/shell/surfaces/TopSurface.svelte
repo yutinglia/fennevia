@@ -49,6 +49,9 @@
   const props: Props = $props();
   const t = (key: MessageKey, vars?: MessageVars): string =>
     translate(props.localeId, key, vars);
+  const reportAsyncError = (work: Promise<unknown>): void => {
+    void work.catch(props.onFatalError);
+  };
 
   let currentNavigation: BrowserNavigationState = $state(
     createBrowserNavigationState({
@@ -310,13 +313,13 @@
           if (event.button !== 0) {
             return;
           }
-          void runBrowserToolAction("extensions", event);
+          reportAsyncError(runBrowserToolAction("extensions", event));
         }}
         onclick={(event) => {
           if (event.detail !== 0) {
             return;
           }
-          void runBrowserToolAction("extensions", event);
+          reportAsyncError(runBrowserToolAction("extensions", event));
         }}
         title={t("nav.extensions")}
         type="button"
@@ -328,7 +331,7 @@
         class="fennevia-control fennevia-browser-tools__button fennevia-browser-tools__secondary"
         data-fennevia-browser-tool="settings"
         disabled={!browserToolsSnapshot?.settings}
-        onclick={() => void runBrowserToolAction("settings")}
+        onclick={() => reportAsyncError(runBrowserToolAction("settings"))}
         title={t("nav.settings")}
         type="button"
       >
@@ -353,7 +356,7 @@
         data-fennevia-browser-tool="application-menu"
         disabled={!browserToolsSnapshot?.applicationMenu}
         onclick={(event) =>
-          void runBrowserToolAction("application-menu", event)}
+          reportAsyncError(runBrowserToolAction("application-menu", event))}
         title={t("nav.firefoxMenu")}
         type="button"
       >

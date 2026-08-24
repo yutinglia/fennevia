@@ -1,7 +1,8 @@
 # Current Project Status
 
 > Snapshot: 2026-08-24. This status review is based on `main` through PR #110
-> plus the `0.14.0-beta.1` version identity, alongside the public
+> plus the ADR-072 tab-drop/robustness correction and the `0.14.0-beta.1`
+> version identity, alongside the public
 > `v0.14.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
 
@@ -18,6 +19,7 @@ and testing documents retain the complete engineering contract.
 | Installer compatibility gate    | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested                                                                                |
 | Core four-edge MVP              | Implemented and released                                                                                                                                    |
 | Post-MVP shell work             | Included in `v0.14.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, and Firefox-owned tab multi-select |
+| Current branch follow-up        | ADR-072 corrects single-tab downward drop placement, enlarges owned top/bottom targets, verifies native reorder results, and hardens deferred UI errors; not included in the public prerelease |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending |
 | Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.14.0-beta.1` package does not re-run that matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                             |
@@ -51,7 +53,8 @@ and testing documents retain the complete engineering contract.
   Firefox-owned multi-select with Accel toggle, Shift range, group drag, and
   row close/mute/pin,
   drag/keyboard reorder with a pointer-aligned full-row ghost, animated neighbor
-  gap, insertion marker, and polite move announcement, plus Firefox-owned tab
+  gap, insertion marker, enlarged top/bottom magnetic landing zones, verified
+  single/group native order, and polite move announcement, plus Firefox-owned tab
   context-menu handoff with complete lazy Fluent labels and no original-toolbar
   reveal.
 - Compact address/status launcher on the same configured tabs side, with one Firefox-style Trust shield embedded
@@ -207,6 +210,9 @@ following remain explicitly pending in the current plans and testing document:
   Accel-click, including Shift-background, in real Firefox;
 - ADR-071 Firefox-owned tab multi-select, group drag/keyboard move, row
   close/mute/pin, and native context-menu plural actions in real Firefox;
+- ADR-072 single/multi upward and downward drop placement, top/bottom magnetic
+  targets, overflow interaction, native no-op rejection, and
+  normal/second/private-window behavior in real Firefox;
 - ADR-059 unified Trust-shield rendering/state, leading in-launcher placement,
   and native panel handoff across HTTP, HTTPS, ETP exception/restore, errors,
   forced colors, DPI, and multiple windows;

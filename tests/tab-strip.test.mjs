@@ -22,6 +22,7 @@ import {
   isCollapsedDragMember,
   isTabInDragGroup,
   newTabHighlightDurationMs,
+  normalizeTabDropPointerY,
   resolveDraggedTabTranslateY,
   resolveRovingTabId,
   resolveTabPointerAction,
@@ -250,6 +251,10 @@ test("move helpers stay inside the pinned partition and ignore no-op drops", () 
   assert.equal(hasAccelModifier({ ctrlKey: false, metaKey: true }), true);
   assert.equal(resolveTabDropIndex(tabs, "open-b", [10, 30, 50, 70], 20), 2);
   assert.equal(resolveTabDropIndex(tabs, "open-b", [10, 30, 50, 70], 80), null);
+  assert.equal(
+    resolveTabDropIndex(tabs, "open-b", [10, Number.NaN, 50, 70], 20),
+    null,
+  );
   assert.equal(resolveTabDropIndex(tabs, "pinned-a", [10, 30, 50, 70], 80), 1);
   assert.equal(
     resolveTabDropIndex(
@@ -334,6 +339,28 @@ test("source drag cleanup distinguishes adoption from an in-window reorder", () 
   assert.equal(isDraggedTabMissing(reorderedTabs, null), false);
   assert.equal(isDraggedTabMissing(reorderedTabs, "tab-1"), false);
   assert.equal(isDraggedTabMissing(reorderedTabs, "transferred-tab"), true);
+});
+
+test("drop pointer normalization expands both list edges without changing the middle", () => {
+  assert.equal(normalizeTabDropPointerY(80, 100, 300), 100);
+  assert.equal(normalizeTabDropPointerY(125, 100, 300), 100);
+  assert.equal(normalizeTabDropPointerY(140, 100, 300), 140);
+  assert.equal(normalizeTabDropPointerY(275, 100, 300), 300);
+  assert.equal(normalizeTabDropPointerY(320, 100, 300), 300);
+
+  assert.equal(normalizeTabDropPointerY(119, 100, 140), 100);
+  assert.equal(normalizeTabDropPointerY(121, 100, 140), 140);
+  assert.equal(normalizeTabDropPointerY(Number.NaN, 100, 300), null);
+  assert.equal(
+    normalizeTabDropPointerY(120, Number.NEGATIVE_INFINITY, 300),
+    null,
+  );
+  assert.equal(
+    normalizeTabDropPointerY(120, 100, Number.POSITIVE_INFINITY),
+    null,
+  );
+  assert.equal(normalizeTabDropPointerY(120, 100, 100), null);
+  assert.equal(normalizeTabDropPointerY(120, 200, 100), null);
 });
 
 test("dragged tab translation follows the pointer and clamps to its partition", () => {
@@ -617,6 +644,10 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /findTabGroupMoveIndex/u);
   assert.match(source, /resolveTabDropIndex/u);
   assert.match(source, /resolveTabDropPreview/u);
+  assert.match(
+    tabSource,
+    /normalizeTabDropPointerY\([\s\S]*?bounds\.top,[\s\S]*?bounds\.bottom/u,
+  );
   assert.match(source, /transfer\.setDragImage/u);
   assert.match(tabSource, /transfer\.clearData\(\)/u);
   assert.match(tabSource, /transfer\.setData\(TAB_DRAG_MIME_TYPE, "1"\)/u);
@@ -690,8 +721,16 @@ test("the component uses semantic sibling controls and property-safe rendering o
   );
   assert.match(
     tabSource,
-    /const handleTabListDragOver = \(event: DragEvent\) => \{[\s\S]*?setDragHold\(true\);[\s\S]*?holdExternalDrag\(drag\);/u,
+    /const updateTabDropAtPointer = \(event: DragEvent, list: HTMLElement\) => \{[\s\S]*?setDragHold\(true\);[\s\S]*?holdExternalDrag\(drag\);/u,
   );
+  assert.match(source, /data-fennevia-tab-drop-zone=""/u);
+  assert.match(source, /ondragover=\{handleTabDropZoneDragOver\}/u);
+  assert.match(source, /ondrop=\{handleTabDropZoneDrop\}/u);
+  assert.match(
+    tabSource,
+    /reportAsyncError\(\s*tick\(\)\.then\(\(\) => \{[\s\S]*?captureDragGeometry/u,
+  );
+  assert.doesNotMatch(tabSource, /void tick\(\)\.then/u);
   assert.match(
     tabSource,
     /props\.tabs\.subscribe[\s\S]*?sourceDragId !== null[\s\S]*?isDraggedTabMissing\(nextState\.tabs, draggingTabId\)[\s\S]*?if \(sourceTabLeftWindow\) \{\s*clearTabDrag\(\);\s*reportAsyncError\(tick\(\)\.then\(releaseSurfaceFocus\)\);/u,
@@ -705,7 +744,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
   );
   assert.match(
     tabSource,
-    /handleWindowDragOver[\s\S]*?isInsideProjectFrame\(event\)[\s\S]*?isInsideTabList\(event\)[\s\S]*?setDragHold\(true\)[\s\S]*?clearDropTarget\(\)[\s\S]*?previewExternalDragAtEnd\(drag\)/u,
+    /handleWindowDragOver[\s\S]*?isInsideProjectFrame\(event\)[\s\S]*?isInsideTabDropZone\(event\)[\s\S]*?setDragHold\(true\)[\s\S]*?clearDropTarget\(\)[\s\S]*?previewExternalDragAtEnd\(drag\)/u,
   );
   assert.match(
     tabSource,

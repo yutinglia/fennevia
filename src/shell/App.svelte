@@ -455,6 +455,7 @@
       customizeSession={props.customizeSession}
       {localeId}
       onClose={() => setCustomizeOpen(false)}
+      onFatalError={props.onFatalError}
       state={currentToolbarWidgets}
       toolbarWidgets={props.toolbarWidgets}
     />

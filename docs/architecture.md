@@ -330,6 +330,16 @@ source row before `dragend` traverses that window, the next source tab snapshot
 detects the missing active ID and performs the same local cleanup without
 ending the transfer ahead of the target; after the DOM update it releases
 focus/keyboard holds only when focus has actually left that surface.
+ADR-071 keeps multi-select in `gBrowser` and captures the same-pinned native
+set at drag start. ADR-072 makes single and group same-window drops share the
+same pre-removal insertion-boundary conversion, then compares the complete
+post-move native identity order before consuming the transfer. Non-finite list
+or row geometry cancels the owned target. The first and last 32 CSS pixels of
+the scrollable list are magnetic boundary targets, capped at half the list
+height, while the surrounding owned strip gap and New Tab region clamp to the
+nearest list end. This changes hit testing only: it adds no permanent space,
+payload data, privileged frontend state, edge trigger, or timer, and the
+keyboard reorder path remains available.
 Current source and runtime evidence is in
 `docs/research/firefox-153-tabs-bridge.md`,
 `docs/research/firefox-153-tab-strip.md`,
@@ -341,9 +351,12 @@ Current source and runtime evidence is in
 `docs/research/firefox-154-cross-window-tab-drag.md`,
 `docs/research/firefox-154-tabbar-interaction-follow-up.md`,
 `docs/research/firefox-154-shell-interaction-second-follow-up.md`,
-`docs/research/firefox-154-tab-select-pointer-hold.md`, and
-`docs/research/firefox-153-154-related-new-tab.md`, plus ADR-024,
-ADR-025, and ADR-041/ADR-058/ADR-060/ADR-062/ADR-063/ADR-065/ADR-066/ADR-067/ADR-070.
+`docs/research/firefox-154-tab-select-pointer-hold.md`,
+`docs/research/firefox-153-154-related-new-tab.md`,
+`docs/research/firefox-153-154-tab-multiselect.md`, and
+`docs/research/codebase-robustness-audit-2026-08-24.md`, plus ADR-024,
+ADR-025, and
+ADR-041/ADR-058/ADR-060/ADR-062/ADR-063/ADR-065/ADR-066/ADR-067/ADR-070/ADR-071/ADR-072.
 
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather

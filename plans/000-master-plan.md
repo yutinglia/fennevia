@@ -71,6 +71,13 @@ Completed:
   a real target-row layout slot plus visible generic row without spurious
   short-list overflow, no-drop target-exit cleanup, browser-content append,
   native detach outside Firefox, and capture plus source-snapshot hold cleanup;
+- ADR-071: the vertical strip drives Firefox-owned tab multi-select, including
+  range/toggle semantics, group actions, block move/adopt/detach, and native
+  plural context-menu behavior without a second selected-ID owner;
+- ADR-072: same-window single and multi-tab drops share one downward insertion-
+  boundary conversion, verify the complete native result before consumption,
+  reject invalid geometry, and use larger owned top/bottom drop targets without
+  reserving layout space;
 - ADR-064: bookmark rows use Firefox's cached bounded raster favicon data and
   middle-click new-tab opening; a third bounded customize preference swaps the
   paired side roles, disables the bottom panel, and maps either top/bottom light
@@ -103,7 +110,7 @@ Completed:
   executable Firefox stable-update rehearsal.
 
 Current fast branch enhancement under ADR-037, ADR-042, ADR-044 through
-ADR-047, and ADR-054 through ADR-066:
+ADR-047, and ADR-054 through ADR-072:
 
 - one non-wrapping top row with navigation, address/page status, loading,
   Firefox tools, and progressive disclosure;
@@ -121,8 +128,8 @@ ADR-047, and ADR-054 through ADR-066:
   actions plus native Library access on bookmark rows, and a spatial tab drag
   preview with a live source row, full-row browser ghost, animated neighbor gap,
   insertion marker, target-window tab-surface reveal and visible landing row,
-  same-kind cross-window transfer, content-area append, and Firefox-owned
-  external detach;
+  enlarged owned top/bottom landing zones, same-kind cross-window transfer,
+  content-area append, and Firefox-owned external detach;
 - retained Firefox caption controls styled in place as a compact island;
 - a 7px browser-content gutter, gap-free edge contact, transient shortcut hint,
   click-versus-drag reconciliation for panel drag regions, and
@@ -427,7 +434,10 @@ Evidence: ADR-026 and
 - bounded vertical overflow;
 - keyboard navigation, drag reorder with a pointer-aligned full-row ghost,
   animated neighbor gap, insertion marker, and polite move announcement, plus
-  deterministic close-focus recovery;
+  deterministic close-focus recovery; same-window drops use one verified
+  insertion-boundary mapping for single and Firefox-owned multi-selected sets,
+  while the first/last 32 CSS pixels and the owned New Tab region provide
+  easier top/bottom landing targets;
 - synchronous native lazy-label activation and a NativeUi popup token so the
   Firefox tab menu is complete without revealing original chrome;
 - non-consuming parent context routing so the delegated tab owner still opens
@@ -436,7 +446,7 @@ Evidence: ADR-026 and
 - native tab strip retained.
 
 Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063,
-ADR-065, ADR-066,
+ADR-065, ADR-066, ADR-071, ADR-072,
 `docs/research/firefox-153-tab-strip.md`, and
 `docs/research/firefox-153-tab-strip-parity.md`,
 `docs/research/firefox-153-154-tab-status-indicators.md`,
@@ -444,7 +454,8 @@ ADR-065, ADR-066,
 `docs/research/firefox-154-tab-drag-spatial-preview.md`,
 `docs/research/firefox-154-tabbar-interaction-follow-up.md`, and
 `docs/research/firefox-154-shell-interaction-second-follow-up.md`, plus ADR-055
-and `docs/research/firefox-153-154-panel-context-actions.md`.
+and `docs/research/firefox-153-154-panel-context-actions.md`, and
+`docs/research/codebase-robustness-audit-2026-08-24.md`.
 
 #### Top primary controls — complete (#12)
 

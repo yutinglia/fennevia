@@ -50,6 +50,19 @@ test("bookmark rows expose bounded pointer and keyboard context actions", async 
   assert.match(source, /referrerpolicy="no-referrer"/u);
   assert.match(source, /draggable="false"/u);
   assert.match(source, /blurFocusedContextMenuItem\(\);/u);
+  assert.match(
+    source,
+    /const reportAsyncError = \(work: Promise<unknown>\).*work\.catch\(props\.onFatalError\)/su,
+  );
+  assert.doesNotMatch(
+    source,
+    /\bvoid (?:restoreFocusAfterLiveRemoval|chooseRoot|openBookmark|toggleFolder|handleItemKeydown|runAction)\(/u,
+  );
+  assert.match(
+    source,
+    /reportAsyncError\(restoreFocusAfterLiveRemoval\(nextFocusId\)\)/u,
+  );
+  assert.match(source, /reportAsyncError\(handleItemKeydown\(event, row\)\)/u);
   const closeStart = source.indexOf("const closeBookmarkContextMenu");
   const blurBeforeRemoval = source.indexOf(
     "blurFocusedContextMenuItem();",

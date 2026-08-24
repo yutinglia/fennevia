@@ -41,7 +41,9 @@ access; tab rows keep Firefox's complete translated tab menu, bookmark rows
 offer bounded open/folder/Library actions, middle-click opens a bookmark in a
 new tab, and the actual dragged tab follows
 the pointer inside its strip while neighboring tabs move aside to preview the
-final order. Entering another same-kind
+final order. The top and bottom of the list use larger magnetic landing zones,
+and the owned New Tab region also accepts a drop at the list end. Entering
+another same-kind
 Fennevia window also reveals and holds that window's tab strip; the tab can be
 dropped at an insertion point there, dropped on that window's browser area to
 append it, or released outside Firefox to let Firefox detach it into a window.

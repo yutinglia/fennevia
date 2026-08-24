@@ -4259,7 +4259,7 @@ function ai({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		let t = A(e, "pinned"), n = new Set(ie()), r = O().filter((e) => n.has(e) && A(e, "pinned") === t);
 		return r.includes(e) ? r : [e];
 	}, oe = (e, t) => {
-		if (e.length === 0) return;
+		if (e.length === 0) return [];
 		let n = new Set(e), r = O(), i = r.filter((e) => !n.has(e)), a = Math.max(0, t - r.slice(0, t).filter((e) => n.has(e)).length), o = A(e[0], "pinned"), s = i.filter((e) => A(e, "pinned")).length, c = o ? Math.min(Math.max(a, 0), s) : Math.min(Math.max(a, s), i.length), l = [
 			...i.slice(0, c),
 			...e,
@@ -4272,6 +4272,7 @@ function ai({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 				tabIndex: e
 			}]);
 		}
+		return l;
 	}, se = () => {
 		let e = E();
 		try {
@@ -4386,10 +4387,8 @@ function ai({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 				if (!n.includes(a.tab)) throw r.cancel(a.id, C), X(t, "FENNEVIA_FIREFOX_TAB_STALE", "firefox-tabs-drag", "tabs.dropDrag.source-tab");
 				let e = Math.max(n.length - 1, 0), s = a.pinned ? Math.min(Math.max(i, 0), Math.max(o - 1, 0)) : Math.min(Math.max(i, o), e), c = ce(a, n);
 				if (c.length === 0) throw r.cancel(a.id, C), X(t, "FENNEVIA_FIREFOX_TAB_STALE", "firefox-tabs-drag", "tabs.dropDrag.source-tab");
-				let l = c.indexOf(a.tab), u = n.indexOf(a.tab), d = c.length > 1 ? s > u ? s + 1 : s : s - Math.max(l, 0);
-				oe(c, d);
-				let f = O().indexOf(a.tab);
-				if (f < 0) throw X(t, "FENNEVIA_FIREFOX_TAB_MOVE_REJECTED", "firefox-tabs-drag", "window.gBrowser.moveTabTo");
+				let l = s > n.indexOf(a.tab) ? s + 1 : s, u = oe(c, l), d = O(), f = d.indexOf(a.tab);
+				if (f < 0 || d.length !== u.length || u.some((e, t) => d[t] !== e)) throw X(t, "FENNEVIA_FIREFOX_TAB_MOVE_REJECTED", "firefox-tabs-drag", "window.gBrowser.moveTabTo");
 				let p = g.register(a.tab);
 				return r.consume(a.id), P(!0), Object.freeze({
 					index: f,
