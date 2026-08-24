@@ -2,6 +2,10 @@
 
 [English](README.md)
 
+![Fennevia 四邊介面的風格化示意圖](docs/media/fennevia-overview.svg)
+
+*這是介面配置的風格化示意圖，不是 Firefox 相容性或驗證結果的實機截圖。*
+
 Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為中心的瀏覽器介面。它讓網頁保持在畫面主體，並把瀏覽器控制項放到四個平時隱藏、需要時才浮現的邊緣面板。
 
 > [!WARNING]
