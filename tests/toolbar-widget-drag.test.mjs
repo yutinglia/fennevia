@@ -7,6 +7,9 @@ import {
   createToolbarWidgetDropEdit,
   getActiveToolbarWidgetDrag,
   parseToolbarWidgetDrag,
+  resolveToolbarWidgetDragAutoScrollDelta,
+  resolveToolbarWidgetDragImageOffset,
+  resolveToolbarWidgetDragPreviewSize,
   resolveSameZoneMoveIndex,
   resolveWidgetInsertBefore,
   serializeToolbarWidgetDrag,
@@ -90,6 +93,52 @@ test("same-zone moves correct insertBefore and ignore no-ops", () => {
   assert.equal(resolveSameZoneMoveIndex(1, 1), null);
   assert.equal(resolveSameZoneMoveIndex(1, 2), null);
   assert.equal(resolveSameZoneMoveIndex(-1, 1), null);
+});
+
+test("drag previews stay bounded and axis-aware", () => {
+  assert.deepEqual(resolveToolbarWidgetDragPreviewSize("control", "row"), {
+    blockSize: 44,
+    inlineSize: 168,
+  });
+  assert.deepEqual(resolveToolbarWidgetDragPreviewSize("layout", "column"), {
+    blockSize: 52,
+    inlineSize: 220,
+  });
+  assert.deepEqual(resolveToolbarWidgetDragPreviewSize("space", "row"), {
+    blockSize: 32,
+    inlineSize: 32,
+  });
+});
+
+test("drag image offsets preserve a clamped pointer-relative anchor", () => {
+  const bounds = { height: 100, left: 10, top: 20, width: 200 };
+  const preview = { blockSize: 50, inlineSize: 100 };
+  assert.deepEqual(
+    resolveToolbarWidgetDragImageOffset(110, 70, bounds, preview),
+    { x: 50, y: 25 },
+  );
+  assert.deepEqual(
+    resolveToolbarWidgetDragImageOffset(-100, 500, bounds, preview),
+    { x: 0, y: 50 },
+  );
+  assert.equal(
+    resolveToolbarWidgetDragImageOffset(Number.NaN, 0, bounds, preview),
+    null,
+  );
+  assert.equal(
+    resolveToolbarWidgetDragImageOffset(0, 0, { ...bounds, width: 0 }, preview),
+    null,
+  );
+});
+
+test("drag autoscroll accelerates only inside bounded edge bands", () => {
+  assert.equal(resolveToolbarWidgetDragAutoScrollDelta(100, 100, 500), -18);
+  assert.equal(resolveToolbarWidgetDragAutoScrollDelta(124, 100, 500), -9);
+  assert.equal(resolveToolbarWidgetDragAutoScrollDelta(300, 100, 500), 0);
+  assert.equal(resolveToolbarWidgetDragAutoScrollDelta(476, 100, 500), 9);
+  assert.equal(resolveToolbarWidgetDragAutoScrollDelta(500, 100, 500), 18);
+  assert.equal(resolveToolbarWidgetDragAutoScrollDelta(0, 10, 10), 0);
+  assert.equal(resolveToolbarWidgetDragAutoScrollDelta(Number.NaN, 0, 100), 0);
 });
 
 test("drop mapping produces add, move, and remove edits", () => {

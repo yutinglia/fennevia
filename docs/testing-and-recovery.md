@@ -1138,10 +1138,32 @@ ADR-045 adds focused unit/static/build coverage for:
 - contextual per-node controls: move/containment/axis/remove buttons are in DOM
   and keyboard order but visually hidden until the deepest node is hovered or a
   direct control owns focus.
+- ADR-075 drag presentation: bounded axis-aware preview sizes, clamped
+  pointer-relative drag-image anchors, exact root/nested insertion slots,
+  source placeholders, stable pre-preview geometry, bounded edge autoscroll,
+  changed-destination announcements, reduced-motion animation removal, forced-
+  colors distinctions, and terminal cleanup through the existing opaque drag
+  lifecycle;
+- ADR-075 editor discovery: single-node selection with Escape priority,
+  persistent selected controls, localized action/drop/status text, palette
+  search over localized labels, closed All/Fennevia/Firefox/Layout filters,
+  result/destination feedback, no-result state, click/Enter/Space addition,
+  and layout-node removal by dropping back on the palette;
+- ADR-075 per-instance styles: a closed widget/style registry, additive old-v2
+  defaults, canonical omission of explicit defaults, invalid/incompatible
+  style rejection, revision-guarded `set-node-style`, ordinary effective-style
+  projection, Address with the existing Trust owner in one capsule, and Tabs
+  with the existing trailing New Tab action while standalone widgets remain.
 
 The current ADR-074 source passed the complete `npm run verify` gate on
 2026-08-25 with 395/395 Node tests, 87.92% line coverage, 80.29% branch
 coverage, 95.37% function coverage, every fixed PowerShell 7 suite, dependency
+audit, deterministic frontend/bridge output, and 14/14 accepted production
+artifacts.
+
+The current ADR-075 source passed the complete `npm run verify` gate on
+2026-08-25 with 406/406 Node tests, 88.19% line coverage, 80.52% branch
+coverage, 95.47% function coverage, every fixed PowerShell 7 suite, dependency
 audit, deterministic frontend/bridge output, and 14/14 accepted production
 artifacts.
 
@@ -1155,7 +1177,12 @@ repopulation of the resulting empty edges; compatible Top/Left duplicate
 window controls; dragging across several panels, abandoning with Escape or
 outside the window, and verifying every blue target outline clears; pointer and
 keyboard reveal of only the intended node's contextual controls in deeply
-nested layouts; ordinary-mode window movement from every empty-space kind;
+nested layouts; pointer-relative drag images, exact insertion previews,
+autoscroll, selection/Escape priority, palette search/categories, and live
+screen-reader announcements; Address `address-only`/`with-site-status` and Tabs
+`tabs-only`/`with-new-tab` switching on horizontal and vertical flows,
+including native Trust popup placement and New Tab insertion; ordinary-mode
+window movement from every empty-space kind;
 adopt/restore of an installed extension; style tokens under forced colors and
 reduced motion; default Firefox Light/Dark design-token colors on owned
 surfaces; minimum/default/maximum trigger hit testing and live hide/reveal
@@ -1164,8 +1191,9 @@ with open popups/focus; all light-source combinations; native status capsule
 under theme/forced-colors/DPI; layout reset restoring native placements; and
 Escape/focus restoration while a widget popup is also held. Implementation/
 source evidence is in `docs/research/firefox-153-customize-mode.md`,
-`plans/006-customize-mode.md`, and
-`plans/009-composable-widget-layout.md`.
+`plans/006-customize-mode.md`,
+`plans/009-composable-widget-layout.md`, and
+`plans/010-customize-mode-drag-ux.md`.
 
 ### 6.10 Four-panel context menus — focused automation complete, real Firefox pending
 

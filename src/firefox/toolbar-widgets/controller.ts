@@ -7,6 +7,7 @@ import {
   createDefaultShellPanelConfig,
   createDefaultToolbarStyle,
   createUnavailableToolbarWidgetsSnapshot,
+  defaultProjectWidgetStyle,
   projectWidgetIds,
   toolbarZoneNames,
   type BrowserToolbarWidgetsBridge,
@@ -55,6 +56,7 @@ import {
   removeComposableLayoutNode,
   serializeComposableCustomizeLayout,
   setComposableLayoutContainerDirection,
+  setComposableLayoutItemStyle,
   setComposableMultiplePlacements,
   withComposableAdopted,
   withoutComposableAdopted,
@@ -1046,6 +1048,10 @@ export function createFirefoxToolbarWidgetsBridge({
     return Object.freeze({
       instanceId: node.instanceId,
       projectId,
+      style:
+        projectId === ""
+          ? ""
+          : (node.style ?? defaultProjectWidgetStyle(projectId)),
       type: "item" as const,
       widget: built.widget,
     });
@@ -2115,6 +2121,16 @@ export function createFirefoxToolbarWidgetsBridge({
                 base,
                 validated.location,
                 validated.direction,
+              ),
+            );
+            break;
+          }
+          case "set-node-style": {
+            persistAccessibleLayout(
+              setComposableLayoutItemStyle(
+                base,
+                validated.location,
+                validated.style,
               ),
             );
             break;

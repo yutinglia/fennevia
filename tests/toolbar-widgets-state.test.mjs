@@ -17,14 +17,17 @@ import {
   createEmptyToolbarLayoutZones,
   createEmptyToolbarWidgetZones,
   createUnavailableToolbarWidgetsSnapshot,
+  defaultProjectWidgetStyle,
   defaultToolbarLayoutDirection,
   findToolbarLayoutInstance,
   isInteractiveToolbarWidget,
+  isProjectWidgetStyle,
   isToolbarOptionalPanelEnabled,
   isToolbarWidgetKind,
   getSidePanelEdge,
   getSidePanelRole,
   reduceBrowserToolbarWidgetsState,
+  projectWidgetStyleOptions,
   toolbarLayoutContainsProjectWidget,
   toolbarLayoutParent,
 } from "../src/app/toolbar-widgets-state.ts";
@@ -202,6 +205,27 @@ test("recursive layout helpers preserve paths, parents, and container axes", () 
   assert.equal(isToolbarOptionalPanelEnabled(true, 0, true), true);
   assert.equal(isToolbarOptionalPanelEnabled(false, 3, true), false);
   assert.equal(isToolbarOptionalPanelEnabled(true, 3, false), true);
+});
+
+test("project widget style registry is closed and widget-specific", () => {
+  assert.deepEqual(projectWidgetStyleOptions("address-launcher"), [
+    "address-only",
+    "with-site-status",
+  ]);
+  assert.deepEqual(projectWidgetStyleOptions("tabs"), [
+    "tabs-only",
+    "with-new-tab",
+  ]);
+  assert.deepEqual(projectWidgetStyleOptions("back"), []);
+  assert.equal(defaultProjectWidgetStyle("address-launcher"), "address-only");
+  assert.equal(defaultProjectWidgetStyle("tabs"), "tabs-only");
+  assert.equal(defaultProjectWidgetStyle("back"), "");
+  assert.equal(
+    isProjectWidgetStyle("address-launcher", "with-site-status"),
+    true,
+  );
+  assert.equal(isProjectWidgetStyle("address-launcher", "with-new-tab"), false);
+  assert.equal(isProjectWidgetStyle("tabs", "custom-class"), false);
 });
 
 const makeSnapshot = (topWidgets, overrides = {}) =>
@@ -459,6 +483,86 @@ test("copyToolbarWidgetsSnapshot validates the container shape", () => {
     }),
   );
   assert.equal(wrapped.layout.top[0].kind, "expanded");
+
+  const projectWidget = Object.freeze({
+    ...fenneviaWidget,
+    fenneviaAction: "",
+    kind: "project",
+    label: "Address launcher",
+  });
+  const defaultStyled = copyToolbarWidgetsSnapshot(
+    makeSnapshot([], {
+      layout: Object.freeze({
+        ...createEmptyToolbarLayoutZones(),
+        top: Object.freeze([
+          Object.freeze({
+            instanceId: "layout-1",
+            projectId: "address-launcher",
+            type: "item",
+            widget: projectWidget,
+          }),
+        ]),
+      }),
+    }),
+  );
+  assert.equal(defaultStyled.layout.top[0].style, "address-only");
+  const customStyled = copyToolbarWidgetsSnapshot(
+    makeSnapshot([], {
+      layout: Object.freeze({
+        ...createEmptyToolbarLayoutZones(),
+        top: Object.freeze([
+          Object.freeze({
+            instanceId: "layout-1",
+            projectId: "address-launcher",
+            style: "with-site-status",
+            type: "item",
+            widget: projectWidget,
+          }),
+        ]),
+      }),
+    }),
+  );
+  assert.equal(customStyled.layout.top[0].style, "with-site-status");
+  assert.throws(
+    () =>
+      copyToolbarWidgetsSnapshot(
+        makeSnapshot([], {
+          layout: {
+            ...createEmptyToolbarLayoutZones(),
+            top: [
+              {
+                instanceId: "layout-1",
+                projectId: "address-launcher",
+                style: "with-new-tab",
+                type: "item",
+                widget: projectWidget,
+              },
+            ],
+          },
+        }),
+      ),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarWidgetsSnapshot(
+        makeSnapshot([], {
+          layout: {
+            ...createEmptyToolbarLayoutZones(),
+            top: [
+              {
+                instanceId: "layout-1",
+                projectId: "address-launcher",
+                style: "",
+                type: "item",
+                widget: projectWidget,
+              },
+            ],
+          },
+        }),
+      ),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID/u,
+  );
   assert.throws(
     () =>
       copyToolbarWidgetsSnapshot(
@@ -682,6 +786,20 @@ test("edit operations validate their shape before crossing the bridge", () => {
   });
   copyToolbarWidgetsEditOperation({ revision: 1, type: "reset-layout" });
   copyToolbarWidgetsEditOperation({ revision: 1, type: "clean-layout" });
+  assert.deepEqual(
+    copyToolbarWidgetsEditOperation({
+      location: { path: [5, 0], zone: "top" },
+      revision: 1,
+      style: "with-site-status",
+      type: "set-node-style",
+    }),
+    {
+      location: { path: [5, 0], zone: "top" },
+      revision: 1,
+      style: "with-site-status",
+      type: "set-node-style",
+    },
+  );
   copyToolbarWidgetsEditOperation({
     index: 0,
     parentPath: [],
@@ -738,6 +856,16 @@ test("edit operations validate their shape before crossing the bridge", () => {
         type: "set-panels",
       }),
     /FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarWidgetsEditOperation({
+        location: { path: [5, 0], zone: "top" },
+        revision: 1,
+        style: "arbitrary-css",
+        type: "set-node-style",
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID/u,
   );
   assert.throws(
     () =>

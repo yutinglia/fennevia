@@ -3365,3 +3365,79 @@ the only editing path. Implementation and focused evidence are in
 `tests/firefox-toolbar-widgets.test.mjs`,
 `tests/toolbar-widget-drag.test.mjs`, and
 `tests/frontend-build.test.mjs`.
+
+## ADR-075: Projected customize editing and closed per-instance widget styles
+
+**Status:** Accepted by direct project-owner request on 2026-08-25;
+implementation and ordinary automated coverage are complete; the real Firefox
+interaction matrix remains `not run`
+
+Extend ADR-047/ADR-074's existing live editor rather than creating another
+layout model or pointer engine. A placed node or palette tile uses one bounded,
+pointer-relative drag image. The source node remains in its original location
+as a subdued placeholder, while exactly one deepest accepted destination
+renders an axis-aware projected slot at the eventual insertion index. Cache
+the pre-preview sibling geometry for the active destination so inserting the
+slot cannot move its own hit-test boundary. A single bounded
+`requestAnimationFrame` loop scrolls the owned panel when the pointer enters a
+48 CSS px edge band and stops on leave, drop, cancellation, customize close,
+or disposal. Reduced motion removes insertion animation; forced colors keeps
+the source, selection, and projected destination distinct.
+
+Clicking or focusing a placed node selects that instance. The selected node
+keeps one compact action strip available after pointer exit, while deepest
+hover and direct control focus remain lightweight non-selection paths. Escape
+clears node selection before the outer customize surface handles Escape.
+Removing a selected node clears selection and restores focus to the nearest
+surviving path. Destination announcements occur only when panel, parent path,
+or insertion index changes, and completion is announced once after the
+revision-guarded edit succeeds.
+
+Add localized palette search over the already bounded visible label and four
+closed categories: All, Fennevia, Firefox, and Layout. Search, selected
+category, result count, active destination hint, editor selection, drag
+geometry, and scroll velocity are component-local session state and are never
+persisted. Click/Enter/Space addition and explicit keyboard node controls
+remain available, so drag is still an enhancement rather than the only path.
+
+Extend a version-2 project-item node with one optional per-instance `style`
+id. This is an additive closed field, not arbitrary CSS. A central registry
+maps a project widget id to ordered allowlisted variants and its default. The
+initial variants are:
+
+- Address launcher: `address-only` or `with-site-status`. The latter composes
+  the existing Trust widget into one shared address capsule and delegates to
+  the existing Firefox-owned site-information/protections owner.
+- Tabs: `tabs-only` or `with-new-tab`. The latter renders the existing New Tab
+  action after the final tab for either flow axis.
+
+The setting belongs to the placed instance. Standalone Trust and New Tab
+widgets remain available, and duplicate/singleton policy does not change.
+Missing style fields resolve to the registry default. Explicit default values
+are canonicalized away when persisted, preserving old version-2 JSON on read.
+Unknown styles, styles assigned to an incompatible widget, non-item paths,
+foreign paths, stale revisions, and extra keys are rejected. The ordinary
+snapshot contains only the effective fixed style id; a selected eligible node
+exposes a localized selector that sends the generic revision-guarded
+`set-node-style` edit.
+
+Drag `DataTransfer` remains an opaque palette token or layout-local instance
+id. Preview labels, icons, geometry, style ids, Firefox widget ids, extension
+identity, and browsing data are not added to the payload. Drag presentation is
+derived locally from the already validated ordinary snapshot and rendered
+only in project-owned XHTML. No native Firefox node is cloned, moved, or used
+as a project drag preview.
+
+**Reasoning:** An outline-only drop target did not show the resulting order,
+and a large unfiltered palette plus transient hover controls made nested
+layouts difficult to operate. A projected slot, stable selection, and local
+discovery tools make the existing bounded tree legible without weakening its
+keyboard or persistence contracts. Per-instance semantic variants cover
+common compound controls without turning Fennevia into a CSS editor or
+duplicating Firefox state owners. Implementation and focused evidence are in
+`plans/010-customize-mode-drag-ux.md`,
+`tests/customize-palette.test.mjs`,
+`tests/layout-drag-preview.test.mjs`,
+`tests/customize-layout-v2.test.mjs`,
+`tests/firefox-toolbar-widgets.test.mjs`, and
+`tests/frontend-build.test.mjs`.

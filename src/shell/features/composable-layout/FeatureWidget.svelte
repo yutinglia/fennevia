@@ -10,6 +10,7 @@
   import type { BrowserTabsStateAdapter } from "../../../app/tab-state";
   import type {
     ProjectWidgetId,
+    ProjectWidgetStyleId,
     ToolbarLayoutDirection,
   } from "../../../app/toolbar-widgets-state";
   import BookmarksPanel from "../../BookmarksPanel.svelte";
@@ -32,6 +33,7 @@
     onFatalError: (error: unknown) => void;
     shell: EdgeShellController;
     tabs: BrowserTabsStateAdapter;
+    widgetStyle: ProjectWidgetStyleId | "";
   }>;
 
   const props: Props = $props();
@@ -44,7 +46,7 @@
     onFatalError={props.onFatalError}
     orientation={props.direction}
     shell={props.shell}
-    showNewTab={false}
+    showNewTab={props.widgetStyle === "with-new-tab"}
     tabs={props.tabs}
   />
 {:else if props.id === "bookmarks"}

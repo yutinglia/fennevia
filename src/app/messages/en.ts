@@ -118,6 +118,8 @@ export const en = {
   "customize.bottomDownloadsPanel": "Enable bottom Downloads panel",
   "customize.bottomPanel": "Enable Bottom panel",
   "customize.bottomProgressLight": "Bottom light",
+  "customize.changeToColumn": "Change Row to Column",
+  "customize.changeToRow": "Change Column to Row",
   "customize.closeAria": "Close customize panel",
   "customize.colorAccent": "Accent color",
   "customize.colorBorder": "Border color",
@@ -129,6 +131,7 @@ export const en = {
   "customize.colorSwatchCustom": "Custom color",
   "customize.colorText": "Text color",
   "customize.colorWindow": "Window background",
+  "customize.columnDropArea": "Column drop area",
   "customize.cleanPanels": "Clean all panels",
   "customize.cleanPanelsCancel": "Cancel",
   "customize.cleanPanelsConfirm": "Clean panels",
@@ -139,8 +142,12 @@ export const en = {
   "customize.density.comfortable": "Comfortable",
   "customize.density.compact": "Compact",
   "customize.density.cozy": "Cozy",
+  "customize.dragCompleted": "Moved {label} to the {zone} panel.",
+  "customize.dragDestination":
+    "Move {label} to the {zone} panel at position {position}.",
   "customize.editFailed":
     "That change could not be applied. The layout may have just changed; try again.",
+  "customize.editNode": "Edit {label}",
   "customize.required": "Customize must remain on an enabled panel.",
   "customize.edgeTriggerSize": "Edge trigger size",
   "customize.edgeTriggerSizeHelp":
@@ -175,8 +182,27 @@ export const en = {
     "Allow compatible widgets in multiple positions",
   "customize.multiplePlacementsHelp":
     "Window controls and other compatible actions may be repeated. Tabs, bookmarks, download status, the address launcher, private indicator, and Customize remain single-instance. Rows, columns, Center, Expanded, Padding, separators, spaces, and flexible spaces are always repeatable.",
+  "customize.moveAfter": "Move after",
+  "customize.moveBefore": "Move before",
+  "customize.moveIntoPrevious": "Move into previous layout group",
+  "customize.moveOut": "Move out of container",
+  "customize.nodeSelected": "Selected {label} for layout editing.",
+  "customize.nodeSelectionCleared": "Layout selection cleared.",
   "customize.paletteAria": "Available widgets",
+  "customize.paletteCategoriesAria": "Widget categories",
+  "customize.paletteCategoryAll": "All",
+  "customize.paletteCategoryBrowser": "Fennevia",
+  "customize.paletteCategoryFirefox": "Firefox",
+  "customize.paletteCategoryLayout": "Layout",
+  "customize.paletteDestination": "Click adds to the {zone} panel",
+  "customize.paletteDragHint":
+    "Drag for precise placement, or click a widget to add it to the selected panel.",
+  "customize.paletteFilterCount": "{count} widgets shown",
+  "customize.paletteNoResults": "No widgets match this search and category.",
+  "customize.paletteSearch": "Search widgets",
+  "customize.paletteSearchPlaceholder": "Search available widgets",
   "customize.panelAria": "Customize Fennevia shell",
+  "customize.panelLayoutAria": "{zone} panel layout",
   "customize.allowCompactWindow":
     "Allow smaller than Firefox minimum window size",
   "customize.allowCompactWindowHelp":
@@ -190,6 +216,8 @@ export const en = {
   "customize.resetLayout": "Reset layout",
   "customize.resetPanels": "Reset panels and lights",
   "customize.resetStyle": "Reset appearance and interaction",
+  "customize.removeNode": "Remove from layout",
+  "customize.rowDropArea": "Row drop area",
   "customize.shortcutHintDuration": "Shortcut tips",
   "customize.shortcutHintDurationHelp":
     "How long keyboard shortcut tips stay visible when an edge panel opens. Set to 0 to hide them entirely.",
@@ -223,6 +251,14 @@ export const en = {
   "customize.windowLeaveHideDelay": "Hide after leaving window",
   "customize.windowLeaveHideDelayHelp":
     "How long a panel remains visible after the pointer leaves the Firefox window.",
+  "customize.widgetStyle": "Style",
+  "customize.widgetStyleAddressOnly": "Address only",
+  "customize.widgetStyleChanged": "Changed {label} style to {style}.",
+  "customize.widgetStyleFor": "Style for {label}",
+  "customize.widgetStyleTabsOnly": "Tabs only",
+  "customize.widgetStyleWithNewTab": "Tabs with New Tab button",
+  "customize.widgetStyleWithSiteStatus": "Address with site status",
+  "customize.wrapperDropArea": "{label} drop area",
   "customize.title": "Customize Fennevia",
   "customize.unavailable":
     "Customization is unavailable in this window. The fixed Fennevia controls and native Firefox customize mode remain usable.",

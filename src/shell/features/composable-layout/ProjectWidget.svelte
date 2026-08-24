@@ -9,10 +9,12 @@
     EdgeShellController,
   } from "../../../app/edge-surfaces";
   import type { FenneviaLocale } from "../../../app/locale-state";
+  import { translate } from "../../../app/i18n";
   import type { BrowserNavigationStateAdapter } from "../../../app/navigation-state";
   import type { BrowserTabsStateAdapter } from "../../../app/tab-state";
   import type {
     ProjectWidgetId,
+    ProjectWidgetStyleId,
     ToolbarLayoutDirection,
   } from "../../../app/toolbar-widgets-state";
   import type { BrowserWindowControlsStateAdapter } from "../../../app/window-controls-state";
@@ -43,6 +45,7 @@
     onSetCustomizeOpen: (open: boolean) => void;
     shell: EdgeShellController;
     tabs: BrowserTabsStateAdapter;
+    widgetStyle: ProjectWidgetStyleId | "";
     windowControls: BrowserWindowControlsStateAdapter;
     windowKind: "normal" | "private";
   }>;
@@ -61,10 +64,22 @@
   />
 {:else if props.id === "address-launcher"}
   <section
-    aria-label="Address launcher"
+    aria-label={translate(props.localeId, "widget.addressLauncher")}
     class="fennevia-layout-address"
     data-fennevia-address-launcher-region=""
+    data-fennevia-widget-style={props.widgetStyle}
   >
+    {#if props.widgetStyle === "with-site-status"}
+      <TrustWidget
+        browserTools={props.browserTools}
+        customizeOpen={props.customizeOpen}
+        edge={props.edge}
+        localeId={props.localeId}
+        navigation={props.navigation}
+        onFatalError={props.onFatalError}
+        shell={props.shell}
+      />
+    {/if}
     <AddressLauncherWidget
       addressPopup={props.addressPopup}
       customizeOpen={props.customizeOpen}
@@ -115,6 +130,7 @@
     onFatalError={props.onFatalError}
     shell={props.shell}
     tabs={props.tabs}
+    widgetStyle={props.widgetStyle}
   />
 {:else}
   <ShellWidget

@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import {
+  defaultProjectWidgetStyle,
+  isProjectWidgetStyle,
   projectWidgetIdSet,
   singletonProjectWidgetIdSet,
   toolbarZoneNames,
   type ProjectWidgetId,
+  type ProjectWidgetStyleId,
   type ToolbarZoneName,
 } from "../../app/toolbar-widgets-state.ts";
 import {
@@ -34,7 +37,7 @@ const wrapperKindSet = new Set<ComposableLayoutWrapperKind>(
 );
 const specialKindSet = new Set<ComposableSpecialKind>(composableSpecialKinds);
 const targetKeys = new Set(["id", "kind", "source"]);
-const itemKeys = new Set(["instanceId", "target", "type"]);
+const itemKeys = new Set(["instanceId", "style", "target", "type"]);
 const containerKeys = new Set(["children", "direction", "instanceId", "type"]);
 const wrapperKeys = new Set(["children", "instanceId", "kind", "type"]);
 const layoutKeys = new Set([
@@ -61,6 +64,7 @@ type MutableNode =
     }
   | {
       instanceId: string;
+      style?: ProjectWidgetStyleId;
       target: ComposableLayoutTarget;
       type: "item";
     };
@@ -194,6 +198,24 @@ function targetKey(target: ComposableLayoutTarget): string | null {
   return `${target.source}:${target.id}`;
 }
 
+function copyItemStyle(
+  target: ComposableLayoutTarget,
+  candidate: unknown,
+): ProjectWidgetStyleId | undefined {
+  if (candidate === undefined) {
+    return undefined;
+  }
+  if (
+    target.source !== "project" ||
+    !isProjectWidgetStyle(target.id, candidate)
+  ) {
+    throw createModelError("FENNEVIA_COMPOSABLE_LAYOUT_STYLE_INVALID");
+  }
+  return candidate === defaultProjectWidgetStyle(target.id)
+    ? undefined
+    : candidate;
+}
+
 function isMandatoryCustomizeTarget(target: ComposableLayoutTarget): boolean {
   return target.source === "project" && target.id === "customize-shell";
 }
@@ -252,6 +274,7 @@ function copyNodeArray(
     );
     if (rawNode.type === "item" && hasOnlyKeys(rawNode, itemKeys)) {
       const target = copyComposableLayoutTarget(rawNode.target);
+      const style = copyItemStyle(target, rawNode.style);
       const key = targetKey(target);
       if (key) {
         state.targetCounts.set(key, (state.targetCounts.get(key) ?? 0) + 1);
@@ -262,6 +285,7 @@ function copyNodeArray(
       nodes.push(
         Object.freeze({
           instanceId: rawNode.instanceId,
+          ...(style ? { style } : {}),
           target,
           type: "item" as const,
         }),
@@ -393,9 +417,12 @@ function allocateSeedNode(
 ): ComposableLayoutNode {
   const instanceId = `layout-${sequence.value++}`;
   if (seed.type === "item") {
+    const target = copyComposableLayoutTarget(seed.target);
+    const style = copyItemStyle(target, seed.style);
     return Object.freeze({
       instanceId,
-      target: copyComposableLayoutTarget(seed.target),
+      ...(style ? { style } : {}),
+      target,
       type: "item" as const,
     });
   }
@@ -488,6 +515,7 @@ function toMutableNode(node: ComposableLayoutNode): MutableNode {
   if (node.type === "item") {
     return {
       instanceId: node.instanceId,
+      ...(node.style ? { style: node.style } : {}),
       target: node.target,
       type: "item",
     };
@@ -871,6 +899,28 @@ export function setComposableLayoutContainerDirection(
     throw createModelError("FENNEVIA_COMPOSABLE_LAYOUT_PARENT_INVALID");
   }
   node.direction = direction;
+  return freezeMutableLayout(mutable);
+}
+
+export function setComposableLayoutItemStyle(
+  layout: ComposableCustomizeLayout,
+  location: ComposableLayoutLocation,
+  style: ProjectWidgetStyleId,
+): ComposableCustomizeLayout {
+  const mutable = toMutableLayout(copyComposableCustomizeLayout(layout));
+  const node = mutableNodeAt(mutable, location);
+  if (
+    node.type !== "item" ||
+    node.target.source !== "project" ||
+    !isProjectWidgetStyle(node.target.id, style)
+  ) {
+    throw createModelError("FENNEVIA_COMPOSABLE_LAYOUT_STYLE_INVALID");
+  }
+  if (style === defaultProjectWidgetStyle(node.target.id)) {
+    delete node.style;
+  } else {
+    node.style = style;
+  }
   return freezeMutableLayout(mutable);
 }
 

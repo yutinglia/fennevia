@@ -114,6 +114,60 @@
   font-weight: 650;
 }
 
+#fennevia-shell-frame-host .fennevia-customize__palette-tools {
+  display: grid;
+  gap: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__search-field {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) minmax(140px, 1fr);
+  align-items: center;
+  gap: var(--fennevia-space-2);
+  color: var(--fennevia-glass-muted);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__search {
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding-inline: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__palette-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fennevia-space-1);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__palette-category {
+  min-block-size: 30px;
+  padding-inline: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__palette-category[aria-pressed="true"] {
+  color: var(--fennevia-glass-text);
+  background: color-mix(in srgb, var(--fennevia-focus-color) 22%, transparent);
+  border-color: var(--fennevia-focus-color);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__palette-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fennevia-space-1) var(--fennevia-space-2);
+  color: var(--fennevia-glass-muted);
+  font-size: 11px;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__destination {
+  padding: 2px var(--fennevia-space-2);
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-chip-radius);
+}
+
 #fennevia-shell-frame-host
   :is(.fennevia-customize__empty, .fennevia-customize__status) {
   margin: 0;
@@ -153,6 +207,14 @@
   cursor: grab;
 }
 
+#fennevia-shell-frame-host
+  .fennevia-customize__tile[data-fennevia-customize-dragging="true"] {
+  border-color: var(--fennevia-focus-color);
+  border-style: dashed;
+  cursor: grabbing;
+  opacity: 0.3;
+}
+
 #fennevia-shell-frame-host .fennevia-customize__tile-label {
   display: -webkit-box;
   max-inline-size: 100%;
@@ -182,6 +244,20 @@
 
 #fennevia-shell-frame-host .fennevia-customize__item-space {
   color: var(--fennevia-glass-muted);
+}
+
+@media (forced-colors: active) {
+  #fennevia-shell-frame-host
+    .fennevia-customize__palette-category[aria-pressed="true"],
+  #fennevia-shell-frame-host .fennevia-customize__section--drop,
+  #fennevia-shell-frame-host
+    .fennevia-customize__tile[data-fennevia-customize-dragging="true"] {
+    color: HighlightText;
+    background: Highlight;
+    border-color: Highlight;
+    outline-color: Highlight;
+    forced-color-adjust: none;
+  }
 }
 
 #fennevia-shell-frame-host .fennevia-customize__style-row {

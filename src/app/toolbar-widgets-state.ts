@@ -11,6 +11,7 @@ export {
   toolbarLayoutDirections,
   toolbarLayoutWrapperKinds,
   toolbarPaletteKinds,
+  projectWidgetStyleIds,
   toolbarStyleThemes,
   toolbarStyleDensities,
   sidePanelLayouts,
@@ -29,6 +30,7 @@ export type {
   FenneviaToolbarAction,
   ProjectWidgetId,
   ToolbarPaletteKind,
+  ProjectWidgetStyleId,
   ToolbarStyleTheme,
   ToolbarStyleDensity,
   ToolbarStyleColorKey,
@@ -66,6 +68,7 @@ export {
   isToolbarPaletteToken,
   isFenneviaToolbarAction,
   isToolbarPaletteKind,
+  isProjectWidgetStyleId,
   isToolbarStyleTheme,
   isToolbarStyleDensity,
   isSidePanelLayout,
@@ -98,6 +101,11 @@ export {
   reduceBrowserToolbarWidgetsState,
 } from "./toolbar-widgets/state.ts";
 export { createBrowserToolbarWidgetsStateAdapter } from "./toolbar-widgets/adapter.ts";
+export {
+  defaultProjectWidgetStyle,
+  isProjectWidgetStyle,
+  projectWidgetStyleOptions,
+} from "./toolbar-widgets/widget-styles.ts";
 export {
   defaultToolbarLayoutDirection,
   findToolbarLayoutInstance,

@@ -29,12 +29,14 @@ import {
   progressLightSourceSet,
   nonInteractiveKindSet,
   projectWidgetIdSet,
+  projectWidgetStyleIds,
 } from "./contracts.ts";
 import type {
   ToolbarWidgetKind,
   ToolbarZoneName,
   FenneviaToolbarAction,
   ProjectWidgetId,
+  ProjectWidgetStyleId,
   ToolbarPaletteKind,
   ToolbarStyleTheme,
   ToolbarStyleDensity,
@@ -58,6 +60,10 @@ import type {
   ToolbarWidgetsEditOperation,
 } from "./contracts.ts";
 import { createToolbarWidgetsStateError } from "./errors.ts";
+import {
+  defaultProjectWidgetStyle,
+  isProjectWidgetStyle,
+} from "./widget-styles.ts";
 
 export function isToolbarWidgetKind(
   candidate: unknown,
@@ -84,6 +90,19 @@ const toolbarLayoutDirectionSet = new Set<ToolbarLayoutDirection>(
 const toolbarLayoutWrapperKindSet = new Set<ToolbarLayoutWrapperKind>(
   toolbarLayoutWrapperKinds,
 );
+
+const projectWidgetStyleIdSet = new Set<ProjectWidgetStyleId>(
+  projectWidgetStyleIds,
+);
+
+export function isProjectWidgetStyleId(
+  candidate: unknown,
+): candidate is ProjectWidgetStyleId {
+  return (
+    typeof candidate === "string" &&
+    projectWidgetStyleIdSet.has(candidate as ProjectWidgetStyleId)
+  );
+}
 
 export function isToolbarLayoutDirection(
   candidate: unknown,
@@ -744,10 +763,29 @@ function copyToolbarLayoutNodes(
       const widget = copyToolbarWidgetSnapshot(
         node.widget as ToolbarWidgetSnapshot,
       );
+      const style =
+        node.style === undefined
+          ? projectId === ""
+            ? ""
+            : defaultProjectWidgetStyle(projectId as ProjectWidgetId)
+          : node.style;
+      const defaultStyle =
+        projectId === ""
+          ? ""
+          : defaultProjectWidgetStyle(projectId as ProjectWidgetId);
       if (
         (projectId === "") === (widget.kind === "project") ||
+        typeof style !== "string" ||
+        (projectId === ""
+          ? style !== ""
+          : defaultStyle === ""
+            ? style !== ""
+            : !isProjectWidgetStyle(projectId as ProjectWidgetId, style)) ||
         Object.keys(node).some(
-          (key) => !["instanceId", "projectId", "type", "widget"].includes(key),
+          (key) =>
+            !["instanceId", "projectId", "style", "type", "widget"].includes(
+              key,
+            ),
         )
       ) {
         throw createToolbarWidgetsStateError(
@@ -758,6 +796,7 @@ function copyToolbarLayoutNodes(
         Object.freeze({
           instanceId: node.instanceId,
           projectId: projectId as ProjectWidgetId | "",
+          style: style as ProjectWidgetStyleId | "",
           type: "item" as const,
           widget,
         }),
@@ -1093,6 +1132,24 @@ export function copyToolbarWidgetsEditOperation(
         location,
         revision: candidate.revision,
         type: "set-container-direction" as const,
+      });
+    }
+    case "set-node-style": {
+      const location = copyToolbarLayoutLocation(candidate.location);
+      if (
+        location.path.length === 0 ||
+        !isProjectWidgetStyleId(candidate.style) ||
+        !isEditRevision(candidate.revision)
+      ) {
+        throw createToolbarWidgetsStateError(
+          "FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID",
+        );
+      }
+      return Object.freeze({
+        location,
+        revision: candidate.revision,
+        style: candidate.style,
+        type: "set-node-style" as const,
       });
     }
     case "clean-layout":

@@ -13,6 +13,20 @@ export const toolbarWidgetDragMimeType =
 
 const ZONE_MAX_ENTRIES = 48;
 const LAYOUT_INSTANCE_PATTERN = /^layout-[1-9][0-9]{0,5}$/u;
+const DRAG_AUTOSCROLL_THRESHOLD = 48;
+const DRAG_AUTOSCROLL_MAX_DELTA = 18;
+
+export type ToolbarWidgetDragPreviewKind = "control" | "layout" | "space";
+
+export type ToolbarWidgetDragPreviewSize = Readonly<{
+  blockSize: number;
+  inlineSize: number;
+}>;
+
+export type ToolbarWidgetDragImageOffset = Readonly<{
+  x: number;
+  y: number;
+}>;
 
 export type ToolbarWidgetDragSource =
   | Readonly<{ token: string; type: "palette" }>
@@ -163,6 +177,97 @@ export function resolveWidgetInsertBefore(
     }
   }
   return insertBefore;
+}
+
+export function resolveToolbarWidgetDragPreviewSize(
+  kind: ToolbarWidgetDragPreviewKind,
+  direction: "column" | "row",
+): ToolbarWidgetDragPreviewSize {
+  const primarySize = kind === "space" ? 32 : kind === "layout" ? 112 : 168;
+  const crossSize = kind === "space" ? 32 : 44;
+  return Object.freeze(
+    direction === "row"
+      ? { blockSize: crossSize, inlineSize: primarySize }
+      : { blockSize: kind === "space" ? 32 : 52, inlineSize: 220 },
+  );
+}
+
+export function resolveToolbarWidgetDragImageOffset(
+  pointerX: number,
+  pointerY: number,
+  sourceBounds: Readonly<{
+    height: number;
+    left: number;
+    top: number;
+    width: number;
+  }>,
+  previewSize: ToolbarWidgetDragPreviewSize,
+): ToolbarWidgetDragImageOffset | null {
+  if (
+    !Number.isFinite(pointerX) ||
+    !Number.isFinite(pointerY) ||
+    !Number.isFinite(sourceBounds.left) ||
+    !Number.isFinite(sourceBounds.top) ||
+    !Number.isFinite(sourceBounds.width) ||
+    !Number.isFinite(sourceBounds.height) ||
+    !Number.isFinite(previewSize.inlineSize) ||
+    !Number.isFinite(previewSize.blockSize) ||
+    sourceBounds.width <= 0 ||
+    sourceBounds.height <= 0 ||
+    previewSize.inlineSize <= 0 ||
+    previewSize.blockSize <= 0
+  ) {
+    return null;
+  }
+  const xRatio = Math.min(
+    1,
+    Math.max(0, (pointerX - sourceBounds.left) / sourceBounds.width),
+  );
+  const yRatio = Math.min(
+    1,
+    Math.max(0, (pointerY - sourceBounds.top) / sourceBounds.height),
+  );
+  return Object.freeze({
+    x: Math.round(previewSize.inlineSize * xRatio),
+    y: Math.round(previewSize.blockSize * yRatio),
+  });
+}
+
+export function resolveToolbarWidgetDragAutoScrollDelta(
+  pointer: number,
+  start: number,
+  end: number,
+  threshold = DRAG_AUTOSCROLL_THRESHOLD,
+  maximumDelta = DRAG_AUTOSCROLL_MAX_DELTA,
+): number {
+  if (
+    !Number.isFinite(pointer) ||
+    !Number.isFinite(start) ||
+    !Number.isFinite(end) ||
+    !Number.isFinite(threshold) ||
+    !Number.isFinite(maximumDelta) ||
+    end <= start ||
+    threshold <= 0 ||
+    maximumDelta <= 0
+  ) {
+    return 0;
+  }
+  const boundedThreshold = Math.min(threshold, (end - start) / 2);
+  if (pointer < start + boundedThreshold) {
+    const intensity = Math.min(
+      1,
+      Math.max(0, (start + boundedThreshold - pointer) / boundedThreshold),
+    );
+    return -Math.max(1, Math.ceil(maximumDelta * intensity));
+  }
+  if (pointer > end - boundedThreshold) {
+    const intensity = Math.min(
+      1,
+      Math.max(0, (pointer - (end - boundedThreshold)) / boundedThreshold),
+    );
+    return Math.max(1, Math.ceil(maximumDelta * intensity));
+  }
+  return 0;
 }
 
 export function resolveSameZoneMoveIndex(

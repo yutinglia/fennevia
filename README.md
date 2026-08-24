@@ -144,9 +144,16 @@ widget. A confirmed **Clean all panels** action restores adopted Firefox
 widgets and leaves only Customize in Top; Reset layout still restores the
 default composition. Empty enabled panels are usable targets during customize,
 drag target outlines are cleared on every exit/end path, and each widget's
-move/remove controls appear only on hover or keyboard focus. In ordinary mode,
-Space, Flexible space, separators, empty containers, and other unoccupied
-project chrome can drag the Firefox window.
+move/remove controls appear on deepest hover/direct focus or stay available for
+one selected node. The editor now shows one exact insertion preview while
+dragging, subdues the source, autoscrolls near panel edges, and provides
+localized palette search plus All/Fennevia/Firefox/Layout filters. Eligible
+placed widgets also have closed per-instance variants: Address may include the
+existing site-status/Trust action in one capsule, and Tabs may include the New
+Tab action after the final tab. These are semantic options, not arbitrary CSS;
+standalone Trust and New Tab widgets remain available. In ordinary mode, Space,
+Flexible space, separators, empty containers, and other unoccupied project
+chrome can drag the Firefox window.
 
 The current prerelease also projects bounded results from Firefox's own
 per-window Urlbar provider manager into the centred combobox. Firefox still
@@ -311,7 +318,9 @@ The interface is no longer accurately described as non-configurable. Fennevia
 customize mode can compose supported project features and Firefox toolbar
 widgets across all four edges with bounded Row/Column trees, switch feature
 orientation, enable Left/Right/Bottom independently, and opt into safe multiple
-placements. It can also adjust a bounded set of profile-local panel/window
+placements. Selected Address and Tabs instances can choose from their closed
+semantic style variants, and the widget palette can be searched and filtered.
+It can also adjust a bounded set of profile-local panel/window
 backgrounds, text, border, saturation, shadow, motion, reveal timing, shortcut-
 tip timing, edge-trigger thickness, and top/bottom activity-light sources. It
 is intentionally not a general CSS editor, arbitrary command loader, extension

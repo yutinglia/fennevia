@@ -25,6 +25,7 @@ import {
   parseComposableCustomizeLayout,
   removeComposableLayoutNode,
   serializeComposableCustomizeLayout,
+  setComposableLayoutItemStyle,
   setComposableMultiplePlacements,
   withComposableAdopted,
   withoutComposableAdopted,
@@ -243,6 +244,88 @@ test("v2 layout round-trips as a frozen strict bounded tree", () => {
   );
   assert.equal(
     parseComposableCustomizeLayout(`{"padding":"${"x".repeat(17000)}"}`),
+    null,
+  );
+});
+
+test("project widget styles persist per instance and canonicalize defaults", () => {
+  const initial = createDefaultComposableCustomizeLayout();
+  const addressLocation = { path: [5, 0], zone: "top" };
+  const tabsLocation = { path: [1, 0], zone: "left" };
+  const initialAddress = getComposableLayoutNode(initial, addressLocation);
+  const initialTabs = getComposableLayoutNode(initial, tabsLocation);
+  assert.equal(initialAddress.target.id, "address-launcher");
+  assert.equal(initialAddress.style, undefined);
+  assert.equal(initialTabs.target.id, "tabs");
+  assert.equal(initialTabs.style, undefined);
+
+  const addressWithStatus = setComposableLayoutItemStyle(
+    initial,
+    addressLocation,
+    "with-site-status",
+  );
+  const tabsWithNewTab = setComposableLayoutItemStyle(
+    addressWithStatus,
+    tabsLocation,
+    "with-new-tab",
+  );
+  assert.equal(
+    getComposableLayoutNode(tabsWithNewTab, addressLocation).style,
+    "with-site-status",
+  );
+  assert.equal(
+    getComposableLayoutNode(tabsWithNewTab, tabsLocation).style,
+    "with-new-tab",
+  );
+  assert.deepEqual(
+    parseComposableCustomizeLayout(
+      serializeComposableCustomizeLayout(tabsWithNewTab),
+    ),
+    tabsWithNewTab,
+  );
+
+  const resetAddress = setComposableLayoutItemStyle(
+    tabsWithNewTab,
+    addressLocation,
+    "address-only",
+  );
+  const resetTabs = setComposableLayoutItemStyle(
+    resetAddress,
+    tabsLocation,
+    "tabs-only",
+  );
+  assert.equal(
+    "style" in getComposableLayoutNode(resetTabs, addressLocation),
+    false,
+  );
+  assert.equal(
+    "style" in getComposableLayoutNode(resetTabs, tabsLocation),
+    false,
+  );
+  assert.doesNotMatch(
+    serializeComposableCustomizeLayout(resetTabs),
+    /"style"/u,
+  );
+
+  assert.throws(
+    () =>
+      setComposableLayoutItemStyle(initial, addressLocation, "with-new-tab"),
+    /FENNEVIA_COMPOSABLE_LAYOUT_STYLE_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      setComposableLayoutItemStyle(
+        initial,
+        { path: [5], zone: "top" },
+        "with-site-status",
+      ),
+    /FENNEVIA_COMPOSABLE_LAYOUT_STYLE_INVALID/u,
+  );
+
+  const invalidStyle = JSON.parse(serializeComposableCustomizeLayout(initial));
+  invalidStyle.zones.top[5].children[0].style = "arbitrary-css";
+  assert.equal(
+    parseComposableCustomizeLayout(JSON.stringify(invalidStyle)),
     null,
   );
 });

@@ -1,8 +1,8 @@
-import { translate, type MessageKey } from "../app/i18n";
-import { en } from "../app/messages/en";
-import type { FenneviaLocale } from "../app/locale-state";
-import type { TabStripLabels } from "../app/tab-strip";
-import type { ToolbarZoneName } from "../app/toolbar-widgets-state";
+import { translate, type MessageKey } from "../app/i18n.ts";
+import { en } from "../app/messages/en.ts";
+import type { FenneviaLocale } from "../app/locale-state.ts";
+import type { TabStripLabels } from "../app/tab-strip.ts";
+import type { ToolbarZoneName } from "../app/toolbar-widgets-state.ts";
 
 const ownedEnglishLabels = Object.freeze({
   "Address launcher": "widget.addressLauncher",

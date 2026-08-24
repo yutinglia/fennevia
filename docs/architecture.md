@@ -642,10 +642,32 @@ adopted Firefox widgets, removes every node, and creates one Top Customize
 instance while retaining panel/style/interaction/duplicate settings. The
 top-host drawer is the palette and settings editor, centered in the remaining
 content well so it does not cover the four edge roots. See ADR-044, ADR-045,
-ADR-046, ADR-047, ADR-064, ADR-068, ADR-074,
+ADR-046, ADR-047, ADR-064, ADR-068, ADR-074, ADR-075,
 `docs/research/firefox-153-toolbar-widget-mirror.md`,
 `docs/research/firefox-153-customize-mode.md`, and
 `plans/009-composable-widget-layout.md`.
+
+ADR-075 adds presentation and discoverability without a second editor state
+owner. A drag keeps its source as a subdued placeholder and projects one
+bounded icon/label slot at the exact accepted nested insertion index. Cached
+pre-preview geometry prevents target jitter; a bounded animation-frame loop
+autoscrolls the owned edge near its viewport boundary and shares every
+existing terminal cleanup path. One selected layout instance retains its
+compact controls until another is selected or Escape clears it. The drawer
+filters already validated palette entries by localized label and the closed
+All/Fennevia/Firefox/Layout categories; filters, selection, projected geometry,
+and scroll state are session-only.
+
+The same ADR adds an optional closed style id to eligible version-2 project
+item nodes. Missing and explicit-default values canonicalize to the registry
+default without rewriting old preferences. Address launcher currently selects
+`address-only` or a single-capsule `with-site-status` composition using the
+existing Trust action. Tabs selects `tabs-only` or `with-new-tab`, reusing the
+existing trailing New Tab action. The ordinary snapshot exposes only the
+effective allowlisted id, and `set-node-style` remains revision guarded.
+Arbitrary CSS, class names, labels, geometry, native ids, and Firefox nodes do
+not enter this field. See ADR-075 and
+`plans/010-customize-mode-drag-ux.md`.
 
 ## 5. Application and frontend layers
 

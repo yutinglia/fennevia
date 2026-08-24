@@ -4,10 +4,12 @@
     clearToolbarWidgetDrag,
     createToolbarWidgetDropEdit,
     getActiveToolbarWidgetDrag,
+    resolveToolbarWidgetDragImageOffset,
     serializeToolbarWidgetDrag,
     startToolbarWidgetDrag,
     subscribeToolbarWidgetDrag,
     toolbarWidgetDragMimeType,
+    type ToolbarWidgetDragSource,
   } from "../app/toolbar-widget-drag";
   import {
     type BrowserToolbarWidgetsState,
@@ -23,6 +25,11 @@
   } from "../app/locale-state";
   import { localizeWidgetLabel, zoneDisplayName } from "./locale-ui";
   import CustomizeInteractionSection from "./features/customize/CustomizeInteractionSection.svelte";
+  import {
+    customizePaletteCategories,
+    filterCustomizePalette,
+    type CustomizePaletteCategory,
+  } from "./features/customize/customize-palette";
   import CustomizePanelsSection from "./features/customize/CustomizePanelsSection.svelte";
   import CustomizeStyleSection from "./features/customize/CustomizeStyleSection.svelte";
   import CustomizeTabList, {
@@ -48,11 +55,15 @@
     translate(localeId, key, vars);
 
   let statusMessage = $state("");
+  let activeDrag: ToolbarWidgetDragSource | null = $state(null);
   let paletteDropActive = $state(false);
+  let paletteCategory: CustomizePaletteCategory = $state("all");
+  let paletteQuery = $state("");
   let selectedTab: CustomizeTabId = $state("widgets");
 
   $effect(() =>
-    subscribeToolbarWidgetDrag(() => {
+    subscribeToolbarWidgetDrag((source) => {
+      activeDrag = source;
       paletteDropActive = false;
     }),
   );
@@ -65,6 +76,14 @@
 
   let snapshot = $derived(props.state?.snapshot ?? null);
   let revision = $derived(props.state?.revision ?? 0);
+  let filteredPalette = $derived(
+    filterCustomizePalette(
+      snapshot?.palette ?? [],
+      localeId,
+      paletteQuery,
+      paletteCategory,
+    ),
+  );
   let addZoneLabel: ToolbarZoneName = $state("top");
   let addZoneName = $derived(zoneDisplayName(localeId, addZoneLabel));
 
@@ -124,10 +143,36 @@
 
   const resetLayout = () => void runEdit({ revision, type: "reset-layout" });
 
+  const paletteCategoryLabel = (
+    category: CustomizePaletteCategory,
+  ): string => {
+    switch (category) {
+      case "browser":
+        return t("customize.paletteCategoryBrowser");
+      case "firefox":
+        return t("customize.paletteCategoryFirefox");
+      case "layout":
+        return t("customize.paletteCategoryLayout");
+      default:
+        return t("customize.paletteCategoryAll");
+    }
+  };
+
+  const setPaletteQuery = (event: Event): void => {
+    paletteQuery =
+      event.currentTarget instanceof HTMLInputElement
+        ? event.currentTarget.value.slice(0, 128)
+        : "";
+  };
+
   const handleKeydown = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
+      if (paletteQuery) {
+        paletteQuery = "";
+        return;
+      }
       props.onClose();
     }
   };
@@ -150,6 +195,22 @@
       serializeToolbarWidgetDrag(source),
     );
     transfer.setData("text/plain", entry.token);
+    const tile =
+      event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    if (tile) {
+      const bounds = tile.getBoundingClientRect();
+      const offset = resolveToolbarWidgetDragImageOffset(
+        event.clientX,
+        event.clientY,
+        bounds,
+        { blockSize: bounds.height, inlineSize: bounds.width },
+      );
+      transfer.setDragImage(
+        tile,
+        offset?.x ?? Math.round(bounds.width / 2),
+        offset?.y ?? Math.round(bounds.height / 2),
+      );
+    }
   };
 
   const handlePaletteDragOver = (event: DragEvent) => {
@@ -180,7 +241,7 @@
   const handlePaletteDrop = (event: DragEvent) => {
     const source = getActiveToolbarWidgetDrag();
     paletteDropActive = false;
-    if (source?.type !== "zone") {
+    if (source?.type !== "zone" && source?.type !== "layout-node") {
       return;
     }
     event.preventDefault();
@@ -263,6 +324,9 @@
         <p class="fennevia-customize__note">
           {t("customize.keyboardAdd", { zone: addZoneName })}
         </p>
+        <p class="fennevia-customize__note">
+          {t("customize.paletteDragHint")}
+        </p>
         <label class="fennevia-customize__panel-field">
           <span>{t("customize.addToPanel")}</span>
           <select
@@ -292,13 +356,57 @@
           <h3 class="fennevia-customize__heading">
             {t("customize.paletteAria")}
           </h3>
+          <div class="fennevia-customize__palette-tools">
+            <label class="fennevia-customize__search-field">
+              <span>{t("customize.paletteSearch")}</span>
+              <input
+                aria-label={t("customize.paletteSearch")}
+                class="fennevia-control fennevia-customize__search"
+                data-fennevia-customize-search=""
+                maxlength="128"
+                oninput={setPaletteQuery}
+                placeholder={t("customize.paletteSearchPlaceholder")}
+                type="search"
+                value={paletteQuery}
+              />
+            </label>
+            <div
+              aria-label={t("customize.paletteCategoriesAria")}
+              class="fennevia-customize__palette-categories"
+              role="group"
+            >
+              {#each customizePaletteCategories as category (category)}
+                <button
+                  aria-pressed={paletteCategory === category}
+                  class="fennevia-control fennevia-customize__palette-category"
+                  data-fennevia-customize-category={category}
+                  onclick={() => (paletteCategory = category)}
+                  type="button">{paletteCategoryLabel(category)}</button
+                >
+              {/each}
+            </div>
+            <div class="fennevia-customize__palette-meta">
+              <span class="fennevia-customize__destination">
+                {t("customize.paletteDestination", { zone: addZoneName })}
+              </span>
+              <output aria-live="polite">
+                {t("customize.paletteFilterCount", {
+                  count: filteredPalette.length,
+                })}
+              </output>
+            </div>
+          </div>
           {#if snapshot.palette.length === 0}
             <p class="fennevia-customize__empty">
               {t("customize.emptyPalette")}
             </p>
+          {:else if filteredPalette.length === 0}
+            <p class="fennevia-customize__empty">
+              {t("customize.paletteNoResults")}
+            </p>
           {:else}
             <ul class="fennevia-customize__grid">
-              {#each snapshot.palette as entry (entry.token)}
+              {#each filteredPalette as entry (entry.token)}
                 <li>
                   <button
                     aria-label={t("customize.addWidgetAria", {
@@ -307,6 +415,10 @@
                     })}
                     class="fennevia-control fennevia-customize__tile"
                     data-fennevia-customize-add={entry.token}
+                    data-fennevia-customize-dragging={activeDrag?.type ===
+                      "palette" && activeDrag.token === entry.token
+                      ? true
+                      : undefined}
                     draggable="true"
                     ondragend={handlePaletteDragEnd}
                     ondragstart={(event) =>

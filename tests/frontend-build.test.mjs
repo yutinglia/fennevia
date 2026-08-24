@@ -160,6 +160,75 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
   );
 });
 
+test("customize mode previews exact drops and exposes bounded widget styles", async () => {
+  const [
+    composableLayout,
+    dragPreview,
+    projectWidget,
+    featureWidget,
+    customizePanel,
+    layoutCss,
+    customizeCss,
+  ] = await Promise.all([
+    readProjectFile(
+      "src/shell/features/composable-layout/ComposableLayout.svelte",
+    ),
+    readProjectFile(
+      "src/shell/features/composable-layout/LayoutDragPreview.svelte",
+    ),
+    readProjectFile(
+      "src/shell/features/composable-layout/ProjectWidget.svelte",
+    ),
+    readProjectFile(
+      "src/shell/features/composable-layout/FeatureWidget.svelte",
+    ),
+    readProjectFile("src/shell/CustomizePanel.svelte"),
+    readProjectFile("src/shell/styles/composable-layout.css"),
+    readProjectFile("src/shell/styles/customize.css"),
+  ]);
+
+  assert.match(composableLayout, /<LayoutDragPreview/u);
+  assert.match(
+    composableLayout,
+    /renderDropSlot\(pathKey\(parentPath\), index/u,
+  );
+  assert.match(composableLayout, /data-fennevia-layout-source=/u);
+  assert.match(composableLayout, /data-fennevia-layout-selected=/u);
+  assert.match(composableLayout, /resolveToolbarWidgetDragAutoScrollDelta/u);
+  assert.match(composableLayout, /requestAnimationFrame\(runAutoScroll\)/u);
+  assert.match(composableLayout, /data-fennevia-layout-style-select/u);
+  assert.match(composableLayout, /type: "set-node-style"/u);
+  assert.match(dragPreview, /data-fennevia-layout-drop-preview=/u);
+
+  const clearSearch = customizePanel.indexOf('paletteQuery = "";');
+  const closeCustomize = customizePanel.indexOf("props.onClose();");
+  assert.ok(clearSearch >= 0 && closeCustomize > clearSearch);
+  assert.match(customizePanel, /filterCustomizePalette/u);
+  assert.match(customizePanel, /data-fennevia-customize-search=/u);
+  assert.match(customizePanel, /data-fennevia-customize-category=/u);
+  assert.match(customizePanel, /setDragImage/u);
+  assert.match(customizePanel, /source\?\.type !== "layout-node"/u);
+
+  assert.match(
+    projectWidget,
+    /props\.widgetStyle === "with-site-status"[\s\S]*?<TrustWidget/u,
+  );
+  assert.match(projectWidget, /data-fennevia-widget-style=/u);
+  assert.match(
+    featureWidget,
+    /showNewTab=\{props\.widgetStyle === "with-new-tab"\}/u,
+  );
+
+  assert.match(layoutCss, /@keyframes fennevia-layout-preview-inline/u);
+  assert.match(layoutCss, /@keyframes fennevia-layout-preview-block/u);
+  assert.match(layoutCss, /@media \(prefers-reduced-motion: reduce\)/u);
+  assert.match(layoutCss, /@media \(forced-colors: active\)/u);
+  assert.match(layoutCss, /\.fennevia-layout-node__style-editor/u);
+  assert.match(layoutCss, /data-fennevia-widget-style="with-site-status"/u);
+  assert.match(customizeCss, /\.fennevia-customize__palette-categories/u);
+  assert.match(customizeCss, /data-fennevia-customize-dragging="true"/u);
+});
+
 test("edge panels touch the trigger gutter, coordinate native drags, and float visible transient shortcuts", async () => {
   const css = await readShellStyles(projectRoot);
 

@@ -1105,6 +1105,18 @@ test("default snapshot uses the explicit native-v2 base-flow composition", () =>
       snapshot.layout.bottom[0].children[0].children[0].projectId,
       "downloads-status",
     );
+    assert.equal(
+      findLayoutItems(
+        snapshot.layout,
+        (node) => node.projectId === "address-launcher",
+      )[0].node.style,
+      "address-only",
+    );
+    assert.equal(
+      findLayoutItems(snapshot.layout, (node) => node.projectId === "tabs")[0]
+        .node.style,
+      "tabs-only",
+    );
 
     assert.deepEqual(snapshot.style, createDefaultToolbarStyle());
 
@@ -2276,6 +2288,101 @@ test("project widgets place into any zone and edits require fresh revisions", as
         isFirefoxBridgeError(error) &&
         error.fenneviaCode === "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID",
     );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("per-instance project widget styles persist through revision-guarded edits", async () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    let snapshot = pair.controller.toolbarWidgets.snapshot();
+    const address = findLayoutItems(
+      snapshot.layout,
+      (node) => node.projectId === "address-launcher",
+    )[0];
+    const tabs = findLayoutItems(
+      snapshot.layout,
+      (node) => node.projectId === "tabs",
+    )[0];
+    const back = findLayoutItems(
+      snapshot.layout,
+      (node) => node.projectId === "back",
+    )[0];
+    assert.ok(address);
+    assert.ok(tabs);
+    assert.ok(back);
+
+    await pair.controller.toolbarWidgets.edit({
+      location: { path: address.path, zone: address.zone },
+      revision: pair.controller.snapshot().revision,
+      style: "with-site-status",
+      type: "set-node-style",
+    });
+    native.runTimers();
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(
+      findLayoutItems(
+        snapshot.layout,
+        (node) => node.projectId === "address-launcher",
+      )[0].node.style,
+      "with-site-status",
+    );
+
+    await pair.controller.toolbarWidgets.edit({
+      location: { path: tabs.path, zone: tabs.zone },
+      revision: pair.controller.snapshot().revision,
+      style: "with-new-tab",
+      type: "set-node-style",
+    });
+    native.runTimers();
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(
+      findLayoutItems(snapshot.layout, (node) => node.projectId === "tabs")[0]
+        .node.style,
+      "with-new-tab",
+    );
+    const persisted = JSON.parse(
+      native.getPrefValue("fennevia.customize.layout"),
+    );
+    assert.equal(persisted.zones.top[5].children[0].style, "with-site-status");
+    assert.equal(persisted.zones.left[1].children[0].style, "with-new-tab");
+
+    await assert.rejects(
+      pair.controller.toolbarWidgets.edit({
+        location: { path: back.path, zone: back.zone },
+        revision: pair.controller.snapshot().revision,
+        style: "with-site-status",
+        type: "set-node-style",
+      }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID",
+    );
+    await assert.rejects(
+      pair.controller.toolbarWidgets.edit({
+        location: { path: tabs.path, zone: tabs.zone },
+        revision: 0,
+        style: "tabs-only",
+        type: "set-node-style",
+      }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_STALE",
+    );
+
+    await pair.controller.toolbarWidgets.edit({
+      location: { path: address.path, zone: address.zone },
+      revision: pair.controller.snapshot().revision,
+      style: "address-only",
+      type: "set-node-style",
+    });
+    native.runTimers();
+    const resetPersisted = JSON.parse(
+      native.getPrefValue("fennevia.customize.layout"),
+    );
+    assert.equal("style" in resetPersisted.zones.top[5].children[0], false);
   } finally {
     disposePair(pair);
   }

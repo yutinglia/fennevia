@@ -2,6 +2,7 @@
 
 import type {
   ProjectWidgetId,
+  ProjectWidgetStyleId,
   ToolbarZoneName,
 } from "../../app/toolbar-widgets-state.ts";
 
@@ -37,6 +38,7 @@ export type ComposableLayoutTarget =
 
 export type ComposableLayoutItem = Readonly<{
   instanceId: string;
+  style?: ProjectWidgetStyleId;
   target: ComposableLayoutTarget;
   type: "item";
 }>;
@@ -82,6 +84,7 @@ export type ComposableLayoutSeed =
       type: "wrapper";
     }>
   | Readonly<{
+      style?: ProjectWidgetStyleId;
       target: ComposableLayoutTarget;
       type: "item";
     }>;

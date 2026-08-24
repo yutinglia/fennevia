@@ -506,7 +506,7 @@ counts/enums/booleans. Representative providers, remote-suggestion preference
 combinations, second/private real windows, and the release matrix remain not
 run. See `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
 
-### 7.5 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, composable widgets and customize mode ADR-044/ADR-045/ADR-046/ADR-047/ADR-074
+### 7.5 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, composable widgets and customize mode ADR-044/ADR-045/ADR-046/ADR-047/ADR-074/ADR-075
 
 Each managed window owns one `browser-tools` Firefox controller and one ordinary
 application adapter. The controller validates twenty required current
@@ -575,15 +575,17 @@ or runtime load. See ADR-037, ADR-042, ADR-059, ADR-060,
 `docs/research/firefox-153-native-popup-anchoring.md`, and
 `docs/research/firefox-153-154-native-shell-icons.md`.
 
-Owner-approved ADR-044/ADR-045/ADR-046/ADR-074 widget and customize flow: each
+Owner-approved ADR-044/ADR-045/ADR-046/ADR-074/ADR-075 widget and customize flow: each
 managed window may own one optional `toolbar-widgets` controller. It renders a
 strict bounded version-2 tree under the four fixed edge roots. The default tree
 preserves the previous tabs-left/bookmarks-right/bottom-downloads composition
 and includes the current `CustomizableUI` nav-bar placement mirror in Top.
 Ordinary layout nodes expose only a layout-local instance id, closed
 project/container/wrapper/special kind, Row/Column direction, a fixed
-Center/Expanded/Padding wrapper kind, children, and immutable
-widget presentation. Each placed widget carries an opaque handle, fixed kind,
+Center/Expanded/Padding wrapper kind, children, and immutable widget
+presentation. Eligible project items additionally expose only one effective
+fixed style id from the widget-specific ADR-075 registry. Each placed widget
+carries an opaque handle, fixed kind,
 bounded label and tooltip text, a bounded `moz-extension://` icon URL for
 extension actions, a bounded `chrome://` or `resource://` icon URL for
 built-ins (rendered as a CSS mask with `currentColor`, not `<img>`), bounded rgba-only
@@ -603,16 +605,17 @@ Extension identity never enters logs, diagnostics, serialized frontend state,
 CSS custom properties on shared roots, root datasets, clipboard, or network
 requests; diagnostics stay at widget counts, revisions, and fixed codes.
 
-ADR-045 adds two owner-approved bounded exceptions. ADR-064 and ADR-074 extend
-only the first exception's closed schema. First, profile-local persistence: the
+ADR-045 adds two owner-approved bounded exceptions. ADR-064, ADR-074, and
+ADR-075 extend only the first exception's closed schema. First, profile-local persistence: the
 privileged controller stores the Fennevia layout, style, and panel policy as
 bounded versioned JSON in the `fennevia.customize.layout`,
 `fennevia.customize.style`, and `fennevia.customize.panels` string preferences
 (16 KiB cap each, strict schema,
 invalid values fail safe to the default composable layout and default style).
 The layout pref contains Firefox widget ids — including extension widget ids —
-fixed project/special/wrapper tokens, bounded node structure, layout-local instance ids,
-and `allowMultiplePlacements`; the style pref contains only the
+fixed project/special/wrapper tokens, bounded node structure, layout-local
+instance ids, `allowMultiplePlacements`, and an optional allowlisted
+per-instance style id on eligible project items; the style pref contains only the
 fixed style token set (theme, `#rrggbb` color tokens or empty defaults, and
 bounded integers for blur, radius, density, surface opacity, saturation,
 shadow, motion, font size, in-window hide delay, window-leave hide delay,
@@ -620,7 +623,9 @@ temporary reveal duration, shortcut-tip duration, and edge trigger size). The
 panel pref version 2 contains independent Left/Right/Bottom enabled booleans,
 the legacy closed side-layout migration hint, two closed activity-light enums,
 and ADR-068's `allowCompactWindow` boolean (default false); Top has no enabled
-field. It cannot encode arbitrary geometry, CSS, a URL, or feature activity.
+field. Neither the panel pref nor the optional item-style field can encode
+arbitrary geometry, CSS declarations, class names, labels, a URL, or feature
+activity.
 Compact-window only toggles a root attribute and one
 active/not-suspended `min-width`/`min-height` override; it stores no browsing
 data and is not a health input. Missing keys keep documented defaults.
@@ -642,13 +647,21 @@ adopted ids, then persists a tree containing only Top Customize. Fennevia never
 writes any other CustomizableUI state and never edits placements the user made
 natively.
 
-ADR-047/ADR-074 add a frontend-only customize session: HTML5 `dataTransfer` on
+ADR-047/ADR-074/ADR-075 add a frontend-only customize session: HTML5
+`dataTransfer` on
 project-owned nodes may carry the MIME `application/x-fennevia-toolbar-widget`
 and a JSON payload of an opaque palette token or layout-local instance id.
 Destination zone, bounded parent path, and insertion index are derived from the
 owned target rather than transferred as Firefox identity. The payload never
-includes Firefox widget ids, extension identity, URLs, or labels. The session
-is not persisted; the frame marker
+includes Firefox widget ids, extension identity, URLs, labels, preview
+geometry, or style ids. ADR-075 derives its bounded drag image and exact
+projected insertion slot only from that opaque source plus the already
+validated in-memory ordinary snapshot. Preview labels, icons, geometry,
+autoscroll values, active destination, palette query/category, and selected
+node are ephemeral frontend state; none enters `DataTransfer`, preferences,
+diagnostics, clipboard, or a network sink. Preview XHTML is project-owned and
+never clones or reparents a native Firefox node. The session is not persisted;
+the frame marker
 `data-fennevia-customize-active` is a boolean presence attribute.
 The in-process drag-lifecycle listeners receive only that same opaque source
 and are deterministically unsubscribed; target-outline and contextual-control

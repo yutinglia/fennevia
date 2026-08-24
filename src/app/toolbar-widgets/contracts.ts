@@ -84,6 +84,15 @@ export const toolbarPaletteKinds = Object.freeze([
 
 export type ToolbarPaletteKind = (typeof toolbarPaletteKinds)[number];
 
+export const projectWidgetStyleIds = Object.freeze([
+  "address-only",
+  "with-site-status",
+  "tabs-only",
+  "with-new-tab",
+] as const);
+
+export type ProjectWidgetStyleId = (typeof projectWidgetStyleIds)[number];
+
 export const toolbarStyleThemes = Object.freeze([
   "auto",
   "light",
@@ -300,6 +309,7 @@ export type ToolbarWidgetZones = Readonly<
 export type ToolbarLayoutItemSnapshot = Readonly<{
   instanceId: string;
   projectId: ProjectWidgetId | "";
+  style: ProjectWidgetStyleId | "";
   type: "item";
   widget: ToolbarWidgetSnapshot;
 }>;
@@ -408,6 +418,12 @@ export type ToolbarWidgetsEditOperation =
       location: ToolbarLayoutLocation;
       revision: number;
       type: "set-container-direction";
+    }>
+  | Readonly<{
+      location: ToolbarLayoutLocation;
+      revision: number;
+      style: ProjectWidgetStyleId;
+      type: "set-node-style";
     }>
   | Readonly<{ revision: number; type: "clean-layout" }>
   | Readonly<{ revision: number; type: "reset-layout" }>

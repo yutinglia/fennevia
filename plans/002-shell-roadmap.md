@@ -997,6 +997,31 @@ drag, popup, caption, accessibility, multi-window, private-window, and recovery
 rows in `docs/testing-and-recovery.md` §6.9 remain honestly `not run`. Plan:
 `plans/009-composable-widget-layout.md`.
 
+### ADR-075 editor UX and widget-style follow-up — focused implementation complete, real Firefox smoke pending
+
+Keep Milestone P's tree, persistence cap, bridge ownership, and HTML5 drag
+engine. Add one bounded pointer-relative drag image, a subdued source
+placeholder, one exact axis-aware projected insertion slot, cached pre-preview
+geometry, and frame-bounded panel-edge autoscroll. One clicked/focused node may
+remain selected with stable contextual controls; Escape clears that selection
+first. The palette searches localized labels, filters the closed
+All/Fennevia/Firefox/Layout categories, reports the selected click destination
+and result count, and retains click/Enter/Space addition.
+
+Add one optional closed per-instance style id only to eligible project-item
+nodes. Address supports `address-only` and integrated `with-site-status` using
+the existing Trust/native-popup owner. Tabs supports `tabs-only` and
+`with-new-tab` using the existing final New Tab action. Defaults are omitted
+from serialized v2 state, old v2 data remains valid, standalone Trust/New Tab
+remain, and invalid/incompatible/stale edits fail closed. This is not arbitrary
+CSS or a new feature owner.
+
+Gate: focused model/controller/palette/drag/frontend tests, lint, typecheck, and
+the ordinary `npm run verify` gate; real Firefox projected-drop, autoscroll,
+selection, screen-reader, forced-colors/reduced-motion, Trust popup, New Tab,
+multi-window, and private-window rows remain `not run`. Plan:
+`plans/010-customize-mode-drag-ux.md`.
+
 ## Deferred work
 
 The following require separate plans and issues:
