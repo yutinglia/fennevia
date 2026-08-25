@@ -633,8 +633,10 @@ hides the layouts and missing `Services.prefs` disables editing; neither joins
 activation health. ADR-047/ADR-074 move placement editing onto the live
 recursive layouts with HTML5 drag-and-drop, opaque instance ids, and bounded
 paths. Visible and keyboard move-before/after/into/out/remove controls remain
-available without drag, but each node's control strip is visually revealed only
-for the deepest hovered node or when one of its direct controls has focus. One
+available without drag. ADR-076 moves them out of recursive node sizing into
+one session-wide floating inspector rendered by the Top root above the central
+workspace; each node retains only its selected/focus boundary and direct
+keyboard selector. One
 shared opaque drag lifecycle plus real-boundary leave handling clears all panel
 and palette outlines after exit, drop, cancel, drag end, customize close, and
 disposal. **Clean all panels** is a separate confirmed atomic edit: it restores
@@ -642,21 +644,34 @@ adopted Firefox widgets, removes every node, and creates one Top Customize
 instance while retaining panel/style/interaction/duplicate settings. The
 top-host drawer is the palette and settings editor, centered in the remaining
 content well so it does not cover the four edge roots. See ADR-044, ADR-045,
-ADR-046, ADR-047, ADR-064, ADR-068, ADR-074, ADR-075,
+ADR-046, ADR-047, ADR-064, ADR-068, ADR-074, ADR-075, ADR-076,
 `docs/research/firefox-153-toolbar-widget-mirror.md`,
 `docs/research/firefox-153-customize-mode.md`, and
 `plans/009-composable-widget-layout.md`.
 
-ADR-075 adds presentation and discoverability without a second editor state
-owner. A drag keeps its source as a subdued placeholder and projects one
+ADR-075 adds projected dragging and palette discoverability without a second
+layout model. A drag keeps its source as a subdued placeholder and projects one
 bounded icon/label slot at the exact accepted nested insertion index. Cached
 pre-preview geometry prevents target jitter; a bounded animation-frame loop
 autoscrolls the owned edge near its viewport boundary and shares every
-existing terminal cleanup path. One selected layout instance retains its
-compact controls until another is selected or Escape clears it. The drawer
+existing terminal cleanup path. One selected layout instance remains active
+until another is selected or Escape clears it. The drawer
 filters already validated palette entries by localized label and the closed
 All/Fennevia/Firefox/Layout categories; filters, selection, projected geometry,
 and scroll state are session-only.
+
+ADR-076 makes the existing per-window `CustomizeSessionController` the sole
+selected-instance owner across all four edge roots. The Top app root renders
+one project-owned non-modal `WidgetInspector` after the Customize drawer and
+resolves the selected anchor through the shared project frame. Its finite
+placement helper prefers the content-facing side, clamps to the viewport, and
+treats the central drawer as a padded obstacle before accepting overlap. The
+inspector never participates in Row/Column measurement, and its scroll/resize
+listeners plus `ResizeObserver` are mounted and disposed with the component.
+Enter transfers focus from the node, Escape restores it, and removal falls back
+to the nearest surviving path. Selection and geometry remain ephemeral and do
+not cross the Firefox bridge or persistence boundary. See ADR-076 and
+`plans/011-floating-widget-inspector.md`.
 
 The same ADR adds an optional closed style id to eligible version-2 project
 item nodes. Missing and explicit-default values canonicalize to the registry
@@ -697,7 +712,9 @@ Center/Expanded/Padding nodes are presentational groups inside that root, not
 extra mounts or landmarks. The nearest flow axis controls Tabs, Bookmarks,
 Downloads status, address,
 navigation/tool, and window-control presentation. In customize mode every
-placed node exposes drag plus visible/keyboard path operations, and every
+placed node exposes drag plus keyboard path operations; ADR-076 presents the
+visible path operations in one Top-root floating inspector without adding a
+sixth root. Every
 preference-enabled empty optional edge remains a labelled pointer-drop and
 keyboard-add target. Outside customize mode, empty optional edges are disabled
 and reserve no space. The

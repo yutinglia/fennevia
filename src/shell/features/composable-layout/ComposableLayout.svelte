@@ -31,13 +31,10 @@
   } from "../../../app/toolbar-widget-drag";
   import {
     defaultToolbarLayoutDirection,
-    findToolbarLayoutInstance,
-    projectWidgetStyleOptions,
     toolbarLayoutParent,
     type BrowserToolbarWidgetsState,
     type BrowserToolbarWidgetsStateAdapter,
     type ProjectWidgetId,
-    type ProjectWidgetStyleId,
     type ToolbarLayoutDirection,
     type ToolbarLayoutNodeSnapshot,
     type ToolbarWidgetsEditOperation,
@@ -47,7 +44,7 @@
   import LayoutDragPreview from "./LayoutDragPreview.svelte";
   import ProjectWidget from "./ProjectWidget.svelte";
   import { resolveLayoutDragPreview } from "./layout-drag-preview";
-  import { zoneDisplayName } from "../../locale-ui";
+  import { localizeLayoutNodeLabel, zoneDisplayName } from "../../locale-ui";
 
   type Props = Readonly<{
     addressPopup: AddressPopupController;
@@ -64,6 +61,7 @@
     onOpenAddress: () => boolean;
     onRevealProject: (id: ProjectWidgetId) => boolean;
     onSetCustomizeOpen: (open: boolean) => void;
+    selectedInstanceId: string | null;
     shell: EdgeShellController;
     state: BrowserToolbarWidgetsState | null;
     tabs: BrowserTabsStateAdapter;
@@ -88,7 +86,6 @@
   let root: HTMLDivElement | undefined = $state();
   let activeDrag: ToolbarWidgetDragSource | null = $state(null);
   let dropPreview: DropPreview | null = $state(null);
-  let selectedInstanceId: string | null = $state(null);
   let announcement = $state("");
   let dropGeometry: DropGeometry | null = null;
   let autoScrollFrame: number | null = null;
@@ -144,20 +141,6 @@
   $effect(() => {
     if (!props.customizeOpen) {
       clearDropFeedback();
-      selectedInstanceId = null;
-    }
-  });
-
-  $effect(() => {
-    if (
-      selectedInstanceId &&
-      props.state &&
-      !findToolbarLayoutInstance(
-        props.state.snapshot.layout,
-        selectedInstanceId,
-      )
-    ) {
-      selectedInstanceId = null;
     }
   });
 
@@ -165,21 +148,29 @@
     clearDropFeedback();
   });
 
+  const focusEditableNode = (element: HTMLElement | null | undefined): void => {
+    const selector = element?.querySelector<HTMLElement>(
+      ":scope > [data-fennevia-layout-keyboard-selector]",
+    );
+    const target =
+      selector ??
+      (element?.matches("[data-fennevia-composable-layout]") ? element : root);
+    target?.focus({ preventScroll: true });
+  };
+
   const runEdit = async (
     operation: ToolbarWidgetsEditOperation,
     focusInstanceId?: string,
     fallbackPath?: readonly number[],
     successMessage = "",
-    focusSelector =
-      "[data-fennevia-layout-node-controls] button:not(:disabled)",
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     announcement = "";
     try {
       await props.toolbarWidgets?.edit(operation);
       await tick();
       const focusTarget = focusInstanceId
         ? root?.querySelector<HTMLElement>(
-            `[data-fennevia-layout-instance="${focusInstanceId}"] ${focusSelector}`,
+            `[data-fennevia-layout-instance="${focusInstanceId}"]`,
           )
         : null;
       const fallback = fallbackPath
@@ -187,34 +178,23 @@
             `[data-fennevia-layout-path="${pathKey(fallbackPath)}"]`,
           )
         : root;
-      (focusTarget ?? fallback)?.focus({ preventScroll: true });
+      focusEditableNode(focusTarget ?? fallback);
       announcement = successMessage;
+      return true;
     } catch {
       announcement = translate(props.localeId, "customize.editFailed");
+      return false;
     }
   };
 
   const nodeLabel = (node: ToolbarLayoutNodeSnapshot): string =>
-    node.type === "container"
-      ? node.direction === "row"
-        ? translate(props.localeId, "widget.row")
-        : translate(props.localeId, "widget.column")
-      : node.type === "wrapper"
-        ? translate(props.localeId, `widget.${node.kind}`)
-        : node.widget.kind === "separator"
-          ? translate(props.localeId, "widget.separator")
-          : node.widget.kind === "spacer"
-            ? translate(props.localeId, "widget.space")
-            : node.widget.kind === "spring"
-              ? translate(props.localeId, "widget.flexibleSpace")
-              : node.widget.label ||
-                translate(props.localeId, "widget.toolbarItem");
+    localizeLayoutNodeLabel(props.localeId, node);
 
   const selectNode = (node: ToolbarLayoutNodeSnapshot): void => {
-    if (!props.customizeOpen || selectedInstanceId === node.instanceId) {
+    if (!props.customizeOpen || props.selectedInstanceId === node.instanceId) {
       return;
     }
-    selectedInstanceId = node.instanceId;
+    props.customizeSession?.setSelectedInstance(node.instanceId);
     props.customizeSession?.setLastFocusedZone(props.edge);
     announcement = translate(props.localeId, "customize.nodeSelected", {
       label: nodeLabel(node),
@@ -222,11 +202,29 @@
   };
 
   const clearSelection = (): void => {
-    if (!selectedInstanceId) {
+    if (!props.selectedInstanceId) {
       return;
     }
-    selectedInstanceId = null;
-    announcement = translate(props.localeId, "customize.nodeSelectionCleared");
+    if (props.customizeSession?.clearSelectedInstance()) {
+      announcement = translate(
+        props.localeId,
+        "customize.nodeSelectionCleared",
+      );
+    }
+  };
+
+  const focusInspector = (node: ToolbarLayoutNodeSnapshot): void => {
+    selectNode(node);
+    void tick()
+      .then(() => {
+        root?.ownerDocument
+          .getElementById(`fennevia-widget-inspector-${node.instanceId}`)
+          ?.querySelector<HTMLElement>(
+            "[data-fennevia-widget-config-action]:not(:disabled)",
+          )
+          ?.focus({ preventScroll: true });
+      })
+      .catch(props.onFatalError);
   };
 
   const isStructuralItem = (node: ToolbarLayoutNodeSnapshot): boolean =>
@@ -234,10 +232,6 @@
     (node.widget.kind === "separator" ||
       node.widget.kind === "spacer" ||
       node.widget.kind === "spring");
-
-  const canAcceptChild = (node: ToolbarLayoutNodeSnapshot): boolean =>
-    node.type === "container" ||
-    (node.type === "wrapper" && node.children.length === 0);
 
   const selectEmptyPanel = (): void => {
     props.customizeSession?.setLastFocusedZone(props.edge);
@@ -278,69 +272,6 @@
     );
   };
 
-  const moveIntoPrevious = (
-    node: ToolbarLayoutNodeSnapshot,
-    path: readonly number[],
-  ): void => {
-    const snapshot = props.state?.snapshot;
-    if (!snapshot || path.length === 0) {
-      return;
-    }
-    const location = { path, zone: props.edge } as const;
-    const parent = toolbarLayoutParent(snapshot.layout, location);
-    const index = path.at(-1) as number;
-    const previous = parent?.children[index - 1];
-    if (
-      !parent ||
-      !previous ||
-      previous.type === "item" ||
-      (previous.type === "wrapper" && previous.children.length > 0)
-    ) {
-      return;
-    }
-    void runEdit(
-      {
-        from: location,
-        revision,
-        to: {
-          index: previous.children.length,
-          parentPath: [...parent.parentPath, index - 1],
-          zone: props.edge,
-        },
-        type: "move-node",
-      },
-      node.instanceId,
-    );
-  };
-
-  const moveOut = (
-    node: ToolbarLayoutNodeSnapshot,
-    path: readonly number[],
-  ): void => {
-    if (!canMoveOut(path)) {
-      return;
-    }
-    const parentPath = path.slice(0, -1);
-    const parentIndex = parentPath.at(-1) as number;
-    void runEdit(
-      {
-        from: { path, zone: props.edge },
-        revision,
-        to: {
-          index: parentIndex + 1,
-          parentPath: parentPath.slice(0, -1),
-          zone: props.edge,
-        },
-        type: "move-node",
-      },
-      node.instanceId,
-    );
-  };
-
-  const canMoveOut = (path: readonly number[]): boolean =>
-    path.length >= 2 &&
-    !(path.length === 2 && nodes[0]?.instanceId === baseContainerInstanceId);
-
   const removeNode = (
     node: ToolbarLayoutNodeSnapshot,
     path: readonly number[],
@@ -348,9 +279,6 @@
     if (node.type === "item" && node.projectId === "customize-shell") {
       announcement = translate(props.localeId, "customize.required");
       return;
-    }
-    if (selectedInstanceId === node.instanceId) {
-      selectedInstanceId = null;
     }
     void runEdit(
       {
@@ -360,70 +288,6 @@
       },
       undefined,
       path.slice(0, -1),
-    );
-  };
-
-  const toggleDirection = (
-    node: ToolbarLayoutNodeSnapshot,
-    path: readonly number[],
-  ): void => {
-    if (node.type !== "container") {
-      return;
-    }
-    void runEdit(
-      {
-        direction: node.direction === "row" ? "column" : "row",
-        location: { path, zone: props.edge },
-        revision,
-        type: "set-container-direction",
-      },
-      node.instanceId,
-    );
-  };
-
-  const widgetStyleLabel = (style: ProjectWidgetStyleId): string => {
-    switch (style) {
-      case "with-site-status":
-        return translate(props.localeId, "customize.widgetStyleWithSiteStatus");
-      case "tabs-only":
-        return translate(props.localeId, "customize.widgetStyleTabsOnly");
-      case "with-new-tab":
-        return translate(props.localeId, "customize.widgetStyleWithNewTab");
-      default:
-        return translate(props.localeId, "customize.widgetStyleAddressOnly");
-    }
-  };
-
-  const setNodeStyle = (
-    node: ToolbarLayoutNodeSnapshot,
-    path: readonly number[],
-    event: Event,
-  ): void => {
-    if (node.type !== "item" || node.projectId === "") {
-      return;
-    }
-    const style =
-      event.currentTarget instanceof HTMLSelectElement
-        ? event.currentTarget.value
-        : "";
-    const options = projectWidgetStyleOptions(node.projectId);
-    if (!options.includes(style as ProjectWidgetStyleId)) {
-      return;
-    }
-    void runEdit(
-      {
-        location: { path, zone: props.edge },
-        revision,
-        style: style as ProjectWidgetStyleId,
-        type: "set-node-style",
-      },
-      node.instanceId,
-      undefined,
-      translate(props.localeId, "customize.widgetStyleChanged", {
-        label: nodeLabel(node),
-        style: widgetStyleLabel(style as ProjectWidgetStyleId),
-      }),
-      "[data-fennevia-layout-style-select]",
     );
   };
 
@@ -447,6 +311,7 @@
     );
     event.dataTransfer.setData("text/plain", source.type);
     selectNode(node);
+    event.stopPropagation();
     const sourceElement =
       event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     const image = sourceElement?.querySelector<HTMLElement>(
@@ -593,10 +458,7 @@
     const index = insertionIndex(event, parentPath, direction);
     if (index !== null) {
       const parentKey = pathKey(parentPath);
-      if (
-        dropPreview?.index !== index ||
-        dropPreview.parentKey !== parentKey
-      ) {
+      if (dropPreview?.index !== index || dropPreview.parentKey !== parentKey) {
         dropPreview = { index, parentKey };
         if (dragDescriptor) {
           announcement = translate(
@@ -681,10 +543,22 @@
     if (!props.customizeOpen) {
       return;
     }
-    if (event.key === "Escape" && selectedInstanceId) {
+    if (event.key === "Escape" && props.selectedInstanceId) {
       event.preventDefault();
       event.stopPropagation();
       clearSelection();
+      return;
+    }
+    if (
+      event.key === "Enter" &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      focusInspector(node);
       return;
     }
     if (event.key === "Delete" || event.key === "Backspace") {
@@ -726,16 +600,6 @@
     {@const path = [...parentPath, index]}
     {@const isBaseContainer = node.instanceId === baseContainerInstanceId}
     {@const structuralItem = isStructuralItem(node)}
-    {@const parent = props.state
-      ? toolbarLayoutParent(props.state.snapshot.layout, {
-          path,
-          zone: props.edge,
-        })
-      : null}
-    {@const previous = parent?.children[index - 1]}
-    {@const styleOptions = node.type === "item" && node.projectId !== ""
-      ? projectWidgetStyleOptions(node.projectId)
-      : []}
     {@const dragPreviewKind = structuralItem
       ? "space"
       : node.type === "item"
@@ -761,7 +625,8 @@
       data-fennevia-layout-instance={node.instanceId}
       data-fennevia-layout-node=""
       data-fennevia-layout-node-type={node.type}
-      data-fennevia-layout-selected={selectedInstanceId === node.instanceId
+      data-fennevia-layout-selected={props.selectedInstanceId ===
+      node.instanceId
         ? true
         : undefined}
       data-fennevia-layout-source={activeDrag?.type === "layout-node" &&
@@ -778,95 +643,35 @@
         clearToolbarWidgetDrag();
       }}
       ondragstart={(event) => beginDrag(event, node, direction)}
-      onfocusin={() => selectNode(node)}
       onkeydown={(event) => handleNodeKeydown(event, node, path, direction)}
       onpointerdown={(event) => {
         if (event.button === 0) {
+          event.stopPropagation();
           selectNode(node);
+          event.currentTarget
+            .querySelector<HTMLButtonElement>(
+              ":scope > [data-fennevia-layout-keyboard-selector]",
+            )
+            ?.focus({ preventScroll: true });
         }
       }}
       role={props.customizeOpen && !isBaseContainer ? "group" : "presentation"}
     >
       {#if props.customizeOpen && !isBaseContainer}
-        <div
-          aria-label={translate(props.localeId, "customize.editNode", {
+        <button
+          aria-controls={props.selectedInstanceId === node.instanceId
+            ? `fennevia-widget-inspector-${node.instanceId}`
+            : undefined}
+          aria-expanded={props.selectedInstanceId === node.instanceId}
+          aria-label={translate(props.localeId, "customize.editNodeWithHint", {
             label: nodeLabel(node),
           })}
-          class="fennevia-layout-node__controls"
-          data-fennevia-layout-node-controls=""
-          ondragstart={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-          role="group"
-        >
-          <button
-            aria-label={translate(props.localeId, "customize.moveBefore")}
-            disabled={index === 0}
-            onclick={() => moveSibling(node, path, -1)}
-            type="button">←</button
-          >
-          <button
-            aria-label={translate(props.localeId, "customize.moveAfter")}
-            disabled={!parent || index >= parent.children.length - 1}
-            onclick={() => moveSibling(node, path, 1)}
-            type="button">→</button
-          >
-          <button
-            aria-label={translate(props.localeId, "customize.moveIntoPrevious")}
-            disabled={!previous || !canAcceptChild(previous)}
-            onclick={() => moveIntoPrevious(node, path)}
-            type="button">↳</button
-          >
-          <button
-            aria-label={translate(props.localeId, "customize.moveOut")}
-            disabled={!canMoveOut(path)}
-            onclick={() => moveOut(node, path)}
-            type="button">↰</button
-          >
-          {#if node.type === "container"}
-            <button
-              aria-label={translate(
-                props.localeId,
-                node.direction === "row"
-                  ? "customize.changeToColumn"
-                  : "customize.changeToRow",
-              )}
-              onclick={() => toggleDirection(node, path)}
-              type="button">{node.direction === "row" ? "↕" : "↔"}</button
-            >
-          {/if}
-          <button
-            aria-label={translate(props.localeId, "customize.removeNode")}
-            onclick={() => removeNode(node, path)}
-            type="button">×</button
-          >
-        </div>
-        {#if selectedInstanceId === node.instanceId && node.type === "item" && styleOptions.length > 1}
-          <label
-            class="fennevia-layout-node__style-editor"
-            data-fennevia-layout-style-editor=""
-            ondragstart={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            }}
-          >
-            <span>{translate(props.localeId, "customize.widgetStyle")}</span>
-            <select
-              aria-label={translate(props.localeId, "customize.widgetStyleFor", {
-                label: nodeLabel(node),
-              })}
-              class="fennevia-control"
-              data-fennevia-layout-style-select=""
-              onchange={(event) => setNodeStyle(node, path, event)}
-              value={node.style}
-            >
-              {#each styleOptions as style (style)}
-                <option value={style}>{widgetStyleLabel(style)}</option>
-              {/each}
-            </select>
-          </label>
-        {/if}
+          class="fennevia-layout-node__keyboard-selector"
+          data-fennevia-layout-keyboard-selector=""
+          onclick={() => focusInspector(node)}
+          onfocus={() => selectNode(node)}
+          type="button"
+        ></button>
       {/if}
 
       {#if props.customizeOpen && !isBaseContainer}

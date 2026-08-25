@@ -111,5 +111,6 @@ export {
   findToolbarLayoutInstance,
   isToolbarOptionalPanelEnabled,
   toolbarLayoutContainsProjectWidget,
+  toolbarLayoutNodeAt,
   toolbarLayoutParent,
 } from "./toolbar-widgets/layout.ts";

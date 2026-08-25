@@ -3216,7 +3216,8 @@ asset. Evidence and rejected alternatives are recorded in
 **Status:** Accepted by direct project-owner request on 2026-08-25;
 implementation and ordinary automated coverage are complete; the real Firefox
 layout, accessibility, popup, caption, multi-window, and recovery matrix
-remains `not run`
+remains `not run`; its contextual in-node control presentation is superseded
+by ADR-076
 
 Keep ADR-026's one zero-layout frame, four independently owned edge hosts, one
 shared reveal/collision/focus/popup/window-drag controller, and one disposer per
@@ -3370,7 +3371,8 @@ the only editing path. Implementation and focused evidence are in
 
 **Status:** Accepted by direct project-owner request on 2026-08-25;
 implementation and ordinary automated coverage are complete; the real Firefox
-interaction matrix remains `not run`
+interaction matrix remains `not run`; the in-node compact action strip and
+component-local selection ownership are superseded by ADR-076
 
 Extend ADR-047/ADR-074's existing live editor rather than creating another
 layout model or pointer engine. A placed node or palette tile uses one bounded,
@@ -3440,4 +3442,65 @@ duplicating Firefox state owners. Implementation and focused evidence are in
 `tests/layout-drag-preview.test.mjs`,
 `tests/customize-layout-v2.test.mjs`,
 `tests/firefox-toolbar-widgets.test.mjs`, and
+`tests/frontend-build.test.mjs`.
+
+## ADR-076: One session-wide floating widget inspector above customize surfaces
+
+**Status:** Accepted by direct project-owner request and screenshot evidence on
+2026-08-25; implementation and ordinary automated coverage are complete; the
+real Firefox positioning, zoom, focus, and accessibility matrix remains
+`not run`
+
+Replace ADR-074/ADR-075's action toolbar and Style selector inside every
+selected layout node with exactly one non-modal floating widget inspector for
+the complete per-window customize session. Extend the existing
+`CustomizeSessionController` with one validated ephemeral
+`selectedInstanceId`; opening, closing, or disposing the session clears it.
+Clicking or focusing a different node replaces the selection across all four
+Svelte edge roots. A node retains only its selected boundary and a direct
+keyboard selector, so Row/Column measurement never includes action controls or
+the Style field.
+
+Render the inspector once from the Top app root after the central Customize
+workspace, not inside the selected edge panel. The Top root and inspector are
+still project-owned XHTML inside the existing frame; this is not a portal into
+Firefox-owned DOM and does not add a Svelte root, surface, popup owner, reveal
+controller, or native-node reparent. Give it a documented project-overlay
+stack level above the central workspace and project context menus so an edge
+panel stacking context cannot cover it.
+
+Resolve the selected node and its owning edge from the current validated
+ordinary layout snapshot. A pure finite-geometry helper tries the edge's
+content-facing side first, clamps to the visible viewport, treats the central
+Customize workspace as a padded obstacle, and chooses another fitting side
+before accepting overlap. Recompute after selection/revision changes,
+descendant scrolling, window resize, selected/inspector/container resize, and
+central-workspace resize. Every listener and `ResizeObserver` is installed only
+while the inspector exists and is removed on unmount.
+
+The inspector contains one localized title/close action, compact
+move-before/after/into/out, axis, and remove controls, plus a labelled
+full-width Style selector only when the selected project widget has multiple
+allowlisted variants. Enter from a selected node focuses its first available
+action; Escape closes the inspector and restores the surviving node; removal
+clears selection and focuses the nearest surviving path. Delete/Backspace,
+Ctrl+axis movement, precise drag/drop, focus visibility, reduced motion,
+reduced transparency, and forced colors remain available.
+
+Selection stores only an existing bounded layout-local instance id. Inspector
+geometry, focus, announcement, and obstacle state stay component-local and are
+never persisted, logged, transferred, copied, or sent across the privileged
+bridge. No Firefox widget id, extension identity, URL, title, download detail,
+native node, label, or style id is added to the session snapshot.
+
+**Reasoning:** In-node toolbars changed layout size, covered compact widgets,
+and forced labels/selectors into unusable wrapping on narrow vertical panels.
+Rendering one editor inside the owning edge still left it trapped below the
+central workspace's stacking context. A session-owned selection plus one
+top-layer, obstacle-aware inspector provides progressive disclosure without
+changing layout geometry or weakening keyboard access and privacy boundaries.
+Implementation and focused evidence are in
+`plans/011-floating-widget-inspector.md`,
+`tests/customize-session.test.mjs`,
+`tests/widget-inspector-position.test.mjs`, and
 `tests/frontend-build.test.mjs`.

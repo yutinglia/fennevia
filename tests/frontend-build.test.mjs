@@ -162,7 +162,9 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
 
 test("customize mode previews exact drops and exposes bounded widget styles", async () => {
   const [
+    app,
     composableLayout,
+    widgetInspector,
     dragPreview,
     projectWidget,
     featureWidget,
@@ -170,8 +172,12 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
     layoutCss,
     customizeCss,
   ] = await Promise.all([
+    readProjectFile("src/shell/App.svelte"),
     readProjectFile(
       "src/shell/features/composable-layout/ComposableLayout.svelte",
+    ),
+    readProjectFile(
+      "src/shell/features/composable-layout/WidgetInspector.svelte",
     ),
     readProjectFile(
       "src/shell/features/composable-layout/LayoutDragPreview.svelte",
@@ -196,8 +202,22 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
   assert.match(composableLayout, /data-fennevia-layout-selected=/u);
   assert.match(composableLayout, /resolveToolbarWidgetDragAutoScrollDelta/u);
   assert.match(composableLayout, /requestAnimationFrame\(runAutoScroll\)/u);
-  assert.match(composableLayout, /data-fennevia-layout-style-select/u);
-  assert.match(composableLayout, /type: "set-node-style"/u);
+  assert.match(composableLayout, /data-fennevia-layout-keyboard-selector/u);
+  assert.match(composableLayout, /const focusEditableNode/u);
+  assert.doesNotMatch(composableLayout, /data-fennevia-layout-style-select/u);
+  assert.doesNotMatch(composableLayout, /type: "set-node-style"/u);
+  assert.match(widgetInspector, /data-fennevia-widget-inspector=/u);
+  assert.match(widgetInspector, /data-fennevia-widget-config-style=/u);
+  assert.match(widgetInspector, /type: "set-node-style"/u);
+  assert.match(widgetInspector, /customizePanelElement/u);
+  assert.match(widgetInspector, /const focusTargetForNode/u);
+  assert.match(widgetInspector, /anchorRoot=|props\.anchorRoot/u);
+  assert.match(
+    app,
+    /<CustomizePanel[\s\S]*?<WidgetInspector[\s\S]*?anchorRoot=\{props\.frame\}/u,
+  );
+  assert.match(app, /props\.edge === "top"[\s\S]*?<WidgetInspector/u);
+  assert.equal(app.match(/<WidgetInspector/gu)?.length, 1);
   assert.match(dragPreview, /data-fennevia-layout-drop-preview=/u);
 
   const clearSearch = customizePanel.indexOf('paletteQuery = "";');
@@ -223,7 +243,9 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
   assert.match(layoutCss, /@keyframes fennevia-layout-preview-block/u);
   assert.match(layoutCss, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(layoutCss, /@media \(forced-colors: active\)/u);
-  assert.match(layoutCss, /\.fennevia-layout-node__style-editor/u);
+  assert.match(layoutCss, /\.fennevia-widget-inspector/u);
+  assert.doesNotMatch(layoutCss, /\.fennevia-layout-node__style-editor/u);
+  assert.doesNotMatch(layoutCss, /\.fennevia-layout-node__controls/u);
   assert.match(layoutCss, /data-fennevia-widget-style="with-site-status"/u);
   assert.match(customizeCss, /\.fennevia-customize__palette-categories/u);
   assert.match(customizeCss, /data-fennevia-customize-dragging="true"/u);
@@ -295,6 +317,7 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     progressLight,
     toolbarWidgets,
     composableLayout,
+    widgetInspector,
     mountShell,
     customizeStyle,
     customizePanels,
@@ -311,6 +334,9 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     ),
     readProjectFile(
       "src/shell/features/composable-layout/ComposableLayout.svelte",
+    ),
+    readProjectFile(
+      "src/shell/features/composable-layout/WidgetInspector.svelte",
     ),
     readProjectFile("src/shell/runtime/mount-shell.ts"),
     readProjectFile("src/shell/runtime/customize-style.ts"),
@@ -399,9 +425,16 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     /const selectEmptyPanel[\s\S]*?setLastFocusedZone\(props\.edge\)/u,
   );
   assert.match(
-    composableLayout,
+    widgetInspector,
     /node\.projectId === "customize-shell"[\s\S]*?"customize\.required"/u,
   );
+  assert.match(composableLayout, /data-fennevia-layout-keyboard-selector/u);
+  assert.doesNotMatch(composableLayout, /fennevia-layout-node__controls/u);
+  assert.doesNotMatch(composableLayout, /fennevia-layout-node__style-editor/u);
+  assert.match(widgetInspector, /resolveWidgetInspectorPosition/u);
+  assert.match(widgetInspector, /customizePanelElement/u);
+  assert.match(widgetInspector, /new view\.ResizeObserver\(reposition\)/u);
+  assert.match(widgetInspector, /observer\.disconnect\(\)/u);
   assert.match(composableLayout, /subscribeToolbarWidgetDrag/u);
   assert.match(composableLayout, /ondragleave=\{handleDragLeave\}/u);
   assert.match(composableLayout, /data-fennevia-window-drag-region/u);
@@ -413,7 +446,11 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.match(
     css,
-    /\.fennevia-layout-node__controls \{[\s\S]*?opacity: 0;[\s\S]*?pointer-events: none;/u,
+    /\.fennevia-widget-inspector \{[\s\S]*?position: absolute;[\s\S]*?z-index: 12;/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-widget-inspector-positioned="true"[\s\S]*?pointer-events: auto;/u,
   );
   assert.match(
     css,
@@ -423,10 +460,8 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     css,
     /\.fennevia-layout-node__structure-label \{[\s\S]*?opacity: 0;[\s\S]*?pointer-events: none;/u,
   );
-  assert.match(
-    css,
-    /\.fennevia-layout-node--editing:hover:not\([\s\S]*?> \.fennevia-layout-node__controls[\s\S]*?opacity: 1;[\s\S]*?pointer-events: auto;/u,
-  );
+  assert.doesNotMatch(css, /\.fennevia-layout-node__controls/u);
+  assert.doesNotMatch(css, /\.fennevia-layout-node__style-editor/u);
   assert.match(
     css,
     /\.fennevia-layout-container__placeholder--root \{[\s\S]*?flex: 0 1 auto;[\s\S]*?margin: auto;/u,

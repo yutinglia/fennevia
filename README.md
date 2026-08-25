@@ -143,9 +143,11 @@ switches, a movable Downloads-status widget, and an always-reachable Customize
 widget. A confirmed **Clean all panels** action restores adopted Firefox
 widgets and leaves only Customize in Top; Reset layout still restores the
 default composition. Empty enabled panels are usable targets during customize,
-drag target outlines are cleared on every exit/end path, and each widget's
-move/remove controls appear on deepest hover/direct focus or stay available for
-one selected node. The editor now shows one exact insertion preview while
+drag target outlines are cleared on every exit/end path, and one selected
+widget opens a single floating inspector for move/remove/layout and eligible
+Style controls. The inspector stays outside Row/Column sizing, avoids the
+central customize panel when another side fits, and replaces the previous
+selection instead of stacking editors. The editor also shows one exact insertion preview while
 dragging, subdues the source, autoscrolls near panel edges, and provides
 localized palette search plus All/Fennevia/Firefox/Layout filters. Eligible
 placed widgets also have closed per-instance variants: Address may include the

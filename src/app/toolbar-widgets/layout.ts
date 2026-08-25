@@ -59,6 +59,27 @@ export function findToolbarLayoutInstance(
   return null;
 }
 
+export function toolbarLayoutNodeAt(
+  layout: ToolbarLayoutZonesSnapshot,
+  location: ToolbarLayoutLocation,
+): ToolbarLayoutNodeSnapshot | null {
+  let children = layout[location.zone];
+  let node: ToolbarLayoutNodeSnapshot | undefined;
+  for (const [depth, index] of location.path.entries()) {
+    node = children[index];
+    if (!node) {
+      return null;
+    }
+    if (depth < location.path.length - 1) {
+      if (node.type === "item") {
+        return null;
+      }
+      children = node.children;
+    }
+  }
+  return node ?? null;
+}
+
 export function toolbarLayoutContainsProjectWidget(
   nodes: readonly ToolbarLayoutNodeSnapshot[],
   projectId: ProjectWidgetId,

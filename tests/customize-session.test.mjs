@@ -64,8 +64,17 @@ test("opening customize holds every edge popup and marks the frame", () => {
   assert.deepEqual(session.snapshot(), {
     lastFocusedZone: "left",
     open: true,
+    selectedInstanceId: null,
   });
   assert.equal(session.setLastFocusedZone("left"), false);
+
+  assert.equal(session.setSelectedInstance("layout-7"), true);
+  assert.equal(session.snapshot().selectedInstanceId, "layout-7");
+  assert.equal(session.setSelectedInstance("layout-7"), false);
+  assert.equal(session.clearSelectedInstance(), true);
+  assert.equal(session.snapshot().selectedInstanceId, null);
+  assert.equal(session.clearSelectedInstance(), false);
+  assert.equal(session.setSelectedInstance("layout-8"), true);
 
   assert.equal(session.setOpen(false), true);
   assert.equal(session.isOpen(), false);
@@ -73,6 +82,7 @@ test("opening customize holds every edge popup and marks the frame", () => {
   assert.ok(
     edgeNames.every((edge) => !shell.snapshot().surfaces[edge].holds.popup),
   );
+  assert.equal(session.snapshot().selectedInstanceId, null);
 });
 
 test("restoreHolds re-applies popup holds while the session stays open", () => {
@@ -84,6 +94,7 @@ test("restoreHolds re-applies popup holds while the session stays open", () => {
 
   assert.equal(session.restoreHolds(), false);
   session.setOpen(true);
+  session.setSelectedInstance("layout-1");
   shell.setPopupHeld("top", false);
   shell.setPopupHeld("bottom", false);
   assert.equal(shell.snapshot().surfaces.top.holds.popup, false);
@@ -103,6 +114,7 @@ test("suppressed or disabled shells cannot open customize", () => {
   shell.setInteractionSuppressed(true);
   assert.equal(session.setOpen(true), false);
   assert.equal(session.isOpen(), false);
+  assert.equal(session.snapshot().selectedInstanceId, null);
 
   shell.setInteractionSuppressed(false);
   shell.setEnabled(false);
@@ -123,8 +135,11 @@ test("dispose releases holds, clears the frame marker, and rejects later use", (
 
   session.setOpen(true);
   assert.deepEqual(seen, [true]);
+  session.setSelectedInstance("layout-2");
   assert.equal(session.dispose(), true);
   assert.equal(session.isOpen(), false);
+  assert.equal(session.snapshot().selectedInstanceId, null);
+  assert.deepEqual(seen, [true, true, false]);
   assert.equal(frame.attributes.has(customizeActiveAttribute), false);
   assert.ok(
     edgeNames.every((edge) => !shell.snapshot().surfaces[edge].holds.popup),
@@ -196,6 +211,11 @@ test("invalid collaborators and arguments fail closed", () => {
     () => session.setLastFocusedZone("middle"),
     /FENNEVIA_CUSTOMIZE_SESSION_ZONE_INVALID/u,
   );
+  assert.throws(
+    () => session.setSelectedInstance("address-launcher"),
+    /FENNEVIA_CUSTOMIZE_SESSION_INSTANCE_INVALID/u,
+  );
+  assert.equal(session.setSelectedInstance("layout-1"), false);
   assert.throws(
     () => session.subscribe(null),
     /FENNEVIA_CUSTOMIZE_SESSION_LISTENER_INVALID/u,

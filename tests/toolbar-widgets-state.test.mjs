@@ -29,6 +29,7 @@ import {
   reduceBrowserToolbarWidgetsState,
   projectWidgetStyleOptions,
   toolbarLayoutContainsProjectWidget,
+  toolbarLayoutNodeAt,
   toolbarLayoutParent,
 } from "../src/app/toolbar-widgets-state.ts";
 
@@ -177,6 +178,18 @@ test("recursive layout helpers preserve paths, parents, and container axes", () 
   });
   assert.equal(findToolbarLayoutInstance(layout, ""), null);
   assert.equal(findToolbarLayoutInstance(layout, "layout-99"), null);
+  assert.equal(
+    toolbarLayoutNodeAt(layout, { path: [0, 1, 0, 0], zone: "top" }),
+    layout.top[0].children[1].children[0].children[0],
+  );
+  assert.equal(
+    toolbarLayoutNodeAt(layout, { path: [0, 9], zone: "top" }),
+    null,
+  );
+  assert.equal(
+    toolbarLayoutNodeAt(layout, { path: [0, 0, 0], zone: "top" }),
+    null,
+  );
   assert.equal(toolbarLayoutContainsProjectWidget(layout.top, "tabs"), true);
   assert.equal(
     toolbarLayoutContainsProjectWidget(layout.top, "downloads-status"),

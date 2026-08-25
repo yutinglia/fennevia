@@ -113,6 +113,7 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.changeToColumn": "將橫列改為直欄",
   "customize.changeToRow": "將直欄改為橫列",
   "customize.closeAria": "關閉自訂面板",
+  "customize.closeWidgetInspector": "關閉元件設定",
   "customize.colorAccent": "強調色",
   "customize.colorBorder": "邊框顏色",
   "customize.colorCustomAria": "自訂{label}顏色",
@@ -138,6 +139,7 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.dragDestination": "將{label}移到{zone}面板第 {position} 個位置。",
   "customize.editFailed": "無法套用該變更。版面可能剛改變，請再試一次。",
   "customize.editNode": "編輯{label}",
+  "customize.editNodeWithHint": "設定{label}。按 Enter 開啟元件設定。",
   "customize.required": "必須在已啟用的面板中保留「自訂」元件。",
   "customize.edgeTriggerSize": "邊緣觸發區",
   "customize.edgeTriggerSizeHelp":
@@ -245,6 +247,8 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.widgetStyleTabsOnly": "僅分頁",
   "customize.widgetStyleWithNewTab": "分頁與新增分頁按鈕",
   "customize.widgetStyleWithSiteStatus": "網址列與網站狀態",
+  "customize.widgetInspectorAria": "{label}的設定",
+  "customize.widgetInspectorToolbar": "{label}的版面操作",
   "customize.wrapperDropArea": "{label}放置區",
   "customize.title": "自訂 Fennevia",
   "customize.unavailable":

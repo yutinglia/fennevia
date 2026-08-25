@@ -2,7 +2,11 @@ import { translate, type MessageKey } from "../app/i18n.ts";
 import { en } from "../app/messages/en.ts";
 import type { FenneviaLocale } from "../app/locale-state.ts";
 import type { TabStripLabels } from "../app/tab-strip.ts";
-import type { ToolbarZoneName } from "../app/toolbar-widgets-state.ts";
+import type {
+  ProjectWidgetStyleId,
+  ToolbarLayoutNodeSnapshot,
+  ToolbarZoneName,
+} from "../app/toolbar-widgets-state.ts";
 
 const ownedEnglishLabels = Object.freeze({
   "Address launcher": "widget.addressLauncher",
@@ -105,6 +109,38 @@ export function localizeWidgetLabel(
     return translate(locale, "widget.unavailableSuffix", { label });
   }
   return label;
+}
+
+export function localizeLayoutNodeLabel(
+  locale: FenneviaLocale,
+  node: ToolbarLayoutNodeSnapshot,
+): string {
+  if (node.type === "container") {
+    return translate(
+      locale,
+      node.direction === "row" ? "widget.row" : "widget.column",
+    );
+  }
+  if (node.type === "wrapper") {
+    return translate(locale, `widget.${node.kind}`);
+  }
+  return localizeWidgetLabel(locale, node.widget);
+}
+
+export function localizeProjectWidgetStyle(
+  locale: FenneviaLocale,
+  style: ProjectWidgetStyleId,
+): string {
+  switch (style) {
+    case "with-site-status":
+      return translate(locale, "customize.widgetStyleWithSiteStatus");
+    case "tabs-only":
+      return translate(locale, "customize.widgetStyleTabsOnly");
+    case "with-new-tab":
+      return translate(locale, "customize.widgetStyleWithNewTab");
+    default:
+      return translate(locale, "customize.widgetStyleAddressOnly");
+  }
 }
 
 export function localizeWidgetTooltip(

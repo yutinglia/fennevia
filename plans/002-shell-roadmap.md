@@ -1003,8 +1003,8 @@ Keep Milestone P's tree, persistence cap, bridge ownership, and HTML5 drag
 engine. Add one bounded pointer-relative drag image, a subdued source
 placeholder, one exact axis-aware projected insertion slot, cached pre-preview
 geometry, and frame-bounded panel-edge autoscroll. One clicked/focused node may
-remain selected with stable contextual controls; Escape clears that selection
-first. The palette searches localized labels, filters the closed
+remain selected until another selection or Escape. The palette searches
+localized labels, filters the closed
 All/Fennevia/Firefox/Layout categories, reports the selected click destination
 and result count, and retains click/Enter/Space addition.
 
@@ -1021,6 +1021,30 @@ the ordinary `npm run verify` gate; real Firefox projected-drop, autoscroll,
 selection, screen-reader, forced-colors/reduced-motion, Trust popup, New Tab,
 multi-window, and private-window rows remain `not run`. Plan:
 `plans/010-customize-mode-drag-ux.md`.
+
+### ADR-076 single floating widget inspector — focused implementation complete, real Firefox smoke pending
+
+Move the selected node's action toolbar and eligible Style selector out of the
+recursive layout. The existing per-window customize session owns one validated
+ephemeral selected instance across all four roots; close and disposal clear it.
+The Top app root renders exactly one project-owned inspector after the central
+drawer, while the selected node keeps only its boundary and direct keyboard
+selector. This prevents controls from covering the widget or changing
+Row/Column measurement.
+
+Position the inspector from finite project-owned rectangles. Prefer the
+content-facing side for each edge, clamp to the viewport, treat the central
+drawer as a padded obstacle, and try another fitting side before accepting
+overlap. Keep the inspector above existing project panel/context-menu stacking
+levels, update it after scroll/resize/revision changes, and deterministically
+remove every listener and observer. Enter transfers focus to the inspector;
+Escape and removal restore a surviving layout focus target.
+
+Gate: focused customize-session, placement-geometry, frontend-structure,
+typecheck, static, and complete `npm run verify` coverage; real Firefox
+cross-edge placement, central-drawer overlap, 100%/200% scaling, focus,
+accessibility, multiple/private-window, and disposal rows remain `not run`.
+Plan: `plans/011-floating-widget-inspector.md`.
 
 ## Deferred work
 

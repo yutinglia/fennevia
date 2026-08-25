@@ -506,7 +506,7 @@ counts/enums/booleans. Representative providers, remote-suggestion preference
 combinations, second/private real windows, and the release matrix remain not
 run. See `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
 
-### 7.5 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, composable widgets and customize mode ADR-044/ADR-045/ADR-046/ADR-047/ADR-074/ADR-075
+### 7.5 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, composable widgets and customize mode ADR-044/ADR-045/ADR-046/ADR-047/ADR-074–ADR-076
 
 Each managed window owns one `browser-tools` Firefox controller and one ordinary
 application adapter. The controller validates twenty required current
@@ -575,11 +575,13 @@ or runtime load. See ADR-037, ADR-042, ADR-059, ADR-060,
 `docs/research/firefox-153-native-popup-anchoring.md`, and
 `docs/research/firefox-153-154-native-shell-icons.md`.
 
-Owner-approved ADR-044/ADR-045/ADR-046/ADR-074/ADR-075 widget and customize flow: each
+Owner-approved ADR-044/ADR-045/ADR-046/ADR-074–ADR-076 widget and customize flow: each
 managed window may own one optional `toolbar-widgets` controller. It renders a
 strict bounded version-2 tree under the four fixed edge roots. The default tree
-preserves the previous tabs-left/bookmarks-right/bottom-downloads composition
-and includes the current `CustomizableUI` nav-bar placement mirror in Top.
+uses the deterministic native-v2 Top controls/address/handoffs/window commands,
+tabs-side, bookmarks-side, and Bottom Downloads composition. Current
+`CustomizableUI` placements remain palette choices rather than
+profile-dependent defaults.
 Ordinary layout nodes expose only a layout-local instance id, closed
 project/container/wrapper/special kind, Row/Column direction, a fixed
 Center/Expanded/Padding wrapper kind, children, and immutable widget
@@ -647,7 +649,7 @@ adopted ids, then persists a tree containing only Top Customize. Fennevia never
 writes any other CustomizableUI state and never edits placements the user made
 natively.
 
-ADR-047/ADR-074/ADR-075 add a frontend-only customize session: HTML5
+ADR-047/ADR-074–ADR-076 add a frontend-only customize session: HTML5
 `dataTransfer` on
 project-owned nodes may carry the MIME `application/x-fennevia-toolbar-widget`
 and a JSON payload of an opaque palette token or layout-local instance id.
@@ -657,15 +659,21 @@ includes Firefox widget ids, extension identity, URLs, labels, preview
 geometry, or style ids. ADR-075 derives its bounded drag image and exact
 projected insertion slot only from that opaque source plus the already
 validated in-memory ordinary snapshot. Preview labels, icons, geometry,
-autoscroll values, active destination, palette query/category, and selected
-node are ephemeral frontend state; none enters `DataTransfer`, preferences,
-diagnostics, clipboard, or a network sink. Preview XHTML is project-owned and
+autoscroll values, active destination, and palette query/category are ephemeral
+frontend state. ADR-076 stores only one validated layout-local selected
+instance id in the existing per-window session; inspector position, obstacle
+rectangles, focus target, and announcements remain component-local. None enters
+`DataTransfer`, preferences, the privileged bridge, diagnostics, clipboard, or
+a network sink. Preview and inspector XHTML are project-owned and
 never clones or reparents a native Firefox node. The session is not persisted;
 the frame marker
 `data-fennevia-customize-active` is a boolean presence attribute.
 The in-process drag-lifecycle listeners receive only that same opaque source
-and are deterministically unsubscribed; target-outline and contextual-control
-visibility are transient component/CSS state with no persistence or log sink.
+and are deterministically unsubscribed. The inspector's scroll/resize
+listeners and `ResizeObserver` are present only while it is mounted and are
+deterministically removed; target-outline, selection-boundary, and inspector
+visibility remain transient component/CSS state with no persistence or log
+sink.
 
 Compatible duplicate placement resolves one current in-process owner and never
 duplicates a native node or panel. Stateful feature ids remain singleton;

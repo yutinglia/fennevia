@@ -6,6 +6,8 @@ import {
 
 export const customizeActiveAttribute = "data-fennevia-customize-active";
 
+const layoutInstancePattern = /^layout-[1-9][0-9]{0,5}$/u;
+
 export type CustomizeSessionFrame = Readonly<{
   removeAttribute: (name: string) => void;
   setAttribute: (name: string, value: string) => void;
@@ -14,15 +16,18 @@ export type CustomizeSessionFrame = Readonly<{
 export type CustomizeSessionSnapshot = Readonly<{
   lastFocusedZone: ToolbarZoneName;
   open: boolean;
+  selectedInstanceId: string | null;
 }>;
 
 export type CustomizeSessionController = Readonly<{
+  clearSelectedInstance: () => boolean;
   dispose: () => boolean;
   isOpen: () => boolean;
   lastFocusedZone: () => ToolbarZoneName;
   restoreHolds: () => boolean;
   setLastFocusedZone: (zone: ToolbarZoneName) => boolean;
   setOpen: (open: boolean) => boolean;
+  setSelectedInstance: (instanceId: string) => boolean;
   snapshot: () => CustomizeSessionSnapshot;
   subscribe: (
     listener: (snapshot: CustomizeSessionSnapshot) => void,
@@ -68,6 +73,7 @@ export function createCustomizeSessionController({
   let disposed = false;
   let open = false;
   let focusedZone: ToolbarZoneName = "top";
+  let selectedInstanceId: string | null = null;
   const listeners = new Set<(snapshot: CustomizeSessionSnapshot) => void>();
 
   const reportError = (error: unknown): void => {
@@ -86,6 +92,7 @@ export function createCustomizeSessionController({
     Object.freeze({
       lastFocusedZone: focusedZone,
       open,
+      selectedInstanceId,
     });
 
   const publish = (): void => {
@@ -127,9 +134,11 @@ export function createCustomizeSessionController({
     open = nextOpen;
     if (nextOpen) {
       focusedZone = "top";
+      selectedInstanceId = null;
       holdAllPopup(true);
       frame.setAttribute(customizeActiveAttribute, "");
     } else {
+      selectedInstanceId = null;
       frame.removeAttribute(customizeActiveAttribute);
       holdAllPopup(false);
     }
@@ -138,12 +147,23 @@ export function createCustomizeSessionController({
   };
 
   return Object.freeze({
+    clearSelectedInstance() {
+      requireUsable();
+      if (selectedInstanceId === null) {
+        return false;
+      }
+      selectedInstanceId = null;
+      publish();
+      return true;
+    },
+
     dispose() {
       if (disposed) {
         return false;
       }
       if (open) {
         open = false;
+        selectedInstanceId = null;
         try {
           frame.removeAttribute(customizeActiveAttribute);
         } catch (error) {
@@ -200,6 +220,24 @@ export function createCustomizeSessionController({
         );
       }
       return applyOpen(nextOpen);
+    },
+
+    setSelectedInstance(instanceId) {
+      requireUsable();
+      if (
+        typeof instanceId !== "string" ||
+        !layoutInstancePattern.test(instanceId)
+      ) {
+        throw createCustomizeSessionError(
+          "FENNEVIA_CUSTOMIZE_SESSION_INSTANCE_INVALID",
+        );
+      }
+      if (!open || selectedInstanceId === instanceId) {
+        return false;
+      }
+      selectedInstanceId = instanceId;
+      publish();
+      return true;
     },
 
     snapshot() {

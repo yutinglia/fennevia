@@ -32,12 +32,14 @@
   } from "../app/toolbar-widgets-state";
   import {
     createDefaultShellPanelConfig,
+    findToolbarLayoutInstance,
     toolbarLayoutContainsProjectWidget,
   } from "../app/toolbar-widgets-state";
   import type { BrowserWindowControlsStateAdapter } from "../app/window-controls-state";
   import CustomizePanel from "./CustomizePanel.svelte";
   import EdgePanelContextMenu from "./features/context-menu/EdgePanelContextMenu.svelte";
   import ComposableLayout from "./features/composable-layout/ComposableLayout.svelte";
+  import WidgetInspector from "./features/composable-layout/WidgetInspector.svelte";
   import * as edgeUi from "./runtime/edge-app-interactions";
   import EdgeProgressLight from "./surfaces/EdgeProgressLight.svelte";
 
@@ -117,6 +119,17 @@
       .shortcutHintDuration !== 0,
   );
   let customizeOpen = $state(false);
+  let selectedLayoutInstanceId: string | null = $state(null);
+  let selectedLayoutLocation = $derived.by(() => {
+    const toolbarState =
+      currentToolbarWidgets ?? props.toolbarWidgets?.snapshot() ?? null;
+    return selectedLayoutInstanceId && toolbarState
+      ? findToolbarLayoutInstance(
+          toolbarState.snapshot.layout,
+          selectedLayoutInstanceId,
+        )
+      : null;
+  });
   let panelElement: HTMLDivElement | undefined = $state();
   let focusReleaseTimer: DelayedFocusTimer | undefined;
 
@@ -201,12 +214,16 @@
     const session = props.customizeSession;
     if (!session) {
       customizeOpen = false;
+      selectedLayoutInstanceId = null;
       return;
     }
-    customizeOpen = session.isOpen();
+    const initialSnapshot = session.snapshot();
+    customizeOpen = initialSnapshot.open;
+    selectedLayoutInstanceId = initialSnapshot.selectedInstanceId;
     return session.subscribe((snapshot) => {
       const wasOpen = customizeOpen;
       customizeOpen = snapshot.open;
+      selectedLayoutInstanceId = snapshot.selectedInstanceId;
       if (props.edge !== "top") {
         return;
       }
@@ -229,6 +246,21 @@
         })
         .catch(props.onFatalError);
     });
+  });
+
+  $effect(() => {
+    if (
+      customizeOpen &&
+      selectedLayoutInstanceId &&
+      currentToolbarWidgets &&
+      !selectedLayoutLocation
+    ) {
+      try {
+        props.customizeSession?.clearSelectedInstance();
+      } catch (error) {
+        props.onFatalError(error);
+      }
+    }
   });
 
   $effect(() => {
@@ -419,6 +451,7 @@
         onRevealProject={revealProjectWidget}
         onSetCustomizeOpen={setCustomizeOpen}
         shell={props.shell}
+        selectedInstanceId={selectedLayoutInstanceId}
         state={currentToolbarWidgets}
         tabs={props.tabs}
         toolbarWidgets={props.toolbarWidgets}
@@ -470,6 +503,19 @@
       {localeId}
       onClose={() => setCustomizeOpen(false)}
       onFatalError={props.onFatalError}
+      state={currentToolbarWidgets}
+      toolbarWidgets={props.toolbarWidgets}
+    />
+  {/if}
+
+  {#if props.edge === "top" && customizeOpen && selectedLayoutInstanceId && selectedLayoutLocation && currentToolbarWidgets && props.toolbarWidgets && props.customizeSession && rootElement}
+    <WidgetInspector
+      anchorRoot={props.frame}
+      container={rootElement}
+      customizeSession={props.customizeSession}
+      {localeId}
+      onFatalError={props.onFatalError}
+      selectedInstanceId={selectedLayoutInstanceId}
       state={currentToolbarWidgets}
       toolbarWidgets={props.toolbarWidgets}
     />

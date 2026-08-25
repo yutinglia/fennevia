@@ -188,8 +188,12 @@ ADR-047, and ADR-054 through ADR-072:
   of covering every widget at once.
 - ADR-075 makes that live editor spatial and discoverable: a bounded drag image
   leaves a subdued source placeholder, one exact nested insertion slot previews
-  the result, panel-edge autoscroll is frame-bounded, one selected node retains
-  its controls, and the palette has localized search plus closed categories.
+  the result, panel-edge autoscroll is frame-bounded, one selected node remains
+  active, and the palette has localized search plus closed categories.
+- ADR-076 keeps that selection in the per-window customize session and renders
+  its controls in exactly one Top-root floating inspector outside Row/Column
+  sizing. The inspector is above project panel stacking contexts, clamps to the
+  viewport, and avoids the central customize workspace when another side fits.
   Eligible Address and Tabs instances may persist one allowlisted semantic
   style id for integrated Trust or trailing New Tab; arbitrary CSS, geometry,
   labels, native ids, and Firefox nodes remain prohibited.
@@ -252,9 +256,10 @@ claim.
   empty drop targets during customize mode, confirmed clean-all recovery, and
   empty ordinary chrome available for native window dragging, plus deterministic
   drag-outline cleanup and contextual node controls.
-- Exact projected drag placement, stable selected-node editing, palette search/
-  categories, and closed per-instance Address/Tabs variants without making drag
-  mandatory or expanding into arbitrary CSS.
+- Exact projected drag placement, session-wide selected-node editing through
+  one obstacle-aware floating inspector, palette search/categories, and closed
+  per-instance Address/Tabs variants without making drag mandatory or
+  expanding into arbitrary CSS.
 - Fixed actions that open Firefox's authoritative native detail panels, menu,
   Settings, customization, Unified Extensions, Downloads, and original toolbar
   without copying their private or dynamic data.

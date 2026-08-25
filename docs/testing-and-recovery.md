@@ -1112,9 +1112,9 @@ ADR-045 adds focused unit/static/build coverage for:
   compatibility promotion of a sole same-axis root container, redirected root
   drops, blocked move-out, subdued ordinary outlines, compact empty-root
   affordances, and a natural-width address launcher;
-- transparent-at-rest non-empty customize nodes with deepest-hover/focus
-  boundaries and compact structural labels, while active drop targets retain
-  the focus-color outline;
+- transparent-at-rest non-empty customize nodes with deepest-hover/focus/
+  selected boundaries and compact structural labels, while active drop targets
+  retain the focus-color outline;
 - nearest-container orientation for tab ARIA/keyboard/drag/overflow geometry
   and axis-aware Bookmarks, Downloads, address, tools, and window-control CSS;
 - opt-in compatible duplicate placement, including simultaneous Top/Left
@@ -1135,9 +1135,18 @@ ADR-045 adds focused unit/static/build coverage for:
 - shared opaque drag-lifecycle notification plus real-boundary `dragleave`
   cleanup, so every panel/palette preview clears after exit, drop, cancel, drag
   end, customize close, and disposal instead of retaining a stale blue outline;
-- contextual per-node controls: move/containment/axis/remove buttons are in DOM
-  and keyboard order but visually hidden until the deepest node is hovered or a
-  direct control owns focus.
+- ADR-076 session-wide selection: one validated ephemeral instance id across all
+  four roots, cleared on close/dispose, with in-node toolbars and Style fields
+  absent from recursive sizing;
+- ADR-076 floating inspector: rendered once by the Top root after the central
+  drawer, above edge/context-menu stacking levels, with localized
+  move/containment/axis/remove and conditional Style controls;
+- finite inspector placement for every edge, viewport clamping, central-drawer
+  obstacle avoidance, invalid-geometry rejection, scroll/window/element resize
+  updates, and deterministic listener/observer cleanup;
+- inspector keyboard behavior: direct node selector, Enter transfer, Escape
+  close/focus restore, selected-node removal fallback, visible focus, reduced
+  motion/transparency, and forced-colors distinctions;
 - ADR-075 drag presentation: bounded axis-aware preview sizes, clamped
   pointer-relative drag-image anchors, exact root/nested insertion slots,
   source placeholders, stable pre-preview geometry, bounded edge autoscroll,
@@ -1145,7 +1154,7 @@ ADR-045 adds focused unit/static/build coverage for:
   colors distinctions, and terminal cleanup through the existing opaque drag
   lifecycle;
 - ADR-075 editor discovery: single-node selection with Escape priority,
-  persistent selected controls, localized action/drop/status text, palette
+  persistent selection, localized action/drop/status text, palette
   search over localized labels, closed All/Fennevia/Firefox/Layout filters,
   result/destination feedback, no-result state, click/Enter/Space addition,
   and layout-node removal by dropping back on the palette;
@@ -1167,6 +1176,12 @@ coverage, 95.47% function coverage, every fixed PowerShell 7 suite, dependency
 audit, deterministic frontend/bridge output, and 14/14 accepted production
 artifacts.
 
+The current ADR-076 source passed the complete `npm run verify` gate on
+2026-08-25 with 411/411 Node tests, 88.22% line coverage, 80.56% branch
+coverage, 95.48% function coverage, every fixed PowerShell 7 suite, dependency
+audit, deterministic frontend/bridge output, and 14/14 accepted production
+artifacts. No real-Firefox result is inferred from those checks.
+
 The following are `not run`, not passed: live Fennevia customize drawer against
 a collapsed navbar; recursive Row/Column creation, nesting, orientation,
 natural-child/start alignment, `Expanded > Center`, Padding, wrapper drop and
@@ -1176,10 +1191,13 @@ empty enabled edge and back**; Clean-all Cancel/Confirm behavior and immediate
 repopulation of the resulting empty edges; compatible Top/Left duplicate
 window controls; dragging across several panels, abandoning with Escape or
 outside the window, and verifying every blue target outline clears; pointer and
-keyboard reveal of only the intended node's contextual controls in deeply
+keyboard selection boundaries plus the single floating inspector in deeply
 nested layouts; pointer-relative drag images, exact insertion previews,
 autoscroll, selection/Escape priority, palette search/categories, and live
-screen-reader announcements; Address `address-only`/`with-site-status` and Tabs
+screen-reader announcements; single-inspector placement on every edge,
+central-drawer non-overlap/fallback stacking, 100%/200% text or UI scaling,
+focus transfer/restoration, reduced motion/transparency, and forced colors;
+Address `address-only`/`with-site-status` and Tabs
 `tabs-only`/`with-new-tab` switching on horizontal and vertical flows,
 including native Trust popup placement and New Tab insertion; ordinary-mode
 window movement from every empty-space kind;
@@ -1193,7 +1211,8 @@ Escape/focus restoration while a widget popup is also held. Implementation/
 source evidence is in `docs/research/firefox-153-customize-mode.md`,
 `plans/006-customize-mode.md`,
 `plans/009-composable-widget-layout.md`, and
-`plans/010-customize-mode-drag-ux.md`.
+`plans/010-customize-mode-drag-ux.md`, and
+`plans/011-floating-widget-inspector.md`.
 
 ### 6.10 Four-panel context menus — focused automation complete, real Firefox pending
 

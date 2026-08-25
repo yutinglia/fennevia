@@ -121,6 +121,7 @@ export const en = {
   "customize.changeToColumn": "Change Row to Column",
   "customize.changeToRow": "Change Column to Row",
   "customize.closeAria": "Close customize panel",
+  "customize.closeWidgetInspector": "Close widget settings",
   "customize.colorAccent": "Accent color",
   "customize.colorBorder": "Border color",
   "customize.colorCustomAria": "Custom {label} color",
@@ -148,6 +149,8 @@ export const en = {
   "customize.editFailed":
     "That change could not be applied. The layout may have just changed; try again.",
   "customize.editNode": "Edit {label}",
+  "customize.editNodeWithHint":
+    "Configure {label}. Press Enter to open widget settings.",
   "customize.required": "Customize must remain on an enabled panel.",
   "customize.edgeTriggerSize": "Edge trigger size",
   "customize.edgeTriggerSizeHelp":
@@ -258,6 +261,8 @@ export const en = {
   "customize.widgetStyleTabsOnly": "Tabs only",
   "customize.widgetStyleWithNewTab": "Tabs with New Tab button",
   "customize.widgetStyleWithSiteStatus": "Address with site status",
+  "customize.widgetInspectorAria": "Settings for {label}",
+  "customize.widgetInspectorToolbar": "Layout actions for {label}",
   "customize.wrapperDropArea": "{label} drop area",
   "customize.title": "Customize Fennevia",
   "customize.unavailable":

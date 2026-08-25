@@ -65,6 +65,10 @@ test("shell composition and CSS retain explicit module ownership", async () => {
   );
   assert.match(
     app,
+    /\.\/features\/composable-layout\/WidgetInspector\.svelte/u,
+  );
+  assert.match(
+    app,
     /\.\/features\/context-menu\/EdgePanelContextMenu\.svelte/u,
   );
   assert.match(
