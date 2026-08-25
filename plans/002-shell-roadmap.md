@@ -88,6 +88,16 @@ and recovery without adding onboarding persistence or privileged behavior.
 Focused automation is complete; real Firefox visual and accessibility checks
 remain pending.
 
+ADR-080 keeps those owners and makes panel geometry responsive before Firefox's
+ordinary minimum width becomes uncomfortable. At 560 CSS px and below, Bottom
+uses a separate full-width lane and a lone side expands while retaining a
+content exit corridor; two sides split according to existing visible/enabled
+attributes. At 360 CSS px and below, a lone side may use the available width and
+a denser tier tightens gaps and fixed Top/Bottom heights. The behavior does not
+depend on `allowCompactWindow`, so both retained-floor and opt-in smaller
+windows receive the same bounded reflow. Focused automation is complete; the
+real Firefox narrow-window matrix remains pending.
+
 ADR-066 follows the first tabbar interaction correction with explicit
 click-versus-window-drag reconciliation, synchronous pointer holds around tab
 selection/close, a project-owned container stripe with a closed native-class
@@ -1121,6 +1131,31 @@ tests and the ordinary `npm run verify` gate; real Firefox paired layout,
 search-only results, narrow/short reflow, 200% text, forced colors, keyboard,
 screen-reader, and multi-window rows remain `not run`. Plan:
 `plans/014-customize-palette-and-layout-guide.md`.
+
+### ADR-080 narrow-window four-panel mosaic — focused implementation complete, real Firefox smoke pending
+
+Apply one CSS-only panel mosaic at 560 CSS px and below without consulting the
+compact-window root attribute. Top and Bottom use fixed matching lanes, Bottom
+spans the available width, one visible side expands to at most 320 CSS px while
+retaining at least 104 CSS px of opposite-side client area, two visible sides
+split with a center gap, and visible or reserved Bottom state shortens both
+sides above its lane. Reserved modes pre-allocate enabled lanes; dynamic modes
+continue to follow visible lanes.
+
+Keep the saved Top/Bottom Row and Left/Right Column trees. Narrow Row roots use
+denser spacing, bounded inline scroll, focus scroll margins, overscroll
+containment, and ordinary-mode proximity snap. Bounds also cover horizontal
+Tabs/Bookmarks, vertical Downloads, Bookmark context menus, side shortcut
+hints, and a viewport-clamped customize sheet. At 360 CSS px and below, tighten
+the lane dimensions and density and permit a lone side to use the full available
+width. Add no resize observer, setting, controller, trigger, timer, surface,
+persistence, or Firefox bridge.
+
+Gate: focused frontend source/build regression plus the ordinary
+`npm run verify` gate; Firefox 153/154 retained-floor and `allowCompactWindow`,
+single/dual/all-panel, all four dodge modes, customize, keyboard, 200% text,
+forced-colors, second/private-window, popup, and recovery rows remain `not run`.
+Plan: `plans/015-narrow-window-four-panel-ui-ux.md`.
 
 ## Deferred work
 

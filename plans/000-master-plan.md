@@ -216,6 +216,14 @@ ADR-047, and ADR-054 through ADR-072:
   explains the fixed root directions, structural widgets, wrappers, practical
   recipes, editing, and recovery with static localized content and no new
   persisted state.
+- ADR-080 makes all four panels usable near Firefox's retained minimum width as
+  well as below it when `allowCompactWindow` is enabled. A 560 CSS px mosaic
+  gives Bottom its own full-width lane, expands one visible side while retaining
+  at least 104 CSS px of opposite-side client area, splits two visible sides,
+  and preserves dynamic/reserved lane semantics. Only the 360 CSS px ultra-
+  compact tier lets one side use the full available width while tightening gaps
+  and fixed Top/Bottom heights. Existing Row/Column order, scrolling, focus,
+  reveal, and native fallback remain unchanged.
 
 Focused type/build/unit/static checks cover this enhancement. Its real Firefox
 manual matrix remains pending and is not part of the earlier #15 validation.
@@ -765,6 +773,13 @@ ADR-078 adds the feature-first paired palette and optional layout Guide while
 retaining opaque tokens, existing click/keyboard/drag edits, and one customize
 drawer owner. Plan and checklist:
 `plans/014-customize-palette-and-layout-guide.md`.
+
+ADR-080 adds the responsive narrow-window mosaic without a new preference or
+controller. It applies at Firefox's ordinary minimum-width range regardless of
+`allowCompactWindow`, while retaining a content corridor for reliable pointer
+exit and auto-hide; only the ultra-compact tier uses a full-width lone side in
+the smaller range the opt-in normally exposes. Plan and checklist:
+`plans/015-narrow-window-four-panel-ui-ux.md`.
 
 ADR-046 (2026-08-19) restores localized widget names and native built-in
 icons in the customize palette and widget zones: palette-node / dedicated

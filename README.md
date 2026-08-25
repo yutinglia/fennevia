@@ -212,6 +212,14 @@ standalone Trust and New Tab widgets remain available. In ordinary mode, Space,
 Flexible space, separators, empty containers, and other unoccupied project
 chrome can drag the Firefox window.
 
+Current source also reflows the four panels before Firefox's ordinary minimum
+width becomes difficult to use. Bottom gets a separate full-width lane; one
+side grows while preserving a clear content corridor for pointer exit and
+auto-hide; and two visible sides split without overlap. Only the ultra-narrow
+tier normally reached through the optional compact-window setting lets a lone
+side use the full available width. Focused automated coverage is complete; the
+real-Firefox narrow-window matrix remains pending.
+
 The current prerelease also projects bounded results from Firefox's own
 per-window Urlbar provider manager into the centred combobox. Firefox still
 owns engines, provider selection, ranking, search-suggestion/private policy,

@@ -188,6 +188,73 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
   );
 });
 
+test("narrow windows reflow all four panels before and below Firefox's normal floor", async () => {
+  const css = await readProjectFile(
+    "src/shell/styles/responsive-accessibility.css",
+  );
+  const narrowTier = css.indexOf("@media (max-width: 560px)");
+  const ultraCompactTier = css.indexOf("@media (max-width: 360px)");
+
+  assert.ok(narrowTier >= 0);
+  assert.ok(ultraCompactTier > narrowTier);
+  const narrowRules = css.slice(narrowTier, ultraCompactTier);
+  const ultraCompactRules = css.slice(ultraCompactTier);
+
+  assert.doesNotMatch(css, /data-fennevia-compact-window/u);
+  assert.doesNotMatch(narrowRules, /--fennevia-edge-side-width:\s*calc\(/u);
+  assert.match(ultraCompactRules, /--fennevia-edge-side-width:\s*calc\(/u);
+  assert.match(
+    css,
+    /@media \(max-width: 560px\) \{[\s\S]*?--fennevia-narrow-side-exit-corridor: 104px;[\s\S]*?--fennevia-edge-side-width: min\([\s\S]*?320px,[\s\S]*?100% - var\(--fennevia-edge-inset\) -[\s\S]*?var\(--fennevia-narrow-side-exit-corridor\)/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-bottom-visible[\s\S]*?data-fennevia-bottom-enabled[\s\S]*?--fennevia-compact-bottom-clearance: calc\(/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-edge="bottom"\][\s\S]*?\.fennevia-edge-panel \{[\s\S]*?inset-inline: var\(--fennevia-edge-inset\);[\s\S]*?block-size: var\(--fennevia-edge-bottom-height\);/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-edge="left"[\s\S]*?data-fennevia-edge="right"[\s\S]*?inset-block-end: calc\([\s\S]*?--fennevia-compact-bottom-clearance/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-left-visible\]\[data-fennevia-right-visible\][\s\S]*?data-fennevia-left-enabled\]\[data-fennevia-right-enabled\][\s\S]*?inline-size: calc\([\s\S]*?--fennevia-narrow-side-half-gap/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-composable-layout--row \{[\s\S]*?overscroll-behavior-inline: contain;[\s\S]*?scroll-padding-inline:/u,
+  );
+  assert.match(css, /scroll-snap-type: inline proximity;/u);
+  assert.match(css, /scroll-margin-inline: var\(--fennevia-space-2\);/u);
+  assert.match(
+    css,
+    /\.fennevia-tab-strip--horizontal[\s\S]*?> \.fennevia-tabs-summary[\s\S]*?> span \{\s*display: none;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-downloads:not\(\.fennevia-downloads--horizontal\) \{[\s\S]*?min-inline-size: 0;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-bookmarks__context-menu \{\s*min-inline-size: min\(180px, calc\(100% - 12px\)\);/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-edge-panel__footer \{[\s\S]*?inset-inline: var\(--fennevia-space-2\);[\s\S]*?transform: none;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-customize \{[\s\S]*?--fennevia-compact-bottom-clearance[\s\S]*?inline-size: auto;[\s\S]*?max-inline-size: min\(/u,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 360px\) \{[\s\S]*?--fennevia-edge-gap: 4px;[\s\S]*?--fennevia-edge-side-width: calc\([\s\S]*?100% - var\(--fennevia-edge-inset\) - var\(--fennevia-edge-inset\)[\s\S]*?--fennevia-edge-top-height: 48px;[\s\S]*?--fennevia-edge-bottom-height: 60px;/u,
+  );
+});
+
 test("customize mode previews exact drops and exposes bounded widget styles", async () => {
   const [
     app,

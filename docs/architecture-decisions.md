@@ -3679,3 +3679,63 @@ feedback costs beyond the symptom. Source evidence, rejected alternatives, and
 verification are in
 `docs/research/firefox-154-first-zero-prefix-urlbar-query.md` and
 `tests/firefox-urlbar-suggestions.test.mjs`.
+
+## ADR-080: Reflow the four edge panels into a viewport-driven narrow mosaic
+
+**Status:** Accepted by direct project-owner request on 2026-08-26;
+implementation and focused automated coverage are complete; the real Firefox
+default-floor/compact-window visual, interaction, accessibility, multi-window,
+and recovery matrix remains `not run`
+
+Keep the one ADR-026 frame, four edge roots, shared reveal controller, and
+ADR-077 panel-dodge policy. At 560 CSS px and below, apply a CSS-only responsive
+geometry whether or not ADR-068's `allowCompactWindow` option is enabled. This
+first tier deliberately begins near Firefox's ordinary minimum-window range,
+because retaining the native floor does not by itself leave every Fennevia
+panel easy to use. At 360 CSS px and below, allow the lone-side sheet to use the
+full available width and also tighten gaps plus Top/Bottom lane heights. The
+viewport remains the source of responsive state; do not add a resize observer,
+measurement loop, persisted width, or second compact setting.
+
+In the narrow tier, Top owns one fixed-height inline lane and Bottom owns one
+fixed-height full-available-width lane. In the ordinary narrow tier, a lone
+visible side panel expands to
+`min(320px, 100% - edge inset - 104px)`, preserving at least 104 CSS px of
+opposite-side client area for pointer exit and delayed auto-hide. Only the
+ultra-compact tier lets that lone side use the full available width.
+Simultaneously visible Left and Right panels split the width with a real center
+gap in both tiers. Dynamic modes derive those changes from existing visible-edge
+attributes. Reserved modes use existing enabled-edge attributes to pre-split
+both side lanes and reserve Bottom's block lane before reveal. When Bottom is
+visible or reserved, each side ends above it. This is a narrow
+presentation override, not a change to `Top > sides > Bottom` ownership,
+hidden transforms, edge triggers, holds, dismissal, focus restoration, or zero
+permanent browser-content geometry.
+
+Top and Bottom keep their saved Row semantics and receive denser spacing,
+bounded inline scrolling, overscroll containment, focus scroll margin, and
+ordinary-mode proximity snap instead of hiding actions. Existing zero-minimum
+feature roots remain authoritative. The redundant visible horizontal Tabs
+heading collapses while its labelled count remains; horizontal Bookmark roots,
+vertical Downloads, Bookmark context menus, and side shortcut hints fit inside
+the narrower panel bounds. The customize drawer becomes a viewport-clamped
+sheet between the active/reserved Top and Bottom lanes. At that width, exact
+dragging may be visually obstructed by the sheet, so the existing destination
+selector plus click/Enter/Space and keyboard path edits remain the reliable
+placement routes.
+
+**Reasoning:** A Firefox minimum-window constraint prevents still smaller OS
+resizes but does not guarantee useful space for two side rails and a Bottom
+panel. Gating all adaptation on `allowCompactWindow` would therefore leave the
+ordinary narrow case unresolved. Making a side sheet full-width too early would
+also remove the content target used by ordinary pointer exit and make auto-hide
+needlessly difficult. One viewport-driven mosaic with a retained corridor
+serves the ordinary case, while the second tier accepts a full-width side only
+when the extra range made reachable by the opt-in leaves no useful alternative.
+The change introduces no Firefox symbol, native DOM selector, privileged data,
+dependency, network
+access, timer, observer, surface, or health input. Implementation, security
+review, manual checklist, and focused evidence are in
+`plans/015-narrow-window-four-panel-ui-ux.md`,
+`src/shell/styles/responsive-accessibility.css`, and
+`tests/frontend-build.test.mjs`.

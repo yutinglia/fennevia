@@ -673,13 +673,18 @@ and palette outlines after exit, drop, cancel, drag end, customize close, and
 disposal. **Clean all panels** is a separate confirmed atomic edit: it restores
 adopted Firefox widgets, removes every node, and creates one Top Customize
 instance while retaining panel/style/interaction/duplicate settings. The
-top-host drawer is the palette and settings editor, centered in the remaining
-content well so it does not cover the four edge roots. See ADR-044, ADR-045,
+top-host drawer is the palette and settings editor. At ordinary widths it is
+centered in the remaining content well so it does not cover the four edge roots.
+ADR-080 clamps it to a viewport-relative sheet at narrow widths, where the
+destination selector and click/keyboard edits remain authoritative if the sheet
+obstructs precise cross-panel dragging. See ADR-044, ADR-045,
 ADR-046, ADR-047, ADR-064, ADR-068, ADR-074, ADR-075, ADR-076, ADR-077, ADR-078,
+ADR-080,
 `docs/research/firefox-153-toolbar-widget-mirror.md`,
 `docs/research/firefox-153-customize-mode.md`, and
-`plans/009-composable-widget-layout.md`, and
-`plans/013-configurable-panel-dodge-and-horizontal-features.md`.
+`plans/009-composable-widget-layout.md`,
+`plans/013-configurable-panel-dodge-and-horizontal-features.md`, and
+`plans/015-narrow-window-four-panel-ui-ux.md`.
 
 ADR-075 adds projected dragging and palette discoverability without a second
 layout model. A drag keeps its source as a subdued placeholder and projects one
@@ -749,6 +754,23 @@ Downloads retain bounded horizontal/list variants, and Address already uses a
 zero-minimum, maximum-bounded launcher capsule. Only an explicit Expanded
 wrapper claims the parent flow's remaining main-axis space. See ADR-077 and
 `plans/013-configurable-panel-dodge-and-horizontal-features.md`.
+
+ADR-080 adds a viewport-driven four-panel mosaic at 560 CSS px and below,
+independent of `allowCompactWindow`. Top remains one fixed inline lane; Bottom
+becomes a fixed full-width lane; and one visible side expands only to
+`min(320px, 100% - edge inset - 104px)`, preserving at least 104 CSS px of
+opposite-side client area for easy pointer exit and delayed auto-hide.
+Simultaneously visible sides split with a center gap.
+Dynamic modes follow visible attributes, while reserved modes pre-split enabled
+sides and reserve an enabled Bottom lane through the existing frame attributes.
+Side panels stop above that lane. At 360 CSS px and below, a lone side may use
+the full available width and gaps plus Top/Bottom lane heights tighten. Row
+roots retain saved order and use bounded inline scrolling, focus scroll margins,
+and proximity snap; required actions are not removed. Narrow
+feature details, side hints, Bookmark menus, and the customize sheet remain
+inside their owned panel or viewport bounds. The CSS adds no viewport state,
+observer, controller, or content margin. See ADR-080 and
+`plans/015-narrow-window-four-panel-ui-ux.md`.
 
 When the customize session changes from open to closed, the Top app root uses
 the shared surface dismissal path while the closing control still owns focus.
@@ -1113,7 +1135,10 @@ ADR-068 adds one further active/compact-window/not-suspended `:root#main-window`
 `min-width`/`min-height` override, default off. Clearing the compact-window
 attribute or `data-fennevia-active` restores Firefox's chrome floor immediately.
 The operating-system window floor remains. Compact-window is not a health
-input.
+input. ADR-080's narrow-panel reflow is intentionally independent of this
+attribute, so ordinary windows near Firefox's retained floor receive the same
+safe panel mosaic; the opt-in only makes the smaller density tier normally
+reachable.
 
 ## 8. Override policy
 

@@ -1,6 +1,6 @@
 # Current Project Status
 
-> Snapshot: 2026-08-26. This status review includes ADR-074 through ADR-078 and
+> Snapshot: 2026-08-26. This status review includes ADR-074 through ADR-080 and
 > the `0.16.0-beta.1` version identity, alongside the public
 > `v0.16.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
@@ -19,7 +19,7 @@ and testing documents retain the complete engineering contract.
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
 | Post-MVP shell work             | Included in `v0.16.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, ADR-073 pinned-tab partitioning, and ADR-074 through ADR-077's composable widget system         |
 | Latest released follow-up       | ADR-072 corrects drop placement and enlarges owned edge targets; ADR-073 separates bounded pinned and regular scrolling; the side-panel layout fix keeps rows visible and New Tab after the last row                                                                                                   |
-| Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; real Firefox validation is pending |
+| Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; real Firefox validation is pending |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending                                                                              |
 | Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.16.0-beta.1` package does not re-run that complete matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending                                       |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                                                                                                                                                                        |
@@ -46,6 +46,13 @@ and testing documents retain the complete engineering contract.
 
 - Hidden-at-rest top, left, right, and bottom surfaces with a shared reveal,
   focus, popup-hold, collision, accessibility, and cleanup contract.
+- Viewport-driven narrow geometry begins at 560 CSS px even with Firefox's
+  ordinary minimum retained: Bottom gets a full-width lane, one visible side
+  expands while leaving at least 104 CSS px of opposite-side client area, two
+  visible sides split, and reserved modes keep enabled lanes stable. Only the
+  360 CSS px tier permits a lone side to use the available width while
+  tightening lane density for opt-in smaller windows, without changing saved
+  layouts or panel-controller behavior.
 - Vertical tabs in Left by default, but movable as a singleton and axis-aware,
   with a fixed, height-capped pinned area
   above an independently scrolling regular-tab area, selected state, Firefox's packaged loading icon,
@@ -298,6 +305,15 @@ accepted production artifacts. Its real-Firefox palette layout, text scaling,
 keyboard, forced-colors, assistive-technology, multi-window, private-window,
 and recovery rows remain `not run`.
 
+ADR-080's retained-corridor/ultra-compact panel source passed `npm run verify`
+on 2026-08-26 with 425/425 Node tests, 88.44% line coverage, 80.87% branch
+coverage, 95.62% function coverage, every fixed PowerShell 7 suite, dependency
+audit, deterministic frontend/bridge rebuilds, and 14/14 accepted production
+artifacts. The complete fixed-list suite also passed under Windows PowerShell
+5.1. Its Firefox 153/154 retained-floor and `allowCompactWindow` visual, pointer
+auto-hide, keyboard, panel-mode, customize, accessibility, multiple/private
+window, and recovery rows remain `not run`.
+
 The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
 the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and
 failure-injection wrappers, SessionStore rehearsal, Urlbar provider/production
@@ -355,6 +371,11 @@ following remain explicitly pending in the current plans and testing document:
 - ADR-076 one-inspector cross-edge selection, central-drawer obstacle avoidance
   and fallback stacking, text/UI scaling, keyboard focus transfer/restoration,
   accessibility modes, multiple/private windows, and disposal in real Firefox;
+- ADR-077/ADR-080 all four concurrency/clearance modes at retained Firefox
+  minimum width and with `allowCompactWindow`, one/two/all-panel mosaics,
+  full-width Bottom, compact Row overflow, customize-sheet fallback, keyboard
+  and pointer access, 200% text, forced colors, multiple/private windows,
+  popup holds, recovery, and disposal in real Firefox;
 - ADR-059 unified Trust-shield rendering/state, leading in-launcher placement,
   and native panel handoff across HTTP, HTTPS, ETP exception/restore, errors,
   forced colors, DPI, and multiple windows;

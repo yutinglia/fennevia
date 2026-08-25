@@ -312,7 +312,18 @@ For each edge:
   following effectively enabled Top/Left/Right lanes, including disabled and
   customize-empty optional panels;
 - no overlap that makes a required control unreachable;
-- narrow/short window fallback.
+- narrow/short window fallback;
+- ADR-080 at 560 CSS px and below with `allowCompactWindow` both false and true:
+  Bottom owns a full-width lane, a lone side remains at most 320 CSS px and
+  leaves at least 104 CSS px of opposite-side client area, two visible sides
+  split, and pointer exit still reaches the ordinary delayed auto-hide path;
+- ADR-080 at 360 CSS px and below: a lone side may use the full available width,
+  two sides still split, compact Top/Bottom heights match their clearances, and
+  `Escape` plus keyboard reveal/dismissal remain usable when the pointer corridor
+  is intentionally absent;
+- all four ADR-080 panel states with Bottom visible/hidden/disabled and dynamic/
+  reserved lanes, including no side/Bottom overlap, bounded Row scrolling,
+  in-panel side shortcut hints, and viewport-clamped customize fallback.
 
 ### Environment and accessibility
 
@@ -1177,6 +1188,12 @@ ADR-045 adds focused unit/static/build coverage for:
   summary plus strip treated as one child, zero-minimum shrinkable partitions,
   intrinsic horizontal New Tab, full-width vertical New Tab, and bounded
   horizontal Bookmarks/Downloads/Address overflow;
+- ADR-080 responsive source contract: the 560 CSS px tier is independent of the
+  compact-window attribute, preserves the ordinary lone-side pointer-exit
+  corridor, gives Bottom a full-width lane, splits dual sides from visible or
+  reserved-enabled attributes, bounds Row overflow/focus scrolling and narrow
+  feature controls, re-anchors side hints, and clamps customize; the 360 CSS px
+  tier alone restores full available lone-side width and denser fixed lanes;
 - opt-in compatible duplicate placement, including simultaneous Top/Left
   window controls, with stateful feature singletons, always-repeatable
   Row/Column/Center/Expanded/Padding/Separator/Space/Flexible space, shared native activation owners,
@@ -1284,6 +1301,16 @@ PowerShell 7 suite, dependency audit, deterministic frontend/bridge output, and
 destination-label regressions. No real-Firefox result is inferred from these
 checks.
 
+The ADR-080 narrow-window panel source passed the complete `npm run verify`
+gate on 2026-08-26 with 425/425 Node tests, 88.44% line coverage, 80.87% branch
+coverage, 95.62% function coverage, every fixed PowerShell 7 suite, dependency
+audit, deterministic frontend/bridge output, and 14/14 accepted production
+artifacts. The complete fixed-list suite also passed under Windows PowerShell
+5.1. Its focused source regression proves that the ordinary 560 CSS px tier
+retains the lone-side pointer-exit corridor and that full available lone-side
+width exists only in the 360 CSS px tier. No real-Firefox result is inferred
+from these checks.
+
 The following are `not run`, not passed: live Fennevia customize drawer against
 a collapsed navbar; recursive Row/Column creation, nesting, orientation,
 natural-child/start alignment, `Expanded > Center`, Padding, wrapper drop and
@@ -1310,16 +1337,21 @@ reduced motion; default Firefox Light/Dark design-token colors on owned
 surfaces; minimum/default/maximum trigger hit testing and live hide/reveal
 timings; multi-window pref observation; Left/Right/Bottom disable/re-enable
 with open popups/focus; all four ADR-077 concurrency/clearance modes with the
-new-tab exception; Top/Bottom horizontal Tabs and the other large widgets in
-direct, Center, Padding, and Expanded placements; all light-source combinations; native status capsule
-under theme/forced-colors/DPI; layout reset restoring native placements; and
+new-tab exception; ADR-080 Firefox-floor and `allowCompactWindow` widths with a
+lone-side exit corridor above 360 CSS px, full-width lone side only at and below
+360 CSS px, dual-side split, full-width Bottom, fixed lane matching, auto-hide,
+customize-sheet keyboard alternatives, 200% text, and accessibility fallbacks;
+Top/Bottom horizontal Tabs and the other large widgets in direct, Center,
+Padding, and Expanded placements; all light-source combinations; native status
+capsule under theme/forced-colors/DPI; layout reset restoring native placements; and
 Escape/focus restoration while a widget popup is also held. Implementation/
 source evidence is in `docs/research/firefox-153-customize-mode.md`,
 `plans/006-customize-mode.md`,
 `plans/009-composable-widget-layout.md`, and
 `plans/010-customize-mode-drag-ux.md`, and
 `plans/011-floating-widget-inspector.md`, and
-`plans/013-configurable-panel-dodge-and-horizontal-features.md`.
+`plans/013-configurable-panel-dodge-and-horizontal-features.md`, and
+`plans/015-narrow-window-four-panel-ui-ux.md`.
 
 ### 6.10 Four-panel context menus — focused automation complete, real Firefox pending
 

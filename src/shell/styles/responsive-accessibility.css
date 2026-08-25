@@ -205,6 +205,221 @@
   }
 }
 
+/*
+ * ADR-080 narrow mosaic. This tier begins before Firefox's normal window
+ * floor becomes uncomfortable. The same contract remains active when the
+ * compact-window option removes that floor; only the ultra-compact tier below
+ * lets a lone side trade its pointer-exit corridor for full available width.
+ */
+@media (max-width: 560px) {
+  #fennevia-shell-frame-host {
+    --fennevia-edge-gap: 6px;
+    --fennevia-narrow-side-exit-corridor: 104px;
+    --fennevia-edge-side-width: min(
+      320px,
+      calc(
+        100% - var(--fennevia-edge-inset) -
+          var(--fennevia-narrow-side-exit-corridor)
+      )
+    );
+    --fennevia-edge-top-height: 52px;
+    --fennevia-edge-bottom-height: 68px;
+    --fennevia-compact-bottom-clearance: 0px;
+    --fennevia-narrow-side-half-gap: 3px;
+  }
+
+  #fennevia-shell-frame-host[data-fennevia-bottom-visible],
+  #fennevia-shell-frame-host:is(
+      [data-fennevia-panel-dodge-mode="single-reserved"],
+      [data-fennevia-panel-dodge-mode="multiple-reserved"]
+    )[data-fennevia-bottom-enabled] {
+    --fennevia-compact-bottom-clearance: calc(
+      var(--fennevia-edge-bottom-height) + var(--fennevia-edge-gap)
+    );
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-edge-root[data-fennevia-edge="top"]
+    .fennevia-edge-panel {
+    block-size: var(--fennevia-edge-top-height);
+    min-block-size: var(--fennevia-edge-top-height);
+    max-block-size: var(--fennevia-edge-top-height);
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-edge-root[data-fennevia-edge="bottom"]
+    .fennevia-edge-panel {
+    inset-inline: var(--fennevia-edge-inset);
+    block-size: var(--fennevia-edge-bottom-height);
+    min-block-size: var(--fennevia-edge-bottom-height);
+    max-block-size: var(--fennevia-edge-bottom-height);
+  }
+
+  #fennevia-shell-frame-host
+    :is(
+      .fennevia-edge-root[data-fennevia-edge="left"],
+      .fennevia-edge-root[data-fennevia-edge="right"]
+    )
+    .fennevia-edge-panel {
+    inset-block-end: calc(
+      var(--fennevia-edge-inset) + var(--fennevia-compact-bottom-clearance)
+    );
+    inline-size: var(--fennevia-edge-side-width);
+  }
+
+  #fennevia-shell-frame-host[data-fennevia-left-visible][data-fennevia-right-visible]
+    :is(
+      .fennevia-edge-root[data-fennevia-edge="left"],
+      .fennevia-edge-root[data-fennevia-edge="right"]
+    )
+    .fennevia-edge-panel,
+  #fennevia-shell-frame-host:is(
+      [data-fennevia-panel-dodge-mode="single-reserved"],
+      [data-fennevia-panel-dodge-mode="multiple-reserved"]
+    )[data-fennevia-left-enabled][data-fennevia-right-enabled]
+    :is(
+      .fennevia-edge-root[data-fennevia-edge="left"],
+      .fennevia-edge-root[data-fennevia-edge="right"]
+    )
+    .fennevia-edge-panel {
+    inline-size: calc(
+      50% - var(--fennevia-edge-inset) - var(--fennevia-narrow-side-half-gap)
+    );
+  }
+
+  #fennevia-shell-frame-host
+    :is(
+      .fennevia-edge-root[data-fennevia-edge="top"],
+      .fennevia-edge-root[data-fennevia-edge="bottom"]
+    )
+    .fennevia-composable-layout--row {
+    gap: var(--fennevia-space-1);
+    padding: var(--fennevia-space-1) 6px;
+    overscroll-behavior-inline: contain;
+    scroll-padding-inline: var(--fennevia-space-2);
+  }
+
+  #fennevia-shell-frame-host:not([data-fennevia-customize-active])
+    :is(
+      .fennevia-edge-root[data-fennevia-edge="top"],
+      .fennevia-edge-root[data-fennevia-edge="bottom"]
+    )
+    .fennevia-composable-layout--row {
+    scroll-snap-type: inline proximity;
+  }
+
+  #fennevia-shell-frame-host:not([data-fennevia-customize-active])
+    :is(
+      .fennevia-edge-root[data-fennevia-edge="top"],
+      .fennevia-edge-root[data-fennevia-edge="bottom"]
+    )
+    .fennevia-composable-layout--row
+    > .fennevia-layout-node {
+    scroll-margin-inline: var(--fennevia-space-2);
+    scroll-snap-align: start;
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-tab-strip--horizontal
+    > .fennevia-tabs-summary {
+    gap: var(--fennevia-space-1);
+    padding-inline: var(--fennevia-space-1);
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-tab-strip--horizontal
+    > .fennevia-tabs-summary
+    > span {
+    display: none;
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-bookmarks--horizontal
+    .fennevia-bookmarks__roots {
+    inline-size: min(132px, 38vw);
+    padding-inline: var(--fennevia-space-2);
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-downloads:not(.fennevia-downloads--horizontal) {
+    inline-size: 100%;
+    min-inline-size: 0;
+    padding-inline: var(--fennevia-space-2);
+  }
+
+  #fennevia-shell-frame-host .fennevia-bookmarks__context-menu {
+    min-inline-size: min(180px, calc(100% - 12px));
+  }
+
+  #fennevia-shell-frame-host
+    :is(
+      .fennevia-edge-root[data-fennevia-edge="left"],
+      .fennevia-edge-root[data-fennevia-edge="right"]
+    )
+    .fennevia-edge-panel__footer {
+    inset-block-start: auto;
+    inset-block-end: var(--fennevia-space-2);
+    inset-inline: var(--fennevia-space-2);
+    max-inline-size: none;
+    transform: none;
+  }
+
+  #fennevia-shell-frame-host .fennevia-customize {
+    inset-block-start: calc(
+      var(--fennevia-edge-inset) + var(--fennevia-top-clearance)
+    );
+    inset-block-end: calc(
+      var(--fennevia-edge-inset) + var(--fennevia-compact-bottom-clearance)
+    );
+    inset-inline: calc(var(--fennevia-edge-inset) + var(--fennevia-space-2));
+    inline-size: auto;
+    max-inline-size: min(
+      420px,
+      calc(
+        100% - (2 * var(--fennevia-edge-inset)) - (2 * var(--fennevia-space-2))
+      )
+    );
+    max-block-size: calc(
+      100% - (2 * var(--fennevia-edge-inset)) - var(--fennevia-top-clearance) -
+        var(--fennevia-compact-bottom-clearance)
+    );
+    gap: var(--fennevia-space-2);
+    padding: var(--fennevia-space-2);
+  }
+}
+
+@media (max-width: 360px) {
+  #fennevia-shell-frame-host {
+    --fennevia-edge-gap: 4px;
+    --fennevia-edge-side-width: calc(
+      100% - var(--fennevia-edge-inset) - var(--fennevia-edge-inset)
+    );
+    --fennevia-edge-top-height: 48px;
+    --fennevia-edge-bottom-height: 60px;
+    --fennevia-narrow-side-half-gap: 2px;
+  }
+
+  #fennevia-shell-frame-host
+    :is(
+      .fennevia-edge-root[data-fennevia-edge="top"],
+      .fennevia-edge-root[data-fennevia-edge="bottom"]
+    )
+    .fennevia-composable-layout--row {
+    padding: var(--fennevia-space-1);
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-bookmarks--horizontal
+    .fennevia-bookmarks__roots {
+    inline-size: min(108px, 40vw);
+  }
+
+  #fennevia-shell-frame-host .fennevia-customize {
+    gap: var(--fennevia-space-1);
+    padding: var(--fennevia-space-1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   #fennevia-shell-frame-host {
     --fennevia-motion-duration: 1ms;
