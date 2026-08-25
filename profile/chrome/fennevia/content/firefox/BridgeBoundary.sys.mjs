@@ -6687,7 +6687,7 @@ function Ls({ boundary: e, frame: t, window: n }) {
 		}
 	}, L = (e, t, n, r, i) => {
 		let a = r ? no(Va(r, "label") || Ra(r, "label"), 200, t) : "", o = r ? no(Va(r, "title") || Ra(r, "title"), 200, t) : "", s = r ? no(Va(r, "tooltiptext") || Ra(r, "tooltiptext"), 200, t) : "", c = no(Ra(n, "label"), 200, t), l = no(Ra(n, "tooltiptext"), 200, t), u = r ? F(Va(r, "data-l10n-id")) : "", d = F(ya.get(t) ?? "");
-		return a || o || c || u || I(e, t, "label") || d || s || l || I(e, t, "tooltiptext") || (i ? "Extension" : "Toolbar item");
+		return a || o || c || u || d || I(e, t, "label") || s || l || I(e, t, "tooltiptext") || (i ? "Extension" : "Toolbar item");
 	}, ae = (e, t, n, r) => {
 		let i = n ? no(Va(n, "tooltiptext") || Ra(n, "tooltiptext"), 300, e) : "", a = n ? no(Va(n, "title") || Ra(n, "title"), 300, e) : "", o = no(Ra(t, "tooltiptext"), 300, e);
 		return i || a || o || r;

@@ -1716,11 +1716,14 @@ controller therefore resolves presentation without calling
   `browser/browser.ftl`, `browser/sidebar.ftl`, `browser/appmenu.ftl`, and
   `browser/screenshots.ftl`, plus allowlisted `link[rel="localization"]`
   hrefs from the chrome document, so `formatMessagesSync` still works after
-  chrome `document.l10n` has called `setAsync()`; then
-  `CustomizableUI.getLocalizedProperty`, and a small privileged Fluent-id map
-  pinned to Firefox 153 `CustomizableWidgets`, XUL palette widgets,
+  chrome `document.l10n` has called `setAsync()`; a small privileged Fluent-id
+  map pinned to Firefox 153 `CustomizableWidgets`, XUL palette widgets,
   `screenshot-button`, and `reset-pbm-toolbar-button` (`reset-pbm-toolbar-button2`
-  from `ResetPBMPanel`). Wrapper `tooltiptext` values that are still
+  from `ResetPBMPanel`) is resolved before the legacy
+  `CustomizableUI.getLocalizedProperty` fallback. Firefox 153/154 logs an
+  error before returning empty when that legacy API probes an expected-missing
+  properties-bundle key for a Fluent-only built-in, so mapped Fluent labels
+  must short-circuit that probe. Wrapper `tooltiptext` values that are still
   properties-bundle keys (`*.tooltiptext2`) or incomplete `%S` format
   strings are dropped;
 - built-in icons from computed `list-style-image` when a node exists, otherwise

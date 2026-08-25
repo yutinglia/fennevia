@@ -587,13 +587,17 @@ export function createFirefoxToolbarWidgetsBridge({
     const fluentFromMap = formatFluentValue(
       builtinFluentIdByWidgetId.get(widgetId) ?? "",
     );
+    // Firefox 153/154 logs an error before returning an empty value when
+    // getLocalizedProperty probes a Fluent-only built-in through the legacy
+    // properties bundle. Prefer the pinned Fluent mapping and retain the
+    // legacy lookup only as a fallback for widgets that still need it.
     return (
       nodeLabel ||
       nodeTitle ||
       wrapperLabel ||
       fluentFromNode ||
-      readLocalizedProperty(customizableUi, widgetId, "label") ||
       fluentFromMap ||
+      readLocalizedProperty(customizableUi, widgetId, "label") ||
       nodeTooltip ||
       wrapperTooltip ||
       readLocalizedProperty(customizableUi, widgetId, "tooltiptext") ||

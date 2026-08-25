@@ -576,7 +576,6 @@ function createNativeWindow({
           calls.push(["forWindow", "print-button"]);
           throw new Error("forWindow must not be used for presentation");
         },
-        label: "Print",
       },
     ],
     [
@@ -1273,6 +1272,46 @@ test("Fluent labels resolve through a dedicated sync Localization when document.
           (entry[1] === "appmenuitem-new-window" ||
             entry[1] === "appmenuitem-fullscreen" ||
             entry[1] === "screenshot-toolbar-button"),
+      ),
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("Fluent-mapped built-ins resolve before legacy properties localization", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    const snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.ok(snapshot.palette.some((entry) => entry.label === "Save Page"));
+    assert.ok(snapshot.palette.some((entry) => entry.label === "Print"));
+    assert.ok(snapshot.palette.some((entry) => entry.label === "Share"));
+    assert.ok(snapshot.palette.some((entry) => entry.label === "Passwords"));
+    assert.ok(snapshot.palette.some((entry) => entry.label === "Screenshot"));
+    assert.ok(
+      snapshot.palette.some((entry) => entry.label === "Clear Private Session"),
+    );
+
+    const legacyLocalizationCalls = native.calls.filter(
+      (entry) => entry[0] === "cui-localized",
+    );
+    for (const widgetId of [
+      "print-button",
+      "save-page-button",
+      "share-tab-button",
+      "logins-button",
+      "screenshot-button",
+      "reset-pbm-toolbar-button",
+    ]) {
+      assert.ok(
+        !legacyLocalizationCalls.some((entry) => entry[1] === widgetId),
+        `${widgetId} should resolve through Fluent before the legacy bundle`,
+      );
+    }
+    assert.ok(
+      legacyLocalizationCalls.some(
+        (entry) => entry[1] === "find-button" && entry[2] === "label",
       ),
     );
   } finally {
