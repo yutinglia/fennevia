@@ -651,7 +651,7 @@ adopted ids, then persists a tree containing only Top Customize. Fennevia never
 writes any other CustomizableUI state and never edits placements the user made
 natively.
 
-ADR-047/ADR-074–ADR-076 add a frontend-only customize session: HTML5
+ADR-047/ADR-074–ADR-076 and ADR-078 add a frontend-only customize session: HTML5
 `dataTransfer` on
 project-owned nodes may carry the MIME `application/x-fennevia-toolbar-widget`
 and a JSON payload of an opaque palette token or layout-local instance id.
@@ -662,7 +662,14 @@ geometry, or style ids. ADR-075 derives its bounded drag image and exact
 projected insertion slot only from that opaque source plus the already
 validated in-memory ordinary snapshot. Preview labels, icons, geometry,
 autoscroll values, active destination, and palette query/category are ephemeral
-frontend state. ADR-076 stores only one validated layout-local selected
+frontend state. ADR-078 adds only the closed `feature` and
+`feature-companion` presentation kinds and closed
+`address`/`tabs`/`bookmarks`/`downloads` group derived from fixed project ids at
+the privileged boundary; those values group bounded visible entries without
+exposing the ids themselves. The localized Guide is packaged static text and
+CSS, while Guide tab selection is ephemeral and adds no preference, input,
+network request, Firefox object, or log field. ADR-076 stores only one
+validated layout-local selected
 instance id in the existing per-window session; inspector position, obstacle
 rectangles, focus target, and announcements remain component-local. None enters
 `DataTransfer`, preferences, the privileged bridge, diagnostics, clipboard, or

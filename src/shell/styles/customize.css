@@ -16,7 +16,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--fennevia-space-3);
-  max-inline-size: 520px;
+  max-inline-size: 600px;
   block-size: fit-content;
   max-block-size: calc(
     100% - (2 * var(--fennevia-edge-inset)) - var(--fennevia-top-clearance) -
@@ -51,14 +51,14 @@
 
 #fennevia-shell-frame-host .fennevia-customize__title {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
 }
 
 #fennevia-shell-frame-host .fennevia-customize__tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
   flex: 0 0 auto;
-  flex-wrap: wrap;
   gap: 4px;
 }
 
@@ -98,6 +98,46 @@
 #fennevia-shell-frame-host .fennevia-customize__note {
   margin: 0;
   color: var(--fennevia-glass-muted);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__widget-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--fennevia-space-2);
+  padding: var(--fennevia-space-3);
+  background: color-mix(in srgb, var(--fennevia-focus-color) 8%, transparent);
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--fennevia-focus-color) 30%,
+      var(--fennevia-glass-separator)
+    );
+  border-radius: var(--fennevia-control-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__widget-intro-copy {
+  display: grid;
+  gap: var(--fennevia-space-1);
+  min-inline-size: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__widget-state {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__widget-intro
+  .fennevia-customize__panel-field--destination {
+  grid-template-columns: max-content minmax(180px, 1fr);
+  align-items: center;
+  gap: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__panel-field--destination
+  > span {
+  white-space: nowrap;
 }
 
 #fennevia-shell-frame-host .fennevia-customize__section {
@@ -176,7 +216,7 @@
 
 #fennevia-shell-frame-host .fennevia-customize__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
   gap: var(--fennevia-space-2);
   max-block-size: 220px;
@@ -192,6 +232,24 @@
   min-inline-size: 0;
 }
 
+#fennevia-shell-frame-host
+  .fennevia-customize__grid
+  > .fennevia-customize__grid-item--feature-pair.fennevia-customize__grid-item--feature {
+  grid-column: 1 / span 3;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__grid
+  > .fennevia-customize__grid-item--feature-pair.fennevia-customize__grid-item--feature-companion {
+  grid-column: 4;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__grid
+  > .fennevia-customize__grid-item--feature-primary-only {
+  grid-column: 1 / -1;
+}
+
 #fennevia-shell-frame-host .fennevia-customize__tile {
   display: flex;
   min-block-size: 72px;
@@ -205,6 +263,51 @@
   padding: var(--fennevia-space-2) var(--fennevia-space-1);
   overflow: hidden;
   cursor: grab;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__tile--feature {
+  min-block-size: 64px;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: var(--fennevia-space-2);
+  padding-inline: var(--fennevia-space-3);
+  background: color-mix(in srgb, var(--fennevia-focus-color) 10%, transparent);
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 42%,
+    var(--fennevia-glass-separator)
+  );
+}
+
+#fennevia-shell-frame-host .fennevia-customize__tile--feature-companion {
+  min-block-size: 64px;
+  background: color-mix(in srgb, var(--fennevia-focus-color) 6%, transparent);
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 28%,
+    var(--fennevia-glass-separator)
+  );
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__tile--feature-companion
+  .fennevia-customize__tile-label {
+  font-weight: 600;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__tile--feature
+  .fennevia-customize__item-icon {
+  inline-size: 20px;
+  block-size: 20px;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__tile--feature
+  .fennevia-customize__tile-label {
+  font-size: 11px;
+  font-weight: 650;
+  text-align: start;
 }
 
 #fennevia-shell-frame-host
@@ -246,6 +349,191 @@
   color: var(--fennevia-glass-muted);
 }
 
+#fennevia-shell-frame-host .fennevia-customize__guide {
+  display: grid;
+  gap: var(--fennevia-space-4);
+  min-inline-size: 0;
+  padding-block-end: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide > section {
+  display: grid;
+  gap: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__guide
+  :is(h3, h4, p, ol, ul, dl) {
+  margin: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide h3 {
+  font-size: 13px;
+  font-weight: 680;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide h4 {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide p,
+#fennevia-shell-frame-host .fennevia-customize__guide dd,
+#fennevia-shell-frame-host .fennevia-customize__guide li {
+  color: var(--fennevia-glass-muted);
+  line-height: 1.45;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-hero {
+  padding: var(--fennevia-space-4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--fennevia-focus-color) 18%, transparent),
+    color-mix(in srgb, var(--fennevia-glass-surface) 80%, transparent)
+  );
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--fennevia-focus-color) 38%,
+      var(--fennevia-glass-separator)
+    );
+  border-radius: var(--fennevia-glass-radius);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__guide
+  p.fennevia-customize__guide-kicker {
+  color: var(--fennevia-focus-color);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__guide
+  h3.fennevia-customize__guide-title {
+  max-inline-size: 30ch;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-edge-map,
+#fennevia-shell-frame-host .fennevia-customize__guide-recipes,
+#fennevia-shell-frame-host .fennevia-customize__guide-pairs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-pairs {
+  padding: 0;
+  list-style: none;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-pairs > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--fennevia-space-1);
+  min-inline-size: 0;
+  padding: var(--fennevia-space-2);
+  background: color-mix(in srgb, var(--fennevia-focus-color) 7%, transparent);
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+  overflow-wrap: anywhere;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-pairs strong {
+  color: var(--fennevia-glass-text);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-card,
+#fennevia-shell-frame-host .fennevia-customize__guide-recipe,
+#fennevia-shell-frame-host .fennevia-customize__guide-definitions > div {
+  display: grid;
+  gap: var(--fennevia-space-1);
+  min-inline-size: 0;
+  padding: var(--fennevia-space-2);
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-recipes {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-diagram {
+  display: flex;
+  gap: 3px;
+  min-block-size: 48px;
+  padding: 4px;
+  color: var(--fennevia-glass-text);
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border: 1px dashed var(--fennevia-glass-separator);
+  border-radius: var(--fennevia-control-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-diagram--column {
+  flex-direction: column;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-diagram > span {
+  display: flex;
+  min-inline-size: 0;
+  min-block-size: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 5px;
+  overflow: hidden;
+  background: var(--fennevia-glass-surface);
+  border: 1px solid var(--fennevia-glass-separator);
+  border-radius: calc(var(--fennevia-control-radius) - 2px);
+  font-size: 9px;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-customize__guide-diagram
+  > [data-fennevia-guide-expanded] {
+  flex: 1 1 auto;
+  color: var(--fennevia-glass-text);
+  background: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 15%,
+    var(--fennevia-glass-surface)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 50%,
+    var(--fennevia-glass-separator)
+  );
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-definitions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--fennevia-space-2);
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-definitions dt {
+  font-weight: 650;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-definitions dd {
+  margin: 0;
+}
+
+#fennevia-shell-frame-host .fennevia-customize__guide-steps {
+  display: grid;
+  gap: var(--fennevia-space-1);
+  padding-inline-start: 2em;
+}
+
 @media (forced-colors: active) {
   #fennevia-shell-frame-host
     .fennevia-customize__palette-category[aria-pressed="true"],
@@ -257,6 +545,21 @@
     border-color: Highlight;
     outline-color: Highlight;
     forced-color-adjust: none;
+  }
+
+  #fennevia-shell-frame-host .fennevia-customize__tile--feature,
+  #fennevia-shell-frame-host .fennevia-customize__tile--feature-companion,
+  #fennevia-shell-frame-host .fennevia-customize__widget-intro,
+  #fennevia-shell-frame-host .fennevia-customize__guide-hero,
+  #fennevia-shell-frame-host .fennevia-customize__guide-pairs > li,
+  #fennevia-shell-frame-host .fennevia-customize__guide-card,
+  #fennevia-shell-frame-host .fennevia-customize__guide-recipe,
+  #fennevia-shell-frame-host .fennevia-customize__guide-definitions > div,
+  #fennevia-shell-frame-host .fennevia-customize__guide-diagram,
+  #fennevia-shell-frame-host .fennevia-customize__guide-diagram > span {
+    color: CanvasText;
+    background: Canvas;
+    border-color: CanvasText;
   }
 }
 

@@ -25,9 +25,12 @@
   } from "../app/locale-state";
   import { localizeWidgetLabel, zoneDisplayName } from "./locale-ui";
   import CustomizeInteractionSection from "./features/customize/CustomizeInteractionSection.svelte";
+  import CustomizeGuideSection from "./features/customize/CustomizeGuideSection.svelte";
   import {
     customizePaletteCategories,
+    customizePaletteCategoryForKind,
     filterCustomizePalette,
+    groupCustomizePaletteEntries,
     type CustomizePaletteCategory,
   } from "./features/customize/customize-palette";
   import CustomizePanelsSection from "./features/customize/CustomizePanelsSection.svelte";
@@ -83,6 +86,9 @@
       paletteQuery,
       paletteCategory,
     ),
+  );
+  let groupedPalette = $derived(
+    groupCustomizePaletteEntries(filteredPalette),
   );
   let addZoneLabel: ToolbarZoneName = $state("top");
   let addZoneName = $derived(zoneDisplayName(localeId, addZoneLabel));
@@ -147,6 +153,8 @@
     category: CustomizePaletteCategory,
   ): string => {
     switch (category) {
+      case "feature":
+        return t("customize.paletteCategoryFeature");
       case "browser":
         return t("customize.paletteCategoryBrowser");
       case "firefox":
@@ -316,32 +324,39 @@
         id="fennevia-customize-tabpanel-widgets"
         role="tabpanel"
       >
-        <p class="fennevia-customize__note" data-fennevia-customize-mode="">
-          {snapshot.layoutCustomized
-            ? t("customize.layoutCustomized")
-            : t("customize.followingFirefox")}
-        </p>
-        <p class="fennevia-customize__note">
-          {t("customize.keyboardAdd", { zone: addZoneName })}
-        </p>
-        <p class="fennevia-customize__note">
-          {t("customize.paletteDragHint")}
-        </p>
-        <label class="fennevia-customize__panel-field">
-          <span>{t("customize.addToPanel")}</span>
-          <select
-            class="fennevia-control fennevia-customize__select"
-            data-fennevia-customize-add-zone=""
-            onchange={setAddZone}
-            value={addZoneLabel}
+        <div
+          class="fennevia-customize__widget-intro"
+          data-fennevia-customize-mode=""
+        >
+          <div class="fennevia-customize__widget-intro-copy">
+            <strong class="fennevia-customize__widget-state">
+              {snapshot.layoutCustomized
+                ? t("customize.layoutCustomized")
+                : t("customize.followingFirefox")}
+            </strong>
+            <p class="fennevia-customize__note">
+              {t("customize.widgetWorkflow")}
+            </p>
+          </div>
+          <label
+            class="fennevia-customize__panel-field fennevia-customize__panel-field--destination"
           >
-            <option value="top">{zoneDisplayName(localeId, "top")}</option>
-            <option value="left">{zoneDisplayName(localeId, "left")}</option>
-            <option value="right">{zoneDisplayName(localeId, "right")}</option>
-            <option value="bottom">{zoneDisplayName(localeId, "bottom")}</option
+            <span>{t("customize.addToPanel")}</span>
+            <select
+              class="fennevia-control fennevia-customize__select"
+              data-fennevia-customize-add-zone=""
+              onchange={setAddZone}
+              value={addZoneLabel}
             >
-          </select>
-        </label>
+              <option value="top">{zoneDisplayName(localeId, "top")}</option>
+              <option value="left">{zoneDisplayName(localeId, "left")}</option>
+              <option value="right">{zoneDisplayName(localeId, "right")}</option>
+              <option value="bottom"
+                >{zoneDisplayName(localeId, "bottom")}</option
+              >
+            </select>
+          </label>
+        </div>
 
         <section
           aria-label={t("customize.paletteAria")}
@@ -406,47 +421,81 @@
             </p>
           {:else}
             <ul class="fennevia-customize__grid">
-              {#each filteredPalette as entry (entry.token)}
-                <li>
-                  <button
-                    aria-label={t("customize.addWidgetAria", {
-                      label: paletteLabel(entry),
-                      zone: addZoneName,
-                    })}
-                    class="fennevia-control fennevia-customize__tile"
-                    data-fennevia-customize-add={entry.token}
-                    data-fennevia-customize-dragging={activeDrag?.type ===
-                      "palette" && activeDrag.token === entry.token
-                      ? true
-                      : undefined}
-                    draggable="true"
-                    ondragend={handlePaletteDragEnd}
-                    ondragstart={(event) =>
-                      handlePaletteDragStart(event, entry)}
-                    onkeydown={(event) => handlePaletteKeydown(event, entry)}
-                    onclick={() => addFromPalette(entry.token)}
-                    title={paletteLabel(entry)}
-                    type="button"
+              {#each groupedPalette as group (group.key)}
+                {#each group.entries as entry (entry.token)}
+                  <li
+                    class:fennevia-customize__grid-item--feature={entry.kind ===
+                      "feature"}
+                    class:fennevia-customize__grid-item--feature-companion={entry.kind ===
+                      "feature-companion"}
+                    class:fennevia-customize__grid-item--feature-pair={group.layout ===
+                      "feature-pair"}
+                    class:fennevia-customize__grid-item--feature-primary-only={group.layout ===
+                      "feature-primary-only"}
+                    class:fennevia-customize__grid-item--feature-companion-only={group.layout ===
+                      "feature-companion-only"}
+                    data-fennevia-customize-class={customizePaletteCategoryForKind(
+                      entry.kind,
+                    )}
+                    data-fennevia-customize-feature-group={entry.featureGroup ||
+                      undefined}
+                    data-fennevia-customize-group-layout={group.layout}
+                    data-fennevia-customize-kind={entry.kind}
                   >
-                    <span
-                      aria-hidden="true"
-                      class="fennevia-customize__item-icon"
+                    <button
+                      aria-label={t("customize.addWidgetAria", {
+                        label: paletteLabel(entry),
+                        zone: addZoneName,
+                      })}
+                      class="fennevia-control fennevia-customize__tile"
+                      class:fennevia-customize__tile--feature={entry.kind ===
+                        "feature"}
+                      class:fennevia-customize__tile--feature-companion={entry.kind ===
+                        "feature-companion"}
+                      data-fennevia-customize-add={entry.token}
+                      data-fennevia-customize-dragging={activeDrag?.type ===
+                        "palette" && activeDrag.token === entry.token
+                        ? true
+                        : undefined}
+                      draggable="true"
+                      ondragend={handlePaletteDragEnd}
+                      ondragstart={(event) =>
+                        handlePaletteDragStart(event, entry)}
+                      onkeydown={(event) => handlePaletteKeydown(event, entry)}
+                      onclick={() => addFromPalette(entry.token)}
+                      title={paletteLabel(entry)}
+                      type="button"
                     >
-                      {#if entry.kind === "special"}
-                        <span class="fennevia-customize__item-space">·</span>
-                      {:else}
-                        <ToolbarWidgetGlyph widget={entry} />
-                      {/if}
-                    </span>
-                    <span class="fennevia-customize__tile-label"
-                      >{paletteLabel(entry)}</span
-                    >
-                  </button>
-                </li>
+                      <span
+                        aria-hidden="true"
+                        class="fennevia-customize__item-icon"
+                      >
+                        {#if entry.kind === "special"}
+                          <span class="fennevia-customize__item-space">·</span>
+                        {:else}
+                          <ToolbarWidgetGlyph widget={entry} />
+                        {/if}
+                      </span>
+                      <span class="fennevia-customize__tile-label"
+                        >{paletteLabel(entry)}</span
+                      >
+                    </button>
+                  </li>
+                {/each}
               {/each}
             </ul>
           {/if}
         </section>
+      </div>
+    {:else if selectedTab === "guide"}
+      <div
+        aria-labelledby="fennevia-customize-tab-guide"
+        class="fennevia-customize__tabpanel"
+        data-fennevia-customize-tabpanel="guide"
+        id="fennevia-customize-tabpanel-guide"
+        role="tabpanel"
+      >
+        <CustomizeGuideSection {localeId} />
       </div>
     {:else if selectedTab === "panels"}
       <div

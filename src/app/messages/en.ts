@@ -160,8 +160,71 @@ export const en = {
   "customize.emptyPanelDrop":
     "Drop widgets here or select this panel for keyboard adds",
   "customize.emptyPanelSelected": "This panel is now the keyboard add target.",
-  "customize.followingFirefox":
-    "Using the Fennevia default layout. Drag widgets onto the four edge panels.",
+  "customize.followingFirefox": "Fennevia default layout",
+  "customize.guide.bottomRecipeAria":
+    "Bottom Row containing Expanded, then Center, then Download status.",
+  "customize.guide.bottomRecipeDescription":
+    "Expanded fills the Bottom Row; Center keeps the status in the middle.",
+  "customize.guide.bottomRecipeTitle": "Centered bottom status",
+  "customize.guide.centerDescription":
+    "Centers one child in the room it receives. Pair it with Expanded when you want a centered child across the remaining area.",
+  "customize.guide.columnDescription":
+    "Places children from top to bottom and sets vertical behavior for feature widgets.",
+  "customize.guide.companionsDescription":
+    "The wide tile is the feature itself; the smaller tile beside it is the action people commonly use with that feature. Either can still be placed independently.",
+  "customize.guide.companionsTitle": "Main features and their companions",
+  "customize.guide.controls": "Controls",
+  "customize.guide.editingAdd":
+    "Click, Enter, or Space to append a widget; drag when you need an exact nested position.",
+  "customize.guide.editingChoose":
+    "Choose the destination panel in Widgets, or focus an edge panel to make it the target.",
+  "customize.guide.editingInspect":
+    "Select a placed widget, then use the floating inspector to move, wrap, change direction, style, or remove it.",
+  "customize.guide.editingRecover":
+    "Use Reset layout to restore the Fennevia default. Clean all panels is the separate minimal-layout action.",
+  "customize.guide.editingTitle": "Add and edit without guesswork",
+  "customize.guide.edgesIntro":
+    "Every edge already provides its first flow, so you usually add widgets directly before adding a nested Row or Column.",
+  "customize.guide.edgesTitle": "Each edge starts with a direction",
+  "customize.guide.expandedDescription":
+    "Gives one child the remaining space along its parent Row or Column. This is the usual wrapper for Address, Tabs, Bookmarks, and Download status.",
+  "customize.guide.flexibleSpaceDescription":
+    "Consumes remaining space as an empty gap and pushes later siblings toward the far edge.",
+  "customize.guide.horizontalEdges": "Top and Bottom · Row",
+  "customize.guide.horizontalEdgesDescription":
+    "Children run left to right. Use Expanded around the one item that should grow wider.",
+  "customize.guide.intro":
+    "Fennevia layouts are ordered flows, not a freeform canvas. Set direction with Row or Column, then use a wrapper only when a child needs sizing, centering, or padding.",
+  "customize.guide.kicker": "Layout basics",
+  "customize.guide.layoutWidgetsIntro":
+    "Layout widgets shape other widgets. They do not create a new browser feature or another edge panel.",
+  "customize.guide.layoutWidgetsTitle": "What each layout widget does",
+  "customize.guide.paddingDescription":
+    "Adds one consistent Fennevia inset around a single child; it does not store a custom pixel value.",
+  "customize.guide.recipesIntro":
+    "These combinations match the sizing logic used by the default layout.",
+  "customize.guide.recipesTitle": "Three useful recipes",
+  "customize.guide.rowDescription":
+    "Places children from left to right and sets horizontal behavior for feature widgets.",
+  "customize.guide.separatorDescription":
+    "Draws a visual divider between neighboring groups without taking remaining space.",
+  "customize.guide.sideRecipeAria":
+    "Side Column containing New Tab followed by Expanded Tabs.",
+  "customize.guide.sideRecipeDescription":
+    "New Tab stays intrinsic while Expanded lets the tab list use the remaining height.",
+  "customize.guide.sideRecipeTitle": "Full-height side tabs",
+  "customize.guide.spaceDescription":
+    "Adds a fixed empty gap. Use Flexible space instead when the gap should grow.",
+  "customize.guide.title": "Build a layout that behaves predictably",
+  "customize.guide.tools": "Tools",
+  "customize.guide.topRecipeAria":
+    "Top Row containing Controls, Expanded Address launcher, and Tools.",
+  "customize.guide.topRecipeDescription":
+    "Controls and tools stay compact while Expanded gives Address the remaining width.",
+  "customize.guide.topRecipeTitle": "Flexible top bar",
+  "customize.guide.verticalEdges": "Left and Right · Column",
+  "customize.guide.verticalEdgesDescription":
+    "Children run top to bottom. Use Expanded around the one item that should grow taller.",
   "customize.interaction": "Interaction",
   "customize.interactionHelp":
     "These settings apply to all four edge panels. Focus, keyboard access, and open popups always keep a panel visible.",
@@ -179,8 +242,7 @@ export const en = {
   "customize.labelSize": "Size",
   "customize.labelType": "Type",
   "customize.labelWindow": "Window",
-  "customize.layoutCustomized":
-    "Using your Fennevia layout. Drag widgets onto the four edge panels. Drop them here to remove. Reset to restore the Fennevia default layout.",
+  "customize.layoutCustomized": "Your Fennevia layout",
   "customize.multiplePlacements":
     "Allow compatible widgets in multiple positions",
   "customize.multiplePlacementsHelp":
@@ -195,6 +257,7 @@ export const en = {
   "customize.paletteCategoriesAria": "Widget categories",
   "customize.paletteCategoryAll": "All",
   "customize.paletteCategoryBrowser": "Fennevia",
+  "customize.paletteCategoryFeature": "Main features",
   "customize.paletteCategoryFirefox": "Firefox",
   "customize.paletteCategoryLayout": "Layout",
   "customize.paletteDestination": "Click adds to the {zone} panel",
@@ -240,6 +303,7 @@ export const en = {
   "customize.rightPanel": "Enable Right panel",
   "customize.style": "Appearance",
   "customize.tab.appearance": "Appearance",
+  "customize.tab.guide": "Guide",
   "customize.tab.interaction": "Interaction",
   "customize.tab.panels": "Panels",
   "customize.tab.widgets": "Widgets",
@@ -269,6 +333,8 @@ export const en = {
   "customize.widgetStyleTabsOnly": "Tabs only",
   "customize.widgetStyleWithNewTab": "Tabs with New Tab button",
   "customize.widgetStyleWithSiteStatus": "Address with site status",
+  "customize.widgetWorkflow":
+    "Choose a destination, then click a widget to append it or drag for exact placement. Select a placed widget to open its layout inspector.",
   "customize.widgetInspectorAria": "Settings for {label}",
   "customize.widgetInspectorToolbar": "Layout actions for {label}",
   "customize.wrapperDropArea": "{label} drop area",

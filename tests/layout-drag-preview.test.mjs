@@ -21,6 +21,7 @@ const widget = (kind, label) =>
   });
 
 const paletteEntry = Object.freeze({
+  featureGroup: "",
   icon: "row",
   iconUrl: "",
   kind: "container",

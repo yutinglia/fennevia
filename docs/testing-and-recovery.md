@@ -1117,8 +1117,8 @@ ADR-045 adds focused unit/static/build coverage for:
   priority, and the existing-timer `new-tab-highlight` exception;
 - ADR-068 `allowCompactWindow` default false, missing-key defaults, NativeUi
   ten parsed rules, compact-window attribute on/off plus dispose restore, and
-  the customize drawer tablist (widgets/panels/interaction/appearance) with
-  Arrow/Home/End.
+  the customize drawer tablist (widgets/Guide/panels/interaction/appearance)
+  with Arrow/Home/End.
 - ADR-074 strict version-2 recursive layout parsing/serialization, version-1
   in-memory migration, three-level/48-child/128-node/64-adopted bounds,
   layout-local instance ids, path lookup/insertion/move/removal, same-parent
@@ -1189,11 +1189,28 @@ ADR-045 adds focused unit/static/build coverage for:
   changed-destination announcements, reduced-motion animation removal, forced-
   colors distinctions, and terminal cleanup through the existing opaque drag
   lifecycle;
-- ADR-075 editor discovery: single-node selection with Escape priority,
+- ADR-075/ADR-078 editor discovery: single-node selection with Escape priority,
   persistent selection, localized action/drop/status text, palette
-  search over localized labels, closed All/Fennevia/Firefox/Layout filters,
-  result/destination feedback, no-result state, click/Enter/Space addition,
-  and layout-node removal by dropping back on the palette;
+  search over localized labels, closed All/Main features/Fennevia/Firefox/
+  Layout filters, result/destination feedback, no-result state,
+  click/Enter/Space addition, and layout-node removal by dropping back on the
+  palette;
+- ADR-078 feature-first palette presentation: validated `feature` and
+  `feature-companion` kinds plus closed semantic feature groups, fixed
+  Address/Trust, Tabs/New Tab, Bookmarks/Show Bookmarks, and Download
+  status/Show Downloads ordering, adjacent wide/compact responsive slots
+  without DOM/focus reordering, primary-only full-row flow, companion-only
+  normal flow, ordinary classification for companions whose primary is already
+  placed, narrow stacking, no empty reserved columns, and no disabled singleton
+  substitutes;
+- ADR-078 customize composition regression: the introductory destination field
+  keeps a readable CJK label instead of collapsing one character per line, and
+  incomplete feature groups cannot create a far-edge orphan or pair an
+  unrelated regular tile with a primary feature;
+- ADR-078 optional static Guide: fifth-tab ARIA wiring, sequential headings,
+  text-equivalent base-flow/recipe diagrams, definitions for every structural
+  widget and wrapper, paired-feature guidance, responsive reflow, forced-color
+  treatment, and no state, privileged access, or remote content;
 - customize-session close through the close button, `Escape`, and environment
   change reaches one shared Top-surface dismissal path, restores or blurs the
   prior project focus without refocusing Customize, clears the focus hold, and
@@ -1231,6 +1248,14 @@ PowerShell 7 suite, dependency audit, deterministic frontend/bridge output, and
 14/14 accepted production artifacts. No real-Firefox result is inferred from
 those checks.
 
+The ADR-078 customize-palette and layout-Guide source passed the complete
+`npm run verify` gate on 2026-08-26 with 421/421 Node tests, 88.47% line
+coverage, 80.85% branch coverage, 95.62% function coverage, every fixed
+PowerShell 7 suite, dependency audit, deterministic frontend/bridge output, and
+14/14 accepted production artifacts. The gate includes incomplete-pair and CJK
+destination-label regressions. No real-Firefox result is inferred from these
+checks.
+
 The following are `not run`, not passed: live Fennevia customize drawer against
 a collapsed navbar; recursive Row/Column creation, nesting, orientation,
 natural-child/start alignment, `Expanded > Center`, Padding, wrapper drop and
@@ -1243,8 +1268,9 @@ outside the window, and verifying every blue target outline clears; persistent
 customize boundaries with hover/selected emphasis, keyboard focus rings, and
 the single floating inspector in deeply nested layouts; pointer-relative drag
 images, exact insertion previews,
-autoscroll, selection/Escape priority, palette search/categories, and live
-screen-reader announcements; single-inspector placement on every edge,
+autoscroll, selection/Escape priority, palette search/categories, feature/
+companion adjacency, Guide content/reflow, and live screen-reader
+announcements; single-inspector placement on every edge,
 central-drawer non-overlap/fallback stacking, 100%/200% text or UI scaling,
 focus transfer/restoration, reduced motion/transparency, and forced colors;
 Address `address-only`/`with-site-status` and Tabs

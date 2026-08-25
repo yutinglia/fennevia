@@ -197,8 +197,12 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
     projectWidget,
     featureWidget,
     customizePanel,
+    customizeGuide,
+    customizeTabs,
+    customizePalette,
     layoutCss,
     customizeCss,
+    responsiveCss,
   ] = await Promise.all([
     readProjectFile("src/shell/App.svelte"),
     readProjectFile(
@@ -217,8 +221,14 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
       "src/shell/features/composable-layout/FeatureWidget.svelte",
     ),
     readProjectFile("src/shell/CustomizePanel.svelte"),
+    readProjectFile(
+      "src/shell/features/customize/CustomizeGuideSection.svelte",
+    ),
+    readProjectFile("src/shell/features/customize/CustomizeTabList.svelte"),
+    readProjectFile("src/shell/features/customize/customize-palette.ts"),
     readProjectFile("src/shell/styles/composable-layout.css"),
     readProjectFile("src/shell/styles/customize.css"),
+    readProjectFile("src/shell/styles/responsive-accessibility.css"),
   ]);
 
   assert.match(composableLayout, /<LayoutDragPreview/u);
@@ -266,6 +276,23 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
   assert.match(customizePanel, /filterCustomizePalette/u);
   assert.match(customizePanel, /data-fennevia-customize-search=/u);
   assert.match(customizePanel, /data-fennevia-customize-category=/u);
+  assert.match(customizePanel, /data-fennevia-customize-kind=/u);
+  assert.match(customizePanel, /data-fennevia-customize-group-layout=/u);
+  assert.match(customizePanel, /grid-item--feature-companion/u);
+  assert.match(customizePanel, /groupCustomizePaletteEntries/u);
+  assert.match(customizePanel, /<CustomizeGuideSection/u);
+  assert.match(customizePanel, /data-fennevia-customize-tabpanel="guide"/u);
+  assert.match(customizeTabs, /"widgets",\s*"guide",/u);
+  assert.match(
+    customizePalette,
+    /kind === "feature" \|\| kind === "feature-companion"/u,
+  );
+  assert.match(customizePalette, /feature: 0/u);
+  assert.match(customizeGuide, /customize\.guide\.companionsTitle/u);
+  assert.match(customizeGuide, /customize\.guide\.layoutWidgetsTitle/u);
+  assert.match(customizeGuide, /data-fennevia-guide-expanded=/u);
+  assert.equal(customizeGuide.match(/role="img"/gu)?.length, 3);
+  assert.doesNotMatch(customizeGuide, /\$state|fetch\(/u);
   assert.match(customizePanel, /setDragImage/u);
   assert.match(customizePanel, /source\?\.type !== "layout-node"/u);
 
@@ -284,6 +311,15 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
   assert.match(layoutCss, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(layoutCss, /@media \(forced-colors: active\)/u);
   assert.match(layoutCss, /\.fennevia-widget-inspector/u);
+  assert.match(customizeCss, /grid-template-columns: repeat\(4,/u);
+  assert.match(customizeCss, /grid-item--feature-companion/u);
+  assert.match(customizeCss, /grid-item--feature-primary-only/u);
+  assert.match(
+    customizeCss,
+    /customize__widget-intro[\s\S]*?customize__panel-field--destination[\s\S]*?grid-template-columns: max-content minmax\(180px, 1fr\)/u,
+  );
+  assert.match(customizeCss, /\.fennevia-customize__guide-pairs/u);
+  assert.match(responsiveCss, /grid-template-columns: repeat\(3,/u);
   assert.doesNotMatch(layoutCss, /\.fennevia-layout-node__style-editor/u);
   assert.doesNotMatch(layoutCss, /\.fennevia-layout-node__controls/u);
   assert.match(layoutCss, /data-fennevia-widget-style="with-site-status"/u);

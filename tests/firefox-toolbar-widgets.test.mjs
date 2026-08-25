@@ -1126,6 +1126,12 @@ test("default snapshot uses the explicit native-v2 base-flow composition", () =>
     assert.ok(paletteLabels.includes("Translate this page"));
     assert.ok(paletteLabels.includes("Print"));
     assert.ok(paletteLabels.includes("Save Page"));
+    const orphanCompanion = snapshot.palette.find(
+      (entry) => entry.label === "Show bookmarks panel",
+    );
+    assert.ok(orphanCompanion);
+    assert.equal(orphanCompanion.kind, "project");
+    assert.equal(orphanCompanion.featureGroup, "");
     assert.ok(paletteLabels.includes("Find in This Page"));
     assert.ok(paletteLabels.includes("Open File"));
     assert.ok(paletteLabels.includes("Email Link"));
@@ -2077,6 +2083,52 @@ test("clean-layout atomically empties every panel and preserves one Top Customiz
     assert.equal(snapshot.layoutCustomized, true);
     assert.ok(
       snapshot.palette.some((entry) => entry.label === "Addons Extension"),
+    );
+    assert.deepEqual(
+      snapshot.palette
+        .filter(
+          (entry) =>
+            entry.kind === "feature" || entry.kind === "feature-companion",
+        )
+        .map((entry) => ({
+          featureGroup: entry.featureGroup,
+          kind: entry.kind,
+          label: entry.label,
+        })),
+      [
+        {
+          featureGroup: "address",
+          kind: "feature",
+          label: "Address launcher",
+        },
+        {
+          featureGroup: "address",
+          kind: "feature-companion",
+          label: "Site trust",
+        },
+        { featureGroup: "tabs", kind: "feature", label: "Tabs" },
+        {
+          featureGroup: "tabs",
+          kind: "feature-companion",
+          label: "New tab",
+        },
+        { featureGroup: "bookmarks", kind: "feature", label: "Bookmarks" },
+        {
+          featureGroup: "bookmarks",
+          kind: "feature-companion",
+          label: "Show bookmarks panel",
+        },
+        {
+          featureGroup: "downloads",
+          kind: "feature",
+          label: "Download status",
+        },
+        {
+          featureGroup: "downloads",
+          kind: "feature-companion",
+          label: "Open Firefox downloads",
+        },
+      ],
     );
     const persisted = native.getPrefValue("fennevia.customize.layout");
     assert.match(persisted, /"allowMultiplePlacements":true/u);

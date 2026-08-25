@@ -634,7 +634,7 @@ browsing; while customize mode is open, every preference-enabled empty edge is
 re-enabled, held visible, and rendered as a labelled first-drop/keyboard-add
 target. The pref observer republishes all three settings across windows. The
 customize drawer
-uses one tablist for widgets, panels, interaction, and appearance so the
+uses one tablist for widgets, Guide, panels, interaction, and appearance so the
 stacked editor does not grow into a single scrolling form. Shortcut-tip
 footers still honor the duration pref on every edge, including the
 bookmarks-side surface. The bookmarks status row no longer shows a persistent
@@ -666,7 +666,7 @@ adopted Firefox widgets, removes every node, and creates one Top Customize
 instance while retaining panel/style/interaction/duplicate settings. The
 top-host drawer is the palette and settings editor, centered in the remaining
 content well so it does not cover the four edge roots. See ADR-044, ADR-045,
-ADR-046, ADR-047, ADR-064, ADR-068, ADR-074, ADR-075, ADR-076, ADR-077,
+ADR-046, ADR-047, ADR-064, ADR-068, ADR-074, ADR-075, ADR-076, ADR-077, ADR-078,
 `docs/research/firefox-153-toolbar-widget-mirror.md`,
 `docs/research/firefox-153-customize-mode.md`, and
 `plans/009-composable-widget-layout.md`, and
@@ -680,8 +680,25 @@ autoscrolls the owned edge near its viewport boundary and shares every
 existing terminal cleanup path. One selected layout instance remains active
 until another is selected or Escape clears it. The drawer
 filters already validated palette entries by localized label and the closed
-All/Fennevia/Firefox/Layout categories; filters, selection, projected geometry,
-and scroll state are session-only.
+All/Main features/Fennevia/Firefox/Layout categories; filters, selection,
+projected geometry, and scroll state are session-only. ADR-078 assigns the
+fixed Address/Trust, Tabs/New Tab, Bookmarks/Show Bookmarks, and Download
+status/Show Downloads entries to `feature`/`feature-companion` presentation
+kinds and closed semantic groups in that exact order. Main features sort first.
+Only a complete group uses a four-column row with three primary slots and one
+adjacent companion slot, with a three-column responsive equivalent. A
+primary-only result spans its row; a companion-only filtered result uses normal
+grid flow; a companion whose primary is already placed is an ordinary Fennevia
+entry; and the narrowest layout stacks complete pairs. This presentation order
+is also DOM and keyboard order, incomplete groups reserve no empty columns, and
+absent placed singletons are not replaced with disabled tiles.
+
+ADR-078 also adds a static optional Guide tab inside the same drawer owner. It
+explains the four fixed root directions, layout wrappers and structural
+widgets, common recipes, paired feature actions, editor selection, and
+recovery. It introduces no persisted onboarding state, privileged action,
+additional host, popup, observer, or network resource. See ADR-078 and
+`plans/014-customize-palette-and-layout-guide.md`.
 
 ADR-076 makes the existing per-window `CustomizeSessionController` the sole
 selected-instance owner across all four edge roots. The Top app root renders

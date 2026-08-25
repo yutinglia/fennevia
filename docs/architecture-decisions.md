@@ -3594,3 +3594,54 @@ evidence are in
 `tests/edge-surfaces.test.mjs`, `tests/customize-model.test.mjs`,
 `tests/firefox-toolbar-widgets.test.mjs`, `tests/tab-strip.test.mjs`, and
 `tests/frontend-build.test.mjs`.
+
+## ADR-078: Feature-first paired palette and an optional layout guide
+
+**Status:** Accepted by direct project-owner request on 2026-08-26;
+implementation and focused automated coverage are complete; the real Firefox
+palette layout, text-scaling, forced-colors, and assistive-technology matrix
+remains `not run`
+
+Extend ADR-075's closed palette presentation with `feature` and
+`feature-companion` kinds. The privileged controller assigns those kinds only
+from fixed project widget ids and also publishes one closed semantic group for
+each possible pair: Address launcher plus Trust, Tabs plus New Tab, Bookmarks
+plus Show Bookmarks, and Download status plus Show Downloads. Both kinds map to
+a new localized **Main features** category, which sorts before Fennevia,
+Firefox, and Layout in the All view. A complete group receives a wide primary
+slot and an adjacent compact companion slot. A primary-only filtered result
+spans the row; a companion-only filtered result uses normal grid flow; and a
+companion whose singleton primary is already placed is published as an
+ordinary Fennevia entry with no group. DOM, visual, and keyboard order stay the
+same, incomplete groups create no reserved holes, and already-placed singleton
+entries remain absent rather than becoming fake or disabled duplicates.
+
+Add an optional fifth **Guide** tab to the existing customize drawer. Static
+localized project text explains each edge's fixed base flow, the Row, Column,
+Center, Expanded, Padding, Space, Flexible space, and Separator widgets, the
+four main-feature pairs, three deterministic layout recipes, precise drag
+versus click/keyboard placement, the floating inspector, and Reset/Clean
+recovery. Semantic headings, definitions, lists, text-equivalent CSS diagrams,
+responsive reflow, and forced-colors treatment use the existing drawer and
+tablist owners. The Guide adds no preference, first-run state, network content,
+Firefox symbol, popup, overlay, timer, observer, surface, or Svelte root.
+
+The ordinary snapshot exposes only the two fixed presentation kinds and one
+closed `address`/`tabs`/`bookmarks`/`downloads` group needed to render the
+palette; it still carries opaque palette tokens and bounded visible labels
+rather than project or Firefox widget ids. Search, selected category, Guide tab
+selection, and scroll state remain ephemeral.
+
+**Reasoning:** The previous flat visual hierarchy made large stateful features
+hard to find and separated common companion actions from the feature they
+support. Users also had to infer wrapper behavior from short names while
+editing a recursive layout. A closed feature-first order, visible pairing, and
+skippable in-context guide improve recognition without changing placement,
+persistence, privileged ownership, or the layout model. Implementation and
+focused evidence are in
+`plans/014-customize-palette-and-layout-guide.md`,
+`tests/customize-palette.test.mjs`,
+`tests/firefox-toolbar-widgets.test.mjs`,
+`tests/toolbar-widgets-state.test.mjs`,
+`tests/source-structure.test.mjs`, and
+`tests/frontend-build.test.mjs`.

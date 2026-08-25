@@ -1,6 +1,6 @@
 # Current Project Status
 
-> Snapshot: 2026-08-25. This status review includes ADR-074 through ADR-077 and
+> Snapshot: 2026-08-26. This status review includes ADR-074 through ADR-078 and
 > the `0.16.0-beta.1` version identity, alongside the public
 > `v0.16.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
@@ -19,7 +19,7 @@ and testing documents retain the complete engineering contract.
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
 | Post-MVP shell work             | Included in `v0.16.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, ADR-073 pinned-tab partitioning, and ADR-074 through ADR-077's composable widget system         |
 | Latest released follow-up       | ADR-072 corrects drop placement and enlarges owned edge targets; ADR-073 separates bounded pinned and regular scrolling; the side-panel layout fix keeps rows visible and New Tab after the last row                                                                                                   |
-| Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; real Firefox validation is pending |
+| Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; real Firefox validation is pending |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending                                                                              |
 | Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.16.0-beta.1` package does not re-run that complete matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending                                       |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                                                                                                                                                                        |
@@ -147,9 +147,16 @@ and testing documents retain the complete engineering contract.
   subdues the source, inserts one exact axis-aware preview at the accepted
   nested index, and autoscrolls near a panel edge without retaining work after
   the drag.
-- The widget palette has localized search, All/Fennevia/Firefox/Layout filters,
-  result count, selected destination feedback, and both click/keyboard and
-  precise drag placement.
+- The widget palette has localized search,
+  All/Main features/Fennevia/Firefox/Layout filters, result count, selected
+  destination feedback, and both click/keyboard and precise drag placement.
+  Address/Trust, Tabs/New Tab, Bookmarks/Show Bookmarks, and Download
+  status/Show Downloads appear first as adjacent primary/companion pairs when
+  both are available. Incomplete search or placement groups reflow without
+  blank columns or unrelated tiles appearing as companions.
+- An optional Guide tab explains fixed edge directions, Row/Column,
+  Center/Expanded/Padding wrappers, structural spacing widgets, practical
+  recipes, editor actions, and recovery in English and Traditional Chinese.
 - Closing customize mode through its button, `Escape`, or an environment change
   uses the shared surface dismiss/focus-origin path. It does not reveal or
   refocus Customize afterward, so the Top focus hold clears without requiring a
@@ -282,6 +289,14 @@ artifacts. The complete fixed-list suite also passed under Windows PowerShell
 install, compatibility warning, survivor recovery/uninstall, repair, tamper,
 and release-workflow checks. ADR-077's real-Firefox panel-mode, layout, popup,
 accessibility, multi-window, private-window, and recovery rows remain `not run`.
+
+ADR-078 and the screenshot-driven incomplete-pair layout correction passed
+`npm run verify` on 2026-08-26 with 421/421 Node tests, 88.47% line coverage,
+80.85% branch coverage, 95.62% function coverage, every fixed PowerShell 7
+suite, dependency audit, deterministic frontend/bridge rebuilds, and 14/14
+accepted production artifacts. Its real-Firefox palette layout, text scaling,
+keyboard, forced-colors, assistive-technology, multi-window, private-window,
+and recovery rows remain `not run`.
 
 The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
 the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and

@@ -23,6 +23,7 @@ import {
   toolbarZoneNameSet,
   fenneviaToolbarActionSet,
   toolbarPaletteKindSet,
+  toolbarPaletteFeatureGroupSet,
   toolbarStyleThemeSet,
   toolbarStyleDensitySet,
   sidePanelLayoutSet,
@@ -40,6 +41,7 @@ import type {
   ProjectWidgetId,
   ProjectWidgetStyleId,
   ToolbarPaletteKind,
+  ToolbarPaletteFeatureGroup,
   ToolbarStyleTheme,
   ToolbarStyleDensity,
   ToolbarStyleColorKey,
@@ -143,6 +145,15 @@ export function isToolbarPaletteKind(
   return (
     typeof candidate === "string" &&
     toolbarPaletteKindSet.has(candidate as ToolbarPaletteKind)
+  );
+}
+
+export function isToolbarPaletteFeatureGroup(
+  candidate: unknown,
+): candidate is ToolbarPaletteFeatureGroup {
+  return (
+    typeof candidate === "string" &&
+    toolbarPaletteFeatureGroupSet.has(candidate as ToolbarPaletteFeatureGroup)
   );
 }
 
@@ -642,10 +653,15 @@ export function copyToolbarWidgetSnapshot(
 export function copyToolbarPaletteEntrySnapshot(
   candidate: ToolbarPaletteEntrySnapshot,
 ): ToolbarPaletteEntrySnapshot {
+  const isFeatureEntry =
+    candidate?.kind === "feature" || candidate?.kind === "feature-companion";
   if (
     !candidate ||
     typeof candidate !== "object" ||
     !isToolbarPaletteKind(candidate.kind) ||
+    !isToolbarPaletteFeatureGroup(candidate.featureGroup) ||
+    (isFeatureEntry && candidate.featureGroup === "") ||
+    (!isFeatureEntry && candidate.featureGroup !== "") ||
     typeof candidate.token !== "string" ||
     !PALETTE_TOKEN_PATTERN.test(candidate.token)
   ) {
@@ -666,6 +682,7 @@ export function copyToolbarPaletteEntrySnapshot(
     );
   }
   return Object.freeze({
+    featureGroup: candidate.featureGroup,
     icon,
     iconUrl,
     kind: candidate.kind,

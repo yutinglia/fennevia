@@ -8,6 +8,11 @@ import {
   createDefaultToolbarStyle,
   createUnavailableToolbarWidgetsSnapshot,
   defaultProjectWidgetStyle,
+  featureCompanionProjectWidgetIdSet,
+  featurePaletteGroupByProjectWidgetId,
+  featurePaletteProjectWidgetIds,
+  featurePaletteProjectWidgetIdSet,
+  featureProjectWidgetIdSet,
   projectWidgetIds,
   toolbarZoneNames,
   type BrowserToolbarWidgetsBridge,
@@ -1219,6 +1224,7 @@ export function createFirefoxToolbarWidgetsBridge({
       Object.freeze({ id: widgetId, source: "firefox" as const }),
     );
     return Object.freeze({
+      featureGroup: "" as const,
       icon: isExtension
         ? "extension"
         : (builtinIconTokenByWidgetId.get(widgetId) ?? "generic"),
@@ -1248,23 +1254,47 @@ export function createFirefoxToolbarWidgetsBridge({
     for (const zone of toolbarZoneNames) {
       visit(layout.zones[zone]);
     }
-    for (const id of projectWidgetIds) {
+    const orderedProjectWidgetIds = [
+      ...featurePaletteProjectWidgetIds,
+      ...projectWidgetIds.filter(
+        (id) => !featurePaletteProjectWidgetIdSet.has(id),
+      ),
+    ];
+    const availableProjectWidgetIds = orderedProjectWidgetIds.filter((id) => {
       const target = Object.freeze({ id, source: "project" as const });
       const placed = countComposableLayoutTarget(layout, target) > 0;
-      if (
+      return !(
         placed &&
         (!layout.allowMultiplePlacements || isComposableSingletonTarget(target))
-      ) {
-        continue;
-      }
+      );
+    });
+    const availableFeatureGroups = new Set(
+      availableProjectWidgetIds
+        .filter((id) => featureProjectWidgetIdSet.has(id))
+        .map((id) => featurePaletteGroupByProjectWidgetId[id]),
+    );
+    for (const id of availableProjectWidgetIds) {
+      const target = Object.freeze({ id, source: "project" as const });
       const presentation = projectWidgetPresentation.get(id);
       const token = paletteTokenFor(`p:${id}`);
+      const fixedFeatureGroup = featurePaletteGroupByProjectWidgetId[id] ?? "";
+      const isFeature = featureProjectWidgetIdSet.has(id);
+      const isAvailableCompanion =
+        featureCompanionProjectWidgetIdSet.has(id) &&
+        fixedFeatureGroup !== "" &&
+        availableFeatureGroups.has(fixedFeatureGroup);
       paletteTargetByToken.set(token, target);
       entries.push(
         Object.freeze({
+          featureGroup:
+            isFeature || isAvailableCompanion ? fixedFeatureGroup : "",
           icon: presentation?.icon ?? "generic",
           iconUrl: "",
-          kind: "project" as const,
+          kind: isFeature
+            ? ("feature" as const)
+            : isAvailableCompanion
+              ? ("feature-companion" as const)
+              : ("project" as const),
           label: presentation?.label ?? "Fennevia widget",
           token,
         }),
@@ -1304,6 +1334,7 @@ export function createFirefoxToolbarWidgetsBridge({
       );
       entries.push(
         Object.freeze({
+          featureGroup: "" as const,
           icon: "",
           iconUrl: "",
           kind: "special" as const,
@@ -1323,6 +1354,7 @@ export function createFirefoxToolbarWidgetsBridge({
       );
       entries.push(
         Object.freeze({
+          featureGroup: "" as const,
           icon: direction === "row" ? "row" : "column",
           iconUrl: "",
           kind: "container" as const,
@@ -1343,6 +1375,7 @@ export function createFirefoxToolbarWidgetsBridge({
       );
       entries.push(
         Object.freeze({
+          featureGroup: "" as const,
           icon: kind,
           iconUrl: "",
           kind: "wrapper" as const,

@@ -148,8 +148,69 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
     "所有可用元件都已放置。將元件拖到這裡可從面板移除。",
   "customize.emptyPanelDrop": "將元件拖到這裡，或選取此面板作為鍵盤新增目標",
   "customize.emptyPanelSelected": "此面板現在是鍵盤新增目標。",
-  "customize.followingFirefox":
-    "目前使用 Fennevia 預設版面。將元件拖到四個邊緣面板。",
+  "customize.followingFirefox": "Fennevia 預設版面",
+  "customize.guide.bottomRecipeAria": "底部橫列依序包含延展、置中與下載狀態。",
+  "customize.guide.bottomRecipeDescription":
+    "延展會填滿底部橫列，置中則讓下載狀態保持在中央。",
+  "customize.guide.bottomRecipeTitle": "置中的底部狀態",
+  "customize.guide.centerDescription":
+    "將一個子元件放在所得空間的中央。若要讓子元件在剩餘區域中央顯示，可在外層再加延展。",
+  "customize.guide.columnDescription":
+    "由上到下排列子元件，並讓主要功能採用垂直呈現方式。",
+  "customize.guide.companionsDescription":
+    "較寬的方塊是功能本身，旁邊較小的方塊則是常與它搭配的操作；兩者仍可各自獨立放置。",
+  "customize.guide.companionsTitle": "主要功能與伴隨操作",
+  "customize.guide.controls": "控制項",
+  "customize.guide.editingAdd":
+    "點選或按 Enter／空白鍵可附加元件；需要精確的巢狀位置時再使用拖曳。",
+  "customize.guide.editingChoose":
+    "先在「元件」中選擇目標面板，或將焦點移到邊緣面板以指定目標。",
+  "customize.guide.editingInspect":
+    "選取已放置的元件，再用浮動檢查器移動、包裝、切換方向、變更樣式或移除。",
+  "customize.guide.editingRecover":
+    "使用「重設版面」還原 Fennevia 預設；「清空所有面板」則是另一個最小版面操作。",
+  "customize.guide.editingTitle": "清楚地新增與編輯",
+  "customize.guide.edgesIntro":
+    "每個邊緣已經提供第一層排列方式，通常可直接加入元件，不必先建立巢狀橫列或直欄。",
+  "customize.guide.edgesTitle": "每個邊緣都有預設方向",
+  "customize.guide.expandedDescription":
+    "讓一個子元件取得父層橫列或直欄的剩餘空間。網址列、分頁、書籤與下載狀態通常會搭配它使用。",
+  "customize.guide.flexibleSpaceDescription":
+    "以可延展的空白吃掉剩餘空間，並將後面的同層元件推向另一端。",
+  "customize.guide.horizontalEdges": "頂部與底部・橫列",
+  "customize.guide.horizontalEdgesDescription":
+    "子元件由左到右排列。將唯一需要變寬的元件包在「延展」中。",
+  "customize.guide.intro":
+    "Fennevia 版面是有順序的排列流程，不是任意座標畫布。先用橫列或直欄決定方向，只在子元件需要尺寸、置中或內距時加入包裝元件。",
+  "customize.guide.kicker": "版面基礎",
+  "customize.guide.layoutWidgetsIntro":
+    "版面元件只負責排列其他元件，不會建立新的瀏覽器功能或另一個邊緣面板。",
+  "customize.guide.layoutWidgetsTitle": "各種版面元件的用途",
+  "customize.guide.paddingDescription":
+    "在單一子元件四周加入一致的 Fennevia 內距，不會儲存自訂像素值。",
+  "customize.guide.recipesIntro": "以下組合與預設版面使用相同的尺寸邏輯。",
+  "customize.guide.recipesTitle": "三個實用組合",
+  "customize.guide.rowDescription":
+    "由左到右排列子元件，並讓主要功能採用水平呈現方式。",
+  "customize.guide.separatorDescription":
+    "在相鄰群組之間畫出分隔線，但不會取得剩餘空間。",
+  "customize.guide.sideRecipeAria":
+    "側邊直欄包含新增分頁，接著是包在延展中的分頁。",
+  "customize.guide.sideRecipeDescription":
+    "新增分頁維持原始大小，延展則讓分頁清單使用剩餘高度。",
+  "customize.guide.sideRecipeTitle": "填滿高度的側邊分頁",
+  "customize.guide.spaceDescription":
+    "加入固定大小的空白；若空白需要自動延展，請改用彈性空白。",
+  "customize.guide.title": "建立行為可預期的版面",
+  "customize.guide.tools": "工具",
+  "customize.guide.topRecipeAria":
+    "頂部橫列包含控制項、包在延展中的網址列，以及工具。",
+  "customize.guide.topRecipeDescription":
+    "控制項與工具維持緊湊，延展則讓網址列取得剩餘寬度。",
+  "customize.guide.topRecipeTitle": "可延展的頂部列",
+  "customize.guide.verticalEdges": "左側與右側・直欄",
+  "customize.guide.verticalEdgesDescription":
+    "子元件由上到下排列。將唯一需要變高的元件包在「延展」中。",
   "customize.interaction": "互動",
   "customize.interactionHelp":
     "這些設定會套用到四個邊緣面板。面板取得焦點、經鍵盤開啟或有彈出面板時，將一律保持顯示。",
@@ -167,8 +228,7 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.labelSize": "大小",
   "customize.labelType": "文字",
   "customize.labelWindow": "視窗",
-  "customize.layoutCustomized":
-    "正在使用你的 Fennevia 版面。將元件拖到四個邊緣面板。拖到這裡可移除。重設會還原 Fennevia 預設版面。",
+  "customize.layoutCustomized": "你的 Fennevia 版面",
   "customize.multiplePlacements": "允許相容元件出現在多個位置",
   "customize.multiplePlacementsHelp":
     "視窗控制與其他相容動作可重複放置；分頁、書籤、下載狀態、網址啟動器、隱私指示與自訂按鈕仍為單一實例。Row、Column、置中、延展、內距、分隔線、空白與彈性空白永遠可重複。",
@@ -182,6 +242,7 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.paletteCategoriesAria": "元件分類",
   "customize.paletteCategoryAll": "全部",
   "customize.paletteCategoryBrowser": "Fennevia",
+  "customize.paletteCategoryFeature": "主要功能",
   "customize.paletteCategoryFirefox": "Firefox",
   "customize.paletteCategoryLayout": "版面",
   "customize.paletteDestination": "點選會加入{zone}面板",
@@ -225,6 +286,7 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.rightPanel": "啟用右側面板",
   "customize.style": "外觀",
   "customize.tab.appearance": "外觀",
+  "customize.tab.guide": "指南",
   "customize.tab.interaction": "互動",
   "customize.tab.panels": "面板",
   "customize.tab.widgets": "元件",
@@ -254,6 +316,8 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.widgetStyleTabsOnly": "僅分頁",
   "customize.widgetStyleWithNewTab": "分頁與新增分頁按鈕",
   "customize.widgetStyleWithSiteStatus": "網址列與網站狀態",
+  "customize.widgetWorkflow":
+    "先選擇目標面板，再點選元件將它附加到末端，或拖曳到精確位置。選取已放置的元件可開啟版面檢查器。",
   "customize.widgetInspectorAria": "{label}的設定",
   "customize.widgetInspectorToolbar": "{label}的版面操作",
   "customize.wrapperDropArea": "{label}放置區",

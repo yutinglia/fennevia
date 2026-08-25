@@ -77,6 +77,10 @@ Customize mode keeps even an empty enabled panel visible as a full drop target,
 shows the exact insertion preview while you drag, and outlines every editable
 widget. Selecting a widget opens one floating settings panel at a time, so
 move, remove, wrapper, and style controls do not cover the layout with toolbars.
+The picker puts large features first and keeps their common actions beside
+them—Address with Trust, Tabs with New Tab, Bookmarks with Show Bookmarks, and
+Download status with Show Downloads. Its optional Guide explains Rows,
+Columns, wrappers, structural spacing, practical recipes, and recovery.
 **Clean all panels** asks for confirmation, restores adopted Firefox widgets,
 and leaves the required Customize button in Top; **Reset layout** restores the
 new Fennevia default. At least one Customize widget must remain on an enabled
@@ -199,7 +203,8 @@ returns to the widget. Every editable widget keeps a blue customize boundary;
 hover and selection strengthen it without changing the widget's real size. The
 editor also shows one exact insertion preview while
 dragging, subdues the source, autoscrolls near panel edges, and provides
-localized palette search plus All/Fennevia/Firefox/Layout filters. Eligible
+localized palette search plus All/Main features/Fennevia/Firefox/Layout
+filters, paired primary/action tiles, and an optional layout Guide. Eligible
 placed widgets also have closed per-instance variants: Address may include the
 existing site-status/Trust action in one capsule, and Tabs may include the New
 Tab action after the final tab. These are semantic options, not arbitrary CSS;
@@ -371,7 +376,9 @@ customize mode can compose supported project features and Firefox toolbar
 widgets across all four edges with bounded Row/Column trees, switch feature
 orientation, enable Left/Right/Bottom independently, choose one of four closed
 single/multiple plus dynamic/reserved panel policies, and opt into safe multiple
-placements. Selected Address and Tabs instances can choose from their closed
+placements. The palette puts paired main features first and includes an
+optional Guide for base flows, wrappers, recipes, editing, and recovery.
+Selected Address and Tabs instances can choose from their closed
 semantic style variants, and the widget palette can be searched and filtered.
 It can also adjust a bounded set of profile-local panel/window
 backgrounds, text, border, saturation, shadow, motion, reveal timing, shortcut-

@@ -2,6 +2,7 @@
 <script module lang="ts">
   export const customizeTabIds = [
     "widgets",
+    "guide",
     "panels",
     "interaction",
     "appearance",

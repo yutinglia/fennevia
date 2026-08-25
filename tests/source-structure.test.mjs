@@ -50,9 +50,12 @@ test("browser tools separate lifecycle wiring from placement and popup actions",
 });
 
 test("shell composition and CSS retain explicit module ownership", async () => {
-  const [app, customize, css] = await Promise.all([
+  const [app, customize, customizeGuide, css] = await Promise.all([
     readProjectFile("src/shell/App.svelte"),
     readProjectFile("src/shell/CustomizePanel.svelte"),
+    readProjectFile(
+      "src/shell/features/customize/CustomizeGuideSection.svelte",
+    ),
     readProjectFile("src/shell/styles/edge-shell.css"),
   ]);
   assert.doesNotMatch(
@@ -83,7 +86,16 @@ test("shell composition and CSS retain explicit module ownership", async () => {
     customize,
     /features\/customize\/CustomizePanelsSection\.svelte/u,
   );
+  assert.match(
+    customize,
+    /features\/customize\/CustomizeGuideSection\.svelte/u,
+  );
   assert.match(customize, /features\/customize\/CustomizeTabList\.svelte/u);
+  assert.match(customizeGuide, /data-fennevia-customize-guide=/u);
+  assert.match(customizeGuide, /<h3/u);
+  assert.match(customizeGuide, /<h4/u);
+  assert.match(customizeGuide, /role="img"/u);
+  assert.doesNotMatch(customizeGuide, /\$state|fetch\(|gBrowser|Services/u);
   const tabList = await readProjectFile(
     "src/shell/features/customize/CustomizeTabList.svelte",
   );

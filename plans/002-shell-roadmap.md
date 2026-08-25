@@ -78,6 +78,16 @@ Top/Bottom horizontal Tabs and keeps Bookmarks, Downloads, and Address overflow
 bounded. Focused automation is complete; the real Firefox matrix remains
 pending.
 
+ADR-078 keeps the same palette and drawer owners but presents fixed large
+features first in a Main features category. Address/Trust, Tabs/New Tab,
+Bookmarks/Show Bookmarks, and Download status/Show Downloads remain adjacent
+primary/companion pairs in DOM and visual order when complete; incomplete
+groups reflow without blank columns or unrelated companions. A fifth optional
+Guide tab documents base flows, wrappers, structural widgets, recipes, editing,
+and recovery without adding onboarding persistence or privileged behavior.
+Focused automation is complete; real Firefox visual and accessibility checks
+remain pending.
+
 ADR-066 follows the first tabbar interaction correction with explicit
 click-versus-window-drag reconciliation, synchronous pointer holds around tab
 selection/close, a project-owned container stripe with a closed native-class
@@ -1088,6 +1098,29 @@ Gate: focused model/controller/persistence/frontend/tab tests and the ordinary
 large-widget wrapper, narrow/short, multi-window, private-window, and recovery
 rows remain `not run`. Plan:
 `plans/013-configurable-panel-dodge-and-horizontal-features.md`.
+
+### ADR-078 feature-first palette and layout Guide — focused implementation complete, real Firefox smoke pending
+
+Add closed `feature` and `feature-companion` palette presentation kinds for
+four fixed primary/action pairs. The Main features category sorts first, uses
+wide primary and adjacent compact companion tiles for complete groups, and
+retains one shared DOM, focus, search, click, keyboard, and drag order.
+Incomplete groups use full-row or normal compact flow instead of reserving
+holes. Already-placed singleton entries remain absent instead of becoming
+disabled duplicates.
+
+Add an optional fifth Guide tab to the existing drawer. Packaged English and
+Traditional Chinese text explains Top/Bottom Row and Left/Right Column roots,
+Center/Expanded/Padding, Space/Flexible space/Separator, three default-derived
+recipes, paired actions, exact placement, the floating inspector, and recovery.
+It adds no preference, popup, overlay, timer, native dependency, or network
+content.
+
+Gate: focused palette/controller/validation/i18n/frontend/source-structure
+tests and the ordinary `npm run verify` gate; real Firefox paired layout,
+search-only results, narrow/short reflow, 200% text, forced colors, keyboard,
+screen-reader, and multi-window rows remain `not run`. Plan:
+`plans/014-customize-palette-and-layout-guide.md`.
 
 ## Deferred work
 

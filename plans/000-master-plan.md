@@ -208,6 +208,14 @@ ADR-047, and ADR-054 through ADR-072:
   Tabs reveal and respect Firefox popup holds. Tabs, Bookmarks, and Downloads
   now render through one bounded axis-aware feature root, fixing intrinsic
   horizontal Tabs/New Tab sizing without making ordinary children Expanded.
+- ADR-078 makes the existing palette feature-first without changing its edit
+  model: Address/Trust, Tabs/New Tab, Bookmarks/Show Bookmarks, and Download
+  status/Show Downloads publish as fixed adjacent primary/companion groups in a
+  closed Main features category. Complete groups use wide/compact pairs while
+  incomplete groups reflow without empty columns. A fifth optional Guide tab
+  explains the fixed root directions, structural widgets, wrappers, practical
+  recipes, editing, and recovery with static localized content and no new
+  persisted state.
 
 Focused type/build/unit/static checks cover this enhancement. Its real Firefox
 manual matrix remains pending and is not part of the earlier #15 validation.
@@ -752,6 +760,11 @@ new-tab-highlight exception. Its common feature root also makes Tabs'
 summary/strip one layout child and keeps the horizontal trailing New Tab action
 intrinsic. Plan and checklist:
 `plans/013-configurable-panel-dodge-and-horizontal-features.md`.
+
+ADR-078 adds the feature-first paired palette and optional layout Guide while
+retaining opaque tokens, existing click/keyboard/drag edits, and one customize
+drawer owner. Plan and checklist:
+`plans/014-customize-palette-and-layout-guide.md`.
 
 ADR-046 (2026-08-19) restores localized widget names and native built-in
 icons in the customize palette and widget zones: palette-node / dedicated

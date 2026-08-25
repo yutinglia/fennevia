@@ -110,9 +110,45 @@
 }
 
 @media (max-width: 520px) {
+  #fennevia-shell-frame-host .fennevia-customize__widget-intro,
   #fennevia-shell-frame-host .fennevia-customize__panel-field {
     grid-template-columns: 1fr;
     gap: var(--fennevia-space-1);
+  }
+
+  #fennevia-shell-frame-host .fennevia-customize__guide-edge-map,
+  #fennevia-shell-frame-host .fennevia-customize__guide-recipes,
+  #fennevia-shell-frame-host .fennevia-customize__guide-pairs,
+  #fennevia-shell-frame-host .fennevia-customize__guide-definitions {
+    grid-template-columns: 1fr;
+  }
+
+  #fennevia-shell-frame-host .fennevia-customize__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-customize__grid
+    > .fennevia-customize__grid-item--feature-pair.fennevia-customize__grid-item--feature {
+    grid-column: 1 / span 2;
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-customize__grid
+    > .fennevia-customize__grid-item--feature-pair.fennevia-customize__grid-item--feature-companion {
+    grid-column: 3;
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-customize__widget-intro
+    .fennevia-customize__panel-field--destination {
+    grid-template-columns: 1fr;
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-customize__panel-field--destination
+    > span {
+    white-space: normal;
   }
 
   #fennevia-shell-frame-host .fennevia-address-popup__suggestion {
@@ -140,6 +176,21 @@
   #fennevia-shell-frame-host .fennevia-navigation {
     gap: 3px;
     padding-inline: 4px;
+  }
+}
+
+@media (max-width: 380px) {
+  #fennevia-shell-frame-host .fennevia-customize__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #fennevia-shell-frame-host
+    .fennevia-customize__grid
+    > :is(
+      .fennevia-customize__grid-item--feature-pair.fennevia-customize__grid-item--feature,
+      .fennevia-customize__grid-item--feature-pair.fennevia-customize__grid-item--feature-companion
+    ) {
+    grid-column: 1 / -1;
   }
 }
 

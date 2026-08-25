@@ -123,6 +123,7 @@ const compoundWidget = Object.freeze({
 });
 
 const paletteEntry = Object.freeze({
+  featureGroup: "",
   icon: "print",
   iconUrl: "",
   kind: "built-in",
@@ -456,6 +457,55 @@ test("copyToolbarWidgetSnapshot enforces bounded privacy-safe fields", () => {
       iconUrl: "chrome://browser/skin/save.svg",
     }).iconUrl,
     "chrome://browser/skin/save.svg",
+  );
+  assert.equal(
+    copyToolbarPaletteEntrySnapshot({
+      ...paletteEntry,
+      featureGroup: "address",
+      kind: "feature",
+    }).kind,
+    "feature",
+  );
+  assert.equal(
+    copyToolbarPaletteEntrySnapshot({
+      ...paletteEntry,
+      featureGroup: "address",
+      kind: "feature-companion",
+    }).kind,
+    "feature-companion",
+  );
+  assert.throws(
+    () =>
+      copyToolbarPaletteEntrySnapshot({
+        ...paletteEntry,
+        featureGroup: "address",
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_PALETTE_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarPaletteEntrySnapshot({
+        ...paletteEntry,
+        kind: "feature",
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_PALETTE_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarPaletteEntrySnapshot({
+        ...paletteEntry,
+        featureGroup: "unknown",
+        kind: "feature",
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_PALETTE_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarPaletteEntrySnapshot({
+        ...paletteEntry,
+        kind: "large",
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_PALETTE_INVALID/u,
   );
   assert.throws(
     () =>

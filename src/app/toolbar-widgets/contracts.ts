@@ -69,6 +69,67 @@ export type ProjectWidgetId = (typeof projectWidgetIds)[number];
 
 export const projectWidgetIdSet = new Set<ProjectWidgetId>(projectWidgetIds);
 
+export const toolbarPaletteFeatureGroups = Object.freeze([
+  "",
+  "address",
+  "tabs",
+  "bookmarks",
+  "downloads",
+] as const);
+
+export type ToolbarPaletteFeatureGroup =
+  (typeof toolbarPaletteFeatureGroups)[number];
+
+export const featureProjectWidgetIds = Object.freeze([
+  "address-launcher",
+  "tabs",
+  "bookmarks",
+  "downloads-status",
+] as const satisfies readonly ProjectWidgetId[]);
+
+export const featureProjectWidgetIdSet = new Set<ProjectWidgetId>(
+  featureProjectWidgetIds,
+);
+
+export const featureCompanionProjectWidgetIds = Object.freeze([
+  "trust",
+  "new-tab",
+  "show-bookmarks",
+  "show-downloads",
+] as const satisfies readonly ProjectWidgetId[]);
+
+export const featureCompanionProjectWidgetIdSet = new Set<ProjectWidgetId>(
+  featureCompanionProjectWidgetIds,
+);
+
+export const featurePaletteProjectWidgetIds = Object.freeze([
+  "address-launcher",
+  "trust",
+  "tabs",
+  "new-tab",
+  "bookmarks",
+  "show-bookmarks",
+  "downloads-status",
+  "show-downloads",
+] as const satisfies readonly ProjectWidgetId[]);
+
+export const featurePaletteProjectWidgetIdSet = new Set<ProjectWidgetId>(
+  featurePaletteProjectWidgetIds,
+);
+
+export const featurePaletteGroupByProjectWidgetId: Readonly<
+  Partial<Record<ProjectWidgetId, Exclude<ToolbarPaletteFeatureGroup, "">>>
+> = Object.freeze({
+  "address-launcher": "address",
+  bookmarks: "bookmarks",
+  "downloads-status": "downloads",
+  "new-tab": "tabs",
+  "show-bookmarks": "bookmarks",
+  "show-downloads": "downloads",
+  tabs: "tabs",
+  trust: "address",
+});
+
 export const singletonProjectWidgetIds = Object.freeze([
   "address-launcher",
   "bookmarks",
@@ -85,6 +146,8 @@ export const singletonProjectWidgetIdSet = new Set<ProjectWidgetId>(
 export const toolbarPaletteKinds = Object.freeze([
   "built-in",
   "extension-action",
+  "feature",
+  "feature-companion",
   "fennevia",
   "project",
   "container",
@@ -235,6 +298,8 @@ export const fenneviaToolbarActionSet = new Set<FenneviaToolbarAction>(
 export const toolbarPaletteKindSet = new Set<ToolbarPaletteKind>(
   toolbarPaletteKinds,
 );
+export const toolbarPaletteFeatureGroupSet =
+  new Set<ToolbarPaletteFeatureGroup>(toolbarPaletteFeatureGroups);
 export const toolbarStyleThemeSet = new Set<ToolbarStyleTheme>(
   toolbarStyleThemes,
 );
@@ -284,6 +349,7 @@ export type ToolbarWidgetPartSnapshot = Readonly<{
 }>;
 
 export type ToolbarPaletteEntrySnapshot = Readonly<{
+  featureGroup: ToolbarPaletteFeatureGroup;
   icon: string;
   iconUrl: string;
   kind: ToolbarPaletteKind;
