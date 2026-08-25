@@ -12,11 +12,12 @@ collision system, glass token set, or window-global coordination layer.
 
 ## Current status
 
-Validated baseline as of 2026-08-25:
+Validated baseline as of 2026-08-26:
 
-- public package `0.16.0-beta.1` prerelease on Windows x64;
-- tested Firefox majors 153.0.4 BuildID 20260810162159 and 154.0 BuildID
-  20260812182057; installer accepts 153+ after an explicit warning (ADR-048);
+- public package `0.17.0-beta.1` prerelease on Windows x64;
+- tested Firefox 153.0.4 BuildID 20260810162159, 154.0 BuildID
+  20260812182057, and 154.0.1 BuildID 20260824154132; installer accepts 153+
+  after an explicit warning (ADR-048);
 - first real stock-stable transition recorded in
   `docs/research/firefox-154-stable-transition.md`;
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16,

@@ -28,9 +28,9 @@ controls, private-window rules, and review triggers.
 
 ## 2. Current security baseline
 
-Current validated public prerelease package: `0.16.0-beta.1` on Firefox 153.0.4
-BuildID 20260810162159 and owner-confirmed Firefox 154.0 BuildID 20260812182057
-for Windows x64. Later Firefox majors may be installed after an explicit
+Current validated public prerelease package: `0.17.0-beta.1` on Firefox 153.0.4
+BuildID 20260810162159, Firefox 154.0 BuildID 20260812182057, and Firefox
+154.0.1 BuildID 20260824154132 for Windows x64. Later Firefox majors may be installed after an explicit
 warning; that is not a support promise.
 
 Implemented controls:

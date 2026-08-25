@@ -93,9 +93,10 @@ Read these before changing code or current documentation:
   ADR-053 feature-first source boundaries, compatibility facades, and fixed
   installer implementation inventory.
 
-The public `v0.16.0-beta.1` prerelease follows the planned Windows MVP and
+The public `v0.17.0-beta.1` prerelease follows the planned Windows MVP and
 versioned distribution path. Tested Firefox builds are 153.0.4 BuildID
-`20260810162159` and 154.0 BuildID `20260812182057`; see
+`20260810162159`, 154.0 BuildID `20260812182057`, and 154.0.1 BuildID
+`20260824154132`; see
 [`docs/research/firefox-154-stable-transition.md`](research/firefox-154-stable-transition.md)
 and the
 [`0.12.0-beta.1` Firefox 154 release-validation record](research/firefox-154-0.12.0-beta.1-release-validation.md),
