@@ -363,6 +363,17 @@ Required controls:
   the target consumes the transfer, then releases focus/keyboard holds only if
   focus is outside the source surface after the DOM tick. This owner-approved
   exception does not authorize a general cross-window registry;
+- ADR-081 permits source detach only when the bounded terminal screen point is
+  at least 16 CSS pixels from the bounded drag-start point. The delta must not
+  identify a DOM/window target, alter the established source/target event
+  route, or retain a post-detach tab lock. It adds no timer, transferable ID,
+  native handle, log field, persistence, or process-global state;
+- a later `beginDrag` may replace an active transfer only when the same window
+  context owns it; it must not cancel or inspect another window's native source
+  through this recovery path;
+- composable-layout drag handlers must act only when the layout node is the
+  event's exact target. They must ignore a child widget's bubbling `dragstart`
+  and must not become a second drag-event owner for tabs or other features;
 - the post-move live announcement uses the existing bounded title as text only
   and has no log, dataset, persistence, clipboard, or network sink.
 

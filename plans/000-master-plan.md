@@ -91,6 +91,12 @@ Completed:
   a real target-row layout slot plus visible generic row without spurious
   short-list overflow, no-drop target-exit cleanup, browser-content append,
   native detach outside Firefox, and capture plus source-snapshot hold cleanup;
+- ADR-081: source detach requires at least 16 CSS pixels between bounded
+  `dragstart` and terminal screen points without changing the established drag
+  route or locking later gestures; composable-layout ancestors ignore child
+  widget drags instead of cancelling their bubbling `dragstart`, local drops
+  retain sole in-frame ownership, and a following same-window physical drag can
+  recover a missed source terminal without shell fallback;
 - ADR-071: the vertical strip drives Firefox-owned tab multi-select, including
   range/toggle semantics, group actions, block move/adopt/detach, and native
   plural context-menu behavior without a second selected-ID owner;

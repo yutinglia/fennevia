@@ -4700,7 +4700,7 @@ function Ki({ createToken: e }) {
 //#region src/firefox/tabs/controller.ts
 var qi = "tabContextMenu";
 function Ji({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n, dragCoordinator: r, isTabDetachAllowed: i, moduleLoader: a, onError: o, window: s }) {
-	if (t.assertOwnsWindow(s), !q(s) || typeof e != "function" || typeof n != "function" || !r || typeof r.begin != "function" || typeof r.cancel != "function" || typeof r.cancelContext != "function" || typeof r.consume != "function" || typeof r.inspect != "function" || typeof r.resolve != "function" || typeof r.resolveForEnd != "function" || typeof i != "function" || typeof o != "function") throw J(t, "FENNEVIA_FIREFOX_TABS_OPTIONS_INVALID", "firefox-tabs-create", "window");
+	if (t.assertOwnsWindow(s), !q(s) || typeof e != "function" || typeof n != "function" || !r || typeof r.begin != "function" || typeof r.cancel != "function" || typeof r.cancelContext != "function" || typeof r.consume != "function" || typeof r.inspect != "function" || typeof r.resolve != "function" || typeof r.resolveForEnd != "function" || typeof r.snapshot != "function" || typeof i != "function" || typeof o != "function") throw J(t, "FENNEVIA_FIREFOX_TABS_OPTIONS_INVALID", "firefox-tabs-create", "window");
 	let c = s, l = !1, u = null, d = 0, f = Object.freeze([]), p = new Set(), m = new Set(), h = [], g = t.createHandleRegistry("tab"), v = null, y = null, x = !1, S = t.snapshot(), C = S.contextId, w = S.windowKind;
 	if (typeof a == "function") try {
 		let e = a(wi), t = q(e) ? e.ContextualIdentityService : void 0;
@@ -4921,7 +4921,8 @@ function Ji({ beginNativePopupHandoff: e, boundary: t, endNativePopupHandoff: n,
 		beginDrag(e) {
 			let n = F(e);
 			try {
-				return r.begin({
+				let e = r.snapshot();
+				return e.active && e.sourceContextId === C && r.cancelContext(C), r.begin({
 					isActive() {
 						if (l || !c) return !1;
 						try {

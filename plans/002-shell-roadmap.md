@@ -173,6 +173,25 @@ boundaries. Focused automation is complete and the ordinary gate passes; the
 real multi-window/content/external-drop matrix remains pending in
 `docs/testing-and-recovery.md` §6.1.
 
+ADR-081 closes the owner-reported accidental and repeated detach path without
+removing ADR-063 behavior. Same-window reorder and target adoption still start
+immediately through the original window-event route, but an unconsumed source
+detach remains cancelled until its bounded terminal point is at least 16 CSS
+pixels from `dragstart`. No post-detach tab set or cooldown blocks a later
+reorder, adoption, or intentional outside-tabbar drag.
+Composable-layout nodes now ignore bubbled child-widget drag starts, preventing
+the closed-Customize layout handler from cancelling the tab's HTML drag. Local
+list/drop-zone handlers remain the only in-frame terminal owner; a temporary
+capture fallback was removed after runtime probing proved it raced ahead of
+same-window drop. A new physical drag replaces only a stale coordinator
+transfer owned by that same window, so the reported second-tab retry does not
+escalate to shell fallback.
+The owner confirmed normal-window multi-index reorder, intentional outside
+detach, and cross-window transfer on Firefox 154.0.1. The complete ordinary
+`npm run verify` gate and Windows PowerShell 5.1 fixed-list suite pass after the
+final probe cleanup. Private-window and complete Browser Console rows remain
+pending in `docs/testing-and-recovery.md` §6.1.
+
 The project is currently under rapid development. Ordinary shell work uses CI
 as the required gate; the complete real-Firefox matrices run at release. See
 ADR-039 and `AGENTS.md` section 8.

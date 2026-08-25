@@ -1153,6 +1153,95 @@ test("same-window tab drag reorders once and records the transfer as consumed", 
   }
 });
 
+test("a new same-window drag recovers a transfer left active by a missed no-op drop", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    const [firstId, secondId] = pair.controller.tabs
+      .snapshot()
+      .map((tab) => tab.id);
+    const staleDragId = pair.controller.tabs.beginDrag(firstId);
+    const staleCoordinatorState = pair.dragCoordinator.snapshot();
+    assert.equal(staleCoordinatorState.activeId, staleDragId);
+
+    const nextDragId = pair.controller.tabs.beginDrag(secondId);
+    assert.notEqual(nextDragId, staleDragId);
+    assert.deepEqual(pair.dragCoordinator.snapshot(), {
+      active: true,
+      activeId: nextDragId,
+      completedId: null,
+      completedOutcome: null,
+      sourceContextId: staleCoordinatorState.sourceContextId,
+    });
+    assert.deepEqual(pair.controller.tabs.inspectDrag(), {
+      count: 1,
+      id: nextDragId,
+      pinned: false,
+      source: "same-window",
+    });
+    assert.equal(
+      pair.controller.tabs.endDrag(nextDragId, {
+        cancelled: true,
+        screenX: 0,
+        screenY: 0,
+      }),
+      "cancelled",
+    );
+    assert.equal(
+      native.gBrowser.actionCalls.some(
+        ([action]) => action === "replaceTabWithWindow",
+      ),
+      false,
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("same-context drag recovery does not cancel another window's active transfer", () => {
+  const coordinator = createTestDragCoordinator();
+  const sourcePair = createController(
+    createNativeWindow(),
+    [],
+    undefined,
+    {},
+    {
+      dragCoordinator: coordinator,
+    },
+  );
+  const targetPair = createController(
+    createNativeWindow(),
+    [],
+    undefined,
+    {},
+    {
+      dragCoordinator: coordinator,
+    },
+  );
+  try {
+    const sourceId = sourcePair.controller.tabs.snapshot()[0].id;
+    const targetId = targetPair.controller.tabs.snapshot()[1].id;
+    const sourceDragId = sourcePair.controller.tabs.beginDrag(sourceId);
+
+    assert.throws(
+      () => targetPair.controller.tabs.beginDrag(targetId),
+      /FENNEVIA_FIREFOX_TAB_DRAG_BEGIN_REJECTED/u,
+    );
+    assert.equal(coordinator.snapshot().activeId, sourceDragId);
+    assert.equal(
+      sourcePair.controller.tabs.endDrag(sourceDragId, {
+        cancelled: true,
+        screenX: 0,
+        screenY: 0,
+      }),
+      "cancelled",
+    );
+  } finally {
+    disposePair(targetPair);
+    disposePair(sourcePair);
+  }
+});
+
 test("same-window single-tab drag preserves a downward final index", () => {
   const native = createNativeWindow();
   const pair = createController(native);

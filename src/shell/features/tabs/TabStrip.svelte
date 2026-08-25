@@ -34,6 +34,7 @@
     getTabStripKeyAction,
     countMultiSelectedTabs,
     hasAccelModifier,
+    hasTabDetachIntent,
     isDraggedTabMissing,
     isCollapsedDragMember,
     isTabInDragGroup,
@@ -48,6 +49,7 @@
     resolveTabDropIndex,
     resolveTabDropPreview,
     type TabDropPreview,
+    type TabDragScreenPoint,
     type TabPointerAction,
   } from "../../../app/tab-strip";
   import FirefoxIcon, { type FirefoxIconName } from "../../FirefoxIcon.svelte";
@@ -85,6 +87,7 @@
   let highlightedTabIds: readonly string[] = $state([]);
   let draggingTabId: string | null = $state(null);
   let sourceDragId: string | null = $state(null);
+  let sourceDragOrigin: TabDragScreenPoint | null = null;
   let externalDrag = $state<TabDragSnapshot | null>(null);
   let pendingPointerAction: TabPointerAction | null = null;
   let dragCount = $derived(
@@ -740,6 +743,7 @@
     pendingPinnedPartitionDragId = null;
     draggingTabId = null;
     sourceDragId = null;
+    sourceDragOrigin = null;
     externalDrag = null;
     clearDropTarget();
     clearDragGeometry();
@@ -976,6 +980,16 @@
       ? Math.min(100_000, Math.max(-100_000, coordinate))
       : 0;
 
+  const readDragScreenPoint = (
+    event: DragEvent,
+  ): TabDragScreenPoint | null =>
+    Number.isFinite(event.screenX) && Number.isFinite(event.screenY)
+      ? Object.freeze({
+          screenX: boundedScreenCoordinate(event.screenX),
+          screenY: boundedScreenCoordinate(event.screenY),
+        })
+      : null;
+
   const finishOwnedTabDrag = () => {
     clearTabDrag(true);
     reportAsyncError(
@@ -996,9 +1010,13 @@
         })
       | null
       | undefined;
+    const terminalPoint = event ? readDragScreenPoint(event) : null;
     try {
       props.tabs.endDrag(dragId, {
-        cancelled: cancelled || firefoxTransfer?.mozUserCancelled === true,
+        cancelled:
+          cancelled ||
+          !hasTabDetachIntent(sourceDragOrigin, terminalPoint) ||
+          firefoxTransfer?.mozUserCancelled === true,
         screenX: boundedScreenCoordinate(event?.screenX ?? 0),
         screenY: boundedScreenCoordinate(event?.screenY ?? 0),
       });
@@ -1024,6 +1042,7 @@
       transfer.clearData();
       transfer.setData(TAB_DRAG_MIME_TYPE, "1");
       sourceDragId = startedDragId;
+      sourceDragOrigin = readDragScreenPoint(event);
       draggingTabId = tabId;
       externalDrag = null;
       clearDropTarget();

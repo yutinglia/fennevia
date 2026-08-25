@@ -326,13 +326,22 @@ slot. List drops move the same generic preview to the resolved insertion point;
 no source title, URL, or favicon is copied into the target window. A null
 window-capture `dragleave.relatedTarget` clears a no-drop target exit, while
 non-null internal transitions preserve the shared hold. An otherwise
-unconsumed drag delegates to Firefox's `replaceTabWithWindow`. No window is
-inferred from screen geometry, normal/private transfer is rejected, and every
-terminal cleanup releases the shared configured-tabs-edge hold. If adoption removes the
-source row before `dragend` traverses that window, the next source tab snapshot
-detects the missing active ID and performs the same local cleanup without
-ending the transfer ahead of the target; after the DOM update it releases
-focus/keyboard holds only when focus has actually left that surface.
+unconsumed drag delegates to Firefox's `replaceTabWithWindow`. ADR-081 first
+requires its valid `dragend` screen point to be at least 16 CSS pixels from
+source `dragstart`; otherwise the existing terminal bridge call is cancelled.
+That delta is intent evidence only and does not delay the original event route
+or infer a DOM/window target. Composable-layout drag handlers ignore events
+targeted at child widgets, so they cannot cancel a tab's bubbling `dragstart`
+when Customize is closed. A later physical tab drag may replace an active stale
+transfer only when the same window owns it; another window's active transfer
+remains protected. Local list/drop-zone handlers remain the only in-frame drop
+owner, with no capture fallback, post-detach tab lock, or cooldown.
+Normal/private transfer is rejected, and every terminal cleanup releases the
+shared configured-tabs-edge hold. If adoption removes the source row before `dragend`
+traverses that window, the next source tab snapshot detects the missing active
+ID and performs the same local cleanup without ending the transfer ahead of the
+target; after the DOM update it releases focus/keyboard holds only when focus
+has actually left that surface.
 ADR-071 keeps multi-select in `gBrowser` and captures the same-pinned native
 set at drag start. ADR-072 makes single and group same-window drops share the
 same pre-removal insertion-boundary conversion, then compares the complete
@@ -361,6 +370,7 @@ Current source and runtime evidence is in
 `docs/research/firefox-153-154-native-shell-icons.md`,
 `docs/research/firefox-154-tab-drag-spatial-preview.md`,
 `docs/research/firefox-154-cross-window-tab-drag.md`,
+`docs/research/firefox-154-tab-detach-intent.md`,
 `docs/research/firefox-154-tabbar-interaction-follow-up.md`,
 `docs/research/firefox-154-shell-interaction-second-follow-up.md`,
 `docs/research/firefox-154-tab-select-pointer-hold.md`,

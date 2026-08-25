@@ -296,6 +296,11 @@
     node: ToolbarLayoutNodeSnapshot,
     direction: ToolbarLayoutDirection,
   ): void => {
+    // A child widget can own an independent HTML drag session (for example,
+    // a tab). Do not let this layout-node handler cancel its bubbled event.
+    if (event.target !== event.currentTarget) {
+      return;
+    }
     if (!props.customizeOpen || !event.dataTransfer) {
       event.preventDefault();
       return;

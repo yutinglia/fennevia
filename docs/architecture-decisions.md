@@ -3739,3 +3739,61 @@ review, manual checklist, and focused evidence are in
 `plans/015-narrow-window-four-panel-ui-ux.md`,
 `src/shell/styles/responsive-accessibility.css`, and
 `tests/frontend-build.test.mjs`.
+
+## ADR-081: Require detach intent and preserve child drag-event ownership
+
+**Status:** Accepted from direct project-owner runtime evidence on 2026-08-26;
+implementation and ordinary automated verification are complete. The owner
+confirmed normal-window same-tabbar reorder, outside-window detach, and
+cross-window transfer. The private-window and complete Browser Console release
+matrix remains `not run`.
+
+Retain ADR-063's marker-only transfer, same-window reorder, same-kind adoption,
+source-content/external-application detach, normal/private isolation, existing
+window drag-event routing, and Firefox-owned `replaceTabWithWindow` /
+`replaceTabsWithWindow` actions. Capture one bounded source `dragstart` screen
+point. An otherwise-unconsumed source `dragend` may detach only when its valid
+terminal point is at least 16 CSS pixels from that origin; otherwise the
+existing bridge call uses its `cancelled` option. The delta establishes intent
+for the destructive detach action only. It is not a DOM or window hit test and
+does not delay the HTML drag session used by reorder and adoption.
+
+Composable-layout nodes own only a `dragstart` targeted at that exact node.
+Their handler must return when `event.target !== event.currentTarget`, so a tab
+or any other child widget can own an independent bubbling HTML drag session.
+When Customize is closed, a layout node may still cancel its own attempted
+layout drag, but it must never cancel a child feature's event.
+
+Immediately before accepting a new physical tab drag, the privileged tabs
+controller may cancel an already-active coordinator transfer only when the
+same opaque window context owns it. ADR-063's single-active-transfer rejection
+remains in force for a transfer owned by another window. This is a recovery
+boundary for a missed terminal event; it does not add a post-detach tab set,
+cooldown, or lock on later gestures.
+
+Do not add an in-frame capture-phase terminal fallback. Runtime probing showed
+that a queued fallback can run before the local Svelte drop handler and cancel
+the source coordinator, making outside and cross-window transfer work while
+same-window reorder fails. Local list/drop-zone handlers remain the sole owner
+of in-frame tab drops. The temporary CSS caption-hit-test change was also
+removed because the probe did not support it as a cause.
+
+**Reasoning:** Firefox 154's native drag-end path suppresses detach near its tab
+strip, while Fennevia previously detached every unconsumed non-Escape HTML
+drag. A quick click with slight movement could therefore create a window even
+without deliberate detach intent. Firefox returns a new window before startup
+adopts the source tab, so the reported `linkedBrowser.currentURI` null-browser
+stack is race-consistent, but it remains an unproven relationship.
+
+The decisive Firefox 154.0.1 probe showed the tab component's `dragstart`
+handler returning with a marker, `effectAllowed=move`, and
+`defaultPrevented=false`, followed by the window bubble tail observing
+`defaultPrevented=true`; no native `dragover`, `drop`, or `dragend` followed.
+Code inspection then identified the composable-layout ancestor handler, which
+called `preventDefault()` whenever Customize was closed. After restricting that
+handler to its own event target, the native drag lifecycle, outside detach, and
+cross-window transfer resumed. Removing the racing in-frame fallback then
+restored successful local drop results across multiple indices. The owner
+confirmed the complete normal-window behavior. Evidence, rejected hypotheses,
+privacy constraints, and verification limits are recorded in
+`docs/research/firefox-154-tab-detach-intent.md` and the focused tests.

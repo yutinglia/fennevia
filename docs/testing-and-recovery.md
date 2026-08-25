@@ -456,8 +456,27 @@ Validate:
   preview, hidden layout slot, marker, external drag state, and left hold;
   nested/internal `dragleave` events with non-null `relatedTarget` do not clear
   a still-active target;
-- an unconsumed source drag delegates to Firefox window detach, while Escape,
-  disabled detach, stale state, and a sole-tab source do not create a window;
+- an unconsumed source drag delegates to Firefox window detach only after an
+  unconsumed `dragend` screen point is at least 16 CSS pixels from source
+  `dragstart`; a quick click, micro-drag, invalid point, Escape, disabled
+  detach, stale state, and a sole-tab source do not create a window;
+- no pending post-detach tab set blocks a later gesture: full-list reorder,
+  same-kind adoption, and intentional outside-tabbar detach remain available,
+  while repeated terminal handling for one source ID stays idempotent;
+- with Customize closed, every composable-layout ancestor ignores a child
+  tab's bubbling `dragstart`; the event remains unprevented after the component
+  handler and proceeds to native `dragenter`/`dragover`/`drop`/`dragend`;
+- with Customize open, an exact layout-node drag remains owned by the layout
+  editor, while nested widget drags remain independently owned;
+- dropping a tab back at the same insertion point reaches the local
+  list/drop-zone terminal path and leaves the row clickable/draggable. A later
+  tab in that same window recovers any stale same-context coordinator transfer
+  without shell fallback;
+- local same-window drop is not preempted by a capture-phase terminal fallback;
+  multi-index reorder, outside-window detach, and cross-window adoption all
+  retain their respective owners;
+- a new drag in another window does not use same-context recovery to cancel a
+  genuinely active source transfer;
 - normal/private cross-window inspection and adoption rejection;
 - capture-phase source `dragend`, source-snapshot disappearance after adoption,
   null-related-target true target-window leave, target drop, setup failure,
@@ -481,6 +500,7 @@ Evidence:
 - `docs/research/firefox-153-154-native-shell-icons.md`;
 - `docs/research/firefox-154-tab-drag-spatial-preview.md`;
 - `docs/research/firefox-154-cross-window-tab-drag.md`;
+- `docs/research/firefox-154-tab-detach-intent.md`;
 - `docs/research/firefox-154-tabbar-interaction-follow-up.md`;
 - `docs/research/firefox-154-shell-interaction-second-follow-up.md`;
 - `docs/research/firefox-154-tab-select-pointer-hold.md`;

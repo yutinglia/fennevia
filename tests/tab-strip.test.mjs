@@ -18,6 +18,7 @@ import {
   getTabStripKeyAction,
   countMultiSelectedTabs,
   hasAccelModifier,
+  hasTabDetachIntent,
   isDraggedTabMissing,
   isCollapsedDragMember,
   isTabInDragGroup,
@@ -31,6 +32,7 @@ import {
   resolveTabDragShift,
   resolveTabDropIndex,
   resolveTabDropPreview,
+  tabDetachIntentDistancePx,
 } from "../src/app/tab-strip.ts";
 
 const projectRoot = path.resolve(
@@ -360,6 +362,31 @@ test("source drag cleanup distinguishes adoption from an in-window reorder", () 
   assert.equal(isDraggedTabMissing(reorderedTabs, "transferred-tab"), true);
 });
 
+test("tab detach intent ignores micro-drags and invalid screen points", () => {
+  const origin = { screenX: 100, screenY: 200 };
+
+  assert.equal(tabDetachIntentDistancePx, 16);
+  assert.equal(hasTabDetachIntent(origin, origin), false);
+  assert.equal(
+    hasTabDetachIntent(origin, { screenX: 115, screenY: 200 }),
+    false,
+  );
+  assert.equal(
+    hasTabDetachIntent(origin, { screenX: 116, screenY: 200 }),
+    true,
+  );
+  assert.equal(
+    hasTabDetachIntent(origin, { screenX: 112, screenY: 212 }),
+    true,
+  );
+  assert.equal(hasTabDetachIntent(null, origin), false);
+  assert.equal(hasTabDetachIntent(origin, null), false);
+  assert.equal(
+    hasTabDetachIntent(origin, { screenX: Number.NaN, screenY: 220 }),
+    false,
+  );
+});
+
 test("drop pointer normalization expands both list edges without changing the middle", () => {
   assert.equal(normalizeTabDropPointerY(80, 100, 300), 100);
   assert.equal(normalizeTabDropPointerY(125, 100, 300), 100);
@@ -472,25 +499,37 @@ test("keyboard navigation wraps, respects direction, and produces explicit actio
 });
 
 test("the component uses semantic sibling controls and property-safe rendering only", async () => {
-  const [frameSource, tabSource, topSource, styles] = await Promise.all([
-    readFile(path.join(projectRoot, "src", "shell", "App.svelte"), "utf8"),
-    readFile(
-      path.join(
-        projectRoot,
-        "src",
-        "shell",
-        "features",
-        "tabs",
-        "TabStrip.svelte",
+  const [frameSource, tabSource, topSource, composableLayoutSource, styles] =
+    await Promise.all([
+      readFile(path.join(projectRoot, "src", "shell", "App.svelte"), "utf8"),
+      readFile(
+        path.join(
+          projectRoot,
+          "src",
+          "shell",
+          "features",
+          "tabs",
+          "TabStrip.svelte",
+        ),
+        "utf8",
       ),
-      "utf8",
-    ),
-    readFile(
-      path.join(projectRoot, "src", "shell", "surfaces", "TopSurface.svelte"),
-      "utf8",
-    ),
-    readShellStyles(projectRoot),
-  ]);
+      readFile(
+        path.join(projectRoot, "src", "shell", "surfaces", "TopSurface.svelte"),
+        "utf8",
+      ),
+      readFile(
+        path.join(
+          projectRoot,
+          "src",
+          "shell",
+          "features",
+          "composable-layout",
+          "ComposableLayout.svelte",
+        ),
+        "utf8",
+      ),
+      readShellStyles(projectRoot),
+    ]);
   const source = [frameSource, tabSource, topSource].join("\n");
 
   assert.match(source, /role="tablist"/u);
@@ -705,6 +744,23 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(tabSource, /props\.tabs\.inspectDrag/u);
   assert.match(tabSource, /props\.tabs\.dropDrag/u);
   assert.match(tabSource, /props\.tabs\.endDrag/u);
+  assert.match(
+    tabSource,
+    /terminalPoint = event \? readDragScreenPoint\(event\) : null[\s\S]*?cancelled:[\s\S]*?cancelled \|\|[\s\S]*?!hasTabDetachIntent\(sourceDragOrigin, terminalPoint/u,
+  );
+  assert.match(
+    tabSource,
+    /const readDragScreenPoint[\s\S]*?Number\.isFinite\(event\.screenX\)[\s\S]*?Number\.isFinite\(event\.screenY\)/u,
+  );
+  assert.doesNotMatch(
+    tabSource,
+    /handleWindowDrop[\s\S]*?isInsideProjectFrame\(event\)[\s\S]*?ownedDragId = sourceDragId[\s\S]*?tick\(\)\.then[\s\S]*?sourceDragId === ownedDragId[\s\S]*?endSourceDrag\(undefined, true\)/u,
+  );
+  assert.match(
+    composableLayoutSource,
+    /if \(event\.target !== event\.currentTarget\) \{\s*return;\s*\}[\s\S]*?if \(!props\.customizeOpen \|\| !event\.dataTransfer\) \{\s*event\.preventDefault\(\);/u,
+  );
+  assert.doesNotMatch(tabSource, /pendingDetachedTabIds/u);
   assert.match(
     tabSource,
     /if \(targetIndex === null\)[\s\S]*?drag\.source === "same-window"[\s\S]*?endSourceDrag\(undefined, true\)/u,

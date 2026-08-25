@@ -343,6 +343,20 @@ Rules:
 - `gBrowser.adoptTab` and `replaceTabWithWindow` remain privileged named
   actions. Missing capabilities fail health open, and no native tab DOM is
   copied, moved, or mounted by Svelte;
+- ADR-081 retains only one bounded drag-start screen point until that source
+  drag terminates. It compares the point with the bounded terminal `dragend`
+  point for distance only; neither point is used to identify a DOM target or
+  window. No post-detach tab IDs are retained, and neither point is logged,
+  persisted, placed in `DataTransfer`, sent across windows, or exposed as
+  browsing data;
+- before a new drag, the privileged controller may cancel only a stale
+  coordinator transfer owned by that same opaque window context. It cannot
+  inspect or cancel another window's native source and does not weaken
+  normal/private transfer isolation;
+- the composable-layout target/current-target check establishes event ownership
+  only: a layout node ignores a child widget's bubbling `dragstart`. It records,
+  transfers, and persists no event target, coordinate, tab identifier, native
+  handle, or browsing value;
 - capture-phase browser-window `dragenter`, true-window `dragleave` identified
   by null `relatedTarget`, `dragend` when observed, target/source drop,
   cancellation, setup failure, and component/window disposal all clear

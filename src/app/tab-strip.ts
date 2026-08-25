@@ -4,6 +4,12 @@ import { interpolate } from "./i18n.ts";
 export const untitledTabLabel = "Untitled tab";
 export const newTabHighlightDurationMs = 500;
 export const tabDropEdgeTargetSizePx = 32;
+export const tabDetachIntentDistancePx = 16;
+
+export type TabDragScreenPoint = Readonly<{
+  screenX: number;
+  screenY: number;
+}>;
 
 export type TabStripLabels = Readonly<{
   allowMedia: string;
@@ -61,6 +67,28 @@ export type TabDropPreview = Readonly<{
 }> | null;
 
 export type TabDragShift = "down" | "up" | null;
+
+export function hasTabDetachIntent(
+  origin: TabDragScreenPoint | null,
+  current: TabDragScreenPoint | null,
+): boolean {
+  if (
+    !origin ||
+    !current ||
+    !Number.isFinite(origin.screenX) ||
+    !Number.isFinite(origin.screenY) ||
+    !Number.isFinite(current.screenX) ||
+    !Number.isFinite(current.screenY)
+  ) {
+    return false;
+  }
+  const deltaX = current.screenX - origin.screenX;
+  const deltaY = current.screenY - origin.screenY;
+  return (
+    deltaX * deltaX + deltaY * deltaY >=
+    tabDetachIntentDistancePx * tabDetachIntentDistancePx
+  );
+}
 
 export function normalizeTabDropPointerY(
   pointerY: number,

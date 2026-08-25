@@ -100,6 +100,7 @@ export function createFirefoxTabsBridge({
     typeof dragCoordinator.inspect !== "function" ||
     typeof dragCoordinator.resolve !== "function" ||
     typeof dragCoordinator.resolveForEnd !== "function" ||
+    typeof dragCoordinator.snapshot !== "function" ||
     typeof isTabDetachAllowed !== "function" ||
     typeof onError !== "function"
   ) {
@@ -772,6 +773,11 @@ export function createFirefoxTabsBridge({
     beginDrag(tabId: string): string {
       const tab = requireOwnedTab(tabId);
       try {
+        const activeDrag = dragCoordinator.snapshot();
+        if (activeDrag.active && activeDrag.sourceContextId === contextId) {
+          // A new owned dragstart proves the prior same-window gesture ended.
+          dragCoordinator.cancelContext(contextId);
+        }
         return dragCoordinator.begin({
           isActive() {
             if (disposed || !nativeWindow) {
