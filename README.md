@@ -17,6 +17,9 @@ floating edge panels that stay hidden until you need them.
 > break the shell. If you confirm install on a newer version, there is **no
 > promise** that everything will work. Use a dedicated Firefox profile, and
 > keep the downloaded release archive so you can disable or remove it later.
+> Fennevia follows the current stock Firefox **Release** channel. It does not
+> plan to maintain compatibility with every historical Firefox version, and it
+> does not target ESR, Beta, or Nightly.
 
 ## What Fennevia changes
 
@@ -39,34 +42,65 @@ use the keyboard, to reveal:
   result list comes from Firefox's own enabled Urlbar providers and search
   suggestions; Fennevia does not add a search engine or suggestion service.
 
-Every edge layout can contain nested Row and Column widgets plus one-child
-Center, Expanded, and Padding wrappers, so feature areas adapt to horizontal or
-vertical placement. Ordinary children keep their natural size and start order;
-Expanded is the explicit way to consume remaining space. Compatible controls—including the
-window buttons—can appear in multiple positions when the opt-in duplicate
-setting is enabled; stateful Tabs, Bookmarks, Downloads status, address
-launcher, private indicator, and Customize remain singletons. Row, Column,
-Center, Expanded, Padding, Separator, Space, and Flexible space are always repeatable. At least one
-Customize widget must remain on an enabled panel, and Top cannot be disabled.
-Preference-enabled empty optional panels stay out of the way during ordinary
-browsing but reappear as labelled drop/add targets while customizing.
-Panels can use one of four bounded reveal/clearance policies: single or
-multiple visible edges, each with dynamic visible-neighbor clearance or stable
-reserved edge lanes. Existing profiles keep multiple/dynamic behavior. Single
-modes still let a newly opened tab reveal Tabs briefly, while open
-Firefox-owned popups remain authoritative. Tabs, Bookmarks, and Downloads use
-one bounded axis-aware feature box; horizontal Tabs keeps its summary and New
-Tab action intrinsic while its tab partitions shrink and scroll.
+## Make the browser yours
 
-Each panel itself supplies a fixed base flow—Top/Bottom use Row and Left/Right
-use Column—so users do not need a giant removable outer container. Palette
-Rows and Columns are only nested groups. Empty panels keep their full drop area
-but show a compact centered prompt.
+Full customization is one of Fennevia's main product features—not just a list
+of buttons you can reorder. Nearly every visible part is a widget: navigation,
+the address launcher, Tabs, Bookmarks, download status, Firefox tools,
+extension buttons, the private indicator, window controls, and more. Drag them
+between Top, Left, Right, and Bottom to build the browser layout that fits you.
 
-Fresh profiles and Reset layout use this deterministic Fennevia composition.
-Profile-specific Firefox built-ins, extensions, spaces, and flexible spaces
-remain available in the palette but are not copied into the default tree.
-Valid saved layouts remain untouched.
+- **Compose real layouts.** Nest Row and Column groups, center a control, add
+  padding or separators, and use Expanded or Flexible space only where you
+  want the remaining room to go. Children otherwise stay naturally sized and
+  ordered from the start.
+- **Turn major features.** Tabs, Bookmarks, Downloads, and the address launcher
+  adapt to horizontal or vertical placement. For example, keep vertical Tabs
+  on the left, or build a horizontal tab strip in Top or Bottom.
+- **Reuse the controls that make sense.** With multiple placement enabled, safe
+  controls such as window buttons can appear in both Top and Left. Structural
+  Row, Column, Center, Expanded, Padding, Separator, Space, and Flexible space
+  widgets are always repeatable. Stateful feature areas remain singletons.
+- **Choose useful variants.** The address launcher can include the Trust/site
+  status action, and Tabs can include New Tab directly after the final tab.
+- **Shape how panels meet.** Choose one or several panels at once, then use
+  dynamic dodge or stable reserved lanes. Left, Right, and Bottom can be
+  disabled independently; Top always remains available.
+
+That makes layouts such as “Bookmarks use the remaining right-panel height,
+with a one-row download status underneath” possible: place both in a Column,
+wrap Bookmarks with Expanded, and leave the download row naturally sized. You
+can also repeat window controls on Top and Left while keeping the address bar
+wide only on Top.
+
+Customize mode keeps even an empty enabled panel visible as a full drop target,
+shows the exact insertion preview while you drag, and outlines every editable
+widget. Selecting a widget opens one floating settings panel at a time, so
+move, remove, wrapper, and style controls do not cover the layout with toolbars.
+**Clean all panels** asks for confirmation, restores adopted Firefox widgets,
+and leaves the required Customize button in Top; **Reset layout** restores the
+new Fennevia default. At least one Customize widget must remain on an enabled
+panel, and valid saved layouts are never silently replaced.
+
+## A guarded bridge to Firefox
+
+Fennevia's interface does not let every widget reach directly into privileged
+Firefox internals. A small, safety-oriented Firefox API bridge is the single
+route between the Svelte UI and Firefox. It checks that required capabilities
+exist, validates values crossing the boundary, and gives widgets bounded
+snapshots plus narrow actions instead of native Firefox objects.
+
+Firefox therefore remains the real owner of tabs, bookmarks, downloads,
+security prompts, permissions, certificates, extension installation, native
+menus, and window commands. Fennevia does not replace those security-sensitive
+flows. If startup or a required feature fails, the project removes its owned
+surface and returns to the retained native Firefox interface. The installed
+runtime loads no remote scripts, analytics, or telemetry.
+
+This design reduces the amount of privileged code each feature can touch and
+makes failures easier to contain and clean up. It is still experimental code
+using unsupported Firefox internals—not a sandbox or a completed independent
+security audit.
 
 Right-click works across all four edge panels. It offers a useful action for
 that edge plus available Fennevia/Firefox customization and original-toolbar
@@ -103,9 +137,9 @@ fallback; this is an accepted safety behavior rather than a custom prompt.
 ## Current release
 
 The current public prerelease is
-[`v0.15.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.15.0-beta.1).
+[`v0.16.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.16.0-beta.1).
 It follows
-[`v0.14.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.14.0-beta.1).
+[`v0.15.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.15.0-beta.1).
 Its tested environment is intentionally narrow:
 
 | Requirement      | Tested value                                         |
@@ -113,7 +147,7 @@ Its tested environment is intentionally narrow:
 | Operating system | Windows x64                                          |
 | Firefox          | Stock Firefox 153.0.4 and 154.0, release channel     |
 | Firefox Build ID | `20260810162159` (153.0.4), `20260812182057` (154.0) |
-| Package          | `fennevia-0.15.0-beta.1-windows.zip`                 |
+| Package          | `fennevia-0.16.0-beta.1-windows.zip`                 |
 
 Install, update, repair, and re-enable reject Firefox older than 153. Firefox
 153, 154, and newer majors may be installed after the installer warning: only
@@ -121,6 +155,12 @@ Install, update, repair, and re-enable reject Firefox older than 153. Firefox
 install does not promise that everything will work. Disable and uninstall
 remain available for recovery. Linux, macOS, Firefox ESR, Beta, and Nightly
 are not supported by this release.
+
+Fennevia is developed against the latest stock Firefox stable release available
+at implementation time. The 153/154 rows above are evidence for this package,
+not a promise to keep every old release working indefinitely. A future Firefox
+stable update may require a new Fennevia build; unsupported channels and old
+compatibility branches are intentionally outside the product scope.
 
 Installing the prebuilt release does **not** require Node.js, npm, or building
 Firefox from source.
@@ -142,8 +182,8 @@ prompts, a placeable
 Firefox built-in translation widget, and the `FenneviaSetup.exe` Windows setup
 wizard.
 
-The current source adds ADR-074's recursive everything-is-a-widget editor on
-top of that released baseline: nested Row/Column layouts, Flutter-style
+This release adds ADR-074 through ADR-077's recursive everything-is-a-widget
+editor: nested Row/Column layouts, Flutter-style
 natural-size children, Center/Expanded/Padding wrappers, axis-aware primary
 features, opt-in compatible duplicates, independent Left/Right/Bottom panel
 switches, a movable Downloads-status widget, and an always-reachable Customize
@@ -178,7 +218,7 @@ pending.
 
 The last recorded automated Firefox 154 lifecycle, recovery,
 performance-control, deterministic archive, and extracted-package installer
-matrix is the `0.12.0-beta.1` candidate; this `0.15.0-beta.1` package does not
+matrix is the `0.12.0-beta.1` candidate; this `0.16.0-beta.1` package does not
 re-run that matrix. The remaining real-Firefox visual, assistive-technology,
 account/device, popup-placement, customize, first-paint, complete GUI installer,
 and representative Urlbar-provider rows are still pending. The main remaining
@@ -209,14 +249,14 @@ the wizard.
 
 Download both files from the same GitHub Release:
 
-- `fennevia-0.15.0-beta.1-windows.zip`
-- `fennevia-0.15.0-beta.1-windows.zip.sha256`
+- `fennevia-0.16.0-beta.1-windows.zip`
+- `fennevia-0.16.0-beta.1-windows.zip.sha256`
 
 Before extracting the ZIP, run this in PowerShell from the download directory:
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.15.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.15.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.16.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.16.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 

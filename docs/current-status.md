@@ -1,10 +1,8 @@
 # Current Project Status
 
-> Snapshot: 2026-08-25. This status review is based on `main` through commit
-> `beb61d9`, the committed ADR-074 baseline `8cd3f3d`, plus the ADR-075 and
-> ADR-076 source implementations and the
-> `0.15.0-beta.1` version identity, alongside the public `v0.15.0-beta.1`
-> prerelease. ADR-074 is source-only and is not claimed as part of that release.
+> Snapshot: 2026-08-25. This status review includes ADR-074 through ADR-077 and
+> the `0.16.0-beta.1` version identity, alongside the public
+> `v0.16.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
@@ -15,15 +13,15 @@ and testing documents retain the complete engineering contract.
 
 | Area                            | Current state                                                                                                                                                                                                                                                                                          |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Public release                  | `v0.15.0-beta.1`, Windows x64 prerelease                                                                                                                                                                                                                                                               |
+| Public release                  | `v0.16.0-beta.1`, Windows x64 prerelease                                                                                                                                                                                                                                                               |
 | Tested Firefox                  | Stock Firefox 153.0.4 BuildID `20260810162159` and 154.0 BuildID `20260812182057`, release channel                                                                                                                                                                                                     |
 | Installer compatibility gate    | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested                                                                                                                                                                                                                           |
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
-| Post-MVP shell work             | Included in `v0.15.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, and ADR-073 pinned-tab partitioning                                                          |
+| Post-MVP shell work             | Included in `v0.16.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, ADR-073 pinned-tab partitioning, and ADR-074 through ADR-077's composable widget system         |
 | Latest released follow-up       | ADR-072 corrects drop placement and enlarges owned edge targets; ADR-073 separates bounded pinned and regular scrolling; the side-panel layout fix keeps rows visible and New Tab after the last row                                                                                                   |
-| Latest source-only follow-up    | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; the adaptive-popup fix supplies final edge direction before first paint; real Firefox validation is pending |
+| Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; real Firefox validation is pending |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending                                                                              |
-| Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.15.0-beta.1` package does not re-run that matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending                                                |
+| Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.16.0-beta.1` package does not re-run that complete matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending                                       |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                                                                                                                                                                        |
 
 ## Implemented product surface
@@ -245,10 +243,11 @@ accepted production artifacts. The fixed suite also passed under Windows
 PowerShell 5.1. The later browser-tools responsibility split passed its final
 gate with 374/374 Node tests and unchanged public behavior. The side-panel
 layout correction then passed `npm run verify` and a Firefox 154 headless layout
-probe. These are pre-release-commit results from the included changes; the
-`0.15.0-beta.1` identity bump itself does not re-run them.
+probe. These are pre-release-commit results from the included changes. The
+`0.16.0-beta.1` release retains those results without relabelling them as a
+complete current package matrix.
 
-The current source-only ADR-074 implementation passed the complete
+The ADR-074 implementation passed the complete
 `npm run verify` gate on 2026-08-25 with 395/395 Node tests, 87.92% line
 coverage, 80.29% branch coverage, 95.37% function coverage, every fixed
 PowerShell 7 suite, dependency audit, deterministic frontend/bridge rebuilds,
@@ -256,7 +255,7 @@ and 14/14 accepted production artifacts. This is ordinary automated evidence;
 the ADR-074 real-Firefox visual, input, accessibility, multi-window, private-
 window, caption, popup, and recovery rows remain `not run`.
 
-The current ADR-075 source passed the complete `npm run verify` gate on
+The ADR-075 implementation passed the complete `npm run verify` gate on
 2026-08-25 with 406/406 Node tests, 88.19% line coverage, 80.52% branch
 coverage, 95.47% function coverage, every fixed PowerShell 7 suite, dependency
 audit, deterministic frontend/bridge rebuilds, and 14/14 accepted production
@@ -264,7 +263,7 @@ artifacts. Its drag-preview, palette, selection, per-instance style, native
 Trust/New Tab placement, accessibility, and multi-window real-Firefox rows
 remain `not run`.
 
-The current ADR-076 source passed the complete `npm run verify` gate on
+The ADR-076 implementation passed the complete `npm run verify` gate on
 2026-08-25 with 411/411 Node tests, 88.22% line coverage, 80.56% branch
 coverage, 95.48% function coverage, every fixed PowerShell 7 suite, dependency
 audit, deterministic frontend/bridge rebuilds, and 14/14 accepted production
@@ -274,6 +273,16 @@ paints persistent customize boundaries without changing widget measurements.
 Its positioning, zoom, focus, accessibility, multi-window, and private-window
 real-Firefox rows remain `not run`.
 
+ADR-077 and the `0.16.0-beta.1` release preparation passed `npm run verify` on
+2026-08-25 with 420/420 Node tests, 88.36% line coverage, 80.78% branch
+coverage, 95.61% function coverage, every fixed PowerShell 7 suite, dependency
+audit, deterministic frontend/bridge rebuilds, and 14/14 accepted production
+artifacts. The complete fixed-list suite also passed under Windows PowerShell
+5.1, including deterministic release packaging, registered-profile release
+install, compatibility warning, survivor recovery/uninstall, repair, tamper,
+and release-workflow checks. ADR-077's real-Firefox panel-mode, layout, popup,
+accessibility, multi-window, private-window, and recovery rows remain `not run`.
+
 The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
 the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and
 failure-injection wrappers, SessionStore rehearsal, Urlbar provider/production
@@ -282,7 +291,7 @@ control, deterministic dual-archive preflight, Unicode-path extraction, and the
 extracted package's update/disable/recovery/uninstall/stock-start/install
 lifecycle. See
 [`docs/research/firefox-154-0.12.0-beta.1-release-validation.md`](research/firefox-154-0.12.0-beta.1-release-validation.md).
-This `0.15.0-beta.1` package does not re-run that matrix and does not convert
+This `0.16.0-beta.1` package does not re-run that matrix and does not convert
 the pending real-Firefox rows below into observed evidence.
 
 That automated evidence does **not** complete every real-browser claim. The
@@ -353,7 +362,7 @@ following remain explicitly pending in the current plans and testing document:
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.
 
-Accordingly, `v0.15.0-beta.1` should be described as an implemented experimental
+Accordingly, `v0.16.0-beta.1` should be described as an implemented experimental
 prerelease with validation debt, not as a stable product. The largest remaining
 risk is Firefox-internal compatibility and real-environment coverage rather
 than absence of the core shell.
@@ -364,6 +373,9 @@ than absence of the core shell.
 - Only stock Firefox release 153.0.4 and 154.0 have recorded tested evidence.
   Newer Firefox may be installed after a no-promise warning and may break the
   shell.
+- The project follows the latest stock Firefox stable release available during
+  implementation. It does not promise to preserve compatibility with every
+  historical Firefox version or maintain old-version branches.
 - Firefox ESR, Beta, and Nightly are outside the current release claim.
 - There is no automatic updater, code signing, build attestation, completed
   SBOM publication contract, or completed independent security audit.

@@ -10,6 +10,7 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 > [!WARNING]
 > Fennevia 是公開的**預發行版本**，不是穩定的日常使用產品。它會執行高權限程式碼，並依賴 Firefox 不保證穩定的內部介面。目前只在 Firefox **153** 與 **154** 上測試過。較新的 Firefox 可能會讓介面故障。若你在較新版本上確認安裝，**不保證**所有功能都能正常運作。請使用專用 Firefox 設定檔，並保留下載的發行壓縮檔，以便之後停用或移除。
+> Fennevia 跟隨目前最新的原版 Firefox **Release** channel；不打算長期維護所有歷史 Firefox 版本，也不以 ESR、Beta 或 Nightly 為目標。
 
 ## Fennevia 會改變甚麼
 
@@ -21,7 +22,27 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 - **下方：**基底橫列預設把匿名下載進度及狀態置中；下載狀態可移到其他面板，下方面板也可獨立停用。
 - **中央：**從網址啟動器或按 <kbd>Ctrl</kbd>+<kbd>L</kbd> 開啟的網址／搜尋彈出面板。無障礙結果清單直接使用 Firefox 已啟用的 Urlbar 供應器與搜尋建議；Fennevia 不會另建搜尋引擎或建議服務。
 
-四個面板本身都有不可移除的基底排列：上、下為橫列，左、右為直欄。元件庫中的橫列／直欄可建立巢狀群組，Center、Expanded 與 Padding 可包住一個子元件；一般子元件維持自然尺寸及起始順序，只有 Expanded 或彈性空間會取得剩餘空間。新版預設不再複製目前 Firefox 工具列裡因設定檔而異的擴充套件、空白與彈性空間；這些項目仍可從元件庫加入。有效的既有自訂版面不會被自動覆寫，「重設版面」才會套用新版預設。
+## 打造自己的瀏覽器版面
+
+完整自訂系統是 Fennevia 的主要產品特色之一，不只是重新排列幾個按鈕。幾乎所有看得到的部分都是 widget：導覽控制、網址啟動器、分頁、書籤、下載狀態、Firefox 工具、擴充套件按鈕、隱私瀏覽指示、視窗控制等等。你可以把它們拖到上、左、右、下四個面板，組成真正適合自己的瀏覽器。
+
+- **組合真正的版面。** 巢狀 Row／Column 可以建立群組；Center、Padding、分隔線可調整結構；只有 Expanded 或彈性空間會取得剩餘空間，其他子項目會維持自然尺寸並由起點依序排列。
+- **轉換主要功能方向。** 分頁、書籤、下載及網址啟動器會適應水平或垂直位置。你可以把垂直分頁放在左側，也可以在上方或下方建立水平分頁列。
+- **在合理的地方重複控制項。** 開啟多重放置後，視窗按鈕等安全控制項可以同時出現在上方與左方。Row、Column、Center、Expanded、Padding、分隔線、空白及彈性空間永遠可以重複；有狀態的主要功能則維持單一實例。
+- **選擇實用樣式。** 網址啟動器可以直接包含 Trust／網站狀態按鈕；分頁列可以在最後一個分頁後直接包含「新增分頁」。
+- **決定面板如何互相避讓。** 可選擇同時只顯示一個或允許多個面板，再搭配動態避讓或固定保留邊緣空間。左、右、下可分別停用；上方面板永遠保留。
+
+例如，要讓書籤佔滿右側剩餘高度、下載狀態只佔底下一列，可以把兩者放入 Column，只用 Expanded 包住書籤，下載列就會維持自然高度。也可以讓視窗控制同時出現在上方與左方，而寬版網址列只留在上方。
+
+自訂模式會讓空白但已啟用的面板保持為完整放置目標；拖曳時顯示精確插入預覽，並標示每個可編輯 widget。選取 widget 時只會開啟一個浮動設定面板，移動、移除、wrapper 與樣式控制不會堆滿畫面。「清空所有面板」會先要求確認、把採用的 Firefox widget 放回原處，並在上方保留必要的自訂按鈕；「重設版面」則還原新版 Fennevia 預設。至少一個已啟用面板必須保留自訂按鈕，有效的既有版面不會被默默覆寫。
+
+## 受防護的 Firefox API 橋接層
+
+Fennevia 不會讓每個 widget 直接存取 Firefox 的高權限內部物件。小型、安全導向的 Firefox API bridge 是 Svelte 介面與 Firefox 之間唯一的通道：它會確認必要能力存在、驗證跨越邊界的值，並只提供有界狀態快照與範圍明確的動作，而不是把原生 Firefox 物件交給 widget。
+
+因此，分頁、書籤、下載、安全提示、權限、憑證、擴充套件安裝、原生選單與視窗指令的真正擁有者仍是 Firefox；Fennevia 不會取代這些安全敏感流程。啟動或必要功能失敗時，專案會移除自己建立的介面並回復保留的 Firefox 原生介面。安裝後的 runtime 不會載入遠端指令碼、分析服務或遙測。
+
+這種設計會減少每項功能能接觸的高權限範圍，也讓失敗更容易被限制及清理；但 Fennevia 仍是使用 Firefox 不保證穩定之內部介面的實驗性程式，這不是 sandbox，也不代表已完成獨立安全稽核。
 
 書籤列中鍵會在新分頁開啟網站。分頁拖曳時，實際分頁列會在原本的 tab bar 內跟著游標移動，相鄰分頁則讓出預計落點；清單頂端、底端與「新增分頁」區域提供較大的落點。進入另一個相同視窗類型的 Fennevia 視窗時，目標分頁列會立即顯示並保持開啟；可插入指定位置，放到該 Firefox 視窗的瀏覽內容區則附加到列尾，放到 Firefox 以外則交由 Firefox 分離成視窗。目標列會用實際版面預留新分頁位置，少量分頁時不會因拖曳位移誤顯捲軸；拖曳沿用 Firefox 的一般游標。拖曳資料不含文字或網址格式，視窗事件與來源分頁狀態同步會在所有結束路徑釋放分頁面板的顯示 hold。
 
@@ -31,16 +52,18 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 ## 目前版本
 
-目前公開預發行版本是 [`v0.15.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.15.0-beta.1)，接續 [`v0.14.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.14.0-beta.1)。測試範圍刻意限制得很窄：
+目前公開預發行版本是 [`v0.16.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.16.0-beta.1)，接續 [`v0.15.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.15.0-beta.1)。測試範圍刻意限制得很窄：
 
 | 要求             | 已測試值                                               |
 | ---------------- | ------------------------------------------------------ |
 | 作業系統         | Windows x64                                            |
 | Firefox          | 原版 Firefox 153.0.4 與 154.0，Release channel         |
 | Firefox Build ID | `20260810162159`（153.0.4）、`20260812182057`（154.0） |
-| 套件             | `fennevia-0.15.0-beta.1-windows.zip`                   |
+| 套件             | `fennevia-0.16.0-beta.1-windows.zip`                   |
 
 Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用。153、154 以及更新的主版本可在安裝程式警告後安裝：目前只測試過 153 與 154，較新版本可能故障，確認安裝並不保證一切都能運作。Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta 及 Nightly。
+
+Fennevia 會以開發當下最新的原版 Firefox stable release 為主要目標。上方的 153／154 是此套件的實際驗證證據，不代表專案承諾永遠維持每個舊版相容。未來 Firefox stable 更新可能需要新版 Fennevia；不支援的 channel 與歷史相容分支刻意不在產品範圍內。
 
 安裝預先建置的發行版**不需要** Node.js、npm，也不需要自行編譯 Firefox。
 
@@ -50,7 +73,7 @@ Fennevia 已經超越首個四邊介面 MVP。目前預發行版亦包括 Fennev
 
 目前預發行版亦會把 Firefox 自己每個視窗的 Urlbar provider manager 所產生、經限制的結果投影到中央 combobox。搜尋引擎、供應器選擇、排序、搜尋建議／私密視窗政策及結果執行仍由 Firefox 負責。一般結果會交回 Firefox 的 `pickResult`；豐富或未知結果則開啟完整原生網址列。這項工作已有針對性測試，以及 Firefox 154 的供應器合約、正式面板、故障注入與發行候選探針；具代表性的供應器矩陣仍未完成。
 
-最近一次記錄的 Firefox 154 自動化生命週期、回復、效能對照、可重現封裝及解壓包安裝生命週期，仍是 `0.12.0-beta.1` 候選版；此 `0.15.0-beta.1` 套件沒有重跑該矩陣。完整的 Firefox 實機視覺、輔助科技、帳號／裝置、原生彈出面板定位、自訂模式、啟動首幀、GUI 安裝流程及具代表性的 Urlbar 供應器測試矩陣仍未完成。因此目前主要欠缺的是相容性與發行驗證，而不是核心瀏覽器介面功能。詳情請參閱[目前專案狀態（英文）](docs/current-status.md)，當中整理了已完成能力、證據邊界、已知風險及建議優先次序。
+最近一次記錄的 Firefox 154 自動化生命週期、回復、效能對照、可重現封裝及解壓包安裝生命週期，仍是 `0.12.0-beta.1` 候選版；此 `0.16.0-beta.1` 套件沒有重跑完整矩陣。完整的 Firefox 實機視覺、輔助科技、帳號／裝置、原生彈出面板定位、自訂模式、啟動首幀、GUI 安裝流程及具代表性的 Urlbar 供應器測試矩陣仍未完成。因此目前主要欠缺的是相容性與發行驗證，而不是核心瀏覽器介面功能。詳情請參閱[目前專案狀態（英文）](docs/current-status.md)，當中整理了已完成能力、證據邊界、已知風險及建議優先次序。
 
 ## 安裝
 
@@ -68,14 +91,14 @@ Fennevia 已經超越首個四邊介面 MVP。目前預發行版亦包括 Fennev
 
 從同一個 GitHub Release 下載：
 
-- `fennevia-0.15.0-beta.1-windows.zip`
-- `fennevia-0.15.0-beta.1-windows.zip.sha256`
+- `fennevia-0.16.0-beta.1-windows.zip`
+- `fennevia-0.16.0-beta.1-windows.zip.sha256`
 
 解壓縮前，在下載目錄開啟 PowerShell 並執行：
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.15.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.15.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.16.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.16.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 

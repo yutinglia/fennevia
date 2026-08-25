@@ -8,7 +8,7 @@ short reviewed progress snapshot, see [Current project status](current-status.md
 ## Current engineering status
 
 As of 2026-08-25, Fennevia has a published Windows x64 prerelease,
-`v0.15.0-beta.1`, tested on stock Firefox 153.0.4 release, Build ID
+`v0.16.0-beta.1`, tested on stock Firefox 153.0.4 release, Build ID
 `20260810162159`, with owner-confirmed ordinary runtime on Firefox 154.0
 Build ID `20260812182057`. The installer accepts Firefox 153 and newer after
 an explicit warning that later versions may break with no working promise;
@@ -49,7 +49,7 @@ per-instance styles, and ADR-076's session-wide floating inspector have focused
 automated coverage. Their
 changed real-Firefox
 visual and interaction matrices remain pending and are not part of a completed
-real-Firefox validation claim for `v0.15.0-beta.1`.
+real-Firefox validation claim for `v0.16.0-beta.1`.
 
 [Issue #1](https://github.com/yutinglia/fennevia/issues/1) recorded the first
 real stock-stable transition to Firefox 154.0 Build ID `20260812182057` on
