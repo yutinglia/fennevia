@@ -13,7 +13,6 @@ export type SurfaceFocusCoordinator = Readonly<{
   activeElementFor: (edge: EdgeName) => FocusableElement | null;
   clear: () => void;
   discardFocusOrigin: (edge: EdgeName) => void;
-  focusCustomizeToggle: () => void;
   focusSurface: (edge: EdgeName, selectText?: boolean) => boolean;
   onFrameFocusIn: (event: FocusEvent) => void;
   restoreFocus: (edge: EdgeName) => void;
@@ -53,13 +52,6 @@ export function createSurfaceFocusCoordinator({
 
     discardFocusOrigin(edge: EdgeName): void {
       focusOrigins.delete(edge);
-    },
-
-    focusCustomizeToggle(): void {
-      const toggle = targets.top.querySelector<FocusableElement>(
-        'button[data-fennevia-action="customize-shell"]',
-      );
-      toggle?.focus({ preventScroll: true });
     },
 
     focusSurface(edge: EdgeName, selectText = false): boolean {

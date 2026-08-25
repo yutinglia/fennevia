@@ -19,9 +19,23 @@ import {
   readHostViewportRect,
   readPanelMultiViewOwner,
   readWindowScreenOrigin,
+  readWindowViewportSize,
   type NativePanel,
   type NativeRecord,
 } from "./support.ts";
+import {
+  resolveBestAdjacentPopupPoint,
+  type PopupPlacementDirection,
+} from "./popup-geometry.ts";
+
+const EDGE_POPUP_PLACEMENTS = Object.freeze([
+  Object.freeze(["top", "down", "after_start", "after_end"]),
+  Object.freeze(["left", "right", "end_before", "end_after"]),
+  Object.freeze(["right", "left", "start_before", "start_after"]),
+  Object.freeze(["bottom", "up", "before_start", "before_end"]),
+] as const satisfies ReadonlyArray<
+  readonly [string, PopupPlacementDirection, string, string]
+>);
 
 export type BrowserToolsPanelPlacement = Readonly<{
   findOpenPanel: (panelIds: readonly string[]) => NativePanel | null;
@@ -59,6 +73,68 @@ export function createBrowserToolsPanelPlacement({
   boundary: FirefoxBridgeBoundary;
   requireWindow: () => NativeRecord;
 }>): BrowserToolsPanelPlacement {
+  const resolveHostEdgePlacement = (
+    host: NativeRecord,
+  ): (typeof EDGE_POPUP_PLACEMENTS)[number] | null => {
+    const closest = host.closest;
+    if (!isFunction(closest)) {
+      return null;
+    }
+    for (const placement of EDGE_POPUP_PLACEMENTS) {
+      const [edge] = placement;
+      try {
+        if (
+          Reflect.apply(closest, host, [`[data-fennevia-edge="${edge}"]`]) !=
+          null
+        ) {
+          return placement;
+        }
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const resolveHostDirection = (host: NativeRecord): PopupPlacementDirection =>
+    resolveHostEdgePlacement(host)?.[1] ?? "auto";
+
+  const resolveHostPosition = (
+    host: NativeRecord,
+    fallback: string,
+  ): string => {
+    const closest = host.closest;
+    if (isFunction(closest)) {
+      try {
+        if (
+          Reflect.apply(closest, host, ["[data-fennevia-address-popup]"]) !=
+          null
+        ) {
+          return "after_end";
+        }
+      } catch {
+        return fallback;
+      }
+    }
+    const edgePlacement = resolveHostEdgePlacement(host);
+    if (!edgePlacement) {
+      return fallback;
+    }
+    const hostRect = readHostViewportRect(host);
+    const viewport = readWindowViewportSize(requireWindow());
+    if (!hostRect || !viewport) {
+      return edgePlacement[2];
+    }
+    const horizontalEdge =
+      edgePlacement[0] === "top" || edgePlacement[0] === "bottom";
+    const hostCenter = horizontalEdge
+      ? hostRect.x + hostRect.width / 2
+      : hostRect.y + hostRect.height / 2;
+    const viewportCenter =
+      (horizontalEdge ? viewport.width : viewport.height) / 2;
+    return hostCenter <= viewportCenter ? edgePlacement[2] : edgePlacement[3];
+  };
+
   const findOpenPanel = (panelIds: readonly string[]): NativePanel | null => {
     const ownerWindow = requireWindow();
     for (const panelId of panelIds) {
@@ -128,36 +204,47 @@ export function createBrowserToolsPanelPlacement({
     position: string,
     symbol: string,
   ): void => {
-    if (isScreenPlacedPopupPosition(position)) {
-      const viewport = readHostViewportRect(host);
-      const screenOrigin = readWindowScreenOrigin(requireWindow());
-      const moveTo = panel.moveTo;
-      if (viewport && isFunction(moveTo)) {
-        try {
-          let x = screenOrigin.x + viewport.x;
-          const y = screenOrigin.y + viewport.y + viewport.height;
-          const getOuterScreenRect = panel.getOuterScreenRect;
-          if (isFunction(getOuterScreenRect)) {
-            const outer = Reflect.apply(getOuterScreenRect, panel, []);
-            if (isNativeRecord(outer)) {
-              const width = readFiniteNumber(outer.width);
-              if (width !== undefined) {
-                x =
-                  screenOrigin.x +
-                  viewport.x +
-                  viewport.width -
-                  Math.round(width);
-              }
-            }
-          }
-          Reflect.apply(moveTo, panel, [x, y]);
-          return;
-        } catch {
-          // Fall through to moveToAnchor.
+    const ownerWindow = requireWindow();
+    const viewport = readHostViewportRect(host);
+    const windowViewport = readWindowViewportSize(ownerWindow);
+    const screenOrigin = readWindowScreenOrigin(ownerWindow);
+    const moveTo = panel.moveTo;
+    const getOuterScreenRect = panel.getOuterScreenRect;
+    if (
+      viewport &&
+      windowViewport &&
+      isFunction(moveTo) &&
+      isFunction(getOuterScreenRect)
+    ) {
+      try {
+        const outer = Reflect.apply(getOuterScreenRect, panel, []);
+        if (!isNativeRecord(outer)) {
+          throw new TypeError("native popup outer rectangle unavailable");
         }
+        const width = readFiniteNumber(outer.width);
+        const height = readFiniteNumber(outer.height);
+        if (width === undefined || height === undefined) {
+          throw new TypeError("native popup dimensions unavailable");
+        }
+        const point = resolveBestAdjacentPopupPoint({
+          direction: resolveHostDirection(host),
+          hostRect: viewport,
+          popupSize: { height, width },
+          viewportSize: windowViewport,
+        });
+        if (!point) {
+          throw new TypeError("native popup geometry invalid");
+        }
+        Reflect.apply(moveTo, panel, [
+          screenOrigin.x + point.x,
+          screenOrigin.y + point.y,
+        ]);
+        return;
+      } catch {
+        // Fall through to Firefox's anchor placement.
       }
     }
-    moveToAnchor(panel, host, position, symbol);
+    moveToAnchor(panel, host, resolveHostPosition(host, position), symbol);
   };
 
   const hideOtherPanels = (keepIds: ReadonlySet<string>): void => {
@@ -177,25 +264,7 @@ export function createBrowserToolsPanelPlacement({
     host: NativeRecord,
     action: PopupBrowserToolAction,
   ): string => {
-    const closest = host.closest;
-    if (isFunction(closest)) {
-      try {
-        if (
-          Reflect.apply(closest, host, ["[data-fennevia-address-popup]"]) !=
-          null
-        ) {
-          return "after_end";
-        }
-        if (
-          Reflect.apply(closest, host, ['[data-fennevia-edge="left"]']) != null
-        ) {
-          return "end_before";
-        }
-      } catch {
-        // Fall through to the action default.
-      }
-    }
-    return popupPositionByAction[action];
+    return resolveHostPosition(host, popupPositionByAction[action]);
   };
 
   const resolveActionPanel = (
@@ -449,7 +518,15 @@ export function createBrowserToolsPanelPlacement({
         ? panel.id
         : popupPanelByAction[action][0];
     if (isPanelOpen(panel)) {
-      moveToAnchor(panel, host, position, `document.${panelId}.moveToAnchor`);
+      if (panel.anchorNode === host) {
+        return panel;
+      }
+      placePanelBesideHost(
+        panel,
+        host,
+        position,
+        `document.${panelId}.moveToAnchor`,
+      );
       return panel;
     }
     await openPanelOnHost(panel, host, position, `document.${panelId}`);

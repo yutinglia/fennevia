@@ -907,15 +907,24 @@ ADR-037 and ADR-042 add focused unit/static/build coverage for:
   `#downloadsPanel` `openPopup`; Unified Extensions toggle plus re-anchor; and
   application-menu `ensureReady` plus `PanelMultiView.openPopup` (screen-rect
   routed through `panel.openPopup` after `#showMainView`), ignored `popuphidden`
-  during that open, then `PanelUI.show()` and `popupshown` `moveTo`;
+  during that open, then last-resort `PanelUI.show()` and measured placement;
 - Firefox `FullPageTranslationsPanel.open(event)` delegation, exact trigger
   event preservation, lazy panel creation after the owner has already returned,
   and host routing held through the actual
   `#full-page-translations-panel` `popupshown`; missing owner disables only
   Translate;
-- host-surface popup positions (`after_end` in the address overlay,
-  `end_before` on the left rail, otherwise the action default) and preferred
-  `PanelMultiView.openPopup` when present;
+- pre-open host-surface positions (`after_start`/`after_end` on Top,
+  `before_start`/`before_end` on Bottom, `end_before`/`end_after` on Left,
+  `start_before`/`start_after` on Right, address overlay `after_end`, otherwise
+  the action default), selected from the host's client half;
+- final host/direction passed directly through `PanelMultiView.openPopup` for
+  application menu and Trust, restoration of the Trust route, and no
+  post-`popupshown` movement when Firefox accepted the project host;
+- measured compatibility placement for owner-rejected anchors, with finite
+  restored-window origin/client measurements, preferred/opposite fit
+  selection, larger-space selection when neither fits, exact opening-axis
+  adjacency with permitted client overflow, and malformed-geometry
+  directional `moveToAnchor` fallback;
 - NativeUi token-listed and Fennevia-anchored panels that do not set
   `data-fennevia-native-ui-revealed`; ADR-056 supersedes the older blanket
   toolbox-doorhanger reveal behavior for non-security popups, while ADR-057
@@ -966,6 +975,11 @@ and active downloads. The complete checklist is in
 `docs/research/firefox-153-gutter-progress-lights.md`. The drag-release
 correction and exact Firefox 153/154 Windows event source are recorded in
 `docs/research/firefox-153-154-side-panel-window-drag-release.md`.
+The later adaptive-popup correction adds pre-open direction/alignment,
+no-second-move, restored-window, all-edge, all-action, oversized-adjacency, and
+directional-fallback automation; its real Firefox/subview matrix remains `not
+run` in
+`docs/research/firefox-154-adaptive-application-menu-placement.md`.
 
 ### 6.8 Nav-bar widget mirror — focused automation complete, real Firefox pending
 
@@ -1163,6 +1177,10 @@ ADR-045 adds focused unit/static/build coverage for:
   search over localized labels, closed All/Fennevia/Firefox/Layout filters,
   result/destination feedback, no-result state, click/Enter/Space addition,
   and layout-node removal by dropping back on the palette;
+- customize-session close through the close button, `Escape`, and environment
+  change reaches one shared Top-surface dismissal path, restores or blurs the
+  prior project focus without refocusing Customize, clears the focus hold, and
+  does not require a later selected-content click before auto-hide;
 - ADR-075 per-instance styles: a closed widget/style registry, additive old-v2
   defaults, canonical omission of explicit defaults, invalid/incompatible
   style rejection, revision-guarded `set-node-style`, ordinary effective-style
@@ -1188,6 +1206,13 @@ audit, deterministic frontend/bridge output, and 14/14 accepted production
 artifacts. That gate includes the dismissal focus-loop and persistent
 paint-only boundary follow-up. No real-Firefox result is inferred from those
 checks.
+
+The current adaptive-native-popup and customize-close follow-up source passed
+the complete `npm run verify` gate on 2026-08-25 with 416/416 Node tests, 88.29%
+line coverage, 80.67% branch coverage, 95.51% function coverage, every fixed
+PowerShell 7 suite, dependency audit, deterministic frontend/bridge output, and
+14/14 accepted production artifacts. No real-Firefox result is inferred from
+those checks.
 
 The following are `not run`, not passed: live Fennevia customize drawer against
 a collapsed navbar; recursive Row/Column creation, nesting, orientation,

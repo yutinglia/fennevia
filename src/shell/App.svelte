@@ -9,7 +9,6 @@
   import type { BrowserDownloadsStateAdapter } from "../app/download-state";
   import {
     edgeKeyboardBindings,
-    edgeNames,
     type EdgeName,
     type EdgeShellController,
     type EdgeSurfaceController,
@@ -148,25 +147,6 @@
     onStart: () => props.shell.setWindowDragActive(true, props.edge),
   });
 
-  const customizeToggle = (): HTMLButtonElement | null =>
-    props.frame.querySelector<HTMLButtonElement>(
-      'button[data-fennevia-action="customize-shell"]',
-    );
-
-  const revealCustomizeToggle = (): void => {
-    const toggle = customizeToggle();
-    const edge = toggle
-      ?.closest<HTMLElement>("[data-fennevia-surface-root]")
-      ?.getAttribute("data-fennevia-edge");
-    if (
-      !edgeNames.includes(edge as EdgeName) ||
-      !props.shell.snapshot().surfaces[edge as EdgeName].enabled
-    ) {
-      return;
-    }
-    props.shell.revealProgrammatically(edge as EdgeName);
-  };
-
   let surfaceLabel = $derived(t(edgeUi.labelKey(props.edge, sidePanelRole)));
 
   $effect(() => {
@@ -228,21 +208,22 @@
         return;
       }
       if (!snapshot.open && wasOpen) {
-        revealCustomizeToggle();
+        props.onDismiss(props.edge);
+        return;
+      }
+      if (!snapshot.open || wasOpen) {
+        return;
       }
       void tick()
         .then(() => {
-          if (snapshot.open && !wasOpen) {
-            rootElement
-              ?.querySelector<HTMLButtonElement>(
-                "button[data-fennevia-customize-close]",
-              )
-              ?.focus();
+          if (!customizeOpen) {
             return;
           }
-          if (!snapshot.open && wasOpen) {
-            customizeToggle()?.focus();
-          }
+          rootElement
+            ?.querySelector<HTMLButtonElement>(
+              "button[data-fennevia-customize-close]",
+            )
+            ?.focus();
         })
         .catch(props.onFatalError);
     });

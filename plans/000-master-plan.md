@@ -142,7 +142,10 @@ ADR-047, and ADR-054 through ADR-072:
   native customization and original-toolbar remain bridge actions, not fixed
   top-row buttons;
 - popup-opening handoffs re-anchor Firefox-owned panels beside the clicked
-  Fennevia host without revealing native chrome;
+  Fennevia host without revealing native chrome; one shared pre-open resolver
+  gives every Fennevia popup a content-facing direction and client-half
+  alignment without a second visible move, with measured correction retained
+  only for owner-rejected anchors;
 - useful bounded context actions on all four project-owned panels, with the
   translated Firefox tab menu retained on tab rows, bounded bookmark/folder
   actions plus native Library access on bookmark rows, and a spatial tab drag
@@ -720,8 +723,11 @@ always-repeatable structural primitives, independent Left/Right/Bottom enable
 state, enabled empty-edge drop targets while editing, a confirmed Clean-all
 operation that preserves one Top Customize instance, and ordinary-mode window
 dragging from empty project chrome. Shared drag lifecycle cleanup prevents
-stale target outlines. Node boundaries, structure labels, and edit controls
-appear only on deepest hover or direct keyboard focus. The native-v2 default is
+stale target outlines. Closing the shared customize session restores or blurs
+the active Top-surface focus through the existing dismiss path and never
+re-reveals or refocuses Customize, so auto-hide does not wait for a content
+click. Node boundaries, structure labels, and edit controls appear only on
+deepest hover or direct keyboard focus. The native-v2 default is
 explicit rather than a live nav-bar mirror: Top owns the expanded address
 composition, the configured side roots own expanded Tabs/Bookmarks, and Bottom
 centers Downloads status. Plan and checklist:

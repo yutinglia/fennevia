@@ -1441,13 +1441,25 @@ feature-gate. Downloads call `DownloadsPanel.initialize()` then open
 null while the navbar is collapsed. Application menu uses `PanelUI.ensureReady`
 then `#appMenu-popup` using Firefox's `bottomcenter topright` placement through
 `PanelMultiView.openPopup` (so `#showMainView` fills `openViews` before
-`popupshown`). If HTML anchoring fails, that call routes `panel.openPopup` to
+`popupshown`). Before any of the seven Fennevia popup actions open, one shared
+resolver selects Top-down, Bottom-up, Left-right, or Right-left plus start/end
+alignment from the host's half of the owning client area. That final position
+is passed directly to the Firefox owner. Trust's `PanelMultiView.openPopup`
+call is temporarily routed to the same host/position, as Translation already
+is, then restored. `popupshown` does no movement when `anchorNode` is already
+the requested host. Only an owner-rejected/replaced anchor uses measured
+post-open placement: it flips when only the opposite side fits, otherwise
+chooses the side with more client-space and remains adjacent even if the panel
+overflows the client window. Missing geometry uses a shared directional
+`moveToAnchor` fallback. If HTML anchoring fails, the
+same `PanelMultiView.openPopup` call routes `panel.openPopup` to
 `openPopupAtScreenRect` for the duration of the open, then restores Firefox's
 method. Do not open a `panelmultiview` panel with a raw `openPopupAtScreenRect`;
 Firefox 153 throws `panelView is undefined` on `isOpenIn`. Failed opens
-that fire `popuphidden` without showing the panel keep the NativeUi token.
-If that still leaves the panel closed, `PanelUI.show()` with the NativeUi handoff token
-already set and `moveTo` the host screen rectangle on `popupshown`. Unified Extensions
+that fire `popuphidden` without showing the panel keep the NativeUi token. If
+that still leaves the panel closed, `PanelUI.show()` runs with the NativeUi
+handoff token already set and receives the same adaptive placement on
+`popupshown`. Unified Extensions
 awaits `gUnifiedExtensions.togglePanel()` so the lazy view can initialize, but while
 that call runs the bridge no-ops `PanelMultiView.openPopup` for
 `#unified-extensions-panel`. `togglePanel` fire-and-forgets an open on

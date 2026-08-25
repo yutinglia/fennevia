@@ -175,13 +175,8 @@ export function mountShellApp({
   });
 
   const surfaceFocus = createSurfaceFocusCoordinator({ frame, targets });
-  const {
-    activeElementFor,
-    discardFocusOrigin,
-    focusCustomizeToggle,
-    focusSurface,
-    restoreFocus,
-  } = surfaceFocus;
+  const { activeElementFor, discardFocusOrigin, focusSurface, restoreFocus } =
+    surfaceFocus;
 
   const releaseSurfaceFocusIfActive = (edge: EdgeName): void => {
     if (activeElementFor(edge)) {
@@ -280,7 +275,6 @@ export function mountShellApp({
         event.preventDefault();
         event.stopPropagation();
         closeCustomizeSession();
-        focusCustomizeToggle();
         return;
       }
 

@@ -171,6 +171,25 @@ export const readWindowScreenOrigin = (
   return Object.freeze({ x: Math.round(x), y: Math.round(y) });
 };
 
+export const readWindowViewportSize = (
+  window: NativeRecord,
+): Readonly<{ height: number; width: number }> | null => {
+  const width = readFiniteNumber(window.innerWidth);
+  const height = readFiniteNumber(window.innerHeight);
+  if (
+    width === undefined ||
+    height === undefined ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    return null;
+  }
+  return Object.freeze({
+    height: Math.max(1, Math.round(height)),
+    width: Math.max(1, Math.round(width)),
+  });
+};
+
 export const getDocumentElementById = (
   window: NativeRecord,
   id: string,

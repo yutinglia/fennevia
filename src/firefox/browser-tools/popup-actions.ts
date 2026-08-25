@@ -69,6 +69,38 @@ export function createBrowserToolsPopupActionInvoker({
         "window.gTrustPanelHandler.showPopup",
       );
     }
+    const panelMultiView = readPanelMultiViewOwner(ownerWindow);
+    const originalOpenPopup = panelMultiView?.openPopup;
+    const routedPanelIds = new Set(popupPanelByAction[action]);
+    let routedOpenPopup:
+      ((candidatePanel: unknown, ...rest: unknown[]) => unknown) | null = null;
+    if (panelMultiView && isFunction(originalOpenPopup)) {
+      routedOpenPopup = (candidatePanel, ...rest) => {
+        if (
+          isNativeRecord(candidatePanel) &&
+          typeof candidatePanel.id === "string" &&
+          routedPanelIds.has(candidatePanel.id)
+        ) {
+          const options = isNativeRecord(rest[1])
+            ? Object.freeze({ ...rest[1], position: handoff.position })
+            : Object.freeze({ position: handoff.position });
+          return Reflect.apply(originalOpenPopup, panelMultiView, [
+            candidatePanel,
+            handoff.host,
+            options,
+          ]);
+        }
+        return Reflect.apply(originalOpenPopup, panelMultiView, [
+          candidatePanel,
+          ...rest,
+        ]);
+      };
+      try {
+        panelMultiView.openPopup = routedOpenPopup;
+      } catch {
+        routedOpenPopup = null;
+      }
+    }
     try {
       await invokeMethod(
         ownerWindow.gTrustPanelHandler,
@@ -78,10 +110,23 @@ export function createBrowserToolsPopupActionInvoker({
     } catch {
       // #anchor() uses checkVisibility() on collapsed navbar nodes, so
       // showPopup can throw after initializing the lazy panel.
+    } finally {
+      if (
+        panelMultiView &&
+        originalOpenPopup &&
+        routedOpenPopup &&
+        panelMultiView.openPopup === routedOpenPopup
+      ) {
+        try {
+          panelMultiView.openPopup = originalOpenPopup;
+        } catch {
+          // A host-open fallback still reuses the initialized native panel.
+        }
+      }
     }
     const opened = panelPlacement.findOpenPanel(popupPanelByAction[action]);
-    if (opened) {
-      panelPlacement.moveToAnchor(
+    if (opened && opened.anchorNode !== handoff.host) {
+      panelPlacement.placePanelBesideHost(
         opened,
         handoff.host,
         handoff.position,
@@ -143,8 +188,8 @@ export function createBrowserToolsPopupActionInvoker({
       // The lazy permission template may still need a host-anchored open.
     }
     const opened = panelPlacement.findOpenPanel(["permission-popup"]);
-    if (opened) {
-      panelPlacement.moveToAnchor(
+    if (opened && opened.anchorNode !== handoff.host) {
+      panelPlacement.placePanelBesideHost(
         opened,
         handoff.host,
         handoff.position,

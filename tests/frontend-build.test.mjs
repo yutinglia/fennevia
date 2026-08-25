@@ -395,8 +395,13 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(component, /data-fennevia-enabled=\{surfaceState\.enabled\}/u);
   assert.match(
     component,
-    /const revealCustomizeToggle[\s\S]*?closest<HTMLElement>\("\[data-fennevia-surface-root\]"\)[\s\S]*?shell\.revealProgrammatically\(edge as EdgeName\)/u,
+    /if \(!snapshot\.open && wasOpen\) \{\s*props\.onDismiss\(props\.edge\);\s*return;/u,
   );
+  assert.doesNotMatch(
+    component,
+    /revealCustomizeToggle|customizeToggle\(\)\?\.focus/u,
+  );
+  assert.doesNotMatch(mountShell, /focusCustomizeToggle/u);
   assert.match(
     toolbarWidgets,
     /<ToolbarWidgetGlyph widget=\{props\.widget\} \/>/u,

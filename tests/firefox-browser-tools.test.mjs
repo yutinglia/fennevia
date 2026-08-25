@@ -227,17 +227,23 @@ function createNativeWindow() {
 
   return {
     addHost(options = {}) {
+      const rect = options.rect ?? {
+        height: 32,
+        width: 32,
+        x: 12,
+        y: 24,
+      };
       const host = {
         getBoundingClientRect() {
           return {
-            bottom: 56,
-            height: 32,
-            left: 12,
-            right: 44,
-            top: 24,
-            width: 32,
-            x: 12,
-            y: 24,
+            bottom: rect.y + rect.height,
+            height: rect.height,
+            left: rect.x,
+            right: rect.x + rect.width,
+            top: rect.y,
+            width: rect.width,
+            x: rect.x,
+            y: rect.y,
           };
         },
         ownerDocument: document,
@@ -245,9 +251,11 @@ function createNativeWindow() {
       if (options.surface === "address-popup") {
         host.closest = (selector) =>
           selector === "[data-fennevia-address-popup]" ? host : null;
-      } else if (options.surface === "left") {
+      } else if (typeof options.surface === "string") {
         host.closest = (selector) =>
-          selector === '[data-fennevia-edge="left"]' ? host : null;
+          selector === `[data-fennevia-edge="${options.surface}"]`
+            ? host
+            : null;
       }
       frameHosts.add(host);
       return host;
@@ -333,7 +341,7 @@ test("popup actions open Firefox panels beside the project host without toolbar 
     revealCount += 1;
     return true;
   });
-  const host = native.addHost();
+  const host = native.addHost({ surface: "top" });
   const events = [];
   const unsubscribe = pair.controller.browserTools.subscribe((event) => {
     events.push(event);
@@ -397,7 +405,7 @@ test("popup actions open Firefox panels beside the project host without toolbar 
           call[0] === "openPopup" &&
           call[1] === "appMenu-popup" &&
           call[2] === host &&
-          call[3] === "bottomcenter topright",
+          call[3] === "after_start",
       ),
     );
     assert.equal(
@@ -571,15 +579,35 @@ test("permission panel still opens on the host when owner openPopup throws", asy
   }
 });
 
-test("popup position follows the host surface and action default without closest", async () => {
+test("popup fallback positions follow every host edge and action defaults", async () => {
   const native = createNativeWindow();
+  native.window.innerHeight = 700;
+  native.window.innerWidth = 1_000;
   const pair = createController(native);
-  const leftHost = native.addHost({ surface: "left" });
+  const topHost = native.addHost({
+    rect: { height: 32, width: 32, x: 100, y: 20 },
+    surface: "top",
+  });
+  const leftHost = native.addHost({
+    rect: { height: 32, width: 32, x: 10, y: 100 },
+    surface: "left",
+  });
+  const rightHost = native.addHost({
+    rect: { height: 32, width: 32, x: 958, y: 600 },
+    surface: "right",
+  });
+  const bottomHost = native.addHost({
+    rect: { height: 32, width: 32, x: 800, y: 650 },
+    surface: "bottom",
+  });
   const addressHost = native.addHost({ surface: "address-popup" });
   const defaultHost = native.addHost();
   try {
     await pair.controller.browserTools.invoke("site-information", leftHost);
     await pair.controller.browserTools.invoke("site-information", addressHost);
+    await pair.controller.browserTools.invoke("downloads", topHost);
+    await pair.controller.browserTools.invoke("downloads", rightHost);
+    await pair.controller.browserTools.invoke("downloads", bottomHost);
     await pair.controller.browserTools.invoke("downloads", defaultHost);
     assert.ok(
       native.calls.some(
@@ -603,6 +631,33 @@ test("popup position follows the host surface and action default without closest
       native.calls.some(
         (call) =>
           call[0] === "openPopup" &&
+          call[1] === "downloadsPanel" &&
+          call[2] === topHost &&
+          call[3] === "after_start",
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "moveToAnchor" &&
+          call[1] === "downloadsPanel" &&
+          call[2] === rightHost &&
+          call[3] === "start_after",
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "moveToAnchor" &&
+          call[1] === "downloadsPanel" &&
+          call[2] === bottomHost &&
+          call[3] === "before_end",
+      ),
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "moveToAnchor" &&
           call[1] === "downloadsPanel" &&
           call[2] === defaultHost &&
           call[3] === "after_start",
@@ -853,6 +908,82 @@ test("PanelMultiView.openPopup is preferred when present and unused handoff toke
   }
 });
 
+test("application menu and Trust open through PanelMultiView in the final host direction", async () => {
+  const native = createNativeWindow();
+  native.window.innerHeight = 700;
+  native.window.innerWidth = 1_000;
+  const nativeTrustButton = native.targets.get("trust-icon-container");
+  const originalOpenPopup = async (panel, anchor, options) => {
+    native.calls.push([
+      "PanelMultiView.openPopup",
+      panel.id,
+      anchor,
+      options?.position,
+    ]);
+    panel.openPopup(anchor, options?.position);
+  };
+  native.window.PanelMultiView = { openPopup: originalOpenPopup };
+  native.window.gTrustPanelHandler.showPopup = async function showPopup() {
+    native.calls.push([
+      "method",
+      "gTrustPanelHandler.showPopup",
+      this === native.window.gTrustPanelHandler,
+    ]);
+    await native.window.PanelMultiView.openPopup(
+      native.targets.get("trustpanel-popup"),
+      nativeTrustButton,
+      { position: "bottomright topright" },
+    );
+  };
+  const pair = createController(native);
+  const host = native.addHost({
+    rect: { height: 32, width: 32, x: 120, y: 20 },
+    surface: "top",
+  });
+  try {
+    assert.equal(
+      await pair.controller.browserTools.invoke("site-information", host),
+      true,
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "PanelMultiView.openPopup" &&
+          call[1] === "trustpanel-popup" &&
+          call[2] === host &&
+          call[3] === "after_start",
+      ),
+    );
+    assert.equal(native.targets.get("trustpanel-popup").anchorNode, host);
+    assert.equal(native.window.PanelMultiView.openPopup, originalOpenPopup);
+
+    assert.equal(
+      await pair.controller.browserTools.invoke("application-menu", host),
+      true,
+    );
+    assert.ok(
+      native.calls.some(
+        (call) =>
+          call[0] === "PanelMultiView.openPopup" &&
+          call[1] === "appMenu-popup" &&
+          call[2] === host &&
+          call[3] === "after_start",
+      ),
+    );
+    assert.equal(native.targets.get("appMenu-popup").anchorNode, host);
+    assert.equal(
+      native.calls.filter(
+        (call) =>
+          call[0] === "moveToAnchor" &&
+          (call[1] === "trustpanel-popup" || call[1] === "appMenu-popup"),
+      ).length,
+      0,
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
 test("application menu opens at the host screen rectangle when element anchoring fails", async () => {
   const native = createNativeWindow();
   native.window.mozInnerScreenX = 10;
@@ -905,10 +1036,85 @@ test("application menu opens at the host screen rectangle when element anchoring
   }
 });
 
+test("application menu opens in its final edge-facing direction without a post-show move", async () => {
+  const native = createNativeWindow();
+  native.window.innerHeight = 700;
+  native.window.innerWidth = 1_000;
+  native.window.mozInnerScreenX = 650;
+  native.window.mozInnerScreenY = 40;
+  const panel = native.targets.get("appMenu-popup");
+  panel.getOuterScreenRect = () => ({ height: 900, width: 490 });
+  panel.moveTo = function moveTo(x, y) {
+    native.calls.push(["moveTo", this.id, x, y]);
+  };
+  const pair = createController(native);
+  const cases = [
+    {
+      expectedPosition: "after_start",
+      rect: { height: 32, width: 32, x: 120, y: 20 },
+      surface: "top",
+    },
+    {
+      expectedPosition: "end_before",
+      rect: { height: 32, width: 32, x: 10, y: 20 },
+      surface: "left",
+    },
+    {
+      expectedPosition: "start_after",
+      rect: { height: 32, width: 32, x: 958, y: 600 },
+      surface: "right",
+    },
+    {
+      expectedPosition: "before_end",
+      rect: { height: 32, width: 32, x: 800, y: 650 },
+      surface: "bottom",
+    },
+  ];
+  try {
+    for (const fixture of cases) {
+      const host = native.addHost(fixture);
+      const moveCount = native.calls.filter(
+        (call) => call[0] === "moveTo",
+      ).length;
+      assert.equal(
+        await pair.controller.browserTools.invoke("application-menu", host),
+        true,
+      );
+      assert.ok(
+        native.calls.some(
+          (call) =>
+            call[0] === "openPopup" &&
+            call[1] === "appMenu-popup" &&
+            call[2] === host &&
+            call[3] === fixture.expectedPosition,
+        ),
+      );
+      assert.equal(panel.anchorNode, host);
+      assert.equal(
+        native.calls.filter((call) => call[0] === "moveTo").length,
+        moveCount,
+        "the already-correct native anchor is not moved after popupshown",
+      );
+      panel.hidePopup();
+    }
+  } finally {
+    disposePair(pair);
+  }
+});
+
 test("application menu falls back to PanelUI.show and re-anchors the host", async () => {
   const native = createNativeWindow();
-  native.targets.get("appMenu-popup").openPopup = () => {
+  native.window.innerHeight = 700;
+  native.window.innerWidth = 1_000;
+  native.window.mozInnerScreenX = 650;
+  native.window.mozInnerScreenY = 40;
+  const panel = native.targets.get("appMenu-popup");
+  panel.openPopup = () => {
     throw new Error("host-anchored appMenu-popup openPopup failed");
+  };
+  panel.getOuterScreenRect = () => ({ height: 600, width: 490 });
+  panel.moveTo = function moveTo(x, y) {
+    native.calls.push(["moveTo", this.id, x, y]);
   };
   native.window.PanelUI.show = function show() {
     native.calls.push([
@@ -929,7 +1135,10 @@ test("application menu falls back to PanelUI.show and re-anchors the host", asyn
     ]);
   };
   const pair = createController(native);
-  const host = native.addHost();
+  const host = native.addHost({
+    rect: { height: 32, width: 32, x: 120, y: 20 },
+    surface: "top",
+  });
   try {
     assert.equal(
       await pair.controller.browserTools.invoke("application-menu", host),
@@ -954,10 +1163,10 @@ test("application menu falls back to PanelUI.show and re-anchors the host", asyn
     assert.ok(
       native.calls.some(
         (call) =>
-          call[0] === "moveToAnchor" &&
+          call[0] === "moveTo" &&
           call[1] === "appMenu-popup" &&
-          call[2] === host &&
-          call[3] === "bottomcenter topright",
+          call[2] === 770 &&
+          call[3] === 92,
       ),
     );
     assert.equal(native.targets.get("appMenu-popup").state, "open");

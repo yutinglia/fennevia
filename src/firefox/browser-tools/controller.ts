@@ -415,7 +415,11 @@ export function createFirefoxBrowserToolsBridge({
           endHandoff(id);
         }
       }
-      if (pendingHandoff && isPanelElement(popup)) {
+      if (
+        pendingHandoff &&
+        isPanelElement(popup) &&
+        popup.anchorNode !== pendingHandoff.host
+      ) {
         try {
           panelPlacement.placePanelBesideHost(
             popup,

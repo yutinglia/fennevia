@@ -40,9 +40,14 @@ Validated baseline as of 2026-08-25:
 
 ADR-037's single-line toolbar/caption/gutter enhancement, ADR-042's
 host-anchored Firefox panel placement, and ADR-043's decorative gutter
-progress lights have focused automated evidence; the real Firefox popup-
-placement and live light-painting matrices remain pending and are not included
-in the earlier validated baseline.
+progress lights have focused automated evidence. The 2026-08-25 adaptive-popup
+correction keeps every native panel Firefox-owned while one shared handoff
+chooses the content-facing direction and client-half alignment before opening.
+Correctly anchored panels receive no second move; measured correction remains
+only for native-owner fallback and preserves adjacency even when the panel must
+overflow the Firefox client area. The real Firefox popup-placement and live
+light-painting matrices remain pending and are not included in the earlier
+validated baseline.
 
 ADR-064 adds the owner-requested complete tabs/bookmarks side-role swap, bottom
 panel enablement, independent loading/download/off top and bottom gutter-light
@@ -1015,6 +1020,12 @@ the existing Trust/native-popup owner. Tabs supports `tabs-only` and
 from serialized v2 state, old v2 data remains valid, standalone Trust/New Tab
 remain, and invalid/incompatible/stale edits fail closed. This is not arbitrary
 CSS or a new feature owner.
+
+The close button, `Escape`, and environment-driven close all converge through
+the session observer and shared Top-surface dismiss path. That path restores a
+valid focus origin or blurs the closing control, clears the edge holds, and does
+not reveal or focus Customize again; therefore Top auto-hide does not depend on
+a subsequent content click and an already-focused native dialog is preserved.
 
 Gate: focused model/controller/palette/drag/frontend tests, lint, typecheck, and
 the ordinary `npm run verify` gate; real Firefox projected-drop, autoscroll,

@@ -21,7 +21,7 @@ and testing documents retain the complete engineering contract.
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
 | Post-MVP shell work             | Included in `v0.15.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, and ADR-073 pinned-tab partitioning                                                          |
 | Latest released follow-up       | ADR-072 corrects drop placement and enlarges owned edge targets; ADR-073 separates bounded pinned and regular scrolling; the side-panel layout fix keeps rows visible and New Tab after the last row                                                                                                   |
-| Latest source-only follow-up    | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves all selected-node controls into one obstacle-aware floating inspector above the customize surfaces; real Firefox validation is pending |
+| Latest source-only follow-up    | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; the adaptive-popup fix supplies final edge direction before first paint; real Firefox validation is pending |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending                                                                              |
 | Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.15.0-beta.1` package does not re-run that matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending                                                |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                                                                                                                                                                        |
@@ -72,7 +72,11 @@ and testing documents retain the complete engineering contract.
   suggestion endpoint.
 - Default-Top navigation, page status, Firefox tool handoffs, native-panel
   anchoring, packaged Firefox icons including the Settings gear, and project-
-  owned window controls, all projected as placeable widgets. Top and Bottom
+  owned window controls, all projected as placeable widgets. The 2026-08-25
+  adaptive-popup follow-up resolves each edge-facing direction and client-half
+  alignment before Firefox opens all seven widget panels; accepted project
+  anchors receive no second visible move, while owner-rejected anchors retain
+  one measured compatibility fallback. Top and Bottom
   retain independently configurable loading/download/off gutter indicators,
   and Firefox's native corner status keeps its compact active-only capsule.
 - Generic relationship-based anchoring for non-security Firefox-owned XUL
@@ -143,6 +147,10 @@ and testing documents retain the complete engineering contract.
 - The widget palette has localized search, All/Fennevia/Firefox/Layout filters,
   result count, selected destination feedback, and both click/keyboard and
   precise drag placement.
+- Closing customize mode through its button, `Escape`, or an environment change
+  uses the shared surface dismiss/focus-origin path. It does not reveal or
+  refocus Customize afterward, so the Top focus hold clears without requiring a
+  click in web content and an already-focused native dialog is not displaced.
 - Eligible placed widgets have bounded per-instance variants rather than
   arbitrary CSS: Address can be address-only or include the existing native-
   owner Trust action in one capsule; Tabs can be tabs-only or include the

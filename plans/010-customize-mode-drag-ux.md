@@ -177,6 +177,21 @@ not change.
 - [x] Cover schema defaults/rejection, edit validation, rendering hooks,
       localization, and generated artifact output in tests and documentation.
 
+### H. Customize-close focus release follow-up
+
+- [x] Restore the prior valid focus outside the surface, or blur the closing
+      editor control when no origin remains, so an edge focus hold cannot
+      survive customize mode.
+- [x] Dismiss the top surface after releasing the all-edge customize popup
+      holds; do not reveal or refocus the Customize widget.
+- [x] Apply the same close behavior to the close button, `Escape`, and any
+      environment-driven session close through the shared session observer.
+- [x] Add source-contract coverage for the final focus and dismiss sequence and
+      removal of the obsolete refocus route.
+- [x] Rebuild generated artifacts and rerun the ordinary automated gate.
+- [x] Record real-Firefox visual/focus verification as `not run` unless it is
+      actually performed.
+
 ## 5. Out of scope
 
 - Persisting editor selection, palette filters, drag geometry, or open tabs.

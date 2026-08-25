@@ -498,19 +498,29 @@ contract or the single generated private ESM. ADR-042/ADR-057's seven popup
 actions pass a project-owned XHTML host, keep native chrome hidden, and
 re-anchor the Firefox panel beside that host. If the
 current owner throws after initializing a lazy panel, the bridge still
-opens the existing panel on that host. Popup position follows the host
-surface: address overlay `after_end`, left rail `end_before`, otherwise
-the action default. Application menu awaits `PanelUI.ensureReady()`, then
-opens `#appMenu-popup` with Firefox's `bottomcenter topright` placement
-through `PanelMultiView.openPopup` so the main view exists before
-`popupshown`. If HTML anchoring fails, that call routes `panel.openPopup` to
+opens the existing panel on that host. Initial popup position follows the host
+surface through one shared table: address overlay `after_end`, Top
+`after_start`/`after_end`, Bottom `before_start`/`before_end`, Left
+`end_before`/`end_after`, and Right `start_before`/`start_after`; start/end is
+selected from the host's half of the owning client area. A host without a
+recognized surface keeps the action default. This final direction is supplied
+before Firefox opens the panel. `popupshown` skips all movement when the native
+`anchorNode` is already the requested host. Only an owner-rejected/replaced
+anchor uses measured fit/opposite/larger-space correction; the popup remains
+adjacent on the opening axis and may extend outside the Firefox client rather
+than cover its trigger. Missing geometry uses the directional native fallback.
+Application menu retains its dedicated initialization route. It awaits
+`PanelUI.ensureReady()`, then opens
+`#appMenu-popup` with Firefox's `bottomcenter topright` placement through
+`PanelMultiView.openPopup` so the main view exists before `popupshown`. If HTML anchoring fails,
+the same `PanelMultiView.openPopup` call routes `panel.openPopup` to
 `openPopupAtScreenRect` for the duration of `#showMainView` then restores
 Firefox's method. A raw `openPopupAtScreenRect` is not used: it leaves
 `openViews` empty and Firefox throws `panelView is undefined` on `isOpenIn`.
 Failed opens that fire `popuphidden` without showing the panel keep the
 NativeUi token so `PanelUI.show()` cannot reveal the collapsed navbar. If the
 panel still stays closed, it calls `PanelUI.show()` with the token already set
-and `moveTo`s the host screen rectangle on `popupshown`. Unified Extensions
+and applies the same adaptive host placement on `popupshown`. Unified Extensions
 awaits `gUnifiedExtensions.togglePanel()` to initialize the lazy view, ignores
 that owner's fire-and-forget native-button `PanelMultiView.openPopup`, then
 opens `#unified-extensions-panel` on the project host. The top-row Extensions
@@ -518,6 +528,9 @@ control uses `mousedown` like the native button; keyboard still uses `click`.
 ADR-057's translation action calls `FullPageTranslationsPanel.open(event)` and
 routes only that owner's `PanelMultiView.openPopup` to the exact clicked host;
 missing translation support disables only the optional widget.
+Trust and protections apply the same narrowly scoped pre-open route to their
+allowlisted panel IDs so the owner can update native content without first
+painting against its collapsed toolbar anchor.
 The dedicated
 original-toolbar, Downloads, and native-customize buttons are not shown;
 Downloads and translation are available as the placeable `show-downloads` and
@@ -690,6 +703,16 @@ effective allowlisted id, and `set-node-style` remains revision guarded.
 Arbitrary CSS, class names, labels, geometry, native ids, and Firefox nodes do
 not enter this field. See ADR-075 and
 `plans/010-customize-mode-drag-ux.md`.
+
+When the customize session changes from open to closed, the Top app root uses
+the shared surface dismissal path while the closing control still owns focus.
+That path restores a recorded valid origin outside the project frame, or blurs
+the closing control when no origin remains, then clears the Top surface's
+focus, keyboard, pointer, and programmatic holds. It never reveals or refocuses
+the Customize widget after close. Because the same session observer handles the
+close button, `Escape`, and environment-driven closure, an already-focused
+native dialog remains untouched and the Top surface cannot wait for a later
+content click before hiding.
 
 ## 5. Application and frontend layers
 
