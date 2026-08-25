@@ -77,11 +77,11 @@
 }
 
 #fennevia-shell-frame-host .fennevia-layout-node--container {
-  flex: 1 1 auto;
   align-self: stretch;
 }
 
 #fennevia-shell-frame-host .fennevia-layout-node--base {
+  flex: 1 1 auto;
   border: 0;
   border-radius: 0;
 }

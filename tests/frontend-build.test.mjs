@@ -101,7 +101,15 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
   assert.match(layoutCss, /\.fennevia-layout-node \{[\s\S]*?flex: 0 0 auto;/u);
   assert.match(
     layoutCss,
-    /\.fennevia-layout-node--container \{\s*flex: 1 1 auto;\s*align-self: stretch;/u,
+    /\.fennevia-layout-node--container \{\s*align-self: stretch;\s*\}/u,
+  );
+  assert.doesNotMatch(
+    layoutCss,
+    /\.fennevia-layout-node--container \{[^}]*\bflex:/u,
+  );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-node--base \{\s*flex: 1 1 auto;\s*border: 0;/u,
   );
   assert.match(
     layoutCss,

@@ -539,6 +539,10 @@ Progress log:
 - [x] Everything-as-widget UI complete.
 - [x] Nested editor and orientation complete.
 - [x] Documentation and ordinary verification gate complete.
+- [x] 2026-08-25: correct the initial nested-container sizing regression so
+      ordinary Row/Column nodes retain natural parent-axis size, compatibility
+      base flows still fill their panels, and only Expanded explicitly claims
+      remaining space; add a focused CSS regression assertion.
 - [ ] Real-Firefox/manual visual matrix complete; currently recorded `not run`.
 
 ## 7. Explicit non-goals
