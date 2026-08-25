@@ -407,3 +407,82 @@ data flow, or native-panel ownership described above.
       conditional second row. The wider provider/account-dependent rows in
       section 6.3 remain release-recorded as `not run` where they could not be
       reproduced safely.
+
+## 10. Search-first address-popup simplification (2026-08-26)
+
+This follow-up supersedes only the visual composition in section 9.1. The
+Firefox bridge, provider/ranking behavior, result execution, security state,
+permission state, native-panel ownership, and complete native-Urlbar handoff
+remain unchanged.
+
+### 10.1 Layout and interaction checklist
+
+- [x] Keep one compact Fennevia identity row, with the wordmark visible in both
+      ordinary and private windows.
+- [x] Make the input and bounded suggestion list the primary visual hierarchy;
+      retain the real input label for assistive technology without repeating it
+      as visible instruction text.
+- [x] Remove the decorative Enter glyph and visually hide routine idle/result
+      status copy while keeping one polite live region. Loading, empty, failed,
+      validation, and submission states remain visible.
+- [x] Render suggestion source as subdued metadata and reserve bordered badges
+      for meaningful best-match or native-handoff states.
+- [x] Replace the separate Trust card, permission card, and explanatory footer
+      with one ordered three-control utility strip: Site trust, Site
+      permissions, and Open Firefox address bar.
+- [x] Preserve full Trust/permission state in accessible names and titles;
+      render active-sharing or blocked-permission indicators only when present.
+- [x] Remove non-actionable Firefox Urlbar capability badges, including the
+      bookmark-page badge. The complete native-Urlbar button remains the access
+      path for bookmark, zoom, translation, extension, and other native actions.
+- [x] Stack the utility controls at narrow breakpoints without reducing the
+      shared 32px minimum native-access target or forced-colors support.
+
+### 10.2 Verification checklist
+
+- [x] Format the changed source and run the focused address-popup plus i18n
+      tests: 6/6 pass; Svelte/TypeScript reports zero diagnostics.
+- [x] Run the ordinary `npm run verify` gate and inspect generated artifacts:
+      424/424 Node tests, 88.44% line coverage, 80.87% branch coverage, 95.62%
+      function coverage, every fixed PowerShell 7 suite, dependency audit,
+      deterministic builds, and 14/14 accepted production artifacts pass. The
+      generated shell and manifest contain the compact utility strip and omit
+      the removed capability-badge markup and copy.
+- [x] Run the Windows PowerShell 5.1 fixed-list static suite; all listed suites
+      pass.
+- [ ] Run the updated Firefox 154 production-panel layout probe. Until then,
+      current real-Firefox geometry is `not run`; section 9.2 retains only
+      historical evidence for the superseded two-row composition.
+
+## 11. First-open zero-prefix recovery (2026-08-26)
+
+This follow-up implements ADR-079 without changing ADR-061's provider,
+ranking, result, execution, privacy, or native-handoff ownership.
+
+### 11.1 Behavior checklist
+
+- [x] Treat only the first eligible completed empty-string query as a possible
+      Firefox Top Sites warm-up result.
+- [x] Repeat that query once through the existing native input/context builder
+      and shared provider manager without publishing an intermediate empty
+      state.
+- [x] Keep non-empty text, search-mode follow-up, query replacement, close,
+      cancellation, native handoff, failure, and disposal on their existing
+      single-query paths.
+- [x] Settle a genuinely empty retry as empty; never recurse or add a timer,
+      startup query, observer, provider, engine, endpoint, or persisted state.
+- [x] Retain exact controller restoration, context cancellation, opaque result
+      tokens, and value-free diagnostics on both attempts.
+
+### 11.2 Verification checklist
+
+- [x] Add focused first-empty/second-result and bounded genuine-empty tests;
+      the bridge plus popup suite passes 21/21, with zero focused lint errors
+      and zero Svelte/TypeScript diagnostics.
+- [x] Run the ordinary `npm run verify` gate and inspect regenerated artifacts;
+      the 424/424 result and coverage/build evidence are recorded in section
+      10.2, and the generated bridge contains the bounded retry guard.
+- [x] Run the Windows PowerShell 5.1 fixed-list static suite; all listed suites
+      pass.
+- [ ] Run a fresh Firefox 154 first-open empty-field probe; this remains
+      `not run` and is not inferred from focused fixtures.

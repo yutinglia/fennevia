@@ -7,8 +7,6 @@ export const en = {
   "address.firefoxControls": "Firefox controls",
   "address.loading": "The current page is loading.",
   "address.nativeAccess": "Open Firefox address bar",
-  "address.nativeAccessDescription":
-    "Use Firefox for extension actions and complete address-bar controls.",
   "address.openSitePermissions": "Open Firefox site permissions. {label}",
   "address.openTrust":
     "Open Firefox site trust. Connection: {connection}. Protection: {protection}",
@@ -23,7 +21,6 @@ export const en = {
   "address.title": "Address and search",
   "address.tooLong": "Keep the address or search under {max} characters.",
   "address.unsafeScheme": "Executable address schemes are not opened here.",
-  "address.urlbarItemsAria": "Applicable Firefox address-bar items",
   "suggestions.count": "{count} Firefox suggestions available.",
   "suggestions.empty": "Firefox found no suggestions.",
   "suggestions.failed":
@@ -448,7 +445,6 @@ export const en = {
   "permission.site.labelNone": "No site permission indicator is active",
   "permission.site.labelUnavailable":
     "Site permission information is not available for this page",
-  "permission.statusAria": "Firefox site status",
   "protection.blocking.badge": "ETP",
   "protection.blocking.label":
     "Enhanced Tracking Protection is blocking known trackers",
@@ -500,21 +496,6 @@ export const en = {
   "tab.unpin": "Unpin",
   "tab.unpinTab": "Unpin tab",
   "tab.untitled": "Untitled tab",
-  "urlbar.bookmark": "Bookmark page",
-  "urlbar.container": "Container tab",
-  "urlbar.extension-actions": "Extension page actions",
-  "urlbar.more-page-actions": "More page actions",
-  "urlbar.other-page-actions": "Additional page actions",
-  "urlbar.persisted-search": "Persisted search terms",
-  "urlbar.picture-in-picture": "Picture-in-Picture",
-  "urlbar.reader-view": "Reader View",
-  "urlbar.recommendation": "Firefox recommendation",
-  "urlbar.remote-control": "Browser under remote control",
-  "urlbar.search-mode": "Search mode",
-  "urlbar.split-view": "Split view",
-  "urlbar.taskbar-tabs": "Taskbar tab controls",
-  "urlbar.translations": "Translate page",
-  "urlbar.zoom": "Reset page zoom",
   "widget.dropHere": "Drop widgets here",
   "widget.row": "Row",
   "widget.column": "Column",

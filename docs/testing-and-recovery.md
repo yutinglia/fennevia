@@ -681,7 +681,7 @@ Validate:
 - the short configured-tabs-side launcher shows only committed location plus
   one Firefox-style Trust shield at the leading edge inside the shared address
   frame;
-- the shield and centered popup's one full-width Trust row combine real Firefox
+- the shield and centered popup's compact Trust utility combine real Firefox
   connection/HTTPS and ETP status while keeping both bounded labels in the
   accessible name;
 - clicking the launcher shield or popup Trust/permission row closes the custom
@@ -700,6 +700,9 @@ Validate:
   owner attributes; unknown permissions remain native-only;
 - static, conditional, overflow, extension, unknown native, search-mode,
   persisted-search, and remote-control presence remains fixed and bounded;
+- non-actionable Urlbar capability badges are absent from the custom popup;
+  bookmark, zoom, translation, extension, and other native actions remain
+  available through the complete native-Urlbar handoff;
 - switch-to-tab, extension result labels, providers, suggestions, autofill,
   search one-offs, prompt anchors, and all native panels remain available
   through Firefox rather than a custom replica;
@@ -746,6 +749,9 @@ execution. The focused matrix validates:
 - incremental and empty replacement batches, exact-context cancellation, query
   replacement, late-callback rejection, same-query active-selection retention,
   and deterministic handle/native-input disposal;
+- ADR-079 first-empty/second-result zero-prefix recovery, a maximum of one
+  warm-up retry, genuine empty completion after that retry, and no retry for a
+  replaced or canceled context or non-empty query;
 - current-query opaque action tokens plus malformed, stale, removed,
   foreign-query, and normal/private cross-window rejection;
 - direct `pickResult` execution, search-mode follow-up queries, conservative
@@ -754,6 +760,10 @@ execution. The focused matrix validates:
   Page Up/Down, Enter, pointer hover, left/middle click, one polite status
   output, active-option nearest scrolling, bounded list geometry, forced-colors,
   and responsive rules;
+- a search-first hierarchy with persistent Fennevia identity, no decorative
+  Enter glyph, routine count/idle copy visually hidden but still announced,
+  visible exceptional/loading states, subdued source metadata, and one compact
+  Trust/permission/native-Urlbar utility strip;
 - modified navigation keys do not consume `Shift+Arrow`, `Shift+Home`, or
   `Shift+End` text-selection gestures;
 - ordinary close, tab/environment close, explicit native handoff, failure, and
@@ -774,9 +784,11 @@ The 2026-08-23 release-candidate suggestions rerun additionally observed two
 real Firefox Urlbar coverage items. The optional second footer row was present,
 the primary copy remained 14.85px high, the complete footer remained 69.90px
 high, the native-access target remained 32px, and the trust/permission row
-remained two columns and 48.65px high. The probe accepts no empty second row;
-when real items exist it instead requires that row and the ordinary-width 72px
-footer bound.
+remained two columns and 48.65px high. This is historical evidence for the
+superseded pre-2026-08-26 composition, not validation of current geometry. The
+current probe requires three same-row utility columns at ordinary width, no
+capability-badge row, a compact utility-strip bound, and the retained native
+access target. That updated real-Firefox layout run is **not run**.
 
 The final production-artifact rerun initially exposed a real incremental batch
 race: a later batch for the same query reset the active option after Arrow Down,
@@ -786,7 +798,23 @@ harness resolves the current keyed option. The rebuilt artifact then passed the
 same probe. This is recorded as a found-and-fixed failure, not a retroactive
 first-pass success.
 
-The ordinary gate for this change passed with 316 Node tests, 87.45% line and
+The 2026-08-26 owner report adds a separate first-open zero-prefix case: the
+first panel open completed empty while the second produced Top Sites. ADR-079's
+focused fixture now requires the bridge to suppress that intermediate empty
+state and repeat only the first eligible completed empty-string query once
+through Firefox's existing manager. A second empty result must settle normally.
+The updated real Firefox 154 first-open zero-prefix run is **not run**; see
+`docs/research/firefox-154-first-zero-prefix-urlbar-query.md`.
+
+The combined 2026-08-26 search-first composition and ADR-079 source passed the
+complete `npm run verify` gate with 424/424 Node tests, 88.44% line coverage,
+80.87% branch coverage, 95.62% function coverage, every fixed PowerShell 7
+suite, dependency audit, deterministic frontend/bridge builds, and 14/14
+accepted production artifacts. The fixed-list suite also passed under Windows
+PowerShell 5.1. These checks do not establish current real-Firefox geometry or
+the first-open runtime ordering.
+
+The original ADR-061 ordinary gate passed with 316 Node tests, 87.45% line and
 95.10% function coverage, the fixed PowerShell suites under both PowerShell 7
 and Windows PowerShell 5.1, deterministic builds, dependency audit, and all 14
 production artifacts accepted.

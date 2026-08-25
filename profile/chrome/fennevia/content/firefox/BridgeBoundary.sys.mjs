@@ -2799,7 +2799,6 @@ var ur = Object.freeze({
 		"address.firefoxControls": "Firefox controls",
 		"address.loading": "The current page is loading.",
 		"address.nativeAccess": "Open Firefox address bar",
-		"address.nativeAccessDescription": "Use Firefox for extension actions and complete address-bar controls.",
 		"address.openSitePermissions": "Open Firefox site permissions. {label}",
 		"address.openTrust": "Open Firefox site trust. Connection: {connection}. Protection: {protection}",
 		"address.placeholder": "Search or enter address",
@@ -2812,7 +2811,6 @@ var ur = Object.freeze({
 		"address.title": "Address and search",
 		"address.tooLong": "Keep the address or search under {max} characters.",
 		"address.unsafeScheme": "Executable address schemes are not opened here.",
-		"address.urlbarItemsAria": "Applicable Firefox address-bar items",
 		"suggestions.count": "{count} Firefox suggestions available.",
 		"suggestions.empty": "Firefox found no suggestions.",
 		"suggestions.failed": "Firefox suggestions are unavailable. Enter still opens the typed value.",
@@ -3176,7 +3174,6 @@ var ur = Object.freeze({
 		"permission.site.labelGranted": "Firefox has site-specific permissions for this page",
 		"permission.site.labelNone": "No site permission indicator is active",
 		"permission.site.labelUnavailable": "Site permission information is not available for this page",
-		"permission.statusAria": "Firefox site status",
 		"protection.blocking.badge": "ETP",
 		"protection.blocking.label": "Enhanced Tracking Protection is blocking known trackers",
 		"protection.detected.badge": "ETP",
@@ -3224,21 +3221,6 @@ var ur = Object.freeze({
 		"tab.unpin": "Unpin",
 		"tab.unpinTab": "Unpin tab",
 		"tab.untitled": "Untitled tab",
-		"urlbar.bookmark": "Bookmark page",
-		"urlbar.container": "Container tab",
-		"urlbar.extension-actions": "Extension page actions",
-		"urlbar.more-page-actions": "More page actions",
-		"urlbar.other-page-actions": "Additional page actions",
-		"urlbar.persisted-search": "Persisted search terms",
-		"urlbar.picture-in-picture": "Picture-in-Picture",
-		"urlbar.reader-view": "Reader View",
-		"urlbar.recommendation": "Firefox recommendation",
-		"urlbar.remote-control": "Browser under remote control",
-		"urlbar.search-mode": "Search mode",
-		"urlbar.split-view": "Split view",
-		"urlbar.taskbar-tabs": "Taskbar tab controls",
-		"urlbar.translations": "Translate page",
-		"urlbar.zoom": "Reset page zoom",
 		"widget.dropHere": "Drop widgets here",
 		"widget.row": "Row",
 		"widget.column": "Column",
@@ -3283,7 +3265,6 @@ var ur = Object.freeze({
 		"address.firefoxControls": "Firefox 控制",
 		"address.loading": "目前頁面正在載入。",
 		"address.nativeAccess": "開啟 Firefox 網址列",
-		"address.nativeAccessDescription": "使用 Firefox 可開啟擴充功能動作與完整網址列控制。",
 		"address.openSitePermissions": "開啟 Firefox 網站權限。{label}",
 		"address.openTrust": "開啟 Firefox 網站信任。連線：{connection}。保護：{protection}",
 		"address.placeholder": "搜尋或輸入網址",
@@ -3296,7 +3277,6 @@ var ur = Object.freeze({
 		"address.title": "網址與搜尋",
 		"address.tooLong": "請將網址或搜尋控制在 {max} 個字元以內。",
 		"address.unsafeScheme": "不會在此開啟可執行的網址配置。",
-		"address.urlbarItemsAria": "適用的 Firefox 網址列項目",
 		"suggestions.count": "有 {count} 個 Firefox 建議可用。",
 		"suggestions.empty": "Firefox 找不到建議。",
 		"suggestions.failed": "Firefox 建議目前無法使用。按 Enter 仍可開啟輸入內容。",
@@ -3660,7 +3640,6 @@ var ur = Object.freeze({
 		"permission.site.labelGranted": "Firefox 對此頁面具有網站專屬權限",
 		"permission.site.labelNone": "目前沒有作用中的網站權限指示器",
 		"permission.site.labelUnavailable": "此頁面無法取得網站權限資訊",
-		"permission.statusAria": "Firefox 網站狀態",
 		"protection.blocking.badge": "ETP",
 		"protection.blocking.label": "加強型追蹤保護正在封鎖已知追蹤器",
 		"protection.detected.badge": "ETP",
@@ -3708,21 +3687,6 @@ var ur = Object.freeze({
 		"tab.unpin": "取消釘選",
 		"tab.unpinTab": "取消釘選分頁",
 		"tab.untitled": "未命名分頁",
-		"urlbar.bookmark": "將此頁加入書籤",
-		"urlbar.container": "容器分頁",
-		"urlbar.extension-actions": "擴充功能頁面動作",
-		"urlbar.more-page-actions": "更多頁面動作",
-		"urlbar.other-page-actions": "其他頁面動作",
-		"urlbar.persisted-search": "保留的搜尋詞",
-		"urlbar.picture-in-picture": "子母畫面",
-		"urlbar.reader-view": "閱讀模式",
-		"urlbar.recommendation": "Firefox 建議",
-		"urlbar.remote-control": "瀏覽器正被遠端控制",
-		"urlbar.search-mode": "搜尋模式",
-		"urlbar.split-view": "分割檢視",
-		"urlbar.taskbar-tabs": "工作列分頁控制項",
-		"urlbar.translations": "翻譯頁面",
-		"urlbar.zoom": "重設頁面縮放",
 		"widget.dropHere": "將元件拖放到這裡",
 		"widget.row": "橫列",
 		"widget.column": "直欄",
@@ -8152,80 +8116,80 @@ var vc = Object.freeze({
 //#region src/firefox/urlbar-suggestions/controller.ts
 function Wc({ boundary: e, onError: t, window: n }) {
 	if (e.assertOwnsWindow(n), !Cc(n) || typeof t != "function") throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_OPTIONS_INVALID", "firefox-urlbar-suggestions-create", "window.gURLBar");
-	let r = n, i = !1, a = 0, o = 0, s = null, c = Object.freeze({
+	let r = n, i = !1, a = 0, o = 0, s = !1, c = null, l = Object.freeze({
 		available: !0,
 		phase: "idle",
 		queryRevision: 0,
 		results: Object.freeze([])
-	}), l = new Set(), u = e.createHandleRegistry("urlbar-result"), d = new Map(), f = () => {
+	}), u = new Set(), d = e.createHandleRegistry("urlbar-result"), f = new Map(), p = () => {
 		if (i || !r) throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_DISPOSED", "firefox-urlbar-suggestions-access", "window.gURLBar");
 		return e.assertOwnsWindow(r), r;
-	}, p = () => {
-		let t = Mc(f()), n = t.find((e) => !e.snapshot.available);
+	}, m = () => {
+		let t = Mc(p()), n = t.find((e) => !e.snapshot.available);
 		if (n) throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CAPABILITY_MISSING", "firefox-urlbar-suggestions-capability", n.snapshot.symbol, n.cause);
 		return Object.freeze(t.map((e) => e.snapshot));
-	}, m = () => {
-		let t = Ac(f());
+	}, h = () => {
+		let t = Ac(p());
 		if (!t) throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CAPABILITY_MISSING", "firefox-urlbar-suggestions-access", "window.gURLBar.controller.parentController.manager");
 		return t;
-	}, h = () => {
+	}, g = () => {
 		let n = Object.freeze({
 			revision: a,
-			snapshot: c,
+			snapshot: l,
 			type: "snapshot"
 		});
-		for (let r of Array.from(l)) try {
+		for (let r of Array.from(u)) try {
 			r(n);
 		} catch (n) {
 			t(Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_SUBSCRIBER_FAILED", "firefox-urlbar-suggestions-notify", "urlbarSuggestions.subscribe", n));
 		}
-	}, g = (e, t = Object.freeze([])) => {
-		c = Object.freeze({
+	}, _ = (e, t = Object.freeze([])) => {
+		l = Object.freeze({
 			available: !0,
 			phase: e,
 			queryRevision: o,
 			results: Object.freeze([...t])
-		}), a += 1, h();
-	}, _ = () => {
-		for (let e of d.keys()) try {
-			u.release(e);
+		}), a += 1, g();
+	}, v = () => {
+		for (let e of f.keys()) try {
+			d.release(e);
 		} catch {}
-		d.clear();
-	}, v = (n) => {
+		f.clear();
+	}, y = (n) => {
 		if (!n) return !1;
-		s === n && (s = null);
+		c === n && (c = null);
 		try {
 			Reflect.apply(n.manager.cancelQuery, n.manager, [n.context]);
 		} catch (n) {
 			t(Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CANCEL_FAILED", "firefox-urlbar-suggestions-cancel", "UrlbarProvidersManager.cancelQuery", n));
 		}
 		return !0;
-	}, y = (n, r, i, a, o) => {
-		n && s !== n || (v(n ?? s), _(), g("failed"), t(Pc(e, r, i, a, o)));
-	}, x = (e, t, n) => {
-		let r = s;
+	}, x = (n, r, i, a, o) => {
+		n && c !== n || (y(n ?? c), v(), _("failed"), t(Pc(e, r, i, a, o)));
+	}, S = (e, t, n) => {
+		let r = c;
 		if (i || !r || r.context !== e || r.revision !== n || o !== n) return;
-		let a = Array.isArray(e.results) ? e.results.slice(0, 20) : [], c = [], l = new Set();
-		_();
+		let a = Array.isArray(e.results) ? e.results.slice(0, 20) : [], s = [], l = new Set();
+		v();
 		for (let e of a) {
 			if (!Cc(e) || l.has(e)) continue;
 			l.add(e);
-			let r = e, i = u.register(r), a;
+			let r = e, i = d.register(r), a;
 			try {
 				a = Uc(r, i);
 			} catch (e) {
-				throw u.release(i), e;
+				throw d.release(i), e;
 			}
-			d.set(i, Object.freeze({
+			f.set(i, Object.freeze({
 				execution: a.execution,
 				input: t.input,
 				manager: t.manager,
 				queryRevision: n,
 				result: r
-			})), c.push(a);
+			})), s.push(a);
 		}
-		c.length > 0 ? g("results", c) : g("querying");
-	}, S = (e, t, n) => {
+		s.length > 0 ? _("results", s) : _("querying");
+	}, C = (e, t, n) => {
 		let r = Object.freeze({
 			get isOpen() {
 				return !1;
@@ -8243,50 +8207,62 @@ function Wc({ boundary: e, onError: t, window: n }) {
 		return new Proxy(e.parentController, { get(i, a) {
 			if (a === "receiveResults") return (r) => {
 				if (r === t) try {
-					x(t, e, n);
+					S(t, e, n);
 				} catch (e) {
-					y(s, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_RESULT_FAILED", "firefox-urlbar-suggestions-result", "UrlbarParentController.receiveResults", e);
+					x(c, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_RESULT_FAILED", "firefox-urlbar-suggestions-result", "UrlbarParentController.receiveResults", e);
 				}
 			};
 			if (a === "view") return r;
 			let o = Reflect.get(i, a, i);
 			return wc(o) ? o.bind(i) : o;
 		} });
-	}, C = (n) => {
+	}, w = (n) => {
 		try {
 			Reflect.apply(n.manager.cancelQuery, n.manager, [n.context]);
 		} catch (n) {
 			t(Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CANCEL_FAILED", "firefox-urlbar-suggestions-finish", "UrlbarProvidersManager.cancelQuery", n));
 		}
-		s === n && (s = null, o === n.revision && c.phase === "querying" && g("empty"));
-	}, w = (t, n, r) => {
+		if (c !== n) return;
+		c = null;
+		let r = n.retryZeroPrefixOnEmpty && o === n.revision && l.phase === "querying";
+		if (n.retryZeroPrefixOnEmpty && (s = !0), r) {
+			try {
+				D("", !1);
+			} catch (e) {
+				x(null, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_FAILED", "firefox-urlbar-suggestions-query", "window.gURLBar.startQuery", e);
+			}
+			return;
+		}
+		o === n.revision && l.phase === "querying" && _("empty");
+	}, T = (t, n, r, i = !1) => {
 		if (!Cc(t)) throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CONTEXT_INVALID", "firefox-urlbar-suggestions-query", "UrlbarQueryContext");
-		v(s);
-		let i = Object.freeze({
+		y(c);
+		let a = Object.freeze({
 			context: t,
 			input: n.input,
 			manager: n.manager,
+			retryZeroPrefixOnEmpty: i,
 			revision: r
 		});
-		s = i;
-		let a = S(n, t, r), o;
+		c = a;
+		let o = C(n, t, r), s;
 		try {
-			o = Reflect.apply(n.manager.startQuery, n.manager, [t, a]);
+			s = Reflect.apply(n.manager.startQuery, n.manager, [t, o]);
 		} catch (e) {
-			y(i, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_FAILED", "firefox-urlbar-suggestions-query", "UrlbarProvidersManager.startQuery", e);
+			x(a, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_FAILED", "firefox-urlbar-suggestions-query", "UrlbarProvidersManager.startQuery", e);
 			return;
 		}
-		Promise.resolve(o).then(() => C(i), (e) => y(i, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_FAILED", "firefox-urlbar-suggestions-query", "UrlbarProvidersManager.startQuery", e));
-	}, T = (t, n, r) => {
+		Promise.resolve(s).then(() => w(a), (e) => x(a, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_FAILED", "firefox-urlbar-suggestions-query", "UrlbarProvidersManager.startQuery", e));
+	}, E = (t, n, r) => {
 		let i = new Proxy(t.nativeController, { get(e, t) {
-			if (t === "cancelQuery") return () => v(s);
+			if (t === "cancelQuery") return () => y(c);
 			if (t === "startQuery") return (e) => n(e);
 			let r = Reflect.get(e, t, e);
 			return wc(r) ? r.bind(e) : r;
-		} }), a, o = !1, c;
+		} }), a, o = !1, s;
 		try {
 			if (t.input.controller = i, t.input.controller !== i) throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_PROXY_REJECTED", "firefox-urlbar-suggestions-proxy", "window.gURLBar.controller");
-			c = r();
+			s = r();
 		} catch (e) {
 			a = e, o = !0;
 		}
@@ -8298,35 +8274,37 @@ function Wc({ boundary: e, onError: t, window: n }) {
 		}
 		if (u) throw l;
 		if (o) throw a;
-		return c;
-	}, E = (t) => {
-		let n = m();
-		v(s), _(), o += 1;
-		let r = o;
-		g("querying"), n.input.value = t, typeof n.input.selectionStart == "number" && (n.input.selectionStart = t.length), typeof n.input.selectionEnd == "number" && (n.input.selectionEnd = t.length);
-		let i = !1;
+		return s;
+	};
+	function D(t, n = !0) {
+		let r = h();
+		y(c), v(), o += 1;
+		let i = o;
+		_("querying"), r.input.value = t, typeof r.input.selectionStart == "number" && (r.input.selectionStart = t.length), typeof r.input.selectionEnd == "number" && (r.input.selectionEnd = t.length);
+		let a = !1;
 		try {
-			if (T(n, (e) => {
-				i = !0, w(e, n, r);
-			}, () => Reflect.apply(n.input.startQuery, n.input, [Object.freeze({
+			if (E(r, (e) => {
+				a = !0, T(e, r, i, n && !s && t.length === 0);
+			}, () => Reflect.apply(r.input.startQuery, r.input, [Object.freeze({
 				allowAutofill: t.length > 0,
 				searchString: t
-			})])), !i) throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CONTEXT_MISSING", "firefox-urlbar-suggestions-query", "window.gURLBar.startQuery");
+			})])), !a) throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CONTEXT_MISSING", "firefox-urlbar-suggestions-query", "window.gURLBar.startQuery");
 			return !0;
 		} catch (e) {
-			return y(s, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_FAILED", "firefox-urlbar-suggestions-query", "window.gURLBar.startQuery", e), !1;
+			return x(c, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_FAILED", "firefox-urlbar-suggestions-query", "window.gURLBar.startQuery", e), !1;
 		}
-	}, D = (n) => {
-		let r = s !== null || d.size > 0 || c.phase !== "idle", i = s?.input;
-		if (v(s), _(), n && r) try {
-			let e = i ?? m().input;
+	}
+	let O = (n) => {
+		let r = c !== null || f.size > 0 || l.phase !== "idle", i = c?.input;
+		if (y(c), v(), n && r) try {
+			let e = i ?? h().input;
 			Reflect.apply(e.handleRevert, e, []);
 		} catch (n) {
 			t(Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_REVERT_FAILED", "firefox-urlbar-suggestions-cancel", "window.gURLBar.handleRevert", n));
 		}
-		return (c.phase !== "idle" || c.results.length > 0) && g("idle"), r;
-	}, O = (t) => {
-		let n = f(), r = {
+		return (l.phase !== "idle" || l.results.length > 0) && _("idle"), r;
+	}, k = (t) => {
+		let n = p(), r = {
 			altKey: t.altKey,
 			bubbles: !0,
 			button: t.button,
@@ -8348,84 +8326,84 @@ function Wc({ boundary: e, onError: t, window: n }) {
 			code: "Enter",
 			key: "Enter"
 		});
-	}, k = Object.freeze({
-		cancel: () => D(!0),
+	}, A = Object.freeze({
+		cancel: () => O(!0),
 		execute: (e, t) => {
 			let n, r;
 			try {
-				n = _c(t), r = u.resolve(e);
+				n = _c(t), r = d.resolve(e);
 			} catch {
 				return Object.freeze({ status: "rejected" });
 			}
-			let i = d.get(e);
+			let i = f.get(e);
 			if (!i || i.result !== r || i.queryRevision !== o) return Object.freeze({ status: "rejected" });
 			if (i.execution === "native") return Object.freeze({ status: "native-required" });
 			let a;
 			try {
-				a = m();
+				a = h();
 			} catch (e) {
-				return y(s, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_EXECUTE_FAILED", "firefox-urlbar-suggestions-execute", "window.gURLBar.pickResult", e), Object.freeze({ status: "native-required" });
+				return x(c, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_EXECUTE_FAILED", "firefox-urlbar-suggestions-execute", "window.gURLBar.pickResult", e), Object.freeze({ status: "native-required" });
 			}
 			if (a.input !== i.input || a.manager !== i.manager) return Object.freeze({ status: "rejected" });
-			v(s);
-			let c = !1, l = a.input.searchMode;
+			y(c);
+			let s = !1, l = a.input.searchMode;
 			try {
-				let e = O(n);
-				if (T(a, (e) => {
-					c = !0, _(), o += 1, g("querying"), w(e, a, o);
+				let e = k(n);
+				if (E(a, (e) => {
+					s = !0, v(), o += 1, _("querying"), T(e, a, o);
 				}, () => Reflect.apply(a.input.pickResult, a.input, [
 					r,
 					e,
 					null,
 					a.selectedBrowser
-				])), !c && a.input.searchMode !== l) {
+				])), !s && a.input.searchMode !== l) {
 					let e = typeof a.input.value == "string" ? a.input.value.slice(0, kr) : "";
-					_(), o += 1, g("querying"), T(a, (e) => {
-						c = !0, w(e, a, o);
+					v(), o += 1, _("querying"), E(a, (e) => {
+						s = !0, T(e, a, o);
 					}, () => Reflect.apply(a.input.startQuery, a.input, [Object.freeze({
 						allowAutofill: e.length > 0,
 						searchString: e
 					})]));
 				}
 			} catch (e) {
-				return y(s, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_EXECUTE_FAILED", "firefox-urlbar-suggestions-execute", "window.gURLBar.pickResult", e), Object.freeze({ status: "native-required" });
+				return x(c, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_EXECUTE_FAILED", "firefox-urlbar-suggestions-execute", "window.gURLBar.pickResult", e), Object.freeze({ status: "native-required" });
 			}
-			return c ? Object.freeze({ status: "continued" }) : (_(), g("idle"), Object.freeze({ status: "committed" }));
+			return s ? Object.freeze({ status: "continued" }) : (v(), _("idle"), Object.freeze({ status: "committed" }));
 		},
-		prepareNativeHandoff: () => D(!1),
+		prepareNativeHandoff: () => O(!1),
 		query(t) {
-			if (f(), typeof t != "string" || t.length > 4096) throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_INVALID", "firefox-urlbar-suggestions-query", "window.gURLBar.value");
-			return E(t);
+			if (p(), typeof t != "string" || t.length > 4096) throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_INVALID", "firefox-urlbar-suggestions-query", "window.gURLBar.value");
+			return D(t);
 		},
 		snapshot() {
-			return f(), c;
+			return p(), l;
 		},
 		subscribe(t) {
-			if (f(), typeof t != "function") throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_LISTENER_INVALID", "firefox-urlbar-suggestions-subscribe", "urlbarSuggestions.subscribe");
-			return l.add(t), b(() => l.delete(t));
+			if (p(), typeof t != "function") throw Pc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_LISTENER_INVALID", "firefox-urlbar-suggestions-subscribe", "urlbarSuggestions.subscribe");
+			return u.add(t), b(() => u.delete(t));
 		}
 	});
 	try {
-		e.assertRequiredCapabilities(), p(), m();
+		e.assertRequiredCapabilities(), m(), h();
 	} catch (e) {
-		throw i = !0, d.clear(), u.dispose(), r = null, e;
+		throw i = !0, f.clear(), d.dispose(), r = null, e;
 	}
 	return Object.freeze({
-		assertRequiredCapabilities: p,
+		assertRequiredCapabilities: m,
 		dispose() {
-			return !i && (l.clear(), D(!0), u.dispose(), i = !0, r = null, !0);
+			return !i && (u.clear(), O(!0), d.dispose(), i = !0, r = null, !0);
 		},
 		snapshot() {
 			return Object.freeze({
-				activeQuery: s !== null,
+				activeQuery: c !== null,
 				disposed: i,
 				queryRevision: o,
-				resultCount: u.snapshot().activeHandleCount,
+				resultCount: d.snapshot().activeHandleCount,
 				revision: a,
-				subscriberCount: l.size
+				subscriberCount: u.size
 			});
 		},
-		urlbarSuggestions: k
+		urlbarSuggestions: A
 	});
 }
 //#endregion

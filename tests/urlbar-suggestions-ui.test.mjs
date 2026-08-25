@@ -49,7 +49,7 @@ test("address popup exposes one complete keyboard and pointer combobox", async (
     health,
     /\[role="listbox"\]\[data-fennevia-urlbar-suggestions\]/u,
   );
-  assert.match(styles, /max-block-size: clamp\(148px, 34vh, 292px\)/u);
+  assert.match(styles, /max-block-size: clamp\(132px, 40vh, 320px\)/u);
 });
 
 test("suggestion rendering keeps private commands and markup out of the DOM", async () => {
@@ -95,43 +95,85 @@ test("coordinator clears ordinary queries and preserves only explicit native han
   );
 });
 
-test("address status and Firefox handoff use a compact responsive layout", async () => {
+test("address popup keeps search primary and Firefox handoffs compact", async () => {
   const [component, styles, responsiveStyles] = await Promise.all([
     readProjectFile("src/shell/AddressPopup.svelte"),
     readProjectFile("src/shell/styles/address.css"),
     readProjectFile("src/shell/styles/responsive-accessibility.css"),
   ]);
 
-  const trustIndex = component.indexOf("data-fennevia-trust-detail");
-  const permissionIndex = component.indexOf("data-fennevia-permission-detail");
-  const nativeAccessIndex = component.indexOf(
+  const utilitiesIndex = component.indexOf(
+    'class="fennevia-address-popup__utilities"',
+  );
+  const utilitiesEnd = component.indexOf("</section>", utilitiesIndex);
+  const utilities = component.slice(utilitiesIndex, utilitiesEnd);
+  const trustIndex = utilities.indexOf("data-fennevia-trust-detail");
+  const permissionIndex = utilities.indexOf("data-fennevia-permission-detail");
+  const nativeAccessIndex = utilities.indexOf(
     "data-fennevia-native-urlbar-access",
   );
+  assert.ok(utilitiesIndex >= 0);
+  assert.ok(utilitiesEnd > utilitiesIndex);
   assert.ok(trustIndex >= 0);
   assert.ok(permissionIndex > trustIndex);
   assert.ok(nativeAccessIndex > permissionIndex);
+  assert.match(component, /fennevia-address-popup__identity/u);
+  assert.match(component, /fennevia-address-popup__brand/u);
+  assert.match(component, /fennevia-address-popup__private/u);
+  assert.match(
+    component,
+    /class:fennevia-address-popup__status--visible=\{visuallyExposeStatus\}/u,
+  );
+  assert.match(component, /fennevia-address-popup__suggestion-source/u);
+  assert.match(component, /fennevia-address-popup__suggestion-badge/u);
+  assert.doesNotMatch(component, /fennevia-address-popup__enter|>↵</u);
+  assert.doesNotMatch(
+    component,
+    /address\.nativeAccessDescription|fennevia-address-popup__firefox-controls-copy/u,
+  );
   assert.doesNotMatch(
     component,
     /address\.noPageActions|fennevia-address-popup__urlbar-empty/u,
   );
-  assert.match(
-    styles,
-    /\.fennevia-address-popup__details\s*\{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/u,
-  );
   assert.doesNotMatch(
+    component,
+    /data-fennevia-urlbar-items|getUrlbarItemLabel|getUrlbarItemTone/u,
+  );
+  assert.doesNotMatch(styles, /fennevia-address-popup__urlbar-items/u);
+  assert.match(
     styles,
-    /\.fennevia-address-popup__detail--trust,[\s\S]*?grid-column: 1 \/ -1;/u,
+    /\.fennevia-address-popup\s*\{[\s\S]*?inline-size: min\(640px, 100%\);[\s\S]*?gap: var\(--fennevia-space-2\);/u,
   );
   assert.match(
     styles,
-    /\.fennevia-address-popup__firefox-controls\s*\{[\s\S]*?align-items: center;[\s\S]*?padding-block-start: var\(--fennevia-space-2\);/u,
+    /\.fennevia-address-popup__label\s*\{[\s\S]*?clip-path: inset\(50%\);/u,
   );
   assert.match(
     styles,
-    /\.fennevia-address-popup__firefox-controls-copy\s*\{[\s\S]*?display: flex;/u,
+    /\.fennevia-address-popup__field-shell\s*\{[\s\S]*?grid-template-columns: 22px minmax\(0, 1fr\);[\s\S]*?min-block-size: 46px;/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-address-popup__status\s*\{[\s\S]*?clip-path: inset\(50%\);[\s\S]*?\.fennevia-address-popup__status--visible\s*\{[\s\S]*?clip-path: none;/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-address-popup__utilities\s*\{[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);[\s\S]*?border-block-start: 1px solid/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-address-popup__utility\s*\{[\s\S]*?min-block-size: 40px;/u,
+  );
+  assert.match(
+    styles,
+    /\.fennevia-address-popup__suggestion-source\s*\{[\s\S]*?color: var\(--fennevia-glass-muted\);[\s\S]*?\.fennevia-address-popup__suggestion-badge\s*\{[\s\S]*?border: 1px solid/u,
   );
   assert.match(
     responsiveStyles,
-    /@media \(max-width: 700px\)[\s\S]*?\.fennevia-address-popup__details\s*\{\s*grid-template-columns: 1fr;/u,
+    /@media \(max-width: 700px\)[\s\S]*?\.fennevia-address-popup__utilities\s*\{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[\s\S]*?\.fennevia-address-popup__native-access\s*\{\s*grid-column: 1 \/ -1;/u,
+  );
+  assert.match(
+    responsiveStyles,
+    /@media \(max-width: 520px\)[\s\S]*?\.fennevia-address-popup__utilities\s*\{\s*grid-template-columns: 1fr;/u,
   );
 });

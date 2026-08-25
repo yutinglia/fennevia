@@ -118,9 +118,14 @@ function createNativeWindow({ missingMouseEvent = false } = {}) {
     selectionEnd: 0,
     selectionStart: 0,
     startQuery(options) {
+      const nextResults =
+        Array.isArray(input.nextResultsQueue) &&
+        input.nextResultsQueue.length > 0
+          ? input.nextResultsQueue.shift()
+          : (input.nextResults ?? []);
       const context = {
         id: ++nextQuerySequence,
-        nextResults: input.nextResults ?? [],
+        nextResults,
         results: [],
         searchString: options.searchString,
       };
@@ -255,9 +260,93 @@ test("Firefox Urlbar bridge projects shared-manager results without opening nati
   await flushQueries();
   assert.equal(controller.snapshot().activeQuery, false);
   assert.equal(controller.snapshot().resultCount, 2);
+  assert.equal(
+    fixture.calls.filter(
+      (call) => typeof call === "object" && "started" in call,
+    ).length,
+    1,
+  );
   assert.equal(unsubscribe(), true);
   assert.equal(controller.dispose(), true);
   assert.equal(boundary.dispose(), true);
+});
+
+test("the first completed empty zero-prefix query retries once after Firefox lazy startup", async () => {
+  const { boundary, controller, errors, fixture } = createController();
+  fixture.input.nextResultsQueue = [
+    [],
+    [createResult({ title: "initialized top site" })],
+  ];
+
+  assert.equal(controller.urlbarSuggestions.query(""), true);
+  await flushQueries();
+
+  const snapshot = controller.urlbarSuggestions.snapshot();
+  assert.equal(snapshot.phase, "results");
+  assert.equal(snapshot.queryRevision, 2);
+  assert.equal(snapshot.results.length, 1);
+  assert.equal(snapshot.results[0].title, "initialized top site");
+  assert.equal(
+    fixture.calls.filter(
+      (call) => typeof call === "object" && "started" in call,
+    ).length,
+    2,
+  );
+  assert.deepEqual(errors, []);
+
+  controller.dispose();
+  boundary.dispose();
+});
+
+test("a genuinely empty zero-prefix query retries only once", async () => {
+  const { boundary, controller, errors, fixture } = createController();
+  fixture.input.nextResultsQueue = [[], [], [createResult()]];
+
+  assert.equal(controller.urlbarSuggestions.query(""), true);
+  await flushQueries();
+
+  assert.deepEqual(controller.urlbarSuggestions.snapshot(), {
+    available: true,
+    phase: "empty",
+    queryRevision: 2,
+    results: [],
+  });
+  assert.equal(
+    fixture.calls.filter(
+      (call) => typeof call === "object" && "started" in call,
+    ).length,
+    2,
+  );
+  assert.deepEqual(errors, []);
+
+  controller.dispose();
+  boundary.dispose();
+});
+
+test("canceling the first zero-prefix query suppresses its warm-up retry", async () => {
+  const { boundary, controller, errors, fixture } = createController();
+  fixture.input.deferNextQuery = true;
+  fixture.input.nextResultsQueue = [[], [createResult()]];
+
+  assert.equal(controller.urlbarSuggestions.query(""), true);
+  const pending = fixture.pendingQueries[0];
+  assert.equal(controller.urlbarSuggestions.cancel(), true);
+  pending.context.results = [];
+  pending.controller.receiveResults(pending.context);
+  pending.resolve();
+  await flushQueries();
+
+  assert.equal(controller.urlbarSuggestions.snapshot().phase, "idle");
+  assert.equal(
+    fixture.calls.filter(
+      (call) => typeof call === "object" && "started" in call,
+    ).length,
+    1,
+  );
+  assert.deepEqual(errors, []);
+
+  controller.dispose();
+  boundary.dispose();
 });
 
 test("Firefox result types and sources map to closed execution contracts", async () => {

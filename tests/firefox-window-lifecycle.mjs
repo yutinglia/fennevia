@@ -3145,17 +3145,6 @@ async function exerciseAddressInput(client) {
                 protectionPrefix: "保護：",
                 tooLongFragment: "4096",
                 unsafeScheme: "不會在此開啟可執行的網址配置。",
-                urlbarItems: {
-                  "contextual-feature-recommendation": "Firefox 建議",
-                  "picture-in-picture-button": "子母畫面",
-                  "reader-mode-button": "閱讀模式",
-                  "split-view-button": "分割檢視",
-                  "star-button-box": "將此頁加入書籤",
-                  "taskbar-tabs-button": "工作列分頁控制項",
-                  "translations-button": "翻譯頁面",
-                  "urlbar-zoom-button": "重設頁面縮放",
-                  "userContext-icons": "容器分頁",
-                },
               }
             : {
                 connectionPrefix: "Connection:",
@@ -3166,17 +3155,6 @@ async function exerciseAddressInput(client) {
                 protectionPrefix: "Protection:",
                 tooLongFragment: "4096",
                 unsafeScheme: "Executable address schemes are not opened here.",
-                urlbarItems: {
-                  "contextual-feature-recommendation": "Firefox recommendation",
-                  "picture-in-picture-button": "Picture-in-Picture",
-                  "reader-mode-button": "Reader View",
-                  "split-view-button": "Split view",
-                  "star-button-box": "Bookmark page",
-                  "taskbar-tabs-button": "Taskbar tab controls",
-                  "translations-button": "Translate page",
-                  "urlbar-zoom-button": "Reset page zoom",
-                  "userContext-icons": "Container tab",
-                },
               };
         if (
           !frame ||
@@ -3343,7 +3321,7 @@ async function exerciseAddressInput(client) {
           "[data-fennevia-firefox-trust-icon]"
         );
         const detailPermission = popupRoot.querySelector(
-          "[data-fennevia-permission-detail] .fennevia-address-popup__detail-mark"
+          "[data-fennevia-permission-detail] .fennevia-address-popup__utility-mark"
         );
         const expectedTrustState = nativeTrustState();
         const firefoxSiteStatusMatched =
@@ -3389,50 +3367,8 @@ async function exerciseAddressInput(client) {
           detailPermission?.textContent?.trim() === expectedPermissionBadge &&
           Boolean(nativePermissionBox);
 
-        const nativeItemLabels = Object.entries(addressText.urlbarItems);
-        const renderedItemText = () =>
-          [...urlbarCoverage.querySelectorAll(
-            "[data-fennevia-urlbar-items] li"
-          )].map(item => item.textContent?.trim() ?? "");
-        const urlbarItemCoverageMatched = nativeItemLabels.every(
-          ([id, label]) => {
-            const element = document.getElementById(id);
-            const ownerVisible =
-              element &&
-              !element.hidden &&
-              element.getAttribute("hidden") !== "true" &&
-              element.getAttribute("collapsed") !== "true";
-            return renderedItemText().includes(label) === Boolean(ownerVisible);
-          }
-        );
-
-        await FullZoom.reset();
-        const zoomButton = document.getElementById("urlbar-zoom-button");
-        if (!zoomButton) {
-          throw new Error("FENNEVIA_FIREFOX_TEST_URLBAR_ZOOM_BUTTON_MISSING");
-        }
-        const zoomButtonInitiallyHidden = zoomButton.hidden;
-        try {
-          zoomButton.hidden = false;
-          await waitFor(
-            () =>
-              renderedItemText().includes(
-                addressText.urlbarItems["urlbar-zoom-button"]
-              ),
-            "FENNEVIA_FIREFOX_TEST_URLBAR_ZOOM_APPEAR_TIMEOUT"
-          );
-          zoomButton.hidden = true;
-          await waitFor(
-            () =>
-              !renderedItemText().includes(
-                addressText.urlbarItems["urlbar-zoom-button"]
-              ),
-            "FENNEVIA_FIREFOX_TEST_URLBAR_ZOOM_CLEAR_TIMEOUT"
-          );
-        } finally {
-          zoomButton.hidden = zoomButtonInitiallyHidden;
-        }
-        const urlbarItemsUpdated = true;
+        const urlbarCapabilityBadgesAbsent =
+          urlbarCoverage.querySelector("[data-fennevia-urlbar-items]") === null;
 
         const nativeUiHiddenBeforeHandoff =
           !documentRoot.hasAttribute("data-fennevia-native-ui-revealed") &&
@@ -3755,8 +3691,7 @@ async function exerciseAddressInput(client) {
           escapeDismissed:
             root.getAttribute("data-fennevia-visible") === "false",
           unsafeSchemeRejected,
-          urlbarItemCoverageMatched,
-          urlbarItemsUpdated,
+          urlbarCapabilityBadgesAbsent,
         };
       })();
     `);
@@ -3788,8 +3723,7 @@ function assertAddressInput(result) {
     "searchObserved",
     "escapeDismissed",
     "unsafeSchemeRejected",
-    "urlbarItemCoverageMatched",
-    "urlbarItemsUpdated",
+    "urlbarCapabilityBadgesAbsent",
   ]) {
     assert.equal(result[key], true, key);
   }
@@ -7487,12 +7421,9 @@ async function runUrlbarSuggestionsProbe(client) {
       );
       const permissionDetail = popupRoot?.querySelector(
         "[data-fennevia-permission-detail]"
-      )?.closest(".fennevia-address-popup__detail");
+      );
       const firefoxControls = popupRoot?.querySelector(
         "[data-fennevia-urlbar-coverage]"
-      );
-      const firefoxControlsCopy = firefoxControls?.querySelector(
-        ".fennevia-address-popup__firefox-controls-copy"
       );
       const nativeAccess = popupRoot?.querySelector(
         "[data-fennevia-native-urlbar-access]"
@@ -7508,7 +7439,6 @@ async function runUrlbarSuggestionsProbe(client) {
         !trustDetail ||
         !permissionDetail ||
         !firefoxControls ||
-        !firefoxControlsCopy ||
         !nativeAccess ||
         !nativeInput ||
         !nativeController ||
@@ -7611,26 +7541,19 @@ async function runUrlbarSuggestionsProbe(client) {
         const trustRect = trustDetail.getBoundingClientRect();
         const permissionRect = permissionDetail.getBoundingClientRect();
         const firefoxControlsRect = firefoxControls.getBoundingClientRect();
-        const firefoxControlsCopyRect =
-          firefoxControlsCopy.getBoundingClientRect();
         const nativeAccessRect = nativeAccess.getBoundingClientRect();
-        const statusColumnCount = getComputedStyle(details).gridTemplateColumns
+        const utilityColumnCount = getComputedStyle(details).gridTemplateColumns
           .trim()
           .split(" ")
           .filter(Boolean).length;
-        const statusControlsShareRow =
+        const utilityControlsShareRow =
           Math.abs(trustRect.top - permissionRect.top) < 1 &&
-          trustRect.right <= permissionRect.left;
-        const footerItemsRow = firefoxControls.querySelector(
-          "[data-fennevia-urlbar-items]"
-        );
-        const footerItemCount =
-          footerItemsRow?.querySelectorAll("li").length ?? 0;
-        const footerSecondRowMatchesItems =
-          footerItemCount > 0 ? footerItemsRow !== null : footerItemsRow === null;
-        const compactFooter =
-          firefoxControlsRect.height <= (footerItemCount > 0 ? 72 : 48) &&
-          firefoxControlsCopyRect.height <= 18;
+          Math.abs(permissionRect.top - nativeAccessRect.top) < 1 &&
+          trustRect.right <= permissionRect.left &&
+          permissionRect.right <= nativeAccessRect.left;
+        const urlbarCapabilityBadgesAbsent =
+          firefoxControls.querySelector("[data-fennevia-urlbar-items]") === null;
+        const compactUtilityStrip = firefoxControlsRect.height <= 52;
         const firstOption = projectedOptions[0];
         if (
           firstOption.getAttribute("data-fennevia-suggestion-execution") !==
@@ -7671,15 +7594,12 @@ async function runUrlbarSuggestionsProbe(client) {
           ariaAutocompleteList:
             input.getAttribute("aria-autocomplete") === "list",
           comboboxRole: input.getAttribute("role") === "combobox",
-          compactFooter,
+          compactUtilityStrip,
           controllerRestoredAfterExecution:
             nativeInput.controller === nativeController,
           controllerRestoredBeforeExecution,
           directResultCount,
-          firefoxControlsCopyHeight: firefoxControlsCopyRect.height,
-          firefoxControlsHeight: firefoxControlsRect.height,
-          footerItemCount,
-          footerSecondRowMatchesItems,
+          utilityStripHeight: firefoxControlsRect.height,
           internalPageCommitted:
             gBrowser.selectedBrowser.currentURI.spec.startsWith(
               "about:preferences"
@@ -7693,9 +7613,10 @@ async function runUrlbarSuggestionsProbe(client) {
           optionCount: projectedOptions.length,
           popupClosed: !popupVisible(),
           sourceKindCount: sourceKinds.size,
-          statusColumnCount,
-          statusControlsShareRow,
-          statusRowHeight: detailsRect.height,
+          urlbarCapabilityBadgesAbsent,
+          utilityColumnCount,
+          utilityControlsShareRow,
+          utilityRowHeight: detailsRect.height,
         };
       } finally {
         nativeView.close();
@@ -7717,20 +7638,17 @@ async function runUrlbarSuggestionsProbe(client) {
   assert.equal(evidence.activeDescendantLinked, true);
   assert.equal(evidence.ariaAutocompleteList, true);
   assert.equal(evidence.comboboxRole, true);
-  if (!evidence.compactFooter) {
+  if (!evidence.compactUtilityStrip) {
     console.error(
-      `urlbarSuggestionsFooterDiagnostics=${JSON.stringify({
-        firefoxControlsCopyHeight: evidence.firefoxControlsCopyHeight,
-        firefoxControlsHeight: evidence.firefoxControlsHeight,
-        footerItemCount: evidence.footerItemCount,
+      `urlbarSuggestionsUtilityDiagnostics=${JSON.stringify({
+        utilityStripHeight: evidence.utilityStripHeight,
       })}`,
     );
   }
-  assert.equal(evidence.compactFooter, true);
+  assert.equal(evidence.compactUtilityStrip, true);
   assert.equal(evidence.controllerRestoredAfterExecution, true);
   assert.equal(evidence.controllerRestoredBeforeExecution, true);
   assert.ok(evidence.directResultCount >= 1);
-  assert.equal(evidence.footerSecondRowMatchesItems, true);
   assert.equal(evidence.internalPageCommitted, true);
   assert.equal(evidence.listboxRole, true);
   assert.ok(evidence.nativeAccessTargetHeight >= 32);
@@ -7740,9 +7658,10 @@ async function runUrlbarSuggestionsProbe(client) {
   assert.ok(evidence.optionCount >= 1);
   assert.equal(evidence.popupClosed, true);
   assert.ok(evidence.sourceKindCount >= 1);
-  assert.equal(evidence.statusColumnCount, 2);
-  assert.equal(evidence.statusControlsShareRow, true);
-  assert.ok(evidence.statusRowHeight <= 56);
+  assert.equal(evidence.urlbarCapabilityBadgesAbsent, true);
+  assert.equal(evidence.utilityColumnCount, 3);
+  assert.equal(evidence.utilityControlsShareRow, true);
+  assert.ok(evidence.utilityRowHeight <= 80);
   return evidence;
 }
 

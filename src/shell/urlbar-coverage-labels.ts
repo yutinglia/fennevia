@@ -4,7 +4,6 @@ import type {
   BlockedPermissionIndicatorKind,
   SharingIndicatorKind,
   SitePermissionIndicatorsSnapshot,
-  UrlbarItemKind,
 } from "../app/urlbar-coverage-state";
 import type { NavigationStatusPresentation } from "./navigation-labels";
 
@@ -17,16 +16,6 @@ export const getSharingIndicatorLabel = (
   kind: SharingIndicatorKind,
   locale: FenneviaLocale,
 ): string => translate(locale, `permission.sharing.${kind}` as MessageKey);
-
-export const getUrlbarItemLabel = (
-  kind: UrlbarItemKind,
-  locale: FenneviaLocale,
-): string => translate(locale, `urlbar.${kind}` as MessageKey);
-
-export const getUrlbarItemTone = (
-  kind: UrlbarItemKind,
-): NavigationStatusPresentation["tone"] =>
-  kind === "remote-control" ? "warning" : "neutral";
 
 export function getSitePermissionPresentation(
   snapshot: SitePermissionIndicatorsSnapshot,

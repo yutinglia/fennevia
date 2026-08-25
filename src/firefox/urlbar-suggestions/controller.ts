@@ -36,6 +36,7 @@ type ActiveQuery = Readonly<{
   context: NativeRecord;
   input: NativeUrlbarInput;
   manager: NativeProvidersManager;
+  retryZeroPrefixOnEmpty: boolean;
   revision: number;
 }>;
 
@@ -89,6 +90,7 @@ export function createFirefoxUrlbarSuggestionsBridge({
   let disposed = false;
   let revision = 0;
   let queryRevision = 0;
+  let zeroPrefixWarmupComplete = false;
   let activeQuery: ActiveQuery | null = null;
   let currentSnapshot: UrlbarSuggestionsSnapshot = Object.freeze({
     available: true,
@@ -354,6 +356,27 @@ export function createFirefoxUrlbarSuggestionsBridge({
       return;
     }
     activeQuery = null;
+    const retryZeroPrefix =
+      candidate.retryZeroPrefixOnEmpty &&
+      queryRevision === candidate.revision &&
+      currentSnapshot.phase === "querying";
+    if (candidate.retryZeroPrefixOnEmpty) {
+      zeroPrefixWarmupComplete = true;
+    }
+    if (retryZeroPrefix) {
+      try {
+        beginQuery("", false);
+      } catch (error) {
+        failQuery(
+          null,
+          "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_FAILED",
+          "firefox-urlbar-suggestions-query",
+          "window.gURLBar.startQuery",
+          error,
+        );
+      }
+      return;
+    }
     if (
       queryRevision === candidate.revision &&
       currentSnapshot.phase === "querying"
@@ -366,6 +389,7 @@ export function createFirefoxUrlbarSuggestionsBridge({
     context: unknown,
     owners: UrlbarSuggestionOwners,
     expectedRevision: number,
+    retryZeroPrefixOnEmpty = false,
   ): void => {
     if (!isNativeRecord(context)) {
       throw createUrlbarSuggestionsError(
@@ -380,6 +404,7 @@ export function createFirefoxUrlbarSuggestionsBridge({
       context,
       input: owners.input,
       manager: owners.manager,
+      retryZeroPrefixOnEmpty,
       revision: expectedRevision,
     });
     activeQuery = candidate;
@@ -477,7 +502,7 @@ export function createFirefoxUrlbarSuggestionsBridge({
     return callbackResult;
   };
 
-  const beginQuery = (value: string): boolean => {
+  function beginQuery(value: string, allowZeroPrefixRetry = true): boolean {
     const owners = requireOwners();
     cancelContext(activeQuery);
     releaseResults();
@@ -497,7 +522,14 @@ export function createFirefoxUrlbarSuggestionsBridge({
         owners,
         (context) => {
           contextStarted = true;
-          startManagedQuery(context, owners, expectedRevision);
+          startManagedQuery(
+            context,
+            owners,
+            expectedRevision,
+            allowZeroPrefixRetry &&
+              !zeroPrefixWarmupComplete &&
+              value.length === 0,
+          );
         },
         () =>
           Reflect.apply(owners.input.startQuery, owners.input, [
@@ -526,7 +558,7 @@ export function createFirefoxUrlbarSuggestionsBridge({
       );
       return false;
     }
-  };
+  }
 
   const cancelAndClear = (revert: boolean): boolean => {
     const hadState =

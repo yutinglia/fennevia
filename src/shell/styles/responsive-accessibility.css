@@ -79,23 +79,12 @@
 }
 
 @media (max-width: 700px) {
-  #fennevia-shell-frame-host .fennevia-address-popup__details {
-    grid-template-columns: 1fr;
-  }
-
-  #fennevia-shell-frame-host .fennevia-address-popup__firefox-controls {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
-
-  #fennevia-shell-frame-host .fennevia-address-popup__native-access,
-  #fennevia-shell-frame-host .fennevia-address-popup__urlbar-items {
-    grid-column: 1;
-    grid-row: auto;
+  #fennevia-shell-frame-host .fennevia-address-popup__utilities {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   #fennevia-shell-frame-host .fennevia-address-popup__native-access {
-    justify-self: start;
+    grid-column: 1 / -1;
   }
 
   #fennevia-shell-frame-host
@@ -159,6 +148,18 @@
     grid-column: 2;
     justify-content: start;
     max-inline-size: 100%;
+  }
+
+  #fennevia-shell-frame-host .fennevia-address-popup__utilities {
+    grid-template-columns: 1fr;
+  }
+
+  #fennevia-shell-frame-host .fennevia-address-popup__native-access {
+    grid-column: 1;
+  }
+
+  #fennevia-shell-frame-host .fennevia-address-popup__utility-copy {
+    flex-wrap: wrap;
   }
 
   #fennevia-shell-frame-host
@@ -296,18 +297,12 @@
   }
 
   #fennevia-shell-frame-host .fennevia-address-launcher__cluster,
-  #fennevia-shell-frame-host .fennevia-address-popup__detail,
+  #fennevia-shell-frame-host .fennevia-address-popup__utility,
   #fennevia-shell-frame-host .fennevia-address-popup__field-shell,
   #fennevia-shell-frame-host .fennevia-address-popup__field-shell:focus-within,
-  #fennevia-shell-frame-host .fennevia-address-popup__native-access,
   #fennevia-shell-frame-host .fennevia-address-popup__suggestions,
   #fennevia-shell-frame-host .fennevia-address-popup__suggestion,
-  #fennevia-shell-frame-host
-    :is(
-      .fennevia-address-popup__permission-indicators,
-      .fennevia-address-popup__urlbar-items
-    )
-    li {
+  #fennevia-shell-frame-host .fennevia-address-popup__permission-indicators li {
     color: CanvasText;
     background: Field;
     border-color: FieldText;

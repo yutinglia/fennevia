@@ -472,6 +472,15 @@ proxy receives incremental results while exposing a project view that never
 opens native rows. Replacement, ordinary close, failure, and disposal cancel
 the exact active context.
 
+ADR-079 keeps that contract and adds one per-window warm-up guard for Firefox's
+zero-prefix path. If the first eligible empty-string context completes without
+a projected result and is still current, the bridge starts the same native
+query once more without publishing an intermediate empty state. A successful
+first attempt or the retry completes the guard; genuine emptiness then remains
+visible. Non-empty text, replaced/canceled contexts, search-mode follow-up,
+handoff, failure, and disposal are never retried by this rule. No timer,
+observer, startup query, provider, or frontend state is added.
+
 Only bounded title/description text, closed type/source enums, heuristic state,
 source-validated icon references, direct/native execution class, and an opaque
 per-window result token cross into `src/app/urlbar-suggestions-state.ts`.
@@ -840,16 +849,21 @@ launcher displays bounded committed location plus one Firefox-style Trust
 shield embedded at the leading edge inside the shared address frame. ADR-059
 derives its active/disabled/insecure/warning presentation and combined label
 from the existing real Firefox connection/protection enums. That shield, the
-matching full-width popup Trust row, and the independent permission card are
-explicit native handoff buttons: they keep the matching edge or address
+popup Trust utility, and the adjacent permission utility are explicit native
+handoff buttons: they keep the matching edge or address
 overlay open, leave native chrome hidden, and open Firefox's current Trust or
 permission panel beside the clicked project host. The popup owns the sole custom input,
 an independent per-window draft, fuller labels, focus restoration, and
 popup-priority edge suppression. It never moves native Urlbar/identity/
 protections DOM or renders inferred security state.
 
-Issue #37 extends that same popup with a full-width site-permission card, fixed
-applicable Firefox-control labels, and one native Urlbar handoff button.
+Issue #37 extends that same popup with Firefox-derived permission state and one
+native Urlbar handoff button. The 2026-08-26 presentation places Trust,
+permissions, and native Urlbar access in one compact three-control utility
+strip. Full state remains in accessible names and titles, and active/blocked
+permission indicators remain conditional. Non-actionable applicable-item
+labels are not rendered; bookmark, zoom, translation, extension, and every
+other native action remain available through the complete Urlbar handoff.
 ADR-061 adds one bounded-scroll ARIA listbox controlled by the existing input.
 Arrow keys, Home/End, Page Up/Down, Enter, pointer hover, left click, and middle
 click operate only opaque current-query tokens. One polite status output
@@ -996,10 +1010,11 @@ under the #31 trigger. No selector targets `#main-window`, `#browser`, or
 native progress UI.
 
 The issue #37 popup additions remain frame-rooted and reuse the existing
-responsive overlay. Permission/action chips render only fixed project labels;
-no selector targets Firefox's Urlbar, identity, permission, page-action, panel,
-or notification-anchor DOM. The native-access button uses the shared control
-and focus-visible policy.
+responsive overlay. Only active-sharing and blocked-permission indicators
+render as conditional fixed project-labelled chips; applicable Urlbar-action
+badges are omitted. No selector targets Firefox's Urlbar, identity, permission,
+page-action, panel, or notification-anchor DOM. The native-access button uses
+the shared control and focus-visible policy.
 
 ## 7. Native UI gate
 

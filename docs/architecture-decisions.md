@@ -3645,3 +3645,37 @@ focused evidence are in
 `tests/toolbar-widgets-state.test.mjs`,
 `tests/source-structure.test.mjs`, and
 `tests/frontend-build.test.mjs`.
+
+## ADR-079: Retry only the first completed empty zero-prefix Urlbar query
+
+**Status:** Accepted from direct project-owner runtime evidence on 2026-08-26;
+implementation and focused automated coverage are complete; a fresh Firefox
+154 first-open zero-prefix run remains `not run`
+
+Retain ADR-061's existing native input/context builder, shared provider manager,
+ranking, result projection, and cancellation ownership. When the first eligible
+zero-prefix query in a per-window bridge lifetime completes with no projected
+result and remains the current context, immediately start the same empty query
+one more time through that exact contract. Do not publish an intermediate empty
+state. Mark the warm-up complete after the first eligible completion, whether
+it yielded results or launched the retry; the retry cannot recursively retry.
+A genuinely empty second attempt publishes the ordinary empty state.
+
+The rule never applies to non-empty user text, a context that was replaced or
+canceled, native handoff, failure, or disposal. It adds no timer, startup query,
+observer, provider, engine, endpoint, preference, persistence, log field, or
+frontend data shape. Both attempts remain Firefox-owned provider work, and
+query text still never crosses the bridge.
+
+**Reasoning:** The owner observed an empty first panel open followed by normal
+zero-prefix suggestions on the second open. Firefox 154's Top Sites provider is
+active only for empty queries and reads a lazily initialized site list whose
+refresh can already be in progress. That source behavior is consistent with,
+but does not by itself prove, the reported startup ordering. One bounded retry
+mirrors the known-working second query while preserving the exact active-context
+guards. A delay, hidden startup warm-up, Top Sites observer/import, broad retry,
+or permanently hidden empty state would add timing, privacy, compatibility, or
+feedback costs beyond the symptom. Source evidence, rejected alternatives, and
+verification are in
+`docs/research/firefox-154-first-zero-prefix-urlbar-query.md` and
+`tests/firefox-urlbar-suggestions.test.mjs`.

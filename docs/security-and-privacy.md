@@ -456,7 +456,7 @@ Source inventory and real HTTP/HTTPS/internal/error/permission/protection/
 normal/second/private/fail-open evidence are in ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-### 7.4 Native Urlbar provider projection — implemented ADR-061
+### 7.4 Native Urlbar provider projection — implemented ADR-061/ADR-079
 
 The project owner explicitly approved the minimum additional frontend exposure
 needed to render Firefox's own Urlbar results. Each managed window owns one
@@ -497,6 +497,13 @@ allowlisted symbol, Firefox version/build, and window kind. Firefox's own
 normal/private suggestion prefs, search modes, allowed sources, provider
 filtering, and remote-result policy remain unchanged.
 
+ADR-079 permits one additional provider-manager attempt only when the first
+eligible zero-prefix context in that window completes empty and is still
+current. The attempt repeats the empty string, never a non-empty draft; uses the
+same Firefox-owned provider and policy path; cannot recurse; and is suppressed
+after replacement, cancellation, handoff, failure, or disposal. It adds no
+startup query, timer, observer, endpoint, persistence, log, or frontend field.
+
 Focused tests prove bounds, immutable copying, stale/foreign token rejection,
 normal/private registry isolation, replacement and late callback behavior,
 failure redaction, controller restoration, rich-result handoff, search-mode
@@ -504,7 +511,8 @@ continuation, cleanup, ARIA structure, and property/text-only rendering. The
 Firefox 154 provider-contract and production-panel probes contain only fixed
 counts/enums/booleans. Representative providers, remote-suggestion preference
 combinations, second/private real windows, and the release matrix remain not
-run. See `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
+run. See `docs/research/firefox-153-154-native-urlbar-suggestions.md` and
+`docs/research/firefox-154-first-zero-prefix-urlbar-query.md`.
 
 ### 7.5 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, composable widgets and customize mode ADR-044/ADR-045/ADR-046/ADR-047/ADR-074–ADR-076
 

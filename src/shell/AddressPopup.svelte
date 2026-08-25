@@ -42,8 +42,6 @@
     getBlockedPermissionIndicatorLabel,
     getSharingIndicatorLabel,
     getSitePermissionPresentation,
-    getUrlbarItemLabel,
-    getUrlbarItemTone,
   } from "./urlbar-coverage-labels";
   import { getUrlbarSuggestionSourceLabel } from "./urlbar-suggestions-labels";
 
@@ -129,6 +127,13 @@
   );
   let visible = $derived(
     popupState.phase !== "hidden" && popupState.phase !== "disposed",
+  );
+  let visuallyExposeStatus = $derived(
+    popupState.error !== null ||
+      popupState.phase === "submitting" ||
+      currentSuggestions.snapshot.phase === "querying" ||
+      currentSuggestions.snapshot.phase === "empty" ||
+      currentSuggestions.snapshot.phase === "failed",
   );
   const suggestionOptionId = (index: number): string =>
     `fennevia-urlbar-suggestion-${currentSuggestions.snapshot.queryRevision}-${index}`;
@@ -485,13 +490,19 @@
     role="dialog"
   >
     <header class="fennevia-address-popup__header">
-      <div>
-        <span class="fennevia-address-popup__eyebrow"
-          >{props.windowKind === "private"
-            ? t("address.privateBrowsing")
-            : t("address.productName")}</span
+      <div class="fennevia-address-popup__identity">
+        <span class="fennevia-address-popup__brand"
+          >{t("address.productName")}</span
         >
+        <span aria-hidden="true" class="fennevia-address-popup__brand-divider"
+        ></span>
         <h2 id="fennevia-address-popup-title">{t("address.title")}</h2>
+        {#if props.windowKind === "private"}
+          <span class="fennevia-address-popup__private">
+            <FirefoxIcon name="private" />
+            {t("address.privateBrowsing")}
+          </span>
+        {/if}
       </div>
       <button
         aria-label={t("address.closeAria")}
@@ -542,12 +553,12 @@
         type="text"
         value={popupState.draftValue}
       />
-      <span aria-hidden="true" class="fennevia-address-popup__enter">↵</span>
     </div>
 
     <output
       aria-live="polite"
       class="fennevia-address-popup__status"
+      class:fennevia-address-popup__status--visible={visuallyExposeStatus}
       data-fennevia-address-popup-status=""
       id="fennevia-address-popup-status">{statusText()}</output
     >
@@ -598,32 +609,36 @@
             {/if}
           </span>
           <span class="fennevia-address-popup__suggestion-meta">
-            <span
+            <span class="fennevia-address-popup__suggestion-source"
               >{getUrlbarSuggestionSourceLabel(result.source, localeId)}</span
             >
             {#if result.heuristic}
-              <span>{t("suggestions.heuristicBadge")}</span>
+              <span class="fennevia-address-popup__suggestion-badge"
+                >{t("suggestions.heuristicBadge")}</span
+              >
             {/if}
             {#if result.execution === "native"}
-              <span>{t("suggestions.nativeBadge")}</span>
+              <span class="fennevia-address-popup__suggestion-badge"
+                >{t("suggestions.nativeBadge")}</span
+              >
             {/if}
           </span>
         </button>
       {/each}
     </div>
 
-    <div
-      aria-label={t("permission.statusAria")}
-      class="fennevia-address-popup__details"
+    <section
+      aria-label={t("address.firefoxControls")}
+      class="fennevia-address-popup__utilities"
       data-fennevia-address-popup-details=""
-      role="group"
+      data-fennevia-urlbar-coverage=""
     >
       <button
         aria-label={t("address.openTrust", {
           connection: trust.connectionLabel,
           protection: trust.protectionLabel,
         })}
-        class="fennevia-address-popup__detail fennevia-address-popup__detail--trust"
+        class="fennevia-address-popup__utility fennevia-address-popup__utility--trust"
         data-fennevia-browser-tool="site-information"
         data-fennevia-status-tone={trust.tone}
         data-fennevia-trust-detail=""
@@ -637,95 +652,68 @@
         })}
         type="button"
       >
-        <span aria-hidden="true" class="fennevia-address-popup__detail-mark">
+        <span aria-hidden="true" class="fennevia-address-popup__utility-mark">
           <FirefoxTrustIcon state={trust.iconState} />
         </span>
-        <span class="fennevia-address-popup__detail-copy">
+        <span class="fennevia-address-popup__utility-copy">
           <strong>{t("address.statusTrust")}</strong>
-          <span>{trust.label}</span>
+          <span>{trust.connectionLabel}</span>
         </span>
       </button>
-      <div
-        class="fennevia-address-popup__detail fennevia-address-popup__detail--permissions"
+      <button
+        aria-label={t("address.openSitePermissions", {
+          label: permissions.label,
+        })}
+        class="fennevia-address-popup__utility fennevia-address-popup__utility--permissions"
+        data-fennevia-browser-tool="site-permissions"
+        data-fennevia-permission-detail=""
         data-fennevia-status-tone={permissions.tone}
+        disabled={handoffDisabled || !browserToolsSnapshot.sitePermissions}
+        onclick={(event) => void handleBrowserTool("site-permissions", event)}
+        title={t("address.openSitePermissions", {
+          label: permissions.label,
+        })}
+        type="button"
       >
-        <button
-          aria-label={t("address.openSitePermissions", {
-            label: permissions.label,
-          })}
-          class="fennevia-address-popup__detail-action"
-          data-fennevia-browser-tool="site-permissions"
-          data-fennevia-permission-detail=""
-          disabled={handoffDisabled || !browserToolsSnapshot.sitePermissions}
-          onclick={(event) => void handleBrowserTool("site-permissions", event)}
-          title={t("address.openSitePermissions", {
-            label: permissions.label,
-          })}
-          type="button"
+        <span aria-hidden="true" class="fennevia-address-popup__utility-mark"
+          >{permissions.badge}</span
         >
-          <span aria-hidden="true" class="fennevia-address-popup__detail-mark"
-            >{permissions.badge}</span
-          >
-          <span class="fennevia-address-popup__detail-copy">
-            <strong>{t("address.statusSitePermissions")}</strong>
-            <span>{permissions.label}</span>
-          </span>
-        </button>
-        {#if currentCoverage.snapshot.permissions.sharing.length > 0 || currentCoverage.snapshot.permissions.blocked.length > 0}
-          <ul
-            aria-label={t("permission.indicatorsAria")}
-            class="fennevia-address-popup__permission-indicators"
-            data-fennevia-permission-indicators=""
-          >
-            {#each currentCoverage.snapshot.permissions.sharing as kind (kind)}
-              <li data-fennevia-status-tone="warning">
-                {getSharingIndicatorLabel(kind, localeId)}
-              </li>
-            {/each}
-            {#each currentCoverage.snapshot.permissions.blocked as kind (kind)}
-              <li>{getBlockedPermissionIndicatorLabel(kind, localeId)}</li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-    </div>
-
-    <section
-      aria-labelledby="fennevia-address-popup-firefox-controls-title"
-      class="fennevia-address-popup__firefox-controls"
-      data-fennevia-urlbar-coverage=""
-    >
-      <div class="fennevia-address-popup__firefox-controls-copy">
-        <strong id="fennevia-address-popup-firefox-controls-title"
-          >{t("address.firefoxControls")}</strong
-        >
-        <span>{t("address.nativeAccessDescription")}</span>
-      </div>
-
-      {#if currentCoverage.snapshot.items.length > 0}
-        <ul
-          aria-label={t("address.urlbarItemsAria")}
-          class="fennevia-address-popup__urlbar-items"
-          data-fennevia-urlbar-items=""
-        >
-          {#each currentCoverage.snapshot.items as kind (kind)}
-            <li data-fennevia-status-tone={getUrlbarItemTone(kind)}>
-              {getUrlbarItemLabel(kind, localeId)}
-            </li>
-          {/each}
-        </ul>
-      {/if}
+        <span class="fennevia-address-popup__utility-copy">
+          <strong>{t("address.statusSitePermissions")}</strong>
+        </span>
+      </button>
 
       <button
-        class="fennevia-control fennevia-address-popup__native-access"
+        class="fennevia-control fennevia-address-popup__utility fennevia-address-popup__native-access"
         data-fennevia-native-urlbar-access=""
         onclick={handleNativeAccess}
         onkeydown={handleNativeAccessKeydown}
         type="button"
       >
-        <FirefoxIcon name="open-in-new" />
-        <span>{t("address.nativeAccess")}</span>
+        <span aria-hidden="true" class="fennevia-address-popup__utility-mark">
+          <FirefoxIcon name="open-in-new" />
+        </span>
+        <span class="fennevia-address-popup__utility-copy">
+          <strong>{t("address.nativeAccess")}</strong>
+        </span>
       </button>
+
+      {#if currentCoverage.snapshot.permissions.sharing.length > 0 || currentCoverage.snapshot.permissions.blocked.length > 0}
+        <ul
+          aria-label={t("permission.indicatorsAria")}
+          class="fennevia-address-popup__permission-indicators"
+          data-fennevia-permission-indicators=""
+        >
+          {#each currentCoverage.snapshot.permissions.sharing as kind (kind)}
+            <li data-fennevia-status-tone="warning">
+              {getSharingIndicatorLabel(kind, localeId)}
+            </li>
+          {/each}
+          {#each currentCoverage.snapshot.permissions.blocked as kind (kind)}
+            <li>{getBlockedPermissionIndicatorLabel(kind, localeId)}</li>
+          {/each}
+        </ul>
+      {/if}
     </section>
   </div>
 </div>
