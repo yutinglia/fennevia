@@ -47,6 +47,7 @@ test("opening customize holds every edge popup and marks the frame", () => {
   const shell = createEdgeShellController({
     scheduler: createScheduler().scheduler,
   });
+  shell.setPanelDodgeMode("single-reserved");
   const session = createCustomizeSessionController({ frame, shell });
 
   assert.equal(session.isOpen(), false);

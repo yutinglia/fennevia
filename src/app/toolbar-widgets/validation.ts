@@ -26,6 +26,8 @@ import {
   toolbarStyleThemeSet,
   toolbarStyleDensitySet,
   sidePanelLayoutSet,
+  defaultEdgePanelDodgeMode,
+  isEdgePanelDodgeMode,
   progressLightSourceSet,
   nonInteractiveKindSet,
   projectWidgetIdSet,
@@ -186,6 +188,7 @@ export function createDefaultShellPanelConfig(): ShellPanelConfigSnapshot {
     bottomPanelEnabled: true,
     bottomProgressLight: "downloads" as const,
     leftPanelEnabled: true,
+    panelDodgeMode: defaultEdgePanelDodgeMode,
     rightPanelEnabled: true,
     sidePanelLayout: "tabs-left" as const,
     topProgressLight: "loading" as const,
@@ -202,6 +205,7 @@ export function copyShellPanelConfigSnapshot(
     typeof candidate.bottomPanelEnabled !== "boolean" ||
     !isProgressLightSource(candidate.bottomProgressLight) ||
     typeof candidate.leftPanelEnabled !== "boolean" ||
+    !isEdgePanelDodgeMode(candidate.panelDodgeMode) ||
     typeof candidate.rightPanelEnabled !== "boolean" ||
     !isSidePanelLayout(candidate.sidePanelLayout) ||
     !isProgressLightSource(candidate.topProgressLight)
@@ -215,6 +219,7 @@ export function copyShellPanelConfigSnapshot(
     bottomPanelEnabled: candidate.bottomPanelEnabled,
     bottomProgressLight: candidate.bottomProgressLight,
     leftPanelEnabled: candidate.leftPanelEnabled,
+    panelDodgeMode: candidate.panelDodgeMode,
     rightPanelEnabled: candidate.rightPanelEnabled,
     sidePanelLayout: candidate.sidePanelLayout,
     topProgressLight: candidate.topProgressLight,

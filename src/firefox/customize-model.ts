@@ -234,6 +234,18 @@ const customizePanelV2Keys = new Set([
   "version",
 ]);
 
+const customizePanelV3Keys = new Set([
+  "allowCompactWindow",
+  "bottomPanelEnabled",
+  "bottomProgressLight",
+  "leftPanelEnabled",
+  "panelDodgeMode",
+  "rightPanelEnabled",
+  "sidePanelLayout",
+  "topProgressLight",
+  "version",
+]);
+
 export function parseCustomizePanels(text: string): CustomizePanels | null {
   if (
     typeof text !== "string" ||
@@ -265,16 +277,26 @@ export function parseCustomizePanels(text: string): CustomizePanels | null {
       } as ShellPanelConfigSnapshot);
     }
     if (
-      parsed.version !== 2 ||
-      Object.keys(parsed).some((key) => !customizePanelV2Keys.has(key))
+      parsed.version === 2 &&
+      Object.keys(parsed).every((key) => customizePanelV2Keys.has(key))
     ) {
-      return null;
+      return copyShellPanelConfigSnapshot({
+        ...createDefaultShellPanelConfig(),
+        ...parsed,
+        version: undefined,
+      } as unknown as ShellPanelConfigSnapshot);
     }
-    return copyShellPanelConfigSnapshot({
-      ...createDefaultShellPanelConfig(),
-      ...parsed,
-      version: undefined,
-    } as unknown as ShellPanelConfigSnapshot);
+    if (
+      parsed.version === 3 &&
+      Object.keys(parsed).every((key) => customizePanelV3Keys.has(key))
+    ) {
+      return copyShellPanelConfigSnapshot({
+        ...createDefaultShellPanelConfig(),
+        ...parsed,
+        version: undefined,
+      } as unknown as ShellPanelConfigSnapshot);
+    }
+    return null;
   } catch {
     return null;
   }
@@ -283,7 +305,7 @@ export function parseCustomizePanels(text: string): CustomizePanels | null {
 export function serializeCustomizePanels(panels: CustomizePanels): string {
   return JSON.stringify({
     ...copyShellPanelConfigSnapshot(panels),
-    version: 2,
+    version: 3,
   });
 }
 

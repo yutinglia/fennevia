@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { edgeInteractionBounds } from "../edge-surfaces/contracts.ts";
+import {
+  edgeInteractionBounds,
+  type EdgePanelDodgeMode,
+} from "../edge-surfaces/contracts.ts";
+
+export type { EdgePanelDodgeMode } from "../edge-surfaces/contracts.ts";
+export {
+  defaultEdgePanelDodgeMode,
+  edgePanelDodgeModes,
+  isEdgePanelDodgeMode,
+} from "../edge-surfaces/contracts.ts";
 
 export const toolbarWidgetKinds = Object.freeze([
   "built-in",
@@ -148,6 +158,7 @@ export type ShellPanelConfigSnapshot = Readonly<{
   bottomPanelEnabled: boolean;
   bottomProgressLight: ProgressLightSource;
   leftPanelEnabled: boolean;
+  panelDodgeMode: EdgePanelDodgeMode;
   rightPanelEnabled: boolean;
   /** @deprecated Retained only as a version-1 layout migration hint. */
   sidePanelLayout: SidePanelLayout;

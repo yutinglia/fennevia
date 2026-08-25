@@ -607,8 +607,8 @@ Extension identity never enters logs, diagnostics, serialized frontend state,
 CSS custom properties on shared roots, root datasets, clipboard, or network
 requests; diagnostics stay at widget counts, revisions, and fixed codes.
 
-ADR-045 adds two owner-approved bounded exceptions. ADR-064, ADR-074, and
-ADR-075 extend only the first exception's closed schema. First, profile-local persistence: the
+ADR-045 adds two owner-approved bounded exceptions. ADR-064, ADR-074, ADR-075,
+and ADR-077 extend only the first exception's closed schema. First, profile-local persistence: the
 privileged controller stores the Fennevia layout, style, and panel policy as
 bounded versioned JSON in the `fennevia.customize.layout`,
 `fennevia.customize.style`, and `fennevia.customize.panels` string preferences
@@ -622,10 +622,12 @@ fixed style token set (theme, `#rrggbb` color tokens or empty defaults, and
 bounded integers for blur, radius, density, surface opacity, saturation,
 shadow, motion, font size, in-window hide delay, window-leave hide delay,
 temporary reveal duration, shortcut-tip duration, and edge trigger size). The
-panel pref version 2 contains independent Left/Right/Bottom enabled booleans,
+panel pref version 3 contains independent Left/Right/Bottom enabled booleans,
 the legacy closed side-layout migration hint, two closed activity-light enums,
-and ADR-068's `allowCompactWindow` boolean (default false); Top has no enabled
-field. Neither the panel pref nor the optional item-style field can encode
+ADR-068's `allowCompactWindow` boolean (default false), and ADR-077's one
+four-value `panelDodgeMode` enum (default `multiple-dynamic`); Top has no
+enabled field. Versions 1 and 2 migrate in memory and unknown modes or keys
+fail safe. Neither the panel pref nor the optional item-style field can encode
 arbitrary geometry, CSS declarations, class names, labels, a URL, or feature
 activity.
 Compact-window only toggles a root attribute and one

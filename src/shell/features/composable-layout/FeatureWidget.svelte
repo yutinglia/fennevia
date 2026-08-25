@@ -39,31 +39,39 @@
   const props: Props = $props();
 </script>
 
-{#if props.id === "tabs"}
-  <TabStrip
-    edge={props.edge}
-    localeId={props.localeId}
-    onFatalError={props.onFatalError}
-    orientation={props.direction}
-    shell={props.shell}
-    showNewTab={props.widgetStyle === "with-new-tab"}
-    tabs={props.tabs}
-  />
-{:else if props.id === "bookmarks"}
-  <BookmarksPanel
-    bookmarks={props.bookmarks}
-    edge={props.edge}
-    localeId={props.localeId}
-    onDismiss={() => props.onDismiss(props.edge)}
-    onFatalError={props.onFatalError}
-    orientation={props.direction}
-    shell={props.shell}
-  />
-{:else}
-  <DownloadsPanel
-    downloads={props.downloads}
-    localeId={props.localeId}
-    onFatalError={props.onFatalError}
-    orientation={props.direction}
-  />
-{/if}
+<div
+  class="fennevia-feature-widget"
+  class:fennevia-feature-widget--column={props.direction === "column"}
+  class:fennevia-feature-widget--row={props.direction === "row"}
+  data-fennevia-feature-widget={props.id}
+  data-fennevia-orientation={props.direction}
+>
+  {#if props.id === "tabs"}
+    <TabStrip
+      edge={props.edge}
+      localeId={props.localeId}
+      onFatalError={props.onFatalError}
+      orientation={props.direction}
+      shell={props.shell}
+      showNewTab={props.widgetStyle === "with-new-tab"}
+      tabs={props.tabs}
+    />
+  {:else if props.id === "bookmarks"}
+    <BookmarksPanel
+      bookmarks={props.bookmarks}
+      edge={props.edge}
+      localeId={props.localeId}
+      onDismiss={() => props.onDismiss(props.edge)}
+      onFatalError={props.onFatalError}
+      orientation={props.direction}
+      shell={props.shell}
+    />
+  {:else}
+    <DownloadsPanel
+      downloads={props.downloads}
+      localeId={props.localeId}
+      onFatalError={props.onFatalError}
+      orientation={props.direction}
+    />
+  {/if}
+</div>

@@ -4,9 +4,11 @@ import test from "node:test";
 import {
   createEdgeShellController,
   createEdgeSurfaceController,
+  defaultEdgePanelDodgeMode,
   edgeInteractionDefaults,
   edgeKeyboardBindings,
   edgeNames,
+  edgePanelDodgeModes,
   getKeyboardRevealEdge,
   resolveEdgeAtPoint,
 } from "../src/app/edge-surfaces.ts";
@@ -166,6 +168,7 @@ test("the shared shell keeps pointer reveal exclusive while preserving legitimat
     hideDelayMs: 10,
     scheduler: clock.scheduler,
   });
+  assert.equal(shell.snapshot().panelDodgeMode, defaultEdgePanelDodgeMode);
 
   shell.revealFromPointer("top");
   shell.revealFromPointer("left");
@@ -191,6 +194,97 @@ test("the shared shell keeps pointer reveal exclusive while preserving legitimat
     ),
   );
   assert.equal(clock.size(), 0);
+});
+
+test("single-panel modes keep one ordinary surface while allowing the bounded new-tab highlight", () => {
+  const clock = createScheduler();
+  const shell = createEdgeShellController({
+    hideDelayMs: 10,
+    scheduler: clock.scheduler,
+  });
+
+  assert.equal(shell.setPanelDodgeMode("single-dynamic"), true);
+  assert.equal(shell.revealFromKeyboard("left"), true);
+  assert.equal(shell.setFocusHeld("top", true), true);
+  assert.deepEqual(
+    edgeNames.filter((edge) => shell.snapshot().surfaces[edge].visible),
+    ["top"],
+  );
+
+  assert.equal(shell.setPopupHeld("right", true), true);
+  assert.equal(shell.revealFromPointer("left"), false);
+  assert.equal(shell.revealProgrammatically("bottom", 100), false);
+  assert.deepEqual(
+    edgeNames.filter((edge) => shell.snapshot().surfaces[edge].visible),
+    ["right"],
+  );
+
+  assert.equal(
+    shell.revealProgrammatically("bottom", 100, "new-tab-highlight"),
+    true,
+  );
+  assert.deepEqual(
+    edgeNames.filter((edge) => shell.snapshot().surfaces[edge].visible),
+    ["right", "bottom"],
+  );
+  clock.advance(100);
+  assert.equal(shell.snapshot().surfaces.bottom.phase, "pending-hide");
+  clock.advance(10);
+  assert.deepEqual(
+    edgeNames.filter((edge) => shell.snapshot().surfaces[edge].visible),
+    ["right"],
+  );
+
+  assert.equal(shell.setPanelDodgeMode("single-reserved"), true);
+  assert.equal(shell.snapshot().panelDodgeMode, "single-reserved");
+  assert.throws(
+    () => shell.setPanelDodgeMode("single-overlap"),
+    /FENNEVIA_EDGE_PANEL_DODGE_MODE_INVALID/u,
+  );
+  assert.throws(
+    () => shell.revealProgrammatically("top", 100, "tab-created"),
+    /FENNEVIA_EDGE_PROGRAMMATIC_REASON_INVALID/u,
+  );
+});
+
+test("switching from multiple to single mode converges on a popup-held surface", () => {
+  const shell = createEdgeShellController();
+
+  shell.setFocusHeld("top", true);
+  shell.setPopupHeld("right", true);
+  shell.revealFromKeyboard("bottom");
+  assert.deepEqual(
+    edgeNames.filter((edge) => shell.snapshot().surfaces[edge].visible),
+    ["top", "right", "bottom"],
+  );
+
+  assert.equal(shell.setPanelDodgeMode("single-dynamic"), true);
+  assert.deepEqual(
+    edgeNames.filter((edge) => shell.snapshot().surfaces[edge].visible),
+    ["right"],
+  );
+  assert.equal(shell.snapshot().activeEdge, "right");
+
+  for (const mode of edgePanelDodgeModes) {
+    shell.setPanelDodgeMode(mode);
+    assert.equal(shell.snapshot().panelDodgeMode, mode);
+  }
+});
+
+test("single mode preserves both anchors during a native popup-owner transition", () => {
+  const shell = createEdgeShellController();
+  shell.setPanelDodgeMode("single-dynamic");
+
+  shell.setPopupHeld("top", true);
+  assert.equal(shell.setPopupHeld("left", true), true);
+  assert.deepEqual(
+    edgeNames.filter((edge) => shell.snapshot().surfaces[edge].visible),
+    ["top", "left"],
+  );
+
+  shell.setPopupHeld("top", false);
+  assert.equal(shell.snapshot().surfaces.left.phase, "popup-held");
+  assert.equal(shell.snapshot().surfaces.top.holds.popup, false);
 });
 
 test("one configured edge stays disabled across global suppression", () => {

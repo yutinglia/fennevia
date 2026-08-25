@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import {
+  defaultEdgePanelDodgeMode,
   edgeInteractionBounds,
   edgeInteractionDefaults,
   edgeNames,
+  edgeProgrammaticRevealReasons,
+  isEdgePanelDodgeMode,
   pointerExitLocations,
 } from "./contracts.ts";
 import type {
   EdgeInteractionConfig,
   EdgeName,
+  EdgePanelDodgeMode,
+  EdgeProgrammaticRevealReason,
   PointerExitLocation,
   EdgeSurfaceSnapshot,
   EdgeSurfaceController,
@@ -85,6 +90,7 @@ export function createEdgeShellController(
       edgeInteractionDefaults.windowLeaveHideDelayMs,
   });
   let interactionSuppressed = false;
+  let panelDodgeMode: EdgePanelDodgeMode = defaultEdgePanelDodgeMode;
   let windowDragActive = false;
   let windowDragEdge: EdgeName | null = null;
 
@@ -111,6 +117,8 @@ export function createEdgeShellController(
   const interactionsEnabled = (): boolean => enabled && !interactionSuppressed;
   const pointerInteractionsEnabled = (): boolean =>
     interactionsEnabled() && !windowDragActive;
+  const singlePanelMode = (): boolean =>
+    panelDodgeMode === "single-dynamic" || panelDodgeMode === "single-reserved";
 
   const syncSurfaceEnabled = (): void => {
     for (const edge of edgeNames) {
@@ -118,11 +126,63 @@ export function createEdgeShellController(
     }
   };
 
+  const prepareSinglePanelReveal = (
+    edge: EdgeName,
+    allowConcurrent = false,
+    allowPopupReplacement = false,
+  ): Readonly<{ allowed: boolean; changed: boolean }> => {
+    if (!singlePanelMode() || allowConcurrent) {
+      return Object.freeze({ allowed: true, changed: false });
+    }
+    const blockingPopup = edgeNames.find((candidate) => {
+      const snapshot = surfaces[candidate].snapshot();
+      return candidate !== edge && snapshot.visible && snapshot.holds.popup;
+    });
+    if (blockingPopup && !allowPopupReplacement) {
+      return Object.freeze({ allowed: false, changed: false });
+    }
+    let changed = false;
+    for (const candidate of edgeNames) {
+      if (candidate !== edge) {
+        changed = surfaces[candidate].dismiss() || changed;
+      }
+    }
+    return Object.freeze({ allowed: true, changed });
+  };
+
+  const convergeSinglePanelVisibility = (): void => {
+    if (!singlePanelMode()) {
+      return;
+    }
+    const visibleEdges = edgeNames.filter(
+      (edge) => surfaces[edge].snapshot().visible,
+    );
+    if (visibleEdges.length <= 1) {
+      activeEdge = visibleEdges[0] ?? null;
+      return;
+    }
+    const survivor =
+      visibleEdges.find((edge) => surfaces[edge].snapshot().holds.popup) ??
+      (activeEdge && visibleEdges.includes(activeEdge) ? activeEdge : null) ??
+      visibleEdges.at(-1) ??
+      null;
+    for (const edge of visibleEdges) {
+      if (edge !== survivor) {
+        surfaces[edge].dismiss();
+      }
+    }
+    activeEdge = survivor;
+  };
+
   const revealPointer = (edge: EdgeName): boolean => {
     if (!pointerInteractionsEnabled()) {
       return false;
     }
-    let changed = false;
+    const prepared = prepareSinglePanelReveal(edge);
+    if (!prepared.allowed) {
+      return false;
+    }
+    let changed = prepared.changed;
     for (const candidate of edgeNames) {
       changed =
         surfaces[candidate].setPointerHeld(candidate === edge) || changed;
@@ -234,7 +294,12 @@ export function createEdgeShellController(
       if (!interactionsEnabled()) {
         return false;
       }
-      return markActive(edge, requireEdge(edge).revealFromKeyboard());
+      const surface = requireEdge(edge);
+      const prepared = prepareSinglePanelReveal(edge);
+      if (!prepared.allowed) {
+        return false;
+      }
+      return markActive(edge, surface.revealFromKeyboard() || prepared.changed);
     },
 
     revealFromPointer(edge) {
@@ -243,16 +308,33 @@ export function createEdgeShellController(
       return revealPointer(edge);
     },
 
-    revealProgrammatically(edge, durationMs) {
+    revealProgrammatically(
+      edge,
+      durationMs,
+      reason: EdgeProgrammaticRevealReason = "default",
+    ) {
       requireUsable();
+      if (!edgeProgrammaticRevealReasons.includes(reason)) {
+        throw createEdgeSurfaceError(
+          "FENNEVIA_EDGE_PROGRAMMATIC_REASON_INVALID",
+        );
+      }
       if (!interactionsEnabled()) {
+        return false;
+      }
+      const surface = requireEdge(edge);
+      const prepared = prepareSinglePanelReveal(
+        edge,
+        reason === "new-tab-highlight",
+      );
+      if (!prepared.allowed) {
         return false;
       }
       return markActive(
         edge,
-        requireEdge(edge).revealProgrammatically(
+        surface.revealProgrammatically(
           durationMs ?? interaction.programmaticRevealMs,
-        ),
+        ) || prepared.changed,
       );
     },
 
@@ -297,7 +379,15 @@ export function createEdgeShellController(
       if (held && !interactionsEnabled()) {
         return false;
       }
-      return markActive(edge, requireEdge(edge).setFocusHeld(held));
+      const surface = requireEdge(edge);
+      if (!held) {
+        return surface.setFocusHeld(false);
+      }
+      const prepared = prepareSinglePanelReveal(edge);
+      if (!prepared.allowed) {
+        return false;
+      }
+      return markActive(edge, surface.setFocusHeld(true) || prepared.changed);
     },
 
     setInteractionConfig(config) {
@@ -344,6 +434,19 @@ export function createEdgeShellController(
       return true;
     },
 
+    setPanelDodgeMode(nextMode) {
+      requireUsable();
+      if (!isEdgePanelDodgeMode(nextMode)) {
+        throw createEdgeSurfaceError("FENNEVIA_EDGE_PANEL_DODGE_MODE_INVALID");
+      }
+      if (panelDodgeMode === nextMode) {
+        return false;
+      }
+      panelDodgeMode = nextMode;
+      convergeSinglePanelVisibility();
+      return true;
+    },
+
     setPointerHeld(edge, held) {
       requireUsable();
       if (held && !pointerInteractionsEnabled()) {
@@ -361,7 +464,12 @@ export function createEdgeShellController(
       if (held && !interactionsEnabled()) {
         return false;
       }
-      return markActive(edge, requireEdge(edge).setPopupHeld(held));
+      const surface = requireEdge(edge);
+      if (!held) {
+        return surface.setPopupHeld(false);
+      }
+      const prepared = prepareSinglePanelReveal(edge, false, true);
+      return markActive(edge, surface.setPopupHeld(true) || prepared.changed);
     },
 
     setWindowDragActive(nextActive, edge) {
@@ -406,6 +514,7 @@ export function createEdgeShellController(
         enabled,
         interaction,
         interactionSuppressed,
+        panelDodgeMode,
         surfaces: Object.freeze(
           Object.fromEntries(
             edgeNames.map((edge) => [edge, surfaces[edge].snapshot()]),

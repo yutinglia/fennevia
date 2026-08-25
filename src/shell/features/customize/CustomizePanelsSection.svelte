@@ -1,7 +1,9 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
   import {
+    isEdgePanelDodgeMode,
     isProgressLightSource,
+    type EdgePanelDodgeMode,
     type ProgressLightSource,
     type ShellPanelConfigSnapshot,
   } from "../../../app/toolbar-widgets-state";
@@ -88,6 +90,17 @@
         : false;
     props.onSetPanels({ allowCompactWindow: checked });
   };
+
+  const setPanelDodgeMode = (event: Event): void => {
+    const value =
+      event.currentTarget instanceof HTMLSelectElement
+        ? event.currentTarget.value
+        : "";
+    if (!isEdgePanelDodgeMode(value)) {
+      return;
+    }
+    props.onSetPanels({ panelDodgeMode: value as EdgePanelDodgeMode });
+  };
 </script>
 
 <fieldset
@@ -99,6 +112,32 @@
   </legend>
   <p class="fennevia-customize__interaction-help">
     {t("customize.panelsHelp")}
+  </p>
+
+  <label class="fennevia-customize__panel-field">
+    <span>{t("customize.panelDodgeMode")}</span>
+    <select
+      class="fennevia-control fennevia-customize__select"
+      data-fennevia-customize-panel-dodge=""
+      onchange={setPanelDodgeMode}
+      value={props.panels.panelDodgeMode}
+    >
+      <option value="single-dynamic">
+        {t("customize.panelDodge.singleDynamic")}
+      </option>
+      <option value="single-reserved">
+        {t("customize.panelDodge.singleReserved")}
+      </option>
+      <option value="multiple-dynamic">
+        {t("customize.panelDodge.multipleDynamic")}
+      </option>
+      <option value="multiple-reserved">
+        {t("customize.panelDodge.multipleReserved")}
+      </option>
+    </select>
+  </label>
+  <p class="fennevia-customize__interaction-help">
+    {t("customize.panelDodgeHelp")}
   </p>
 
   <label class="fennevia-customize__panel-toggle">

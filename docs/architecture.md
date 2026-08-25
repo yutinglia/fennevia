@@ -608,7 +608,8 @@ selected chrome `<browser>` after a tab select is not a window leave. A zero
 shortcut-tip duration omits the footer from rendering. Those two prefs are versioned
 JSON with a 16 KiB cap and fail safe to defaults. ADR-064 adds a third strict
 panel preference; ADR-074 advances it to version 2 with independent
-`leftPanelEnabled`, `rightPanelEnabled`, and `bottomPanelEnabled` booleans.
+`leftPanelEnabled`, `rightPanelEnabled`, and `bottomPanelEnabled` booleans, and
+ADR-077 advances it to version 3 with one closed `panelDodgeMode` enum.
 Top has no enabled field and cannot be disabled. The old side-role and
 `bottomDownloadsEnabled` values remain migration hints only. The same closed
 object retains `loading`/`downloads`/`off` sources for the top and bottom
@@ -618,7 +619,15 @@ false, so NativeUi can optionally clear Firefox chrome `:root` min-width and
 min-height while Fennevia is active. Missing keys keep the documented
 defaults. Its defaults enable all optional panels, preserve the migrated
 tabs-left/bookmarks-right tree, select loading top and downloads bottom, and
-retain the official Firefox window floor. A panel edit that would make the
+retain the official Firefox window floor. The panel-dodge default and v1/v2
+migration value is `multiple-dynamic`; the other accepted values are
+`single-dynamic`, `single-reserved`, and `multiple-reserved`. Single modes
+dismiss other ordinary surfaces through the existing shared controller, while
+the fixed 500 ms `new-tab-highlight` reason may temporarily coexist and an
+existing Firefox popup hold blocks competing ordinary reveals. Reserved modes
+keep both side panels below Top and keep Bottom between each effectively
+enabled side through frame attributes and the existing clearance properties;
+dynamic modes continue to reserve only visible neighbors. A panel edit that would make the
 only Customize widget unreachable is rejected. An optional edge with no
 layout nodes is runtime-disabled without losing its saved tree during ordinary
 browsing; while customize mode is open, every preference-enabled empty edge is
@@ -657,10 +666,11 @@ adopted Firefox widgets, removes every node, and creates one Top Customize
 instance while retaining panel/style/interaction/duplicate settings. The
 top-host drawer is the palette and settings editor, centered in the remaining
 content well so it does not cover the four edge roots. See ADR-044, ADR-045,
-ADR-046, ADR-047, ADR-064, ADR-068, ADR-074, ADR-075, ADR-076,
+ADR-046, ADR-047, ADR-064, ADR-068, ADR-074, ADR-075, ADR-076, ADR-077,
 `docs/research/firefox-153-toolbar-widget-mirror.md`,
 `docs/research/firefox-153-customize-mode.md`, and
-`plans/009-composable-widget-layout.md`.
+`plans/009-composable-widget-layout.md`, and
+`plans/013-configurable-panel-dodge-and-horizontal-features.md`.
 
 ADR-075 adds projected dragging and palette discoverability without a second
 layout model. A drag keeps its source as a subdued placeholder and projects one
@@ -703,6 +713,16 @@ effective allowlisted id, and `set-node-style` remains revision guarded.
 Arbitrary CSS, class names, labels, geometry, native ids, and Firefox nodes do
 not enter this field. See ADR-075 and
 `plans/010-customize-mode-drag-ux.md`.
+
+ADR-077 gives Tabs, Bookmarks, and Downloads status one bounded axis-aware
+feature presentation root without changing their per-window state owners.
+Tabs' summary and strip are one composable child; a Row keeps the summary and
+integrated New Tab action intrinsic while zero-minimum tab partitions shrink
+and scroll, and a Column retains the full-width trailing action. Bookmarks and
+Downloads retain bounded horizontal/list variants, and Address already uses a
+zero-minimum, maximum-bounded launcher capsule. Only an explicit Expanded
+wrapper claims the parent flow's remaining main-axis space. See ADR-077 and
+`plans/013-configurable-panel-dodge-and-horizontal-features.md`.
 
 When the customize session changes from open to closed, the Top app root uses
 the shared surface dismissal path while the closing control still owns focus.

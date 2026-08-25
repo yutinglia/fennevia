@@ -732,6 +732,7 @@ test("panel config stays closed, immutable, and keeps the legacy side migration 
     bottomPanelEnabled: true,
     bottomProgressLight: "downloads",
     leftPanelEnabled: true,
+    panelDodgeMode: "multiple-dynamic",
     rightPanelEnabled: true,
     sidePanelLayout: "tabs-left",
     topProgressLight: "loading",
@@ -750,6 +751,15 @@ test("panel config stays closed, immutable, and keeps the legacy side migration 
   assert.equal(getSidePanelRole(swapped, "left"), "bookmarks");
   assert.equal(getSidePanelEdge(swapped, "tabs"), "right");
   assert.ok(Object.isFrozen(swapped));
+  assert.equal(
+    copyShellPanelConfigPartial({ panelDodgeMode: "single-reserved" })
+      .panelDodgeMode,
+    "single-reserved",
+  );
+  assert.throws(
+    () => copyShellPanelConfigPartial({ panelDodgeMode: "overlap" }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_PANELS_INVALID/u,
+  );
   assert.deepEqual(
     copyShellPanelConfigPartial({
       rightPanelEnabled: false,

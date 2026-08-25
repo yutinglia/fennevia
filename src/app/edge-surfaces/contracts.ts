@@ -4,6 +4,23 @@ export const edgeNames = ["top", "left", "right", "bottom"] as const;
 
 export type EdgeName = (typeof edgeNames)[number];
 
+export const edgePanelDodgeModes = Object.freeze([
+  "single-dynamic",
+  "single-reserved",
+  "multiple-dynamic",
+  "multiple-reserved",
+] as const);
+
+export type EdgePanelDodgeMode = (typeof edgePanelDodgeModes)[number];
+
+export const edgeProgrammaticRevealReasons = Object.freeze([
+  "default",
+  "new-tab-highlight",
+] as const);
+
+export type EdgeProgrammaticRevealReason =
+  (typeof edgeProgrammaticRevealReasons)[number];
+
 export const pointerExitLocations = [
   "inside-window",
   "outside-window",
@@ -73,6 +90,7 @@ export type EdgeShellSnapshot = Readonly<{
   enabled: boolean;
   interaction: EdgeInteractionConfig;
   interactionSuppressed: boolean;
+  panelDodgeMode: EdgePanelDodgeMode;
   surfaces: Readonly<Record<EdgeName, EdgeSurfaceSnapshot>>;
 }>;
 
@@ -85,12 +103,17 @@ export type EdgeShellController = Readonly<{
   releasePointer: (edge: EdgeName, location: PointerExitLocation) => boolean;
   revealFromKeyboard: (edge: EdgeName) => boolean;
   revealFromPointer: (edge: EdgeName) => boolean;
-  revealProgrammatically: (edge: EdgeName, durationMs?: number) => boolean;
+  revealProgrammatically: (
+    edge: EdgeName,
+    durationMs?: number,
+    reason?: EdgeProgrammaticRevealReason,
+  ) => boolean;
   setEnabled: (enabled: boolean) => boolean;
   setEdgeEnabled: (edge: EdgeName, enabled: boolean) => boolean;
   setFocusHeld: (edge: EdgeName, held: boolean) => boolean;
   setInteractionConfig: (config: EdgeInteractionConfig) => boolean;
   setInteractionSuppressed: (suppressed: boolean) => boolean;
+  setPanelDodgeMode: (mode: EdgePanelDodgeMode) => boolean;
   setPointerHeld: (edge: EdgeName, held: boolean) => boolean;
   setPopupHeld: (edge: EdgeName, held: boolean) => boolean;
   setWindowDragActive: (active: boolean, edge?: EdgeName) => boolean;
@@ -135,6 +158,14 @@ export const edgeInteractionDefaults: EdgeInteractionConfig = Object.freeze({
   triggerThicknessCssPixels: edgeTriggerThicknessCssPixels,
   windowLeaveHideDelayMs: edgeSurfaceTiming.windowLeaveHideDelayMs,
 });
+
+export const defaultEdgePanelDodgeMode: EdgePanelDodgeMode = "multiple-dynamic";
+
+export function isEdgePanelDodgeMode(
+  value: unknown,
+): value is EdgePanelDodgeMode {
+  return edgePanelDodgeModes.includes(value as EdgePanelDodgeMode);
+}
 
 export const holdNames = [
   "focus",

@@ -2183,6 +2183,7 @@ test("panel and progress-light edits persist, observe, and reset", async () => {
       bottomPanelEnabled: true,
       bottomProgressLight: "downloads",
       leftPanelEnabled: true,
+      panelDodgeMode: "multiple-dynamic",
       rightPanelEnabled: true,
       sidePanelLayout: "tabs-left",
       topProgressLight: "loading",
@@ -2191,6 +2192,7 @@ test("panel and progress-light edits persist, observe, and reset", async () => {
     await pair.controller.toolbarWidgets.edit({
       panels: {
         bottomPanelEnabled: false,
+        panelDodgeMode: "single-reserved",
         rightPanelEnabled: false,
         topProgressLight: "downloads",
       },
@@ -2199,10 +2201,11 @@ test("panel and progress-light edits persist, observe, and reset", async () => {
     snapshot = pair.controller.toolbarWidgets.snapshot();
     assert.equal(snapshot.panelsCustomized, true);
     assert.equal(snapshot.panels.bottomPanelEnabled, false);
+    assert.equal(snapshot.panels.panelDodgeMode, "single-reserved");
     assert.equal(snapshot.panels.rightPanelEnabled, false);
     assert.equal(snapshot.panels.topProgressLight, "downloads");
     assert.ok(
-      native.getPrefValue("fennevia.customize.panels").includes('"version":2'),
+      native.getPrefValue("fennevia.customize.panels").includes('"version":3'),
     );
 
     native.setPrefValue(
@@ -2220,6 +2223,7 @@ test("panel and progress-light edits persist, observe, and reset", async () => {
     assert.equal(snapshot.panels.bottomPanelEnabled, true);
     assert.equal(snapshot.panels.bottomProgressLight, "off");
     assert.equal(snapshot.panels.leftPanelEnabled, true);
+    assert.equal(snapshot.panels.panelDodgeMode, "multiple-dynamic");
     assert.equal(snapshot.panels.rightPanelEnabled, true);
     assert.equal(snapshot.panels.topProgressLight, "off");
 

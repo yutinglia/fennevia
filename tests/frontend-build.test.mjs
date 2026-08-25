@@ -65,6 +65,7 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
     tabsCss,
     bookmarksCss,
     downloadsCss,
+    featureWidget,
     projectWidget,
   ] = await Promise.all([
     readProjectFile("src/shell/styles/composable-layout.css"),
@@ -72,6 +73,9 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
     readProjectFile("src/shell/styles/tabs.css"),
     readProjectFile("src/shell/styles/bookmarks.css"),
     readProjectFile("src/shell/styles/downloads.css"),
+    readProjectFile(
+      "src/shell/features/composable-layout/FeatureWidget.svelte",
+    ),
     readProjectFile(
       "src/shell/features/composable-layout/ProjectWidget.svelte",
     ),
@@ -126,7 +130,12 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
   assert.doesNotMatch(layoutCss, /flex: 1 1 (?:180px|260px|280px);/u);
   assert.match(
     layoutCss,
-    /\.fennevia-tabs-summary \{\s*inline-size: 100%;\s*align-self: stretch;/u,
+    /\.fennevia-feature-widget--column[\s\S]*?> \.fennevia-tabs-summary \{\s*inline-size: 100%;\s*align-self: stretch;/u,
+  );
+  assert.match(featureWidget, /data-fennevia-feature-widget=\{props\.id\}/u);
+  assert.match(
+    layoutCss,
+    /\.fennevia-feature-widget \{[\s\S]*?min-block-size: 0;[\s\S]*?min-inline-size: 0;[\s\S]*?max-block-size: 100%;[\s\S]*?max-inline-size: 100%;[\s\S]*?overflow: hidden;/u,
   );
   assert.match(
     layoutCss,
@@ -148,7 +157,18 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
     layoutCss,
     /\.fennevia-layout-address[\s\S]*?> \.fennevia-layout-address-launcher \{[\s\S]*?max-inline-size: min\(680px, 100%\);[\s\S]*?block-size: var\(--fennevia-control-height\);/u,
   );
-  assert.match(tabsCss, /min-inline-size: min\(260px, 100%\);/u);
+  assert.match(
+    tabsCss,
+    /\.fennevia-tab-strip--horizontal \{[\s\S]*?min-inline-size: 0;/u,
+  );
+  assert.match(
+    tabsCss,
+    /\.fennevia-tab-strip--horizontal[\s\S]*?\.fennevia-tab-strip__new \{[\s\S]*?inline-size: auto;/u,
+  );
+  assert.match(
+    bookmarksCss,
+    /\.fennevia-bookmarks \{[\s\S]*?min-block-size: 0;[\s\S]*?min-inline-size: 0;/u,
+  );
   assert.match(bookmarksCss, /min-inline-size: min\(300px, 100%\);/u);
   assert.match(
     downloadsCss,
@@ -510,13 +530,19 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.match(
     css,
-    /\.fennevia-layout-wrapper--expanded[\s\S]*?> :is\(\.fennevia-tab-strip, \.fennevia-bookmarks, \.fennevia-downloads\)[\s\S]*?inline-size: 100%;[\s\S]*?align-self: stretch;/u,
+    /\.fennevia-layout-wrapper--expanded[\s\S]*?> \.fennevia-feature-widget \{[\s\S]*?inline-size: 100%;[\s\S]*?align-self: stretch;/u,
   );
   assert.match(
     component,
     /shell\.snapshot\(\)\.interaction\.triggerThicknessCssPixels/u,
   );
   assert.match(mountShell, /shell\.setInteractionConfig/u);
+  assert.match(mountShell, /shell\.setPanelDodgeMode/u);
+  assert.match(mountShell, /PANEL_DODGE_MODE_ATTRIBUTE/u);
+  assert.match(
+    mountShell,
+    /frame\.toggleAttribute\(\s*`data-fennevia-\$\{edge\}-enabled`,\s*enabled/u,
+  );
   assert.match(
     mountShell,
     /toolbarLayoutContainsProjectWidget\([\s\S]*?state\.snapshot\.layout\[edge\],[\s\S]*?"tabs"/u,
@@ -599,6 +625,15 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(customizePanels, /rightPanelEnabled/u);
   assert.match(customizePanels, /bottomPanelEnabled/u);
   assert.match(customizePanels, /data-fennevia-customize-multiple-placements/u);
+  assert.match(customizePanels, /data-fennevia-customize-panel-dodge/u);
+  for (const mode of [
+    "single-dynamic",
+    "single-reserved",
+    "multiple-dynamic",
+    "multiple-reserved",
+  ]) {
+    assert.match(customizePanels, new RegExp(`value="${mode}"`, "u"));
+  }
   assert.match(customizePanels, /allowCompactWindow/u);
   assert.match(customizePanels, /data-fennevia-customize-compact-window/u);
   assert.match(customizePanels, /data-fennevia-customize-clean-layout/u);
@@ -664,6 +699,10 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.match(css, /data-fennevia-customize-active/u);
   assert.match(css, /--fennevia-bottom-clearance/u);
+  assert.match(css, /data-fennevia-panel-dodge-mode="single-reserved"/u);
+  assert.match(css, /data-fennevia-panel-dodge-mode="multiple-reserved"/u);
+  assert.match(css, /data-fennevia-left-enabled/u);
+  assert.match(css, /data-fennevia-right-enabled/u);
   assert.match(css, /\.fennevia-customize \{[\s\S]*?overflow: hidden;/u);
   assert.match(css, /\.fennevia-customize__tabs/u);
   assert.match(css, /\.fennevia-customize__tabpanel/u);

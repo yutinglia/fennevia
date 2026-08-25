@@ -115,6 +115,33 @@
   );
 }
 
+#fennevia-shell-frame-host:is(
+  [data-fennevia-panel-dodge-mode="single-reserved"],
+  [data-fennevia-panel-dodge-mode="multiple-reserved"]
+) {
+  --fennevia-top-clearance: calc(
+    var(--fennevia-edge-top-height) + var(--fennevia-edge-gap)
+  );
+}
+
+#fennevia-shell-frame-host:is(
+    [data-fennevia-panel-dodge-mode="single-reserved"],
+    [data-fennevia-panel-dodge-mode="multiple-reserved"]
+  )[data-fennevia-left-enabled] {
+  --fennevia-left-clearance: calc(
+    var(--fennevia-edge-side-width) + var(--fennevia-edge-gap)
+  );
+}
+
+#fennevia-shell-frame-host:is(
+    [data-fennevia-panel-dodge-mode="single-reserved"],
+    [data-fennevia-panel-dodge-mode="multiple-reserved"]
+  )[data-fennevia-right-enabled] {
+  --fennevia-right-clearance: calc(
+    var(--fennevia-edge-side-width) + var(--fennevia-edge-gap)
+  );
+}
+
 #fennevia-shell-frame-host,
 #fennevia-shell-frame-host *,
 #fennevia-shell-frame-host *::before,

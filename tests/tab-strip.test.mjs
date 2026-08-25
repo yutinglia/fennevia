@@ -573,7 +573,7 @@ test("the component uses semantic sibling controls and property-safe rendering o
   assert.match(source, /navigation\.reload\(gesture\)/u);
   assert.match(
     source,
-    /revealProgrammatically\(\s*props\.edge,\s*newTabHighlightDurationMs/u,
+    /revealProgrammatically\(\s*props\.edge,\s*newTabHighlightDurationMs,\s*"new-tab-highlight"/u,
   );
   assert.match(
     source,
@@ -961,6 +961,10 @@ test("the component uses semantic sibling controls and property-safe rendering o
     /forced-colors: active[\s\S]*?\.fennevia-tab-strip__pinned-section[\s\S]*?background: Canvas;[\s\S]*?\.fennevia-tab-strip__pinned-count[\s\S]*?background: Highlight;/u,
   );
   assert.match(styles, /\.fennevia-tab-strip__new \{[\s\S]*?flex: none;/u);
+  assert.match(
+    styles,
+    /\.fennevia-tab-strip--horizontal[\s\S]*?\.fennevia-tab-strip__new \{[\s\S]*?inline-size: auto;/u,
+  );
   assert.match(styles, /:focus-visible/u);
   assert.match(styles, /@supports \(backdrop-filter: blur\(1px\)\)/u);
   for (const token of [

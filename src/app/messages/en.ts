@@ -205,6 +205,14 @@ export const en = {
   "customize.paletteSearch": "Search widgets",
   "customize.paletteSearchPlaceholder": "Search available widgets",
   "customize.panelAria": "Customize Fennevia shell",
+  "customize.panelDodge.multipleDynamic": "Multiple panels · Dynamic clearance",
+  "customize.panelDodge.multipleReserved":
+    "Multiple panels · Reserved edge lanes",
+  "customize.panelDodge.singleDynamic": "Single panel · Dynamic clearance",
+  "customize.panelDodge.singleReserved": "Single panel · Reserved edge lanes",
+  "customize.panelDodgeHelp":
+    "Dynamic clearance avoids only visible neighbors. Reserved lanes always leave room for enabled adjacent panels. New tabs may briefly reveal Tabs in either single-panel mode.",
+  "customize.panelDodgeMode": "Panel reveal and clearance",
   "customize.panelLayoutAria": "{zone} panel layout",
   "customize.allowCompactWindow":
     "Allow smaller than Firefox minimum window size",

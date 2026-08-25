@@ -95,6 +95,7 @@ import {
 } from "./pointer-geometry";
 
 const WINDOW_DRAG_START_EVENT = "draggableregionleftmousedown";
+const PANEL_DODGE_MODE_ATTRIBUTE = "data-fennevia-panel-dodge-mode";
 
 export function mountShellApp({
   bookmarks,
@@ -488,6 +489,10 @@ export function mountShellApp({
     for (const edge of edgeNames) {
       frame.removeAttribute(`data-fennevia-${edge}-visible`);
     }
+    for (const edge of ["left", "right", "bottom"] as const) {
+      frame.removeAttribute(`data-fennevia-${edge}-enabled`);
+    }
+    frame.removeAttribute(PANEL_DODGE_MODE_ATTRIBUTE);
     frame.removeAttribute("data-fennevia-address-popup-visible");
     frame.removeAttribute(customizeActiveAttribute);
     surfaceFocus.clear();
@@ -500,6 +505,10 @@ export function mountShellApp({
   overlayTarget.setAttribute(MOUNT_STATUS_ATTRIBUTE, "mounting");
 
   try {
+    frame.setAttribute(
+      PANEL_DODGE_MODE_ATTRIBUTE,
+      shell.snapshot().panelDodgeMode,
+    );
     tabsState = createBrowserTabsStateAdapter(tabs);
     navigationState = createBrowserNavigationStateAdapter(navigation);
     bookmarksState = createBrowserBookmarksStateAdapter(bookmarks);
@@ -632,8 +641,14 @@ export function mountShellApp({
             showEmptyCustomizeTargets,
           ),
         } as const;
+        shell.setPanelDodgeMode(state.snapshot.panels.panelDodgeMode);
+        frame.setAttribute(
+          PANEL_DODGE_MODE_ATTRIBUTE,
+          state.snapshot.panels.panelDodgeMode,
+        );
         for (const edge of ["left", "right", "bottom"] as const) {
           const enabled = nextPanelEnabled[edge];
+          frame.toggleAttribute(`data-fennevia-${edge}-enabled`, enabled);
           if (optionalPanelEnabled[edge] === enabled) {
             continue;
           }

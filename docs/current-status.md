@@ -132,6 +132,11 @@ and testing documents retain the complete engineering contract.
 - Independent Left/Right/Bottom enablement with no Top toggle. Enabled empty
   optional panels are hidden ordinarily but reappear as labelled customize
   drop/keyboard-add targets.
+- One four-choice panel reveal/clearance setting: single or multiple visible
+  edges combined with dynamic or reserved adjacent-edge lanes. Existing
+  profiles retain multiple/dynamic behavior; either single mode still permits
+  the bounded new-tab Tabs highlight, and Firefox-owned popup holds remain
+  authoritative.
 - Confirmed Clean all restores adopted Firefox widgets, empties every root,
   preserves unrelated settings, and leaves one Top Customize; Reset layout
   remains separate.
@@ -156,6 +161,10 @@ and testing documents retain the complete engineering contract.
   owner Trust action in one capsule; Tabs can be tabs-only or include the
   existing trailing New Tab action. Standalone Trust and New Tab remain
   available.
+- Tabs, Bookmarks, and Downloads status share one bounded axis-aware feature
+  root. Horizontal Tabs now keeps its summary and integrated New Tab action
+  intrinsic while its partitions shrink/scroll; vertical behavior and the
+  other large widgets retain bounded overflow.
 - Ordinary unoccupied project chrome—including structural space and empty
   containers/gaps—uses the shared Firefox-window drag path; customize mode is
   explicitly no-drag.
@@ -164,7 +173,8 @@ and testing documents retain the complete engineering contract.
   in-window/window-leave hide timing, temporary reveal timing, zero-disable
   shortcut-tip timing, and edge trigger thickness.
 - Bounded profile-local panel controls for independent Left/Right/Bottom
-  enablement and top/bottom activity-light sources; Top remains enabled.
+  enablement, four closed reveal/clearance modes, and top/bottom activity-light
+  sources; Top remains enabled.
 - Firefox chrome design tokens as the default color source, with solid,
   reduced-transparency, reduced-motion, and forced-colors fallbacks.
 - English and Traditional Chinese shell catalogs selected from Firefox's UI

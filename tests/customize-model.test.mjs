@@ -321,22 +321,28 @@ test("panel serialization is versioned, bounded, and fails safe", () => {
     topProgressLight: "off",
   });
   const serialized = serializeCustomizePanels(panels);
-  assert.ok(serialized.includes('"version":2'));
+  assert.ok(serialized.includes('"version":3'));
   assert.deepEqual(parseCustomizePanels(serialized), panels);
   assert.ok(Object.isFrozen(parseCustomizePanels(serialized)));
 
   assert.equal(parseCustomizePanels(""), null);
   assert.equal(parseCustomizePanels("{not json"), null);
-  assert.equal(parseCustomizePanels('{"version":3}'), null);
+  assert.equal(parseCustomizePanels('{"version":4}'), null);
   assert.equal(
     parseCustomizePanels(
-      JSON.stringify({ ...panels, unexpected: true, version: 2 }),
+      JSON.stringify({ ...panels, unexpected: true, version: 3 }),
     ),
     null,
   );
   assert.equal(
     parseCustomizePanels(
-      JSON.stringify({ ...panels, topProgressLight: "network", version: 2 }),
+      JSON.stringify({ ...panels, topProgressLight: "network", version: 3 }),
+    ),
+    null,
+  );
+  assert.equal(
+    parseCustomizePanels(
+      JSON.stringify({ ...panels, panelDodgeMode: "overlap", version: 3 }),
     ),
     null,
   );
@@ -355,10 +361,25 @@ test("panel serialization is versioned, bounded, and fails safe", () => {
     bottomPanelEnabled: false,
     bottomProgressLight: "downloads",
     leftPanelEnabled: true,
+    panelDodgeMode: "multiple-dynamic",
     rightPanelEnabled: true,
     sidePanelLayout: "tabs-right",
     topProgressLight: "loading",
   });
+
+  const migratedV2 = parseCustomizePanels(
+    JSON.stringify({
+      allowCompactWindow: false,
+      bottomPanelEnabled: true,
+      bottomProgressLight: "downloads",
+      leftPanelEnabled: true,
+      rightPanelEnabled: true,
+      sidePanelLayout: "tabs-left",
+      topProgressLight: "loading",
+      version: 2,
+    }),
+  );
+  assert.equal(migratedV2?.panelDodgeMode, "multiple-dynamic");
 
   assert.equal(
     parseCustomizePanels(

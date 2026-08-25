@@ -2,8 +2,12 @@
 
 export {
   edgeNames,
+  edgePanelDodgeModes,
+  edgeProgrammaticRevealReasons,
+  defaultEdgePanelDodgeMode,
   edgeInteractionBounds,
   edgeInteractionDefaults,
+  isEdgePanelDodgeMode,
   pointerExitLocations,
   edgeSurfaceTiming,
   edgeInsetCssPixels,
@@ -12,6 +16,8 @@ export {
 } from "./edge-surfaces/contracts.ts";
 export type {
   EdgeName,
+  EdgePanelDodgeMode,
+  EdgeProgrammaticRevealReason,
   EdgeInteractionConfig,
   PointerExitLocation,
   EdgeSurfacePhase,

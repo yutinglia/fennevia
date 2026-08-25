@@ -260,7 +260,11 @@
     cancelHighlight();
     highlightedTabIds = tabIds;
     try {
-      props.shell.revealProgrammatically(props.edge, newTabHighlightDurationMs);
+      props.shell.revealProgrammatically(
+        props.edge,
+        newTabHighlightDurationMs,
+        "new-tab-highlight",
+      );
     } catch (error) {
       props.onFatalError(error);
       return;

@@ -50,6 +50,13 @@ Center, Expanded, Padding, Separator, Space, and Flexible space are always repea
 Customize widget must remain on an enabled panel, and Top cannot be disabled.
 Preference-enabled empty optional panels stay out of the way during ordinary
 browsing but reappear as labelled drop/add targets while customizing.
+Panels can use one of four bounded reveal/clearance policies: single or
+multiple visible edges, each with dynamic visible-neighbor clearance or stable
+reserved edge lanes. Existing profiles keep multiple/dynamic behavior. Single
+modes still let a newly opened tab reveal Tabs briefly, while open
+Firefox-owned popups remain authoritative. Tabs, Bookmarks, and Downloads use
+one bounded axis-aware feature box; horizontal Tabs keeps its summary and New
+Tab action intrinsic while its tab partitions shrink and scroll.
 
 Each panel itself supplies a fixed base flow—Top/Bottom use Row and Left/Right
 use Column—so users do not need a giant removable outer container. Palette
@@ -322,7 +329,8 @@ arbitrary extension platform.
 The interface is no longer accurately described as non-configurable. Fennevia
 customize mode can compose supported project features and Firefox toolbar
 widgets across all four edges with bounded Row/Column trees, switch feature
-orientation, enable Left/Right/Bottom independently, and opt into safe multiple
+orientation, enable Left/Right/Bottom independently, choose one of four closed
+single/multiple plus dynamic/reserved panel policies, and opt into safe multiple
 placements. Selected Address and Tabs instances can choose from their closed
 semantic style variants, and the widget palette can be searched and filtered.
 It can also adjust a bounded set of profile-local panel/window

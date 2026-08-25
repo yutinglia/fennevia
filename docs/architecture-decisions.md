@@ -3528,3 +3528,69 @@ Implementation and focused evidence are in
 `tests/customize-session.test.mjs`,
 `tests/widget-inspector-position.test.mjs`, and
 `tests/frontend-build.test.mjs`.
+
+## ADR-077: Configure edge concurrency and clearance without a second surface system
+
+**Status:** Accepted by direct project-owner request on 2026-08-25;
+implementation and focused automated coverage are complete; the real Firefox
+four-mode, popup, focus, resize, multi-window, and horizontal-feature matrix
+remains `not run`
+
+Extend ADR-026's existing shared edge controller with one profile-local closed
+mode rather than adding per-panel visibility owners. The four accepted values
+are `single-dynamic`, `single-reserved`, `multiple-dynamic`, and
+`multiple-reserved`. `multiple-dynamic` is the default and migration value, so
+old profiles retain pointer exclusivity together with legitimate simultaneous
+focus, keyboard, popup, and programmatic holds. The panel preference advances
+to version 3; versions 1 and 2 migrate in memory, while unknown modes, keys, or
+versions fail safe to the documented defaults.
+
+In either single mode, an ordinary pointer, keyboard, focus, popup, or
+programmatic reveal first dismisses every other dismissible edge through the
+existing controller and existing focus-restoration subscriptions. An open
+Firefox-owned popup hold remains authoritative and blocks a competing ordinary
+reveal. Native popup-owner transitions may briefly retain both popup-held
+anchors until Firefox reports the old popup closed; Fennevia does not clear a
+Firefox-owned popup hold behind its owner. Switching from a multiple mode to a
+single mode immediately converges on one visible edge, preferring a popup-held
+edge and then the current active edge.
+
+The existing 500 ms newly-opened-tab affordance uses the closed
+`new-tab-highlight` programmatic reason. It may temporarily reveal whichever
+edge contains Tabs beside the current edge in a single mode, does not dismiss
+that edge, and expires through the existing per-surface programmatic timer.
+No tab id, URL, title, active-edge state, visibility, or additional timer is
+persisted.
+
+Dynamic modes retain visibility-driven clearance. Reserved modes retain the
+same one-way `Top > Left/Right > Bottom` priority but always reserve the Top
+lane for both side panels and reserve each effectively enabled side lane for
+Bottom. Effective enablement includes a preference-enabled empty customize
+drop target and excludes an optional edge disabled for ordinary browsing.
+The one frame carries the validated mode and fixed enabled-edge attributes;
+the existing clearance custom properties perform layout. There is no content
+margin, geometry observer, native selector, or second collision system.
+
+Render Tabs, Bookmarks, and Downloads status through one common bounded,
+axis-aware feature root. Tabs' summary and strip therefore form one composable
+child. In Row orientation the summary remains intrinsic, tab partitions may
+shrink and scroll, and the integrated New Tab action uses intrinsic width;
+Column preserves the full-width trailing action and bounded vertical
+partitions. Bookmarks, Downloads, and Address keep explicit zero minimums and
+bounded overflow, while only an Expanded wrapper claims the parent flow's
+remaining main-axis space.
+
+**Reasoning:** Users need both exclusive and simultaneous edge workflows, and
+some layouts should remain geometrically stable before neighboring panels are
+revealed. Encoding those two independent choices in one closed four-value
+setting makes the consequences explicit while preserving the one controller
+and one collision contract. A single bounded feature root fixes horizontal
+Tabs without changing feature ownership or making ordinary Row/Column children
+Expanded. The preference contains only one fixed enum and introduces no new
+browsing-data flow, Firefox symbol, dependency, network access, native-DOM
+mutation, or activation-health requirement. Implementation and focused
+evidence are in
+`plans/013-configurable-panel-dodge-and-horizontal-features.md`,
+`tests/edge-surfaces.test.mjs`, `tests/customize-model.test.mjs`,
+`tests/firefox-toolbar-widgets.test.mjs`, `tests/tab-strip.test.mjs`, and
+`tests/frontend-build.test.mjs`.

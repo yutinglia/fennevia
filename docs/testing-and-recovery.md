@@ -302,6 +302,13 @@ For each edge:
 - default, minimum, and maximum trigger thickness with matching CSS hit geometry
   and point/corner arbitration;
 - legitimate simultaneous non-pointer holds;
+- ADR-077 `single-dynamic`, `single-reserved`, `multiple-dynamic`, and
+  `multiple-reserved` behavior, including immediate multiple-to-single
+  convergence, Firefox-popup priority, and the bounded newly-opened-tab Tabs
+  exception;
+- dynamic clearances following only visible neighbors and reserved clearances
+  following effectively enabled Top/Left/Right lanes, including disabled and
+  customize-empty optional panels;
 - no overlap that makes a required control unreachable;
 - narrow/short window fallback.
 
@@ -1102,6 +1109,10 @@ ADR-045 adds focused unit/static/build coverage for:
 - ADR-064 version-1 migration defaults plus ADR-074 strict independent
   Left/Right/Bottom enablement and top/bottom activity-light sources; disabled
   edge state survives global suppression/re-enable and Top has no toggle.
+- ADR-077 panel-pref version-3 round-trip, v1/v2 in-memory migration,
+  four-value validation, default/reset behavior, runtime mode switching,
+  ordinary single-surface exclusivity, preserved multiple holds, popup
+  priority, and the existing-timer `new-tab-highlight` exception;
 - ADR-068 `allowCompactWindow` default false, missing-key defaults, NativeUi
   ten parsed rules, compact-window attribute on/off plus dispose restore, and
   the customize drawer tablist (widgets/panels/interaction/appearance) with
@@ -1132,6 +1143,10 @@ ADR-045 adds focused unit/static/build coverage for:
   outline;
 - nearest-container orientation for tab ARIA/keyboard/drag/overflow geometry
   and axis-aware Bookmarks, Downloads, address, tools, and window-control CSS;
+- one bounded axis-aware root for Tabs, Bookmarks, and Downloads, with Tabs'
+  summary plus strip treated as one child, zero-minimum shrinkable partitions,
+  intrinsic horizontal New Tab, full-width vertical New Tab, and bounded
+  horizontal Bookmarks/Downloads/Address overflow;
 - opt-in compatible duplicate placement, including simultaneous Top/Left
   window controls, with stateful feature singletons, always-repeatable
   Row/Column/Center/Expanded/Padding/Separator/Space/Flexible space, shared native activation owners,
@@ -1238,14 +1253,17 @@ adopt/restore of an installed extension; style tokens under forced colors and
 reduced motion; default Firefox Light/Dark design-token colors on owned
 surfaces; minimum/default/maximum trigger hit testing and live hide/reveal
 timings; multi-window pref observation; Left/Right/Bottom disable/re-enable
-with open popups/focus; all light-source combinations; native status capsule
+with open popups/focus; all four ADR-077 concurrency/clearance modes with the
+new-tab exception; Top/Bottom horizontal Tabs and the other large widgets in
+direct, Center, Padding, and Expanded placements; all light-source combinations; native status capsule
 under theme/forced-colors/DPI; layout reset restoring native placements; and
 Escape/focus restoration while a widget popup is also held. Implementation/
 source evidence is in `docs/research/firefox-153-customize-mode.md`,
 `plans/006-customize-mode.md`,
 `plans/009-composable-widget-layout.md`, and
 `plans/010-customize-mode-drag-ux.md`, and
-`plans/011-floating-widget-inspector.md`.
+`plans/011-floating-widget-inspector.md`, and
+`plans/013-configurable-panel-dodge-and-horizontal-features.md`.
 
 ### 6.10 Four-panel context menus — focused automation complete, real Firefox pending
 

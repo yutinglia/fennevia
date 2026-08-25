@@ -192,6 +192,13 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.paletteSearch": "搜尋元件",
   "customize.paletteSearchPlaceholder": "搜尋可用元件",
   "customize.panelAria": "自訂 Fennevia 介面",
+  "customize.panelDodge.multipleDynamic": "多面板・動態避讓",
+  "customize.panelDodge.multipleReserved": "多面板・固定保留邊緣空間",
+  "customize.panelDodge.singleDynamic": "單一面板・動態避讓",
+  "customize.panelDodge.singleReserved": "單一面板・固定保留邊緣空間",
+  "customize.panelDodgeHelp":
+    "動態避讓只避開目前顯示的相鄰面板；固定保留會持續為已啟用的相鄰面板留空。兩種單一面板模式仍會在新增分頁時短暫顯示分頁列。",
+  "customize.panelDodgeMode": "面板顯示與避讓方式",
   "customize.panelLayoutAria": "{zone}面板版面",
   "customize.allowCompactWindow": "允許小於 Firefox 官方下限的視窗尺寸",
   "customize.allowCompactWindowHelp":

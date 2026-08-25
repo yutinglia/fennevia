@@ -202,6 +202,12 @@ ADR-047, and ADR-054 through ADR-072:
   Eligible Address and Tabs instances may persist one allowlisted semantic
   style id for integrated Trust or trailing New Tab; arbitrary CSS, geometry,
   labels, native ids, and Firefox nodes remain prohibited.
+- ADR-077 adds one closed four-choice panel policy combining single/multiple
+  surface visibility with dynamic/reserved collision lanes. The default keeps
+  existing multiple/dynamic behavior; single modes retain the bounded new-tab
+  Tabs reveal and respect Firefox popup holds. Tabs, Bookmarks, and Downloads
+  now render through one bounded axis-aware feature root, fixing intrinsic
+  horizontal Tabs/New Tab sizing without making ordinary children Expanded.
 
 Focused type/build/unit/static checks cover this enhancement. Its real Firefox
 manual matrix remains pending and is not part of the earlier #15 validation.
@@ -261,6 +267,9 @@ claim.
   empty drop targets during customize mode, confirmed clean-all recovery, and
   empty ordinary chrome available for native window dragging, plus deterministic
   drag-outline cleanup and contextual node controls.
+- Configurable single/multiple edge reveal and dynamic/reserved clearance lanes
+  through the same shared controller and frame, including the short newly-opened
+  tab exception.
 - Exact projected drag placement, session-wide selected-node editing through
   one obstacle-aware floating inspector, palette search/categories, and closed
   per-instance Address/Tabs variants without making drag mandatory or
@@ -732,6 +741,17 @@ explicit rather than a live nav-bar mirror: Top owns the expanded address
 composition, the configured side roots own expanded Tabs/Bookmarks, and Bottom
 centers Downloads status. Plan and checklist:
 `plans/009-composable-widget-layout.md`.
+
+ADR-077 extends the bounded Panels/Layout policy with
+`single-dynamic`, `single-reserved`, `multiple-dynamic`, and
+`multiple-reserved`; existing and migrated profiles default to
+`multiple-dynamic`. Reserved lanes keep sides below Top and Bottom between
+effectively enabled sides even before their panels reveal. Single modes use the
+same dismiss/focus/popup contract and permit only the existing 500 ms
+new-tab-highlight exception. Its common feature root also makes Tabs'
+summary/strip one layout child and keeps the horizontal trailing New Tab action
+intrinsic. Plan and checklist:
+`plans/013-configurable-panel-dodge-and-horizontal-features.md`.
 
 ADR-046 (2026-08-19) restores localized widget names and native built-in
 icons in the customize palette and widget zones: palette-node / dedicated

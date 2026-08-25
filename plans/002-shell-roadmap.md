@@ -69,6 +69,15 @@ stale target outlines, and node controls appear only on deepest hover or direct
 keyboard focus. Focused automation is complete; its real Firefox matrix remains
 pending.
 
+ADR-077 adds one strict panel setting for single/multiple reveal combined with
+dynamic/reserved edge lanes. It defaults and migrates to the existing
+multiple/dynamic behavior, reuses the shared controller and CSS clearance
+properties, preserves Firefox popup holds, and lets the 500 ms new-tab Tabs
+highlight coexist in either single mode. One bounded feature root also fixes
+Top/Bottom horizontal Tabs and keeps Bookmarks, Downloads, and Address overflow
+bounded. Focused automation is complete; the real Firefox matrix remains
+pending.
+
 ADR-066 follows the first tabbar interaction correction with explicit
 click-versus-window-drag reconciliation, synchronous pointer holds around tab
 selection/close, a project-owned container stripe with a closed native-class
@@ -1056,6 +1065,29 @@ typecheck, static, and complete `npm run verify` coverage; real Firefox
 cross-edge placement, central-drawer overlap, 100%/200% scaling, focus,
 accessibility, multiple/private-window, and disposal rows remain `not run`.
 Plan: `plans/011-floating-widget-inspector.md`.
+
+### ADR-077 panel dodge and horizontal-feature follow-up — focused implementation complete, real Firefox smoke pending
+
+Persist one closed version-3 panel enum with four modes:
+`single-dynamic`, `single-reserved`, `multiple-dynamic`, and
+`multiple-reserved`. Versions 1 and 2 migrate to `multiple-dynamic`. Single
+modes converge ordinary reveals through the existing controller; Firefox popup
+holds stay authoritative and the existing newly-opened-tab timer is the sole
+bounded concurrency exception. Reserved modes use effective optional-edge
+enablement on the one frame to retain `Top > sides > Bottom` lanes even while a
+neighbor is hidden.
+
+Tabs, Bookmarks, and Downloads status render inside one zero-minimum,
+axis-aware feature root. Horizontal Tabs keeps its summary and integrated New
+Tab action intrinsic and scrolls its shrinkable partitions; Column behavior
+stays full-width and vertically bounded. Address keeps its existing bounded
+capsule contract.
+
+Gate: focused model/controller/persistence/frontend/tab tests and the ordinary
+`npm run verify` gate; real Firefox four-mode, popup/focus, Top/Bottom Tabs,
+large-widget wrapper, narrow/short, multi-window, private-window, and recovery
+rows remain `not run`. Plan:
+`plans/013-configurable-panel-dodge-and-horizontal-features.md`.
 
 ## Deferred work
 
