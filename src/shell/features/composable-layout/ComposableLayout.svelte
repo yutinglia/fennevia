@@ -656,6 +656,7 @@
         }
       }}
       role={props.customizeOpen && !isBaseContainer ? "group" : "presentation"}
+      tabindex="-1"
     >
       {#if props.customizeOpen && !isBaseContainer}
         <button

@@ -105,11 +105,11 @@
     element: HTMLElement | null | undefined,
     fallback: HTMLElement | null | undefined = null,
   ): HTMLElement | null =>
-    element?.querySelector<HTMLElement>(
-      ":scope > [data-fennevia-layout-keyboard-selector]",
-    ) ??
-    (element?.matches("[data-fennevia-composable-layout]") ? element : null) ??
-    fallback;
+    element?.matches(
+      ":is([data-fennevia-layout-node], [data-fennevia-composable-layout])",
+    )
+      ? element
+      : fallback;
 
   const updatePosition = (): void => {
     const anchor = anchorElement();

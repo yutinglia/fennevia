@@ -193,7 +193,9 @@ ADR-047, and ADR-054 through ADR-072:
 - ADR-076 keeps that selection in the per-window customize session and renders
   its controls in exactly one Top-root floating inspector outside Row/Column
   sizing. The inspector is above project panel stacking contexts, clamps to the
-  viewport, and avoids the central customize workspace when another side fits.
+  viewport, avoids the central customize workspace when another side fits,
+  closes through a non-selecting outer focus anchor, and keeps every customize
+  node boundary visible without changing real widget measurements.
   Eligible Address and Tabs instances may persist one allowlisted semantic
   style id for integrated Trust or trailing New Tab; arbitrary CSS, geometry,
   labels, native ids, and Firefox nodes remain prohibited.

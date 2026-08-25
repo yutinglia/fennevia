@@ -3457,9 +3457,13 @@ the complete per-window customize session. Extend the existing
 `CustomizeSessionController` with one validated ephemeral
 `selectedInstanceId`; opening, closing, or disposing the session clears it.
 Clicking or focusing a different node replaces the selection across all four
-Svelte edge roots. A node retains only its selected boundary and a direct
-keyboard selector, so Row/Column measurement never includes action controls or
-the Style field.
+Svelte edge roots. Every editable node paints a subtle blue boundary throughout
+customize mode; the deepest pointer-hovered and selected nodes strengthen it,
+while direct keyboard focus retains a separate visible ring. Each node keeps a
+direct keyboard selector, so Row/Column measurement never includes action
+controls or the Style field. Every boundary is absolutely painted inside the
+node's existing border box; edit mode adds no border, padding, or minimum
+dimension to the measured node.
 
 Render the inspector once from the Top app root after the central Customize
 workspace, not inside the selected edge panel. The Top root and inspector are
@@ -3482,8 +3486,11 @@ The inspector contains one localized title/close action, compact
 move-before/after/into/out, axis, and remove controls, plus a labelled
 full-width Style selector only when the selected project widget has multiple
 allowlisted variants. Enter from a selected node focuses its first available
-action; Escape closes the inspector and restores the surviving node; removal
-clears selection and focuses the nearest surviving path. Delete/Backspace,
+action. Escape or the explicit close button clears selection before restoring
+focus to the surviving node's programmatic outer anchor, never to the hidden
+keyboard selector whose focus intentionally selects a node. Removal uses the
+same non-selecting outer-anchor fallback at the nearest surviving path.
+Delete/Backspace,
 Ctrl+axis movement, precise drag/drop, focus visibility, reduced motion,
 reduced transparency, and forced colors remain available.
 
@@ -3499,6 +3506,11 @@ Rendering one editor inside the owning edge still left it trapped below the
 central workspace's stacking context. A session-owned selection plus one
 top-layer, obstacle-aware inspector provides progressive disclosure without
 changing layout geometry or weakening keyboard access and privacy boundaries.
+The outer anchor and paint-only boundary are separate because using the hidden
+selector as a dismissal focus target immediately reopened the inspector, while
+using layout-participating borders/minimum sizes for editing changed the very
+widget geometry being edited. An absolute overlay keeps every customize
+boundary visible without changing that geometry.
 Implementation and focused evidence are in
 `plans/011-floating-widget-inspector.md`,
 `tests/customize-session.test.mjs`,

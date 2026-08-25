@@ -250,8 +250,11 @@ The current ADR-076 source passed the complete `npm run verify` gate on
 2026-08-25 with 411/411 Node tests, 88.22% line coverage, 80.56% branch
 coverage, 95.48% function coverage, every fixed PowerShell 7 suite, dependency
 audit, deterministic frontend/bridge rebuilds, and 14/14 accepted production
-artifacts. Its positioning, zoom, focus, accessibility, multi-window, and
-private-window real-Firefox rows remain `not run`.
+artifacts. The same gate covers the follow-up that keeps explicit inspector
+dismissal closed, restores focus through a non-selecting outer node anchor, and
+paints persistent customize boundaries without changing widget measurements.
+Its positioning, zoom, focus, accessibility, multi-window, and private-window
+real-Firefox rows remain `not run`.
 
 The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
 the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and

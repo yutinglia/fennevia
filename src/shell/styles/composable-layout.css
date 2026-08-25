@@ -169,23 +169,55 @@
 }
 
 #fennevia-shell-frame-host .fennevia-layout-node--editing {
-  min-block-size: 40px;
-  min-inline-size: 40px;
-  border: 1px solid transparent;
   border-radius: var(--fennevia-control-radius);
   cursor: grab;
   -moz-window-dragging: no-drag;
 }
 
+#fennevia-shell-frame-host .fennevia-layout-node--editing::after {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  box-sizing: border-box;
+  border: 1px dashed
+    color-mix(in srgb, var(--fennevia-focus-color) 42%, transparent);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
 #fennevia-shell-frame-host
-  .fennevia-layout-node--editing[data-fennevia-layout-source="true"] {
+  .fennevia-layout-node--editing[data-fennevia-layout-source="true"]::after {
   border-color: color-mix(
     in srgb,
-    var(--fennevia-focus-color) 42%,
+    var(--fennevia-focus-color) 52%,
     transparent
   );
-  border-style: dashed;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--editing[data-fennevia-layout-source="true"] {
   cursor: grabbing;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--editing[data-fennevia-layout-selected="true"]:not(
+    [data-fennevia-layout-source="true"]
+  )::after {
+  border: 2px solid
+    color-mix(in srgb, var(--fennevia-focus-color) 72%, transparent);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--editing:hover:not(
+    :has(.fennevia-layout-node--editing:hover)
+  ):not([data-fennevia-layout-source="true"])::after {
+  border-color: color-mix(
+    in srgb,
+    var(--fennevia-focus-color) 58%,
+    transparent
+  );
+  border-style: solid;
 }
 
 #fennevia-shell-frame-host
@@ -195,33 +227,19 @@
 }
 
 #fennevia-shell-frame-host
-  .fennevia-layout-node--editing[data-fennevia-layout-selected="true"] {
-  border-color: color-mix(
-    in srgb,
-    var(--fennevia-focus-color) 72%,
-    transparent
-  );
-  box-shadow: 0 0 0 1px
-    color-mix(in srgb, var(--fennevia-focus-color) 28%, transparent);
-}
-
-#fennevia-shell-frame-host
   .fennevia-layout-node--editing:hover:not(
     :has(.fennevia-layout-node--editing:hover)
   ) {
-  border-color: color-mix(
-    in srgb,
-    var(--fennevia-focus-color) 58%,
-    transparent
-  );
   background: color-mix(in srgb, currentColor 3%, transparent);
 }
 
 #fennevia-shell-frame-host
-  .fennevia-layout-node--editing:has(
-    > .fennevia-layout-node__keyboard-selector:focus-visible
+  :is(
+    .fennevia-layout-node--editing:focus-visible,
+    .fennevia-layout-node--editing:has(
+      > .fennevia-layout-node__keyboard-selector:focus-visible
+    )
   ) {
-  border-style: solid;
   outline: 2px solid var(--fennevia-focus-color);
   outline-offset: 1px;
 }
@@ -834,11 +852,15 @@
 @media (forced-colors: active) {
   #fennevia-shell-frame-host .fennevia-layout-drop-preview,
   #fennevia-shell-frame-host .fennevia-layout-drag-image,
-  #fennevia-shell-frame-host .fennevia-widget-inspector,
-  #fennevia-shell-frame-host
-    .fennevia-layout-node--editing[data-fennevia-layout-selected="true"] {
+  #fennevia-shell-frame-host .fennevia-widget-inspector {
     color: CanvasText;
     background: Canvas;
+    border-color: Highlight;
+    box-shadow: none;
+    forced-color-adjust: none;
+  }
+
+  #fennevia-shell-frame-host .fennevia-layout-node--editing::after {
     border-color: Highlight;
     box-shadow: none;
     forced-color-adjust: none;

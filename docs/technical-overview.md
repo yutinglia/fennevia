@@ -109,7 +109,11 @@ panel exit and every terminal path. Clicking or focusing a node selects it
 across all four roots and opens one Top-root floating inspector containing its
 move/containment/axis/remove and eligible Style controls. The inspector stays
 outside Row/Column sizing, clamps to the viewport, avoids the central drawer
-when another side fits, and restores keyboard focus on close/removal. The
+when another side fits, and restores keyboard focus to a non-selecting outer
+node anchor on close/removal. Every editable widget keeps a subtle blue boundary
+throughout customize mode, with hover/selection emphasis and a distinct
+keyboard focus ring. Boundaries paint inside unchanged widget boxes, so they
+add no layout border or minimum size. The
 drawer searches localized labels and filters the closed
 All/Fennevia/Firefox/Layout categories. Confirmed Clean all restores adopted
 Firefox widgets, empties every root, and retains one Top Customize without

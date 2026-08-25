@@ -1,7 +1,7 @@
 # Floating widget inspector plan
 
 Date: 2026-08-25
-Status: implementation complete; real Firefox smoke pending
+Status: follow-up implementation complete; real Firefox smoke pending
 Baseline: commit `b270777` (`feat(customize): refine drag editing and widget styles`)
 
 ## 1. Owner request
@@ -22,8 +22,11 @@ inspector.
 - Clicking or focusing an editable node selects that instance across all four
   edge roots. Exactly one instance may be selected per browser-window customize
   session.
-- The selected node keeps only its selection boundary. Move, nest, direction,
-  remove, and semantic Style controls live in one compact floating inspector.
+- Every editable node keeps a subtle blue boundary for the complete customize
+  session. The deepest pointer-hovered and selected nodes strengthen that
+  boundary, while direct keyboard focus keeps its separate visible ring. Move,
+  nest, direction, remove, and semantic Style controls live in one compact
+  floating inspector.
 - The inspector is anchored on the content-facing side of the selected node:
   below Top, right of Left, left of Right, and above Bottom. Its final rectangle
   is clamped to the visible browser viewport. The central customize workspace
@@ -94,7 +97,8 @@ inspector.
 ### C. Node interaction and accessibility
 
 - [x] Remove the in-node toolbar and Style editor from recursive node layout.
-- [x] Keep one selected boundary and lightweight deepest-hover structure label.
+- [x] Keep persistent customize boundaries, a lightweight deepest-hover
+      structure label, selected emphasis, and a distinct keyboard focus ring.
 - [x] Make editable nodes keyboard focusable and expose selected/controls
       semantics.
 - [x] Enter focuses the inspector; Escape closes it and restores node focus.
@@ -114,6 +118,23 @@ inspector.
 - [x] Run `npm run verify` as the ordinary development gate.
 - [x] Record real Firefox positioning, focus, zoom/text scaling, forced-colors,
       multi-window, and private-window checks as `not run` unless performed.
+
+### E. Close and geometry-parity follow-up
+
+- [x] Restore focus after inspector dismissal without focusing the hidden node
+      selector that automatically reselects the same instance.
+- [x] Keep a blue boundary visible on every editable widget for the complete
+      customize session, with hover/selection emphasis and a separate keyboard
+      focus ring.
+- [x] Keep every customize boundary paint-only so entering customize mode does
+      not add borders or minimum dimensions to real widget boxes.
+- [x] Preserve programmatic focus, visible keyboard focus, drag selection, and
+      usable structural-widget hit areas after removing metric-changing edit
+      styles.
+- [x] Add focused source/CSS regressions for a close action that stays closed
+      and customize boundaries that preserve the real layout geometry.
+- [x] Rebuild deterministic artifacts, run the ordinary verification gate, and
+      record post-fix real Firefox visual checks honestly.
 
 ## 5. Out of scope
 

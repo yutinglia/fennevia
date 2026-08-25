@@ -211,6 +211,18 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
   assert.match(widgetInspector, /type: "set-node-style"/u);
   assert.match(widgetInspector, /customizePanelElement/u);
   assert.match(widgetInspector, /const focusTargetForNode/u);
+  assert.doesNotMatch(
+    widgetInspector,
+    /data-fennevia-layout-keyboard-selector/u,
+  );
+  assert.match(
+    widgetInspector,
+    /focusTargetForNode\(anchor\)[\s\S]*?clearSelectedInstance\(\)[\s\S]*?focusTarget\.focus\(\{ preventScroll: true \}\)/u,
+  );
+  assert.match(
+    composableLayout,
+    /data-fennevia-layout-node=""[\s\S]*?tabindex="-1"/u,
+  );
   assert.match(widgetInspector, /anchorRoot=|props\.anchorRoot/u);
   assert.match(
     app,
@@ -452,9 +464,26 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
     css,
     /data-fennevia-widget-inspector-positioned="true"[\s\S]*?pointer-events: auto;/u,
   );
+  const editingRule = css.match(
+    /\.fennevia-layout-node--editing \{(?<body>[\s\S]*?)\n\}/u,
+  )?.groups?.body;
+  assert.ok(editingRule);
+  assert.doesNotMatch(editingRule, /min-(?:block|inline)-size|border\s*:/u);
   assert.match(
     css,
-    /\.fennevia-layout-node--editing \{[\s\S]*?border: 1px solid transparent;/u,
+    /\.fennevia-layout-node--editing::after \{[\s\S]*?position: absolute;[\s\S]*?inset: 0;[\s\S]*?box-sizing: border-box;[\s\S]*?border: 1px dashed[\s\S]*?pointer-events: none;/u,
+  );
+  assert.match(
+    css,
+    /\.fennevia-layout-node--editing:hover:not\([\s\S]*?\):not\(\[data-fennevia-layout-source="true"\]\)::after \{[\s\S]*?border-color:/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-layout-selected="true"[\s\S]*?::after \{[\s\S]*?border: 2px solid/u,
+  );
+  assert.match(
+    css,
+    /@media \(forced-colors: active\)[\s\S]*?\.fennevia-layout-node--editing::after \{[\s\S]*?border-color: Highlight;/u,
   );
   assert.match(
     css,

@@ -147,7 +147,10 @@ drag target outlines are cleared on every exit/end path, and one selected
 widget opens a single floating inspector for move/remove/layout and eligible
 Style controls. The inspector stays outside Row/Column sizing, avoids the
 central customize panel when another side fits, and replaces the previous
-selection instead of stacking editors. The editor also shows one exact insertion preview while
+selection instead of stacking editors. Closing it stays closed while focus
+returns to the widget. Every editable widget keeps a blue customize boundary;
+hover and selection strengthen it without changing the widget's real size. The
+editor also shows one exact insertion preview while
 dragging, subdues the source, autoscrolls near panel edges, and provides
 localized palette search plus All/Fennevia/Firefox/Layout filters. Eligible
 placed widgets also have closed per-instance variants: Address may include the

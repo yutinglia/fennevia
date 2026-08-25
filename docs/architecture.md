@@ -668,9 +668,16 @@ placement helper prefers the content-facing side, clamps to the viewport, and
 treats the central drawer as a padded obstacle before accepting overlap. The
 inspector never participates in Row/Column measurement, and its scroll/resize
 listeners plus `ResizeObserver` are mounted and disposed with the component.
-Enter transfers focus from the node, Escape restores it, and removal falls back
-to the nearest surviving path. Selection and geometry remain ephemeral and do
-not cross the Firefox bridge or persistence boundary. See ADR-076 and
+Every editable node paints a subtle blue boundary throughout customize mode;
+the deepest pointer-hovered and selected nodes strengthen it. Those boundaries
+are paint-only overlays inside unchanged node border boxes, so customize mode
+adds no layout border or minimum dimension. Keyboard focus keeps its distinct
+visible ring. Enter transfers focus from the node. Escape, explicit close, and
+removal clear selection before focusing a programmatic outer node anchor,
+rather than the hidden keyboard selector that selects on focus, with removal
+falling back to the nearest surviving path. Selection and geometry remain
+ephemeral and do not cross the Firefox bridge or persistence boundary. See
+ADR-076 and
 `plans/011-floating-widget-inspector.md`.
 
 The same ADR adds an optional closed style id to eligible version-2 project

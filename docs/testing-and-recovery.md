@@ -1112,9 +1112,10 @@ ADR-045 adds focused unit/static/build coverage for:
   compatibility promotion of a sole same-axis root container, redirected root
   drops, blocked move-out, subdued ordinary outlines, compact empty-root
   affordances, and a natural-width address launcher;
-- transparent-at-rest non-empty customize nodes with deepest-hover/focus/
-  selected boundaries and compact structural labels, while active drop targets
-  retain the focus-color outline;
+- persistent subtle blue boundaries on every non-empty editable customize node,
+  with deepest-hover/selected emphasis, distinct keyboard focus rings, and
+  compact structural labels, while active drop targets retain the focus-color
+  outline;
 - nearest-container orientation for tab ARIA/keyboard/drag/overflow geometry
   and axis-aware Bookmarks, Downloads, address, tools, and window-control CSS;
 - opt-in compatible duplicate placement, including simultaneous Top/Left
@@ -1145,8 +1146,12 @@ ADR-045 adds focused unit/static/build coverage for:
   obstacle avoidance, invalid-geometry rejection, scroll/window/element resize
   updates, and deterministic listener/observer cleanup;
 - inspector keyboard behavior: direct node selector, Enter transfer, Escape
-  close/focus restore, selected-node removal fallback, visible focus, reduced
-  motion/transparency, and forced-colors distinctions;
+  and explicit close that remain dismissed while focus returns to the
+  non-selecting outer node anchor, selected-node removal fallback, visible
+  focus, reduced motion/transparency, and forced-colors distinctions;
+- customize geometry parity: persistent/hover/selected boundaries are absolute
+  paint-only overlays inside existing node boxes, with no edit-mode layout
+  border or minimum dimension changing Row/Column/widget measurement;
 - ADR-075 drag presentation: bounded axis-aware preview sizes, clamped
   pointer-relative drag-image anchors, exact root/nested insertion slots,
   source placeholders, stable pre-preview geometry, bounded edge autoscroll,
@@ -1180,7 +1185,9 @@ The current ADR-076 source passed the complete `npm run verify` gate on
 2026-08-25 with 411/411 Node tests, 88.22% line coverage, 80.56% branch
 coverage, 95.48% function coverage, every fixed PowerShell 7 suite, dependency
 audit, deterministic frontend/bridge output, and 14/14 accepted production
-artifacts. No real-Firefox result is inferred from those checks.
+artifacts. That gate includes the dismissal focus-loop and persistent
+paint-only boundary follow-up. No real-Firefox result is inferred from those
+checks.
 
 The following are `not run`, not passed: live Fennevia customize drawer against
 a collapsed navbar; recursive Row/Column creation, nesting, orientation,
@@ -1190,9 +1197,10 @@ four-edge placement round-trips; **drag from the palette into an initially
 empty enabled edge and back**; Clean-all Cancel/Confirm behavior and immediate
 repopulation of the resulting empty edges; compatible Top/Left duplicate
 window controls; dragging across several panels, abandoning with Escape or
-outside the window, and verifying every blue target outline clears; pointer and
-keyboard selection boundaries plus the single floating inspector in deeply
-nested layouts; pointer-relative drag images, exact insertion previews,
+outside the window, and verifying every blue target outline clears; persistent
+customize boundaries with hover/selected emphasis, keyboard focus rings, and
+the single floating inspector in deeply nested layouts; pointer-relative drag
+images, exact insertion previews,
 autoscroll, selection/Escape priority, palette search/categories, and live
 screen-reader announcements; single-inspector placement on every edge,
 central-drawer non-overlap/fallback stacking, 100%/200% text or UI scaling,
