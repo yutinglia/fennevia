@@ -1323,7 +1323,8 @@ async function measureEdgeRevealLatency(client) {
       const edges = ["top", "left", "right", "bottom"];
       const samplesPerEdge = ${PERFORMANCE_EDGE_SAMPLES_PER_EDGE};
       const frame = document.getElementById("fennevia-shell-frame-host");
-      if (!frame) {
+      const browser = document.getElementById("browser");
+      if (!frame || !browser) {
         throw new Error("FENNEVIA_FIREFOX_TEST_EDGE_SHELL_MISSING");
       }
       const sleep = delay => new Promise(
@@ -1366,6 +1367,7 @@ async function measureEdgeRevealLatency(client) {
             clientY: point.y,
             pointerId: 1,
             pointerType: "mouse",
+            relatedTarget: type === "pointerout" ? browser : null,
           })
         );
         for (let sample = 0; sample < samplesPerEdge; sample += 1) {
@@ -1877,10 +1879,10 @@ async function collectFrontendState(client) {
     return {
       address: {
         edgeEditableCount:
-          root?.querySelectorAll("input, textarea, [contenteditable]").length ??
+          topRoot?.querySelectorAll("input, textarea, [contenteditable]").length ??
           0,
         launcherCount:
-          root?.querySelectorAll("[data-fennevia-address-launcher]").length ??
+          topRoot?.querySelectorAll("[data-fennevia-address-launcher]").length ??
           0,
         labelText:
           popupRoot
@@ -1922,7 +1924,7 @@ async function collectFrontendState(client) {
           popupRoot?.querySelectorAll("[data-fennevia-trust-detail]").length ??
           0,
         trustIndicatorCount:
-          root?.querySelectorAll("[data-fennevia-trust-status]").length ?? 0,
+          topRoot?.querySelectorAll("[data-fennevia-trust-status]").length ?? 0,
         urlbarCoverageCount:
           popupRoot?.querySelectorAll("[data-fennevia-urlbar-coverage]")
             .length ?? 0,
@@ -2079,9 +2081,7 @@ async function collectFrontendState(client) {
           ])
         ),
         browserToolNames: Array.from(
-          topRoot
-            ?.querySelector("[data-fennevia-browser-tools]")
-            ?.querySelectorAll("[data-fennevia-browser-tool]") ?? [],
+          topRoot?.querySelectorAll("[data-fennevia-browser-tool]") ?? [],
           element => element.getAttribute("data-fennevia-browser-tool")
         ).sort(),
         editableCount:
@@ -2105,7 +2105,7 @@ async function collectFrontendState(client) {
             '[aria-haspopup], [role="menu"], [data-fennevia-action*="menu"]'
           ).length ?? 0,
         locationCount:
-          root?.querySelectorAll(
+          topRoot?.querySelectorAll(
             "[data-fennevia-address-launcher] .fennevia-address-launcher__location"
           ).length ?? 0,
         tabCount:
@@ -2279,14 +2279,16 @@ function assertFrontendState(state, windowKind) {
   });
   assert.deepEqual(state.navigation.browserToolNames, [
     "application-menu",
+    "downloads",
     "extensions",
     "settings",
+    "site-information",
   ]);
   assert.equal(state.navigation.editableCount, 0);
   assert.equal(typeof state.navigation.forwardDisabled, "boolean");
   assert.equal(state.navigation.forwardMatchesNative, true);
   assert.equal(state.navigation.loadingMatchesNative, true);
-  assert.equal(state.navigation.menuCount, 0);
+  assert.equal(state.navigation.menuCount, 1);
   assert.equal(state.navigation.locationCount, 1);
   assert.equal(state.navigation.tabCount, 0);
   assert.equal(state.newTabControlCount, 1);
@@ -2393,7 +2395,12 @@ async function exerciseEdgeShell(client) {
         }
         return { x: rect.right - 1, y: rect.top + rect.height / 2 };
       };
-      const dispatchPointer = (edge, type, point = coordinates(edge)) => {
+      const dispatchPointer = (
+        edge,
+        type,
+        point = coordinates(edge),
+        relatedTarget = type === "pointerout" ? browser : null
+      ) => {
         const edgeTrigger = trigger(edge);
         if (!edgeTrigger) {
           throw new Error("FENNEVIA_FIREFOX_TEST_EDGE_TRIGGER_MISSING");
@@ -2406,6 +2413,7 @@ async function exerciseEdgeShell(client) {
             clientY: point.y,
             pointerId: 1,
             pointerType: "mouse",
+            relatedTarget,
           })
         );
       };
@@ -2761,7 +2769,7 @@ async function exerciseNavigationControls(client) {
             '[data-fennevia-action="reload-stop"]'
           ),
         };
-        const location = leftRoot?.querySelector(
+        const location = root?.querySelector(
           "[data-fennevia-address-launcher] .fennevia-address-launcher__location"
         );
         const navigationText =
@@ -3116,8 +3124,8 @@ async function exerciseAddressInput(client) {
       return (async () => {
         const baseUrl = ${JSON.stringify(baseUrl)};
         const frame = document.getElementById("fennevia-shell-frame-host");
-        const root = document.getElementById("fennevia-shell-left-root");
-        const panel = root?.querySelector('[data-fennevia-edge-panel="left"]');
+        const root = document.getElementById("fennevia-shell-top-root");
+        const panel = root?.querySelector('[data-fennevia-edge-panel="top"]');
         const launcher = root?.querySelector("[data-fennevia-address-launcher]");
         const popupRoot = document.getElementById("fennevia-address-popup-root");
         const region = popupRoot;
@@ -3644,15 +3652,20 @@ async function exerciseAddressInput(client) {
             bubbles: true,
             cancelable: true,
             ctrlKey: true,
-            key: "ArrowLeft",
+            key: "ArrowUp",
             shiftKey: true,
           })
         );
         await waitFor(
           () =>
             root.getAttribute("data-fennevia-visible") === "true" &&
-            document.activeElement === launcher,
+            root.contains(document.activeElement),
           "FENNEVIA_FIREFOX_TEST_ADDRESS_LAUNCHER_REVEAL_TIMEOUT"
+        );
+        launcher.focus({ preventScroll: true });
+        await waitFor(
+          () => document.activeElement === launcher,
+          "FENNEVIA_FIREFOX_TEST_ADDRESS_LAUNCHER_FOCUS_TIMEOUT"
         );
         launcher.click();
         await waitFor(
@@ -3767,7 +3780,7 @@ async function exerciseUrlbarCoverageMatrix(client) {
       return (async () => {
         const baseUrl = ${JSON.stringify(baseUrl)};
         const httpsUrl = "https://example.com/";
-        const root = document.getElementById("fennevia-shell-left-root");
+        const root = document.getElementById("fennevia-shell-top-root");
         const popupRoot = document.getElementById("fennevia-address-popup-root");
         const nativeUrlbar = window.gURLBar;
         const nativeTrust = document.getElementById("trust-icon-container");
@@ -5376,7 +5389,7 @@ async function exerciseDownloadsMvp(client) {
         await waitFor(
           () =>
             bottomRoot.querySelectorAll(
-              '[data-fennevia-toolbar-widget-kind="fennevia"]'
+              'button[data-fennevia-browser-tool="downloads"]'
             ).length === 1,
           "FENNEVIA_FIREFOX_TEST_DOWNLOADS_WIDGET_TIMEOUT"
         );
@@ -5386,7 +5399,7 @@ async function exerciseDownloadsMvp(client) {
           "FENNEVIA_FIREFOX_TEST_DOWNLOADS_WIDGET_REVEAL_TIMEOUT"
         );
         const downloadsWidget = bottomRoot.querySelector(
-          '[data-fennevia-toolbar-widget-kind="fennevia"]'
+          'button[data-fennevia-browser-tool="downloads"]'
         );
         downloadsWidget.click();
         await waitFor(
@@ -5900,6 +5913,113 @@ async function exerciseFrontendUnmountRemount(client) {
           };
         },
       });
+      const projectWidget = id => Object.freeze({
+        badgeBackground: "",
+        badgeText: "",
+        badgeTextColor: "",
+        disabled: false,
+        fenneviaAction: "",
+        handle: "",
+        icon: "",
+        iconUrl: "",
+        kind: "project",
+        label: id,
+        missing: false,
+        parts: Object.freeze([]),
+        tooltip: id,
+      });
+      const projectLayoutItem = (instanceId, projectId, style = "") =>
+        Object.freeze({
+          instanceId,
+          projectId,
+          style,
+          type: "item",
+          widget: projectWidget(projectId),
+        });
+      const toolbarSnapshot = Object.freeze({
+        allowMultiplePlacements: false,
+        available: true,
+        canEdit: false,
+        layout: Object.freeze({
+          bottom: Object.freeze([
+            projectLayoutItem("layout-4", "downloads-status"),
+          ]),
+          left: Object.freeze([
+            projectLayoutItem("layout-2", "tabs", "tabs-only"),
+          ]),
+          right: Object.freeze([
+            projectLayoutItem("layout-3", "bookmarks"),
+          ]),
+          top: Object.freeze([
+            projectLayoutItem("layout-1", "customize-shell"),
+          ]),
+        }),
+        layoutCustomized: false,
+        palette: Object.freeze([]),
+        panels: Object.freeze({
+          allowCompactWindow: false,
+          bottomPanelEnabled: true,
+          bottomProgressLight: "downloads",
+          leftPanelEnabled: true,
+          panelDodgeMode: "multiple-dynamic",
+          rightPanelEnabled: true,
+          sidePanelLayout: "tabs-left",
+          topProgressLight: "loading",
+        }),
+        panelsCustomized: false,
+        style: Object.freeze({
+          accent: "",
+          autoHideDelay: 300,
+          blur: 18,
+          border: "",
+          chromeBackground: "",
+          density: "cozy",
+          edgeTriggerSize: 12,
+          fontSize: 12,
+          motion: 180,
+          radius: 4,
+          saturation: 145,
+          shadow: 50,
+          shortcutHintDuration: 600,
+          surface: "",
+          surfaceOpacity: 94,
+          temporaryRevealDuration: 1200,
+          text: "",
+          theme: "auto",
+          windowLeaveHideDelay: 800,
+        }),
+        zones: Object.freeze({
+          bottom: Object.freeze([]),
+          left: Object.freeze([]),
+          right: Object.freeze([]),
+          top: Object.freeze([]),
+        }),
+      });
+      const toolbarWidgets = Object.freeze({
+        async edit() { return false; },
+        async invoke() { return false; },
+        snapshot() { return toolbarSnapshot; },
+        subscribe() {
+          let active = true;
+          return () => {
+            if (!active) {
+              return false;
+            }
+            active = false;
+            return true;
+          };
+        },
+        subscribePopup() {
+          let active = true;
+          return () => {
+            if (!active) {
+              return false;
+            }
+            active = false;
+            return true;
+          };
+        },
+      });
       const options = {
         bookmarks,
         browserTools,
@@ -5915,6 +6035,7 @@ async function exerciseFrontendUnmountRemount(client) {
         overlayTarget,
         tabs,
         targets,
+        toolbarWidgets,
         urlbarCoverage,
         urlbarSuggestions,
         windowControls,
@@ -6075,7 +6196,7 @@ function assertShellHostState(state, windowKind) {
   });
   try {
     assert.equal(state.nativeUi.styleParentIsFrame, true);
-    assert.equal(state.nativeUi.styleRuleCount, 7);
+    assert.equal(state.nativeUi.styleRuleCount, 10);
     assert.equal(state.nativeUi.popupProxyAnchorAriaHidden, true);
     assert.equal(state.nativeUi.popupProxyAnchorCount, 1);
     assert.equal(state.nativeUi.popupProxyAnchorParentIsFrame, true);
