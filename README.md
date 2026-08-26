@@ -239,7 +239,7 @@ and Firefox 154 provider-contract, production-panel, failure-injection, and
 release-candidate probes, while its representative provider matrix remains
 pending.
 
-The `0.17.0-beta.1` candidate reruns the complete automated lifecycle,
+The `0.17.0-beta.1` release reran the complete automated lifecycle,
 recovery, performance-control, deterministic-archive, and extracted-package
 installer matrix on Firefox 154.0.1. The remaining real-Firefox visual,
 assistive-technology, account/device, popup-placement, complete customize,
