@@ -31,9 +31,9 @@ ADR-039.
 
 As of 2026-08-25:
 
-- package: public `0.16.0-beta.1` prerelease;
-- tested Firefox: 153.0.4 release, Build ID `20260810162159`, and 154.0
-  release, Build ID `20260812182057`;
+- package: public `0.17.0-beta.1` prerelease;
+- tested Firefox: 153.0.4 release, Build ID `20260810162159`; 154.0 release,
+  Build ID `20260812182057`; and 154.0.1 release, Build ID `20260824154132`;
 - installer gate: Firefox 153+ after an explicit warning that only 153 and 154
   are tested (ADR-048);
 - first real stock-stable transition: owner-confirmed ordinary runtime on
@@ -44,11 +44,12 @@ As of 2026-08-25:
   development profile;
 - completed runtime/UI/distribution milestones: #3–#18, #31, #32, #37, #39,
   and #46;
-- `0.16.0-beta.1` release preparation passed `npm run verify` with 420/420 Node
+- `0.17.0-beta.1` release preparation passed `npm run verify` with 429/429 Node
   tests and the complete fixed-list suite in both PowerShell 7 and Windows
   PowerShell 5.1, including deterministic packaging and installer recovery;
-  the complete real-Firefox mass matrix remains **not run** and is not inferred
-  from those source/package checks;
+  package-specific Firefox 154.0.1 lifecycle, recovery, and extracted-package
+  results are recorded separately, while remaining manual mass-matrix rows are
+  not inferred from those checks;
 - current shell: one zero-layout frame with independent top, left, right, and
   bottom surfaces plus one centered address-overlay root;
 - current functional features: vertical tabs with separate bounded pinned and
@@ -1529,7 +1530,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.16.0-beta.1` performs the sole production activation only after
+Current package `0.17.0-beta.1` performs the sole production activation only after
 the health phase requires:
 
 - exact frame identity and placement;

@@ -141,17 +141,17 @@ fallback; this is an accepted safety behavior rather than a custom prompt.
 ## Current release
 
 The current public prerelease is
-[`v0.16.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.16.0-beta.1).
+[`v0.17.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.17.0-beta.1).
 It follows
-[`v0.15.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.15.0-beta.1).
+[`v0.16.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.16.0-beta.1).
 Its tested environment is intentionally narrow:
 
 | Requirement      | Tested value                                         |
 | ---------------- | ---------------------------------------------------- |
 | Operating system | Windows x64                                          |
-| Firefox          | Stock Firefox 153.0.4 and 154.0, release channel     |
-| Firefox Build ID | `20260810162159` (153.0.4), `20260812182057` (154.0) |
-| Package          | `fennevia-0.16.0-beta.1-windows.zip`                 |
+| Firefox          | Stock Firefox 153.0.4, 154.0, and 154.0.1, release channel |
+| Firefox Build ID | `20260810162159` / `20260812182057` / `20260824154132` |
+| Package          | `fennevia-0.17.0-beta.1-windows.zip`                 |
 
 Install, update, repair, and re-enable reject Firefox older than 153. Firefox
 153, 154, and newer majors may be installed after the installer warning: only
@@ -220,6 +220,16 @@ tier normally reached through the optional compact-window setting lets a lone
 side use the full available width. Focused automated coverage is complete; the
 real-Firefox narrow-window matrix remains pending.
 
+This release also simplifies the centred address/search popup around the
+search task while retaining Trust, permission, Firefox-provider results, and
+the complete native Urlbar handoff. The Firefox bridge retries only the first
+completed empty zero-prefix query once to cover the observed first-open warm-up
+case. Tab dragging now requires a small intentional displacement before an
+unconsumed drag may detach into a new window, and nested layout handlers no
+longer cancel their child tab's drag session. Known built-in toolbar labels use
+their synchronous Fluent mapping before the legacy fallback, reducing avoidable
+Browser Console localization noise.
+
 The current prerelease also projects bounded results from Firefox's own
 per-window Urlbar provider manager into the centred combobox. Firefox still
 owns engines, provider selection, ranking, search-suggestion/private policy,
@@ -229,13 +239,13 @@ and Firefox 154 provider-contract, production-panel, failure-injection, and
 release-candidate probes, while its representative provider matrix remains
 pending.
 
-The last recorded automated Firefox 154 lifecycle, recovery,
-performance-control, deterministic archive, and extracted-package installer
-matrix is the `0.12.0-beta.1` candidate; this `0.16.0-beta.1` package does not
-re-run that matrix. The remaining real-Firefox visual, assistive-technology,
-account/device, popup-placement, customize, first-paint, complete GUI installer,
-and representative Urlbar-provider rows are still pending. The main remaining
-work is therefore
+The `0.17.0-beta.1` candidate reruns the complete automated lifecycle,
+recovery, performance-control, deterministic-archive, and extracted-package
+installer matrix on Firefox 154.0.1. The remaining real-Firefox visual,
+assistive-technology, account/device, popup-placement, complete customize,
+first-paint, GUI installer, literal fresh-profile first-zero-prefix, and
+representative Urlbar-provider rows are still pending. The main remaining work
+is therefore
 compatibility and release validation rather than a missing core shell feature.
 See [Current project status](docs/current-status.md) for the reviewed capability
 inventory, evidence boundary, known risks, and recommended priorities.
@@ -262,14 +272,14 @@ the wizard.
 
 Download both files from the same GitHub Release:
 
-- `fennevia-0.16.0-beta.1-windows.zip`
-- `fennevia-0.16.0-beta.1-windows.zip.sha256`
+- `fennevia-0.17.0-beta.1-windows.zip`
+- `fennevia-0.17.0-beta.1-windows.zip.sha256`
 
 Before extracting the ZIP, run this in PowerShell from the download directory:
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.16.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.16.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.17.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.17.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 

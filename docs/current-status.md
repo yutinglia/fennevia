@@ -1,8 +1,8 @@
 # Current Project Status
 
-> Snapshot: 2026-08-26. This status review includes ADR-074 through ADR-080 and
-> the `0.16.0-beta.1` version identity, alongside the public
-> `v0.16.0-beta.1` prerelease.
+> Snapshot: 2026-08-26. This status review includes ADR-074 through ADR-081 and
+> the `0.17.0-beta.1` version identity, alongside the public
+> `v0.17.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
@@ -13,15 +13,15 @@ and testing documents retain the complete engineering contract.
 
 | Area                            | Current state                                                                                                                                                                                                                                                                                          |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Public release                  | `v0.16.0-beta.1`, Windows x64 prerelease                                                                                                                                                                                                                                                               |
-| Tested Firefox                  | Stock Firefox 153.0.4 BuildID `20260810162159` and 154.0 BuildID `20260812182057`, release channel                                                                                                                                                                                                     |
+| Public release                  | `v0.17.0-beta.1`, Windows x64 prerelease                                                                                                                                                                                                                                                               |
+| Tested Firefox                  | Stock Firefox 153.0.4 BuildID `20260810162159`, 154.0 BuildID `20260812182057`, and 154.0.1 BuildID `20260824154132`, release channel                                                                                                                                                                  |
 | Installer compatibility gate    | Firefox 153 and newer after an explicit warning; only 153 and 154 are tested                                                                                                                                                                                                                           |
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
-| Post-MVP shell work             | Included in `v0.16.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, ADR-073 pinned-tab partitioning, and ADR-074 through ADR-077's composable widget system         |
-| Latest released follow-up       | ADR-072 corrects drop placement and enlarges owned edge targets; ADR-073 separates bounded pinned and regular scrolling; the side-panel layout fix keeps rows visible and New Tab after the last row                                                                                                   |
-| Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; real Firefox validation is pending |
-| Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending                                                                              |
-| Real-Firefox validation         | Last recorded automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; this `0.16.0-beta.1` package does not re-run that complete matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending                                       |
+| Post-MVP shell work             | Included through `v0.17.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, ADR-073 pinned-tab partitioning, and ADR-074 through ADR-081's widget, address, narrow-layout, and tab-drag work |
+| Latest released follow-up       | ADR-078 adds feature-first customization and a Guide; ADR-079 retries only the first empty zero-prefix query; ADR-080 adds narrow panel reflow; ADR-081 adds detach intent and restores child drag-event ownership; Fluent-first built-in labels reduce legacy lookup noise                         |
+| Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; the automated Firefox 154.0.1 release matrix passed while manual visual rows remain pending |
+| Native Urlbar result projection | Included since `v0.12.0-beta.1`; the `0.17.0-beta.1` Firefox 154.0.1 provider-contract, production-panel, and failure-injection probes passed; the literal fresh-profile first-zero-prefix and representative-provider matrices remain pending                                                                        |
+| Real-Firefox validation         | The `0.17.0-beta.1` candidate passed the complete automated Firefox 154.0.1 lifecycle, recovery, performance-control, deterministic-archive, and extracted-package matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending                                                |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                                                                                                                                                                        |
 
 ## Implemented product surface
@@ -314,6 +314,19 @@ artifacts. The complete fixed-list suite also passed under Windows PowerShell
 auto-hide, keyboard, panel-mode, customize, accessibility, multiple/private
 window, and recovery rows remain `not run`.
 
+ADR-079's search-first popup and bounded first-empty zero-prefix retry passed
+`npm run verify` with 424/424 Node tests. Its current first-open Firefox 154.0.1
+ordering and complete representative-provider rows remain part of the release
+matrix rather than being inferred from focused automation.
+
+ADR-081's detach-intent and child-drag ownership correction passed
+`npm run verify` with 428/428 Node tests and the Windows PowerShell 5.1 fixed
+list. The owner confirmed ordinary same-tabbar reorder, intentional external
+detach, and cross-window transfer on Firefox 154.0.1; private-window and full
+Browser Console rows remain pending. The subsequent Fluent-first built-in
+label correction passed `npm run verify` with 429/429 Node tests and the same
+PowerShell 5.1 gate.
+
 The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
 the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and
 failure-injection wrappers, SessionStore rehearsal, Urlbar provider/production
@@ -322,8 +335,12 @@ control, deterministic dual-archive preflight, Unicode-path extraction, and the
 extracted package's update/disable/recovery/uninstall/stock-start/install
 lifecycle. See
 [`docs/research/firefox-154-0.12.0-beta.1-release-validation.md`](research/firefox-154-0.12.0-beta.1-release-validation.md).
-This `0.16.0-beta.1` package does not re-run that matrix and does not convert
-the pending real-Firefox rows below into observed evidence.
+The `0.17.0-beta.1` candidate reran that complete automated matrix on Firefox
+154.0.1, including Browser Toolbox, failure injection, SessionStore, Urlbar,
+performance controls, Unicode extraction, and the extracted-package lifecycle.
+It does not convert the pending manual real-Firefox rows below into observed
+evidence. See
+[`docs/research/firefox-154-0.17.0-beta.1-release-validation.md`](research/firefox-154-0.17.0-beta.1-release-validation.md).
 
 That automated evidence does **not** complete every real-browser claim. The
 following remain explicitly pending in the current plans and testing document:
@@ -376,6 +393,9 @@ following remain explicitly pending in the current plans and testing document:
   full-width Bottom, compact Row overflow, customize-sheet fallback, keyboard
   and pointer access, 200% text, forced colors, multiple/private windows,
   popup holds, recovery, and disposal in real Firefox;
+- ADR-078 paired feature palette, incomplete-group reflow, Guide layout,
+  200% text, forced colors, keyboard, screen reader, and multiple/private
+  windows in real Firefox;
 - ADR-059 unified Trust-shield rendering/state, leading in-launcher placement,
   and native panel handoff across HTTP, HTTPS, ETP exception/restore, errors,
   forced colors, DPI, and multiple windows;
@@ -386,6 +406,9 @@ following remain explicitly pending in the current plans and testing document:
   combinations, Firefox 153, one-offs/rich rows, rapid replacement/close,
   pointer/assistive-technology behavior, second/private windows, Browser
   Toolbox ownership, failure injection, and release matrix;
+- ADR-079 a fresh first-open zero-prefix query on Firefox 154.0.1, including
+  genuine empty completion after the bounded retry and query replacement/
+  cancellation during that path;
 - ADR-062 full-row tab-drag ghost alignment, spatial gap behavior during rapid
   direction changes and overflow scrolling, reduced motion, forced colors,
   screen-reader announcements, multiple windows, and disposal during drag;
@@ -395,10 +418,12 @@ following remain explicitly pending in the current plans and testing document:
   source and target left-edge auto-hide (including missing source `dragend`),
   normal/private rejection, source/target closure, and
   Browser Console/Toolbox ownership;
+- ADR-081 private-window drag isolation and complete Browser Console evidence
+  after same-tabbar reorder, intentional detach, and cross-window transfer;
 - a complete recorded real double-click, UAC, and system-Firefox installation
   matrix for the WinForms release wizard.
 
-Accordingly, `v0.16.0-beta.1` should be described as an implemented experimental
+Accordingly, `v0.17.0-beta.1` should be described as an implemented experimental
 prerelease with validation debt, not as a stable product. The largest remaining
 risk is Firefox-internal compatibility and real-environment coverage rather
 than absence of the core shell.

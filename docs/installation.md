@@ -453,7 +453,7 @@ pwsh -NoProfile -File .\tests\firefox-release-recovery.ps1 `
   -PackageRoot '<EXTRACTED_RELEASE_ROOT>'
 ```
 
-The current package is `0.16.0-beta.1` and contains 16 source-installed files:
+The current package is `0.17.0-beta.1` and contains 16 source-installed files:
 two program files and 14 exact profile artifacts (the manifest, bootstrap, one
 generated private bridge ESM, seven runtime modules, one first-paint hide
 stylesheet, and three generated shell files). Each root also receives its byte-identical installer ownership record;
@@ -482,7 +482,7 @@ Maintainers stage an ordinary release into a new empty directory:
 pwsh -NoProfile -File .\scripts\build-release.ps1 `
   -OutputDirectory .\.release
 pwsh -NoProfile -File .\scripts\verify-release.ps1 `
-  -PackageRoot .\.release\fennevia-0.16.0-beta.1
+  -PackageRoot .\.release\fennevia-0.17.0-beta.1
 ```
 
 Publication requires the complete clean-tree preflight, which runs exact
@@ -493,7 +493,7 @@ manifest bytes, validates the checksum, and extracts into a Unicode/space path:
 $output = Join-Path ([IO.Path]::GetTempPath()) "fennevia-release-preflight"
 pwsh -NoProfile -File .\scripts\release-preflight.ps1 `
   -OutputDirectory $output `
-  -ExpectedTag v0.16.0-beta.1 `
+  -ExpectedTag v0.17.0-beta.1 `
   -RequireAnnotatedTag
 ```
 
