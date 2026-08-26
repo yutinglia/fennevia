@@ -1,24 +1,26 @@
 # Firefox 154.0.1 and Fennevia 0.17.0-beta.1 release validation
 
-## 1. Scope and candidate
+## 1. Scope and release
 
 - Validation date: 2026-08-26
-- Release candidate: `0.17.0-beta.1`, intended annotated tag
-  `v0.17.0-beta.1`
+- Release: `0.17.0-beta.1`, annotated tag `v0.17.0-beta.1`
 - Release-preparation commit:
   `36855b90a80752c006647508cae2909b46141307`
 - Real-Firefox harness refresh commit:
   `8e041150367774fd4a551852688230c155cffc0d`
+- Reviewed merge and tag target:
+  `f4acb2fe5f0badb633b213f4a4c3cd5ab7d04dd4`
 - Target: stock Firefox 154.0.1 release, BuildID `20260824154132`, in a
   marker-owned copied program and a dedicated marker-owned release profile
-- Candidate status: source/static, automated real-Firefox, performance-control,
-  initial deterministic archive, Unicode-path extraction, and extracted-package
-  lifecycle checks passed; remote CI, annotated tag, and public-asset checks
-  remain publication gates
+- Final status: published prerelease; source/static, automated real-Firefox,
+  performance-control, deterministic archive, extracted-package lifecycle,
+  pull-request and `main` CI/CodeQL, annotated tag, release workflow, public
+  asset, independent download, Unicode-path extraction, and public-package
+  recovery checks passed within section 10's explicit unrun boundaries
 
 No registered or ordinary Firefox profile was used. The pre-existing
 marker-owned development profile was preserved while the release matrix ran in
-a fresh dedicated profile.
+a fresh dedicated profile, then restored as the final enabled package target.
 
 This is a package-specific validation record, not a wider support claim.
 Retained Firefox 153.0.4 and 154.0 evidence remains in the existing historical
@@ -176,7 +178,7 @@ The production-panel probe returned:
 The isolated profile had already completed earlier candidate launches before
 the provider probe. Therefore ADR-079's literal fresh-profile, first-ever
 zero-prefix retry ordering was not observed in this matrix and remains explicit
-in section 9; focused source/unit evidence is not promoted into that row.
+in section 10; focused source/unit evidence is not promoted into that row.
 
 ## 7. Performance threshold investigation
 
@@ -249,11 +251,96 @@ That exact extraction then passed the marker-owned Firefox 154.0.1 lifecycle:
 The initial digest is not presented as the tag archive digest. The harness and
 this evidence record change the source commit embedded in
 `RELEASE-MANIFEST.json`; the exact final/tag-target preflight and independently
-downloaded public asset are checked during publication.
+downloaded public asset were therefore checked separately.
 
-## 9. Explicitly unrun or unsupported rows
+After PR #117 merged, clean merge commit
+`f4acb2fe5f0badb633b213f4a4c3cd5ab7d04dd4` independently passed the same
+complete preflight in a new detached worktree. Its .NET Framework fallback-
+compiler archive was 1,406,235 bytes with SHA-256
+`ac299d396c8313cd8f736f99b324e7ecc50dfa556eed5f4df21df1bedb2ec14c`.
 
-- The complete current-candidate matrix was not rerun on Firefox 153.0.4 or
+## 9. Tag, CI, and public prerelease
+
+PR [#117](https://github.com/yutinglia/fennevia/pull/117) merged as
+`f4acb2fe5f0badb633b213f4a4c3cd5ab7d04dd4` after:
+
+- [CI run 32915373578](https://github.com/yutinglia/fennevia/actions/runs/32915373578)
+  passed the Windows package gate in 3 minutes 55 seconds; and
+- [CodeQL run 32915372781](https://github.com/yutinglia/fennevia/actions/runs/32915372781)
+  passed Actions, C#, and JavaScript/TypeScript analysis.
+
+The exact merge commit then passed:
+
+- [`main` CI run 32915668136](https://github.com/yutinglia/fennevia/actions/runs/32915668136)
+  in 5 minutes, including the Windows PowerShell 5.1 fixed list; and
+- [`main` CodeQL run 32915667600](https://github.com/yutinglia/fennevia/actions/runs/32915667600)
+  for Actions, C#, and JavaScript/TypeScript.
+
+Annotated tag `v0.17.0-beta.1` has tag-object ID
+`d239f750f304adecd11b5f3774d19adaad53abfa` and resolves exactly to that
+merge commit. Local and remote tag objects and peeled targets agree.
+
+[Release workflow run 32916402282](https://github.com/yutinglia/fennevia/actions/runs/32916402282)
+checked out the annotated tag in two independent `windows-latest` jobs.
+`Rehearse exact release` passed in 3 minutes 27 seconds. `Verify draft assets
+and publish` independently reran the complete preflight, created the private
+draft, verified both GitHub-reported asset digests, and published only after
+those checks passed in 3 minutes 8 seconds.
+
+Public prerelease ID `376803607` was published at `2026-08-26T00:52:53Z`
+(`2026-08-26T08:52:53+08:00`) at
+[`v0.17.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.17.0-beta.1).
+It is not a draft, is marked prerelease, and contains exactly:
+
+- asset ID `530017059`, `fennevia-0.17.0-beta.1-windows.zip`, 1,406,747
+  bytes, GitHub-reported and independently downloaded SHA-256
+  `c1fdc6ca600a52f877e47ef4119a0db35b32f71315575830ad1098b1dedc4f22`;
+- asset ID `530017060`,
+  `fennevia-0.17.0-beta.1-windows.zip.sha256`, 101 bytes,
+  GitHub-reported and independently downloaded SHA-256
+  `f2466f3540ce1772b8d9ff0e8f39a274623523cbda1a10af5df3cacff6b0c80a`.
+
+The downloaded checksum content names the exact archive and reproduces its
+hash. Independent extraction beneath new Unicode paths passed the public
+package's strict verifier under both PowerShell 7 and Windows PowerShell 5.1:
+version `0.17.0-beta.1`, tag `v0.17.0-beta.1`, 39 files, source commit equal to
+the tag target, and package-manifest SHA-256
+`dfa51224567f5da552fe1e3a28332783a8d4312404057a745f416e03fc4cf112`.
+
+### Compiler-specific reproducibility boundary
+
+The final local preflight used ADR-049's normalized .NET Framework `csc.exe`
+fallback, while both publishing jobs used the preferred deterministic Roslyn
+compiler. Entry-by-entry comparison found the same 39 paths, with identical
+content for 37 files. Only these compiler-derived records differ:
+
+- local `FenneviaSetup.exe`: 6,144 bytes, SHA-256
+  `e104e0dcd83ae76183d7ae8d06866c5948dd25cf702f8b9f241938310621c0f3`;
+- public `FenneviaSetup.exe`: 6,656 bytes, SHA-256
+  `4488f42d429ea9ef5f60c984edaaeaa2317ae86fc746dd045fc40abed3ef928b`;
+- local `RELEASE-MANIFEST.json`: 8,784 bytes, SHA-256
+  `d1ac79afddb225ba62fe0a24b1c4c1a49f7e685aef2c80344115d9ddc0ce5ed2`;
+- public `RELEASE-MANIFEST.json`: 8,784 bytes, SHA-256
+  `84df2dcbb01acc686a9ed34a4f840b571bbb7eec292c3f98ae676d8f58d0098b`.
+
+The manifest difference records the executable hash. Both publishing jobs
+agreed on the public archive digest; the project does not claim byte identity
+across different C# compiler implementations.
+
+The independently downloaded public package then passed hard disable, native
+cold start with zero Fennevia records or hosts, update repair, enable, and a
+recovered full lifecycle on Firefox 154.0.1. Finally, the public package was
+transferred through ownership-checked Uninstall/Install previews and applied
+plans from the disposable release profile back to the preserved development
+profile. The original preference file remained byte-identical. The disposable
+profile was removed through the marker-checked helper. The final installation
+is enabled at `0.17.0-beta.1`, its ownership pair and public package-manifest
+hash agree, and Firefox-process, disabled-preference, transaction, bridge-
+recovery, and session-rehearsal residue counts are zero.
+
+## 10. Explicitly unrun or unsupported rows
+
+- The complete current-release matrix was not rerun on Firefox 153.0.4 or
   154.0; those support statements rely on retained release/feature records plus
   no removed compatibility branch. They are not presented as new runs.
 - ADR-079's literal fresh-profile first-ever zero-prefix ordering was not run,
@@ -274,13 +361,14 @@ downloaded public asset are checked during publication.
 - Linux, macOS, ESR, Beta, Nightly, and Firefox versions after 154.0.1 are not
   supported or inferred.
 
-## 10. Release decision boundary
+## 11. Release decision boundary
 
-No blocker was found inside the automated Windows x64 candidate boundary. The
-remaining publication conditions are a clean final source preflight, passing
-pull-request and `main` CI/CodeQL, an annotated tag resolving to the reviewed
-source, a passing release workflow, exact public asset inventory/digests, strict
-Unicode-path extraction, and a final marker-owned public-package recovery run.
+The Windows x64 prerelease decision boundary was satisfied. The reviewed merge
+commit passed clean preflight and remote gates; the annotated tag resolves to
+that commit; the fail-closed workflow independently verified the remote assets
+before publication; the downloaded public package passed both PowerShell
+verifiers and marker-owned recovery; and the preserved test installation ended
+enabled with no process or recovery residue.
 
-Section 9 remains the explicit limit on compatibility, manual GUI, visual,
+Section 10 remains the explicit limit on compatibility, manual GUI, visual,
 assistive, device, account, provider, and platform claims.
