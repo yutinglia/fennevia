@@ -19,9 +19,9 @@ and testing documents retain the complete engineering contract.
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
 | Post-MVP shell work             | Included through `v0.17.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, ADR-073 pinned-tab partitioning, and ADR-074 through ADR-081's widget, address, narrow-layout, and tab-drag work |
 | Latest released follow-up       | ADR-078 adds feature-first customization and a Guide; ADR-079 retries only the first empty zero-prefix query; ADR-080 adds narrow panel reflow; ADR-081 adds detach intent and restores child drag-event ownership; Fluent-first built-in labels reduce legacy lookup noise                         |
-| Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; real Firefox validation is pending |
-| Native Urlbar result projection | Included since `v0.12.0-beta.1`; last recorded Firefox 154 provider-contract, production-panel, failure-injection, and release-candidate probes are the `0.12.0-beta.1` candidate; representative-provider matrix pending                                                                              |
-| Real-Firefox validation         | The last previously recorded complete automated Firefox 154 release/recovery and extracted-package matrix is `0.12.0-beta.1`; `0.17.0-beta.1` adds a current Firefox 154.0.1 candidate run. Several manual visual, assistive, account/device, and GUI installer rows remain pending                      |
+| Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; the automated Firefox 154.0.1 release matrix passed while manual visual rows remain pending |
+| Native Urlbar result projection | Included since `v0.12.0-beta.1`; the `0.17.0-beta.1` Firefox 154.0.1 provider-contract, production-panel, and failure-injection probes passed; the literal fresh-profile first-zero-prefix and representative-provider matrices remain pending                                                                        |
+| Real-Firefox validation         | The `0.17.0-beta.1` candidate passed the complete automated Firefox 154.0.1 lifecycle, recovery, performance-control, deterministic-archive, and extracted-package matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending                                                |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                                                                                                                                                                        |
 
 ## Implemented product surface
@@ -335,8 +335,12 @@ control, deterministic dual-archive preflight, Unicode-path extraction, and the
 extracted package's update/disable/recovery/uninstall/stock-start/install
 lifecycle. See
 [`docs/research/firefox-154-0.12.0-beta.1-release-validation.md`](research/firefox-154-0.12.0-beta.1-release-validation.md).
-This `0.17.0-beta.1` package adds a current Firefox 154.0.1 candidate run but
-does not convert the pending real-Firefox rows below into observed evidence.
+The `0.17.0-beta.1` candidate reran that complete automated matrix on Firefox
+154.0.1, including Browser Toolbox, failure injection, SessionStore, Urlbar,
+performance controls, Unicode extraction, and the extracted-package lifecycle.
+It does not convert the pending manual real-Firefox rows below into observed
+evidence. See
+[`docs/research/firefox-154-0.17.0-beta.1-release-validation.md`](research/firefox-154-0.17.0-beta.1-release-validation.md).
 
 That automated evidence does **not** complete every real-browser claim. The
 following remain explicitly pending in the current plans and testing document:

@@ -239,14 +239,13 @@ and Firefox 154 provider-contract, production-panel, failure-injection, and
 release-candidate probes, while its representative provider matrix remains
 pending.
 
-The last recorded automated Firefox 154 lifecycle, recovery,
-performance-control, deterministic archive, and extracted-package installer
-matrix is the `0.12.0-beta.1` candidate; this `0.17.0-beta.1` package adds a
-current Firefox 154.0.1 candidate run but does not
-re-run that matrix. The remaining real-Firefox visual, assistive-technology,
-account/device, popup-placement, customize, first-paint, complete GUI installer,
-and representative Urlbar-provider rows are still pending. The main remaining
-work is therefore
+The `0.17.0-beta.1` candidate reruns the complete automated lifecycle,
+recovery, performance-control, deterministic-archive, and extracted-package
+installer matrix on Firefox 154.0.1. The remaining real-Firefox visual,
+assistive-technology, account/device, popup-placement, complete customize,
+first-paint, GUI installer, literal fresh-profile first-zero-prefix, and
+representative Urlbar-provider rows are still pending. The main remaining work
+is therefore
 compatibility and release validation rather than a missing core shell feature.
 See [Current project status](docs/current-status.md) for the reviewed capability
 inventory, evidence boundary, known risks, and recommended priorities.
