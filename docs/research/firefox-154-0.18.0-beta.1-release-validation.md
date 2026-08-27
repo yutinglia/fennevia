@@ -7,13 +7,13 @@
   `v0.18.0-beta.1`
 - Feature commit: `a3ea3aedbfe0bb36f7ec4e6c1ecd8c8ba182408c`
 - Release-preparation commit: `6f0890341ba5424371231ee21e071c79bbc54b37`
-- Release-validation correction commit: pending until the findings below are
-  committed
+- Release-validation correction commit:
+  `6484fb62413394dfedde525e776e50f83cebc949`
 - Reviewed merge/tag target: pending pull-request merge
 - Target: stock Firefox 154.0.1 release, BuildID `20260824154132`, in a
   marker-owned copied program and dedicated marker-owned release profile
-- Candidate status: validation in progress; publication evidence is recorded
-  only after the annotated-tag workflow succeeds
+- Candidate status: committed candidate validation passed; publication
+  evidence is recorded only after the annotated-tag workflow succeeds
 
 No registered or ordinary Firefox profile is in scope. The project-owned test
 targets are validated before every installer or harness mutation. This is a
@@ -64,17 +64,20 @@ for Firefox-owned security prompts.
 
 ## 4. Source and static validation
 
-The correction passed `npm run verify` under Node.js 24.18.0 and npm 11.16.0:
-435/435 Node tests, 88.71% line coverage, 81.37% branch coverage, 95.79%
-function coverage, every fixed PowerShell 7 suite, dependency audit,
-deterministic frontend/bridge generation, and 14/14 accepted production
-artifacts. The complete fixed-list suite also passed under Windows PowerShell
-5.1. `git diff --check` passed before this record update and will be repeated
-before commit.
+Correction commit `6484fb62413394dfedde525e776e50f83cebc949`
+passed `npm run verify` under Node.js 24.18.0 and npm 11.16.0: 435/435
+Node tests, 88.71% line coverage, 81.37% branch coverage, 95.79% function
+coverage, every fixed PowerShell 7 suite, dependency audit, deterministic
+frontend/bridge generation, and 14/14 accepted production artifacts. The
+complete fixed-list suite also passed under Windows PowerShell 5.1, and
+`git diff --check` passed before the correction commit and again before this
+validation-record commit.
 
-The clean-tree deterministic double release build, strict Unicode-path
-extraction, archive digest, and committed-tree package recovery remain pending
-until this correction is committed.
+The same clean commit passed the release preflight in a new empty output
+directory: exact dependency installation, the complete verification gate, two
+byte-identical isolated release builds, strict release-tree checks, and
+Unicode-path extraction. Section 7 records its initial archive digest and
+package lifecycle.
 
 ## 5. Automated real-Firefox 154.0.1 validation
 
@@ -120,23 +123,92 @@ The isolated candidate profile passed:
   restoration; and
 - SessionStore prepare, process restart, lazy background-tab restore,
   fail-open usability, and exact preference/state cleanup.
+- three enabled performance cold starts and three same-program/profile
+  hard-disabled controls, with expected process cleanup, sub-50-ms edge
+  latency, and no retained five-cycle memory growth; and
+- exact committed-package hard-disable/recovery plus uninstall, stock startup,
+  reinstall, post-install lifecycle, and zero-mutation update preview.
 
-Performance controls, committed release-package recovery, and extracted-package
-lifecycle remain pending until the correction is committed and a clean source
-candidate can be built. Results are not promoted from focused tests.
+All package and performance rows used the extraction produced from the clean
+committed candidate. Results are not promoted from focused tests.
 
 The owner-supplied screenshots provide direct visual evidence for the default
 layout and five customize views. They do not prove the complete interaction,
 accessibility, popup, multi-window, private-window, failure, or platform matrix.
 
-## 6. Package, tag, workflow, and publication
+## 6. Performance controls
+
+All three enabled cold starts crossed the absolute 500,000,000 ns idle-CPU
+investigation threshold, so the same copied Firefox and profile were
+hard-disabled through the ownership-checked installer for three native-only
+controls. Enable was restored in a `finally` path.
+
+| Enabled metric | Run 1 | Run 2 | Run 3 | Median |
+| --- | ---: | ---: | ---: | ---: |
+| Startup to active (ms) | 2,084 | 1,744 | 1,631 | 1,744 |
+| Idle CPU (ns) | 1,836,135,488 | 2,083,288,700 | 1,963,172,712 | 1,963,172,712 |
+| Idle memory delta (bytes) | 80,039,936 | 87,568,384 | 114,745,344 | 87,568,384 |
+| Edge reveal p95 (ms) | 15.004 | 15.265 | 18.980 | 15.265 |
+| Five-cycle CPU (ns) | 8,007,524,112 | 7,837,554,428 | 8,096,252,193 | 8,007,524,112 |
+| Five-cycle memory delta (bytes) | -5,046,272 | -49,872,896 | -49,709,056 | -49,709,056 |
+
+| Hard-disabled control | Run 1 | Run 2 | Run 3 | Median |
+| --- | ---: | ---: | ---: | ---: |
+| Startup to native ready (ms) | 1,629 | 1,711 | 1,544 | 1,629 |
+| Idle CPU (ns) | 1,912,093,195 | 1,639,944,592 | 1,749,767,396 | 1,749,767,396 |
+| Idle memory delta (bytes) | 117,661,696 | 92,823,552 | 96,354,304 | 96,354,304 |
+
+The enabled idle-CPU median was 1.122 times the hard-disabled control, and the
+enabled startup median was 1.071 times the control. The distributions overlap;
+all enabled edge-reveal p95 values remained below 50 ms; every enabled
+five-window-cycle memory delta was negative; and process counts returned to
+their expected values. This comparison does not identify a repeatable
+Fennevia-specific idle loop or retained-window leak. It does not waive the
+absolute investigation threshold or claim a general Firefox performance
+result.
+
+## 7. Initial archive and extracted-package lifecycle
+
+Clean correction commit `6484fb62413394dfedde525e776e50f83cebc949`
+passed `scripts/release-preflight.ps1`. Its two independent release builds
+produced byte-identical `fennevia-0.18.0-beta.1-windows.zip` archives with
+initial SHA-256
+`ea18a5b9964a6a5f7efbaa510cc182ea83db2b12c2b8f7465386b39f3a665d63`.
+The exact archive also passed checksum validation and strict extraction beneath
+`unicode path 測試`.
+
+That exact extraction then passed the marker-owned Firefox 154.0.1 lifecycle:
+
+1. `tests/firefox-release-recovery.ps1` passed hard disable, native-only cold
+   start, update repair, enable, and recovered full lifecycle.
+2. `Uninstall -WhatIf` identified 18 ownership-proven files and eight
+   remove-if-empty directory operations. Applied Uninstall completed all 26
+   operations.
+3. `--expect-stock` proved native Firefox UI, zero Fennevia records, and no
+   owned-file residue.
+4. `Install -WhatIf` and applied Install completed all 26 expected operations
+   from the same extraction.
+5. A post-install full lifecycle passed existing, second, and private windows,
+   interaction/layout/fallback checks, and first-party error assertions.
+6. The final Update preview returned `already-current` with zero mutations.
+7. The ownership pair finished byte-identical and enabled at
+   `0.18.0-beta.1`; the active preference existed with no disabled alternate;
+   and Firefox process, installer transaction, recovery temporary-root, and
+   session-rehearsal residue counts were zero.
+
+The initial digest is not presented as the tag archive digest. This evidence
+record changes the source commit embedded in `RELEASE-MANIFEST.json`; the exact
+final merge/tag-target preflight and independently downloaded public asset are
+checked during publication.
+
+## 8. Package, tag, workflow, and publication
 
 Clean candidate and final merge preflight digests, pull-request checks,
 annotated-tag identity, release workflow jobs, asset IDs/digests, independent
 download verification, and public-package recovery remain pending until their
 respective states exist. No future result is inferred here.
 
-## 7. Explicitly unrun or unsupported rows
+## 9. Explicitly unrun or unsupported rows
 
 - The complete current-release matrix is not rerun on Firefox 153.0.4 or
   154.0; those support statements retain their historical evidence and do not
@@ -155,9 +227,12 @@ respective states exist. No future result is inferred here.
 - Linux, macOS, ESR, Beta, Nightly, and Firefox versions after 154.0.1 are not
   supported or inferred.
 
-## 8. Release decision boundary
+## 10. Release decision boundary
 
-The prerelease decision remains pending until the committed candidate passes
-its source/static, marker-owned Firefox, deterministic package, pull-request,
-annotated-tag, workflow, remote-asset, independent-download, and recovery
-checks. Section 7 remains the explicit limit on all eventual claims.
+No blocker was found inside the automated Windows x64 candidate boundary. The
+remaining publication conditions are a clean final merge-commit preflight,
+passing pull-request and `main` checks, an annotated tag resolving to the
+reviewed source, a passing release workflow, exact public asset inventory and
+digests, independent download verification, and final marker-owned
+public-package recovery. Section 9 remains the explicit limit on all eventual
+claims.
