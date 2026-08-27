@@ -19,10 +19,10 @@ and testing documents retain the complete engineering contract.
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
 | Post-MVP shell work             | Included through `v0.18.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, ADR-073 pinned-tab partitioning, and ADR-074 through ADR-084's widget, address, layout, narrow-window, drag, and customize work |
 | Latest released follow-up       | ADR-082 restores Firefox's bounded untrimmed value for a fresh address edit and adds optional Row/Column content padding; ADR-083 keeps narrow Top scrollbars draggable; the ADR-076 follow-up makes the inspector yield during widget drags; ADR-084 adopts the owner's default and blocks/darkens website content during customization |
-| Current source follow-up        | No additional unversioned feature work is recorded after the `v0.18.0-beta.1` candidate at this snapshot                                                                                                                                                                                               |
+| Current source follow-up        | No additional unversioned feature work is recorded after the `v0.18.0-beta.1` release at this snapshot                                                                                                                                                                                                 |
 | Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; the automated Firefox 154.0.1 release matrix passed while manual visual rows remain pending |
-| Native Urlbar result projection | Included since `v0.12.0-beta.1`; the `0.17.0-beta.1` Firefox 154.0.1 provider-contract, production-panel, and failure-injection probes passed; the literal fresh-profile first-zero-prefix and representative-provider matrices remain pending                                                                        |
-| Real-Firefox validation         | `v0.17.0-beta.1` passed the complete automated Firefox 154.0.1 lifecycle, recovery, performance-control, deterministic-archive, extracted-package, independently downloaded public-package, and recovery matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending                                                |
+| Native Urlbar result projection | Included since `v0.12.0-beta.1`; the `0.18.0-beta.1` Firefox 154.0.1 provider-contract, production-panel, failure-injection, normalized-query-boundary, and release probes passed; the literal fresh-profile first-zero-prefix and representative-provider matrices remain pending                                                |
+| Real-Firefox validation         | `v0.18.0-beta.1` passed the complete automated Firefox 154.0.1 lifecycle, recovery, performance-control, deterministic-archive, extracted-package, independently downloaded public-package verification, and public-package recovery matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                                                                                                                                                                        |
 
 ## Implemented product surface
@@ -377,11 +377,25 @@ Menu popup semantics. Its complete `npm run verify` gate passed with 435/435
 Node tests, 88.71% line coverage, 81.37% branch coverage, 95.79% function
 coverage, every fixed PowerShell 7 suite, dependency audit, deterministic
 frontend/bridge output, and 14/14 accepted production artifacts. The complete
-Windows PowerShell 5.1 fixed list also passed. A clean full lifecycle,
-Browser Toolbox ownership, provider/suggestion probes, fail-open matrices, and
-SessionStore rehearsal passed on the isolated Firefox 154.0.1 candidate
-profile; package, performance, and publication evidence remains in the current
-release validation record until completed.
+Windows PowerShell 5.1 fixed list also passed. A clean full lifecycle, Browser
+Toolbox ownership, provider/suggestion probes, fail-open matrices, SessionStore
+rehearsal, controlled performance comparison, and candidate package recovery
+passed on isolated marker-owned Firefox 154.0.1 targets.
+
+PR #119 then passed CI and CodeQL and merged as
+`dfa4d2d207a353785998a44544b068b849bc817c`. The exact merge passed a detached
+preflight and the `main` gates; annotated tag `v0.18.0-beta.1` resolves to that
+commit; and release workflow run 33102000343 independently rehearsed and
+published the Windows x64 assets. Their GitHub-reported digests matched an
+independent download. The extracted public package passed its strict verifier
+under PowerShell 7 and Windows PowerShell 5.1, then passed hard-disable, native
+cold-start, update-repair, enable, and recovered full-lifecycle rows before an
+ownership-checked transfer to the retained marker-owned development profile.
+That profile's persisted `single-dynamic` mode makes the generic simultaneous
+Top-and-Left harness assertion inapplicable; its compatible active/performance
+harness passed, and the user preference was not changed merely to satisfy the
+incompatible assertion. See
+[`docs/research/firefox-154-0.18.0-beta.1-release-validation.md`](research/firefox-154-0.18.0-beta.1-release-validation.md).
 
 The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
 the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and
@@ -397,6 +411,11 @@ performance controls, Unicode extraction, and the extracted-package lifecycle.
 It does not convert the pending manual real-Firefox rows below into observed
 evidence. See
 [`docs/research/firefox-154-0.17.0-beta.1-release-validation.md`](research/firefox-154-0.17.0-beta.1-release-validation.md).
+The `0.18.0-beta.1` release extended that evidence through the final merge/tag,
+fail-closed publication workflow, independent public-asset download, package
+verification under both PowerShell versions, public-package recovery, and
+retained-profile installation described above. It likewise does not convert
+the pending manual rows into observed evidence.
 
 That automated evidence does **not** complete every real-browser claim. The
 following remain explicitly pending in the current plans and testing document:

@@ -9,11 +9,12 @@
 - Release-preparation commit: `6f0890341ba5424371231ee21e071c79bbc54b37`
 - Release-validation correction commit:
   `6484fb62413394dfedde525e776e50f83cebc949`
-- Reviewed merge/tag target: pending pull-request merge
+- Reviewed merge/tag target:
+  `dfa4d2d207a353785998a44544b068b849bc817c`
 - Target: stock Firefox 154.0.1 release, BuildID `20260824154132`, in a
   marker-owned copied program and dedicated marker-owned release profile
-- Candidate status: committed candidate validation passed; publication
-  evidence is recorded only after the annotated-tag workflow succeeds
+- Candidate status: published Windows x64 prerelease; the public assets and
+  retained marker-owned installation were independently reverified
 
 No registered or ordinary Firefox profile is in scope. The project-owned test
 targets are validated before every installer or harness mutation. This is a
@@ -203,10 +204,110 @@ checked during publication.
 
 ## 8. Package, tag, workflow, and publication
 
-Clean candidate and final merge preflight digests, pull-request checks,
-annotated-tag identity, release workflow jobs, asset IDs/digests, independent
-download verification, and public-package recovery remain pending until their
-respective states exist. No future result is inferred here.
+### 8.1 Final source, pull request, and tag
+
+PR [#119](https://github.com/yutinglia/fennevia/pull/119) merged as
+`dfa4d2d207a353785998a44544b068b849bc817c` after:
+
+- [PR CI run 33100412020](https://github.com/yutinglia/fennevia/actions/runs/33100412020)
+  passed the Windows frontend/package gate in 5 minutes 11 seconds; and
+- [PR CodeQL run 33100410078](https://github.com/yutinglia/fennevia/actions/runs/33100410078)
+  passed Actions, C#, and JavaScript/TypeScript analysis.
+
+The exact merge commit then passed:
+
+- a new local detached-worktree release preflight, whose .NET Framework
+  fallback-compiler archive was 1,414,855 bytes with SHA-256
+  `755c822bc37ebe2ab5f15a7d1ae459b8d67b7906e86a1d14d6a945a93e2670bd`;
+- [`main` CI run 33100912358](https://github.com/yutinglia/fennevia/actions/runs/33100912358),
+  including the Windows PowerShell 5.1 fixed list; and
+- [`main` CodeQL run 33100911787](https://github.com/yutinglia/fennevia/actions/runs/33100911787)
+  for Actions, C#, and JavaScript/TypeScript.
+
+Annotated tag `v0.18.0-beta.1` has tag-object ID
+`6fdf4fa1d3d4d39a1ad8fc8d79889c1b9baefa64` and resolves exactly to that
+merge commit. Local and remote tag objects and peeled targets agree.
+
+### 8.2 Workflow and public assets
+
+[Release workflow run 33102000343](https://github.com/yutinglia/fennevia/actions/runs/33102000343)
+checked out the annotated tag in two independent `windows-latest` jobs.
+`Rehearse exact release` passed in 3 minutes 7 seconds. `Verify draft assets
+and publish` independently reran the complete preflight, created the private
+draft, verified both GitHub-reported asset digests, and published only after
+those checks passed in 3 minutes 3 seconds.
+
+Public prerelease ID `378029865` was published at `2026-08-27T18:14:51Z`
+(`2026-08-28T02:14:51+08:00`) at
+[`v0.18.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.18.0-beta.1).
+It is not a draft, is marked prerelease, and contains exactly:
+
+- asset ID `532692972`, `fennevia-0.18.0-beta.1-windows.zip`, 1,415,367
+  bytes, GitHub-reported and independently downloaded SHA-256
+  `7b35133bbf99ed70a588f8d1c4beb9e4e212e71d4e658819151e51b6c5d44e28`;
+- asset ID `532692973`,
+  `fennevia-0.18.0-beta.1-windows.zip.sha256`, 101 bytes,
+  GitHub-reported and independently downloaded SHA-256
+  `924cfd87cb7be693f26d7dddd864db783f4196ac22c18d0ca228971a778c2a9a`.
+
+The downloaded checksum content names the exact archive and reproduces its
+hash. Independent extraction beneath a new Unicode path passed the public
+package's own strict verifier under both PowerShell 7 and Windows PowerShell
+5.1: version `0.18.0-beta.1`, tag `v0.18.0-beta.1`, 39 files, source commit
+equal to the tag target, and package-manifest SHA-256
+`7f3b5fe3a51d20b920dc7eefa8b12818d5742ee494d7b7327e56c5b4dfdc0228`.
+
+### 8.3 Compiler-specific reproducibility boundary
+
+The final local preflight used ADR-049's normalized .NET Framework `csc.exe`
+fallback, while both publishing jobs used the preferred deterministic Roslyn
+compiler. Entry-by-entry comparison found the same 38 manifest paths, with
+identical content for 37 entries. Only the compiler-derived executable differs:
+
+- local `FenneviaSetup.exe`: 6,144 bytes, SHA-256
+  `e104e0dcd83ae76183d7ae8d06866c5948dd25cf702f8b9f241938310621c0f3`;
+- public `FenneviaSetup.exe`: 6,656 bytes, SHA-256
+  `4488f42d429ea9ef5f60c984edaaeaa2317ae86fc746dd045fc40abed3ef928b`.
+
+The 8,784-byte release manifest records that executable hash, so its local and
+public SHA-256 values are respectively
+`2b6d3df7df407a90eff924dc3fa43fcf013fe1f9ce3adab2bbf7cef095c88bb3`
+and `d2f0d8437dc2cad7e05c6382996acd5024fd0349d5983b5915d3c1be89a8890d`.
+Both variants identify the same source commit, tag, 37 other file entries, and
+package-manifest hash. Both publishing jobs agreed on the public archive
+digest; the project does not claim byte identity across different C# compiler
+implementations.
+
+### 8.4 Public-package recovery and retained profile
+
+The independently downloaded public package passed hard disable, native cold
+start with zero Fennevia records or hosts, update repair, enable, and a
+recovered full lifecycle on the dedicated Firefox 154.0.1 release profile.
+Ownership-checked Uninstall and Install previews and applied plans then moved
+the public package from that disposable profile to the retained marker-owned
+development profile. The final Update preview returned `already-current` with
+zero mutations, and the active preference matches the public package byte for
+byte.
+
+A generic full-lifecycle invocation after that transfer was not counted as a
+pass: the retained profile intentionally stores `single-dynamic` panel reveal,
+while the generic harness's early concurrency row waits for Top and Left to be
+visible simultaneously and therefore reached
+`FENNEVIA_FIREFOX_TEST_TWO_EDGE_HOLD_TIMEOUT`. The same public bytes had just
+passed that complete lifecycle in the clean release profile under its
+multiple-panel precondition. The retained preference was not changed to make
+the assertion pass. Its applicable active/performance harness instead passed
+all 12 sequential edge samples with an 11.836 ms p95 and five complete window
+cycles with a -67,280,896-byte memory delta and clean process exit. This is a
+test-applicability boundary, not positive evidence for the incompatible
+two-panel assertion.
+
+The disposable release profile was removed through the marker-checked helper.
+The retained installation finishes enabled at `0.18.0-beta.1`; its byte-
+identical ownership pair records the public package-manifest SHA-256 above;
+the disabled preference is absent; and Firefox-process, installer-transaction,
+frontend/bridge/release-recovery temporary-root, and session-rehearsal residue
+counts are zero.
 
 ## 9. Explicitly unrun or unsupported rows
 
@@ -229,10 +330,10 @@ respective states exist. No future result is inferred here.
 
 ## 10. Release decision boundary
 
-No blocker was found inside the automated Windows x64 candidate boundary. The
-remaining publication conditions are a clean final merge-commit preflight,
-passing pull-request and `main` checks, an annotated tag resolving to the
-reviewed source, a passing release workflow, exact public asset inventory and
-digests, independent download verification, and final marker-owned
-public-package recovery. Section 9 remains the explicit limit on all eventual
-claims.
+The Windows x64 prerelease decision boundary was satisfied. The reviewed merge
+commit passed clean preflight and remote gates; the annotated tag resolves to
+that commit; the fail-closed workflow independently verified remote assets
+before publication; the downloaded public package passed both PowerShell
+verifiers and marker-owned Firefox recovery; and the retained installation
+ended enabled with no process or recovery residue. Section 9 and the retained-
+profile harness boundary in section 8.4 remain explicit limits on all claims.
