@@ -19,11 +19,12 @@ text preserved at the named notice path.
 - Owning decision and review: direct repository-owner request, reviewed
   2026-08-28 by Codex; no separate issue number was supplied.
 - Classification: six owner-provided runtime captures copied without raster
-  modification, plus one generated README hero based on five of those captures
-  and a project-authored prompt.
+  modification, plus one independently generated README hero created from a
+  blank canvas with a project-authored prompt.
 - Source: project-owner attachments supplied for this repository. The hero was
-  created with OpenAI's built-in image-generation tool; no exact model/version
-  identifier was exposed and no external design asset was supplied.
+  created with OpenAI's built-in image-generation tool without an image input;
+  no exact model/version identifier was exposed and no external design asset
+  was supplied.
 - Service terms/rights basis: OpenAI Terms of Use effective 2026-01-01,
   <https://openai.com/policies/terms-of-use/>. As between the user and OpenAI
   and to the extent permitted by law, the user owns Output and receives any
@@ -34,10 +35,11 @@ text preserved at the named notice path.
   `docs/media/PROVENANCE.md`.
 - License/notice treatment: the repository owner intentionally contributed the
   captures and requested the generated output under Fennevia's MPL-2.0 inbound
-  rule. Incidental product UI visible inside the captures and stylized hero is
-  not extracted or shipped as a standalone reusable logo or asset. No font
-  file, source code, separately downloaded raster, runtime dependency, or
-  release-package dependency is added.
+  rule. Incidental product UI visible inside the captures is not extracted or
+  shipped as a standalone reusable logo or asset; the hero contains original
+  abstract browser-chrome forms. No font file, source code, separately
+  downloaded raster, runtime dependency, or release-package dependency is
+  added.
 
 ## Material included in the distributed runtime
 

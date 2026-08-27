@@ -2,9 +2,9 @@
 
 [English](README.md)
 
-![可完整自訂的 Fennevia 四邊介面](docs/media/fennevia-customize-hero.png)
+![Fennevia「Browse Your Way」品牌字樣，搭配模組化四邊瀏覽器介面藍圖](docs/media/fennevia-customize-hero.png)
 
-_這是專案風格化主視覺；下方另有目前版本的實機擷取畫面。_
+_這是呈現 Fennevia 模組化瀏覽器介面的原創品牌主視覺；下方另有目前版本的實機擷取畫面。_
 
 Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為中心的瀏覽器介面。它讓網頁保持在畫面主體，並把瀏覽器控制項放到四個平時隱藏、需要時才浮現的邊緣面板。
 

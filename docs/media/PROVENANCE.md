@@ -35,16 +35,14 @@ rights representation described by `docs/licensing-and-provenance.md` §4.
 ## 3. Generated README hero
 
 - Project path: `docs/media/fennevia-customize-hero.png`.
-- SHA-256: `9e141dc6b6782d5407bbe49b83fe62f7dd871d86f1eec9b85611b0a8ea8b3650`.
+- SHA-256: `bd51b9a88510ed3bba3bf02fa5d7d258ad2b937b5569b5aa2e7043391a3861e2`.
 - Classification: generated documentation/brand artwork.
 - Generator: OpenAI's built-in image-generation tool; the tool did not expose a
   model/version identifier to this task.
-- Inputs: the owner-provided current Widgets, Panels, Interaction, Appearance,
-  and Guide captures as visual references, plus the project-authored prompt
-  below. The generator accepts at most five images, so the ordinary-layout
-  capture was not a generation input; the Widgets capture contains the same
-  four-edge composition. No prior repository SVG, source code, or external
-  design reference was supplied to the generator.
+- Inputs: the project-authored prompt below. The image was generated from a
+  blank canvas in one pass with no screenshot, prior generated image,
+  repository asset, source code, logo, icon, or external visual reference
+  supplied to the generator.
 - Rights basis: the OpenAI Terms of Use effective 2026-01-01 state that, as
   between the user and OpenAI and to the extent permitted by law, the user owns
   Output and OpenAI assigns any interest it has in that Output. The repository
@@ -60,17 +58,25 @@ rights representation described by `docs/licensing-and-provenance.md` §4.
 ### Final generation prompt
 
 ```text
-Use case: ads-marketing
-Asset type: stylized GitHub README brand hero for Fennevia
-Primary request: Create a premium brand illustration inspired by the supplied current Fennevia interface. Find the middle ground between an exact screenshot and a disconnected concept: preserve the recognizable four-edge layout and customization story, but abstract all real UI copy into elegant visual symbols.
-Reference use: use the screenshots only for layout proportions, panel hierarchy, dark material, cyan edit boundaries, gold site-status accent, customization controls, and the relationship between the address row and tabs. Do not reproduce their readable interface text.
-Core composition: wide landscape. A dark browser-like frame occupies about 75–80% of the canvas. It has a slim full-width Top edge, a Left edge with an address capsule aligned exactly to the same inner width as a larger vertical tab stack, a narrow Right bookmarks edge, and a Bottom download/status edge. A centered floating customization workspace sits above a visibly darkened inactive page.
-Customization visual language: cyan dotted outlines around every edge; a few elegant draggable modular tiles inside the center; one directional move cue; an abstract five-segment tab rail with no labels; a restrained color-swatch strip and radius/opacity controls made from dots and short bars. Make customization the focal point without showing dense settings.
-Brand area: reserve clean negative space on the left or upper-left. Render only exact brand text "FENNEVIA" and smaller exact style text "MAKE THE BROWSER YOURS". No other readable words, letters, numbers, URLs, labels, badges, or microcopy anywhere.
-Style/medium: sophisticated vector-like editorial illustration rendered as a crisp raster; GitHub dark-mode presentation; glassmorphism with disciplined depth; charcoal #181820 and #24242e, cyan #10bfd3, soft white, muted gold Trust accent, tiny purple accent. More stylized than a screenshot, but restrained and product-authentic.
-Geometry constraints: keep the real four-edge silhouette and panel proportions recognizable; address capsule and tab stack must share both horizontal edges; central workspace must sit inside the page opening and remain below Top and between Left/Right; Bottom stays directly under the center region. Website content behind the workspace is near-black and inactive.
-Visual polish: subtle technical grid, clean highlights, precise corner radii, soft shadows, sparse glow, strong hierarchy, generous breathing room. Suitable as the first image in a GitHub README.
-Avoid: any real UI text; fake UI text; random letters or numbers; private badge; extension logo; Firefox logo; GitHub logo; Octocat; URLs; page titles; decorative star/compass/planet; floating handles outside the browser frame; excessive neon; cyberpunk atmosphere; 3D device mockup; people; watermark; overly literal screenshot recreation.
+Create a new original high-resolution 16:9 GitHub README hero for Fennevia
+from a blank canvas. Do not use or reference any previous image. Make the
+brand name "FENNEVIA" prominent and legible on the left, with the short slogan
+"BROWSE YOUR WAY" beneath it.
+
+On the right, show a sophisticated abstract concept of browser chrome
+customization: a deconstructed modular browser shell with a blank top address
+bar and toolbar, vertical panel stacks on both sides, a bottom rail, floating
+empty widget blocks, subtle insertion guides, alignment measurements, and cyan
+dotted placement outlines. It should clearly communicate browser chrome and a
+customizable four-edge layout without showing a real screenshot.
+
+No icons, logos, app symbols, URL text, real UI labels, random letters or
+numbers, or microcopy beyond the exact brand and slogan. Use premium dark
+graphite glass and metal, cyan/teal edge light, restrained violet accents, a
+technical editorial blueprint style, crisp high-resolution raster rendering,
+generous negative space, and a polished GitHub-dark-mode presentation without
+becoming cyberpunk. The only readable text is "FENNEVIA" and
+"BROWSE YOUR WAY".
 ```
 
 ## 4. Privacy, security, and visual review
@@ -80,11 +86,11 @@ Avoid: any real UI text; fake UI text; random letters or numbers; private badge;
   screenshot. Visible labels and counts are generic shell UI.
 - A Private badge appears as an intentional product-state example, but no
   associated private browsing content or session data is present.
-- The generated hero contains no Firefox/GitHub logo, real UI label, URL,
-  browsing title, user data, or remote runtime dependency. It retains abstract
-  widget icon shapes inspired by the owner-provided customization reference;
-  none is shipped as a standalone reusable logo or runtime asset. The hero is
-  documentation only and is not included in the installed privileged package.
+- The generated hero contains no Firefox/GitHub logo, icon, real UI label, URL,
+  browsing title, user data, or remote runtime dependency. Its blank modular
+  browser-chrome forms were generated without a visual reference and are not
+  shipped as standalone reusable UI assets. The hero is documentation only and
+  is not included in the installed privileged package.
 - The images make no Firefox compatibility or completed-validation claim; both
   READMEs keep that evidence boundary beside the showcase.
 

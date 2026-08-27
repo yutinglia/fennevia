@@ -2,9 +2,9 @@
 
 [繁體中文](README.zh-Hant.md)
 
-![Fennevia's customizable four-edge interface](docs/media/fennevia-customize-hero.png)
+![Fennevia — Browse Your Way, beside a modular four-edge browser chrome blueprint](docs/media/fennevia-customize-hero.png)
 
-_A stylized project illustration. Current runtime screenshots appear below._
+_An original brand illustration of Fennevia's modular browser chrome. Current runtime screenshots appear below._
 
 Fennevia is an experimental, content-first interface for **stock Firefox**. It
 keeps the web page in the foreground and places browser controls in four
