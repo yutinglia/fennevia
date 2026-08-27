@@ -715,6 +715,7 @@
             : undefined}
           class="fennevia-layout-container"
           class:fennevia-layout-container--column={node.direction === "column"}
+          class:fennevia-layout-container--padded={node.padding === "standard"}
           class:fennevia-layout-container--row={node.direction === "row"}
           data-fennevia-layout-container={node.direction}
           data-fennevia-layout-base={isBaseContainer

@@ -61,6 +61,7 @@ import {
   removeComposableLayoutNode,
   serializeComposableCustomizeLayout,
   setComposableLayoutContainerDirection,
+  setComposableLayoutContainerPadding,
   setComposableLayoutItemStyle,
   setComposableMultiplePlacements,
   withComposableAdopted,
@@ -1008,6 +1009,7 @@ export function createFirefoxToolbarWidgetsBridge({
         ),
         direction: node.direction,
         instanceId: node.instanceId,
+        padding: node.padding ?? "none",
         type: "container" as const,
       });
     }
@@ -2158,6 +2160,16 @@ export function createFirefoxToolbarWidgetsBridge({
                 base,
                 validated.location,
                 validated.direction,
+              ),
+            );
+            break;
+          }
+          case "set-container-padding": {
+            persistAccessibleLayout(
+              setComposableLayoutContainerPadding(
+                base,
+                validated.location,
+                validated.padding,
               ),
             );
             break;

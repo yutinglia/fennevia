@@ -5813,6 +5813,7 @@ async function exerciseFrontendUnmountRemount(client) {
             canGoForward: false,
             connectionSecurity: "internal",
             displayUri: "about:blank",
+            editableAddressValue: "",
             loading: false,
             title: "Remount test page",
             trackingProtection: "unavailable",

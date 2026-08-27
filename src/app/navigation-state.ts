@@ -69,6 +69,7 @@ export type NavigationSnapshot = Readonly<{
   canGoForward: boolean;
   connectionSecurity: ConnectionSecurityState;
   displayUri: string;
+  editableAddressValue: string;
   loading: boolean;
   title: string;
   trackingProtection: TrackingProtectionState;
@@ -211,6 +212,10 @@ export function copyNavigationSnapshot(
     displayUri: copyBoundedString(
       candidate.displayUri,
       maximumNavigationDisplayUriLength,
+    ),
+    editableAddressValue: copyBoundedString(
+      candidate.editableAddressValue,
+      maximumNavigationAddressLength,
     ),
     loading: candidate.loading,
     title: copyBoundedString(candidate.title, maximumNavigationTitleLength),

@@ -2,9 +2,9 @@
 
 [繁體中文](README.zh-Hant.md)
 
-![Stylized map of Fennevia's four-edge interface](docs/media/fennevia-overview.svg)
+![Fennevia's customizable four-edge interface](docs/media/fennevia-customize-hero.png)
 
-_A stylized interface map, not a Firefox compatibility or validation screenshot._
+_A stylized project illustration. Current runtime screenshots appear below._
 
 Fennevia is an experimental, content-first interface for **stock Firefox**. It
 keeps the web page in the foreground and places browser controls in four
@@ -27,11 +27,12 @@ At rest, Firefox mostly shows the current page. Move the pointer to an edge, or
 use the keyboard, to reveal:
 
 - **Top:** the always-enabled primary panel. Its explicit default Row contains
-  Back, Forward, Reload/Stop, Home, Trust, an expanded address launcher,
-  Firefox handoffs, Customize, and project-owned window controls.
-- **Left (default):** a Column containing New Tab and expanded vertical
-  tabs—with a bounded pinned area above the independently scrolling regular
-  tabs. It is a general widget panel and can be disabled.
+  Back, Forward, Reload/Stop, Home, Trust, an empty Expanded region, Firefox
+  handoffs, Customize, and project-owned window controls.
+- **Left (default):** a Column containing a standard-padded address/status Row,
+  expanded vertical tabs with integrated New Tab, and a Separator—with a
+  bounded pinned area above the independently scrolling regular tabs. It is a
+  general widget panel and can be disabled.
 - **Right (default):** a Column containing bookmarks with cached site favicons.
   It is independently configurable and can be disabled.
 - **Bottom:** a general Row centering anonymous download progress/status in the
@@ -41,6 +42,9 @@ use the keyboard, to reveal:
   <kbd>Ctrl</kbd>+<kbd>L</kbd>. Its accessible
   result list comes from Firefox's own enabled Urlbar providers and search
   suggestions; Fennevia does not add a search engine or suggestion service.
+  The launcher keeps Firefox's compact committed value, while a freshly
+  focused editor restores Firefox's retained full value, including a trimmed
+  `https://` prefix.
 
 ## Make the browser yours
 
@@ -53,7 +57,8 @@ between Top, Left, Right, and Bottom to build the browser layout that fits you.
 - **Compose real layouts.** Nest Row and Column groups, center a control, add
   padding or separators, and use Expanded or Flexible space only where you
   want the remaining room to go. Children otherwise stay naturally sized and
-  ordered from the start.
+  ordered from the start. A selected Row or Column can also apply one standard
+  content-padding preset to align compact controls with larger widgets.
 - **Turn major features.** Tabs, Bookmarks, Downloads, and the address launcher
   adapt to horizontal or vertical placement. For example, keep vertical Tabs
   on the left, or build a horizontal tab strip in Top or Bottom.
@@ -85,6 +90,31 @@ Columns, wrappers, structural spacing, practical recipes, and recovery.
 and leaves the required Customize button in Top; **Reset layout** restores the
 new Fennevia default. At least one Customize widget must remain on an enabled
 panel, and valid saved layouts are never silently replaced.
+
+## Screenshot showcase
+
+These owner-supplied runtime captures show the current post-`v0.17.0-beta.1`
+source layout and its five-part customization workspace. They demonstrate the
+interface state shown here; they are not a substitute for the pending complete
+real-Firefox validation matrix.
+
+### New four-edge default
+
+![Current Fennevia layout with aligned address and tab content, bookmarks, and download status](docs/media/fennevia-layout-showcase.png)
+
+### Customize the whole shell
+
+| Widgets and exact placement | Layout guide |
+| :--------------------------: | :----------: |
+| ![Fennevia Widgets customization view](docs/media/fennevia-customize-widgets.png) | ![Fennevia layout Guide view](docs/media/fennevia-customize-guide.png) |
+
+| Panel behavior | Interaction timing |
+| :------------: | :----------------: |
+| ![Fennevia Panels customization view](docs/media/fennevia-customize-panels.png) | ![Fennevia Interaction customization view](docs/media/fennevia-customize-interaction.png) |
+
+**Appearance**
+
+![Fennevia Appearance customization view](docs/media/fennevia-customize-appearance.png)
 
 ## A guarded bridge to Firefox
 
@@ -198,7 +228,11 @@ drag target outlines are cleared on every exit/end path, and one selected
 widget opens a single floating inspector for move/remove/layout and eligible
 Style controls. The inspector stays outside Row/Column sizing, avoids the
 central customize panel when another side fits, and replaces the previous
-selection instead of stacking editors. Closing it stays closed while focus
+selection instead of stacking editors. During widget dragging it fades and
+yields pointer hit testing so it cannot cover an underlying drop target.
+The customize session also places a dark pointer-blocking backdrop over website
+content while keeping all four panels, the drawer, and the inspector usable.
+Closing it stays closed while focus
 returns to the widget. Every editable widget keeps a blue customize boundary;
 hover and selection strengthen it without changing the widget's real size. The
 editor also shows one exact insertion preview while
@@ -229,6 +263,17 @@ unconsumed drag may detach into a new window, and nested layout handlers no
 longer cancel their child tab's drag session. Known built-in toolbar labels use
 their synchronous Fluent mapping before the legacy fallback, reducing avoidable
 Browser Console localization noise.
+
+Current source after `v0.17.0-beta.1` keeps the launcher compact but restores
+Firefox's retained full address when a fresh editor receives focus. It also
+keeps tokenized vertical breathing room around the launcher while its
+standard-padded parent owns horizontal alignment with Tabs, keeps the
+fixed-height Top inset bounded, and adds the optional standard Row/Column
+content inset described above. The source default now matches that four-edge
+composition, and customize mode darkens and blocks website pointer access.
+Narrow Top scrollbars remain draggable without removing the rest of the empty
+titlebar drag area. The centered address panel keeps its existing spacing.
+These changes are not part of the published `v0.17.0-beta.1` archive.
 
 The current prerelease also projects bounded results from Firefox's own
 per-window Urlbar provider manager into the centred combobox. Firefox still

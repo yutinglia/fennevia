@@ -299,6 +299,21 @@
     scroll-padding-inline: var(--fennevia-space-2);
   }
 
+  /* Keep the native thin scrollbar in the client hit-test region without
+     removing the remaining empty Top chrome from Firefox's drag region. */
+  #fennevia-shell-frame-host
+    .fennevia-edge-root[data-fennevia-edge="top"]
+    .fennevia-edge-panel::after {
+    position: absolute;
+    z-index: 4;
+    inset-block-end: 0;
+    inset-inline: 0;
+    block-size: var(--fennevia-space-3);
+    pointer-events: none;
+    -moz-window-dragging: no-drag;
+    content: "";
+  }
+
   #fennevia-shell-frame-host:not([data-fennevia-customize-active])
     :is(
       .fennevia-edge-root[data-fennevia-edge="top"],

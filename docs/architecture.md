@@ -384,7 +384,8 @@ ADR-041/ADR-058/ADR-060/ADR-062/ADR-063/ADR-065/ADR-066/ADR-067/ADR-070/ADR-071/
 Issue #12 adds `src/firefox/navigation.ts` beside tabs in the same generated
 private ESM. Issue #13 extends that same coherent per-window controller rather
 than introducing a second native navigation owner. It validates retained native
-command elements, `BrowserCommands` actions, Urlbar value/submission, selected
+command elements, `BrowserCommands` actions, trimmed/untrimmed Urlbar values
+and submission, selected
 browser/tab, identity and protections handlers, the content-blocking allow
 list, paired tabs progress methods, event target, URI shape, and command
 observer. It reconciles one immutable selected-navigation snapshot from
@@ -399,14 +400,20 @@ stop, and new-tab policy remain Firefox-owned. Address submission writes only a
 validated bounded draft to the native Urlbar and invokes `handleCommand()`, so
 Firefox retains fixup, search, principal, disposition, and telemetry policy.
 The public contract contains only booleans, bounded title/display/location
-text, fixed connection/protection enums, subscriptions, and named actions.
+text, separate bounded committed-display and editable address strings, fixed
+connection/protection enums, subscriptions, and named actions. A valid native
+proxy state reads `gURLBar.value` for the compact launcher and
+`gURLBar.untrimmedValue` for a fresh focused address-panel draft; invalid proxy
+state uses the selected URI for both, and hidden initial locations remain
+empty. Reopening an active panel preserves its existing draft.
 `src/app/navigation-state.ts` validates and copies it again before Svelte
 receives an adapter. Native browsers, tabs, Urlbar, command elements, handlers,
 allow-list, observers, progress objects, and windows remain inside the
 privileged boundary. Missing or later-failing dependencies use the existing
 health/fail-open path. See ADR-027, ADR-028,
 `docs/research/firefox-153-navigation-controls.md`, and
-`docs/research/firefox-153-address-popup.md`.
+`docs/research/firefox-153-address-popup.md`, and
+`docs/research/firefox-153-154-urlbar-editing-value.md`.
 
 Issue #14 adds `src/firefox/bookmarks.ts` to the same generated private ESM.
 One controller per window loads the fixed current Places modules, registers one
@@ -587,6 +594,18 @@ serialized state. Unknown keys, invalid paths, cycles, duplicate instance ids,
 missing Customize, over-capacity wrappers, and unsafe duplicate definitions
 fail safe.
 
+ADR-082 adds one optional closed `standard` content-padding value to a
+Row/Column node. Missing or explicit `none` remains the effective default and
+is omitted from serialized version-2 state. The existing floating inspector
+issues one revision-guarded `set-container-padding` edit for a selected
+container; rendering reuses `var(--fennevia-space-2)`, the same spacing token as
+the root flow and Padding wrapper. The wrapper remains a distinct structural
+composition tool. No numeric padding, per-axis geometry, CSS declaration, or
+new inspector owner enters the layout contract. When that preset owns the
+address launcher's horizontal breathing room, the launcher adds no second
+inline margin; it retains only the non-Top block margin needed for vertical
+comfort.
+
 The surface root itself is the non-removable base flow (Top/Bottom Row,
 Left/Right Column). A sole matching root container from existing version-2
 state is rendered as that compatibility base without node chrome or an
@@ -604,12 +623,15 @@ Space, and Flexible space are always repeatable. Adopted Firefox widgets return
 to their native area only after the final Fennevia instance disappears. A
 valid version-1 preference migrates in memory around its prior four-zone order
 and is written as version 2 only after the first edit. With no preference,
-malformed state, or Reset layout, a dedicated native-v2 default places
-navigation, Trust, `Expanded(Address launcher)`, Firefox handoffs, Customize,
-and window controls directly in the Top base Row; New Tab plus
-`Expanded(Tabs)` on the configured tabs-side base Column;
-`Expanded(Bookmarks)` on the other side; and
-`Expanded(Center(Downloads status))` in Bottom. Live Firefox nav-bar built-ins,
+malformed state, or Reset layout, ADR-084's dedicated native-v2 default mirrors
+the owner's evidence-backed four-edge composition. Top places navigation,
+Trust, an empty Expanded region, Firefox handoffs, Customize, private indicator,
+and window controls directly in its base Row. The configured tabs-side base
+Column places a standard-padded Row containing
+`Expanded(Address launcher)` with site status, followed by `Expanded(Tabs)`
+with integrated New Tab and a Separator. The other side places
+`Expanded(Bookmarks)`, and Bottom places
+`Expanded(Center(Downloads status))`. Live Firefox nav-bar built-ins,
 extensions, spacers, and springs remain palette candidates but are not copied
 into this deterministic default. A valid saved version-2 tree remains
 user-owned and is not rewritten when the default changes.
@@ -652,9 +674,13 @@ layout nodes is runtime-disabled without losing its saved tree during ordinary
 browsing; while customize mode is open, every preference-enabled empty edge is
 re-enabled, held visible, and rendered as a labelled first-drop/keyboard-add
 target. The pref observer republishes all three settings across windows. The
-customize drawer
-uses one tablist for widgets, Guide, panels, interaction, and appearance so the
-stacked editor does not grow into a single scrolling form. Shortcut-tip
+customize drawer uses one tablist for widgets, Guide, panels, interaction, and
+appearance so the stacked editor does not grow into a single scrolling form.
+ADR-084 renders one non-focusable Top-root backdrop below all project panels
+while that session is open. Its dark surface accepts pointer hit testing so
+website content is neither visually competitive nor accidentally clicked, but
+it never inspects or marks Firefox content inert, claims modal semantics, or
+creates another host/input controller. Shortcut-tip
 footers still honor the duration pref on every edge, including the
 bookmarks-side surface. The bookmarks status row no longer shows a persistent
 Ctrl/Command+Enter hint; it only appears for actual notices. Glass, trigger, and
@@ -680,7 +706,10 @@ workspace; each node retains only its selected/focus boundary and direct
 keyboard selector. One
 shared opaque drag lifecycle plus real-boundary leave handling clears all panel
 and palette outlines after exit, drop, cancel, drag end, customize close, and
-disposal. **Clean all panels** is a separate confirmed atomic edit: it restores
+disposal. The same lifecycle makes the mounted floating inspector transparent
+and pointer-inert for the duration of any widget drag, so it cannot intercept
+an underlying layout drop target and returns without losing selection.
+**Clean all panels** is a separate confirmed atomic edit: it restores
 adopted Firefox widgets, removes every node, and creates one Top Customize
 instance while retaining panel/style/interaction/duplicate settings. The
 top-host drawer is the palette and settings editor. At ordinary widths it is
@@ -689,12 +718,13 @@ ADR-080 clamps it to a viewport-relative sheet at narrow widths, where the
 destination selector and click/keyboard edits remain authoritative if the sheet
 obstructs precise cross-panel dragging. See ADR-044, ADR-045,
 ADR-046, ADR-047, ADR-064, ADR-068, ADR-074, ADR-075, ADR-076, ADR-077, ADR-078,
-ADR-080,
+ADR-080, ADR-084,
 `docs/research/firefox-153-toolbar-widget-mirror.md`,
 `docs/research/firefox-153-customize-mode.md`, and
 `plans/009-composable-widget-layout.md`,
-`plans/013-configurable-panel-dodge-and-horizontal-features.md`, and
-`plans/015-narrow-window-four-panel-ui-ux.md`.
+`plans/013-configurable-panel-dodge-and-horizontal-features.md`,
+`plans/015-narrow-window-four-panel-ui-ux.md`, and
+`plans/017-owner-default-layout-and-customize-backdrop.md`.
 
 ADR-075 adds projected dragging and palette discoverability without a second
 layout model. A drag keeps its source as a subdued placeholder and projects one
@@ -732,6 +762,9 @@ placement helper prefers the content-facing side, clamps to the viewport, and
 treats the central drawer as a padded obstacle before accepting overlap. The
 inspector never participates in Row/Column measurement, and its scroll/resize
 listeners plus `ResizeObserver` are mounted and disposed with the component.
+During a widget drag it keeps that mount and geometry but temporarily yields
+hit testing and fades out through the shared opaque drag signal; no pointer
+tracker, new drag owner, or persisted state is added.
 Every editable node paints a subtle blue boundary throughout customize mode;
 the deepest pointer-hovered and selected nodes strengthen it. Those boundaries
 are paint-only overlays inside unchanged node border boxes, so customize mode
@@ -888,6 +921,28 @@ permission panel beside the clicked project host. The popup owns the sole custom
 an independent per-window draft, fuller labels, focus restoration, and
 popup-priority edge suppression. It never moves native Urlbar/identity/
 protections DOM or renders inferred security state.
+
+ADR-082 keeps the launcher on Firefox's compact committed `gURLBar.value` but
+initializes a newly opened, immediately focused popup draft from Firefox's
+bounded `gURLBar.untrimmedValue`. This restores a trimmed `https://` prefix at
+the editing boundary without project URL reconstruction. Refocus does not
+overwrite an active draft, and native `handleCommand()` remains the only raw
+submission route.
+
+The same-day owner spacing follow-up applies `--fennevia-space-1` as the
+composable launcher's inline margin everywhere and its block margin on Left,
+Right, and Bottom. Top keeps its existing root block inset instead of stacking
+another margin into the fixed responsive lane. The launcher maximum inline size
+is capped at the available width minus both inline margins; no centered
+address-panel selector changes.
+
+ADR-083 keeps a narrow Top row's native horizontal scrollbar out of Firefox's
+window-drag region with one pointer-transparent, 12 CSS px block-end guard.
+Firefox continues to receive scrollbar pointer input through that guard, while
+the remaining panel, explicit Space/Flexible space, container gaps, and other
+ordinary empty chrome retain the existing drag path. No scroll observer,
+pointer forwarding, hidden scrollbar, or second window-drag controller is
+introduced.
 
 Issue #37 extends that same popup with Firefox-derived permission state and one
 native Urlbar handoff button. The 2026-08-26 presentation places Trust,

@@ -33,6 +33,10 @@ inspector.
   is a positioning obstacle: the inspector tries another side before allowing
   either panel to cover the other. It repositions after scrolling, resizing,
   selection changes, or a successful layout edit.
+- While any project widget drag is active, the inspector remains mounted but
+  yields hit testing and fades out so the underlying exact drop target stays
+  reachable. The same shared terminal drag signal restores it without clearing
+  the selected widget.
 - The inspector uses a stable header with the localized widget name and a clear
   close button, one compact action row, and a full-width labelled Style field
   only for widgets with multiple registered variants.
@@ -69,6 +73,9 @@ inspector.
 - Reuse the existing revision-guarded edit operations and bridge. This change
   adds no privileged action, Firefox dependency, timer owner, surface, or
   persistence schema.
+- Reuse the existing opaque toolbar-widget drag lifecycle as the sole inspector
+  dodge signal. Do not add pointer tracking, drag geometry to session state, or
+  a second drag owner.
 
 ## 4. Implementation checklist
 
@@ -135,6 +142,19 @@ inspector.
       and customize boundaries that preserve the real layout geometry.
 - [x] Rebuild deterministic artifacts, run the ordinary verification gate, and
       record post-fix real Firefox visual checks honestly.
+
+### F. Drag-obstruction follow-up
+
+- [x] Subscribe the mounted inspector to the existing opaque widget-drag
+      lifecycle and expose one component-local dodge state.
+- [x] While dragging, make the positioned inspector transparent and
+      pointer-inert so layout `dragover`/`drop` hit testing reaches the widget
+      below it; restore it from the existing terminal signal.
+- [x] Preserve session selection, the central palette removal target, keyboard
+      move controls, reduced-motion behavior, and deterministic unsubscribe.
+- [x] Add focused source/CSS regressions and rebuild deterministic artifacts.
+- [ ] Run the real Firefox palette/layout-node/zone drag, Escape cancellation,
+      focus restoration, multi-window, private-window, and forced-colors rows.
 
 ## 5. Out of scope
 

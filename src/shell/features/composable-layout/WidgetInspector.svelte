@@ -5,15 +5,19 @@
   import type { CustomizeSessionController } from "../../../app/customize-session";
   import { translate } from "../../../app/i18n";
   import type { FenneviaLocale } from "../../../app/locale-state";
+  import { subscribeToolbarWidgetDrag } from "../../../app/toolbar-widget-drag";
   import {
     defaultToolbarLayoutDirection,
     findToolbarLayoutInstance,
+    isToolbarLayoutContainerPadding,
     projectWidgetStyleOptions,
+    toolbarLayoutContainerPaddings,
     toolbarLayoutNodeAt,
     toolbarLayoutParent,
     type BrowserToolbarWidgetsState,
     type BrowserToolbarWidgetsStateAdapter,
     type ProjectWidgetStyleId,
+    type ToolbarLayoutContainerPadding,
     type ToolbarLayoutNodeSnapshot,
     type ToolbarWidgetsEditOperation,
   } from "../../../app/toolbar-widgets-state";
@@ -37,6 +41,7 @@
   const props: Props = $props();
   let inspectorElement: HTMLElement | undefined = $state();
   let announcement = $state("");
+  let dragActive = $state(false);
   let position =
     $state<ReturnType<typeof resolveWidgetInspectorPosition>>(null);
   let location = $derived(
@@ -84,6 +89,12 @@
           baseContainerInstanceId
       ),
     ),
+  );
+
+  $effect(() =>
+    subscribeToolbarWidgetDrag((source) => {
+      dragActive = source !== null;
+    }),
   );
 
   const pathKey = (path: readonly number[]): string =>
@@ -348,6 +359,41 @@
       }),
     );
   };
+
+  const containerPaddingLabel = (
+    padding: ToolbarLayoutContainerPadding,
+  ): string =>
+    translate(
+      props.localeId,
+      padding === "standard"
+        ? "customize.containerPaddingStandard"
+        : "customize.containerPaddingNone",
+    );
+
+  const setContainerPadding = (event: Event): void => {
+    if (!location || node?.type !== "container") {
+      return;
+    }
+    const padding =
+      event.currentTarget instanceof HTMLSelectElement
+        ? event.currentTarget.value
+        : "";
+    if (!isToolbarLayoutContainerPadding(padding)) {
+      return;
+    }
+    void runEdit(
+      {
+        location,
+        padding,
+        revision: props.state.revision,
+        type: "set-container-padding",
+      },
+      translate(props.localeId, "customize.containerPaddingChanged", {
+        label: localizeLayoutNodeLabel(props.localeId, node),
+        padding: containerPaddingLabel(padding),
+      }),
+    );
+  };
 </script>
 
 {#if node && location}
@@ -358,6 +404,7 @@
     })}
     class="fennevia-widget-inspector"
     data-fennevia-widget-inspector=""
+    data-fennevia-widget-inspector-dodging={dragActive ? true : undefined}
     data-fennevia-widget-inspector-for={props.selectedInstanceId}
     data-fennevia-widget-inspector-placement={position?.placement}
     data-fennevia-widget-inspector-positioned={position ? true : undefined}
@@ -456,8 +503,31 @@
       >
     </div>
 
+    {#if node.type === "container"}
+      <label class="fennevia-widget-inspector__field">
+        <span>{translate(props.localeId, "customize.containerPadding")}</span>
+        <select
+          aria-label={translate(
+            props.localeId,
+            "customize.containerPaddingFor",
+            { label: localizeLayoutNodeLabel(props.localeId, node) },
+          )}
+          class="fennevia-control"
+          data-fennevia-widget-config-padding=""
+          onchange={setContainerPadding}
+          value={node.padding}
+        >
+          {#each toolbarLayoutContainerPaddings as padding (padding)}
+            <option value={padding}
+              >{containerPaddingLabel(padding)}</option
+            >
+          {/each}
+        </select>
+      </label>
+    {/if}
+
     {#if node.type === "item" && styleOptions.length > 1}
-      <label class="fennevia-widget-inspector__style">
+      <label class="fennevia-widget-inspector__field">
         <span>{translate(props.localeId, "customize.widgetStyle")}</span>
         <select
           aria-label={translate(props.localeId, "customize.widgetStyleFor", {

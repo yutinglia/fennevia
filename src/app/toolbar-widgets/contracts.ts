@@ -207,6 +207,14 @@ export const toolbarLayoutDirections = Object.freeze([
 
 export type ToolbarLayoutDirection = (typeof toolbarLayoutDirections)[number];
 
+export const toolbarLayoutContainerPaddings = Object.freeze([
+  "none",
+  "standard",
+] as const);
+
+export type ToolbarLayoutContainerPadding =
+  (typeof toolbarLayoutContainerPaddings)[number];
+
 export const toolbarLayoutWrapperKinds = Object.freeze([
   "center",
   "expanded",
@@ -395,6 +403,7 @@ export type ToolbarLayoutContainerSnapshot = Readonly<{
   children: readonly ToolbarLayoutNodeSnapshot[];
   direction: ToolbarLayoutDirection;
   instanceId: string;
+  padding: ToolbarLayoutContainerPadding;
   type: "container";
 }>;
 
@@ -495,6 +504,12 @@ export type ToolbarWidgetsEditOperation =
       location: ToolbarLayoutLocation;
       revision: number;
       type: "set-container-direction";
+    }>
+  | Readonly<{
+      location: ToolbarLayoutLocation;
+      padding: ToolbarLayoutContainerPadding;
+      revision: number;
+      type: "set-container-padding";
     }>
   | Readonly<{
       location: ToolbarLayoutLocation;

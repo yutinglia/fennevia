@@ -89,6 +89,7 @@ export type NativeCommand = NativeRecord & {
 export type NativeUrlbar = NativeRecord & {
   getAttribute: (name: string) => unknown;
   handleCommand: () => unknown;
+  untrimmedValue: string;
   value: string;
 };
 export type NativeIdentityHandler = NativeRecord & {
@@ -204,6 +205,7 @@ export const isCommand = (value: unknown): value is NativeCommand =>
 
 export const isUrlbar = (value: unknown): value is NativeUrlbar =>
   isEventTarget(value) &&
+  typeof value.untrimmedValue === "string" &&
   typeof value.value === "string" &&
   isFunction(value.getAttribute) &&
   isFunction(value.handleCommand);
@@ -296,6 +298,13 @@ export const navigationCapabilitySpecifications: readonly NavigationCapabilitySp
       name: "firefox.navigation-urlbar-value",
       read: (window: NativeRecord) => readUrlbarMember(window, "value"),
       symbol: "window.gURLBar.value",
+    }),
+    Object.freeze({
+      isAvailable: (value: unknown) => typeof value === "string",
+      name: "firefox.navigation-urlbar-untrimmed-value",
+      read: (window: NativeRecord) =>
+        readUrlbarMember(window, "untrimmedValue"),
+      symbol: "window.gURLBar.untrimmedValue",
     }),
     Object.freeze({
       isAvailable: isFunction,
@@ -433,6 +442,7 @@ export const snapshotsEqual = (
   left.canGoForward === right.canGoForward &&
   left.connectionSecurity === right.connectionSecurity &&
   left.displayUri === right.displayUri &&
+  left.editableAddressValue === right.editableAddressValue &&
   left.loading === right.loading &&
   left.title === right.title &&
   left.trackingProtection === right.trackingProtection;

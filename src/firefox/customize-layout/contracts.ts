@@ -14,6 +14,14 @@ export const composableLayoutDirections = Object.freeze([
 export type ComposableLayoutDirection =
   (typeof composableLayoutDirections)[number];
 
+export const composableLayoutContainerPaddings = Object.freeze([
+  "none",
+  "standard",
+] as const);
+
+export type ComposableLayoutContainerPadding =
+  (typeof composableLayoutContainerPaddings)[number];
+
 export const composableLayoutWrapperKinds = Object.freeze([
   "center",
   "expanded",
@@ -47,6 +55,7 @@ export type ComposableLayoutContainer = Readonly<{
   children: readonly ComposableLayoutNode[];
   direction: ComposableLayoutDirection;
   instanceId: string;
+  padding?: Exclude<ComposableLayoutContainerPadding, "none">;
   type: "container";
 }>;
 
@@ -76,6 +85,7 @@ export type ComposableLayoutSeed =
   | Readonly<{
       children: readonly ComposableLayoutSeed[];
       direction: ComposableLayoutDirection;
+      padding?: ComposableLayoutContainerPadding;
       type: "container";
     }>
   | Readonly<{

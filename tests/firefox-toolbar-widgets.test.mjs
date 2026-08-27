@@ -1060,12 +1060,15 @@ test("default snapshot uses the explicit native-v2 base-flow composition", () =>
       snapshot.zones.top.map((widget) => widget.kind),
       ["fennevia"],
     );
-    assert.deepEqual(snapshot.zones.left, []);
+    assert.deepEqual(
+      snapshot.zones.left.map((widget) => widget.kind),
+      ["separator"],
+    );
     assert.deepEqual(snapshot.zones.right, []);
     assert.deepEqual(snapshot.zones.bottom, []);
 
     assert.ok(snapshot.layout.top.every((node) => node.type !== "container"));
-    assert.ok(snapshot.layout.left.every((node) => node.type !== "container"));
+    assert.equal(snapshot.layout.left[0].type, "container");
     assert.ok(snapshot.layout.right.every((node) => node.type !== "container"));
     assert.ok(
       snapshot.layout.bottom.every((node) => node.type !== "container"),
@@ -1080,7 +1083,6 @@ test("default snapshot uses the explicit native-v2 base-flow composition", () =>
         "reload-stop",
         "home",
         "trust",
-        "address-launcher",
         "show-downloads",
         "extensions",
         "settings",
@@ -1092,10 +1094,22 @@ test("default snapshot uses the explicit native-v2 base-flow composition", () =>
         "close-window",
       ],
     );
-    assert.equal(snapshot.layout.left[0].projectId, "new-tab");
+    assert.equal(snapshot.layout.top[5].type, "wrapper");
+    assert.equal(snapshot.layout.top[5].kind, "expanded");
+    assert.deepEqual(snapshot.layout.top[5].children, []);
+    assert.equal(snapshot.layout.left[0].type, "container");
+    assert.equal(snapshot.layout.left[0].direction, "row");
+    assert.equal(snapshot.layout.left[0].padding, "standard");
+    assert.equal(snapshot.layout.left[0].children[0].type, "wrapper");
+    assert.equal(snapshot.layout.left[0].children[0].kind, "expanded");
+    assert.equal(
+      snapshot.layout.left[0].children[0].children[0].projectId,
+      "address-launcher",
+    );
     assert.equal(snapshot.layout.left[1].type, "wrapper");
     assert.equal(snapshot.layout.left[1].kind, "expanded");
     assert.equal(snapshot.layout.left[1].children[0].projectId, "tabs");
+    assert.equal(snapshot.layout.left[2].widget.kind, "separator");
     assert.equal(snapshot.layout.right[0].type, "wrapper");
     assert.equal(snapshot.layout.right[0].children[0].projectId, "bookmarks");
     assert.equal(snapshot.layout.bottom[0].kind, "expanded");
@@ -1109,12 +1123,12 @@ test("default snapshot uses the explicit native-v2 base-flow composition", () =>
         snapshot.layout,
         (node) => node.projectId === "address-launcher",
       )[0].node.style,
-      "address-only",
+      "with-site-status",
     );
     assert.equal(
       findLayoutItems(snapshot.layout, (node) => node.projectId === "tabs")[0]
         .node.style,
-      "tabs-only",
+      "with-new-tab",
     );
 
     assert.deepEqual(snapshot.style, createDefaultToolbarStyle());
@@ -1982,7 +1996,7 @@ test("edit moves entries between zones and restores adopted extensions", async (
     assert.ok(native.getAreaWidgetIds().includes(addonsId));
     native.runTimers();
     snapshot = pair.controller.toolbarWidgets.snapshot();
-    assert.equal(snapshot.zones.left.length, 1);
+    assert.equal(snapshot.zones.left.length, 2);
     const placedExtension = snapshot.zones.left.find(
       (widget) => widget.kind === "extension-action",
     );
@@ -1998,7 +2012,8 @@ test("edit moves entries between zones and restores adopted extensions", async (
     });
     native.runTimers();
     snapshot = pair.controller.toolbarWidgets.snapshot();
-    assert.equal(snapshot.zones.left.length, 0);
+    assert.equal(snapshot.zones.left.length, 1);
+    assert.equal(snapshot.zones.left[0].kind, "separator");
     assert.equal(snapshot.zones.bottom.length, 1);
 
     await pair.controller.toolbarWidgets.edit({
@@ -2408,11 +2423,13 @@ test("per-instance project widget styles persist through revision-guarded edits"
     assert.ok(address);
     assert.ok(tabs);
     assert.ok(back);
+    assert.equal(address.node.style, "with-site-status");
+    assert.equal(tabs.node.style, "with-new-tab");
 
     await pair.controller.toolbarWidgets.edit({
       location: { path: address.path, zone: address.zone },
       revision: pair.controller.snapshot().revision,
-      style: "with-site-status",
+      style: "address-only",
       type: "set-node-style",
     });
     native.runTimers();
@@ -2422,13 +2439,13 @@ test("per-instance project widget styles persist through revision-guarded edits"
         snapshot.layout,
         (node) => node.projectId === "address-launcher",
       )[0].node.style,
-      "with-site-status",
+      "address-only",
     );
 
     await pair.controller.toolbarWidgets.edit({
       location: { path: tabs.path, zone: tabs.zone },
       revision: pair.controller.snapshot().revision,
-      style: "with-new-tab",
+      style: "tabs-only",
       type: "set-node-style",
     });
     native.runTimers();
@@ -2436,12 +2453,36 @@ test("per-instance project widget styles persist through revision-guarded edits"
     assert.equal(
       findLayoutItems(snapshot.layout, (node) => node.projectId === "tabs")[0]
         .node.style,
-      "with-new-tab",
+      "tabs-only",
     );
-    const persisted = JSON.parse(
+    let persisted = JSON.parse(
       native.getPrefValue("fennevia.customize.layout"),
     );
-    assert.equal(persisted.zones.top[5].children[0].style, "with-site-status");
+    assert.equal(
+      "style" in persisted.zones.left[0].children[0].children[0],
+      false,
+    );
+    assert.equal("style" in persisted.zones.left[1].children[0], false);
+
+    await pair.controller.toolbarWidgets.edit({
+      location: { path: address.path, zone: address.zone },
+      revision: pair.controller.snapshot().revision,
+      style: "with-site-status",
+      type: "set-node-style",
+    });
+    native.runTimers();
+    await pair.controller.toolbarWidgets.edit({
+      location: { path: tabs.path, zone: tabs.zone },
+      revision: pair.controller.snapshot().revision,
+      style: "with-new-tab",
+      type: "set-node-style",
+    });
+    native.runTimers();
+    persisted = JSON.parse(native.getPrefValue("fennevia.customize.layout"));
+    assert.equal(
+      persisted.zones.left[0].children[0].children[0].style,
+      "with-site-status",
+    );
     assert.equal(persisted.zones.left[1].children[0].style, "with-new-tab");
 
     await assert.rejects(
@@ -2477,7 +2518,71 @@ test("per-instance project widget styles persist through revision-guarded edits"
     const resetPersisted = JSON.parse(
       native.getPrefValue("fennevia.customize.layout"),
     );
-    assert.equal("style" in resetPersisted.zones.top[5].children[0], false);
+    assert.equal(
+      "style" in resetPersisted.zones.left[0].children[0].children[0],
+      false,
+    );
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("container padding persists through one revision-guarded closed edit", async () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    await pair.controller.toolbarWidgets.edit({
+      direction: "row",
+      index: 0,
+      parentPath: [],
+      revision: pair.controller.snapshot().revision,
+      type: "add-container",
+      zone: "top",
+    });
+    native.runTimers();
+    let snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(snapshot.layout.top[0].type, "container");
+    assert.equal(snapshot.layout.top[0].padding, "none");
+
+    await pair.controller.toolbarWidgets.edit({
+      location: { path: [0], zone: "top" },
+      padding: "standard",
+      revision: pair.controller.snapshot().revision,
+      type: "set-container-padding",
+    });
+    native.runTimers();
+    snapshot = pair.controller.toolbarWidgets.snapshot();
+    assert.equal(snapshot.layout.top[0].padding, "standard");
+    let persisted = JSON.parse(
+      native.getPrefValue("fennevia.customize.layout"),
+    );
+    assert.equal(persisted.zones.top[0].padding, "standard");
+
+    await pair.controller.toolbarWidgets.edit({
+      location: { path: [0], zone: "top" },
+      padding: "none",
+      revision: pair.controller.snapshot().revision,
+      type: "set-container-padding",
+    });
+    native.runTimers();
+    persisted = JSON.parse(native.getPrefValue("fennevia.customize.layout"));
+    assert.equal("padding" in persisted.zones.top[0], false);
+    assert.equal(
+      pair.controller.toolbarWidgets.snapshot().layout.top[0].padding,
+      "none",
+    );
+
+    await assert.rejects(
+      pair.controller.toolbarWidgets.edit({
+        location: { path: [1], zone: "top" },
+        padding: "standard",
+        revision: pair.controller.snapshot().revision,
+        type: "set-container-padding",
+      }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode === "FENNEVIA_FIREFOX_TOOLBAR_WIDGETS_EDIT_INVALID",
+    );
   } finally {
     disposePair(pair);
   }

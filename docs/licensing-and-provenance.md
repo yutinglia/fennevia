@@ -155,8 +155,12 @@ MPL-2.0 does not grant rights to contributor trademarks, service marks, or
 logos. The software license therefore does not grant a right to imply project
 endorsement or use Fennevia branding as a trademark. No separate logo/icon
 license exists because the repository currently distributes no project logo or
-icon asset. Any future brand asset or trademark policy requires an explicit
-owner decision and its own license/provenance record.
+icon asset. On 2026-08-27, the owner explicitly approved one generated README
+hero and six owner-provided runtime captures as project documentation media,
+not as a logo or trademark registration; their dedicated provenance is in
+`docs/media/PROVENANCE.md` and `THIRD_PARTY_NOTICES.md`. Any future brand asset
+or trademark policy still requires an explicit owner decision and its own
+license/provenance record.
 
 ## 10. Changing this policy
 

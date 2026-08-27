@@ -12,7 +12,7 @@ collision system, glass token set, or window-global coordination layer.
 
 ## Current status
 
-Validated baseline as of 2026-08-26:
+Validated baseline as of 2026-08-27:
 
 - public package `0.17.0-beta.1` prerelease on Windows x64;
 - tested Firefox 153.0.4 BuildID 20260810162159, 154.0 BuildID
@@ -23,13 +23,17 @@ Validated baseline as of 2026-08-26:
 - #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16,
   #17, #18, #22, #31, #32, #37, #39, #57, and #60 complete;
 - functional Tabs with a fixed, bounded pinned section above regular overflow
-  in the default Left-column placement, plus a movable compact address/status
-  launcher; Row placement switches the feature to its horizontal semantics;
+  in the default Left-column placement, plus a standard-padded compact
+  address/status Row above it; Row placement switches the feature to its
+  horizontal semantics;
 - one centered address/search popup with a combined Trust summary, permission,
   applicable-action, native Firefox provider-result list, and native-handoff
   coverage in a fifth owned root;
-- one-line primary navigation/address/status plus Firefox handoffs in the
-  default Top-row layout, all placeable through ADR-074;
+- ADR-082 keeps compact committed addresses trimmed at rest, restores
+  Firefox's bounded untrimmed value only for a fresh focused editor, and adds
+  one optional standard content-padding preset to selected Row/Column nodes;
+- one-line primary navigation/status plus an empty Expanded region and Firefox
+  handoffs in the default Top-row layout, all placeable through ADR-074;
 - bounded lazy Firefox Places Bookmarks in Right by default, with Firefox-cached
   raster favicons and middle-click new-tab opening, but movable/orientable;
 - event-driven anonymous aggregate Downloads status as a movable singleton,
@@ -1022,10 +1026,12 @@ The panel roots themselves are fixed Top/Bottom Rows and Left/Right Columns.
 Sole matching compatibility containers have no removable outer chrome, and
 empty roots use a compact prompt over their complete drop hitbox.
 
-Fresh profiles, malformed fallback, and Reset use an explicit native-v2 tree:
-Top has navigation, Trust, expanded address, handoffs, Customize, and window
-controls; the configured tabs side has New Tab plus expanded Tabs; the other
-side has expanded Bookmarks; Bottom has centered Downloads status. Live
+Fresh profiles, malformed fallback, and Reset use ADR-084's explicit native-v2
+tree: Top has navigation, Trust, an empty Expanded region, handoffs, Customize,
+private indicator, and window controls; the configured tabs side has a
+standard-padded site-status Address Row, expanded Tabs with integrated New Tab,
+and a Separator; the other side has expanded Bookmarks; Bottom has centered
+Downloads status. Live
 Firefox toolbar items remain palette choices and valid v1 migration inputs,
 not profile-dependent defaults. Valid saved v2 state remains user-owned.
 
@@ -1039,6 +1045,17 @@ move/containment/axis/remove controls appear only for the deepest hovered or
 directly keyboard-focused node. Cross-panel drag lifecycle cleanup removes
 every target outline after exit, drop, cancel, drag end, customize close, or
 disposal.
+
+ADR-084 also places one non-focusable dark pointer barrier below every project
+panel for the lifetime of customize mode. It prevents accidental website
+clicks and reduces visual competition without marking Firefox content inert or
+adding a host, controller, persisted setting, or content-data flow. Focused
+source coverage and the complete ordinary gate are finished: the focused run
+passed 53/53 and `npm run verify` passed with 433/433 Node tests, 88.71% line,
+81.37% branch, and 95.79% function coverage, both PowerShell 7 and Windows
+PowerShell 5.1 fixed-list suites, deterministic output, and 14/14 accepted
+artifacts. Real Firefox pointer, wheel, focus, forced-color, multi-window,
+private-window, and recovery rows remain pending.
 
 The Panels/Layout tab also has a confirmed **Clean all panels** action. Cancel
 does nothing; Confirm restores adopted Firefox widgets, removes every layout
@@ -1100,10 +1117,17 @@ levels, update it after scroll/resize/revision changes, and deterministically
 remove every listener and observer. Enter transfers focus to the inspector;
 Escape and removal restore a surviving layout focus target.
 
+The 2026-08-27 owner follow-up reuses the shared opaque widget-drag lifecycle
+to make the mounted inspector transparent and pointer-inert during every active
+widget drag. This keeps underlying recursive drop targets reachable, preserves
+selection and the palette removal target, and adds no pointer tracker or second
+drag owner.
+
 Gate: focused customize-session, placement-geometry, frontend-structure,
 typecheck, static, and complete `npm run verify` coverage; real Firefox
-cross-edge placement, central-drawer overlap, 100%/200% scaling, focus,
-accessibility, multiple/private-window, and disposal rows remain `not run`.
+cross-edge placement, central-drawer overlap, drag dodge/cancellation,
+100%/200% scaling, focus, accessibility, multiple/private-window, and disposal
+rows remain `not run`.
 Plan: `plans/011-floating-widget-inspector.md`.
 
 ### ADR-077 panel dodge and horizontal-feature follow-up — focused implementation complete, real Firefox smoke pending
@@ -1176,6 +1200,56 @@ Gate: focused frontend source/build regression plus the ordinary
 single/dual/all-panel, all four dodge modes, customize, keyboard, 200% text,
 forced-colors, second/private-window, popup, and recovery rows remain `not run`.
 Plan: `plans/015-narrow-window-four-panel-ui-ux.md`.
+
+### ADR-082 address-editing value and container padding — implementation and automated gate complete, real Firefox smoke pending
+
+Keep the compact launcher on Firefox's committed trimmed Urlbar value. The
+same required navigation bridge now validates and bounds Firefox's retained
+untrimmed value separately; only a newly opened, immediately focused centered
+editor uses it. Invalid proxy state uses the selected URI, hidden initial
+locations remain empty, active-panel refocus preserves its draft, and raw
+submission continues through `gURLBar.handleCommand()`.
+
+Extend version-2 Row/Column nodes with one closed optional `standard` content
+padding value. The existing floating inspector exposes the effective
+None/Standard selector, persistence omits the default, and CSS reuses
+`--fennevia-space-2`. Padding wrappers remain available as structural nodes;
+free-form numbers, per-axis geometry, and arbitrary CSS remain unsupported.
+
+The owner spacing follow-up gives only the composable launcher a fixed
+`--fennevia-space-1` inline margin and subtracts the matching two-sided space
+from its maximum width. Left, Right, and Bottom also use the same block margin;
+Top retains its existing bounded block inset. The centered address panel is
+unchanged.
+
+Gate: the focused run passed 92/92 tests. The complete `npm run verify` gate
+passed on 2026-08-27 with 433/433 Node tests, 88.66% line coverage, 81.29%
+branch coverage, 95.71% function coverage, every fixed PowerShell 7 suite,
+dependency audit, deterministic frontend/bridge output, and 14/14 accepted
+production artifacts. The complete fixed-list suite also passed under Windows
+PowerShell 5.1. The launcher-spacing follow-up reran the same complete gates
+with unchanged pass counts. Real Firefox launcher/popup selection and spacing,
+container alignment, narrow/high-DPI/text scaling, normal/second/private-window,
+and Browser Console rows remain `not run`. Plan:
+`plans/016-urlbar-editing-and-container-padding.md`.
+
+### ADR-083 narrow Top scrollbar drag ownership — implementation and automated gate complete, real Firefox smoke pending
+
+Firefox computes titlebar dragging as the union of visible `drag` border boxes
+minus the union of visible `no-drag` boxes. The narrow Top panel therefore keeps
+its existing drag declarations and adds only one pointer-transparent 12 CSS px
+block-end no-drag guard over the native horizontal scrollbar hit band. Scrollbar
+thumb/track input passes through; the remaining empty chrome and explicit
+layout-space widgets continue to move the window.
+
+Gate: the focused frontend source regression passed 10/10. The complete
+`npm run verify` gate passed with 433/433 Node tests, 88.66% line coverage,
+81.29% branch coverage, 95.71% function coverage, every fixed PowerShell 7
+suite, dependency audit, deterministic frontend/bridge output, and 14/14
+accepted artifacts. The fixed-list suite also passed under Windows PowerShell
+5.1. Real Firefox narrow scrollbar dragging, adjacent empty-space window
+dragging, normal/second/private windows, and Browser Console rows remain `not
+run`. Plan: `plans/016-urlbar-editing-and-container-padding.md`.
 
 ## Deferred work
 

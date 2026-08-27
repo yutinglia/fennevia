@@ -196,6 +196,10 @@
   padding: var(--fennevia-space-2);
 }
 
+#fennevia-shell-frame-host .fennevia-layout-container--padded {
+  padding: var(--fennevia-space-2);
+}
+
 #fennevia-shell-frame-host .fennevia-layout-node--editing {
   border-radius: var(--fennevia-control-radius);
   cursor: grab;
@@ -479,6 +483,13 @@
   transform: none;
 }
 
+#fennevia-shell-frame-host
+  .fennevia-widget-inspector[data-fennevia-widget-inspector-positioned="true"][data-fennevia-widget-inspector-dodging="true"] {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px) scale(0.96);
+}
+
 @supports (backdrop-filter: blur(1px)) {
   #fennevia-shell-frame-host .fennevia-widget-inspector {
     background: var(--fennevia-glass-tint);
@@ -556,7 +567,7 @@
   color: var(--fennevia-danger-color);
 }
 
-#fennevia-shell-frame-host .fennevia-widget-inspector__style {
+#fennevia-shell-frame-host .fennevia-widget-inspector__field {
   display: grid;
   min-inline-size: 0;
   gap: var(--fennevia-space-1);
@@ -564,12 +575,12 @@
   font-size: 11px;
 }
 
-#fennevia-shell-frame-host .fennevia-widget-inspector__style > span {
+#fennevia-shell-frame-host .fennevia-widget-inspector__field > span {
   padding-inline: var(--fennevia-space-1);
   line-height: 1.4;
 }
 
-#fennevia-shell-frame-host .fennevia-widget-inspector__style select {
+#fennevia-shell-frame-host .fennevia-widget-inspector__field select {
   inline-size: 100%;
   min-inline-size: 0;
   min-block-size: 36px;
@@ -735,9 +746,17 @@
   max-inline-size: 100%;
   align-items: center;
   justify-content: center;
+  margin-block: var(--fennevia-space-1);
+  margin-inline: 0;
   padding: 0;
   background: none;
   border: 0;
+}
+
+#fennevia-shell-frame-host
+  .fennevia-edge-root[data-fennevia-edge="top"]
+  .fennevia-layout-address {
+  margin-block: 0;
 }
 
 #fennevia-shell-frame-host
@@ -902,7 +921,7 @@
     :is(
       .fennevia-widget-inspector__close,
       .fennevia-widget-inspector__toolbar > button,
-      .fennevia-widget-inspector__style select
+      .fennevia-widget-inspector__field select
     ) {
     color: ButtonText;
     background: ButtonFace;

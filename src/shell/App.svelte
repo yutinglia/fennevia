@@ -478,15 +478,23 @@
     {/if}
   </div>
 
-  {#if props.edge === "top" && customizeOpen && props.toolbarWidgets}
-    <CustomizePanel
-      customizeSession={props.customizeSession}
-      {localeId}
-      onClose={() => setCustomizeOpen(false)}
-      onFatalError={props.onFatalError}
-      state={currentToolbarWidgets}
-      toolbarWidgets={props.toolbarWidgets}
-    />
+  {#if props.edge === "top" && customizeOpen}
+    <div
+      aria-hidden="true"
+      class="fennevia-customize-backdrop"
+      data-fennevia-customize-backdrop=""
+    ></div>
+
+    {#if props.toolbarWidgets}
+      <CustomizePanel
+        customizeSession={props.customizeSession}
+        {localeId}
+        onClose={() => setCustomizeOpen(false)}
+        onFatalError={props.onFatalError}
+        state={currentToolbarWidgets}
+        toolbarWidgets={props.toolbarWidgets}
+      />
+    {/if}
   {/if}
 
   {#if props.edge === "top" && customizeOpen && selectedLayoutInstanceId && selectedLayoutLocation && currentToolbarWidgets && props.toolbarWidgets && props.customizeSession && rootElement}

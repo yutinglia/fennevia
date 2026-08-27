@@ -130,7 +130,8 @@ function createNativeWindow() {
     createTab("tab-1", "One", browsers[0]),
     createTab("tab-2", "Two", browsers[1]),
   ];
-  const addressValues = ["https://example.invalid/one", ""];
+  const addressValues = ["example.invalid/one", ""];
+  const editableAddressValues = ["https://example.invalid/one", ""];
   const proxyStates = ["valid", "valid"];
   const connectionStates = ["secure", "not-secure"];
   const protectionStates = [
@@ -164,8 +165,13 @@ function createNativeWindow() {
     get value() {
       return addressValues[selectedIndex];
     },
+    get untrimmedValue() {
+      return editableAddressValues[selectedIndex];
+    },
     set value(nextValue) {
-      addressValues[selectedIndex] = String(nextValue);
+      const value = String(nextValue);
+      addressValues[selectedIndex] = value;
+      editableAddressValues[selectedIndex] = value;
       proxyStates[selectedIndex] = "invalid";
       urlbarEvents.dispatch("ValueChange", gURLBar);
     },
@@ -244,6 +250,7 @@ function createNativeWindow() {
       const browser = gBrowser.selectedBrowser;
       browser.currentURI = { displaySpec: "about:home" };
       addressValues[selectedIndex] = "";
+      editableAddressValues[selectedIndex] = "";
     },
     openTab() {
       actionCalls.push(["new-tab", gBrowser.selectedBrowser.id]);
@@ -253,6 +260,7 @@ function createNativeWindow() {
       browsers.push(browser);
       tabs.push(tab);
       addressValues.push("");
+      editableAddressValues.push("");
       proxyStates.push("valid");
       connectionStates.push("not-secure");
       protectionStates.push({
@@ -327,10 +335,14 @@ function createNativeWindow() {
       if (patch.displayUri !== undefined) {
         browser.currentURI = { displaySpec: patch.displayUri };
         addressValues[index] = patch.displayUri;
+        editableAddressValues[index] = patch.displayUri;
         proxyStates[index] = "valid";
       }
       if (patch.addressValue !== undefined) {
         addressValues[index] = patch.addressValue;
+      }
+      if (patch.editableAddressValue !== undefined) {
+        editableAddressValues[index] = patch.editableAddressValue;
       }
       if (patch.proxyState !== undefined) {
         proxyStates[index] = patch.proxyState;
@@ -420,11 +432,12 @@ test("initial navigation snapshot is bounded ordinary data with native command s
   try {
     const snapshot = pair.controller.navigation.snapshot();
     assert.deepEqual(snapshot, {
-      addressValue: "https://example.invalid/one",
+      addressValue: "example.invalid/one",
       canGoBack: false,
       canGoForward: false,
       connectionSecurity: "secure",
       displayUri: "https://example.invalid/one",
+      editableAddressValue: "https://example.invalid/one",
       loading: false,
       title: "One",
       trackingProtection: "blocking",
@@ -477,8 +490,10 @@ test("location, title, loading, command, same-document, and selected-tab updates
     assert.match(snapshot.displayUri, /same-document$/u);
 
     native.setState(1, {
+      addressValue: "example.invalid/redirected",
       canGoForward: true,
       displayUri: "https://example.invalid/redirected",
+      editableAddressValue: "https://example.invalid/redirected",
       loading: false,
       title: "Redirected",
     });
@@ -493,11 +508,12 @@ test("location, title, loading, command, same-document, and selected-tab updates
     native.gBrowser.selectedTab = native.tabs[1];
     snapshot = pair.controller.navigation.snapshot();
     assert.deepEqual(snapshot, {
-      addressValue: "https://example.invalid/redirected",
+      addressValue: "example.invalid/redirected",
       canGoBack: false,
       canGoForward: true,
       connectionSecurity: "not-secure",
       displayUri: "https://example.invalid/redirected",
+      editableAddressValue: "https://example.invalid/redirected",
       loading: false,
       title: "Redirected",
       trackingProtection: "unavailable",
@@ -505,6 +521,54 @@ test("location, title, loading, command, same-document, and selected-tab updates
     assert.ok(events.length >= 3);
     assert.ok(events.every(Object.isFrozen));
     assert.ok(events.every((event) => Object.isFrozen(event.snapshot)));
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("navigation keeps a trimmed display value and exposes the bounded native editing value", () => {
+  const native = createNativeWindow();
+  const pair = createController(native);
+  try {
+    let snapshot = pair.controller.navigation.snapshot();
+    assert.equal(snapshot.addressValue, "example.invalid/one");
+    assert.equal(snapshot.editableAddressValue, "https://example.invalid/one");
+
+    native.setState(
+      0,
+      {
+        addressValue: "in-progress search",
+        editableAddressValue: "private draft that must not win",
+        proxyState: "invalid",
+      },
+      { event: "state" },
+    );
+    snapshot = pair.controller.navigation.snapshot();
+    assert.equal(snapshot.addressValue, "https://example.invalid/one");
+    assert.equal(snapshot.editableAddressValue, "https://example.invalid/one");
+
+    native.setState(
+      0,
+      {
+        addressValue: "bounded.invalid",
+        editableAddressValue: "e".repeat(4_200),
+        proxyState: "valid",
+      },
+      { event: "state" },
+    );
+    assert.equal(
+      pair.controller.navigation.snapshot().editableAddressValue.length,
+      4_096,
+    );
+
+    native.setState(0, {
+      addressValue: "must-not-display",
+      displayUri: "about:home",
+      editableAddressValue: "must-not-edit",
+    });
+    snapshot = pair.controller.navigation.snapshot();
+    assert.equal(snapshot.addressValue, "");
+    assert.equal(snapshot.editableAddressValue, "");
   } finally {
     disposePair(pair);
   }
@@ -540,6 +604,10 @@ test("actions re-read the selected tab and reload-or-stop state at invocation", 
       "about:newtab",
     );
     assert.equal(pair.controller.navigation.snapshot().addressValue, "");
+    assert.equal(
+      pair.controller.navigation.snapshot().editableAddressValue,
+      "",
+    );
   } finally {
     disposePair(pair);
   }
@@ -682,7 +750,7 @@ test("address submission delegates bounded current-tab text to native Urlbar sem
     ]);
     assert.equal(
       pair.controller.navigation.snapshot().addressValue,
-      "https://example.invalid/one",
+      "example.invalid/one",
     );
 
     assert.deepEqual(pair.controller.navigation.submitAddress("   "), {
@@ -818,6 +886,41 @@ test("missing native Urlbar submission capability fails before listeners attach"
         error.fenneviaCode ===
           "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING" &&
         error.fenneviaSymbol === "window.gURLBar.handleCommand",
+    );
+    assert.equal(native.tabContainer.listenerCount(), 0);
+    assert.equal(native.openLocationListenerCount(), 0);
+    assert.equal(native.urlbarListenerCount(), 0);
+  } finally {
+    boundary.dispose();
+  }
+});
+
+test("missing native Urlbar editing value fails before listeners attach", () => {
+  const native = createNativeWindow();
+  Object.defineProperty(native.window.gURLBar, "untrimmedValue", {
+    configurable: true,
+    value: undefined,
+  });
+  const boundary = createFirefoxBridgeBoundary({
+    buildId: "20260810162159",
+    contextId: "window-00000000-0000-4000-8000-999999999994",
+    firefoxVersion: "153.0.4",
+    window: native.window,
+    windowKind: "normal",
+  });
+  try {
+    assert.throws(
+      () =>
+        createFirefoxNavigationBridge({
+          boundary,
+          onError() {},
+          window: native.window,
+        }),
+      (error) =>
+        isFirefoxBridgeError(error) &&
+        error.fenneviaCode ===
+          "FENNEVIA_FIREFOX_NAVIGATION_CAPABILITY_MISSING" &&
+        error.fenneviaSymbol === "window.gURLBar.untrimmedValue",
     );
     assert.equal(native.tabContainer.listenerCount(), 0);
     assert.equal(native.openLocationListenerCount(), 0);

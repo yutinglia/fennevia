@@ -16,6 +16,7 @@ import {
   insertComposableLayoutWrapper,
   isComposableFirefoxWidgetId,
   isComposableInstanceId,
+  isComposableLayoutContainerPadding,
   isComposableLayoutDirection,
   isComposableLayoutWrapperKind,
   isComposableSingletonTarget,
@@ -26,6 +27,7 @@ import {
   removeComposableLayoutNode,
   serializeComposableCustomizeLayout,
   setComposableLayoutItemStyle,
+  setComposableLayoutContainerPadding,
   setComposableMultiplePlacements,
   withComposableAdopted,
   withoutComposableAdopted,
@@ -65,6 +67,8 @@ const createDefaultLayout = (options = {}) =>
 test("v2 guards accept only bounded fixed targets and structural values", () => {
   assert.equal(isComposableLayoutDirection("row"), true);
   assert.equal(isComposableLayoutDirection("grid"), false);
+  assert.equal(isComposableLayoutContainerPadding("standard"), true);
+  assert.equal(isComposableLayoutContainerPadding("wide"), false);
   assert.equal(isComposableSpecialKind("spring"), true);
   assert.equal(isComposableSpecialKind("gap"), false);
   assert.equal(isComposableLayoutWrapperKind("center"), true);
@@ -104,15 +108,10 @@ test("v2 guards accept only bounded fixed targets and structural values", () => 
   );
 });
 
-test("native v2 defaults use direct base-flow children and explicit wrappers", () => {
+test("native v2 defaults reproduce the owner four-edge composition", () => {
   const layout = createDefaultComposableCustomizeLayout();
   assert.equal(layout.version, 2);
   assert.equal(layout.allowMultiplePlacements, false);
-  assert.ok(
-    Object.values(layout.zones)
-      .flatMap((nodes) => nodes)
-      .every((node) => node.type !== "container"),
-  );
 
   assert.deepEqual(
     layout.zones.top.map((node) =>
@@ -140,15 +139,29 @@ test("native v2 defaults use direct base-flow children and explicit wrappers", (
       "close-window",
     ],
   );
-  const address = layout.zones.top[5];
-  assert.equal(address.type, "wrapper");
-  assert.equal(address.kind, "expanded");
-  assert.equal(address.children[0].target.id, "address-launcher");
+  const topSpace = layout.zones.top[5];
+  assert.equal(topSpace.type, "wrapper");
+  assert.equal(topSpace.kind, "expanded");
+  assert.deepEqual(topSpace.children, []);
 
-  assert.equal(layout.zones.left[0].target.id, "new-tab");
+  const addressRow = layout.zones.left[0];
+  assert.equal(addressRow.type, "container");
+  assert.equal(addressRow.direction, "row");
+  assert.equal(addressRow.padding, "standard");
+  assert.equal(addressRow.children[0].type, "wrapper");
+  assert.equal(addressRow.children[0].kind, "expanded");
+  assert.equal(
+    addressRow.children[0].children[0].target.id,
+    "address-launcher",
+  );
+  assert.equal(addressRow.children[0].children[0].style, "with-site-status");
   assert.equal(layout.zones.left[1].type, "wrapper");
   assert.equal(layout.zones.left[1].kind, "expanded");
   assert.equal(layout.zones.left[1].children[0].target.id, "tabs");
+  assert.equal(layout.zones.left[1].children[0].style, "with-new-tab");
+  assert.equal(layout.zones.left[2].type, "item");
+  assert.equal(layout.zones.left[2].target.source, "special");
+  assert.equal(layout.zones.left[2].target.kind, "separator");
   assert.equal(layout.zones.right[0].type, "wrapper");
   assert.equal(layout.zones.right[0].children[0].target.id, "bookmarks");
 
@@ -176,8 +189,14 @@ test("native v2 defaults use direct base-flow children and explicit wrappers", (
 
 test("native v2 defaults honor the retained side swap without changing features", () => {
   const layout = createDefaultComposableCustomizeLayout("tabs-right");
-  assert.equal(layout.zones.right[0].target.id, "new-tab");
+  assert.equal(layout.zones.right[0].type, "container");
+  assert.equal(layout.zones.right[0].padding, "standard");
+  assert.equal(
+    layout.zones.right[0].children[0].children[0].target.id,
+    "address-launcher",
+  );
   assert.equal(layout.zones.right[1].children[0].target.id, "tabs");
+  assert.equal(layout.zones.right[2].target.kind, "separator");
   assert.equal(layout.zones.left[0].children[0].target.id, "bookmarks");
 });
 
@@ -250,42 +269,21 @@ test("v2 layout round-trips as a frozen strict bounded tree", () => {
 
 test("project widget styles persist per instance and canonicalize defaults", () => {
   const initial = createDefaultComposableCustomizeLayout();
-  const addressLocation = { path: [5, 0], zone: "top" };
+  const addressLocation = { path: [0, 0, 0], zone: "left" };
   const tabsLocation = { path: [1, 0], zone: "left" };
   const initialAddress = getComposableLayoutNode(initial, addressLocation);
   const initialTabs = getComposableLayoutNode(initial, tabsLocation);
   assert.equal(initialAddress.target.id, "address-launcher");
-  assert.equal(initialAddress.style, undefined);
+  assert.equal(initialAddress.style, "with-site-status");
   assert.equal(initialTabs.target.id, "tabs");
-  assert.equal(initialTabs.style, undefined);
-
-  const addressWithStatus = setComposableLayoutItemStyle(
-    initial,
-    addressLocation,
-    "with-site-status",
-  );
-  const tabsWithNewTab = setComposableLayoutItemStyle(
-    addressWithStatus,
-    tabsLocation,
-    "with-new-tab",
-  );
-  assert.equal(
-    getComposableLayoutNode(tabsWithNewTab, addressLocation).style,
-    "with-site-status",
-  );
-  assert.equal(
-    getComposableLayoutNode(tabsWithNewTab, tabsLocation).style,
-    "with-new-tab",
-  );
+  assert.equal(initialTabs.style, "with-new-tab");
   assert.deepEqual(
-    parseComposableCustomizeLayout(
-      serializeComposableCustomizeLayout(tabsWithNewTab),
-    ),
-    tabsWithNewTab,
+    parseComposableCustomizeLayout(serializeComposableCustomizeLayout(initial)),
+    initial,
   );
 
   const resetAddress = setComposableLayoutItemStyle(
-    tabsWithNewTab,
+    initial,
     addressLocation,
     "address-only",
   );
@@ -316,18 +314,66 @@ test("project widget styles persist per instance and canonicalize defaults", () 
     () =>
       setComposableLayoutItemStyle(
         initial,
-        { path: [5], zone: "top" },
+        { path: [0], zone: "left" },
         "with-site-status",
       ),
     /FENNEVIA_COMPOSABLE_LAYOUT_STYLE_INVALID/u,
   );
 
   const invalidStyle = JSON.parse(serializeComposableCustomizeLayout(initial));
-  invalidStyle.zones.top[5].children[0].style = "arbitrary-css";
+  invalidStyle.zones.left[0].children[0].children[0].style = "arbitrary-css";
   assert.equal(
     parseComposableCustomizeLayout(JSON.stringify(invalidStyle)),
     null,
   );
+});
+
+test("container padding persists as one closed preset and omits the default", () => {
+  const initial = createDefaultLayout();
+  const location = { path: [0], zone: "top" };
+  assert.equal(getComposableLayoutNode(initial, location).padding, undefined);
+
+  const padded = setComposableLayoutContainerPadding(
+    initial,
+    location,
+    "standard",
+  );
+  assert.equal(getComposableLayoutNode(padded, location).padding, "standard");
+  assert.match(
+    serializeComposableCustomizeLayout(padded),
+    /"padding":"standard"/u,
+  );
+  assert.deepEqual(
+    parseComposableCustomizeLayout(serializeComposableCustomizeLayout(padded)),
+    padded,
+  );
+
+  const reset = setComposableLayoutContainerPadding(padded, location, "none");
+  assert.equal("padding" in getComposableLayoutNode(reset, location), false);
+  assert.doesNotMatch(serializeComposableCustomizeLayout(reset), /"padding"/u);
+
+  assert.throws(
+    () => setComposableLayoutContainerPadding(initial, location, "arbitrary"),
+    /FENNEVIA_COMPOSABLE_LAYOUT_PADDING_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      setComposableLayoutContainerPadding(
+        initial,
+        { path: [0, 0], zone: "top" },
+        "standard",
+      ),
+    /FENNEVIA_COMPOSABLE_LAYOUT_PARENT_INVALID/u,
+  );
+
+  const invalid = JSON.parse(serializeComposableCustomizeLayout(initial));
+  invalid.zones.top[0].padding = "wide";
+  assert.equal(parseComposableCustomizeLayout(JSON.stringify(invalid)), null);
+
+  invalid.zones.top[0].padding = "none";
+  const canonical = parseComposableCustomizeLayout(JSON.stringify(invalid));
+  assert.ok(canonical);
+  assert.equal("padding" in canonical.zones.top[0], false);
 });
 
 test("mandatory Customize and duplicate policies fail safe", () => {
