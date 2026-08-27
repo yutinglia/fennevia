@@ -24,7 +24,9 @@ The main changes since `v0.17.0-beta.1` are:
   Firefox's trimmed committed value, while opening the centered editor uses
   Firefox's bounded `untrimmedValue`. A normal HTTPS page therefore restores
   its `https://` prefix at the useful editing moment without inventing URL
-  parsing, persistence, or a parallel navigation source.
+  parsing, persistence, or a parallel navigation source. Native suggestions
+  continue through Firefox's normalized Urlbar value, preserving its trimming
+  and `startQuery()` contract while the custom editor remains untrimmed.
 - **A balanced four-edge default.** Fresh and reset layouts now match the
   owner's current composition: navigation and browser actions in Top, an
   address/status Row aligned with expanded Tabs on the tabs side, expanded
@@ -55,7 +57,7 @@ extension installation, native menus, Urlbar providers and execution, and
 window commands. Startup or runtime failure returns to the retained native
 interface instead of deleting it.
 
-The candidate passed the ordinary `npm run verify` gate with 433/433 Node
+The candidate passed the ordinary `npm run verify` gate with 435/435 Node
 tests, the complete fixed-list suite under PowerShell 7 and Windows PowerShell
 5.1, deterministic generated artifacts, dependency review, and the production
 artifact scan. Release publication independently repeats exact dependency

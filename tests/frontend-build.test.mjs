@@ -196,6 +196,21 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
   );
 });
 
+test("application menu renderers expose native popup semantics", async () => {
+  const [browserToolWidget, topSurface] = await Promise.all([
+    readProjectFile(
+      "src/shell/features/composable-layout/BrowserToolWidget.svelte",
+    ),
+    readProjectFile("src/shell/surfaces/TopSurface.svelte"),
+  ]);
+
+  assert.match(
+    browserToolWidget,
+    /aria-haspopup=\{props\.id === "application-menu" \? "menu" : undefined\}/u,
+  );
+  assert.match(topSurface, /aria-haspopup="menu"/u);
+});
+
 test("narrow windows reflow all four panels before and below Firefox's normal floor", async () => {
   const css = await readProjectFile(
     "src/shell/styles/responsive-accessibility.css",

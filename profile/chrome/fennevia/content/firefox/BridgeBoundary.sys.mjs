@@ -8360,15 +8360,17 @@ function el({ boundary: e, onError: t, window: n }) {
 		let r = h();
 		y(c), v(), o += 1;
 		let i = o;
-		_("querying"), r.input.value = t, typeof r.input.selectionStart == "number" && (r.input.selectionStart = t.length), typeof r.input.selectionEnd == "number" && (r.input.selectionEnd = t.length);
-		let a = !1;
+		_("querying"), r.input.value = t;
+		let a = r.input.value.slice(0, Mr);
+		typeof r.input.selectionStart == "number" && (r.input.selectionStart = a.length), typeof r.input.selectionEnd == "number" && (r.input.selectionEnd = a.length);
+		let l = !1;
 		try {
 			if (E(r, (e) => {
-				a = !0, T(e, r, i, n && !s && t.length === 0);
+				l = !0, T(e, r, i, n && !s && t.length === 0);
 			}, () => Reflect.apply(r.input.startQuery, r.input, [Object.freeze({
-				allowAutofill: t.length > 0,
-				searchString: t
-			})])), !a) throw Wc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CONTEXT_MISSING", "firefox-urlbar-suggestions-query", "window.gURLBar.startQuery");
+				allowAutofill: a.length > 0,
+				searchString: a
+			})])), !l) throw Wc(e, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CONTEXT_MISSING", "firefox-urlbar-suggestions-query", "window.gURLBar.startQuery");
 			return !0;
 		} catch (e) {
 			return x(c, "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_QUERY_FAILED", "firefox-urlbar-suggestions-query", "window.gURLBar.startQuery", e), !1;

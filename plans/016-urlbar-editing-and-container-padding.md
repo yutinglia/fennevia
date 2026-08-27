@@ -173,6 +173,23 @@ margin described here. The centered address panel remains unchanged.
   accessibility environments, multiple/private windows, and Browser Console
   checks remain `not run`.
 
+### Release integration follow-up (2026-08-28)
+
+The `0.18.0-beta.1` Firefox 154.0.1 candidate exposed one integration boundary
+that focused mocks had not represented: assigning an untrimmed draft through
+Firefox's `gURLBar.value` setter can normalize the native value, while an
+explicit `startQuery({ searchString })` must be a prefix of that current value.
+The suggestion bridge now reads back the normalized native value for query and
+selection state while the project-owned editor keeps its full draft. A focused
+regression reproduces native trimming. The clean full lifecycle, Browser
+Toolbox ownership run, provider/suggestion probes, second/private windows,
+frontend and bridge fail-open matrices, and SessionStore rehearsal passed on
+Firefox 154.0.1. The complete gate passed with 435/435 Node tests, 88.71% line,
+81.37% branch, and 95.79% function coverage, all fixed PowerShell 7 and Windows
+PowerShell 5.1 suites, deterministic artifacts, dependency review, and the
+14/14 production scan. Remaining package, performance, and publication evidence
+stays in the release validation record.
+
 ## 6. Out of scope
 
 - Showing a scheme permanently in the compact launcher.

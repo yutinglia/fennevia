@@ -1878,12 +1878,20 @@ async function collectFrontendState(client) {
     }
     return {
       address: {
-        edgeEditableCount:
-          topRoot?.querySelectorAll("input, textarea, [contenteditable]").length ??
+        edgeEditableCount: edgeNames.reduce(
+          (count, edge) =>
+            count +
+            (roots[edge]?.querySelectorAll("input, textarea, [contenteditable]")
+              .length ?? 0),
           0,
-        launcherCount:
-          topRoot?.querySelectorAll("[data-fennevia-address-launcher]").length ??
+        ),
+        launcherCount: edgeNames.reduce(
+          (count, edge) =>
+            count +
+            (roots[edge]?.querySelectorAll("[data-fennevia-address-launcher]")
+              .length ?? 0),
           0,
+        ),
         labelText:
           popupRoot
             ?.querySelector('label[for="fennevia-address-popup-input"]')
@@ -2104,10 +2112,14 @@ async function collectFrontendState(client) {
           topRoot?.querySelectorAll(
             '[aria-haspopup], [role="menu"], [data-fennevia-action*="menu"]'
           ).length ?? 0,
-        locationCount:
-          topRoot?.querySelectorAll(
-            "[data-fennevia-address-launcher] .fennevia-address-launcher__location"
-          ).length ?? 0,
+        locationCount: edgeNames.reduce(
+          (count, edge) =>
+            count +
+            (roots[edge]?.querySelectorAll(
+              "[data-fennevia-address-launcher] .fennevia-address-launcher__location"
+            ).length ?? 0),
+          0,
+        ),
         tabCount:
           topRoot?.querySelectorAll('[role="tab"], [role="tablist"]').length ??
           0,
@@ -2769,7 +2781,7 @@ async function exerciseNavigationControls(client) {
             '[data-fennevia-action="reload-stop"]'
           ),
         };
-        const location = root?.querySelector(
+        const location = document.querySelector(
           "[data-fennevia-address-launcher] .fennevia-address-launcher__location"
         );
         const navigationText =
@@ -3126,7 +3138,21 @@ async function exerciseAddressInput(client) {
         const frame = document.getElementById("fennevia-shell-frame-host");
         const root = document.getElementById("fennevia-shell-top-root");
         const panel = root?.querySelector('[data-fennevia-edge-panel="top"]');
-        const launcher = root?.querySelector("[data-fennevia-address-launcher]");
+        const launcher = document.querySelector(
+          "[data-fennevia-address-launcher]"
+        );
+        const launcherEdge = ["top", "left", "right", "bottom"]
+          .map(edge => ({
+            edge,
+            root: document.getElementById("fennevia-shell-" + edge + "-root"),
+          }))
+          .find(entry => entry.root?.contains(launcher));
+        const launcherRevealKey = {
+          top: "ArrowUp",
+          left: "ArrowLeft",
+          right: "ArrowRight",
+          bottom: "ArrowDown",
+        }[launcherEdge?.edge];
         const popupRoot = document.getElementById("fennevia-address-popup-root");
         const region = popupRoot;
         const input = popupRoot?.querySelector(
@@ -3169,6 +3195,8 @@ async function exerciseAddressInput(client) {
           !root ||
           !panel ||
           !launcher ||
+          !launcherEdge?.root ||
+          !launcherRevealKey ||
           !region ||
           !input ||
           !status ||
@@ -3652,14 +3680,14 @@ async function exerciseAddressInput(client) {
             bubbles: true,
             cancelable: true,
             ctrlKey: true,
-            key: "ArrowUp",
+            key: launcherRevealKey,
             shiftKey: true,
           })
         );
         await waitFor(
           () =>
-            root.getAttribute("data-fennevia-visible") === "true" &&
-            root.contains(document.activeElement),
+            launcherEdge.root.getAttribute("data-fennevia-visible") === "true" &&
+            launcherEdge.root.contains(document.activeElement),
           "FENNEVIA_FIREFOX_TEST_ADDRESS_LAUNCHER_REVEAL_TIMEOUT"
         );
         launcher.focus({ preventScroll: true });
@@ -3677,7 +3705,7 @@ async function exerciseAddressInput(client) {
           () =>
             !popupVisible() &&
             popupPhase() === "hidden" &&
-            root.getAttribute("data-fennevia-visible") === "false" &&
+            launcherEdge.root.getAttribute("data-fennevia-visible") === "false" &&
             document.activeElement === gBrowser.selectedBrowser,
           "FENNEVIA_FIREFOX_TEST_ADDRESS_LAUNCHER_CANCEL_TIMEOUT"
         );

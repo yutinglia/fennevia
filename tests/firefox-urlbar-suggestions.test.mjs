@@ -271,6 +271,33 @@ test("Firefox Urlbar bridge projects shared-manager results without opening nati
   assert.equal(boundary.dispose(), true);
 });
 
+test("queries use Firefox's normalized native value while preserving an untrimmed editor draft", async () => {
+  const { boundary, controller, errors, fixture } = createController();
+  const { input } = fixture;
+  let nativeValue = "";
+  Object.defineProperty(input, "value", {
+    configurable: true,
+    get: () => nativeValue,
+    set: (value) => {
+      nativeValue = value.replace(/^https?:\/\//u, "");
+    },
+  });
+
+  assert.equal(
+    controller.urlbarSuggestions.query("https://example.invalid/path"),
+    true,
+  );
+  assert.equal(input.value, "example.invalid/path");
+  assert.equal(input.lastContext.searchString, "example.invalid/path");
+  assert.equal(input.selectionStart, input.value.length);
+  assert.equal(input.selectionEnd, input.value.length);
+  assert.deepEqual(errors, []);
+
+  await flushQueries();
+  assert.equal(controller.dispose(), true);
+  assert.equal(boundary.dispose(), true);
+});
+
 test("the first completed empty zero-prefix query retries once after Firefox lazy startup", async () => {
   const { boundary, controller, errors, fixture } = createController();
   fixture.input.nextResultsQueue = [

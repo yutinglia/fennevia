@@ -129,6 +129,7 @@
 </script>
 
 <button
+  aria-haspopup={props.id === "application-menu" ? "menu" : undefined}
   aria-label={translate(props.localeId, labelKey)}
   class="fennevia-control fennevia-browser-tools__button fennevia-layout-control"
   data-fennevia-browser-tool={props.id === "show-downloads"

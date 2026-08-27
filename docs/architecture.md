@@ -487,7 +487,11 @@ proxy redirects only the newly built context, then guarded restoration returns
 the exact native controller identity before provider work continues. A parent
 proxy receives incremental results while exposing a project view that never
 opens native rows. Replacement, ordinary close, failure, and disposal cancel
-the exact active context.
+the exact active context. The custom editor may retain Firefox's full
+`untrimmedValue`, but the suggestion bridge reads back `gURLBar.value` after
+assigning that draft and passes the Firefox-normalized value to `startQuery()`.
+This preserves native `trimURLs` behavior and the input's requirement that its
+current value start with the explicit query string.
 
 ADR-079 keeps that contract and adds one per-window warm-up guard for Firefox's
 zero-prefix path. If the first eligible empty-string context completes without

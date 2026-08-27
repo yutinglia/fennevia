@@ -371,6 +371,18 @@ layout, backdrop, pointer/wheel, focus, narrow-scroll/window-drag,
 forced-color, multi/private-window, disposal, and Browser Console rows remain
 `not run`.
 
+The `0.18.0-beta.1` Firefox 154.0.1 release-integration follow-up corrected the
+Urlbar suggestion query's normalized-value boundary and restored Application
+Menu popup semantics. Its complete `npm run verify` gate passed with 435/435
+Node tests, 88.71% line coverage, 81.37% branch coverage, 95.79% function
+coverage, every fixed PowerShell 7 suite, dependency audit, deterministic
+frontend/bridge output, and 14/14 accepted production artifacts. The complete
+Windows PowerShell 5.1 fixed list also passed. A clean full lifecycle,
+Browser Toolbox ownership, provider/suggestion probes, fail-open matrices, and
+SessionStore rehearsal passed on the isolated Firefox 154.0.1 candidate
+profile; package, performance, and publication evidence remains in the current
+release validation record until completed.
+
 The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
 the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and
 failure-injection wrappers, SessionStore rehearsal, Urlbar provider/production

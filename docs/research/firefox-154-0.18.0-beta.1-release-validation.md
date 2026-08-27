@@ -6,7 +6,8 @@
 - Release candidate: `0.18.0-beta.1`, intended annotated tag
   `v0.18.0-beta.1`
 - Feature commit: `a3ea3aedbfe0bb36f7ec4e6c1ecd8c8ba182408c`
-- Release-preparation commit: pending until this record and candidate checks are
+- Release-preparation commit: `6f0890341ba5424371231ee21e071c79bbc54b37`
+- Release-validation correction commit: pending until the findings below are
   committed
 - Reviewed merge/tag target: pending pull-request merge
 - Target: stock Firefox 154.0.1 release, BuildID `20260824154132`, in a
@@ -51,7 +52,9 @@ Relative to `v0.17.0-beta.1`, this candidate includes:
 - the owner's four-edge default composition, preserving valid saved version-2
   layouts (ADR-084);
 - a project-owned customize backdrop that darkens and blocks website pointer
-  input without mutating Firefox-owned content DOM (ADR-084); and
+  input without mutating Firefox-owned content DOM (ADR-084);
+- Firefox-normalized suggestion query startup while the centered editor retains
+  the full untrimmed draft; and
 - a bilingual screenshot showcase and generated brand illustration with local
   provenance records.
 
@@ -61,21 +64,66 @@ for Firefox-owned security prompts.
 
 ## 4. Source and static validation
 
-The candidate validation will record the final committed results for:
+The correction passed `npm run verify` under Node.js 24.18.0 and npm 11.16.0:
+435/435 Node tests, 88.71% line coverage, 81.37% branch coverage, 95.79%
+function coverage, every fixed PowerShell 7 suite, dependency audit,
+deterministic frontend/bridge generation, and 14/14 accepted production
+artifacts. The complete fixed-list suite also passed under Windows PowerShell
+5.1. `git diff --check` passed before this record update and will be repeated
+before commit.
 
-- `npm run verify` under Node.js 24.18.0;
-- the complete fixed-list suite under Windows PowerShell 5.1;
-- deterministic generated artifacts and the 14-file production scan;
-- `git diff --check`; and
-- a clean-tree double release build with strict Unicode-path extraction.
+The clean-tree deterministic double release build, strict Unicode-path
+extraction, archive digest, and committed-tree package recovery remain pending
+until this correction is committed.
 
 ## 5. Automated real-Firefox 154.0.1 validation
 
-The release profile will run the project lifecycle, Browser Toolbox ownership,
-frontend/bridge/shell/missing-entry recovery, SessionStore rehearsal, Urlbar
-provider and production-panel probes, performance/cleanup controls, release
-recovery, and extracted-package lifecycle. Results are not promoted from
-focused tests and will be added only after the candidate run finishes.
+### 5.1 First causal findings and corrections
+
+The initial lifecycle run found three release-candidate integration issues
+before publication:
+
+1. The lifecycle harness still searched only Top for the single address
+   launcher even though the new default places it with Tabs. Its address and
+   navigation checks now locate the launcher across the four project-owned edge
+   roots and reveal the launcher's actual edge before focusing it.
+2. The composable Application Menu still opened Firefox's native menu but did
+   not expose `aria-haspopup="menu"`. Both current and retained rendering paths
+   now expose the same popup semantic, with a static regression.
+3. Firefox's `gURLBar.value` setter normalized an untrimmed URL before
+   `startQuery()`, while the bridge still passed the full draft as the explicit
+   query string. Firefox 154.0.1 requires its current value to start with that
+   string, so the query failed synchronously. The bridge now reads back and
+   queries with Firefox's normalized native value while the custom editor keeps
+   its untrimmed draft; a focused unit test reproduces this boundary.
+
+The temporary privacy-safe diagnostic probe recorded only fixed codes, phases,
+error names, project stacks, and window kind. It recorded no URL, title, input,
+profile path, or other browsing data and was removed before the clean rerun.
+
+### 5.2 Completed automated rows
+
+The isolated candidate profile passed:
+
+- the clean full lifecycle twice after correction, covering existing, second,
+  and private windows; address editing and native fallback; tabs, bookmarks,
+  downloads; resize, maximize, minimize, fullscreen, and customize; close and
+  runtime disposal; and zero unexpected first-party script errors;
+- the Browser Toolbox ownership run for the shared frame, four edge roots, and
+  centered address-overlay XHTML host;
+- the native Urlbar ProvidersManager probe and production suggestion-combobox
+  probe, with the native view closed, exact controller restoration, bounded
+  projection, and Firefox-owned result execution;
+- missing and throwing frontend bundles, six required bridge capability
+  failures, complete and broken-package safe start, missing privileged entry,
+  and missing lifecycle module, all with native UI retained and exact artifact
+  restoration; and
+- SessionStore prepare, process restart, lazy background-tab restore,
+  fail-open usability, and exact preference/state cleanup.
+
+Performance controls, committed release-package recovery, and extracted-package
+lifecycle remain pending until the correction is committed and a clean source
+candidate can be built. Results are not promoted from focused tests.
 
 The owner-supplied screenshots provide direct visual evidence for the default
 layout and five customize views. They do not prove the complete interaction,

@@ -352,6 +352,7 @@
         </button>
       {/if}
       <button
+        aria-haspopup="menu"
         aria-label={t("nav.firefoxMenuAria")}
         class="fennevia-control fennevia-browser-tools__button"
         data-fennevia-browser-tool="application-menu"

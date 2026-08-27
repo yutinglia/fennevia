@@ -673,6 +673,9 @@ Validate:
 - scheme-trimmed `gURLBar.value` remains the launcher-at-rest value while a
   freshly opened, immediately focused popup draft uses bounded
   `gURLBar.untrimmedValue`, including `https://` when Firefox retained it;
+- suggestion startup writes that full draft through Firefox's native value
+  setter, then uses the normalized value read back from `gURLBar.value` for the
+  explicit `startQuery()` string and native selection bounds;
 - the composable launcher alone has one `--fennevia-space-1` inline margin and
   a matching two-sided maximum-width subtraction; Left, Right, and Bottom also
   use that token as block margin, while Top relies on its bounded root block
@@ -1400,6 +1403,16 @@ passed under Windows PowerShell 5.1 on 2026-08-28. README media checks resolved
 all seven references and matched each PNG's recorded SHA-256 and dimensions.
 These automated/source/media checks do not establish any real-Firefox visual
 or pointer behavior.
+
+The `0.18.0-beta.1` Firefox 154.0.1 release-integration correction added the
+normalized native query-value and Application Menu popup-semantic regressions.
+The complete `npm run verify` gate passed with 435/435 Node tests, 88.71% line,
+81.37% branch, and 95.79% function coverage; all fixed PowerShell 7 and Windows
+PowerShell 5.1 suites; deterministic artifacts; dependency review; and the
+14/14 production scan. Its clean lifecycle, Browser Toolbox ownership,
+provider/suggestion probes, fail-open matrices, and SessionStore rehearsal also
+passed in the marker-owned Firefox 154.0.1 profile. Package, performance, and
+publication evidence is kept in the release validation record.
 
 The following are `not run`, not passed: live Fennevia customize drawer against
 a collapsed navbar; recursive Row/Column creation, nesting, orientation,

@@ -106,3 +106,32 @@ A real Firefox check of launcher-at-rest, mouse open, Ctrl+L open, selection,
 blur/close, container alignment, responsive/accessibility environments,
 second/private windows, and Browser Console errors is **not run** and must not
 be inferred from source or automated tests.
+
+## 6. Release integration addendum (2026-08-28)
+
+The later `0.18.0-beta.1` candidate was exercised on stock Firefox 154.0.1,
+BuildID `20260824154132`, official tag commit
+`9cd094dbc3eac5df87a24e7a871e52880cb8cd42`. This does not rewrite the original
+research result above.
+
+Firefox 154.0.1
+[`UrlbarInput.startQuery()`](https://github.com/mozilla-firefox/firefox/blob/9cd094dbc3eac5df87a24e7a871e52880cb8cd42/browser/components/urlbar/content/UrlbarInput.mjs#L2387-L2400)
+requires the current native input value to start with an explicitly supplied
+`searchString`. Its
+[`value` setter](https://github.com/mozilla-firefox/firefox/blob/9cd094dbc3eac5df87a24e7a871e52880cb8cd42/browser/components/urlbar/content/UrlbarInput.mjs#L2907-L2913)
+applies Firefox's trimming policy. Passing the full untrimmed editor draft as
+the query string after that setter had removed a scheme therefore caused a
+deterministic synchronous query failure.
+
+The selected correction does not call a new Firefox API or reproduce trimming.
+The bridge assigns the bounded draft as before, reads back the resulting native
+`gURLBar.value`, and uses that Firefox-normalized string for native selection
+bounds, autofill eligibility, and `startQuery()`. The separate project-owned
+editor retains the full `editableAddressValue`. A focused mock now reproduces
+native trimming, and the clean Firefox 154.0.1 lifecycle plus dedicated Urlbar
+provider and production-suggestion probes passed without a first-party error.
+The complete correction gate passed with 435/435 Node tests, 88.71% line,
+81.37% branch, and 95.79% function coverage; every fixed PowerShell 7 and
+Windows PowerShell 5.1 suite; deterministic artifacts; dependency review; and
+the 14/14 production scan. Manual visual and assistive-technology rows remain
+bounded by the current release record rather than being inferred here.
