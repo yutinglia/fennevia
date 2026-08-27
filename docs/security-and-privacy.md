@@ -28,7 +28,7 @@ controls, private-window rules, and review triggers.
 
 ## 2. Current security baseline
 
-Current validated public prerelease package: `0.17.0-beta.1` on Firefox 153.0.4
+Current validated public prerelease package: `0.18.0-beta.1` on Firefox 153.0.4
 BuildID 20260810162159, Firefox 154.0 BuildID 20260812182057, and Firefox
 154.0.1 BuildID 20260824154132 for Windows x64. Later Firefox majors may be installed after an explicit
 warning; that is not a support promise.
@@ -53,7 +53,8 @@ Implemented controls:
 - bounded lazy Places pages with opaque handles and native bookmark opening;
 - anonymous bounded Downloads status with per-window native list views and no
   filename, path, source URL, byte value, or file action crossing the bridge;
-- hidden-at-rest four-edge state with pointer-transparent center;
+- hidden-at-rest four-edge state with a pointer-transparent center outside the
+  bounded address and customize-overlay lifetimes;
 - explicit suspension for native modal state, DOM fullscreen, and customize
   mode;
 - exact active-only durable native hiding, plus a self-expiring first-paint
@@ -125,8 +126,9 @@ Requirements:
 
 - hidden surfaces reserve no permanent content geometry;
 - the frame is pointer-transparent except at narrow documented edge triggers
-  (12 CSS px by default, user-bounded to 6–24 CSS px by ADR-054) and currently
-  visible owned surfaces;
+  (12 CSS px by default, user-bounded to 6–24 CSS px by ADR-054), currently
+  visible owned surfaces, and the bounded full-frame address/customize
+  backdrops while their owning sessions are visibly open;
 - trigger thickness is measured, validated, and independent of the 7px
   decorative content gutter; the same value drives CSS hit geometry and corner
   arbitration;
@@ -374,7 +376,8 @@ Rules:
 
 Issues #12 and #13 expose only `canGoBack`, `canGoForward`, loading state,
 bounded title text (256 code units), bounded display-URI text (2,048 code
-units), bounded committed/draft address text (4,096 code units), fixed
+units), bounded committed-display, editable, and draft address text (4,096
+code units each), fixed
 connection/protection enums, and explicit named actions.
 
 Rules:
@@ -382,9 +385,9 @@ Rules:
 - browser, controller, principal, Urlbar, identity/protections handler,
   content-blocking allow-list, command, observer, progress, and native event
   objects stay private;
-- title, display URI, committed address, and draft are rendered or edited as
-  text only and never enter logs, errors, datasets, persistence, project
-  network requests, or another window;
+- title, display URI, committed-display address, editable address, and draft
+  are rendered or edited as text only and never enter logs, errors, datasets,
+  persistence, project network requests, or another window;
 - navigation actions accept no arbitrary URL and invoke the current window's
   source-validated `BrowserCommands` methods;
 - Home invokes `BrowserCommands.home()` only. The configured homepage URL,
@@ -400,10 +403,15 @@ Rules:
 - the ADR-043 top gutter light consumes only the public `loading` boolean.
   It is `aria-hidden`, contains no title, URI, or address text, and does not
   add a second progress listener or percent field;
-- the compact launcher contains committed text only and no editable field;
+- the compact launcher contains Firefox's committed `gURLBar.value` text only
+  and no editable field. A valid proxy state's separately bounded
+  `gURLBar.untrimmedValue` is used only to initialize a fresh, immediately
+  focused popup draft; invalid proxy state uses the selected URI, and Fennevia
+  never reconstructs or prepends a scheme;
 - one popup draft exists only in the owning window's memory while open;
   background same-tab navigation cannot overwrite it, while selected-tab
-  change closes and discards it;
+  change closes and discards it. Refocusing an active popup does not replace
+  that draft;
 - empty, over-4,096-character, `data:`, `javascript:`, and `vbscript:` input is
   rejected before native access;
 - accepted input is assigned to the current native Urlbar and submitted through
@@ -528,7 +536,7 @@ combinations, second/private real windows, and the release matrix remain not
 run. See `docs/research/firefox-153-154-native-urlbar-suggestions.md` and
 `docs/research/firefox-154-first-zero-prefix-urlbar-query.md`.
 
-### 7.5 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, composable widgets and customize mode ADR-044/ADR-045/ADR-046/ADR-047/ADR-074–ADR-076
+### 7.5 Browser-tool native handoffs — implemented ADR-037/ADR-042/ADR-057, composable widgets and customize mode ADR-044/ADR-045/ADR-046/ADR-047/ADR-074–ADR-084
 
 Each managed window owns one `browser-tools` Firefox controller and one ordinary
 application adapter. The controller validates twenty required current
@@ -597,15 +605,17 @@ or runtime load. See ADR-037, ADR-042, ADR-059, ADR-060,
 `docs/research/firefox-153-native-popup-anchoring.md`, and
 `docs/research/firefox-153-154-native-shell-icons.md`.
 
-Owner-approved ADR-044/ADR-045/ADR-046/ADR-074–ADR-076 widget and customize flow: each
+Owner-approved ADR-044/ADR-045/ADR-046/ADR-074–ADR-084 widget and customize flow: each
 managed window may own one optional `toolbar-widgets` controller. It renders a
 strict bounded version-2 tree under the four fixed edge roots. The default tree
-uses the deterministic native-v2 Top controls/address/handoffs/window commands,
-tabs-side, bookmarks-side, and Bottom Downloads composition. Current
+uses ADR-084's deterministic native-v2 Top controls/empty Expanded region/
+handoffs/window commands, padded address-and-tabs side, bookmarks side, and
+Bottom Downloads composition. Current
 `CustomizableUI` placements remain palette choices rather than
 profile-dependent defaults.
 Ordinary layout nodes expose only a layout-local instance id, closed
-project/container/wrapper/special kind, Row/Column direction, a fixed
+project/container/wrapper/special kind, Row/Column direction, ADR-082's
+effective closed `none`/`standard` container-padding value, a fixed
 Center/Expanded/Padding wrapper kind, children, and immutable widget
 presentation. Eligible project items additionally expose only one effective
 fixed style id from the widget-specific ADR-075 registry. Each placed widget
@@ -630,7 +640,8 @@ CSS custom properties on shared roots, root datasets, clipboard, or network
 requests; diagnostics stay at widget counts, revisions, and fixed codes.
 
 ADR-045 adds two owner-approved bounded exceptions. ADR-064, ADR-074, ADR-075,
-and ADR-077 extend only the first exception's closed schema. First, profile-local persistence: the
+ADR-077, and ADR-082 extend only the first exception's closed schema. First,
+profile-local persistence: the
 privileged controller stores the Fennevia layout, style, and panel policy as
 bounded versioned JSON in the `fennevia.customize.layout`,
 `fennevia.customize.style`, and `fennevia.customize.panels` string preferences
@@ -638,7 +649,8 @@ bounded versioned JSON in the `fennevia.customize.layout`,
 invalid values fail safe to the default composable layout and default style).
 The layout pref contains Firefox widget ids — including extension widget ids —
 fixed project/special/wrapper tokens, bounded node structure, layout-local
-instance ids, `allowMultiplePlacements`, and an optional allowlisted
+instance ids, `allowMultiplePlacements`, an optional non-default
+`"padding":"standard"` on Row/Column containers, and an optional allowlisted
 per-instance style id on eligible project items; the style pref contains only the
 fixed style token set (theme, `#rrggbb` color tokens or empty defaults, and
 bounded integers for blur, radius, density, surface opacity, saturation,
@@ -649,9 +661,10 @@ the legacy closed side-layout migration hint, two closed activity-light enums,
 ADR-068's `allowCompactWindow` boolean (default false), and ADR-077's one
 four-value `panelDodgeMode` enum (default `multiple-dynamic`); Top has no
 enabled field. Versions 1 and 2 migrate in memory and unknown modes or keys
-fail safe. Neither the panel pref nor the optional item-style field can encode
-arbitrary geometry, CSS declarations, class names, labels, a URL, or feature
-activity.
+fail safe. Neither the panel pref, optional item-style field, nor closed
+container-padding field can encode arbitrary geometry, CSS declarations, class
+names, labels, a URL, or feature activity. Missing/explicit `none` container
+padding canonicalizes to no persisted field; unknown values fail safe.
 Compact-window only toggles a root attribute and one
 active/not-suspended `min-width`/`min-height` override; it stores no browsing
 data and is not a health input. Missing keys keep documented defaults.
@@ -699,6 +712,12 @@ a network sink. Preview and inspector XHTML are project-owned and
 never clones or reparents a native Firefox node. The session is not persisted;
 the frame marker
 `data-fennevia-customize-active` is a boolean presence attribute.
+ADR-084 derives one non-focusable Top-root backdrop solely from that boolean
+session state. Its dark paint and pointer hitbox contain no content-derived
+value, do not inspect or mutate Firefox content, do not set native `inert`, and
+add no bridge field, preference, dataset value, observer, timer, log field, or
+network sink. It is removed by the same conditional Svelte ownership on close
+and by ordinary frontend disposal/fail-open host teardown.
 The in-process drag-lifecycle listeners receive only that same opaque source
 and are deterministically unsubscribed. The inspector's scroll/resize
 listeners and `ResizeObserver` are present only while it is mounted and are
@@ -1053,8 +1072,10 @@ Firefox remains responsible for:
 Current #31 behavior:
 
 - one zero-layout frame over the browser content area;
-- pointer-transparent center;
-- only narrow edge triggers and visible surfaces accept pointer input;
+- pointer-transparent center outside the visibly open address/customize
+  overlay lifetimes;
+- only narrow edge triggers, visible surfaces, and those bounded overlay
+  backdrops accept pointer input;
 - all four edges suspend for native modal state, DOM fullscreen, and customize
   mode;
 - native titlebar, toolbox, sidebar, popup sets, tabbox, browser content,

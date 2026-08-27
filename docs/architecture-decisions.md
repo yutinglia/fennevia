@@ -3293,6 +3293,11 @@ extension actions, spacers, and springs remain palette candidates. Fresh,
 malformed-fallback, and Reset states use this tree; a valid saved version-2
 tree is never silently replaced.
 
+**Later default-composition decision:** ADR-084 supersedes only the explicit
+fresh/reset/fallback tree above after the project owner supplied direct layout
+evidence. ADR-074's version-2 schema, ownership, migration, validation, and
+saved-layout preservation contracts remain in force.
+
 Expose a profile-local `allowMultiplePlacements` switch, default false. When
 enabled, stateless project actions and Firefox toolbar mirrors may have more
 than one project-rendered instance while resolving the same current per-window
@@ -3354,6 +3359,9 @@ selects, links, enabled focus targets, and other interactive descendants remain
 explicit no-drag targets.
 The complete composable layout is no-drag while Fennevia customize mode is
 active so layout editing cannot move the OS window.
+ADR-083 later subtracts only the narrow Top scrollbar hit band from that drag
+region; it does not turn the composable root or the remaining panel into a
+no-drag surface.
 
 The layout preference may contain the already owner-approved privileged
 Firefox widget ids, but ordinary frontend state, payloads, datasets, and logs
@@ -3462,9 +3470,9 @@ duplicating Firefox state owners. Implementation and focused evidence are in
 ## ADR-076: One session-wide floating widget inspector above customize surfaces
 
 **Status:** Accepted by direct project-owner request and screenshot evidence on
-2026-08-25; implementation and ordinary automated coverage are complete; the
-real Firefox positioning, zoom, focus, and accessibility matrix remains
-`not run`
+2026-08-25; the 2026-08-27 drag-obstruction follow-up, implementation, and
+ordinary automated coverage are complete; the real Firefox positioning,
+drag-hit-testing, zoom, focus, and accessibility matrix remains `not run`
 
 Replace ADR-074/ADR-075's action toolbar and Style selector inside every
 selected layout node with exactly one non-modal floating widget inspector for
@@ -3497,6 +3505,17 @@ descendant scrolling, window resize, selected/inspector/container resize, and
 central-workspace resize. Every listener and `ResizeObserver` is installed only
 while the inspector exists and is removed on unmount.
 
+The 2026-08-27 owner follow-up makes that inspector yield during every active
+project widget drag. It subscribes to the existing opaque toolbar-widget drag
+lifecycle and keeps only a component-local boolean. While active, a
+higher-specificity inspector state sets `pointer-events: none` before the next
+drag target interaction and fades the positioned overlay to zero opacity. The
+inspector stays mounted, the session selection remains intact, and the shared
+terminal `null` signal restores it after drop, cancellation, drag end,
+customize close, or disposal. No pointer coordinates, widget identities, DOM
+nodes, or geometry enter shared or persisted state. The central palette stays
+interactive because dropping a placed widget back there is the removal path.
+
 The inspector contains one localized title/close action, compact
 move-before/after/into/out, axis, and remove controls, plus a labelled
 full-width Style selector only when the selected project widget has multiple
@@ -3521,6 +3540,10 @@ Rendering one editor inside the owning edge still left it trapped below the
 central workspace's stacking context. A session-owned selection plus one
 top-layer, obstacle-aware inspector provides progressive disclosure without
 changing layout geometry or weakening keyboard access and privacy boundaries.
+Yielding the already-mounted overlay through the existing drag lifecycle lets
+the underlying recursive drop owner receive `dragover` and `drop` without
+unmounting the inspector, clearing selection, or introducing a competing
+pointer/drag coordinator.
 The outer anchor and paint-only boundary are separate because using the hidden
 selector as a dismissal focus target immediately reopened the inspector, while
 using layout-participating borders/minimum sizes for editing changed the very
@@ -3800,3 +3823,151 @@ restored successful local drop results across multiple indices. The owner
 confirmed the complete normal-window behavior. Evidence, rejected hypotheses,
 privacy constraints, and verification limits are recorded in
 `docs/research/firefox-154-tab-detach-intent.md` and the focused tests.
+
+## ADR-082: Separate compact and editable address values; give containers one tokenized padding preset
+
+**Status:** Accepted from project-owner UX evidence on 2026-08-27. Firefox
+153/154 source research and the complete ordinary automated gate are complete;
+the real Firefox visual, selection, multi-window, private-window, and
+accessibility matrix remains `not run`.
+
+Keep the compact address launcher on the committed, potentially scheme-trimmed
+`gURLBar.value`. Extend the existing required navigation boundary with the
+public string `gURLBar.untrimmedValue`, copied as at most 4,096 code units into
+ordinary `editableAddressValue`. While `pageproxystate` is valid, a newly
+opened centered address panel initializes its selected, immediately focused
+draft from that editable value. An already-active panel only refocuses and
+preserves its draft. Invalid proxy state uses the current selected URI for both
+projections, and the existing hidden initial/home/new-tab/private locations
+remain empty.
+
+Do not prepend `https://`, reconstruct a scheme from security state, or make
+the compact launcher permanently verbose. Firefox 153 and 154 already retain
+the full value before applying their own trimming policy and untrim it for
+keyboard-focus editing paths. Reusing that value also preserves Firefox's
+Reader Mode and other native display handling. Submission remains the bounded
+native `gURLBar.value` plus `handleCommand()` route, so fixup, search,
+principal, disposition, and telemetry policy stay Firefox-owned.
+
+Add one closed effective content-padding value to Row/Column snapshots:
+`none` or `standard`. Version-2 persistence stores only non-default
+`"padding":"standard"`; missing or explicit `none` canonicalizes to no field,
+and unknown keys/values remain invalid. A revision-guarded
+`set-container-padding` edit is valid only for a container. The existing
+session-wide inspector exposes one labelled selector for a selected Row or
+Column, and `standard` renders exactly
+`padding: var(--fennevia-space-2)`. This reuses the same spacing token as the
+root flow, feature interiors, gaps, and Padding wrapper. The wrapper remains
+available when padding should be an explicit structural node.
+
+Reject free-form pixels, per-axis numbers, arbitrary CSS/classes, implicit
+padding on every container, a second inspector, and a schema-version bump.
+The closed additive field gives compact control groups an intentional way to
+align with large feature-widget interiors while preserving existing layouts,
+natural flow sizing, edit-boundary geometry, privacy constraints, and the
+16 KiB preference bound.
+
+The first 2026-08-27 spacing follow-up gave the composable address launcher
+both inline and block margins. Later owner visual evidence supersedes only the
+inline half: the selected layout already puts the launcher inside a
+`standard`-padded Row, so another 4 px on each inline side double-insets the
+capsule and makes it narrower than Tabs. The launcher now uses
+`margin-inline: 0` and leaves that closed 8 px alignment responsibility to the
+container. Left, Right, and Bottom retain the 4 px block margin; Top suppresses
+that extra block margin because its responsive 48/52 px lane already provides
+a 4–6 px root block inset. Every centered address-panel selector remains
+unchanged.
+
+**Reasoning:** The reported popup exposed the at-rest trimmed display string
+even after entering the sole custom editing surface, while compact controls in
+a Row could sit one spacing step outside the content edge of a larger widget.
+Firefox's retained untrimmed value is a narrower and more accurate editing
+authority than project URL reconstruction. A tokenized container option is
+more discoverable for simple alignment than adding a Padding wrapper solely
+for that effect, without turning Fennevia into a free-form layout/CSS editor.
+Implementation and evidence are in
+`plans/016-urlbar-editing-and-container-padding.md` and
+`docs/research/firefox-153-154-urlbar-editing-value.md`.
+
+## ADR-083: Protect narrow Top scrollbar input with a bounded no-drag guard
+
+**Status:** Accepted from project-owner runtime evidence on 2026-08-27.
+Firefox 153.0.4/154.0/154.0.1 source comparison and the complete ordinary
+automated gate are complete; clean-profile reproduction, real scrollbar/window
+dragging, multi-window, private-window, accessibility, and Browser Console
+validation remain `not run`.
+
+Keep the existing edge panel, composable root, nested container/wrapper, Space,
+Separator, and Flexible-space `-moz-window-dragging: drag` declarations. In the
+existing 560 CSS px narrow tier, add one absolutely positioned pseudo-element
+to the Top panel's block-end edge. Its block size is the existing
+`--fennevia-space-3` token (12 CSS px), its inline inset is zero, it is
+`pointer-events: none`, and it contributes only
+`-moz-window-dragging: no-drag`. It paints no visible content and changes no
+layout size.
+
+Do not set the scroll root itself to no-drag. Firefox 153.0.4, 154.0, and
+154.0.1 independently union every visible `drag` and `no-drag` frame border box
+and compute the final native region as `drag − no-drag`; a root-sized no-drag
+box would therefore erase every nested drag box as well. The bounded guard
+subtracts only the native thin horizontal scrollbar hit band. Pointer events
+pass through to Firefox's scrollbar, while the remaining Top panel continues
+to provide a window-drag path. The guard may reserve that bottom strip even
+when no scrollbar is currently visible in the narrow tier; this deterministic
+12 px cost avoids an observer, scroll-state dataset, pointer forwarding, or a
+second window-drag owner.
+
+**Reasoning:** The reported narrow layout rendered a usable-looking scrollbar,
+but its coordinates remained part of the native caption region, so Windows
+moved the Firefox window instead of dragging the thumb. Hiding the scrollbar,
+disabling overflow, or making all Top content no-drag would respectively remove
+an access path, clip configured controls, or regress titlebar usability. A
+pointer-transparent bounded subtraction matches Gecko's region model and keeps
+the fix isolated to the observed hit band. Implementation and evidence are in
+`plans/016-urlbar-editing-and-container-padding.md` and
+`docs/research/firefox-153-154-narrow-top-scrollbar-drag.md`.
+
+## ADR-084: Adopt the owner four-edge default and shield web content during customization
+
+**Status:** Accepted from direct project-owner layout and visual evidence on
+2026-08-27. Implementation, focused automated coverage, and the complete
+ordinary gate are complete; the real Firefox visual, pointer, keyboard,
+accessibility, multi-window, private-window, and recovery matrix remains
+`not run`.
+
+Use the owner's current valid version-2 tree as the deterministic fresh,
+malformed-fallback, and Reset layout composition, without copying profile- or
+extension-specific Firefox widgets. Top keeps Back, Forward, Reload/Stop, Home,
+Trust, an empty Expanded wrapper, the project handoffs, Customize, private
+indicator, and window controls. The configured tabs side keeps a
+`standard`-padded Row containing `Expanded(Address launcher)` in
+`with-site-status` style, then `Expanded(Tabs)` in `with-new-tab` style, then a
+Separator. The opposite side keeps `Expanded(Bookmarks)`, and Bottom keeps
+`Expanded(Center(Downloads status))`. The existing tabs-side swap remains
+authoritative. Valid persisted version-2 layouts remain user-owned and are not
+rewritten when this default changes.
+
+While the Fennevia customize session is open, the Top root also renders one
+project-owned full-frame backdrop at stacking level 1. It uses a 48% black mix,
+accepts pointer hit testing, and is explicitly outside the native window-drag
+region. Existing edge panels remain above it at level 2, the central customize
+drawer remains above it at level 3, and the floating inspector retains its
+higher shared-frame level. The backdrop is non-focusable and decorative to
+assistive technology: it blocks pointer and wheel targeting of web content but
+does not claim modal semantics, close the editor, inspect content, set `inert`
+on Firefox DOM, move a native node, or create another host/controller. Svelte
+mount ownership removes it on every customize close and frontend disposal;
+fail-open teardown also removes the session attribute and project frame.
+
+**Reasoning:** The owner's saved layout and screenshot provide more exact
+evidence than reconstructing a new default from visual coordinates. Its padded
+address Row already supplies the horizontal breathing room requested earlier,
+so removing the launcher's duplicate inline margin aligns it with the Tabs
+interior while preserving vertical comfort. During customization, visible page
+content competes with the translucent editor and remains an accidental click
+target. A passive project-owned backdrop creates clear visual hierarchy and a
+safe pointer boundary with no privileged content mutation or parallel input
+owner. Implementation and evidence are in
+`plans/017-owner-default-layout-and-customize-backdrop.md`,
+`src/firefox/customize-layout/migration.ts`, `src/shell/App.svelte`, and the
+focused layout/frontend tests.

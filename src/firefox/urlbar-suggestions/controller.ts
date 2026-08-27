@@ -510,11 +510,15 @@ export function createFirefoxUrlbarSuggestionsBridge({
     const expectedRevision = queryRevision;
     publish("querying");
     owners.input.value = value;
+    const nativeQueryValue = owners.input.value.slice(
+      0,
+      maximumNavigationAddressLength,
+    );
     if (typeof owners.input.selectionStart === "number") {
-      owners.input.selectionStart = value.length;
+      owners.input.selectionStart = nativeQueryValue.length;
     }
     if (typeof owners.input.selectionEnd === "number") {
-      owners.input.selectionEnd = value.length;
+      owners.input.selectionEnd = nativeQueryValue.length;
     }
     let contextStarted = false;
     try {
@@ -534,8 +538,8 @@ export function createFirefoxUrlbarSuggestionsBridge({
         () =>
           Reflect.apply(owners.input.startQuery, owners.input, [
             Object.freeze({
-              allowAutofill: value.length > 0,
-              searchString: value,
+              allowAutofill: nativeQueryValue.length > 0,
+              searchString: nativeQueryValue,
             }),
           ]),
       );

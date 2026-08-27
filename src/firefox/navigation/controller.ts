@@ -108,6 +108,7 @@ export function createFirefoxNavigationBridge({
     canGoForward: false,
     connectionSecurity: "unavailable",
     displayUri: "",
+    editableAddressValue: "",
     loading: false,
     title: "",
     trackingProtection: "unavailable",
@@ -278,16 +279,29 @@ export function createFirefoxNavigationBridge({
     return String(candidate ?? "").slice(0, maximumNavigationDisplayUriLength);
   };
 
-  const readAddressValue = (displayUri: string): string => {
+  const readAddressValues = (
+    displayUri: string,
+  ): Readonly<{
+    addressValue: string;
+    editableAddressValue: string;
+  }> => {
     if (HIDDEN_COMMITTED_LOCATIONS.has(displayUri)) {
-      return "";
+      return Object.freeze({ addressValue: "", editableAddressValue: "" });
     }
     const urlbar = requireUrlbar();
     const proxyState = Reflect.apply(urlbar.getAttribute, urlbar, [
       "pageproxystate",
     ]);
-    const candidate = proxyState === "valid" ? urlbar.value : displayUri;
-    return candidate.slice(0, maximumNavigationAddressLength);
+    const addressValue = proxyState === "valid" ? urlbar.value : displayUri;
+    const editableAddressValue =
+      proxyState === "valid" ? urlbar.untrimmedValue : displayUri;
+    return Object.freeze({
+      addressValue: addressValue.slice(0, maximumNavigationAddressLength),
+      editableAddressValue: editableAddressValue.slice(
+        0,
+        maximumNavigationAddressLength,
+      ),
+    });
   };
 
   const readConnectionSecurity = (): ConnectionSecurityState => {
@@ -332,12 +346,14 @@ export function createFirefoxNavigationBridge({
     const selectedBrowser = requireSelectedBrowser();
     const selectedTab = requireSelectedTab();
     const displayUri = readCurrentUri(selectedBrowser);
+    const addressValues = readAddressValues(displayUri);
     return Object.freeze({
-      addressValue: readAddressValue(displayUri),
+      addressValue: addressValues.addressValue,
       canGoBack: readCommandEnabled(COMMANDS.back.id),
       canGoForward: readCommandEnabled(COMMANDS.forward.id),
       connectionSecurity: readConnectionSecurity(),
       displayUri,
+      editableAddressValue: addressValues.editableAddressValue,
       loading: readCommandEnabled(COMMANDS.stop.id),
       title: String(
         Reflect.apply(selectedTab.getAttribute, selectedTab, ["label"]) ?? "",

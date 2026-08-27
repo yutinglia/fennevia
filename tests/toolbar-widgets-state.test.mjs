@@ -547,6 +547,60 @@ test("copyToolbarWidgetsSnapshot validates the container shape", () => {
   );
   assert.equal(wrapped.layout.top[0].kind, "expanded");
 
+  const paddedContainer = copyToolbarWidgetsSnapshot(
+    makeSnapshot([], {
+      layout: Object.freeze({
+        ...createEmptyToolbarLayoutZones(),
+        top: Object.freeze([
+          Object.freeze({
+            children: Object.freeze([]),
+            direction: "row",
+            instanceId: "layout-1",
+            padding: "standard",
+            type: "container",
+          }),
+        ]),
+      }),
+    }),
+  );
+  assert.equal(paddedContainer.layout.top[0].padding, "standard");
+  const defaultContainer = copyToolbarWidgetsSnapshot(
+    makeSnapshot([], {
+      layout: {
+        ...createEmptyToolbarLayoutZones(),
+        top: [
+          {
+            children: [],
+            direction: "column",
+            instanceId: "layout-1",
+            type: "container",
+          },
+        ],
+      },
+    }),
+  );
+  assert.equal(defaultContainer.layout.top[0].padding, "none");
+  assert.throws(
+    () =>
+      copyToolbarWidgetsSnapshot(
+        makeSnapshot([], {
+          layout: {
+            ...createEmptyToolbarLayoutZones(),
+            top: [
+              {
+                children: [],
+                direction: "row",
+                instanceId: "layout-1",
+                padding: "wide",
+                type: "container",
+              },
+            ],
+          },
+        }),
+      ),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_LAYOUT_INVALID/u,
+  );
+
   const projectWidget = Object.freeze({
     ...fenneviaWidget,
     fenneviaAction: "",
@@ -911,6 +965,20 @@ test("edit operations validate their shape before crossing the bridge", () => {
     revision: 1,
     type: "set-container-direction",
   });
+  assert.deepEqual(
+    copyToolbarWidgetsEditOperation({
+      location: { path: [0], zone: "left" },
+      padding: "standard",
+      revision: 1,
+      type: "set-container-padding",
+    }),
+    {
+      location: { path: [0], zone: "left" },
+      padding: "standard",
+      revision: 1,
+      type: "set-container-padding",
+    },
+  );
   copyToolbarWidgetsEditOperation({
     style: { theme: "dark" },
     type: "set-style",
@@ -937,6 +1005,16 @@ test("edit operations validate their shape before crossing the bridge", () => {
         revision: 1,
         style: "arbitrary-css",
         type: "set-node-style",
+      }),
+    /FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID/u,
+  );
+  assert.throws(
+    () =>
+      copyToolbarWidgetsEditOperation({
+        location: { path: [0], zone: "top" },
+        padding: "custom",
+        revision: 1,
+        type: "set-container-padding",
       }),
     /FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID/u,
   );

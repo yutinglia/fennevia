@@ -42,7 +42,7 @@ of inventing a new architecture.
   behavior.
 - Initial support targets the latest Firefox stable available during
   implementation and a Windows-first development environment.
-- Current validated evidence is public prerelease package `0.17.0-beta.1` on
+- Current validated evidence is public prerelease package `0.18.0-beta.1` on
   Firefox 153.0.4 BuildID `20260810162159`, Firefox 154.0 BuildID
   `20260812182057`, and Firefox 154.0.1 BuildID `20260824154132` for Windows x64. The installer
   accepts Firefox 153 and newer after an explicit warning that only majors 153

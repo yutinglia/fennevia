@@ -127,6 +127,10 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
     layoutCss,
     /\.fennevia-layout-wrapper--padding \{\s*padding: var\(--fennevia-space-2\);/u,
   );
+  assert.match(
+    layoutCss,
+    /\.fennevia-layout-container--padded \{\s*padding: var\(--fennevia-space-2\);/u,
+  );
   assert.doesNotMatch(layoutCss, /flex: 1 1 (?:180px|260px|280px);/u);
   assert.match(
     layoutCss,
@@ -151,7 +155,11 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
   );
   assert.match(
     layoutCss,
-    /\.fennevia-layout-address \{[\s\S]*?inline-size: min\(320px, 100%\);/u,
+    /\.fennevia-layout-address \{[\s\S]*?inline-size: min\(320px, 100%\);[\s\S]*?max-inline-size: 100%;[\s\S]*?margin-block: var\(--fennevia-space-1\);[\s\S]*?margin-inline: 0;/u,
+  );
+  assert.match(
+    layoutCss,
+    /data-fennevia-edge="top"\][\s\S]*?\.fennevia-layout-address \{\s*margin-block: 0;/u,
   );
   assert.match(
     layoutCss,
@@ -186,6 +194,21 @@ test("composable widget chrome stays centered, compact, and axis-aware", async (
     responsiveCss,
     /\.fennevia-layout-address\s*> \.fennevia-layout-address-launcher \{\s*color: FieldText;\s*background: Field;\s*border-color: FieldText;/u,
   );
+});
+
+test("application menu renderers expose native popup semantics", async () => {
+  const [browserToolWidget, topSurface] = await Promise.all([
+    readProjectFile(
+      "src/shell/features/composable-layout/BrowserToolWidget.svelte",
+    ),
+    readProjectFile("src/shell/surfaces/TopSurface.svelte"),
+  ]);
+
+  assert.match(
+    browserToolWidget,
+    /aria-haspopup=\{props\.id === "application-menu" \? "menu" : undefined\}/u,
+  );
+  assert.match(topSurface, /aria-haspopup="menu"/u);
 });
 
 test("narrow windows reflow all four panels before and below Firefox's normal floor", async () => {
@@ -229,6 +252,10 @@ test("narrow windows reflow all four panels before and below Firefox's normal fl
   );
   assert.match(css, /scroll-snap-type: inline proximity;/u);
   assert.match(css, /scroll-margin-inline: var\(--fennevia-space-2\);/u);
+  assert.match(
+    narrowRules,
+    /data-fennevia-edge="top"\][\s\S]*?\.fennevia-edge-panel::after \{[\s\S]*?inset-block-end: 0;[\s\S]*?block-size: var\(--fennevia-space-3\);[\s\S]*?pointer-events: none;[\s\S]*?-moz-window-dragging: no-drag;[\s\S]*?content: "";/u,
+  );
   assert.match(
     css,
     /\.fennevia-tab-strip--horizontal[\s\S]*?> \.fennevia-tabs-summary[\s\S]*?> span \{\s*display: none;/u,
@@ -313,6 +340,8 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
   assert.doesNotMatch(composableLayout, /type: "set-node-style"/u);
   assert.match(widgetInspector, /data-fennevia-widget-inspector=/u);
   assert.match(widgetInspector, /data-fennevia-widget-config-style=/u);
+  assert.match(widgetInspector, /data-fennevia-widget-config-padding=/u);
+  assert.match(widgetInspector, /type: "set-container-padding"/u);
   assert.match(widgetInspector, /type: "set-node-style"/u);
   assert.match(widgetInspector, /customizePanelElement/u);
   assert.match(widgetInspector, /const focusTargetForNode/u);
@@ -332,6 +361,14 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
   assert.match(
     app,
     /<CustomizePanel[\s\S]*?<WidgetInspector[\s\S]*?anchorRoot=\{props\.frame\}/u,
+  );
+  assert.match(
+    app,
+    /aria-hidden="true"[\s\S]*?class="fennevia-customize-backdrop"[\s\S]*?data-fennevia-customize-backdrop=/u,
+  );
+  assert.match(
+    app,
+    /props\.edge === "top" && customizeOpen[\s\S]*?class="fennevia-customize-backdrop"[\s\S]*?<CustomizePanel/u,
   );
   assert.match(app, /props\.edge === "top"[\s\S]*?<WidgetInspector/u);
   assert.equal(app.match(/<WidgetInspector/gu)?.length, 1);
@@ -386,6 +423,10 @@ test("customize mode previews exact drops and exposes bounded widget styles", as
     /customize__widget-intro[\s\S]*?customize__panel-field--destination[\s\S]*?grid-template-columns: max-content minmax\(180px, 1fr\)/u,
   );
   assert.match(customizeCss, /\.fennevia-customize__guide-pairs/u);
+  assert.match(
+    customizeCss,
+    /\.fennevia-customize-backdrop \{[\s\S]*?position: absolute;[\s\S]*?z-index: 1;[\s\S]*?inset: 0;[\s\S]*?48%[\s\S]*?pointer-events: auto;[\s\S]*?-moz-window-dragging: no-drag;/u,
+  );
   assert.match(responsiveCss, /grid-template-columns: repeat\(3,/u);
   assert.doesNotMatch(layoutCss, /\.fennevia-layout-node__style-editor/u);
   assert.doesNotMatch(layoutCss, /\.fennevia-layout-node__controls/u);
@@ -551,6 +592,10 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.match(composableLayout, /toolbarWidgetDragMimeType/u);
   assert.match(composableLayout, /data-fennevia-layout-container/u);
+  assert.match(
+    composableLayout,
+    /class:fennevia-layout-container--padded=\{node\.padding === "standard"\}/u,
+  );
   assert.match(composableLayout, /data-fennevia-layout-wrapper/u);
   assert.match(composableLayout, /baseContainerInstanceId/u);
   assert.match(composableLayout, /data-fennevia-layout-base/u);
@@ -580,7 +625,14 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.doesNotMatch(composableLayout, /fennevia-layout-node__controls/u);
   assert.doesNotMatch(composableLayout, /fennevia-layout-node__style-editor/u);
   assert.match(widgetInspector, /resolveWidgetInspectorPosition/u);
+  assert.match(widgetInspector, /customize\.containerPadding/u);
   assert.match(widgetInspector, /customizePanelElement/u);
+  assert.match(widgetInspector, /subscribeToolbarWidgetDrag/u);
+  assert.match(
+    widgetInspector,
+    /subscribeToolbarWidgetDrag\(\(source\) => \{\s*dragActive = source !== null;/u,
+  );
+  assert.match(widgetInspector, /data-fennevia-widget-inspector-dodging/u);
   assert.match(widgetInspector, /new view\.ResizeObserver\(reposition\)/u);
   assert.match(widgetInspector, /observer\.disconnect\(\)/u);
   assert.match(composableLayout, /subscribeToolbarWidgetDrag/u);
@@ -599,6 +651,10 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(
     css,
     /data-fennevia-widget-inspector-positioned="true"[\s\S]*?pointer-events: auto;/u,
+  );
+  assert.match(
+    css,
+    /data-fennevia-widget-inspector-positioned="true"\]\[data-fennevia-widget-inspector-dodging="true"\] \{[\s\S]*?opacity: 0;[\s\S]*?pointer-events: none;[\s\S]*?transform: translateY\(-2px\) scale\(0\.96\);/u,
   );
   const editingRule = css.match(
     /\.fennevia-layout-node--editing \{(?<body>[\s\S]*?)\n\}/u,

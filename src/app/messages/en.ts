@@ -117,6 +117,12 @@ export const en = {
   "customize.bottomProgressLight": "Bottom light",
   "customize.changeToColumn": "Change Row to Column",
   "customize.changeToRow": "Change Column to Row",
+  "customize.containerPadding": "Content padding",
+  "customize.containerPaddingChanged":
+    "Changed {label} content padding to {padding}.",
+  "customize.containerPaddingFor": "Content padding for {label}",
+  "customize.containerPaddingNone": "None",
+  "customize.containerPaddingStandard": "Standard",
   "customize.closeAria": "Close customize panel",
   "customize.closeWidgetInspector": "Close widget settings",
   "customize.colorAccent": "Accent color",

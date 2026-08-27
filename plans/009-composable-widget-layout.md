@@ -306,6 +306,14 @@ the fixed edge base flows:
 - **Bookmarks-side Column:** `Expanded(Bookmarks)`;
 - **Bottom Row:** `Expanded(Center(Downloads status))`.
 
+Historical note: ADR-084 later supersedes this initial explicit default from
+direct project-owner layout evidence. The current fresh/reset/fallback tree
+moves Address into a standard-padded Row on the configured tabs side, uses the
+integrated-New-Tab Tabs style followed by a Separator, and leaves an empty
+Expanded region in Top. The version-2 schema and saved-layout preservation
+rules in this plan are unchanged; see
+`plans/017-owner-default-layout-and-customize-backdrop.md`.
+
 Tabs remain Left and Bookmarks Right by default, while a retained version-1
 `sidePanelLayout` migration hint may swap those two complete side trees. A
 fresh profile, malformed-layout fallback, and Reset layout use this explicit

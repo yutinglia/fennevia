@@ -21,6 +21,7 @@ const initialSnapshot = Object.freeze({
   canGoForward: true,
   connectionSecurity: "secure",
   displayUri: "https://example.invalid/start",
+  editableAddressValue: "https://example.invalid/start",
   loading: false,
   title: "Start",
   trackingProtection: "blocking",
@@ -187,6 +188,7 @@ test("navigation state copies bounded ordinary Firefox-backed data", () => {
       ...initialSnapshot,
       addressValue: "a".repeat(maximumNavigationAddressLength + 20),
       displayUri: "u".repeat(maximumNavigationDisplayUriLength + 20),
+      editableAddressValue: "e".repeat(maximumNavigationAddressLength + 20),
       title: "t".repeat(maximumNavigationTitleLength + 20),
     },
     3,
@@ -201,6 +203,10 @@ test("navigation state copies bounded ordinary Firefox-backed data", () => {
     state.snapshot.displayUri.length,
     maximumNavigationDisplayUriLength,
   );
+  assert.equal(
+    state.snapshot.editableAddressValue.length,
+    maximumNavigationAddressLength,
+  );
   assert.equal(state.snapshot.title.length, maximumNavigationTitleLength);
   assert.ok(Object.isFrozen(state));
   assert.ok(Object.isFrozen(state.snapshot));
@@ -210,6 +216,7 @@ test("navigation state copies bounded ordinary Firefox-backed data", () => {
     "canGoForward",
     "connectionSecurity",
     "displayUri",
+    "editableAddressValue",
     "loading",
     "title",
     "trackingProtection",
@@ -442,9 +449,14 @@ test("address popup owns one draft, preserves it through updates, and discards i
   });
 
   assert.equal(popup.requestOpen("tabs-launcher"), "opened");
-  assert.equal(popup.snapshot().draftValue, initialSnapshot.addressValue);
+  assert.equal(
+    popup.snapshot().draftValue,
+    initialSnapshot.editableAddressValue,
+  );
   assert.equal(popup.confirmOpen(), true);
   popup.updateDraft("draft search terms");
+  assert.equal(popup.requestOpen("ctrl-l"), "refocus");
+  assert.equal(popup.snapshot().draftValue, "draft search terms");
   fixture.emit({ ...initialSnapshot, title: "Background update" }, 1);
   assert.equal(popup.snapshot().draftValue, "draft search terms");
 

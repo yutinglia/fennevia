@@ -2,6 +2,7 @@
 
 import type {
   ProjectWidgetId,
+  ProjectWidgetStyleId,
   SidePanelLayout,
   ToolbarZoneName,
 } from "../../app/toolbar-widgets-state.ts";
@@ -11,26 +12,51 @@ import type {
 } from "../customize-model.ts";
 import type {
   ComposableCustomizeLayout,
+  ComposableLayoutContainerPadding,
+  ComposableLayoutDirection,
   ComposableLayoutSeed,
+  ComposableSpecialKind,
   ComposableLayoutTarget,
   ComposableLayoutWrapperKind,
 } from "./contracts.ts";
 import { createComposableCustomizeLayout } from "./model.ts";
 
-const project = (id: ProjectWidgetId): ComposableLayoutSeed =>
+const project = (
+  id: ProjectWidgetId,
+  style?: ProjectWidgetStyleId,
+): ComposableLayoutSeed =>
   Object.freeze({
+    ...(style ? { style } : {}),
     target: Object.freeze({ id, source: "project" as const }),
     type: "item" as const,
   });
 
 const wrapper = (
   kind: ComposableLayoutWrapperKind,
-  child: ComposableLayoutSeed,
+  child?: ComposableLayoutSeed,
 ): ComposableLayoutSeed =>
   Object.freeze({
-    children: Object.freeze([child]),
+    children: Object.freeze(child ? [child] : []),
     kind,
     type: "wrapper",
+  });
+
+const container = (
+  direction: ComposableLayoutDirection,
+  padding: ComposableLayoutContainerPadding,
+  ...children: readonly ComposableLayoutSeed[]
+): ComposableLayoutSeed =>
+  Object.freeze({
+    children: Object.freeze(children),
+    direction,
+    padding,
+    type: "container",
+  });
+
+const special = (kind: ComposableSpecialKind): ComposableLayoutSeed =>
+  Object.freeze({
+    target: Object.freeze({ kind, source: "special" as const }),
+    type: "item" as const,
   });
 
 const legacyTarget = (entry: CustomizeLayoutEntry): ComposableLayoutTarget => {
@@ -63,8 +89,13 @@ export function createDefaultComposableCustomizeLayout(
     right: Object.freeze([]),
   };
   sideSeeds[tabsEdge] = Object.freeze([
-    project("new-tab"),
-    wrapper("expanded", project("tabs")),
+    container(
+      "row",
+      "standard",
+      wrapper("expanded", project("address-launcher", "with-site-status")),
+    ),
+    wrapper("expanded", project("tabs", "with-new-tab")),
+    special("separator"),
   ]);
   sideSeeds[bookmarksEdge] = Object.freeze([
     wrapper("expanded", project("bookmarks")),
@@ -82,7 +113,7 @@ export function createDefaultComposableCustomizeLayout(
       project("reload-stop"),
       project("home"),
       project("trust"),
-      wrapper("expanded", project("address-launcher")),
+      wrapper("expanded"),
       project("show-downloads"),
       project("extensions"),
       project("settings"),

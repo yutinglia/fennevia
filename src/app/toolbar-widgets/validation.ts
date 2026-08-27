@@ -3,6 +3,7 @@
 import { edgeInteractionDefaults } from "../edge-surfaces/contracts.ts";
 import {
   toolbarZoneNames,
+  toolbarLayoutContainerPaddings,
   toolbarLayoutDirections,
   toolbarLayoutWrapperKinds,
   toolbarStyleBounds,
@@ -56,6 +57,7 @@ import type {
   ToolbarStyleSnapshot,
   ToolbarWidgetZones,
   ToolbarLayoutDirection,
+  ToolbarLayoutContainerPadding,
   ToolbarLayoutWrapperKind,
   ToolbarLayoutNodeSnapshot,
   ToolbarLayoutZonesSnapshot,
@@ -91,6 +93,10 @@ const toolbarLayoutDirectionSet = new Set<ToolbarLayoutDirection>(
   toolbarLayoutDirections,
 );
 
+const toolbarLayoutContainerPaddingSet = new Set<ToolbarLayoutContainerPadding>(
+  toolbarLayoutContainerPaddings,
+);
+
 const toolbarLayoutWrapperKindSet = new Set<ToolbarLayoutWrapperKind>(
   toolbarLayoutWrapperKinds,
 );
@@ -114,6 +120,17 @@ export function isToolbarLayoutDirection(
   return (
     typeof candidate === "string" &&
     toolbarLayoutDirectionSet.has(candidate as ToolbarLayoutDirection)
+  );
+}
+
+export function isToolbarLayoutContainerPadding(
+  candidate: unknown,
+): candidate is ToolbarLayoutContainerPadding {
+  return (
+    typeof candidate === "string" &&
+    toolbarLayoutContainerPaddingSet.has(
+      candidate as ToolbarLayoutContainerPadding,
+    )
   );
 }
 
@@ -848,9 +865,14 @@ function copyToolbarLayoutNodes(
     if (
       node.type !== "container" ||
       !isToolbarLayoutDirection(node.direction) ||
+      (node.padding !== undefined &&
+        !isToolbarLayoutContainerPadding(node.padding)) ||
       depth >= TOOLBAR_LAYOUT_MAX_DEPTH ||
       Object.keys(node).some(
-        (key) => !["children", "direction", "instanceId", "type"].includes(key),
+        (key) =>
+          !["children", "direction", "instanceId", "padding", "type"].includes(
+            key,
+          ),
       )
     ) {
       throw createToolbarWidgetsStateError(
@@ -862,6 +884,7 @@ function copyToolbarLayoutNodes(
         children: copyToolbarLayoutNodes(node.children, depth + 1, state),
         direction: node.direction,
         instanceId: node.instanceId,
+        padding: (node.padding ?? "none") as ToolbarLayoutContainerPadding,
         type: "container" as const,
       }),
     );
@@ -1154,6 +1177,24 @@ export function copyToolbarWidgetsEditOperation(
         location,
         revision: candidate.revision,
         type: "set-container-direction" as const,
+      });
+    }
+    case "set-container-padding": {
+      const location = copyToolbarLayoutLocation(candidate.location);
+      if (
+        location.path.length === 0 ||
+        !isToolbarLayoutContainerPadding(candidate.padding) ||
+        !isEditRevision(candidate.revision)
+      ) {
+        throw createToolbarWidgetsStateError(
+          "FENNEVIA_TOOLBAR_WIDGETS_STATE_EDIT_INVALID",
+        );
+      }
+      return Object.freeze({
+        location,
+        padding: candidate.padding,
+        revision: candidate.revision,
+        type: "set-container-padding" as const,
       });
     }
     case "set-node-style": {

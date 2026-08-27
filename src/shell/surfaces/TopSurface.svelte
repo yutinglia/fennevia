@@ -60,6 +60,7 @@
       canGoForward: false,
       connectionSecurity: "unavailable",
       displayUri: "",
+      editableAddressValue: "",
       loading: false,
       title: "",
       trackingProtection: "unavailable",
@@ -351,6 +352,7 @@
         </button>
       {/if}
       <button
+        aria-haspopup="menu"
         aria-label={t("nav.firefoxMenuAria")}
         class="fennevia-control fennevia-browser-tools__button"
         data-fennevia-browser-tool="application-menu"

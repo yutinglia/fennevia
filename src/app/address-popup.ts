@@ -332,12 +332,12 @@ export function createAddressPopupController({
           "FENNEVIA_ADDRESS_POPUP_SELECTED_TAB_MISSING",
         );
       }
-      const committedValue = navigation.snapshot().snapshot.addressValue;
+      const editableValue = navigation.snapshot().snapshot.editableAddressValue;
       activeTabId = tabId;
       submissionBaseline = null;
       publish({
         closeReason: null,
-        draftValue: committedValue.slice(0, maximumNavigationAddressLength),
+        draftValue: editableValue.slice(0, maximumNavigationAddressLength),
         error: null,
         invocationSource: source,
         phase: "opening",

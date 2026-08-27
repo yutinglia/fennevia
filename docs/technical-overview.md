@@ -7,8 +7,8 @@ short reviewed progress snapshot, see [Current project status](current-status.md
 
 ## Current engineering status
 
-As of 2026-08-26, Fennevia has a published Windows x64 prerelease,
-`v0.17.0-beta.1`, tested on stock Firefox 153.0.4 release, Build ID
+As of 2026-08-28, Fennevia has a published Windows x64 prerelease,
+`v0.18.0-beta.1`, tested on stock Firefox 153.0.4 release, Build ID
 `20260810162159`, Firefox 154.0 Build ID `20260812182057`, and Firefox 154.0.1
 Build ID `20260824154132`. The installer accepts Firefox 153 and newer after
 an explicit warning that later versions may break with no working promise;
@@ -24,7 +24,7 @@ The tested MVP and current post-MVP implementation include:
 | Four-edge frame                                                               | Complete; ADR-080 real-Firefox narrow-window matrix pending                                                                    | Independent top, left, right, and bottom XHTML surfaces, shared reveal/collision/focus policy, accessibility fallbacks, and a viewport-driven retained-floor/ultra-compact panel mosaic                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Tabs and address launcher                                                     | Complete; ADR-059/ADR-060/ADR-062/ADR-063/ADR-071/ADR-072/ADR-073/ADR-081 real-Firefox follow-up pending                       | Event-driven vertical tabs with a fixed, height-capped pinned partition above independently scrolling regular tabs, Firefox's packaged loading/status/action icon family, audio/container/attention/PiP, closed camera/microphone/screen-sharing and crash indicators, Firefox-owned multi-select, fixed trailing actions, verified live source-row drag/keyboard reorder with spatial and accessible move feedback plus enlarged owned edge targets, composable-layout isolation that preserves child tab drag ownership, target-window tab-surface reveal and visible landing row, same-kind cross-window adoption/content append, no-drop target-exit cleanup, same-context stale-drag recovery and terminal-displacement intent before Firefox-owned external detach through a marker-only transfer, native tab context-menu handoff, compact committed address launcher with a leading Firefox Trust shield, and centred address/search popup |
 | Top controls                                                                  | Complete; ADR-060 real-Firefox follow-up pending                                                                               | Native-synchronised Back, Forward, Reload/Stop, Home, New Tab, bounded page status, Firefox tool handoffs, packaged Firefox control icons including the Settings gear, and compact project-owned window-command controls                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| Default toolbar and native handoffs                                           | Focused implementation; ADR-074 real-Firefox matrix pending                                                                    | Deterministic native-v2 Top Row with navigation, Trust, expanded address launcher, Firefox handoffs, Customize, and window commands backed by retained Firefox/OS owners; shared empty-space drag regions and nested Row/Column layout may change presentation without changing ownership                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Default toolbar and native handoffs                                           | Focused implementation; ADR-074/ADR-084 real-Firefox matrix pending                                                            | Deterministic native-v2 four-edge layout: Top navigation and handoffs around an empty Expanded region; a standard-padded Address Row plus expanded Tabs and Separator on the configured tabs side; expanded Bookmarks opposite; centered Downloads status at Bottom; retained Firefox/OS owners back native handoffs and window commands                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Nav-bar widget mirror (ADR-044)                                               | Focused implementation; superseded as a default/sole model by ADR-074; real-Firefox matrix pending                             | `CustomizableUI` built-ins, extension actions with current icon/badge, and structural spaces remain palette/placeable items and valid v1 migration inputs, with popups anchored on the project button; profile-specific nav-bar placement is no longer copied into the native-v2 default                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Fennevia customize mode (ADR-045, ADR-046, ADR-047, ADR-054, ADR-074–ADR-080) | Focused implementation; real-Firefox matrix pending                                                                            | Strict recursive four-edge widget trees, feature-first paired and searchable/filterable CustomizableUI/project palette, optional layout Guide, exact projected drops, bounded autoscroll, one session-wide obstacle-aware floating inspector, viewport-clamped narrow sheet, nested Row/Column orientation, compatible duplicates, independent optional panels, confirmed Clean all, closed per-instance Address/Tabs variants, bounded appearance/interaction prefs, and owner-approved adopt/restore writes; native customize mode remains available                                                                                                                                                                                                                                   |
 | Appearance, interaction, and localization                                     | Focused implementation; real-Firefox matrix pending                                                                            | Firefox chrome design tokens provide the default theme; bounded panel/window appearance, motion, separate in-window/window-leave hide timing, temporary reveal timing, shortcut-tip timing, and edge trigger thickness are profile-local; shell strings follow Firefox UI locale with English and Traditional Chinese catalogs                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -47,9 +47,11 @@ tab selection/drop behavior, ADR-073's pinned-tab partition, ADR-074's
 recursive everything-is-a-widget layout, ADR-075's projected editor and
 per-instance styles, ADR-076's session-wide floating inspector, ADR-077's
 panel policy, ADR-078's feature-first paired palette and Guide, and ADR-080's
-narrow-window four-panel mosaic have focused automated coverage. Their changed
+narrow-window four-panel mosaic, ADR-082/ADR-083's URL/container and narrow-Top
+interaction refinements, and ADR-084's owner default and customize backdrop
+have focused automated coverage. Their changed
 real-Firefox visual and interaction matrices remain pending and are not part of
-a completed real-Firefox validation claim for `v0.17.0-beta.1`.
+a completed real-Firefox validation claim for `v0.18.0-beta.1`.
 
 [Issue #1](https://github.com/yutinglia/fennevia/issues/1) recorded the first
 real stock-stable transition to Firefox 154.0 Build ID `20260812182057` on
@@ -69,11 +71,12 @@ recommended priorities are maintained in [Current project status](current-status
 Fennevia uses four independently owned floating surfaces:
 
 - **Top:** always enabled; defaults to a Row of primary browser controls,
-  Trust, an expanded address launcher, Firefox-native handoffs, Customize, and
+  Trust, an empty Expanded region, Firefox-native handoffs, Customize, and
   compact window commands.
-- **Left:** independently enabled; defaults to a Column containing New Tab and
-  expanded Tabs.
-- **Right:** independently enabled; defaults to a Column containing Bookmarks.
+- **Configured tabs side:** independently enabled; defaults to a Column with a
+  standard-padded site-status Address Row, expanded integrated-New-Tab Tabs,
+  and a Separator.
+- **Opposite side:** independently enabled; defaults to expanded Bookmarks.
 - **Bottom:** independently enabled; defaults to a Row with centered anonymous
   Downloads status.
 
@@ -109,6 +112,11 @@ tree. Firefox nav-bar built-ins, extension actions, spacers, and springs remain
 available in the palette but are not copied into the default. Valid v1 data
 keeps its explicit order during in-memory migration, and valid saved v2 data is
 never replaced just because the documented default changes.
+
+While customization is open, one non-focusable project-owned backdrop darkens
+the page and intercepts page-only pointer and wheel targeting. It stays below
+all four edge panels, the central drawer, and the floating inspector; it does
+not mark Firefox content inert, mutate native DOM, or claim modal semantics.
 
 Fennevia customize mode supports live drag-and-drop and explicit keyboard/
 button path operations. Enabled empty optional panels are hidden in ordinary

@@ -12,10 +12,12 @@ import {
 } from "../../app/toolbar-widgets-state.ts";
 import {
   composableLayoutBounds,
+  composableLayoutContainerPaddings,
   composableLayoutDirections,
   composableLayoutWrapperKinds,
   composableSpecialKinds,
   type ComposableCustomizeLayout,
+  type ComposableLayoutContainerPadding,
   type ComposableLayoutDirection,
   type ComposableLayoutLocation,
   type ComposableLayoutNode,
@@ -32,13 +34,22 @@ const INSTANCE_ID_PATTERN = /^layout-([1-9][0-9]{0,5})$/u;
 const directionSet = new Set<ComposableLayoutDirection>(
   composableLayoutDirections,
 );
+const containerPaddingSet = new Set<ComposableLayoutContainerPadding>(
+  composableLayoutContainerPaddings,
+);
 const wrapperKindSet = new Set<ComposableLayoutWrapperKind>(
   composableLayoutWrapperKinds,
 );
 const specialKindSet = new Set<ComposableSpecialKind>(composableSpecialKinds);
 const targetKeys = new Set(["id", "kind", "source"]);
 const itemKeys = new Set(["instanceId", "style", "target", "type"]);
-const containerKeys = new Set(["children", "direction", "instanceId", "type"]);
+const containerKeys = new Set([
+  "children",
+  "direction",
+  "instanceId",
+  "padding",
+  "type",
+]);
 const wrapperKeys = new Set(["children", "instanceId", "kind", "type"]);
 const layoutKeys = new Set([
   "adopted",
@@ -54,6 +65,7 @@ type MutableNode =
       children: MutableNode[];
       direction: ComposableLayoutDirection;
       instanceId: string;
+      padding?: Exclude<ComposableLayoutContainerPadding, "none">;
       type: "container";
     }
   | {
@@ -104,6 +116,15 @@ export function isComposableLayoutDirection(
   return (
     typeof candidate === "string" &&
     directionSet.has(candidate as ComposableLayoutDirection)
+  );
+}
+
+export function isComposableLayoutContainerPadding(
+  candidate: unknown,
+): candidate is ComposableLayoutContainerPadding {
+  return (
+    typeof candidate === "string" &&
+    containerPaddingSet.has(candidate as ComposableLayoutContainerPadding)
   );
 }
 
@@ -216,6 +237,18 @@ function copyItemStyle(
     : candidate;
 }
 
+function copyContainerPadding(
+  candidate: unknown,
+): Exclude<ComposableLayoutContainerPadding, "none"> | undefined {
+  if (candidate === undefined || candidate === "none") {
+    return undefined;
+  }
+  if (candidate === "standard") {
+    return candidate;
+  }
+  throw createModelError("FENNEVIA_COMPOSABLE_LAYOUT_PADDING_INVALID");
+}
+
 function isMandatoryCustomizeTarget(target: ComposableLayoutTarget): boolean {
   return target.source === "project" && target.id === "customize-shell";
 }
@@ -297,6 +330,7 @@ function copyNodeArray(
       hasOnlyKeys(rawNode, containerKeys) &&
       isComposableLayoutDirection(rawNode.direction)
     ) {
+      const padding = copyContainerPadding(rawNode.padding);
       const nextDepth = structuralDepth + 1;
       if (nextDepth > composableLayoutBounds.containerMaxDepth) {
         throw createModelError("FENNEVIA_COMPOSABLE_LAYOUT_DEPTH_INVALID");
@@ -306,6 +340,7 @@ function copyNodeArray(
           children: copyNodeArray(rawNode.children, nextDepth, state),
           direction: rawNode.direction,
           instanceId: rawNode.instanceId,
+          ...(padding ? { padding } : {}),
           type: "container" as const,
         }),
       );
@@ -431,12 +466,14 @@ function allocateSeedNode(
     isComposableLayoutDirection(seed.direction) &&
     Array.isArray(seed.children)
   ) {
+    const padding = copyContainerPadding(seed.padding);
     return Object.freeze({
       children: Object.freeze(
         seed.children.map((child) => allocateSeedNode(child, sequence)),
       ),
       direction: seed.direction,
       instanceId,
+      ...(padding ? { padding } : {}),
       type: "container" as const,
     });
   }
@@ -525,6 +562,7 @@ function toMutableNode(node: ComposableLayoutNode): MutableNode {
       children: node.children.map(toMutableNode),
       direction: node.direction,
       instanceId: node.instanceId,
+      ...(node.padding ? { padding: node.padding } : {}),
       type: "container",
     };
   }
@@ -899,6 +937,27 @@ export function setComposableLayoutContainerDirection(
     throw createModelError("FENNEVIA_COMPOSABLE_LAYOUT_PARENT_INVALID");
   }
   node.direction = direction;
+  return freezeMutableLayout(mutable);
+}
+
+export function setComposableLayoutContainerPadding(
+  layout: ComposableCustomizeLayout,
+  location: ComposableLayoutLocation,
+  padding: ComposableLayoutContainerPadding,
+): ComposableCustomizeLayout {
+  if (!isComposableLayoutContainerPadding(padding)) {
+    throw createModelError("FENNEVIA_COMPOSABLE_LAYOUT_PADDING_INVALID");
+  }
+  const mutable = toMutableLayout(copyComposableCustomizeLayout(layout));
+  const node = mutableNodeAt(mutable, location);
+  if (node.type !== "container") {
+    throw createModelError("FENNEVIA_COMPOSABLE_LAYOUT_PARENT_INVALID");
+  }
+  if (padding === "none") {
+    delete node.padding;
+  } else {
+    node.padding = padding;
+  }
   return freezeMutableLayout(mutable);
 }
 

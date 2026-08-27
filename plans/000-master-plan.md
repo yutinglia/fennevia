@@ -12,11 +12,12 @@ The target interface has four independent floating edge surfaces whose content
 is composed from bounded widgets, nested Row/Column containers, and one-child
 Center/Expanded/Padding wrappers:
 
-- **Top:** always enabled; defaults to primary browser controls, Trust, an
-  expanded address launcher, Firefox handoffs, Customize, and project-owned
-  window controls.
-- **Left/right:** independently optional; default to New Tab plus expanded
-  vertical Tabs on Left and expanded Bookmarks on Right.
+- **Top:** always enabled; defaults to primary browser controls, Trust, an empty
+  expanded region, Firefox handoffs, Customize, and project-owned window
+  controls.
+- **Left/right:** independently optional; default to a standard-padded
+  site-status Address row, expanded vertical Tabs with integrated New Tab, and
+  a trailing Separator on Left, plus expanded Bookmarks on Right.
 - **Bottom:** independently optional; defaults to centered movable
   Downloads status.
 
@@ -56,7 +57,7 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-26, public prerelease package `0.17.0-beta.1` remains published
+As of 2026-08-28, public prerelease package `0.18.0-beta.1` is published
 for Windows x64. Validated evidence is Firefox 153.0.4 BuildID 20260810162159,
 Firefox 154.0 BuildID 20260812182057, and Firefox 154.0.1 BuildID
 20260824154132.
@@ -117,6 +118,13 @@ Completed:
 - #13: compact default-left address/status launcher, centered address/search popup,
   native Urlbar submission and healthy-only `Ctrl+L`, real Firefox connection
   and tracking-protection state, and a fifth owned overlay root.
+- ADR-082: the compact launcher retains Firefox's trimmed committed value while
+  a fresh focused popup uses its bounded untrimmed editing value; selected
+  Row/Column containers gain one optional tokenized standard content inset,
+  and the composable launcher gets bounded tokenized breathing room;
+- ADR-083: a narrow Top scrollbar uses one pointer-transparent bounded no-drag
+  guard so its thumb remains draggable without removing the remaining titlebar
+  drag surface;
 - #14: bounded/lazy typed Places bridge, event-driven default-right bookmarks,
   opaque opening actions, and keyboard-accessible hierarchy;
 - #32: per-window typed Downloads list views, bounded anonymous state,
@@ -204,8 +212,9 @@ ADR-047, and ADR-054 through ADR-072:
   its controls in exactly one Top-root floating inspector outside Row/Column
   sizing. The inspector is above project panel stacking contexts, clamps to the
   viewport, avoids the central customize workspace when another side fits,
-  closes through a non-selecting outer focus anchor, and keeps every customize
-  node boundary visible without changing real widget measurements.
+  closes through a non-selecting outer focus anchor, yields hit testing and
+  fades while the shared widget-drag lifecycle is active, and keeps every
+  customize node boundary visible without changing real widget measurements.
   Eligible Address and Tabs instances may persist one allowlisted semantic
   style id for integrated Trust or trailing New Tab; arbitrary CSS, geometry,
   labels, native ids, and Firefox nodes remain prohibited.
@@ -297,6 +306,9 @@ claim.
   one obstacle-aware floating inspector, palette search/categories, and closed
   per-instance Address/Tabs variants without making drag mandatory or
   expanding into arbitrary CSS.
+- One customize-session backdrop that darkens and blocks pointer access to web
+  content while keeping every project panel and editor control interactive,
+  without mutating Firefox content DOM.
 - Fixed actions that open Firefox's authoritative native detail panels, menu,
   Settings, customization, Unified Extensions, Downloads, and original toolbar
   without copying their private or dynamic data.
@@ -759,11 +771,15 @@ stale target outlines. Closing the shared customize session restores or blurs
 the active Top-surface focus through the existing dismiss path and never
 re-reveals or refocuses Customize, so auto-hide does not wait for a content
 click. Node boundaries, structure labels, and edit controls appear only on
-deepest hover or direct keyboard focus. The native-v2 default is
-explicit rather than a live nav-bar mirror: Top owns the expanded address
-composition, the configured side roots own expanded Tabs/Bookmarks, and Bottom
-centers Downloads status. Plan and checklist:
-`plans/009-composable-widget-layout.md`.
+deepest hover or direct keyboard focus. The native-v2 default is explicit
+rather than a live nav-bar mirror. ADR-084 updates that deterministic tree from
+direct owner evidence: Top owns navigation, Trust, an empty Expanded region,
+handoffs, Customize, private state, and window controls; the configured tabs
+side owns a standard-padded Address Row, expanded Tabs, and a Separator; the
+opposite side owns expanded Bookmarks; and Bottom centers Downloads status.
+Valid saved version-2 layouts remain user-owned. Plans and checklists:
+`plans/009-composable-widget-layout.md` and
+`plans/017-owner-default-layout-and-customize-backdrop.md`.
 
 ADR-077 extends the bounded Panels/Layout policy with
 `single-dynamic`, `single-reserved`, `multiple-dynamic`, and

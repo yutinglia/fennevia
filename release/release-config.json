@@ -21,7 +21,7 @@
       "channel": "release"
     }
   ],
-  "compatibilityRecord": "docs/research/firefox-154-0.17.0-beta.1-release-validation.md",
+  "compatibilityRecord": "docs/research/firefox-154-0.18.0-beta.1-release-validation.md",
   "knownLimitations": [
     "This prerelease is tested only on Windows with stock Firefox 153.0.4 build 20260810162159, Firefox 154.0 build 20260812182057, and Firefox 154.0.1 build 20260824154132.",
     "Firefox 153 and newer may be installed after an explicit warning acknowledgement. Later versions can break the shell, and confirming install does not promise that everything will work.",

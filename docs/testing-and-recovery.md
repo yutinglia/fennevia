@@ -29,9 +29,9 @@ ADR-039.
 
 ## 1. Current validated baseline
 
-As of 2026-08-25:
+As of 2026-08-28:
 
-- package: public `0.17.0-beta.1` prerelease;
+- package: public `0.18.0-beta.1` prerelease;
 - tested Firefox: 153.0.4 release, Build ID `20260810162159`; 154.0 release,
   Build ID `20260812182057`; and 154.0.1 release, Build ID `20260824154132`;
 - installer gate: Firefox 153+ after an explicit warning that only 153 and 154
@@ -44,7 +44,7 @@ As of 2026-08-25:
   development profile;
 - completed runtime/UI/distribution milestones: #3–#18, #31, #32, #37, #39,
   and #46;
-- `0.17.0-beta.1` release preparation passed `npm run verify` with 429/429 Node
+- `0.18.0-beta.1` release preparation passed `npm run verify` with 433/433 Node
   tests and the complete fixed-list suite in both PowerShell 7 and Windows
   PowerShell 5.1, including deterministic packaging and installer recovery;
   package-specific Firefox 154.0.1 lifecycle, recovery, and extracted-package
@@ -345,8 +345,10 @@ For each edge:
 - forced colors/high contrast;
 - visible focus and meaningful accessible names/roles/states.
 
-The frame may be pointer-active only at the documented edge triggers and visible
-owned surfaces. The center content hit target must remain Firefox-owned.
+The frame may be pointer-active only at the documented edge triggers and
+visible owned surfaces. The center content hit target must remain Firefox-owned
+except while the existing address overlay or ADR-084 customize backdrop is
+visibly open and intentionally owns that bounded full-frame pointer barrier.
 
 ## 6. Feature-specific matrices
 
@@ -668,6 +670,19 @@ addition.
 Validate:
 
 - short non-editable launcher with bounded committed location;
+- scheme-trimmed `gURLBar.value` remains the launcher-at-rest value while a
+  freshly opened, immediately focused popup draft uses bounded
+  `gURLBar.untrimmedValue`, including `https://` when Firefox retained it;
+- suggestion startup writes that full draft through Firefox's native value
+  setter, then uses the normalized value read back from `gURLBar.value` for the
+  explicit `startQuery()` string and native selection bounds;
+- the composable launcher alone has one `--fennevia-space-1` inline margin and
+  a matching two-sided maximum-width subtraction; Left, Right, and Bottom also
+  use that token as block margin, while Top relies on its bounded root block
+  inset and the centered address panel remains unchanged;
+- invalid native proxy state uses the selected URI rather than transient native
+  input, hidden initial/home/new-tab/private locations stay empty, and repeated
+  open/refocus never overwrites an in-progress draft;
 - one compact Firefox Trust shield at the leading edge inside the launcher
   address frame, with fuller combined text in the popup;
 - clicking that shield or the popup Trust/permission rows closes the custom UI
@@ -697,6 +712,8 @@ Validate:
 - no native Urlbar, identity/protections panel, permission, or page-action DOM
   moved or managed;
 - bridge/component/overlay failure, exact cleanup, and native-visible recovery;
+- missing/non-string `gURLBar.untrimmedValue` fails required navigation health
+  before listeners attach with the exact build-scoped symbol;
 - normal, second-normal, private, frontend recovery, and Browser Toolbox runs.
 
 The real harness creates a temporary loopback-only Firefox search engine for
@@ -704,7 +721,15 @@ the ordinary-search case, restores the prior default, and removes the engine in
 `finally`. Its delayed page is also loopback-only. No submitted test query is
 sent to an external service.
 
-Evidence: `docs/research/firefox-153-address-popup.md`.
+Focused state/bridge tests passed 92/92 and cover the trimmed/editable split,
+invalid proxy, hidden location, bounds, refocus preservation, and missing
+capability. The launcher-spacing and narrow Top scrollbar frontend regression
+passed 10/10. The complete ordinary gate is recorded under section 6.9. The
+launcher/popup visual, spacing, selection behavior, and scrollbar pointer
+behavior in real Firefox are **not run**.
+
+Evidence: `docs/research/firefox-153-address-popup.md` and
+`docs/research/firefox-153-154-urlbar-editing-value.md`.
 
 ### 6.4 Urlbar trust, permission, and action coverage — #37 validated; ADR-059 real follow-up pending
 
@@ -1184,8 +1209,13 @@ ADR-045 adds focused unit/static/build coverage for:
   layout-local instance ids, path lookup/insertion/move/removal, same-parent
   boundary correction, cycle rejection, mandatory reachable Customize, and
   zero-or-one-child Center/Expanded/Padding wrapper validation;
-- deterministic native-v2 fresh/reset/fallback composition with direct fixed-
-  base children, tabs-side swap preservation, no implicit live nav-bar mirror,
+- ADR-082 closed Row/Column content padding: missing/`none` default omission,
+  `standard` round-trip, invalid value/target rejection, ordinary effective
+  snapshot, revision-guarded edit, and strict 16 KiB persistence;
+- ADR-084 deterministic native-v2 fresh/reset/fallback composition with the
+  empty Top Expanded region, standard-padded tabs-side Address Row,
+  site-status Address and integrated-New-Tab styles, expanded Tabs, trailing
+  Separator, tabs-side swap preservation, no implicit live nav-bar mirror,
   valid-v1 order/adoption migration, and valid saved-v2 ownership;
 - recursive ordinary projection and rendering for navigation, Trust/address,
   Tabs, Bookmarks, Downloads status, Firefox handoffs, private indicator,
@@ -1194,7 +1224,9 @@ ADR-045 adds focused unit/static/build coverage for:
   and drag payloads;
 - Flutter-style flow CSS: Row/Column owns bounded space, ordinary children keep
   natural main-axis size and start order, cross-axis content is centered, and
-  only Expanded/Flexible space grows into remaining main-axis space;
+  only Expanded/Flexible space grows into remaining main-axis space; optional
+  standard container padding reuses `--fennevia-space-2` without changing that
+  flex contract;
 - fixed Top/Bottom Row and Left/Right Column base-flow rendering, including
   compatibility promotion of a sole same-axis root container, redirected root
   drops, blocked move-out, subdued ordinary outlines, compact empty-root
@@ -1205,6 +1237,10 @@ ADR-045 adds focused unit/static/build coverage for:
   outline;
 - nearest-container orientation for tab ARIA/keyboard/drag/overflow geometry
   and axis-aware Bookmarks, Downloads, address, tools, and window-control CSS;
+- narrow Top overflow keeps a pointer-transparent `--fennevia-space-3`
+  block-end strip out of Firefox's window-drag region while preserving the
+  existing drag declarations on the remaining empty panel and explicit layout
+  spaces;
 - one bounded axis-aware root for Tabs, Bookmarks, and Downloads, with Tabs'
   summary plus strip treated as one child, zero-minimum shrinkable partitions,
   intrinsic horizontal New Tab, full-width vertical New Tab, and bounded
@@ -1238,10 +1274,20 @@ ADR-045 adds focused unit/static/build coverage for:
   absent from recursive sizing;
 - ADR-076 floating inspector: rendered once by the Top root after the central
   drawer, above edge/context-menu stacking levels, with localized
-  move/containment/axis/remove and conditional Style controls;
+  move/containment/axis/remove, conditional Style controls, and ADR-082's
+  labelled Row/Column Content padding selector;
 - finite inspector placement for every edge, viewport clamping, central-drawer
   obstacle avoidance, invalid-geometry rejection, scroll/window/element resize
   updates, and deterministic listener/observer cleanup;
+- inspector drag dodge through the existing opaque lifecycle: every active
+  palette/layout/zone widget drag keeps selection and the inspector mount but
+  applies zero opacity plus `pointer-events: none`, allowing the recursive drop
+  target underneath to receive hit testing; the shared terminal signal restores
+  it without changing the central palette removal target;
+- ADR-084 customize backdrop: one Top-root conditional element below edge
+  panels/drawer/inspector, 48% dark mix, pointer-active and native-window-
+  no-drag, non-focusable/assistive-hidden, absent after close and disposal, and
+  no Firefox content-DOM `inert`, mutation, observer, host, or persisted state;
 - inspector keyboard behavior: direct node selector, Enter transfer, Escape
   and explicit close that remain dismissed while focus returns to the
   non-selecting outer node anchor, selected-node removal fallback, visible
@@ -1332,6 +1378,42 @@ retains the lone-side pointer-exit corridor and that full available lone-side
 width exists only in the 360 CSS px tier. No real-Firefox result is inferred
 from these checks.
 
+The ADR-082 address-editing value, Row/Column padding, and later tokenized
+launcher-spacing source passed the complete `npm run verify` gate on
+2026-08-27 with 433/433 Node tests, 88.66% line coverage, 81.29% branch
+coverage, 95.71% function coverage, every fixed PowerShell 7 suite, dependency
+audit, deterministic frontend/bridge output, and 14/14 accepted production
+artifacts. The launcher-spacing follow-up reran that complete gate with the
+same pass counts, and the complete fixed-list suite also passed again under
+Windows PowerShell 5.1. No real-Firefox result is inferred from these checks.
+
+The later non-Top block-spacing and ADR-083 narrow Top scrollbar-guard follow-up
+passed its focused frontend regression 10/10 and reran the complete gates with
+the same 433/433 Node tests, coverage, deterministic build, 14/14 accepted
+artifacts, and PowerShell 7/Windows PowerShell 5.1 fixed-list results. Real
+Firefox scrollbar and adjacent window-drag behavior remain `not run`.
+
+ADR-084's deterministic owner default, parent-owned URL inline alignment, and
+customize backdrop passed the focused layout/toolbar/frontend run 53/53. The
+complete `npm run verify` gate passed with 433/433 Node tests, 88.71% line
+coverage, 81.37% branch coverage, 95.79% function coverage, every fixed
+PowerShell 7 suite, dependency audit, deterministic frontend/bridge output,
+and 14/14 accepted production artifacts. The complete fixed-list suite also
+passed under Windows PowerShell 5.1 on 2026-08-28. README media checks resolved
+all seven references and matched each PNG's recorded SHA-256 and dimensions.
+These automated/source/media checks do not establish any real-Firefox visual
+or pointer behavior.
+
+The `0.18.0-beta.1` Firefox 154.0.1 release-integration correction added the
+normalized native query-value and Application Menu popup-semantic regressions.
+The complete `npm run verify` gate passed with 435/435 Node tests, 88.71% line,
+81.37% branch, and 95.79% function coverage; all fixed PowerShell 7 and Windows
+PowerShell 5.1 suites; deterministic artifacts; dependency review; and the
+14/14 production scan. Its clean lifecycle, Browser Toolbox ownership,
+provider/suggestion probes, fail-open matrices, and SessionStore rehearsal also
+passed in the marker-owned Firefox 154.0.1 profile. Package, performance, and
+publication evidence is kept in the release validation record.
+
 The following are `not run`, not passed: live Fennevia customize drawer against
 a collapsed navbar; recursive Row/Column creation, nesting, orientation,
 natural-child/start alignment, `Expanded > Center`, Padding, wrapper drop and
@@ -1348,10 +1430,20 @@ autoscroll, selection/Escape priority, palette search/categories, feature/
 companion adjacency, Guide content/reflow, and live screen-reader
 announcements; single-inspector placement on every edge,
 central-drawer non-overlap/fallback stacking, 100%/200% text or UI scaling,
-focus transfer/restoration, reduced motion/transparency, and forced colors;
+focus transfer/restoration, drag-time dodge and restoration after drop/Escape/
+outside-window cancellation, reduced motion/transparency, and forced colors;
+Row/Column Content padding None/Standard alignment against Tabs and other
+large feature widgets; the owner default's Address/Tabs/Separator geometry and
+tabs-side swap; composable launcher parent-owned inline and non-Top block
+breathing room without URL panel spacing changes; customize backdrop darkness,
+website click/right-click/wheel interception, panel/inspector interaction,
+keyboard focus, close/disposal cleanup, and no content hit-test leakage; narrow Top scrollbar thumb/track
+dragging while adjacent empty chrome still moves the window;
 Address `address-only`/`with-site-status` and Tabs
 `tabs-only`/`with-new-tab` switching on horizontal and vertical flows,
 including native Trust popup placement and New Tab insertion; ordinary-mode
+Row/Column standard content padding alignment beside Tabs/Bookmarks/Downloads
+at ordinary, narrow, high-DPI, and 200% text sizes;
 window movement from every empty-space kind;
 adopt/restore of an installed extension; style tokens under forced colors and
 reduced motion; default Firefox Light/Dark design-token colors on owned
@@ -1530,7 +1622,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.17.0-beta.1` performs the sole production activation only after
+Current package `0.18.0-beta.1` performs the sole production activation only after
 the health phase requires:
 
 - exact frame identity and placement;

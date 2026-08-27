@@ -32,6 +32,7 @@
       canGoForward: false,
       connectionSecurity: "unavailable",
       displayUri: "",
+      editableAddressValue: "",
       loading: false,
       title: "",
       trackingProtection: "unavailable",

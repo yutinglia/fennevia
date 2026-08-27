@@ -109,6 +109,12 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.bottomProgressLight": "底部光條",
   "customize.changeToColumn": "將橫列改為直欄",
   "customize.changeToRow": "將直欄改為橫列",
+  "customize.containerPadding": "內容內距",
+  "customize.containerPaddingChanged":
+    "已將{label}的內容內距改為「{padding}」。",
+  "customize.containerPaddingFor": "{label}的內容內距",
+  "customize.containerPaddingNone": "無",
+  "customize.containerPaddingStandard": "標準",
   "customize.closeAria": "關閉自訂面板",
   "customize.closeWidgetInspector": "關閉元件設定",
   "customize.colorAccent": "強調色",
