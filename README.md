@@ -281,17 +281,18 @@ owns engines, provider selection, ranking, search-suggestion/private policy,
 and result execution. Ordinary rows delegate to Firefox's `pickResult`; rich or
 unknown rows open the complete native address bar. This work has focused tests
 and Firefox 154 provider-contract, production-panel, failure-injection, and
-release-candidate probes, while its representative provider matrix remains
+release probes, while its representative provider matrix remains
 pending.
 
-The `0.17.0-beta.1` release reran the complete automated lifecycle,
-recovery, performance-control, deterministic-archive, and extracted-package
-installer matrix on Firefox 154.0.1. The remaining real-Firefox visual,
+The `0.18.0-beta.1` release reran the complete automated lifecycle, recovery,
+performance-control, deterministic-archive, extracted-package installer,
+independently downloaded public-package verification, and public-package
+recovery matrix on Firefox 154.0.1. The remaining real-Firefox visual,
 assistive-technology, account/device, popup-placement, complete customize,
 first-paint, GUI installer, literal fresh-profile first-zero-prefix, and
 representative Urlbar-provider rows are still pending. The main remaining work
-is therefore
-compatibility and release validation rather than a missing core shell feature.
+is therefore compatibility and release validation rather than a missing core
+shell feature.
 See [Current project status](docs/current-status.md) for the reviewed capability
 inventory, evidence boundary, known risks, and recommended priorities.
 
