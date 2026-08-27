@@ -29,9 +29,9 @@ ADR-039.
 
 ## 1. Current validated baseline
 
-As of 2026-08-25:
+As of 2026-08-28:
 
-- package: public `0.17.0-beta.1` prerelease;
+- package: public `0.18.0-beta.1` prerelease;
 - tested Firefox: 153.0.4 release, Build ID `20260810162159`; 154.0 release,
   Build ID `20260812182057`; and 154.0.1 release, Build ID `20260824154132`;
 - installer gate: Firefox 153+ after an explicit warning that only 153 and 154
@@ -44,7 +44,7 @@ As of 2026-08-25:
   development profile;
 - completed runtime/UI/distribution milestones: #3–#18, #31, #32, #37, #39,
   and #46;
-- `0.17.0-beta.1` release preparation passed `npm run verify` with 429/429 Node
+- `0.18.0-beta.1` release preparation passed `npm run verify` with 433/433 Node
   tests and the complete fixed-list suite in both PowerShell 7 and Windows
   PowerShell 5.1, including deterministic packaging and installer recovery;
   package-specific Firefox 154.0.1 lifecycle, recovery, and extracted-package
@@ -1609,7 +1609,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.17.0-beta.1` performs the sole production activation only after
+Current package `0.18.0-beta.1` performs the sole production activation only after
 the health phase requires:
 
 - exact frame identity and placement;

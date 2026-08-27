@@ -93,8 +93,8 @@ panel, and valid saved layouts are never silently replaced.
 
 ## Screenshot showcase
 
-These owner-supplied runtime captures show the current post-`v0.17.0-beta.1`
-source layout and its five-part customization workspace. They demonstrate the
+These owner-supplied runtime captures show the `v0.18.0-beta.1` layout and its
+five-part customization workspace. They demonstrate the
 interface state shown here; they are not a substitute for the pending complete
 real-Firefox validation matrix.
 
@@ -171,9 +171,9 @@ fallback; this is an accepted safety behavior rather than a custom prompt.
 ## Current release
 
 The current public prerelease is
-[`v0.17.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.17.0-beta.1).
+[`v0.18.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.18.0-beta.1).
 It follows
-[`v0.16.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.16.0-beta.1).
+[`v0.17.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.17.0-beta.1).
 Its tested environment is intentionally narrow:
 
 | Requirement      | Tested value                                         |
@@ -181,7 +181,7 @@ Its tested environment is intentionally narrow:
 | Operating system | Windows x64                                          |
 | Firefox          | Stock Firefox 153.0.4, 154.0, and 154.0.1, release channel |
 | Firefox Build ID | `20260810162159` / `20260812182057` / `20260824154132` |
-| Package          | `fennevia-0.17.0-beta.1-windows.zip`                 |
+| Package          | `fennevia-0.18.0-beta.1-windows.zip`                 |
 
 Install, update, repair, and re-enable reject Firefox older than 153. Firefox
 153, 154, and newer majors may be installed after the installer warning: only
@@ -264,7 +264,7 @@ longer cancel their child tab's drag session. Known built-in toolbar labels use
 their synchronous Fluent mapping before the legacy fallback, reducing avoidable
 Browser Console localization noise.
 
-Current source after `v0.17.0-beta.1` keeps the launcher compact but restores
+This release keeps the launcher compact but restores
 Firefox's retained full address when a fresh editor receives focus. It also
 keeps tokenized vertical breathing room around the launcher while its
 standard-padded parent owns horizontal alignment with Tabs, keeps the
@@ -273,7 +273,7 @@ content inset described above. The source default now matches that four-edge
 composition, and customize mode darkens and blocks website pointer access.
 Narrow Top scrollbars remain draggable without removing the rest of the empty
 titlebar drag area. The centered address panel keeps its existing spacing.
-These changes are not part of the published `v0.17.0-beta.1` archive.
+These changes are included in the `v0.18.0-beta.1` archive.
 
 The current prerelease also projects bounded results from Firefox's own
 per-window Urlbar provider manager into the centred combobox. Firefox still
@@ -317,14 +317,14 @@ the wizard.
 
 Download both files from the same GitHub Release:
 
-- `fennevia-0.17.0-beta.1-windows.zip`
-- `fennevia-0.17.0-beta.1-windows.zip.sha256`
+- `fennevia-0.18.0-beta.1-windows.zip`
+- `fennevia-0.18.0-beta.1-windows.zip.sha256`
 
 Before extracting the ZIP, run this in PowerShell from the download directory:
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.17.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.17.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.18.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.18.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 

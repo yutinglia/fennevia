@@ -38,8 +38,7 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 ## 畫面展示
 
-以下由專案擁有者提供的實機擷取畫面，顯示目前
-`v0.17.0-beta.1` 發行版之後的原始碼布局，以及由五個分頁組成的自訂工作區。它們只證明此處呈現的介面狀態，不能取代尚未完成的完整 Firefox 實機驗證矩陣。
+以下由專案擁有者提供的實機擷取畫面，顯示 `v0.18.0-beta.1` 的布局，以及由五個分頁組成的自訂工作區。它們只證明此處呈現的介面狀態，不能取代尚未完成的完整 Firefox 實機驗證矩陣。
 
 ### 新版四邊預設布局
 
@@ -75,14 +74,14 @@ Fennevia 不會讓每個 widget 直接存取 Firefox 的高權限內部物件。
 
 ## 目前版本
 
-目前公開預發行版本是 [`v0.17.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.17.0-beta.1)，接續 [`v0.16.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.16.0-beta.1)。測試範圍刻意限制得很窄：
+目前公開預發行版本是 [`v0.18.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.18.0-beta.1)，接續 [`v0.17.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.17.0-beta.1)。測試範圍刻意限制得很窄：
 
 | 要求             | 已測試值                                               |
 | ---------------- | ------------------------------------------------------ |
 | 作業系統         | Windows x64                                            |
 | Firefox          | 原版 Firefox 153.0.4、154.0 與 154.0.1，Release channel |
 | Firefox Build ID | `20260810162159`、`20260812182057`、`20260824154132`   |
-| 套件             | `fennevia-0.17.0-beta.1-windows.zip`                   |
+| 套件             | `fennevia-0.18.0-beta.1-windows.zip`                   |
 
 Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用。153、154 以及更新的主版本可在安裝程式警告後安裝：目前只測試過 153 與 154，較新版本可能故障，確認安裝並不保證一切都能運作。Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta 及 Nightly。
 
@@ -98,7 +97,7 @@ Fennevia 已經超越首個四邊介面 MVP。目前預發行版亦包括 Fennev
 
 此版本新增以主要功能為先的元件庫與可選版面指南、較精簡的搜尋優先網址彈出面板、首次空白零前綴 Urlbar 查詢的一次性有界重試、窄視窗四面板重排，以及更安全的分頁分離意圖判斷。巢狀版面處理器不再取消子分頁的拖曳生命週期；已知 Firefox 內建 widget 亦會先使用同步 Fluent 名稱，再退回舊式查詢。
 
-`v0.17.0-beta.1` 之後的目前原始碼會讓啟動器維持精簡，但在新開啟的編輯器取得焦點時使用 Firefox 保留的完整網址；亦保留使用 token 的垂直留白，改由有標準內距的父 Row 統一負責網址列與分頁列的水平對齊、維持固定高度 Top 的安全內距，並提供上述可選的 Row／Column 標準內容內距。新版預設已採用這個四面配置，自訂模式也會遮暗並阻擋網站指標操作。窄視窗 Top 的捲軸可以拖曳，其餘空白標題列區域仍可拖曳視窗。中央網址面板保留原有間距。這些變更尚未包含在已發佈的 `v0.17.0-beta.1` 壓縮檔。
+此版本會讓啟動器維持精簡，但在新開啟的編輯器取得焦點時使用 Firefox 保留的完整網址；亦保留使用 token 的垂直留白，改由有標準內距的父 Row 統一負責網址列與分頁列的水平對齊、維持固定高度 Top 的安全內距，並提供上述可選的 Row／Column 標準內容內距。新版預設已採用這個四面配置，自訂模式也會遮暗並阻擋網站指標操作。窄視窗 Top 的捲軸可以拖曳，其餘空白標題列區域仍可拖曳視窗。中央網址面板保留原有間距。這些變更已包含在 `v0.18.0-beta.1` 壓縮檔。
 
 `0.17.0-beta.1` 發行版已在 Firefox 154.0.1 重跑完整的自動化生命週期、回復、效能對照、可重現封裝及解壓包安裝生命週期。完整的 Firefox 實機視覺、輔助科技、帳號／裝置、原生彈出面板定位、完整自訂模式、啟動首幀、GUI 安裝流程、全新設定檔第一次零前綴查詢，以及具代表性的 Urlbar 供應器測試矩陣仍未完成。因此目前主要欠缺的是相容性與發行驗證，而不是核心瀏覽器介面功能。詳情請參閱[目前專案狀態（英文）](docs/current-status.md)，當中整理了已完成能力、證據邊界、已知風險及建議優先次序。
 
@@ -118,14 +117,14 @@ Fennevia 已經超越首個四邊介面 MVP。目前預發行版亦包括 Fennev
 
 從同一個 GitHub Release 下載：
 
-- `fennevia-0.17.0-beta.1-windows.zip`
-- `fennevia-0.17.0-beta.1-windows.zip.sha256`
+- `fennevia-0.18.0-beta.1-windows.zip`
+- `fennevia-0.18.0-beta.1-windows.zip.sha256`
 
 解壓縮前，在下載目錄開啟 PowerShell 並執行：
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.17.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.17.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.18.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.18.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 

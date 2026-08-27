@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 
-This is Fennevia `0.17.0-beta.1`, the eighth public Windows x64 prerelease.
-It follows [`v0.16.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.16.0-beta.1).
+This is Fennevia `0.18.0-beta.1`, the ninth public Windows x64 prerelease.
+It follows [`v0.17.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.17.0-beta.1).
 
 Validated compatibility remains intentionally narrow: stock Firefox 153.0.4
 BuildID 20260810162159, Firefox 154.0 BuildID 20260812182057, and Firefox
@@ -15,38 +15,36 @@ dedicated Firefox profile, and verify the separately published SHA-256 file.
 In PowerShell, compare its first field with:
 
 ```powershell
-(Get-FileHash -Algorithm SHA256 .\fennevia-0.17.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+(Get-FileHash -Algorithm SHA256 .\fennevia-0.18.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 ```
 
-The main changes since `v0.16.0-beta.1` are:
+The main changes since `v0.17.0-beta.1` are:
 
-- **Feature-first customization.** Address, Tabs, Bookmarks, and Download
-  status now appear first in the widget palette with their common companion
-  actions beside them. Incomplete groups reflow without blank columns. An
-  optional English and Traditional Chinese Guide explains edge directions,
-  Rows, Columns, wrappers, structural spacing, practical recipes, editing, and
-  recovery.
-- **A simpler address/search popup.** The centered overlay now uses a compact
-  search-first composition while retaining Fennevia identity, accessible
-  status, Trust and permission actions, Firefox's provider results, and the
-  complete native Urlbar handoff. The bridge retries only the first completed
-  empty zero-prefix query once, through Firefox's existing provider manager,
-  to cover the observed first-open warm-up case without adding a provider,
-  timer, engine, endpoint, ranking rule, or persistent state.
-- **Better narrow-window layouts.** At 560 CSS px and below, Bottom receives a
-  dedicated full-width lane, one visible side expands while retaining a
-  content corridor for pointer exit, and two visible sides split. At 360 CSS
-  px and below, the denser layout may let one side use the available width.
-  The reflow remains CSS-driven and does not alter saved layouts, reveal
-  controllers, or panel policies.
-- **Safer tab dragging.** An unconsumed drag must move at least 16 CSS pixels
-  before it can detach into a window. Recursive layout ancestors no longer
-  cancel a child tab's drag session, and a new physical drag can recover only
-  stale transfer state owned by the same window. Same-strip reorder, outside
-  detach, and cross-window transfer were confirmed on Firefox 154.0.1.
-- **Quieter built-in widget localization.** Known built-in toolbar labels use
-  the synchronous Fluent mapping before Firefox's legacy property lookup,
-  retaining that older path only as a fallback for unmapped widgets.
+- **Firefox-like address editing.** The compact launcher continues to show
+  Firefox's trimmed committed value, while opening the centered editor uses
+  Firefox's bounded `untrimmedValue`. A normal HTTPS page therefore restores
+  its `https://` prefix at the useful editing moment without inventing URL
+  parsing, persistence, or a parallel navigation source.
+- **A balanced four-edge default.** Fresh and reset layouts now match the
+  owner's current composition: navigation and browser actions in Top, an
+  address/status Row aligned with expanded Tabs on the tabs side, expanded
+  Bookmarks opposite it, and centered Download status in Bottom. Valid saved
+  version-2 layouts remain user-owned and are not silently replaced.
+- **Container padding and launcher spacing.** Row and Column containers gain
+  one optional bounded Standard content-padding preset. The default parent Row
+  owns the address launcher's horizontal alignment with Tabs while the launcher
+  retains comfortable tokenized vertical space; the centered address panel is
+  unchanged.
+- **Clearer, safer customization.** Customize mode now places a dark,
+  pointer-blocking project-owned backdrop over website content. The floating
+  widget inspector fades and yields hit testing during a widget drag so it
+  cannot cover the intended drop target.
+- **Draggable narrow Top scrollbars.** A bounded no-drag guard covers the Top
+  panel's scrollbar lane when horizontal overflow appears. The thumb and track
+  remain usable while adjacent empty Top chrome still drags the Firefox window.
+- **Updated project showcase.** The bilingual READMEs include the current
+  owner-supplied layout/customization captures and a stylized Fennevia hero;
+  media provenance and generated-output records are included in the source.
 
 Fennevia's safety-oriented Firefox API bridge remains the only route from the
 Svelte interface to privileged Firefox internals. It validates capabilities
@@ -57,7 +55,7 @@ extension installation, native menus, Urlbar providers and execution, and
 window commands. Startup or runtime failure returns to the retained native
 interface instead of deleting it.
 
-The candidate passed the ordinary `npm run verify` gate with 429/429 Node
+The candidate passed the ordinary `npm run verify` gate with 433/433 Node
 tests, the complete fixed-list suite under PowerShell 7 and Windows PowerShell
 5.1, deterministic generated artifacts, dependency review, and the production
 artifact scan. Release publication independently repeats exact dependency
@@ -65,7 +63,7 @@ installation, verification, deterministic double packaging, strict
 Unicode/space extraction, checksum validation, and remote asset digest checks.
 Package-specific Firefox 154.0.1 lifecycle, recovery, and extracted-package
 results are recorded in
-`docs/research/firefox-154-0.17.0-beta.1-release-validation.md`.
+`docs/research/firefox-154-0.18.0-beta.1-release-validation.md`.
 
 Remaining real-Firefox visual, assistive-technology, account/device,
 popup-placement, complete customize, first-paint, GUI/UAC installer, Firefox

@@ -12,9 +12,9 @@ collision system, glass token set, or window-global coordination layer.
 
 ## Current status
 
-Validated baseline as of 2026-08-27:
+Validated baseline as of 2026-08-28:
 
-- public package `0.17.0-beta.1` prerelease on Windows x64;
+- public package `0.18.0-beta.1` prerelease on Windows x64;
 - tested Firefox 153.0.4 BuildID 20260810162159, 154.0 BuildID
   20260812182057, and 154.0.1 BuildID 20260824154132; installer accepts 153+
   after an explicit warning (ADR-048);
