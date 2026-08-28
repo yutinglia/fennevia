@@ -834,6 +834,13 @@ evidence.
 Evidence: ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
+Firefox 154.0.1 follow-up: the bridge now treats the parent
+`hasPermissions` attribute as the blocked-permission visibility envelope, so
+Firefox's parent-first clear order cannot publish contradictory state. Focused
+and full local automation pass; a corrected-package real-Firefox new-tab run
+remains pending. Evidence:
+`docs/research/firefox-154-urlbar-coverage-permission-transition.md`.
+
 ADR-061 narrowly supersedes the provider-result rendering ban through its own
 focused bounded projection and opaque-action bridge. This does not change the
 #37 owner-state observer, fixed permission/action summary, or complete native

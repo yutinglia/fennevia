@@ -458,6 +458,14 @@ the selected fixed-summary/native-handoff boundary.
 | Per-window `MutationObserver` over four owner roots                                     | The browser-window global supplies mutation delivery for current browser chrome attributes and children.                                                                                                                                                                                                                                                                        | One controller observes the document root, `gURLBar`, permission subtree, and page-action subtree with fixed attribute filters. It has no timer or polling fallback, reconciles immutable snapshots, and disconnects exactly once before releasing its window.                                                                                                                                                    |
 | `window.openLocation()`                                                                 | Current [`browser.js`](https://github.com/mozilla-firefox/firefox/blob/c178247e1dfea52241a6b18b18cf3a00f8da935c/browser/base/content/browser.js) calls `UrlbarUtils.getURLBarForFocus(window)`, selects it, and opens the native view according to current focus/customize/fullscreen handling.                                                                                 | The detailed popup closes with no competing focus restoration. ADR-032 synchronously applies complete native reveal before this bridge invokes the owning window method. Suggestions, providers, search one-offs, extension actions, native panels, and prompts remain complete; focus/popup holds retain reveal and release restores active rest. Missing/thrown reveal or handoff is typed and follows ADR-021. |
 
+Firefox 154.0.1 source adds an important ordering detail to the permission
+row. `gPermissionPanel.hidePermissionIcons()` can remove the parent
+`hasPermissions` attribute while a blocked child still has its previous
+`showing` attribute, and the refresh path rebuilds child attributes before it
+updates the parent. The bridge therefore treats the parent as Firefox's
+visibility envelope and omits blocked-child enums whenever it is absent. See
+`docs/research/firefox-154-urlbar-coverage-permission-transition.md`.
+
 The public contract is fixed enums and booleans only. It contains no URL,
 origin, principal, certificate, permission object/scope, extension identity,
 action ID, localized Firefox label, provider result, browser/window object, or

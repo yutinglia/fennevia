@@ -5,6 +5,7 @@ import {
   createFirefoxBridgeBoundary,
   isFirefoxBridgeError,
 } from "../src/firefox/bridge-boundary.ts";
+import { createBrowserUrlbarCoverageStateAdapter } from "../src/app/urlbar-coverage-state.ts";
 import { createFirefoxUrlbarCoverageBridge } from "../src/firefox/urlbar-coverage.ts";
 
 const BROWSER_URI = "chrome://browser/content/browser.xhtml";
@@ -328,6 +329,43 @@ test("Firefox mutations reconcile permission indicators and applicable actions",
 
   assert.equal(unsubscribe(), true);
   assert.equal(unsubscribe(), false);
+  controller.dispose();
+  boundary.dispose();
+});
+
+test("blocked permission transitions remain coherent when Firefox clears the parent first", () => {
+  const { boundary, controller, errors, fixture } = createController();
+  const adapter = createBrowserUrlbarCoverageStateAdapter(
+    controller.urlbarCoverage,
+  );
+
+  fixture.permissionBox.setAttribute("hasPermissions", "");
+  fixture.blockedElements[0].setAttribute("showing", "true");
+  assert.deepEqual(adapter.snapshot().snapshot.permissions, {
+    available: true,
+    blocked: ["camera"],
+    hasPermissions: true,
+    sharing: [],
+  });
+
+  fixture.permissionBox.removeAttribute("hasPermissions");
+  assert.deepEqual(adapter.snapshot().snapshot.permissions, {
+    available: true,
+    blocked: [],
+    hasPermissions: false,
+    sharing: [],
+  });
+  assert.deepEqual(errors, []);
+
+  fixture.blockedElements[0].removeAttribute("showing");
+  assert.deepEqual(adapter.snapshot().snapshot.permissions, {
+    available: true,
+    blocked: [],
+    hasPermissions: false,
+    sharing: [],
+  });
+
+  adapter.dispose();
   controller.dispose();
   boundary.dispose();
 });

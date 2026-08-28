@@ -19,7 +19,7 @@ and testing documents retain the complete engineering contract.
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
 | Post-MVP shell work             | Included through `v0.18.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, ADR-073 pinned-tab partitioning, and ADR-074 through ADR-084's widget, address, layout, narrow-window, drag, and customize work |
 | Latest released follow-up       | ADR-082 restores Firefox's bounded untrimmed value for a fresh address edit and adds optional Row/Column content padding; ADR-083 keeps narrow Top scrollbars draggable; the ADR-076 follow-up makes the inspector yield during widget drags; ADR-084 adopts the owner's default and blocks/darkens website content during customization |
-| Current source follow-up        | No additional unversioned feature work is recorded after the `v0.18.0-beta.1` release at this snapshot                                                                                                                                                                                                 |
+| Current source follow-up        | An unreleased Firefox 154.0.1 Urlbar-coverage correction gates blocked permission children behind Firefox's parent visibility envelope, preventing a parent-first tab transition from failing the subscriber; the full local gate and Windows PowerShell 5.1 suite pass, while corrected-package real-Firefox confirmation remains pending |
 | Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; the automated Firefox 154.0.1 release matrix passed while manual visual rows remain pending |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; the `0.18.0-beta.1` Firefox 154.0.1 provider-contract, production-panel, failure-injection, normalized-query-boundary, and release probes passed; the literal fresh-profile first-zero-prefix and representative-provider matrices remain pending                                                |
 | Real-Firefox validation         | `v0.18.0-beta.1` passed the complete automated Firefox 154.0.1 lifecycle, recovery, performance-control, deterministic-archive, extracted-package, independently downloaded public-package verification, and public-package recovery matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending |
@@ -396,6 +396,17 @@ Top-and-Left harness assertion inapplicable; its compatible active/performance
 harness passed, and the user preference was not changed merely to satisfy the
 incompatible assertion. See
 [`docs/research/firefox-154-0.18.0-beta.1-release-validation.md`](research/firefox-154-0.18.0-beta.1-release-validation.md).
+
+The 2026-08-28 unreleased Urlbar-coverage follow-up reproduces Firefox
+154.0.1's parent-first permission clear order and prevents the stale blocked
+child from publishing a contradictory snapshot. Its focused 10/10 regression,
+complete `npm run verify` gate with 436/436 Node tests, 88.71% line coverage,
+95.79% function coverage, deterministic bridge build, 14/14 artifact checks,
+and independent Windows PowerShell 5.1 fixed-list suite passed. The supplied
+runtime record lacks the nested subscriber cause, and corrected-package
+real-Firefox new-tab confirmation remains `not run`; the causal match therefore
+remains an evidence-backed hypothesis pending that run. See
+[`docs/research/firefox-154-urlbar-coverage-permission-transition.md`](research/firefox-154-urlbar-coverage-permission-transition.md).
 
 The `0.12.0-beta.1` release-candidate pass on 2026-08-23 additionally covered
 the complete automated Firefox 154 lifecycle, Browser Toolbox, safe-start and

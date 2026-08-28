@@ -7808,15 +7808,15 @@ function yc({ boundary: e, onError: t, requestNativeUiReveal: n, window: r }) {
 			hasPermissions: !1,
 			sharing: Object.freeze([])
 		});
-		let r = Object.freeze(gc(f("blocked-permissions-container")).flatMap((e) => {
+		let r = mc(t, "hasPermissions"), i = Object.freeze(r ? gc(f("blocked-permissions-container")).flatMap((e) => {
 			if (!ic(e) || !mc(e, "showing")) return [];
 			let t = pc(e, "data-permission-id"), n = t ? Qs[t] : void 0;
 			return n ? [n] : [];
-		}));
+		}) : []);
 		return Object.freeze({
 			available: !0,
-			blocked: r,
-			hasPermissions: mc(t, "hasPermissions"),
+			blocked: i,
+			hasPermissions: r,
 			sharing: n
 		});
 	}, v = () => {

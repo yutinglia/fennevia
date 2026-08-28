@@ -462,6 +462,13 @@ permission IDs are omitted and unknown actions become generic presence only.
 None of these values enters normal logs, persistence, CSS variables, or root
 datasets.
 
+Firefox 154.0.1 can clear the parent permission visibility attribute before a
+blocked child loses its prior `showing` attribute. The bridge treats that
+parent as the visibility envelope and omits stale blocked-child enums while it
+is absent. This keeps a previous tab's transient permission state from
+crossing into the custom presentation without exposing any additional native
+data.
+
 The detailed popup renders fixed project labels from the bundled en / zh-Hant
 catalogs (ADR-052). It still does not receive Firefox Fluent labels across the
 bridge, synthesize native clicks, or expose permission/security mutation.

@@ -191,26 +191,29 @@ export function createFirefoxUrlbarCoverageBridge({
       });
     }
 
+    const hasPermissions = hasAttribute(permissionBox, "hasPermissions");
     const blocked = Object.freeze(
-      readChildren(requireElement("blocked-permissions-container")).flatMap(
-        (candidate) => {
-          if (
-            !isNativeElement(candidate) ||
-            !hasAttribute(candidate, "showing")
-          ) {
-            return [];
-          }
-          const id = readAttribute(candidate, "data-permission-id");
-          const kind = id ? BLOCKED_PERMISSION_KIND_BY_ID[id] : undefined;
-          return kind ? [kind] : [];
-        },
-      ),
+      hasPermissions
+        ? readChildren(requireElement("blocked-permissions-container")).flatMap(
+            (candidate) => {
+              if (
+                !isNativeElement(candidate) ||
+                !hasAttribute(candidate, "showing")
+              ) {
+                return [];
+              }
+              const id = readAttribute(candidate, "data-permission-id");
+              const kind = id ? BLOCKED_PERMISSION_KIND_BY_ID[id] : undefined;
+              return kind ? [kind] : [];
+            },
+          )
+        : [],
     );
 
     return Object.freeze({
       available: true,
       blocked,
-      hasPermissions: hasAttribute(permissionBox, "hasPermissions"),
+      hasPermissions,
       sharing,
     });
   };

@@ -755,6 +755,9 @@ Validate:
   meaning retains priority;
 - fixed active-sharing and blocked-permission indicators update from Firefox
   owner attributes; unknown permissions remain native-only;
+- clearing the parent permission visibility attribute before Firefox clears a
+  stale blocked child publishes no contradictory blocked state and does not
+  fail the adapter, subscriber, or shell lifecycle;
 - static, conditional, overflow, extension, unknown native, search-mode,
   persisted-search, and remote-control presence remains fixed and bounded;
 - non-actionable Urlbar capability badges are absent from the custom popup;
@@ -788,9 +791,15 @@ checks and updates the real harness to compare both custom masks with
 `#trust-icon-container` for HTTP, HTTPS, ETP exception/restore, internal, and
 network-error states. That updated real-Firefox run is **not run**.
 
+The 2026-08-28 Firefox 154.0.1 permission-transition regression reproduces the
+parent-first clear order and passes after the bridge correction. A
+corrected-package real-Firefox new-tab run remains **not run**. See
+`docs/research/firefox-154-urlbar-coverage-permission-transition.md`.
+
 Evidence: ADR-031, ADR-059,
-`docs/research/firefox-153-urlbar-coverage.md`, and
-`docs/research/firefox-153-154-unified-trust-shield.md`.
+`docs/research/firefox-153-urlbar-coverage.md`,
+`docs/research/firefox-153-154-unified-trust-shield.md`, and
+`docs/research/firefox-154-urlbar-coverage-permission-transition.md`.
 
 ### 6.4.1 Native Urlbar suggestions/providers — focused automation and Firefox 154 probes complete; release matrix pending
 
