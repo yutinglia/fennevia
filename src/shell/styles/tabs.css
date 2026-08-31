@@ -134,7 +134,8 @@
 
 #fennevia-shell-frame-host .fennevia-tab-strip__pinned-section {
   display: flex;
-  flex: 0 1 auto;
+  /* Regular-tab overflow must not shrink pinned rows out of view. */
+  flex: 0 0 auto;
   flex-direction: column;
   min-block-size: 0;
   min-inline-size: 0;

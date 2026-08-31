@@ -59,6 +59,25 @@ test("regular tabs keep intrinsic height above the new-tab button", async () => 
   assert.doesNotMatch(regularPartitionRule, /flex: 1 1 0;/u);
 });
 
+test("regular-tab overflow cannot collapse the pinned-tab section", async () => {
+  const styles = await readShellStyles(projectRoot);
+  const pinnedSectionRule = styles.match(
+    /^#fennevia-shell-frame-host \.fennevia-tab-strip__pinned-section \{([^}]*)\}/mu,
+  )?.[1];
+  const regularPartitionRule = styles.match(
+    /\.fennevia-tab-strip__partition--regular \{([^}]*)\}/u,
+  )?.[1];
+
+  assert.ok(pinnedSectionRule, "expected the pinned-section sizing rule");
+  assert.ok(
+    regularPartitionRule,
+    "expected the regular tab-partition sizing rule",
+  );
+  assert.match(pinnedSectionRule, /flex: 0 0 auto;/u);
+  assert.match(pinnedSectionRule, /max-block-size: min\(34vh, 190px\);/u);
+  assert.match(regularPartitionRule, /flex: 1 1 auto;/u);
+});
+
 const tab = (overrides = {}) =>
   Object.freeze({
     id: "tab-1",
