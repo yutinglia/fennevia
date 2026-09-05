@@ -364,6 +364,23 @@ Validate:
 - many pinned tabs scroll only inside their height-capped partition, regular
   tabs retain usable space below, and stable scrollbar gutters avoid row-width
   jumps between partitions;
+- ADR-086/087 drag autoscroll: no overflow remains stationary; one-to-three extra
+  rows retain fine control; several screens of overflow allow gradual outer-
+  edge acceleration. Moving inward stops immediately, reversing resets dwell,
+  and approaching either end slows the fast range. Verify 60/120 Hz, short
+  viewports, horizontal Tabs, and pinned/regular isolation. While the pointer
+  is stationary, both the moving row and insertion indicator follow scrolling;
+  the eventual native order matches the visible drop target. Drop, cancel,
+  target/window exit, blur, and disposal remove every transient scroll-owner
+  marker and animation callback; completion/cancellation removes the drag
+  receiver. Native partition scrollbars remain visible during the drag, their
+  thumbs follow actual scroll position, and vertical gutters stay stable.
+  The transparent receiver accepts drag hits outside the list/partition
+  ancestry; ordinary scrollbar input returns after the drag. The focused
+  marker-profile command is
+  `node tests/firefox-window-lifecycle.mjs --firefox <DEV_FIREFOX> --profile <DEV_PROFILE> --tab-drag-scroll-probe`;
+  this is DOM-event automation, not proof of a physical OS drag session. Exact
+  results and remaining rows are in `docs/research/firefox-155-tab-drag-scroll.md`;
 - exact native order within the pinned-then-regular partition contract;
 - selected, title, safe favicon/fallback, pinned, and loading state; a loaded
   favicon hides the adjacent fallback while loading/error restores only the

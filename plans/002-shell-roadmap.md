@@ -460,6 +460,18 @@ row controls, roving tab order, native snapshot order, pinned-boundary drag
 rules, and shared edge owner. Evidence:
 `docs/research/firefox-154-pinned-tabs-area.md`.
 
+ADR-086/087 add progressive tab-drag autoscroll within the eligible partition.
+The inner edge region retains row-relative precision; outer-edge distance and
+dwell raise a speed cap derived from visible extent and actual overflow.
+Moving inward stops immediately, and scrolling updates insertion geometry
+without requiring another pointer event. Native partition scrollbars retain
+visible position feedback throughout the drag. A transparent receiver outside
+the list's ancestry and temporary project-only ancestor scroll suppression
+prevent the native fixed-step path from competing; the existing drag lifecycle
+owns cleanup. No bridge, setting, payload, or release support
+boundary changes. Evidence and remaining physical/OS-drag checks:
+`docs/research/firefox-155-tab-drag-scroll.md`.
+
 Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063,
 ADR-065, ADR-066, ADR-070, ADR-071, ADR-072, and ADR-073, plus
 `docs/research/firefox-153-tab-strip.md`,

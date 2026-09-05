@@ -355,6 +355,23 @@ tab-group object, persistence, content-accessible mapping, runtime network
 request, or native DOM ownership. Revalidate every row on the next supported
 Firefox stable.
 
+### Tab drag-scroll rendering (ADR-086/087)
+
+This is a rendering-behavior dependency, not a callable native API:
+Firefox 155.0.1 (`20260903215306`), release source
+`fb95137a04eb8fe1196cb12f26b100c1e060295c`,
+`dom/events/EventStateManager.cpp` (`PostHandleEvent`, `eDragOver`) and
+`layout/generic/ScrollContainerFrame.cpp` (`DragScroll`). Native drag scrolling
+ignores drop acceptance cancellation, takes a fixed 20-device-pixel step when
+a scrollbar exists, and can continue to ancestors. A transparent project-owned
+drag receiver is a sibling of the list, so its event ancestry excludes the
+scrolling partitions. Their native scrollbars stay visible at the real position.
+The optional project scroller applies temporary `overflow: hidden` only to the
+receiver's project-owned ancestors up to the surface root and restores their
+markers on cleanup. It does not invoke these internals or change native DOM.
+Recheck hit-test ancestry, visible scrollbars, stable gutters, and cleanup on
+Firefox updates. Evidence: `docs/research/firefox-155-tab-drag-scroll.md`.
+
 ### Selected-navigation bridge
 
 Issue #12 verified the following dependencies on Firefox 153.0.4 release,

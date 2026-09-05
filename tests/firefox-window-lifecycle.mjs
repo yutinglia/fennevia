@@ -6,6 +6,7 @@ import net from "node:net";
 import path from "node:path";
 import process from "node:process";
 import { runUrlbarCompatibilityProbe } from "./firefox-urlbar-compatibility-probe.mjs";
+import { runTabDragScrollProbe } from "./firefox-tab-drag-scroll-probe.mjs";
 
 import {
   assertFreshSessionRestoreState,
@@ -104,6 +105,7 @@ function parseArguments(argv) {
     sessionRestore: null,
     urlbarProviderProbe: false,
     urlbarSuggestionsProbe: false,
+    tabDragScrollProbe: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -188,6 +190,10 @@ function parseArguments(argv) {
       result.urlbarSuggestionsProbe = true;
       continue;
     }
+    if (argument === "--tab-drag-scroll-probe") {
+      result.tabDragScrollProbe = true;
+      continue;
+    }
     if (argument === "--session-restore") {
       const value = argv[index + 1];
       if (!sessionRestoreModes.includes(value)) {
@@ -222,6 +228,7 @@ function parseArguments(argv) {
       result.performanceStockBaseline,
       result.urlbarProviderProbe,
       result.urlbarSuggestionsProbe,
+      result.tabDragScrollProbe,
       result.sessionRestore !== null,
     ].filter(Boolean).length > 1
   ) {
@@ -246,6 +253,7 @@ function parseArguments(argv) {
       result.performanceStockBaseline ||
       result.urlbarProviderProbe ||
       result.urlbarSuggestionsProbe ||
+      result.tabDragScrollProbe ||
       result.sessionRestore !== null)
   ) {
     throw new Error("FENNEVIA_FIREFOX_TEST_MODE_CONFLICT");
@@ -8409,6 +8417,30 @@ async function run() {
       1,
     );
     assert.equal(startupEvidence.firstPartyScriptErrorCount, 0);
+
+    if (options.tabDragScrollProbe) {
+      const scrollEvidence = await runTabDragScrollProbe(client);
+      const postProbeEvidence = await collectEvidence(client);
+      assert.equal(postProbeEvidence.firstPartyScriptErrorCount, 0);
+      assert.equal(
+        postProbeEvidence.records.filter((record) => record.level === "error")
+          .length,
+        0,
+      );
+      await client.request("Marionette:AcceptConnections", { value: false });
+      quitRequested = true;
+      try {
+        await client.request("Marionette:Quit", {});
+      } catch {
+        // A clean application quit may close Marionette before its response arrives.
+      }
+      await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
+      console.log(`tabDragScrollEvidence=${JSON.stringify(scrollEvidence)}`);
+      console.log(
+        "PASS: tab drag scrolling, stationary preview, native scroll ownership and terminal cleanup.",
+      );
+      return;
+    }
 
     if (options.urlbarProviderProbe) {
       const providerEvidence = await runUrlbarProviderProbe(client);

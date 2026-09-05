@@ -87,12 +87,12 @@
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/shell/ShellApp.js",
-      "sha256": "cf14eff178d5467b729f84922d78160bae0954a604b5676bdd41bb1e8d088294"
+      "sha256": "c72b0f533f01d1030ed782f60f4d516ed3eb5deebb1b8d1af19fb8b3d5fde096"
     },
     {
       "scope": "profile",
       "path": "chrome/fennevia/content/shell/ShellStyles.sys.mjs",
-      "sha256": "d77eec8b38850f7794bde5cb388cc93193a57f33998453c4cc0d59d1d0033b0a"
+      "sha256": "e48d7b4c2b2e0b03a1553028d64476caa6dc581227c570768959d263913f5eae"
     },
     {
       "scope": "profile",
