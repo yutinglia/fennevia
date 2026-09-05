@@ -265,7 +265,11 @@ export function createFirefoxUrlbarSuggestionsBridge({
       const token = resultRegistry.register(result);
       let projection: UrlbarSuggestionResult;
       try {
-        projection = projectUrlbarSuggestionResult(result, token);
+        projection = projectUrlbarSuggestionResult(
+          result,
+          token,
+          boundary.snapshot().firefoxVersion,
+        );
       } catch (error) {
         resultRegistry.release(token);
         throw error;
@@ -688,6 +692,27 @@ export function createFirefoxUrlbarSuggestionsBridge({
     const priorSearchMode = owners.input.searchMode;
     try {
       const activationEvent = createActivationEvent(gesture);
+      let pickArguments: unknown[];
+      if (Number.parseInt(boundary.snapshot().firefoxVersion, 10) >= 155) {
+        // Firefox 155 (Bug 2055646) takes options, and its parent controller
+        // resolves the target by browser ID rather than a browser element.
+        const browserId = owners.selectedBrowser.browserId;
+        if (
+          typeof browserId !== "number" ||
+          !Number.isSafeInteger(browserId) ||
+          browserId <= 0
+        ) {
+          throw createUrlbarSuggestionsError(
+            boundary,
+            "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_CAPABILITY_MISSING",
+            "firefox-urlbar-suggestions-execute",
+            "window.gBrowser.selectedBrowser.browserId",
+          );
+        }
+        pickArguments = [{ result, event: activationEvent, browserId }];
+      } else {
+        pickArguments = [result, activationEvent, null, owners.selectedBrowser];
+      }
       withInputControllerProxy(
         owners,
         (context) => {
@@ -698,12 +723,7 @@ export function createFirefoxUrlbarSuggestionsBridge({
           startManagedQuery(context, owners, queryRevision);
         },
         () =>
-          Reflect.apply(owners.input.pickResult, owners.input, [
-            result,
-            activationEvent,
-            null,
-            owners.selectedBrowser,
-          ]),
+          Reflect.apply(owners.input.pickResult, owners.input, pickArguments),
       );
       if (!followupStarted && owners.input.searchMode !== priorSearchMode) {
         const nextValue =

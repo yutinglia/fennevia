@@ -13,6 +13,8 @@
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -195,6 +197,25 @@
 
 #fennevia-shell-frame-host .fennevia-tab-strip__partition--regular {
   flex: 1 1 auto;
+}
+
+/* Receive drags above the painted list as a sibling, not a scroll descendant.
+   Firefox still paints the real scrollbar and thumb from the actual offset. */
+#fennevia-shell-frame-host .fennevia-tab-strip__drag-receiver {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: auto;
+}
+
+/* Firefox 155 DragScroll walks the event target's ancestors regardless of
+   preventDefault. Only the receiver's owned ancestors yield; the list and
+   partitions keep their native scrollbars. Cleanup restores these ancestors. */
+#fennevia-shell-frame-host [data-fennevia-tab-scroll-owned] {
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+  scroll-behavior: auto !important;
+  scroll-snap-type: none !important;
 }
 
 #fennevia-shell-frame-host .fennevia-tab-strip__item {

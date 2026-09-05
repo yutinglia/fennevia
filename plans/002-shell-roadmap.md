@@ -415,6 +415,9 @@ scroll inside the bounded left panel.
 Issue #60 completes the remaining row-level native parity on that same strip:
 
 - middle-click close;
+- primary/keyboard-only pin and audio buttons; middle-clicking those controls
+  or their icons cannot activate them or close the containing tab, while the
+  close button retains one middle-button close through the row's `auxclick`;
 - middle-click/accel New Tab insertion after the current tab (ADR-070);
 - audio playing/muted/blocked plus a sibling mute toggle;
 - camera, microphone, and screen-sharing status plus crashed-tab state through
@@ -456,6 +459,18 @@ divider; regular rows fill their own scroller below. Both retain the same full
 row controls, roving tab order, native snapshot order, pinned-boundary drag
 rules, and shared edge owner. Evidence:
 `docs/research/firefox-154-pinned-tabs-area.md`.
+
+ADR-086/087 add progressive tab-drag autoscroll within the eligible partition.
+The inner edge region retains row-relative precision; outer-edge distance and
+dwell raise a speed cap derived from visible extent and actual overflow.
+Moving inward stops immediately, and scrolling updates insertion geometry
+without requiring another pointer event. Native partition scrollbars retain
+visible position feedback throughout the drag. A transparent receiver outside
+the list's ancestry and temporary project-only ancestor scroll suppression
+prevent the native fixed-step path from competing; the existing drag lifecycle
+owns cleanup. No bridge, setting, payload, or release support
+boundary changes. Evidence and remaining physical/OS-drag checks:
+`docs/research/firefox-155-tab-drag-scroll.md`.
 
 Evidence: ADR-025, ADR-026, ADR-041, ADR-058, ADR-060, ADR-062, ADR-063,
 ADR-065, ADR-066, ADR-070, ADR-071, ADR-072, and ADR-073, plus
@@ -667,7 +682,9 @@ Evidence: ADR-028 and
   validated local icon references, direct/native class, and per-window opaque
   action token;
 - execute ordinary URL/search/keyword/switch-tab/omnibox/remote-tab rows through
-  native `pickResult`, including Firefox-owned search-mode follow-up queries;
+  native `pickResult`, using ADR-085's options and validated browser ID on 155;
+  search-mode follow-up remains synchronous on 153/154, while 155's
+  `providesSearchMode` rows use the complete native handoff;
 - route tip/dynamic/restrict/AI/unknown or other row-dependent results to the
   complete native Urlbar with the draft preserved;
 - retain raw Enter submission when no row is selected and keep complete native
@@ -683,6 +700,12 @@ second/private, one-off/rich, accessibility/layout, Browser Toolbox,
 failure-injection, and release rows remain not run. Evidence: ADR-061,
 `plans/008-native-urlbar-suggestions.md`, and
 `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
+
+ADR-085's 2026-09-06 corrected production probes pass on Firefox 155.0.1 and
+154.0.1. The final 155 full lifecycle/Browser Toolbox/core-feature audit also
+passes. Remaining provider, interactive, and release rows stay explicitly
+unvalidated; the published package's support promise is unchanged. Evidence:
+`docs/research/firefox-155-compatibility.md`.
 
 ## Milestone I: Default-right bookmarks — complete (#14)
 

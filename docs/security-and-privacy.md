@@ -485,7 +485,7 @@ Source inventory and real HTTP/HTTPS/internal/error/permission/protection/
 normal/second/private/fail-open evidence are in ADR-031 and
 `docs/research/firefox-153-urlbar-coverage.md`.
 
-### 7.4 Native Urlbar provider projection — implemented ADR-061/ADR-079
+### 7.4 Native Urlbar provider projection — implemented ADR-061/ADR-079/ADR-085
 
 The project owner explicitly approved the minimum additional frontend exposure
 needed to render Firefox's own Urlbar results. Each managed window owns one
@@ -514,6 +514,18 @@ calls Firefox's own `pickResult`. Rich, dynamic, tip, unknown, and other
 row-dependent results preserve the draft and use the complete native Urlbar.
 Malformed, stale, removed, foreign-query, and foreign-window tokens are
 rejected.
+
+ADR-085 passes the current selected browser's validated positive integer
+`browserId` only to Firefox 155's options-based `pickResult`; the ID is neither
+serialized nor logged. Search-mode-providing results on 155 and newer use the
+existing complete native handoff because Firefox now starts their follow-up
+query asynchronously. The bridge never retains its controller substitution
+across that continuation. Firefox 153/154 keep the synchronous execution
+contract. No new frontend data, network request, persistence, resource mapping,
+dependency, or native DOM mutation is introduced. The test-only 155 engine
+fixture uses loopback URLs and adds no suggestion endpoint. Its temporary
+default-engine selection is restored and the engine is removed in `finally`
+before the marker-owned harness exits.
 
 Replacement, empty incremental batches, ordinary close, selected-tab change,
 failure, fallback, unmount, and disposal release projected strings/icons,

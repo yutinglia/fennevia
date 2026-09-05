@@ -364,6 +364,23 @@ Validate:
 - many pinned tabs scroll only inside their height-capped partition, regular
   tabs retain usable space below, and stable scrollbar gutters avoid row-width
   jumps between partitions;
+- ADR-086/087 drag autoscroll: no overflow remains stationary; one-to-three extra
+  rows retain fine control; several screens of overflow allow gradual outer-
+  edge acceleration. Moving inward stops immediately, reversing resets dwell,
+  and approaching either end slows the fast range. Verify 60/120 Hz, short
+  viewports, horizontal Tabs, and pinned/regular isolation. While the pointer
+  is stationary, both the moving row and insertion indicator follow scrolling;
+  the eventual native order matches the visible drop target. Drop, cancel,
+  target/window exit, blur, and disposal remove every transient scroll-owner
+  marker and animation callback; completion/cancellation removes the drag
+  receiver. Native partition scrollbars remain visible during the drag, their
+  thumbs follow actual scroll position, and vertical gutters stay stable.
+  The transparent receiver accepts drag hits outside the list/partition
+  ancestry; ordinary scrollbar input returns after the drag. The focused
+  marker-profile command is
+  `node tests/firefox-window-lifecycle.mjs --firefox <DEV_FIREFOX> --profile <DEV_PROFILE> --tab-drag-scroll-probe`;
+  this is DOM-event automation, not proof of a physical OS drag session. Exact
+  results and remaining rows are in `docs/research/firefox-155-tab-drag-scroll.md`;
 - exact native order within the pinned-then-regular partition contract;
 - selected, title, safe favicon/fallback, pinned, and loading state; a loaded
   favicon hides the adjacent fallback while loading/error restores only the
@@ -378,6 +395,12 @@ Validate:
 - rejected/failed favicon;
 - Up/Down, Home/End, Enter/Space, Delete, sibling pin/close/mute controls;
 - middle-click close without autoscroll and without first selecting that tab;
+- pin/unpin and mute/unmute/resume-media buttons accept only primary
+  clicks or keyboard activation; a middle click on those buttons or their
+  nested icons performs no action and cannot bubble into row-level tab close;
+- the close button and its nested icon also accept middle-click through the
+  row's `auxclick` path; the preceding non-primary `click` cannot close it early
+  or cause duplicate execution;
 - middle-click or Ctrl/Command-click on New Tab opens a related tab after the
   current tab without autoscroll and without a duplicate `click`+`auxclick`
   open; Shift plus that related gesture opens it in the background; ordinary
@@ -631,6 +654,22 @@ tab visibility, same- and cross-window drag in both partitions, short and
 narrow windows, reduced motion, forced colors, high DPI, normal/second/private
 isolation, fail-open, and disposal during drag): **not run**.
 
+The initial 2026-09-06 action-button refinement passed the complete
+`npm run verify` gate (441/441 Node tests, fixed PowerShell 7 suites,
+deterministic build, and 14/14 artifact scan). The owner then explicitly kept
+middle-click on the close button as well as the tab body and New Tab. That
+follow-up passed 18/18 focused tab tests, lint, typecheck, deterministic build,
+the artifact scan, and the updated lifecycle harness on isolated Firefox
+155.0.1 BuildID `20260903215306`. Non-primary events on pin/unpin and audio
+buttons and their nested icons leave tab count, selection, pinning, and mute
+unchanged; right-click also leaves the close button inert. Middle-click on the
+close icon cannot close on `click`, closes once on `auxclick`, and preserves
+background-tab selection. Primary pin/unpin/mute/unmute/close still pass.
+The tab-body and New Tab middle handlers are unchanged. This is scripted event
+evidence; physical mouse, assistive technology, and the complete multi-select
+gesture matrix remain not run. Windows PowerShell 5.1 was not rerun for these
+frontend-only refinements.
+
 ### 6.2 Top navigation — implemented
 
 Validate:
@@ -801,7 +840,7 @@ Evidence: ADR-031, ADR-059,
 `docs/research/firefox-153-154-unified-trust-shield.md`, and
 `docs/research/firefox-154-urlbar-coverage-permission-transition.md`.
 
-### 6.4.1 Native Urlbar suggestions/providers — focused automation and Firefox 154 probes complete; release matrix pending
+### 6.4.1 Native Urlbar suggestions/providers — focused automation and Firefox 154/155 probes complete; release matrix pending
 
 ADR-061 reuses Firefox's existing per-window `gURLBar` query-context builder,
 parent controller, shared provider manager, result objects, and `pickResult`
@@ -822,6 +861,9 @@ execution. The focused matrix validates:
   foreign-query, and normal/private cross-window rejection;
 - direct `pickResult` execution, search-mode follow-up queries, conservative
   rich/unknown native handoff, and raw Enter submission with no selection;
+- ADR-085 Firefox 154 positional versus 155 options-based picking, current
+  selected-browser ID validation, cleanup on missing ID/native throw, and
+  draft-preserving native handoff for 155's asynchronous search-mode rows;
 - one ARIA combobox/listbox, stable active descendant, Arrow Up/Down, Home/End,
   Page Up/Down, Enter, pointer hover, left/middle click, one polite status
   output, active-option nearest scrolling, bounded list geometry, forced-colors,
@@ -846,6 +888,23 @@ native view closed with zero rows, and restored the controller before and after
 execution. Both runs shut down cleanly with zero first-party script errors and
 emitted only fixed enums, counts, and booleans.
 
+The 2026-09-06 corrected-package run on Firefox 155.0.1 BuildID
+`20260903215306` and regression run on 154.0.1 BuildID `20260824154132`
+add pointer URL execution to the existing keyboard production-panel probe.
+`tests/firefox-urlbar-compatibility-probe.mjs` also checks a real 155 engine-mode
+result: custom projection keeps the native view closed, activation closes the
+custom panel and retains the native draft/focus, native Down opens suggestions,
+and Firefox owns subsequent engine selection and asynchronous continuation.
+The ordinary SEARCH row also executes to the fixed loopback query while the
+custom panel keeps the native view closed. The prior default engine is restored
+and the loopback-only engine fixture is removed in `finally`. The probe now
+rejects structured first-party error records as well as unhandled script errors, so a
+caught bridge error cannot produce a false pass. Both versions pass the current
+three-column compact utility geometry. The final 155 full lifecycle plus
+Browser Toolbox, native recovery, navigation, tabs, bookmarks, and downloads
+checks also pass; see `docs/research/firefox-155-compatibility.md` for commands
+and the exact remaining provider, session, visual, and release limits.
+
 The 2026-08-23 release-candidate suggestions rerun additionally observed two
 real Firefox Urlbar coverage items. The optional second footer row was present,
 the primary copy remained 14.85px high, the complete footer remained 69.90px
@@ -854,7 +913,8 @@ remained two columns and 48.65px high. This is historical evidence for the
 superseded pre-2026-08-26 composition, not validation of current geometry. The
 current probe requires three same-row utility columns at ordinary width, no
 capability-badge row, a compact utility-strip bound, and the retained native
-access target. That updated real-Firefox layout run is **not run**.
+access target. That updated layout run was not run in the August record; the
+focused 154.0.1/155.0.1 geometry checks above passed on 2026-09-06.
 
 The final production-artifact rerun initially exposed a real incremental batch
 race: a later batch for the same query reset the active option after Arrow Down,

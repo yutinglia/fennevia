@@ -355,6 +355,23 @@ tab-group object, persistence, content-accessible mapping, runtime network
 request, or native DOM ownership. Revalidate every row on the next supported
 Firefox stable.
 
+### Tab drag-scroll rendering (ADR-086/087)
+
+This is a rendering-behavior dependency, not a callable native API:
+Firefox 155.0.1 (`20260903215306`), release source
+`fb95137a04eb8fe1196cb12f26b100c1e060295c`,
+`dom/events/EventStateManager.cpp` (`PostHandleEvent`, `eDragOver`) and
+`layout/generic/ScrollContainerFrame.cpp` (`DragScroll`). Native drag scrolling
+ignores drop acceptance cancellation, takes a fixed 20-device-pixel step when
+a scrollbar exists, and can continue to ancestors. A transparent project-owned
+drag receiver is a sibling of the list, so its event ancestry excludes the
+scrolling partitions. Their native scrollbars stay visible at the real position.
+The optional project scroller applies temporary `overflow: hidden` only to the
+receiver's project-owned ancestors up to the surface root and restores their
+markers on cleanup. It does not invoke these internals or change native DOM.
+Recheck hit-test ancestry, visible scrollbars, stable gutters, and cleanup on
+Firefox updates. Evidence: `docs/research/firefox-155-tab-drag-scroll.md`.
+
 ### Selected-navigation bridge
 
 Issue #12 verified the following dependencies on Firefox 153.0.4 release,
@@ -413,12 +430,24 @@ Issue #37 completes the reviewed permission/page-action inventory below;
 Firefox's native identity/protections/permission/action panels remain visible
 and authoritative.
 
-### Native Urlbar suggestions and provider results (ADR-061)
+### Native Urlbar suggestions and provider results (ADR-061/ADR-079/ADR-085)
 
 Exact Firefox 153.0.4 / 154.0 source and Firefox 154 runtime evidence are in
 `docs/research/firefox-153-154-native-urlbar-suggestions.md`. The Firefox 154
 pin is release tag `FIREFOX_154_0_RELEASE`, commit
 `032a9fc1ac0cc3209f7c142744ba2e40847c8086`.
+
+The 2026-09-06 Firefox 155.0.1 follow-up is pinned to
+`fb95137a04eb8fe1196cb12f26b100c1e060295c`, with exact installed-build,
+source-history, Browser Console/Toolbox, and corrected-package evidence in
+`docs/research/firefox-155-compatibility.md`. The 154 positional pick and
+synchronous search-mode behavior below are version-specific; ADR-085 adopts
+the following additional contract for 155 and newer:
+
+| Dependency | Firefox 155 source evidence | Fennevia use and cleanup |
+| --- | --- | --- |
+| `gURLBar.pickResult({ result, event, browserId })` and `gBrowser.selectedBrowser.browserId` | Release-pinned [`UrlbarInput.mjs`](https://github.com/mozilla-firefox/firefox/blob/fb95137a04eb8fe1196cb12f26b100c1e060295c/browser/components/urlbar/content/UrlbarInput.mjs) uses an options object (Bug 2055646); the parent controller resolves the destination by browser ID. | Re-resolve the selected browser at activation, validate a positive safe integer, and pass it only inside the privileged call. Missing ID or native throw clears result authority through existing typed errors. The ID is never projected, logged, or persisted. Restore the controller synchronously. |
+| Native result `payload.providesSearchMode` and asynchronous `maybeConfirmSearchModeFromResult` | The same source awaits mode application before starting a follow-up query (Bug 2060686). | Classify these rows as `native`, preserve the draft, clear project results, and invoke the existing complete-native-Urlbar handoff. Native keyboard/input owns subsequent queries and view opening. Never retain the proxy across a promise. Ordinary picks remain direct. |
 
 | Dependency | Current source evidence | Fennevia use and cleanup |
 | --- | --- | --- |

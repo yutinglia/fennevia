@@ -12,7 +12,7 @@ floating edge panels that stay hidden until you need them.
 
 > [!WARNING]
 > Fennevia is a public **prerelease**, not a stable daily-driver product. It runs
-> privileged code and depends on unsupported Firefox internals. It has been
+> privileged code and depends on unsupported Firefox internals. The published archive has been
 > tested only with Firefox **153** and **154**. Later Firefox versions may
 > break the shell. If you confirm install on a newer version, there is **no
 > promise** that everything will work. Use a dedicated Firefox profile, and
@@ -283,6 +283,14 @@ unknown rows open the complete native address bar. This work has focused tests
 and Firefox 154 provider-contract, production-panel, failure-injection, and
 release probes, while its representative provider matrix remains
 pending.
+
+The unreleased source now includes a Firefox 155.0.1 compatibility fix for
+suggestion execution and asynchronous search-mode handoff. Corrected Urlbar
+probes pass on 155.0.1 and 154.0.1; the 155 core-feature, lifecycle, and recovery
+audit also passes. Search-mode entries use Firefox's complete native address
+bar with the draft preserved. These changes are not in the published
+`v0.18.0-beta.1` archive. See the [Firefox 155 investigation](docs/research/firefox-155-compatibility.md)
+for the tested scope and remaining release checks.
 
 The `0.18.0-beta.1` release reran the complete automated lifecycle, recovery,
 performance-control, deterministic-archive, extracted-package installer,

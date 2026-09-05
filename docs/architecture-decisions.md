@@ -3049,6 +3049,15 @@ one physical middle button press. The tab row's primary `click` path must ignore
 non-primary buttons so middle-click close does not first select that tab. The
 item `auxclick` path remains the only middle-button close.
 
+The 2026-09-06 owner refinement excludes the row's pin/unpin and audio buttons
+from that middle-button path. Each action button's `click` ignores non-primary
+buttons. Item `auxclick` ignores targets inside other action buttons, including
+nested icons, but permits the close button so its middle click closes once.
+Primary and keyboard button activation remain available; middle-clicking the
+tab body still closes it, and ADR-070's explicit New Tab middle-click remains
+unchanged. This uses existing project-owned event handlers and introduces no
+Firefox internal dependency or additional listener.
+
 Places `openNodeIn(..., "tab")` still owns URL security, trusted-link principal
 behavior, and private targeting. Its `inBackground` value follows
 `browser.tabs.loadBookmarksInBackground` (default false), which selects the new
@@ -3971,3 +3980,124 @@ owner. Implementation and evidence are in
 `plans/017-owner-default-layout-and-customize-backdrop.md`,
 `src/firefox/customize-layout/migration.ts`, `src/shell/App.svelte`, and the
 focused layout/frontend tests.
+
+## ADR-085: Adapt Firefox 155 result picking and hand asynchronous search modes to Firefox
+
+**Status:** Accepted within the direct project-owner Firefox 155 compatibility
+request on 2026-09-06. This extends ADR-061's version-specific execution
+contract; it does not change native ownership, privacy, or the published
+prerelease's installer support boundary.
+
+Firefox 155 changes `gURLBar.pickResult` from positional arguments to an options
+object and resolves the destination through `browserId`. The privileged
+suggestions bridge chooses the 155 contract from runtime version metadata,
+re-resolves the selected browser at activation, validates its ID as a positive
+safe integer, and passes `{ result, event, browserId }`. Firefox 153/154 retain
+their positional call. The ID, result, event, and owner stay inside the bridge.
+Missing IDs and native throws use existing privacy-safe errors and clear result
+authority; raw submission and complete native handoff remain available.
+
+Firefox 155 also defers search-mode follow-up queries until asynchronous mode
+application finishes. Those queries outlive the synchronous controller proxy
+that keeps custom results out of the native view. On 155 and newer, a result
+whose native payload has `providesSearchMode` is therefore classified as
+`native`, including an otherwise ordinary SEARCH row. Activation uses the
+existing draft-preserving complete-native-Urlbar handoff. Firefox's input then
+owns selection, mode application, subsequent queries, and the native view.
+Handoff guarantees focus and the draft; opening suggestions follows Firefox's
+normal keyboard/input behavior. Ordinary URL and search submission still use
+native `pickResult` directly. The 153/154 synchronous continuation is unchanged.
+
+**Reasoning:** The untouched package reproduced the owner's execution failure
+on Firefox 155.0.1. Correcting its arguments exposed a second, independently
+reproduced native-view leak when selecting an engine alias. Using the existing
+native fallback avoids extending a privileged controller substitution across
+asynchronous work or reconstructing Firefox's search-mode protocol. No new
+controller, timer, observer, frontend field, dependency, endpoint, or preference
+is introduced. This version selection is an implementation contract, not a
+promise that later Firefox releases preserve it.
+
+Exact official source pins, first-causal evidence, compatibility-canary review,
+focused regressions, cross-version production probes, other-feature audit, and
+remaining release rows are in
+[`research/firefox-155-compatibility.md`](research/firefox-155-compatibility.md).
+
+## ADR-086: Control tab-drag scrolling with distance, dwell, and available overflow
+
+**Status:** Accepted by direct owner request on 2026-09-06. Retains
+ADR-062/063/071/072/073/081 drag, partition, keyboard, and native-tab ownership.
+The scrollbar suppression mechanism below is superseded by ADR-087; the speed
+policy and lifecycle remain current.
+
+The existing tab drag lifecycle owns one optional animation-frame loop for the
+currently eligible pinned or regular partition. Scroll speed is expressed per
+second, uses the actual row size and visible extent, and starts in a precision
+range that is independent of the number of tabs. The outer part of the edge
+band adds a continuous distance-dependent acceleration after a short dwell.
+Only its upper speed bound grows with actual overflow; it falls near the
+destination end. Moving inward immediately lowers speed, leaving the band
+stops motion, and reversing direction or changing partitions resets the dwell.
+Frame gaps are capped, fractional movement accumulates, and no inertial or
+smooth-scroll animation survives pointer exit. Horizontal Tabs uses the same
+policy on its own axis.
+
+Firefox 155's `EventStateManager::PostHandleEvent` invokes
+`ScrollContainerFrame::DragScroll` regardless of `preventDefault`. The latter
+uses a fixed device-pixel step only when a scrollbar is present and may walk
+to scrollable ancestors. During a validated tab drag over the owned strip,
+temporarily mark its project-owned partitions/list and ancestors up to its
+existing surface root with `data-fennevia-tab-scroll-owned`. A package-scoped
+rule uses `overflow: hidden`, `scroll-behavior: auto`, and no scroll snapping.
+This retains programmatic scrolling and the existing stable vertical gutter.
+It never selects or mutates Firefox-owned ancestors. Leaving the drop target,
+window blur/exit, drop, cancel, source loss, frame failure, or unmount restores
+the exact previous marker state. Ordinary wheel/scrollbar behavior resumes
+when this transient ownership ends; wheel/scrollbar manipulation during that
+drag is not a separate scrolling path.
+
+Every scroll refreshes the existing cached-geometry drop preview, including
+when the pointer is stationary. The loop does not retain `DragEvent` or
+`DataTransfer`, add another drag coordinator/reveal controller, change the
+native transfer payload, or add persistence, logging, dependencies, or native
+API calls. The existing bridge remains responsible for validating the actual
+move and normal/private transfer authority.
+
+**Reasoning:** A fixed faster step would make a slightly overflowing strip
+harder to reorder precisely; raw tab counts ignore window size and row size.
+Adding a second scroller without addressing Firefox's own step would also
+prevent predictable slow movement. A bounded local controller gives the
+pointer direct speed control with deterministic cleanup. Source pins,
+independent design provenance, validation, and outstanding physical-drag rows
+are in `docs/research/firefox-155-tab-drag-scroll.md`.
+
+## ADR-087: Keep native tab scrollbars visible throughout drag scrolling
+
+**Status:** Accepted by direct owner follow-up on 2026-09-06. Supersedes only
+ADR-086's suppression of the scrolling list and partition scrollbars.
+
+The pinned and regular partitions retain their normal native scrollbars during
+a tab drag. Firefox paints each thumb from the real scroll position and extent,
+so the owner can see progress through a long list. Existing scrollbar sizing
+and stable gutters remain in effect; no replacement track or thumb is drawn.
+
+The existing source/external drag state renders one transparent, non-focusable,
+`aria-hidden` receiver as a sibling of the list inside the project tab strip.
+It covers the strip during the drag and bubbles drag events to the existing
+strip handlers. Its local stacking level is above row previews and indicators;
+the strip isolates that level from other surfaces. Since the receiver's frame
+ancestry excludes the list and partitions, Firefox's ancestor-based
+`DragScroll` path does not reach those scroll containers. Only the receiver's
+project-owned ancestors up to the existing surface root receive the temporary
+overflow/smooth-scroll/snap suppression marker from ADR-086. Cleanup restores
+their exact prior marker state, and the existing drag lifecycle removes the
+receiver on completion/cancellation. Normal scrollbar input resumes then.
+
+**Reasoning:** A stable gutter alone does not show the current position.
+Keeping the real scrollbars painted supplies that feedback without a second
+position model, while routing tab-drag hit testing outside the scroll
+containers separates the native fixed-step path from the progressive scroller.
+No Firefox-owned DOM, extra drag coordinator, global stacking system, timer,
+bridge contract, preference, or data flow is introduced. The focused Firefox
+155 fixture checks actual hit-test targets, scrollbar styles, scrolling,
+reordering, and cleanup; physical OS drag validation remains separate. See
+`docs/research/firefox-155-tab-drag-scroll.md` for evidence and limitations.

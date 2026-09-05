@@ -5,6 +5,8 @@ import { createServer } from "node:http";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
+import { runUrlbarCompatibilityProbe } from "./firefox-urlbar-compatibility-probe.mjs";
+import { runTabDragScrollProbe } from "./firefox-tab-drag-scroll-probe.mjs";
 
 import {
   assertFreshSessionRestoreState,
@@ -103,6 +105,7 @@ function parseArguments(argv) {
     sessionRestore: null,
     urlbarProviderProbe: false,
     urlbarSuggestionsProbe: false,
+    tabDragScrollProbe: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -187,6 +190,10 @@ function parseArguments(argv) {
       result.urlbarSuggestionsProbe = true;
       continue;
     }
+    if (argument === "--tab-drag-scroll-probe") {
+      result.tabDragScrollProbe = true;
+      continue;
+    }
     if (argument === "--session-restore") {
       const value = argv[index + 1];
       if (!sessionRestoreModes.includes(value)) {
@@ -221,6 +228,7 @@ function parseArguments(argv) {
       result.performanceStockBaseline,
       result.urlbarProviderProbe,
       result.urlbarSuggestionsProbe,
+      result.tabDragScrollProbe,
       result.sessionRestore !== null,
     ].filter(Boolean).length > 1
   ) {
@@ -245,6 +253,7 @@ function parseArguments(argv) {
       result.performanceStockBaseline ||
       result.urlbarProviderProbe ||
       result.urlbarSuggestionsProbe ||
+      result.tabDragScrollProbe ||
       result.sessionRestore !== null)
   ) {
     throw new Error("FENNEVIA_FIREFOX_TEST_MODE_CONFLICT");
@@ -4332,6 +4341,43 @@ async function exerciseTabStripMvp(client) {
       );
       const loadingStateCleared = true;
 
+      testNativeTab.setAttribute("soundplaying", "true");
+      testNativeTab.dispatchEvent(new CustomEvent("TabAttrModified", {
+        bubbles: true,
+        detail: { changed: ["soundplaying"] },
+      }));
+      await waitFor(
+        () => itemForNativeTab(testNativeTab)?.querySelector('[data-fennevia-action="toggle-mute"]'),
+        "FENNEVIA_FIREFOX_TEST_TAB_AUDIO_ACTION_TIMEOUT"
+      );
+      const assertNonPrimaryActionsIgnored = async () => {
+        const count = gBrowser.openTabs.length;
+        const wasPinned = testNativeTab.hasAttribute("pinned");
+        const wasMuted = testNativeTab.hasAttribute("muted");
+        const item = itemForNativeTab(testNativeTab);
+        for (const action of item.querySelectorAll("button[data-fennevia-action]")) {
+          for (const target of [action, action.firstElementChild]) {
+            for (const button of [1, 2]) {
+              if (button === 1 && action.getAttribute("data-fennevia-action") === "close-tab") continue;
+              for (const type of ["mousedown", "click", "auxclick"]) {
+                target.dispatchEvent(new MouseEvent(type, {
+                  bubbles: true, cancelable: true, button, view: window,
+                }));
+              }
+              await new Promise(resolve => window.setTimeout(resolve, 20));
+              if (gBrowser.openTabs.length !== count ||
+                  !gBrowser.openTabs.includes(testNativeTab) ||
+                  testNativeTab.hasAttribute("pinned") !== wasPinned ||
+                  testNativeTab.hasAttribute("muted") !== wasMuted ||
+                  gBrowser.selectedTab !== selectedBeforeBackgroundAction) {
+                throw new Error("FENNEVIA_FIREFOX_TEST_TAB_NONPRIMARY_ACTION_MUTATED");
+              }
+            }
+          }
+        }
+      };
+      await assertNonPrimaryActionsIgnored();
+
       updatedItem
         ?.querySelector('[data-fennevia-action="pin-tab"]')
         ?.click();
@@ -4344,6 +4390,23 @@ async function exerciseTabStripMvp(client) {
         "FENNEVIA_FIREFOX_TEST_TAB_STRIP_PIN_TIMEOUT"
       );
       const pinnedItem = itemForNativeTab(testNativeTab);
+      await assertNonPrimaryActionsIgnored();
+      const nonPrimaryActionsIgnored = true;
+      pinnedItem.querySelector('[data-fennevia-action="toggle-mute"]').click();
+      await waitFor(
+        () => testNativeTab.hasAttribute("muted"),
+        "FENNEVIA_FIREFOX_TEST_TAB_PRIMARY_MUTE_TIMEOUT"
+      );
+      pinnedItem.querySelector('[data-fennevia-action="toggle-mute"]').click();
+      await waitFor(
+        () => !testNativeTab.hasAttribute("muted"),
+        "FENNEVIA_FIREFOX_TEST_TAB_PRIMARY_UNMUTE_TIMEOUT"
+      );
+      testNativeTab.removeAttribute("soundplaying");
+      testNativeTab.dispatchEvent(new CustomEvent("TabAttrModified", {
+        bubbles: true,
+        detail: { changed: ["soundplaying"] },
+      }));
       const regularItem = customItems().find(
         item => item.getAttribute("data-fennevia-pinned") === "false"
       );
@@ -4440,9 +4503,17 @@ async function exerciseTabStripMvp(client) {
         document.activeElement.tabIndex === 0;
 
       const selectedBeforeBackgroundClose = gBrowser.selectedTab;
-      itemForNativeTab(testNativeTab)
-        ?.querySelector('[data-fennevia-action="close-tab"]')
-        ?.click();
+      const middleCloseTarget = itemForNativeTab(testNativeTab)
+        .querySelector('[data-fennevia-action="close-tab"]').firstElementChild;
+      middleCloseTarget.dispatchEvent(new MouseEvent("click", {
+        bubbles: true, cancelable: true, button: 1, view: window,
+      }));
+      if (gBrowser.openTabs.length !== beforeSelectedClose - 1) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_TAB_MIDDLE_CLICK_CLOSED_EARLY");
+      }
+      middleCloseTarget.dispatchEvent(new MouseEvent("auxclick", {
+        bubbles: true, cancelable: true, button: 1, view: window,
+      }));
       await waitForCount(beforeSelectedClose - 2);
       const backgroundCloseDidNotSelect =
         gBrowser.selectedTab === selectedBeforeBackgroundClose;
@@ -4528,6 +4599,7 @@ async function exerciseTabStripMvp(client) {
         loadingStateCleared,
         loadingStateVisible,
         manyTabsOverflow,
+        nonPrimaryActionsIgnored,
         emptyPinnedAreaCollapsed,
         pinDidNotSelect,
         pinnedAreaSeparate,
@@ -4564,6 +4636,7 @@ function assertTabStripMvp(result) {
     loadingStateCleared: true,
     loadingStateVisible: true,
     manyTabsOverflow: true,
+    nonPrimaryActionsIgnored: true,
     emptyPinnedAreaCollapsed: true,
     pinDidNotSelect: true,
     pinnedAreaSeparate: true,
@@ -8345,6 +8418,30 @@ async function run() {
     );
     assert.equal(startupEvidence.firstPartyScriptErrorCount, 0);
 
+    if (options.tabDragScrollProbe) {
+      const scrollEvidence = await runTabDragScrollProbe(client);
+      const postProbeEvidence = await collectEvidence(client);
+      assert.equal(postProbeEvidence.firstPartyScriptErrorCount, 0);
+      assert.equal(
+        postProbeEvidence.records.filter((record) => record.level === "error")
+          .length,
+        0,
+      );
+      await client.request("Marionette:AcceptConnections", { value: false });
+      quitRequested = true;
+      try {
+        await client.request("Marionette:Quit", {});
+      } catch {
+        // A clean application quit may close Marionette before its response arrives.
+      }
+      await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
+      console.log(`tabDragScrollEvidence=${JSON.stringify(scrollEvidence)}`);
+      console.log(
+        "PASS: tab drag scrolling, stationary preview, native scroll ownership and terminal cleanup.",
+      );
+      return;
+    }
+
     if (options.urlbarProviderProbe) {
       const providerEvidence = await runUrlbarProviderProbe(client);
       const postProbeEvidence = await collectEvidence(client);
@@ -8370,8 +8467,14 @@ async function run() {
 
     if (options.urlbarSuggestionsProbe) {
       const suggestionsEvidence = await runUrlbarSuggestionsProbe(client);
+      const compatibilityEvidence = await runUrlbarCompatibilityProbe(client);
       const postProbeEvidence = await collectEvidence(client);
       assert.equal(postProbeEvidence.firstPartyScriptErrorCount, 0);
+      assert.equal(
+        postProbeEvidence.records.filter((record) => record.level === "error")
+          .length,
+        0,
+      );
 
       await client.request("Marionette:AcceptConnections", { value: false });
       quitRequested = true;
@@ -8383,6 +8486,9 @@ async function run() {
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
         `urlbarSuggestionsEvidence=${JSON.stringify(suggestionsEvidence)}`,
+      );
+      console.log(
+        `urlbarCompatibilityEvidence=${JSON.stringify(compatibilityEvidence)}`,
       );
       console.log(
         "PASS: Fennevia projected Firefox Urlbar provider results into its custom " +
