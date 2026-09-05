@@ -3049,6 +3049,15 @@ one physical middle button press. The tab row's primary `click` path must ignore
 non-primary buttons so middle-click close does not first select that tab. The
 item `auxclick` path remains the only middle-button close.
 
+The 2026-09-06 owner refinement excludes the row's pin/unpin and audio buttons
+from that middle-button path. Each action button's `click` ignores non-primary
+buttons. Item `auxclick` ignores targets inside other action buttons, including
+nested icons, but permits the close button so its middle click closes once.
+Primary and keyboard button activation remain available; middle-clicking the
+tab body still closes it, and ADR-070's explicit New Tab middle-click remains
+unchanged. This uses existing project-owned event handlers and introduces no
+Firefox internal dependency or additional listener.
+
 Places `openNodeIn(..., "tab")` still owns URL security, trusted-link principal
 behavior, and private targeting. Its `inBackground` value follows
 `browser.tabs.loadBookmarksInBackground` (default false), which selects the new

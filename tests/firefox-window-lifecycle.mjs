@@ -4333,6 +4333,43 @@ async function exerciseTabStripMvp(client) {
       );
       const loadingStateCleared = true;
 
+      testNativeTab.setAttribute("soundplaying", "true");
+      testNativeTab.dispatchEvent(new CustomEvent("TabAttrModified", {
+        bubbles: true,
+        detail: { changed: ["soundplaying"] },
+      }));
+      await waitFor(
+        () => itemForNativeTab(testNativeTab)?.querySelector('[data-fennevia-action="toggle-mute"]'),
+        "FENNEVIA_FIREFOX_TEST_TAB_AUDIO_ACTION_TIMEOUT"
+      );
+      const assertNonPrimaryActionsIgnored = async () => {
+        const count = gBrowser.openTabs.length;
+        const wasPinned = testNativeTab.hasAttribute("pinned");
+        const wasMuted = testNativeTab.hasAttribute("muted");
+        const item = itemForNativeTab(testNativeTab);
+        for (const action of item.querySelectorAll("button[data-fennevia-action]")) {
+          for (const target of [action, action.firstElementChild]) {
+            for (const button of [1, 2]) {
+              if (button === 1 && action.getAttribute("data-fennevia-action") === "close-tab") continue;
+              for (const type of ["mousedown", "click", "auxclick"]) {
+                target.dispatchEvent(new MouseEvent(type, {
+                  bubbles: true, cancelable: true, button, view: window,
+                }));
+              }
+              await new Promise(resolve => window.setTimeout(resolve, 20));
+              if (gBrowser.openTabs.length !== count ||
+                  !gBrowser.openTabs.includes(testNativeTab) ||
+                  testNativeTab.hasAttribute("pinned") !== wasPinned ||
+                  testNativeTab.hasAttribute("muted") !== wasMuted ||
+                  gBrowser.selectedTab !== selectedBeforeBackgroundAction) {
+                throw new Error("FENNEVIA_FIREFOX_TEST_TAB_NONPRIMARY_ACTION_MUTATED");
+              }
+            }
+          }
+        }
+      };
+      await assertNonPrimaryActionsIgnored();
+
       updatedItem
         ?.querySelector('[data-fennevia-action="pin-tab"]')
         ?.click();
@@ -4345,6 +4382,23 @@ async function exerciseTabStripMvp(client) {
         "FENNEVIA_FIREFOX_TEST_TAB_STRIP_PIN_TIMEOUT"
       );
       const pinnedItem = itemForNativeTab(testNativeTab);
+      await assertNonPrimaryActionsIgnored();
+      const nonPrimaryActionsIgnored = true;
+      pinnedItem.querySelector('[data-fennevia-action="toggle-mute"]').click();
+      await waitFor(
+        () => testNativeTab.hasAttribute("muted"),
+        "FENNEVIA_FIREFOX_TEST_TAB_PRIMARY_MUTE_TIMEOUT"
+      );
+      pinnedItem.querySelector('[data-fennevia-action="toggle-mute"]').click();
+      await waitFor(
+        () => !testNativeTab.hasAttribute("muted"),
+        "FENNEVIA_FIREFOX_TEST_TAB_PRIMARY_UNMUTE_TIMEOUT"
+      );
+      testNativeTab.removeAttribute("soundplaying");
+      testNativeTab.dispatchEvent(new CustomEvent("TabAttrModified", {
+        bubbles: true,
+        detail: { changed: ["soundplaying"] },
+      }));
       const regularItem = customItems().find(
         item => item.getAttribute("data-fennevia-pinned") === "false"
       );
@@ -4441,9 +4495,17 @@ async function exerciseTabStripMvp(client) {
         document.activeElement.tabIndex === 0;
 
       const selectedBeforeBackgroundClose = gBrowser.selectedTab;
-      itemForNativeTab(testNativeTab)
-        ?.querySelector('[data-fennevia-action="close-tab"]')
-        ?.click();
+      const middleCloseTarget = itemForNativeTab(testNativeTab)
+        .querySelector('[data-fennevia-action="close-tab"]').firstElementChild;
+      middleCloseTarget.dispatchEvent(new MouseEvent("click", {
+        bubbles: true, cancelable: true, button: 1, view: window,
+      }));
+      if (gBrowser.openTabs.length !== beforeSelectedClose - 1) {
+        throw new Error("FENNEVIA_FIREFOX_TEST_TAB_MIDDLE_CLICK_CLOSED_EARLY");
+      }
+      middleCloseTarget.dispatchEvent(new MouseEvent("auxclick", {
+        bubbles: true, cancelable: true, button: 1, view: window,
+      }));
       await waitForCount(beforeSelectedClose - 2);
       const backgroundCloseDidNotSelect =
         gBrowser.selectedTab === selectedBeforeBackgroundClose;
@@ -4529,6 +4591,7 @@ async function exerciseTabStripMvp(client) {
         loadingStateCleared,
         loadingStateVisible,
         manyTabsOverflow,
+        nonPrimaryActionsIgnored,
         emptyPinnedAreaCollapsed,
         pinDidNotSelect,
         pinnedAreaSeparate,
@@ -4565,6 +4628,7 @@ function assertTabStripMvp(result) {
     loadingStateCleared: true,
     loadingStateVisible: true,
     manyTabsOverflow: true,
+    nonPrimaryActionsIgnored: true,
     emptyPinnedAreaCollapsed: true,
     pinDidNotSelect: true,
     pinnedAreaSeparate: true,

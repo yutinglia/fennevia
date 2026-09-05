@@ -415,6 +415,9 @@ scroll inside the bounded left panel.
 Issue #60 completes the remaining row-level native parity on that same strip:
 
 - middle-click close;
+- primary/keyboard-only pin and audio buttons; middle-clicking those controls
+  or their icons cannot activate them or close the containing tab, while the
+  close button retains one middle-button close through the row's `auxclick`;
 - middle-click/accel New Tab insertion after the current tab (ADR-070);
 - audio playing/muted/blocked plus a sibling mute toggle;
 - camera, microphone, and screen-sharing status plus crashed-tab state through

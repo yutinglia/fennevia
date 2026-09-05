@@ -378,6 +378,12 @@ Validate:
 - rejected/failed favicon;
 - Up/Down, Home/End, Enter/Space, Delete, sibling pin/close/mute controls;
 - middle-click close without autoscroll and without first selecting that tab;
+- pin/unpin and mute/unmute/resume-media buttons accept only primary
+  clicks or keyboard activation; a middle click on those buttons or their
+  nested icons performs no action and cannot bubble into row-level tab close;
+- the close button and its nested icon also accept middle-click through the
+  row's `auxclick` path; the preceding non-primary `click` cannot close it early
+  or cause duplicate execution;
 - middle-click or Ctrl/Command-click on New Tab opens a related tab after the
   current tab without autoscroll and without a duplicate `click`+`auxclick`
   open; Shift plus that related gesture opens it in the background; ordinary
@@ -630,6 +636,22 @@ regular overflow, pin/unpin focus transfer between partitions, selected pinned
 tab visibility, same- and cross-window drag in both partitions, short and
 narrow windows, reduced motion, forced colors, high DPI, normal/second/private
 isolation, fail-open, and disposal during drag): **not run**.
+
+The initial 2026-09-06 action-button refinement passed the complete
+`npm run verify` gate (441/441 Node tests, fixed PowerShell 7 suites,
+deterministic build, and 14/14 artifact scan). The owner then explicitly kept
+middle-click on the close button as well as the tab body and New Tab. That
+follow-up passed 18/18 focused tab tests, lint, typecheck, deterministic build,
+the artifact scan, and the updated lifecycle harness on isolated Firefox
+155.0.1 BuildID `20260903215306`. Non-primary events on pin/unpin and audio
+buttons and their nested icons leave tab count, selection, pinning, and mute
+unchanged; right-click also leaves the close button inert. Middle-click on the
+close icon cannot close on `click`, closes once on `auxclick`, and preserves
+background-tab selection. Primary pin/unpin/mute/unmute/close still pass.
+The tab-body and New Tab middle handlers are unchanged. This is scripted event
+evidence; physical mouse, assistive technology, and the complete multi-select
+gesture matrix remain not run. Windows PowerShell 5.1 was not rerun for these
+frontend-only refinements.
 
 ### 6.2 Top navigation — implemented
 

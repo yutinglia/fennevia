@@ -679,6 +679,14 @@
     }
     event.preventDefault();
     event.stopPropagation();
+    if (
+      event.target instanceof Element &&
+      event.target.closest(
+        'button[data-fennevia-action]:not([data-fennevia-action="close-tab"])',
+      )
+    ) {
+      return;
+    }
     closeTab(tabId, pointerInteractionFromMouseEvent(event));
   };
 
@@ -697,6 +705,9 @@
 
   const handleTabAudioAction = (event: MouseEvent, tabId: string) => {
     event.stopPropagation();
+    if (event.button !== 0) {
+      return;
+    }
     cancelDelayedFocus();
     try {
       props.tabs.toggleMute(tabId);
@@ -1811,6 +1822,9 @@
           data-fennevia-action={tab.pinned ? "unpin-tab" : "pin-tab"}
           onclick={(event) => {
             event.stopPropagation();
+            if (event.button !== 0) {
+              return;
+            }
             togglePinned(tab);
           }}
           tabindex={rovingTabId === tab.id ? 0 : -1}
@@ -1831,6 +1845,9 @@
           data-fennevia-action="close-tab"
           onclick={(event) => {
             event.stopPropagation();
+            if (event.button !== 0) {
+              return;
+            }
             closeTab(tab.id, pointerInteractionFromMouseEvent(event));
           }}
           tabindex={rovingTabId === tab.id ? 0 : -1}
