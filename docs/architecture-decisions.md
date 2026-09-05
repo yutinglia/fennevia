@@ -3971,3 +3971,44 @@ owner. Implementation and evidence are in
 `plans/017-owner-default-layout-and-customize-backdrop.md`,
 `src/firefox/customize-layout/migration.ts`, `src/shell/App.svelte`, and the
 focused layout/frontend tests.
+
+## ADR-085: Adapt Firefox 155 result picking and hand asynchronous search modes to Firefox
+
+**Status:** Accepted within the direct project-owner Firefox 155 compatibility
+request on 2026-09-06. This extends ADR-061's version-specific execution
+contract; it does not change native ownership, privacy, or the published
+prerelease's installer support boundary.
+
+Firefox 155 changes `gURLBar.pickResult` from positional arguments to an options
+object and resolves the destination through `browserId`. The privileged
+suggestions bridge chooses the 155 contract from runtime version metadata,
+re-resolves the selected browser at activation, validates its ID as a positive
+safe integer, and passes `{ result, event, browserId }`. Firefox 153/154 retain
+their positional call. The ID, result, event, and owner stay inside the bridge.
+Missing IDs and native throws use existing privacy-safe errors and clear result
+authority; raw submission and complete native handoff remain available.
+
+Firefox 155 also defers search-mode follow-up queries until asynchronous mode
+application finishes. Those queries outlive the synchronous controller proxy
+that keeps custom results out of the native view. On 155 and newer, a result
+whose native payload has `providesSearchMode` is therefore classified as
+`native`, including an otherwise ordinary SEARCH row. Activation uses the
+existing draft-preserving complete-native-Urlbar handoff. Firefox's input then
+owns selection, mode application, subsequent queries, and the native view.
+Handoff guarantees focus and the draft; opening suggestions follows Firefox's
+normal keyboard/input behavior. Ordinary URL and search submission still use
+native `pickResult` directly. The 153/154 synchronous continuation is unchanged.
+
+**Reasoning:** The untouched package reproduced the owner's execution failure
+on Firefox 155.0.1. Correcting its arguments exposed a second, independently
+reproduced native-view leak when selecting an engine alias. Using the existing
+native fallback avoids extending a privileged controller substitution across
+asynchronous work or reconstructing Firefox's search-mode protocol. No new
+controller, timer, observer, frontend field, dependency, endpoint, or preference
+is introduced. This version selection is an implementation contract, not a
+promise that later Firefox releases preserve it.
+
+Exact official source pins, first-causal evidence, compatibility-canary review,
+focused regressions, cross-version production probes, other-feature audit, and
+remaining release rows are in
+[`research/firefox-155-compatibility.md`](research/firefox-155-compatibility.md).

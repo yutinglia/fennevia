@@ -361,14 +361,27 @@ const mapSource = (value: unknown): UrlbarSuggestionResultSource =>
 
 const classifyExecution = (
   result: NativeUrlbarResult,
-): UrlbarSuggestionExecutionKind =>
-  Number.isInteger(result.type) && directResultTypes.has(result.type as number)
+  firefoxVersion: string,
+): UrlbarSuggestionExecutionKind => {
+  // Firefox 155 waits for search-mode application before starting its next
+  // query (Bug 2060686). That continuation outlives the synchronous input
+  // proxy, so let the complete native Urlbar own the transition and its view.
+  if (
+    Number.parseInt(firefoxVersion, 10) >= 155 &&
+    readPayload(result).providesSearchMode
+  ) {
+    return "native";
+  }
+  return Number.isInteger(result.type) &&
+    directResultTypes.has(result.type as number)
     ? "direct"
     : "native";
+};
 
 export const projectUrlbarSuggestionResult = (
   result: NativeUrlbarResult,
   token: string,
+  firefoxVersion: string,
 ): UrlbarSuggestionResult => {
   const payload = readPayload(result);
   const displayTitle = readDisplayValue(result, "title");
@@ -399,7 +412,7 @@ export const projectUrlbarSuggestionResult = (
   );
   return Object.freeze({
     description,
-    execution: classifyExecution(result),
+    execution: classifyExecution(result, firefoxVersion),
     heuristic: result.heuristic === true,
     icon: readIcon(result),
     source: mapSource(result.source),

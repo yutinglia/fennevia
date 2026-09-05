@@ -335,18 +335,27 @@ the minimum design below.
   `UrlbarView.onQueryResults()` opens the native view, while closing that view
   cancels the provider query. Constructing a parent controller was rejected
   because it owns preference-observer lifetime with no matching public teardown.
-- `gURLBar.pickResult(result, event, null, browser)` remains the native execution
-  path for text-row results. Dynamic, tip, and other rich row-dependent results
-  receive an explicit complete-native-Urlbar handoff instead of reconstructed
-  payload behavior.
+- Firefox 153/154 use `gURLBar.pickResult(result, event, null, browser)` for
+  ordinary text-row results. ADR-085 adapts Firefox 155 to
+  `pickResult({ result, event, browserId })`, validating the current browser ID
+  inside the privileged bridge. Dynamic, tip, and other rich row-dependent
+  results receive an explicit complete-native-Urlbar handoff instead of
+  reconstructed payload behavior.
 - Presentation data is restricted to bounded, allowlisted strings exposed by
   `UrlbarResult`/documented payload fields. Raw payloads, provider names, native
   objects, and navigation URLs never cross the bridge; opaque tokens retain the
   native result for execution.
-- Search-mode transitions initiated by `pickResult()` can reuse the same
-  synchronous proxy. Complete one-off-engine and rich-result behavior still
-  requires manual Firefox validation and falls back to the native Urlbar when a
-  bounded text-row contract cannot represent it faithfully.
+- Firefox 153/154 search-mode transitions initiated by `pickResult()` can reuse
+  the same synchronous proxy. Firefox 155 defers follow-up queries; its
+  `providesSearchMode` results instead preserve the draft and transfer focus to
+  the complete native Urlbar under ADR-085. Complete one-off-engine and
+  rich-result behavior still requires manual Firefox validation and falls back
+  to the native Urlbar when a bounded text-row contract cannot represent it
+  faithfully.
+- The 2026-09-06 Firefox 155 investigation reproduces both execution-contract
+  failures and verifies the corrected production panel on 155.0.1 and 154.0.1.
+  Exact source pins, native continuation, feature-audit evidence, and remaining
+  rows are in `docs/research/firefox-155-compatibility.md`.
 - Replacement, close, handoff, and disposal cancel the exact active context with
   `ProvidersManager.cancelQuery(context)`. Local query revisions reject late
   callbacks independently of provider completion timing.

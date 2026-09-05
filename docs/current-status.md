@@ -1,6 +1,6 @@
 # Current Project Status
 
-> Snapshot: 2026-08-28. This status review includes ADR-074 through ADR-084 and
+> Snapshot: 2026-09-06. This status review includes ADR-074 through ADR-085 and
 > the `0.18.0-beta.1` version identity, alongside the public
 > `v0.18.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
@@ -8,6 +8,15 @@
 This page is the short, current answer to “how far along is Fennevia?” The root
 READMEs remain user-facing, while the master plan, shell roadmap, architecture,
 and testing documents retain the complete engineering contract.
+
+The unreleased Firefox 155 follow-up fixes the changed native suggestion-pick
+arguments and hands asynchronous search-mode rows to Firefox with the draft
+preserved. Corrected Urlbar production probes pass on 155.0.1 and 154.0.1; the
+final 155 lifecycle, Browser Toolbox, navigation, tabs, bookmarks, downloads,
+and native recovery checks pass. The full local gate and Windows PowerShell
+5.1 suite pass. This does not update the public archive or installer-tested
+major warning, and the full provider, interactive, and release matrices remain
+pending. See [the Firefox 155 investigation](research/firefox-155-compatibility.md).
 
 ## At a glance
 
@@ -19,7 +28,8 @@ and testing documents retain the complete engineering contract.
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
 | Post-MVP shell work             | Included through `v0.18.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, ADR-073 pinned-tab partitioning, and ADR-074 through ADR-084's widget, address, layout, narrow-window, drag, and customize work |
 | Latest released follow-up       | ADR-082 restores Firefox's bounded untrimmed value for a fresh address edit and adds optional Row/Column content padding; ADR-083 keeps narrow Top scrollbars draggable; the ADR-076 follow-up makes the inspector yield during widget drags; ADR-084 adopts the owner's default and blocks/darkens website content during customization |
-| Current source follow-up        | An unreleased Firefox 154.0.1 Urlbar-coverage correction gates blocked permission children behind Firefox's parent visibility envelope, preventing a parent-first tab transition from failing the subscriber; the full local gate and Windows PowerShell 5.1 suite pass, while corrected-package real-Firefox confirmation remains pending |
+| Current source follow-up        | Unreleased ADR-085 fixes Firefox 155 suggestion execution and native search-mode continuation; corrected 155.0.1/154.0.1 Urlbar probes, the 155 core-feature/recovery audit, the full local gate, and Windows PowerShell 5.1 suite pass. Full release and representative-provider matrices remain pending. |
+| Earlier source follow-up        | The Firefox 154.0.1 Urlbar-coverage correction gates blocked permission children behind Firefox's parent visibility envelope; direct confirmation of the owner's original transition remains pending. |
 | Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; the automated Firefox 154.0.1 release matrix passed while manual visual rows remain pending |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; the `0.18.0-beta.1` Firefox 154.0.1 provider-contract, production-panel, failure-injection, normalized-query-boundary, and release probes passed; the literal fresh-profile first-zero-prefix and representative-provider matrices remain pending                                                |
 | Real-Firefox validation         | `v0.18.0-beta.1` passed the complete automated Firefox 154.0.1 lifecycle, recovery, performance-control, deterministic-archive, extracted-package, independently downloaded public-package verification, and public-package recovery matrix. Several manual visual, assistive, account/device, and GUI installer rows remain pending |

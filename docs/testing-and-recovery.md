@@ -801,7 +801,7 @@ Evidence: ADR-031, ADR-059,
 `docs/research/firefox-153-154-unified-trust-shield.md`, and
 `docs/research/firefox-154-urlbar-coverage-permission-transition.md`.
 
-### 6.4.1 Native Urlbar suggestions/providers — focused automation and Firefox 154 probes complete; release matrix pending
+### 6.4.1 Native Urlbar suggestions/providers — focused automation and Firefox 154/155 probes complete; release matrix pending
 
 ADR-061 reuses Firefox's existing per-window `gURLBar` query-context builder,
 parent controller, shared provider manager, result objects, and `pickResult`
@@ -822,6 +822,9 @@ execution. The focused matrix validates:
   foreign-query, and normal/private cross-window rejection;
 - direct `pickResult` execution, search-mode follow-up queries, conservative
   rich/unknown native handoff, and raw Enter submission with no selection;
+- ADR-085 Firefox 154 positional versus 155 options-based picking, current
+  selected-browser ID validation, cleanup on missing ID/native throw, and
+  draft-preserving native handoff for 155's asynchronous search-mode rows;
 - one ARIA combobox/listbox, stable active descendant, Arrow Up/Down, Home/End,
   Page Up/Down, Enter, pointer hover, left/middle click, one polite status
   output, active-option nearest scrolling, bounded list geometry, forced-colors,
@@ -846,6 +849,23 @@ native view closed with zero rows, and restored the controller before and after
 execution. Both runs shut down cleanly with zero first-party script errors and
 emitted only fixed enums, counts, and booleans.
 
+The 2026-09-06 corrected-package run on Firefox 155.0.1 BuildID
+`20260903215306` and regression run on 154.0.1 BuildID `20260824154132`
+add pointer URL execution to the existing keyboard production-panel probe.
+`tests/firefox-urlbar-compatibility-probe.mjs` also checks a real 155 engine-mode
+result: custom projection keeps the native view closed, activation closes the
+custom panel and retains the native draft/focus, native Down opens suggestions,
+and Firefox owns subsequent engine selection and asynchronous continuation.
+The ordinary SEARCH row also executes to the fixed loopback query while the
+custom panel keeps the native view closed. The prior default engine is restored
+and the loopback-only engine fixture is removed in `finally`. The probe now
+rejects structured first-party error records as well as unhandled script errors, so a
+caught bridge error cannot produce a false pass. Both versions pass the current
+three-column compact utility geometry. The final 155 full lifecycle plus
+Browser Toolbox, native recovery, navigation, tabs, bookmarks, and downloads
+checks also pass; see `docs/research/firefox-155-compatibility.md` for commands
+and the exact remaining provider, session, visual, and release limits.
+
 The 2026-08-23 release-candidate suggestions rerun additionally observed two
 real Firefox Urlbar coverage items. The optional second footer row was present,
 the primary copy remained 14.85px high, the complete footer remained 69.90px
@@ -854,7 +874,8 @@ remained two columns and 48.65px high. This is historical evidence for the
 superseded pre-2026-08-26 composition, not validation of current geometry. The
 current probe requires three same-row utility columns at ordinary width, no
 capability-badge row, a compact utility-strip bound, and the retained native
-access target. That updated real-Firefox layout run is **not run**.
+access target. That updated layout run was not run in the August record; the
+focused 154.0.1/155.0.1 geometry checks above passed on 2026-09-06.
 
 The final production-artifact rerun initially exposed a real incremental batch
 race: a later batch for the same query reset the active option after Arrow Down,

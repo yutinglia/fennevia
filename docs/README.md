@@ -56,6 +56,9 @@ Read these before changing code or current documentation:
   coverage floors, and the release mass-test matrices.
 - [Firefox stable-update workflow](firefox-update-workflow.md) — how to validate,
   disable, repair, or update Fennevia around Firefox changes.
+- [Firefox 155 compatibility investigation](research/firefox-155-compatibility.md) —
+  two reproduced Urlbar regressions, corrected production probes, upstream
+  changes, and the other-feature audit on Firefox 155.0.1.
 
 ## Security, dependencies, and licensing
 

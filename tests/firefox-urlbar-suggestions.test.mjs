@@ -52,9 +52,12 @@ function createResult({
   };
 }
 
-function createNativeWindow({ missingMouseEvent = false } = {}) {
+function createNativeWindow({
+  missingMouseEvent = false,
+  firefoxVersion = "154.0",
+} = {}) {
   const tabContainer = createEventTarget();
-  const selectedBrowser = { webNavigation: {} };
+  const selectedBrowser = { browserId: 7, webNavigation: {} };
   const calls = [];
   const pendingQueries = [];
   const view = {
@@ -140,6 +143,25 @@ function createNativeWindow({ missingMouseEvent = false } = {}) {
     view,
   };
 
+  if (Number.parseInt(firefoxVersion, 10) >= 155) {
+    input.pickResult = function ({
+      result,
+      event,
+      element = null,
+      browserId = null,
+    }) {
+      // Match Firefox 155's destructuring and native result access: the old
+      // positional call must fail here rather than silently record a pick.
+      calls.push({
+        browserId,
+        element,
+        event,
+        picked: result,
+        providesSearchMode: result.payload.providesSearchMode,
+      });
+    };
+  }
+
   class FakeKeyboardEvent {
     constructor(type, init) {
       this.type = type;
@@ -188,7 +210,7 @@ function createController(options = {}) {
   const boundary = createFirefoxBridgeBoundary({
     buildId: "20260812182057",
     contextId: `window-urlbar-suggestions-${++nextContextSequence}`,
-    firefoxVersion: "154.0",
+    firefoxVersion: options.firefoxVersion ?? "154.0",
     window: fixture.nativeWindow,
     windowKind: options.windowKind ?? "normal",
   });
@@ -471,6 +493,74 @@ test("direct result execution uses the current native result and rejects stale t
   boundary.dispose();
 });
 
+test("Firefox 155 picks through options and pins the current browser ID", async () => {
+  for (const gesture of [
+    keyboardGesture,
+    { ...keyboardGesture, kind: "pointer", button: 1, ctrlKey: true },
+  ]) {
+    const { boundary, controller, errors, fixture } = createController({
+      firefoxVersion: "155.0.1",
+    });
+    const result = createResult();
+    fixture.input.nextResults = [result];
+    controller.urlbarSuggestions.query("bounded fixture");
+    await flushQueries();
+    const { token } = controller.urlbarSuggestions.snapshot().results[0];
+    fixture.nativeWindow.gBrowser.selectedBrowser = {
+      browserId: 19,
+      webNavigation: {},
+    };
+    assert.deepEqual(controller.urlbarSuggestions.execute(token, gesture), {
+      status: "committed",
+    });
+    const picked = fixture.calls.find((call) => call?.picked === result);
+    assert.equal(picked.browserId, 19);
+    assert.equal(picked.element, null);
+    assert.equal(
+      picked.event.type,
+      gesture.kind === "pointer" ? "click" : "keydown",
+    );
+    assert.equal(picked.event.ctrlKey, gesture.ctrlKey);
+    assert.equal(picked.event.button, gesture.button);
+    assert.equal(fixture.input.controller, fixture.nativeController);
+    assert.equal(controller.snapshot().resultCount, 0);
+    assert.deepEqual(controller.urlbarSuggestions.execute(token, gesture), {
+      status: "rejected",
+    });
+    assert.deepEqual(errors, []);
+    controller.dispose();
+    boundary.dispose();
+  }
+});
+
+test("Firefox 155 rejects invalid browser IDs before invoking native selection", async () => {
+  for (const browserId of [undefined, null, "7", NaN, Infinity, 0, -1, 1.5]) {
+    const { boundary, controller, errors, fixture } = createController({
+      firefoxVersion: "155.0.1",
+    });
+    fixture.input.nextResults = [createResult()];
+    controller.urlbarSuggestions.query("private fixture");
+    await flushQueries();
+    const { token } = controller.urlbarSuggestions.snapshot().results[0];
+    fixture.selectedBrowser.browserId = browserId;
+    assert.deepEqual(
+      controller.urlbarSuggestions.execute(token, keyboardGesture),
+      { status: "native-required" },
+    );
+    assert.equal(
+      fixture.calls.some((call) => call?.picked),
+      false,
+    );
+    assert.equal(fixture.input.controller, fixture.nativeController);
+    assert.equal(controller.snapshot().resultCount, 0);
+    assert.equal(controller.urlbarSuggestions.snapshot().phase, "failed");
+    assert.equal(errors.length, 1);
+    assert.doesNotMatch(JSON.stringify(errors[0]), /private fixture/u);
+    controller.dispose();
+    boundary.dispose();
+  }
+});
+
 test("query replacement cancels exact context and ignores its late batch", async () => {
   const { boundary, controller, fixture } = createController();
   const staleResult = createResult({ title: "stale" });
@@ -570,6 +660,68 @@ test("search-mode results continue through the same isolated provider manager", 
   assert.deepEqual(errors, []);
 
   controller.urlbarSuggestions.cancel();
+  controller.dispose();
+  boundary.dispose();
+});
+
+test("Firefox 155 search-mode rows preserve the draft for native continuation", async () => {
+  const { boundary, controller, errors, fixture } = createController({
+    firefoxVersion: "155.0.1",
+  });
+  const mode = createResult();
+  mode.payload.providesSearchMode = true;
+  fixture.input.nextResults = [mode];
+  controller.urlbarSuggestions.query("@fixture");
+  await flushQueries();
+  const result = controller.urlbarSuggestions.snapshot().results[0];
+
+  assert.equal(result.execution, "native");
+  assert.deepEqual(
+    controller.urlbarSuggestions.execute(result.token, keyboardGesture),
+    { status: "native-required" },
+  );
+  await flushQueries();
+  assert.equal(
+    fixture.calls.some((call) => call?.picked),
+    false,
+  );
+  assert.equal(fixture.input.searchMode, null);
+  assert.equal(fixture.input.controller, fixture.nativeController);
+  assert.equal(controller.urlbarSuggestions.prepareNativeHandoff(), true);
+  assert.equal(fixture.input.value, "@fixture");
+  assert.equal(fixture.calls.includes("reverted"), false);
+  assert.equal(controller.snapshot().resultCount, 0);
+  assert.deepEqual(errors, []);
+  controller.dispose();
+  boundary.dispose();
+});
+
+test("Firefox 155 native pick errors restore ownership and clear result authority", async () => {
+  const { boundary, controller, errors, fixture } = createController({
+    firefoxVersion: "155.0.1",
+  });
+  fixture.input.nextResults = [createResult()];
+  controller.urlbarSuggestions.query("private fixture");
+  await flushQueries();
+  const { token } = controller.urlbarSuggestions.snapshot().results[0];
+  fixture.input.pickResult = () => {
+    throw new Error("private execution payload");
+  };
+  assert.deepEqual(
+    controller.urlbarSuggestions.execute(token, keyboardGesture),
+    { status: "native-required" },
+  );
+  assert.equal(fixture.input.controller, fixture.nativeController);
+  assert.equal(controller.snapshot().resultCount, 0);
+  assert.equal(controller.urlbarSuggestions.snapshot().phase, "failed");
+  assert.equal(
+    errors[0].fenneviaCode,
+    "FENNEVIA_FIREFOX_URLBAR_SUGGESTIONS_EXECUTE_FAILED",
+  );
+  assert.doesNotMatch(
+    JSON.stringify(errors[0]),
+    /private fixture|private execution payload/u,
+  );
   controller.dispose();
   boundary.dispose();
 });

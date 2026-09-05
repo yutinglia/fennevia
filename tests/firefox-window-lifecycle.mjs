@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
+import { runUrlbarCompatibilityProbe } from "./firefox-urlbar-compatibility-probe.mjs";
 
 import {
   assertFreshSessionRestoreState,
@@ -8370,8 +8371,14 @@ async function run() {
 
     if (options.urlbarSuggestionsProbe) {
       const suggestionsEvidence = await runUrlbarSuggestionsProbe(client);
+      const compatibilityEvidence = await runUrlbarCompatibilityProbe(client);
       const postProbeEvidence = await collectEvidence(client);
       assert.equal(postProbeEvidence.firstPartyScriptErrorCount, 0);
+      assert.equal(
+        postProbeEvidence.records.filter((record) => record.level === "error")
+          .length,
+        0,
+      );
 
       await client.request("Marionette:AcceptConnections", { value: false });
       quitRequested = true;
@@ -8383,6 +8390,9 @@ async function run() {
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
         `urlbarSuggestionsEvidence=${JSON.stringify(suggestionsEvidence)}`,
+      );
+      console.log(
+        `urlbarCompatibilityEvidence=${JSON.stringify(compatibilityEvidence)}`,
       );
       console.log(
         "PASS: Fennevia projected Firefox Urlbar provider results into its custom " +

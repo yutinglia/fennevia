@@ -607,6 +607,15 @@ not run. Evidence: ADR-061,
 `plans/008-native-urlbar-suggestions.md`, and
 `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
 
+The 2026-09-06 ADR-085 compatibility follow-up adapts Firefox 155's options-based
+native pick, validates its browser ID inside the bridge, and hands asynchronous
+search-mode rows to the retained native Urlbar with their draft preserved.
+Corrected production probes pass on Firefox 155.0.1 and 154.0.1, and the full
+155 lifecycle/Browser Toolbox/core-feature audit passes. This does not complete
+the representative-provider or release matrices or change the published
+prerelease's support boundary. Evidence:
+`docs/research/firefox-155-compatibility.md`.
+
 #### Right bookmarks — complete (#14)
 
 - typed Places bridge;

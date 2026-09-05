@@ -667,7 +667,9 @@ Evidence: ADR-028 and
   validated local icon references, direct/native class, and per-window opaque
   action token;
 - execute ordinary URL/search/keyword/switch-tab/omnibox/remote-tab rows through
-  native `pickResult`, including Firefox-owned search-mode follow-up queries;
+  native `pickResult`, using ADR-085's options and validated browser ID on 155;
+  search-mode follow-up remains synchronous on 153/154, while 155's
+  `providesSearchMode` rows use the complete native handoff;
 - route tip/dynamic/restrict/AI/unknown or other row-dependent results to the
   complete native Urlbar with the draft preserved;
 - retain raw Enter submission when no row is selected and keep complete native
@@ -683,6 +685,12 @@ second/private, one-off/rich, accessibility/layout, Browser Toolbox,
 failure-injection, and release rows remain not run. Evidence: ADR-061,
 `plans/008-native-urlbar-suggestions.md`, and
 `docs/research/firefox-153-154-native-urlbar-suggestions.md`.
+
+ADR-085's 2026-09-06 corrected production probes pass on Firefox 155.0.1 and
+154.0.1. The final 155 full lifecycle/Browser Toolbox/core-feature audit also
+passes. Remaining provider, interactive, and release rows stay explicitly
+unvalidated; the published package's support promise is unchanged. Evidence:
+`docs/research/firefox-155-compatibility.md`.
 
 ## Milestone I: Default-right bookmarks — complete (#14)
 
