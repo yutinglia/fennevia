@@ -748,6 +748,10 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   );
   assert.match(mountShell, /isChromeWindowActive/u);
   assert.match(
+    mountShell,
+    /createSurfaceFocusCoordinator\(\{\s*frame,\s*isChromeWindowActive,\s*targets,\s*\}\)/u,
+  );
+  assert.match(
     edgeInteractions,
     /resolveWindowDragEdge[\s\S]*?closest<HTMLElement>\("\[data-fennevia-edge-panel\]"\)[\s\S]*?isEdgeName\(edge\)/u,
   );

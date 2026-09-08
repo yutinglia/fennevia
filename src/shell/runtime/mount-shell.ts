@@ -175,7 +175,11 @@ export function mountShellApp({
     shell,
   });
 
-  const surfaceFocus = createSurfaceFocusCoordinator({ frame, targets });
+  const surfaceFocus = createSurfaceFocusCoordinator({
+    frame,
+    isChromeWindowActive,
+    targets,
+  });
   const { activeElementFor, discardFocusOrigin, focusSurface, restoreFocus } =
     surfaceFocus;
 

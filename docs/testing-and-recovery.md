@@ -293,7 +293,16 @@ For each edge:
   pointer hold;
 - `Escape` priority and dismissal;
 - focus transfer into the surface;
-- focus restoration to the prior valid target;
+- focus restoration to the prior valid target only while the owning Firefox
+  window is active and focus remains inside the closing surface; preserve focus
+  that already moved elsewhere, and discard the saved origin on background
+  dismissal without calling focus or blur;
+- with Firefox behind another application, pass over exposed edges in single
+  and multiple panel modes, both with and without prior panel focus, then leave
+  and wait for auto-hide: no activation or taskbar flashing; return to Firefox
+  and verify keyboard reveal and Escape restoration still work (the 2026-09-09
+  component regression tests pass; real Firefox/Windows confirmation is
+  `not run`);
 - disposal during a pending hide or hold.
 
 ### Corners and collisions

@@ -20,9 +20,11 @@ export type SurfaceFocusCoordinator = Readonly<{
 
 export function createSurfaceFocusCoordinator({
   frame,
+  isChromeWindowActive,
   targets,
 }: Readonly<{
   frame: HTMLElement;
+  isChromeWindowActive?: () => boolean;
   targets: EdgeMountTargets;
 }>): SurfaceFocusCoordinator {
   const focusOrigins = new Map<EdgeName, FocusableElement>();
@@ -36,6 +38,16 @@ export function createSurfaceFocusCoordinator({
     const active = activeElementFor(edge);
     const origin = focusOrigins.get(edge);
     focusOrigins.delete(edge);
+    // Remembered DOM focus can outlive OS activation or a move to another
+    // control. Closing an edge must not reclaim focus in either case.
+    if (
+      !active ||
+      !(isChromeWindowActive
+        ? isChromeWindowActive()
+        : frame.ownerDocument.hasFocus())
+    ) {
+      return;
+    }
     if (origin?.isConnected && !frame.contains(origin)) {
       origin.focus({ preventScroll: true });
     } else {
