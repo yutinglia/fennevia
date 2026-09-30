@@ -42,19 +42,21 @@ of inventing a new architecture.
   behavior.
 - Initial support targets the latest Firefox stable available during
   implementation and a Windows-first development environment.
-- Current validated evidence is public prerelease package `0.18.0-beta.1` on
-  Firefox 153.0.4 BuildID `20260810162159`, Firefox 154.0 BuildID
-  `20260812182057`, and Firefox 154.0.1 BuildID `20260824154132` for Windows x64. The installer
-  accepts Firefox 153 and newer after an explicit warning that only majors 153
-  and 154 are tested and that later versions may break with no working promise.
+- Current validated evidence is public prerelease package `0.19.0-beta.1` on
+  Windows x64 Firefox 157.0 BuildID `20260924084938`. Firefox 153.0.4 BuildID
+  `20260810162159`, Firefox 154.0 BuildID `20260812182057`, and Firefox 154.0.1
+  BuildID `20260824154132` retain historical evidence. The installer accepts
+  Firefox 153 and newer after an explicit warning that only majors 153, 154,
+  and 157 have tested evidence and that later versions may break with no
+  working promise.
   This is a narrow prerelease support boundary, not a stable or cross-platform
   support promise.
 - Do not add branches, polyfills, or compatibility hacks for old Firefox
   versions unless an issue explicitly requires them.
-- The `0.19.0-beta.1` release candidate adds Windows x64 Firefox 157.0 BuildID
+- The `0.19.0-beta.1` release adds Windows x64 Firefox 157.0 BuildID
   `20260924084938` to compatibility metadata. Its release matrix and publication
   state are tracked in `docs/research/firefox-157-0.19.0-beta.1-release-validation.md`;
-  historical 153/154 evidence is not a new current-candidate rerun.
+  historical 153/154 evidence is not a new current-package rerun.
 - Firefox internal APIs are intentionally used, but those dependencies must be
   concentrated in the runtime and `src/firefox/` bridge layers.
 - Do not claim Linux, macOS, ESR, Beta, or Nightly support without real evidence

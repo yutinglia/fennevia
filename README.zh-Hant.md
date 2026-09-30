@@ -9,7 +9,7 @@ _這是呈現 Fennevia 模組化瀏覽器介面的原創品牌主視覺；下方
 Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為中心的瀏覽器介面。它讓網頁保持在畫面主體，並把瀏覽器控制項放到四個平時隱藏、需要時才浮現的邊緣面板。
 
 > [!WARNING]
-> Fennevia 是公開的**預發行版本**，不是穩定的日常使用產品。它會執行高權限程式碼，並依賴 Firefox 不保證穩定的內部介面。目前公開套件只在 Firefox **153** 與 **154** 上測試過。較新的 Firefox 可能會讓介面故障。若你在較新版本上確認安裝，**不保證**所有功能都能正常運作。請使用專用 Firefox 設定檔，並保留下載的發行壓縮檔，以便之後停用或移除。
+> Fennevia 是公開的**預發行版本**，不是穩定的日常使用產品。它會執行高權限程式碼，並依賴 Firefox 不保證穩定的內部介面。目前公開套件已在 Firefox **157** 上驗證，**153** 與 **154** 則保留歷史紀錄。較新的 Firefox 可能會讓介面故障。若你在較新版本上確認安裝，**不保證**所有功能都能正常運作。請使用專用 Firefox 設定檔，並保留下載的發行壓縮檔，以便之後停用或移除。
 > Fennevia 跟隨目前最新的原版 Firefox **Release** channel；不打算長期維護所有歷史 Firefox 版本，也不以 ESR、Beta 或 Nightly 為目標。
 
 ## Fennevia 會改變甚麼
@@ -74,18 +74,20 @@ Fennevia 不會讓每個 widget 直接存取 Firefox 的高權限內部物件。
 
 ## 目前版本
 
-目前公開預發行版本是 [`v0.18.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.18.0-beta.1)，接續 [`v0.17.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.17.0-beta.1)。測試範圍刻意限制得很窄：
+目前公開預發行版本是 [`v0.19.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.19.0-beta.1)，接續 [`v0.18.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.18.0-beta.1)。測試範圍刻意限制得很窄：
 
 | 要求             | 已測試值                                               |
 | ---------------- | ------------------------------------------------------ |
 | 作業系統         | Windows x64                                            |
-| Firefox          | 原版 Firefox 153.0.4、154.0 與 154.0.1，Release channel |
-| Firefox Build ID | `20260810162159`、`20260812182057`、`20260824154132`   |
-| 套件             | `fennevia-0.18.0-beta.1-windows.zip`                   |
+| Firefox          | 原版 Firefox 157.0，Release channel                  |
+| Firefox Build ID | `20260924084938`                                     |
+| 套件             | `fennevia-0.19.0-beta.1-windows.zip`                   |
 
-Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用。153、154 以及更新的主版本可在安裝程式警告後安裝：目前只測試過 153 與 154，較新版本可能故障，確認安裝並不保證一切都能運作。Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta 及 Nightly。
+Firefox 153.0.4、154.0 與 154.0.1 保留歷史驗證紀錄；此次套件沒有重跑這些版本的完整矩陣。
 
-Fennevia 會以開發當下最新的原版 Firefox stable release 為主要目標。上方的 153／154 是此套件的實際驗證證據，不代表專案承諾永遠維持每個舊版相容。未來 Firefox stable 更新可能需要新版 Fennevia；不支援的 channel 與歷史相容分支刻意不在產品範圍內。
+Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用。153、154 以及更新的主版本可在安裝程式警告後安裝：目前 153、154 與 157 有測試紀錄，較新版本可能故障，確認安裝並不保證一切都能運作。Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta 及 Nightly。
+
+Fennevia 會以開發當下最新的原版 Firefox stable release 為主要目標。上方的 157 是此套件的實際驗證證據，不代表專案承諾永遠維持每個舊版相容。未來 Firefox stable 更新可能需要新版 Fennevia；不支援的 channel 與歷史相容分支刻意不在產品範圍內。
 
 安裝預先建置的發行版**不需要** Node.js、npm，也不需要自行編譯 Firefox。
 
@@ -99,19 +101,19 @@ Fennevia 已經超越首個四邊介面 MVP。目前預發行版亦包括 Fennev
 
 此版本會讓啟動器維持精簡，但在新開啟的編輯器取得焦點時使用 Firefox 保留的完整網址；亦保留使用 token 的垂直留白，改由有標準內距的父 Row 統一負責網址列與分頁列的水平對齊、維持固定高度 Top 的安全內距，並提供上述可選的 Row／Column 標準內容內距。新版預設已採用這個四面配置，自訂模式也會遮暗並阻擋網站指標操作。窄視窗 Top 的捲軸可以拖曳，其餘空白標題列區域仍可拖曳視窗。中央網址面板保留原有間距。這些變更已包含在 `v0.18.0-beta.1` 壓縮檔。
 
-尚未發行的原始碼已修正 Firefox 155.0.1 的建議結果執行與非同步搜尋模式接手問題。修正後的網址列探針在 155.0.1 與 154.0.1 通過，155 的核心功能、生命週期及回復檢查亦通過。搜尋模式項目會保留輸入並交由 Firefox 完整原生網址列處理。這些修正尚未包含在公開的 `v0.18.0-beta.1` 壓縮檔中；已測範圍與剩餘發行檢查請見 [Firefox 155 調查紀錄（英文）](docs/research/firefox-155-compatibility.md)。
+此版本已修正 Firefox 155.0.1 的建議結果執行與非同步搜尋模式接手問題。修正後的網址列探針在 155.0.1 與 154.0.1 通過，155 的核心功能、生命週期及回復檢查亦通過。搜尋模式項目會保留輸入並交由 Firefox 完整原生網址列處理。這些修正已包含在公開的 `v0.19.0-beta.1` 壓縮檔中；已測範圍與剩餘發行檢查請見 [Firefox 155 調查紀錄（英文）](docs/research/firefox-155-compatibility.md)。
 
-尚未發行的原始碼亦已修正 Firefox 157 Nova 造成浮動面板背景幾乎透明的問題。157.0 的背景不透明度與原生網址列實機探針已通過；公開套件與支援範圍尚未變更。其餘主題、原生介面、安全警告與發行檢查請見 [Firefox 157 調查紀錄（英文）](docs/research/firefox-157-compatibility.md)。
+此版本亦已修正 Firefox 157 Nova 造成浮動面板背景幾乎透明的問題。157.0 的背景不透明度與原生網址列實機探針已通過；套件已將 157 列入有驗證紀錄的主版本。其餘主題、原生介面、安全警告與發行檢查請見 [Firefox 157 調查紀錄（英文）](docs/research/firefox-157-compatibility.md)。
 
 原生確認框也可在工具列維持隱藏時正常顯示，並避免對話框關閉後殘留顯示狀態；八個 Firefox 157 實機案例已通過，包含未儲存分頁的取消與確認。必要的原生介面與錯誤回復仍保留，詳見 [原生對話框調查（英文）](docs/research/firefox-157-native-dialogs.md)。
 
-上述原始碼修正正在準備發行為 `0.19.0-beta.1`，候選套件相容性資料新增 Firefox 157.0。發布狀態見 [發行驗證紀錄（英文）](docs/research/firefox-157-0.19.0-beta.1-release-validation.md)；完成發布前，公開下載仍是 `0.18.0-beta.1`。
+上述修正已隨 `0.19.0-beta.1` 發布，套件相容性資料新增 Firefox 157.0。確切套件證據見 [發行驗證紀錄（英文）](docs/research/firefox-157-0.19.0-beta.1-release-validation.md)。擁有者已明確核准本次預覽版的人工／硬體驗證例外；未執行的項目仍如實標為 `not run`。
 
-候選版本另加入下載按鈕與狀態小工具的進度圈，讓窄面板捲動時仍可使用視窗控制按鈕，開放側面板水平捲動，並修正書籤中鍵開啟時所有新增分頁圖示同時出現的問題（ADR-091）。
+此版本另加入下載按鈕與狀態小工具的進度圈，讓窄面板捲動時仍可使用視窗控制按鈕，開放側面板水平捲動，並修正書籤中鍵開啟時所有新增分頁圖示同時出現的問題（ADR-091）。
 
 同次修正也處理背景 Firefox 把面板範圍內的滑鼠離開事件誤判為雜訊、導致面板不隱藏的路徑。前景／背景視窗的事件探針已通過；實際滑鼠跨到其他程式的情境仍待使用者確認。
 
-`0.18.0-beta.1` 發行版已在 Firefox 154.0.1 重跑完整的自動化生命週期、回復、效能對照、可重現封裝、解壓包安裝生命週期、獨立下載公開套件驗證與公開套件復原矩陣。完整的 Firefox 實機視覺、輔助科技、帳號／裝置、原生彈出面板定位、完整自訂模式、啟動首幀、GUI 安裝流程、全新設定檔第一次零前綴查詢，以及具代表性的 Urlbar 供應器測試矩陣仍未完成。因此目前主要欠缺的是相容性與發行驗證，而不是核心瀏覽器介面功能。詳情請參閱[目前專案狀態（英文）](docs/current-status.md)，當中整理了已完成能力、證據邊界、已知風險及建議優先次序。
+`0.19.0-beta.1` 發行版已在 Firefox 157.0 重跑完整的自動化生命週期、回復、效能對照、可重現封裝、解壓包安裝生命週期、獨立下載公開套件驗證與公開套件復原矩陣。完整的 Firefox 實機視覺、輔助科技、帳號／裝置、原生彈出面板定位、完整自訂模式、啟動首幀、GUI 安裝流程、全新設定檔第一次零前綴查詢，以及具代表性的 Urlbar 供應器測試矩陣仍未完成。因此目前主要欠缺的是相容性與發行驗證，而不是核心瀏覽器介面功能。詳情請參閱[目前專案狀態（英文）](docs/current-status.md)，當中整理了已完成能力、證據邊界、已知風險及建議優先次序。
 
 ## 安裝
 
@@ -129,14 +131,14 @@ Fennevia 已經超越首個四邊介面 MVP。目前預發行版亦包括 Fennev
 
 從同一個 GitHub Release 下載：
 
-- `fennevia-0.18.0-beta.1-windows.zip`
-- `fennevia-0.18.0-beta.1-windows.zip.sha256`
+- `fennevia-0.19.0-beta.1-windows.zip`
+- `fennevia-0.19.0-beta.1-windows.zip.sha256`
 
 解壓縮前，在下載目錄開啟 PowerShell 並執行：
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.18.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.18.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.19.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.19.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 
