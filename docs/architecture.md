@@ -734,8 +734,11 @@ ADR-075 adds projected dragging and palette discoverability without a second
 layout model. A drag keeps its source as a subdued placeholder and projects one
 bounded icon/label slot at the exact accepted nested insertion index. Cached
 pre-preview geometry prevents target jitter; a bounded animation-frame loop
-autoscrolls the owned edge near its viewport boundary and shares every
-existing terminal cleanup path. One selected layout instance remains active
+autoscrolls the receiving Row/Column near its viewport boundary (ADR-094) and
+shares every existing terminal cleanup path. Rows own horizontal overflow;
+Columns constrain inline overflow and own vertical overflow, so a wide tool
+Row does not move sibling address or Tabs areas. Sticky window controls remain
+inside that Row. One selected layout instance remains active
 until another is selected or Escape clears it. The drawer
 filters already validated palette entries by localized label and the closed
 All/Main features/Fennevia/Firefox/Layout categories; filters, selection,

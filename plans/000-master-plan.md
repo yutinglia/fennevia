@@ -969,7 +969,9 @@ Evidence: ADR-035 and
 Unreleased owner follow-ups on 2026-10-01 retain window controls in their saved
 Row/Column while pinning them during horizontal scrolling (ADR-092), and add
 portable backups of the three existing Fennevia customize preferences
-(ADR-093, `plans/018-settings-import-export.md`). The public release remains
+(ADR-093, `plans/018-settings-import-export.md`). ADR-094 scopes overflow and
+customize autoscroll to the receiving Row/Column, keeping sibling address and
+Tabs areas stationary during horizontal tool scrolling. The public release remains
 `0.19.0-beta.1`; these changes carry development evidence, not a new release
 claim or inherited manual-test exception.
 

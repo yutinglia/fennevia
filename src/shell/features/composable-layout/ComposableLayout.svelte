@@ -84,6 +84,7 @@
     direction: ToolbarLayoutDirection;
     itemMids: readonly number[];
     parentKey: string;
+    containerStart: number;
     scrollPosition: number;
   }>;
 
@@ -96,6 +97,7 @@
   let autoScrollFrame: number | null = null;
   let autoScrollInline = 0;
   let autoScrollBlock = 0;
+  let autoScrollTarget: HTMLElement | null = null;
   let rootDirection = $derived(defaultToolbarLayoutDirection(props.edge));
   let nodes = $derived(props.state?.snapshot.layout[props.edge] ?? []);
   let revision = $derived(props.state?.revision ?? 0);
@@ -128,6 +130,7 @@
     autoScrollFrame = null;
     autoScrollInline = 0;
     autoScrollBlock = 0;
+    autoScrollTarget = null;
   };
 
   const clearDropFeedback = (): void => {
@@ -352,11 +355,10 @@
     props.customizeSession?.setLastFocusedZone(props.edge);
   };
 
-  const insertionIndex = (
+  const dropContainer = (
     event: DragEvent,
     parentPath: readonly number[],
-    direction: ToolbarLayoutDirection,
-  ): number | null => {
+  ): HTMLElement | null => {
     const currentTarget = event.currentTarget;
     let container = currentTarget;
     if (
@@ -369,12 +371,23 @@
         "[data-fennevia-layout-base]",
       );
     }
-    if (!(container instanceof HTMLElement)) {
+    return container instanceof HTMLElement ? container : null;
+  };
+
+  const insertionIndex = (
+    event: DragEvent,
+    parentPath: readonly number[],
+    direction: ToolbarLayoutDirection,
+  ): number | null => {
+    const container = dropContainer(event, parentPath);
+    if (!container) {
       return null;
     }
     const parentKey = pathKey(parentPath);
     const scrollPosition =
-      direction === "row" ? (root?.scrollLeft ?? 0) : (root?.scrollTop ?? 0);
+      direction === "row" ? container.scrollLeft : container.scrollTop;
+    const bounds = container.getBoundingClientRect();
+    const containerStart = direction === "row" ? bounds.left : bounds.top;
     if (
       !dropGeometry ||
       dropGeometry.parentKey !== parentKey ||
@@ -396,12 +409,14 @@
           }),
         ),
         parentKey,
+        containerStart,
         scrollPosition,
       });
     }
     const scrollDelta = scrollPosition - dropGeometry.scrollPosition;
+    const containerDelta = containerStart - dropGeometry.containerStart;
     const mids = dropGeometry.itemMids.map(
-      (midpoint) => midpoint - scrollDelta,
+      (midpoint) => midpoint - scrollDelta + containerDelta,
     );
     return resolveWidgetInsertBefore(
       mids,
@@ -411,12 +426,18 @@
 
   const runAutoScroll = (): void => {
     const view = root?.ownerDocument.defaultView;
-    if (!root || !view || !activeDrag) {
+    if (
+      !root ||
+      !view ||
+      !activeDrag ||
+      !autoScrollTarget ||
+      !root.contains(autoScrollTarget)
+    ) {
       stopAutoScroll();
       return;
     }
-    root.scrollLeft += autoScrollInline;
-    root.scrollTop += autoScrollBlock;
+    autoScrollTarget.scrollLeft += autoScrollInline;
+    autoScrollTarget.scrollTop += autoScrollBlock;
     if (autoScrollInline === 0 && autoScrollBlock === 0) {
       stopAutoScroll();
       return;
@@ -424,21 +445,36 @@
     autoScrollFrame = view.requestAnimationFrame(runAutoScroll);
   };
 
-  const updateAutoScroll = (event: DragEvent): void => {
-    if (!root) {
+  const updateAutoScroll = (
+    event: DragEvent,
+    parentPath: readonly number[],
+  ): void => {
+    const container = dropContainer(event, parentPath);
+    const target = container?.closest<HTMLElement>(
+      "[data-fennevia-layout-container], [data-fennevia-composable-layout]",
+    );
+    if (!root || !target) {
+      stopAutoScroll();
       return;
     }
-    const bounds = root.getBoundingClientRect();
-    autoScrollInline = resolveToolbarWidgetDragAutoScrollDelta(
-      event.clientX,
-      bounds.left,
-      bounds.right,
-    );
-    autoScrollBlock = resolveToolbarWidgetDragAutoScrollDelta(
-      event.clientY,
-      bounds.top,
-      bounds.bottom,
-    );
+    autoScrollTarget = target;
+    const bounds = target.getBoundingClientRect();
+    autoScrollInline =
+      target.scrollWidth > target.clientWidth
+        ? resolveToolbarWidgetDragAutoScrollDelta(
+            event.clientX,
+            bounds.left,
+            bounds.right,
+          )
+        : 0;
+    autoScrollBlock =
+      target.scrollHeight > target.clientHeight
+        ? resolveToolbarWidgetDragAutoScrollDelta(
+            event.clientY,
+            bounds.top,
+            bounds.bottom,
+          )
+        : 0;
     const view = root.ownerDocument.defaultView;
     if (
       view &&
@@ -464,7 +500,7 @@
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = "move";
     }
-    updateAutoScroll(event);
+    updateAutoScroll(event, parentPath);
     const index = insertionIndex(event, parentPath, direction);
     if (index !== null) {
       const parentKey = pathKey(parentPath);

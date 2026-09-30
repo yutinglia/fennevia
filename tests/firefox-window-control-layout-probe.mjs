@@ -50,7 +50,7 @@ export async function runWindowControlLayoutProbe(client, report) {
           window.dispatchEvent(new KeyboardEvent('keydown', { key: edge === 'top' ? 'ArrowUp' : edge === 'left' ? 'ArrowLeft' : 'ArrowRight', ctrlKey: true, shiftKey: true, altKey: true, bubbles: true, cancelable: true }));
           await wait(() => getComputedStyle(panel).opacity === '1');
           const owner = panel.querySelector('[data-fennevia-layout-instance="' + rowId + '"]');
-          const scroller = panel.querySelector('[data-fennevia-composable-layout]');
+          const scroller = owner.querySelector(':scope > [data-fennevia-layout-container]');
           const nav = owner.querySelector('[data-fennevia-layout-node-content] button:not([data-fennevia-window-control])');
           const navPositions = [];
           for (const position of [0, 100000]) {
@@ -92,8 +92,8 @@ export async function runWindowControlLayoutProbe(client, report) {
           for (const edge of ['top', 'left']) {
             const panel = frame.querySelector('[data-fennevia-edge-panel="' + edge + '"]');
             panel.style.inlineSize = (edge === 'top' ? 640 : 360) + 'px';
-            const scroller = panel.querySelector('[data-fennevia-composable-layout]');
-            const row = edge === 'top' ? scroller : panel.querySelector('[data-fennevia-layout-instance="' + suppliedLayout.zones.left[0].instanceId + '"]');
+            const row = edge === 'top' ? panel.querySelector('[data-fennevia-composable-layout]') : panel.querySelector('[data-fennevia-layout-instance="' + suppliedLayout.zones.left[0].instanceId + '"]');
+            const scroller = edge === 'top' ? row : row.querySelector(':scope > [data-fennevia-layout-container]');
             const controls = [...panel.querySelectorAll('[data-fennevia-window-control]')];
             const nav = row.querySelector('[data-fennevia-layout-node-content] button:not([data-fennevia-window-control])');
             window.dispatchEvent(new KeyboardEvent('keydown', { key: edge === 'top' ? 'ArrowUp' : 'ArrowLeft', ctrlKey: true, shiftKey: true, altKey: true, bubbles: true, cancelable: true }));

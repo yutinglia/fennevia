@@ -331,6 +331,11 @@ widget, keeps window controls visible while narrow panels scroll, enables
 horizontal side scrolling, and fixes hidden
 bookmark actions becoming visible during middle-click opening (ADR-091).
 
+Unreleased `main` keeps window controls aligned in their configured Row and
+scopes scrolling to the overflowing Row/Column, so scrolling a wide tool Row
+does not move the address or tabs beside it. It also includes portable settings
+import/export. These follow-ups do not change the published release version.
+
 The `0.19.0-beta.1` release reran the complete automated lifecycle, recovery,
 performance-control, deterministic-archive, extracted-package installer,
 independently downloaded public-package verification, and public-package

@@ -2,10 +2,12 @@
 import assert from "node:assert/strict";
 import { createDefaultComposableCustomizeLayout } from "../src/firefox/customize-layout/migration.ts";
 import { runWindowControlLayoutProbe } from "./firefox-window-control-layout-probe.mjs";
+import { runScopedScrollProbe } from "./firefox-scoped-scroll-probe.mjs";
 
 // Test-only fixtures inside the marker-owned browser; return geometry and bounded
 // states, never download metadata or bookmark contents.
 export async function runUiControlsProbe(client, report) {
+  await runScopedScrollProbe(client, report);
   await runWindowControlLayoutProbe(client, report);
   const result = await client.execute(`
     return (async () => {
@@ -97,8 +99,8 @@ export async function runUiControlsProbe(client, report) {
             return rect.width >= 24 && rect.left >= bounds.left && rect.right <= bounds.right && !control.disabled;
           }) && topScroll.scrollWidth > topScroll.clientWidth);
         }
-        // Nested rows containing fixed-size controls must contribute their width
-        // to both side scrollers, including overflow toward the start edge.
+        // A nested Row owns horizontal overflow on either side; the panel's
+        // other rows must not become part of that scrollable width.
         for (const edge of ['left', 'right']) {
           phase = 'side-scroll-' + edge;
           const panel = frame.querySelector('[data-fennevia-edge-panel="' + edge + '"]');
@@ -113,12 +115,12 @@ export async function runUiControlsProbe(client, report) {
           }
           base.append(row);
           try {
-            scroller.scrollLeft = 0;
+            row.scrollLeft = 0;
             const start = row.firstElementChild.getBoundingClientRect();
-            const viewport = scroller.getBoundingClientRect();
-            scroller.scrollLeft = 100000;
+            const viewport = row.getBoundingClientRect();
+            row.scrollLeft = 100000;
             const end = row.lastElementChild.getBoundingClientRect();
-            evidence.sideScroll.push(scroller.scrollLeft > 0 && start.left >= viewport.left && end.right <= viewport.right && getComputedStyle(scroller).overflowX === 'auto');
+            evidence.sideScroll.push(row.scrollLeft > 0 && start.left >= viewport.left && end.right <= viewport.right && getComputedStyle(row).overflowX === 'auto' && scroller.scrollWidth <= scroller.clientWidth + 1 && scroller.scrollLeft === 0);
           } finally { row.remove(); }
         }
         phase = 'customize';

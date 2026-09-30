@@ -2232,13 +2232,23 @@ In the marker-owned lifecycle harness, `--ui-controls-probe` checks weighted
 download progress, unknown size, pause, zero, full, and completed states; the
 localized button description; disabled bookmark action opacity; all three
 configured window controls at both extremes of a narrow Top scroller; and
-horizontal reachability of both side panels. The Row-alignment regression also
+horizontal reachability inside each side panel's overflowing Row. The Row-alignment regression also
 checks controls at the start, middle, and end of a custom padded Row in Top,
 Left, and Right: same-parent membership, matching vertical centers, visible
 bounds, pointer hit testing, and movement of the other widgets when scrolled.
 All temporary layout preferences,
 owned DOM/style fixtures, and synthetic Downloads list entries are restored.
 The fixture does not start a network transfer or log download metadata.
+
+ADR-094 additionally checks both side edges at 240px/360px, nested
+Padding/Column/Row, and an optional local redacted layout export. Horizontal
+scrolling must leave the outer Column, address, and Tabs stationary. A bounded
+Column and the regular-tab partition must scroll vertically independently.
+Customize drag fixtures exercise local Row/Column autoscroll, insertion-index
+compensation after scrolling, center-stop, and drag-end cleanup. DOM drag
+events are synthetic; actual OS thumb/track input and adjacent empty-space
+window dragging remain separate manual release checks. Evidence:
+`docs/research/firefox-157-scoped-container-scroll.md`.
 
 Release interaction checks additionally cover customization entry/exit without
 duplicate controls, moving window controls to other panels or nested containers,

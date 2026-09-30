@@ -1304,6 +1304,16 @@ run`. Plan: `plans/016-urlbar-editing-and-container-padding.md`.
 
 ## Unreleased owner follow-ups
 
+### ADR-094 container scrolling
+
+Wide tool Rows scroll inside their configured container; sibling address and
+Tabs areas retain their position. Columns retain bounded vertical overflow,
+and Tabs keeps its independent partitions. Window controls stay aligned and
+sticky inside their original Row. Customize reuses its existing animation loop
+for the receiving container and compensates insertion geometry for local and
+ancestor scrolling. Development evidence and limits are in
+`docs/research/firefox-157-scoped-container-scroll.md`.
+
 ### ADR-093 settings backup — unreleased implementation
 
 The owner's 2026-10-01 scope confirmation covers all Fennevia layout, panel,

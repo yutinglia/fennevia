@@ -12,9 +12,10 @@ Unchecked real-Firefox rows are not passed.
 The owner's 2026-10-01 placement correction supersedes ADR-091's panel-wide
 window-control dock with ADR-092: consecutive window controls stay in their
 configured Row/Column and use inline sticky positioning while other controls
-scroll. Saved order, padding, and vertical placement remain intact. Nested rows
-can overflow side panels horizontally. The containing surface's shared
-reveal/hide behavior is unchanged.
+scroll. Saved order, padding, and vertical placement remain intact. ADR-094
+scopes overflow to each Row/Column so a wide tool Row does not horizontally
+move its sibling address and Tabs. Customize autoscroll follows the receiving
+container. The containing surface's shared reveal/hide behavior is unchanged.
 
 The owner requested a large expansion of Fennevia customize mode:
 
