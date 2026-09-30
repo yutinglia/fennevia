@@ -745,6 +745,7 @@ export function createNativeUiController({ window, frame, onError }) {
   let customizationTransition = root.hasAttribute("customizing");
   let windowTearingDown = false;
   let suspensionReason = null;
+  let dialogRestoresNativeUi = false;
   const listeners = [];
   const openPopups = new Set();
   const pendingPopupProxies = new Set();
@@ -1167,11 +1168,33 @@ export function createNativeUiController({ window, frame, onError }) {
   };
 
   const updateSuspension = () => {
+    if (disposed || failed) {
+      return;
+    }
+    const previousReason = suspensionReason;
     suspensionReason = readSuspensionReason();
+    if (
+      suspensionReason === "native-dialog" &&
+      previousReason !== "native-dialog"
+    ) {
+      dialogRestoresNativeUi =
+        root.hasAttribute(REVEALED_ATTRIBUTE) || isNativeSidebarOpen();
+    } else if (previousReason === "native-dialog" && !suspensionReason) {
+      focusHeld = dialogRestoresNativeUi && isNativeFocusHeld();
+      dialogRestoresNativeUi = false;
+    }
     if (suspensionReason) {
-      root.setAttribute(SUSPENDED_ATTRIBUTE, "");
+      // These native dialog hosts are independent of the hidden toolbox.
+      // WindowShell still suppresses every custom surface while they are open.
+      const independentDialog =
+        suspensionReason === "native-dialog" &&
+        !dialogRestoresNativeUi &&
+        ((windowModalDialog && isHtmlWindowModalOpen(document, root)) ||
+          findTabDialog(browser));
+      root.toggleAttribute(SUSPENDED_ATTRIBUTE, !independentDialog);
       root.removeAttribute(REVEALED_ATTRIBUTE);
       handoffPending = false;
+      clearHandoffRelease();
       focusHeld = false;
       openPopups.clear();
       pendingPopupProxies.clear();
@@ -1379,6 +1402,12 @@ export function createNativeUiController({ window, frame, onError }) {
   };
 
   const onFocusIn = (event) => {
+    // Firefox may restore the native focus target before publishing dialog
+    // closure. That transition is not an intentional request for native chrome.
+    if (readSuspensionReason() === "native-dialog") {
+      focusHeld = false;
+      return;
+    }
     if (isManagedNode(event.target)) {
       if (!handoffPending && !userInteracted && isUrlbarNode(event.target)) {
         focusHeld = false;

@@ -1,6 +1,6 @@
 # Current Project Status
 
-> Snapshot: 2026-09-06. This status review includes ADR-074 through ADR-085 and
+> Snapshot: 2026-10-01. This status review includes ADR-074 through ADR-090 and
 > the `0.18.0-beta.1` version identity, alongside the public
 > `v0.18.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
@@ -18,6 +18,22 @@ and native recovery checks pass. The full local gate and Windows PowerShell
 major warning, and the full provider, interactive, and release matrices remain
 pending. See [the Firefox 155 investigation](research/firefox-155-compatibility.md).
 
+The unreleased Firefox 157 follow-up corrects Nova's translucent toolbar token
+reducing floating panel opacity to approximately 16.5%. ADR-088 uses one opaque
+panel-color base; ten production color/opacity cases and Urlbar execution probes
+pass on 157.0, as do the lifecycle/Browser Toolbox and ordinary local gates.
+This is not a release or a change to the tested-major installer warning. See
+[the Firefox 157 investigation](research/firefox-157-compatibility.md) for
+remaining native-theme, security-warning, interactive, and release checks.
+ADR-089 also corrects background hover exits being ignored by the geometric
+noise filter. Eight foreground/background real-window cases pass with
+synthetic pointer events; physical cross-application hover remains pending.
+ADR-090 keeps resting native chrome hidden behind known independent dialogs
+and prevents dialog-time focus from latching native reveal. Eight actual native
+accept/cancel cases pass, including unsaved-tab close. Native prompt ownership
+and unknown-dialog/error fallback remain intact. See
+[the dialog investigation](research/firefox-157-native-dialogs.md).
+
 ## At a glance
 
 | Area                            | Current state                                                                                                                                                                                                                                                                                          |
@@ -28,7 +44,7 @@ pending. See [the Firefox 155 investigation](research/firefox-155-compatibility.
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
 | Post-MVP shell work             | Included through `v0.18.0-beta.1` with focused automated coverage, including ADR-064 panel roles/favicons, compact windows, tabbed customize, tab-panel hold, related New Tab, Firefox-owned tab multi-select, ADR-073 pinned-tab partitioning, and ADR-074 through ADR-084's widget, address, layout, narrow-window, drag, and customize work |
 | Latest released follow-up       | ADR-082 restores Firefox's bounded untrimmed value for a fresh address edit and adds optional Row/Column content padding; ADR-083 keeps narrow Top scrollbars draggable; the ADR-076 follow-up makes the inspector yield during widget drags; ADR-084 adopts the owner's default and blocks/darkens website content during customization |
-| Current source follow-up        | Unreleased ADR-085 fixes Firefox 155 suggestion execution and native search-mode continuation; corrected 155.0.1/154.0.1 Urlbar probes, the 155 core-feature/recovery audit, the full local gate, and Windows PowerShell 5.1 suite pass. Full release and representative-provider matrices remain pending. |
+| Current source follow-up        | Unreleased ADR-085 fixes Firefox 155 suggestion execution and native search-mode continuation; ADR-086/087 adds progressive tab-drag scrolling with visible native scrollbars; ADR-088 fixes Firefox 157 Nova floating background opacity; ADR-089 corrects background hover exits; ADR-090 keeps resting chrome hidden behind known native dialogs and releases transitional focus holds. Focused 157 probes and lifecycle/Browser Toolbox checks pass. Full release and representative-provider matrices remain pending. |
 | Earlier source follow-up        | The Firefox 154.0.1 Urlbar-coverage correction gates blocked permission children behind Firefox's parent visibility envelope; direct confirmation of the owner's original transition remains pending. |
 | Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; the automated Firefox 154.0.1 release matrix passed while manual visual rows remain pending |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; the `0.18.0-beta.1` Firefox 154.0.1 provider-contract, production-panel, failure-injection, normalized-query-boundary, and release probes passed; the literal fresh-profile first-zero-prefix and representative-provider matrices remain pending                                                |

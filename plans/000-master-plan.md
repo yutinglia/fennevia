@@ -65,6 +65,19 @@ The installer accepts Firefox 153 and newer after an explicit warning that only
 153 and 154 are tested. See
 `docs/research/firefox-154-stable-transition.md` and ADR-048.
 
+The unreleased 2026-09-30 Firefox 157 follow-up (ADR-088) corrects Nova's
+translucent-toolbar alpha leaking into floating panels. Production panel and
+Urlbar probes pass; release support metadata is unchanged. Evidence and the
+remaining validation priorities: `docs/research/firefox-157-compatibility.md`.
+The 2026-10-01 ADR-089 follow-up corrects inactive-window hover exit
+classification; eight real-window/synthetic-pointer cases pass. Physical
+cross-application hover and taskbar behavior still await owner confirmation.
+ADR-090 keeps resting native chrome hidden behind known independent Firefox
+dialogs and prevents dialog focus restoration from latching native reveal.
+Eight native accept/cancel cases, including unsaved-tab close, pass on 157.0;
+see `docs/research/firefox-157-native-dialogs.md` for the narrow owner-approved
+policy and remaining checks.
+
 Completed:
 
 - #2 and #17: safe development environment and privileged-code security
@@ -885,7 +898,10 @@ Delivered by ADR-032 and extended by ADR-037:
   extension installation and every shared security prompt retain Firefox's
   anti-clickjacking timing; the owner-observed Firefox 154 AMO path currently
   takes that accepted complete-native-chrome fallback;
-- customize/native-dialog/DOM-fullscreen policy suspends project hiding;
+- customize/DOM-fullscreen policy suspends project hiding; ADR-090 keeps
+  healthy resting chrome hidden behind known independent native dialogs while
+  suppressing custom surfaces, with full native fallback for unknown dialogs,
+  intentional native access, and failures;
 - invalid or partial activation CSS and stable native-target drift fail open
   per window.
 

@@ -1265,7 +1265,7 @@ test("Fennevia-anchored and token-listed panels do not reveal native chrome", as
   controller.dispose();
 });
 
-test("customize, DOM fullscreen, and native dialogs suspend hiding fail-open", () => {
+test("customize, DOM fullscreen, and unknown modal state suspend hiding fail-open", () => {
   const fixture = createFixture();
   const controller = createNativeUiController({
     window: fixture.window,
@@ -1292,6 +1292,7 @@ test("customize, DOM fullscreen, and native dialogs suspend hiding fail-open", (
 
   root.setAttribute("window-modal-open", "");
   assert.equal(controller.snapshot().suspensionReason, "native-dialog");
+  assert.equal(controller.snapshot().suspended, true);
   root.removeAttribute("window-modal-open");
   assert.equal(controller.snapshot().suspended, false);
 
@@ -1321,6 +1322,7 @@ test("a closed window-modal dialog does not keep native hiding suspended", () =>
 
   dialog.setAttribute("open", "");
   assert.equal(controller.snapshot().suspensionReason, "native-dialog");
+  assert.equal(controller.snapshot().suspended, false);
   dialog.removeAttribute("open");
   assert.equal(controller.snapshot().suspended, false);
   assert.equal(root.hasAttribute("window-modal-open"), true);
@@ -1354,6 +1356,97 @@ test("window-modal close unsuspends even if window.closed is spuriously true", (
   assert.equal(root.hasAttribute(nativeUiAttributes.suspended), false);
 
   controller.dispose();
+});
+
+test("dialog focus restoration cannot leave a stale native reveal hold", () => {
+  const fixture = createFixture();
+  const dialog = append(
+    fixture.document,
+    fixture.document.body,
+    XHTML_NAMESPACE,
+    "dialog",
+    "window-modal-dialog",
+  );
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  const root = fixture.document.documentElement;
+  root.setAttribute("data-fennevia-active", "");
+  fixture.window.dispatch("keydown", { key: "a" });
+  dialog.setAttribute("open", "");
+  fixture.document.dispatch("focusin", fixture.navTarget);
+  dialog.removeAttribute("open");
+  dialog.dispatch("close");
+  assert.equal(controller.snapshot().revealed, false);
+  assert.equal(controller.snapshot().suspended, false);
+  controller.dispose();
+});
+
+test("known tab dialogs keep resting chrome hidden and preserve full failure fallback", () => {
+  const fixture = createFixture();
+  const errors = [];
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: (error) => errors.push(error),
+  });
+  const root = fixture.document.documentElement;
+  root.setAttribute("data-fennevia-active", "");
+  const tabBrowser = append(
+    fixture.document,
+    fixture.browser,
+    XUL_NAMESPACE,
+    "browser",
+    null,
+  );
+  tabBrowser.setAttribute("tabDialogShowing", "true");
+  assert.equal(controller.snapshot().suspensionReason, "native-dialog");
+  assert.equal(controller.snapshot().suspended, false);
+  assert.equal(controller.snapshot().revealed, false);
+  const style = fixture.document.getElementById(nativeUiStyleId);
+  style.textContent = ":root { color: red; }";
+  assert.equal(errors.length, 1);
+  assert.equal(controller.snapshot().failed, true);
+  assert.equal(controller.snapshot().suspended, true);
+  tabBrowser.removeAttribute("tabDialogShowing");
+  fixture.window.dispatch("DOMModalDialogClosed");
+  assert.equal(controller.snapshot().suspended, true);
+  controller.dispose();
+  assert.equal(fixture.window.pendingTimerCount(), 0);
+});
+
+test("dialogs preserve intentional native access and cancel a pending handoff callback", () => {
+  const fixture = createFixture();
+  const dialog = append(
+    fixture.document,
+    fixture.document.body,
+    XHTML_NAMESPACE,
+    "dialog",
+    "window-modal-dialog",
+  );
+  const controller = createNativeUiController({
+    window: fixture.window,
+    frame: fixture.frame,
+    onError: assert.fail,
+  });
+  fixture.document.documentElement.setAttribute("data-fennevia-active", "");
+  fixture.document.activeElement = fixture.navTarget;
+  controller.revealForToolbar();
+  assert.equal(fixture.window.pendingAnimationFrameCount(), 1);
+  dialog.setAttribute("open", "");
+  assert.equal(controller.snapshot().suspended, true);
+  assert.equal(fixture.window.pendingAnimationFrameCount(), 0);
+  fixture.document.dispatch("focusin", fixture.navTarget);
+  dialog.removeAttribute("open");
+  assert.equal(controller.snapshot().revealed, true);
+  fixture.document.activeElement = fixture.browser;
+  fixture.document.dispatch("focusout", fixture.navTarget, {
+    relatedTarget: fixture.browser,
+  });
+  controller.dispose();
+  assert.equal(fixture.window.pendingTimerCount(), 0);
 });
 
 test("partial activation CSS suspends native hiding and reports one deterministic failure", () => {

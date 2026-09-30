@@ -7,6 +7,9 @@ import path from "node:path";
 import process from "node:process";
 import { runUrlbarCompatibilityProbe } from "./firefox-urlbar-compatibility-probe.mjs";
 import { runTabDragScrollProbe } from "./firefox-tab-drag-scroll-probe.mjs";
+import { runPanelStyleProbe } from "./firefox-panel-style-probe.mjs";
+import { runBackgroundPanelProbe } from "./firefox-background-panel-probe.mjs";
+import { runNativeDialogProbe } from "./firefox-native-dialog-probe.mjs";
 
 import {
   assertFreshSessionRestoreState,
@@ -106,6 +109,9 @@ function parseArguments(argv) {
     urlbarProviderProbe: false,
     urlbarSuggestionsProbe: false,
     tabDragScrollProbe: false,
+    panelStyleProbe: false,
+    backgroundPanelProbe: false,
+    nativeDialogProbe: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -194,6 +200,18 @@ function parseArguments(argv) {
       result.tabDragScrollProbe = true;
       continue;
     }
+    if (argument === "--panel-style-probe") {
+      result.panelStyleProbe = true;
+      continue;
+    }
+    if (argument === "--background-panel-probe") {
+      result.backgroundPanelProbe = true;
+      continue;
+    }
+    if (argument === "--native-dialog-probe") {
+      result.nativeDialogProbe = true;
+      continue;
+    }
     if (argument === "--session-restore") {
       const value = argv[index + 1];
       if (!sessionRestoreModes.includes(value)) {
@@ -229,6 +247,9 @@ function parseArguments(argv) {
       result.urlbarProviderProbe,
       result.urlbarSuggestionsProbe,
       result.tabDragScrollProbe,
+      result.panelStyleProbe,
+      result.backgroundPanelProbe,
+      result.nativeDialogProbe,
       result.sessionRestore !== null,
     ].filter(Boolean).length > 1
   ) {
@@ -254,6 +275,9 @@ function parseArguments(argv) {
       result.urlbarProviderProbe ||
       result.urlbarSuggestionsProbe ||
       result.tabDragScrollProbe ||
+      result.panelStyleProbe ||
+      result.backgroundPanelProbe ||
+      result.nativeDialogProbe ||
       result.sessionRestore !== null)
   ) {
     throw new Error("FENNEVIA_FIREFOX_TEST_MODE_CONFLICT");
@@ -7954,6 +7978,9 @@ async function run() {
     client = await connectWithRetry(DEFAULT_PORT, child);
     const session = await client.request("WebDriver:NewSession", {
       strictFileInteractability: true,
+      ...(options.nativeDialogProbe
+        ? { unhandledPromptBehavior: "ignore", webSocketUrl: true }
+        : {}),
     });
     assert.equal(typeof session?.sessionId, "string");
     await client.request("WebDriver:SetTimeouts", {
@@ -8418,8 +8445,23 @@ async function run() {
     );
     assert.equal(startupEvidence.firstPartyScriptErrorCount, 0);
 
-    if (options.tabDragScrollProbe) {
-      const scrollEvidence = await runTabDragScrollProbe(client);
+    if (
+      options.tabDragScrollProbe ||
+      options.panelStyleProbe ||
+      options.backgroundPanelProbe ||
+      options.nativeDialogProbe
+    ) {
+      const probeEvidence = options.nativeDialogProbe
+        ? await runNativeDialogProbe(client, (diagnostic) =>
+            console.log(
+              `nativeDialogDiagnostics=${JSON.stringify(diagnostic)}`,
+            ),
+          )
+        : options.backgroundPanelProbe
+          ? await runBackgroundPanelProbe(client, originalHandle)
+          : options.panelStyleProbe
+            ? await runPanelStyleProbe(client)
+            : await runTabDragScrollProbe(client);
       const postProbeEvidence = await collectEvidence(client);
       assert.equal(postProbeEvidence.firstPartyScriptErrorCount, 0);
       assert.equal(
@@ -8435,9 +8477,17 @@ async function run() {
         // A clean application quit may close Marionette before its response arrives.
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
-      console.log(`tabDragScrollEvidence=${JSON.stringify(scrollEvidence)}`);
       console.log(
-        "PASS: tab drag scrolling, stationary preview, native scroll ownership and terminal cleanup.",
+        `${options.nativeDialogProbe ? "nativeDialogEvidence" : options.backgroundPanelProbe ? "backgroundPanelEvidence" : options.panelStyleProbe ? "panelStyleEvidence" : "tabDragScrollEvidence"}=${JSON.stringify(probeEvidence)}`,
+      );
+      console.log(
+        options.nativeDialogProbe
+          ? "PASS: native dialog fixture actions and lifecycle observations."
+          : options.backgroundPanelProbe
+            ? "PASS: inactive-window panel pointer exit and event propagation."
+            : options.panelStyleProbe
+              ? "PASS: floating panel background opacity."
+              : "PASS: tab drag scrolling, stationary preview, native scroll ownership and terminal cleanup.",
       );
       return;
     }

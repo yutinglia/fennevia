@@ -140,9 +140,13 @@ Requirements:
   window-leave hide delays plus a 400–10,000 ms default temporary reveal; these
   values reconfigure only the existing tracked hide/programmatic timers;
 - standard `PointerEvent.relatedTarget` distinguishes a non-null destination
-  inside the Firefox window from a null window exit; a null destination is a
-  window leave only when the coordinates are also outside the window viewport
-  or outside every visible owned panel. Window `blur` skips pointer-hold
+  inside the Firefox window from a null window exit. For an active window,
+  ADR-067 ignores null-destination coordinates still inside the viewport and
+  a visible owned panel. ADR-089's existing window fallback always releases
+  pointer holds for an inactive window's null-destination exit; a covering
+  application's hit area cannot be inferred from Firefox's panel rectangle.
+  Focus, keyboard, popup, and drag holds retain their existing owners.
+  Window `blur` skips pointer-hold
   release while `Services.focus.activeWindow` is still this chrome window, so
   focusing a selected `<browser>` is not treated as leaving Firefox. The
   privileged callback returns only a boolean; chrome window objects, focus
@@ -1158,12 +1162,28 @@ fallback. Fennevia reads no
 notification contents/actions. The placeable translation widget delegates to
 `FullPageTranslationsPanel.open(event)` and routes only the native panel to the
 clicked host; page text, languages, model state, and results never cross.
-Customize,
-native-dialog, and DOM-fullscreen state suspend project hiding. Window-modal
-suspension follows `#window-modal-dialog.open` or a current tab dialog, not a
-leftover `window-modal-open` attribute. Any missing,
+Customize and DOM-fullscreen state suspend project hiding. The owner's explicit
+2026-10-01 request, recorded in ADR-090, permits healthy resting native chrome
+to remain hidden behind the independent `#window-modal-dialog.open` and current
+`browser[tabDialogShowing]` containers. All custom surfaces remain suppressed
+during those dialogs; native buttons, focus, prompt contents, security delays,
+and decisions remain Firefox-owned. Already intentional native toolbar/sidebar
+access and unknown modal fallback still expose the native UI. Dialog-time focus
+events cannot acquire a persistent native reveal hold, and pending handoff
+callbacks are cancelled. A leftover `window-modal-open` after the known HTML
+dialog closes is not a live dialog. Any missing,
 invalid, partial, or stably changed required target/style first exposes native
-UI and then requests per-window ADR-021 cleanup.
+UI and then requests per-window ADR-021 cleanup. Later modal events cannot clear
+that failed controller's native fallback.
+
+ADR-090 adds no production logging or data flow. Its isolated test-only harness
+uses a random session marker and fixed classifications/booleans, without prompt
+text, URLs, titles, inputs, or native handles. The synthetic beforeunload fixture
+temporarily disables the gesture prerequisite in the marker-owned development
+profile and restores its exact prior preference state in `finally`. Its native
+confirm/cancel actions and security delay remain intact. The harness requests
+a BiDi-capable session with unhandled prompts ignored so Marionette does not
+autoaccept the prompt under test; these capabilities are not installed defaults.
 
 Issue #15 adds no dependency, network request, resource mapping, executable
 input, content-accessible asset, preference, persistence, remote font, or new

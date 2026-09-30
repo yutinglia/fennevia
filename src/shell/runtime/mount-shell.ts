@@ -368,6 +368,10 @@ export function mountShellApp({
       return;
     }
     if (
+      // Geometry cannot distinguish an exit into a covering application from
+      // chrome mutation noise. Only the active window can use this exception;
+      // an already-background window will not receive another blur fallback.
+      (isChromeWindowActive?.() ?? frame.ownerDocument.hasFocus()) &&
       isPointInsideWindowViewport(view, event.clientX, event.clientY) &&
       isPointInsideVisibleEdgePanel(frame, event.clientX, event.clientY)
     ) {
