@@ -736,7 +736,7 @@ async function waitForSessionStoreStartup(client) {
   assert.equal(
     await client.execute(`
       const { SessionStore } = ChromeUtils.importESModule(
-        "resource:///modules/sessionstore/SessionStore.sys.mjs"
+        "moz-src:///browser/components/sessionstore/SessionStore.sys.mjs"
       );
       return SessionStore.promiseAllWindowsRestored.then(() => true);
     `),
@@ -750,10 +750,10 @@ async function prepareSessionRestoreFixture(client) {
       `
       return (async () => {
         const { SessionStore } = ChromeUtils.importESModule(
-          "resource:///modules/sessionstore/SessionStore.sys.mjs"
+          "moz-src:///browser/components/sessionstore/SessionStore.sys.mjs"
         );
         const { TabStateFlusher } = ChromeUtils.importESModule(
-          "resource:///modules/sessionstore/TabStateFlusher.sys.mjs"
+          "moz-src:///browser/components/sessionstore/TabStateFlusher.sys.mjs"
         );
         const fixtures = ${JSON.stringify(SESSION_RESTORE_FIXTURES)};
         const preferenceValues = new Map([
@@ -813,7 +813,7 @@ async function prepareSessionRestoreFixture(client) {
 async function collectSessionRestoreFixtureState(client) {
   return client.execute(`
     const { SessionStore } = ChromeUtils.importESModule(
-      "resource:///modules/sessionstore/SessionStore.sys.mjs"
+      "moz-src:///browser/components/sessionstore/SessionStore.sys.mjs"
     );
     const fixtures = ${JSON.stringify(SESSION_RESTORE_FIXTURES)};
     const idByUrl = new Map(fixtures.map(fixture => [fixture.url, fixture.id]));
@@ -980,7 +980,7 @@ async function exerciseFailOpenRestoredTab(client) {
   return client.execute(`
     return (async () => {
       const { SessionStore } = ChromeUtils.importESModule(
-        "resource:///modules/sessionstore/SessionStore.sys.mjs"
+        "moz-src:///browser/components/sessionstore/SessionStore.sys.mjs"
       );
       const fixtures = ${JSON.stringify(SESSION_RESTORE_FIXTURES)};
       const idByUrl = new Map(fixtures.map(fixture => [fixture.url, fixture.id]));
@@ -1020,10 +1020,10 @@ async function cleanupSessionRestoreFixture(client, state) {
     `
     return (async () => {
       const { SessionStore } = ChromeUtils.importESModule(
-        "resource:///modules/sessionstore/SessionStore.sys.mjs"
+        "moz-src:///browser/components/sessionstore/SessionStore.sys.mjs"
       );
       const { TabStateFlusher } = ChromeUtils.importESModule(
-        "resource:///modules/sessionstore/TabStateFlusher.sys.mjs"
+        "moz-src:///browser/components/sessionstore/TabStateFlusher.sys.mjs"
       );
       const savedPreferences = ${JSON.stringify(state.preferences)};
       const topic = "sessionstore-browser-state-restored";
@@ -6710,19 +6710,6 @@ function assertNativeUiPolicies(result) {
 }
 
 async function exerciseWindowStatePolicy(client) {
-  await client.execute(`
-    const events = [];
-    const types = ['pointerover', 'pointerout', 'focusin', 'focusout', 'blur', 'focus', 'sizemodechange'];
-    const listener = event => {
-      if (events.length >= 40) return;
-      const candidate = event.target?.closest?.('[data-fennevia-edge]')?.getAttribute('data-fennevia-edge');
-      events.push({ type: event.type, phase: event.eventPhase,
-        edge: ['top', 'bottom', 'left', 'right'].includes(candidate) ? candidate : null,
-        active: Services.focus.activeWindow === window });
-    };
-    for (const type of types) window.addEventListener(type, listener, true);
-    window.__fenneviaWindowStateTestTrace = { events, types, listener };
-  `);
   const initialResult = await client.request("WebDriver:GetWindowRect", {});
   const initial = initialResult.value ?? initialResult;
   const target = {
@@ -6805,26 +6792,15 @@ async function exerciseWindowStatePolicy(client) {
       minimizeState.active &&
       minimizeState.styleRuleCount === 10;
   } finally {
-    try {
-      await client.request("WebDriver:SetWindowRect", initial);
-      const restoreState = await inspect();
-      restored =
-        restoreState.windowState === restoreState.windowStateNormal &&
-        restoreState.active &&
-        restoreState.browserGeometryPreserved &&
-        restoreState.styleRuleCount === 10 &&
-        restoreState.nativeCloseHidden &&
-        restoreState.projectWindowControlsPresent;
-    } finally {
-      const trace = await client.execute(`
-        const trace = window.__fenneviaWindowStateTestTrace;
-        for (const type of trace.types) window.removeEventListener(type, trace.listener, true);
-        delete window.__fenneviaWindowStateTestTrace;
-        return { events: trace.events, visible: [...document.querySelectorAll('[data-fennevia-surface-root]')]
-          .map(root => ({ edge: root.getAttribute('data-fennevia-edge'), visible: root.getAttribute('data-fennevia-visible') === 'true' })) };
-      `);
-      console.log(`windowStateTestTrace=${JSON.stringify(trace)}`);
-    }
+    await client.request("WebDriver:SetWindowRect", initial);
+    const restoreState = await inspect();
+    restored =
+      restoreState.windowState === restoreState.windowStateNormal &&
+      restoreState.active &&
+      restoreState.browserGeometryPreserved &&
+      restoreState.styleRuleCount === 10 &&
+      restoreState.nativeCloseHidden &&
+      restoreState.projectWindowControlsPresent;
   }
   return { maximized, minimized, resized, restored };
 }

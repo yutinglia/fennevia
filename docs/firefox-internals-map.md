@@ -858,7 +858,20 @@ index, detailed tables, linked research records, and tests:
 | Tests                                     | Unit, static, or dev-profile smoke coverage              |
 | Replacement or removal plan               | How dependency could be reduced later                    |
 
-## 10. High-risk areas requiring separate decisions
+## 10. Test-only SessionStore release imports
+
+The Firefox 157 release harness imports SessionStore and TabStateFlusher from
+`moz-src:///browser/components/sessionstore/SessionStore.sys.mjs` and
+`moz-src:///browser/components/sessionstore/TabStateFlusher.sys.mjs`. These are
+test-only dependencies, not production adapters. Firefox 156 moved this package
+under `MOZ_SRC_FILES` in
+[Bug 2062783](https://bugzilla.mozilla.org/show_bug.cgi?id=2062783), commit
+`05d579ece18a136fefc53d6fd5d76e6da7890dc7`. The 157 release source pin is
+`fdd757a2e09c9471cddf383e64e631e4ce178499`; its installed `omni.ja` confirms
+both `moz-src/browser/components/sessionstore/` entries. Old `resource:///`
+test imports fail at module loading, before any session fixture mutation.
+
+## 11. High-risk areas requiring separate decisions
 
 - complete `browser.xhtml` override;
 - tab custom-element or internal-script override;

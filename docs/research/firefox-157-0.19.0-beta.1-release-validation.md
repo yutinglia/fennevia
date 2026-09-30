@@ -91,6 +91,19 @@ a passing suite and no production behavior is inferred from it.
 The next full lifecycle passed; a bounded test-only trace observed only window
 size-state events and all four surfaces hidden after restoration. The failure
 has not yet recurred; no guessed production fix was made for this observation.
+The final bridge and safe-start suites also passed their restored full
+lifecycles with all four surfaces hidden. The temporary window-state trace was
+then removed; it never formed part of an installed artifact.
+
+The SessionStore rehearsal first failed during its module import. A bounded
+test-only probe isolated that first phase; installed Firefox 157 `omni.ja` and
+upstream `moz.build` confirm the URI migration in
+[Bug 2062783](https://bugzilla.mozilla.org/show_bug.cgi?id=2062783), commit
+`05d579ece18a136fefc53d6fd5d76e6da7890dc7` (Firefox 156). Updating only the
+harness's SessionStore and TabStateFlusher imports to `moz-src:///browser/`
+restored preparation, restart, lazy-tab, fail-open, and exact preference/state
+cleanup; all four phases passed. No production SessionStore implementation
+or compatibility branch was added; the temporary import probe was removed.
 
 The Windows workflow is run directly locally; `act` is not used because no
 workflow, container, runner, or CI orchestration changes are made. GitHub-hosted
