@@ -27,6 +27,47 @@
   outline-offset: 2px;
 }
 
+#fennevia-shell-frame-host .fennevia-layout-container {
+  max-inline-size: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* A wide Row must scroll locally without moving its Column siblings. */
+#fennevia-shell-frame-host .fennevia-composable-layout--column,
+#fennevia-shell-frame-host .fennevia-layout-container--column {
+  overflow-x: hidden;
+}
+
+/* Reuse the bounded no-drag scrollbar band for each local scroll owner.
+   The pseudo-element stays outside the scrolling contents. */
+#fennevia-shell-frame-host .fennevia-layout-node--container::before {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  -moz-window-dragging: no-drag;
+  content: "";
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--container:has(
+    > .fennevia-layout-container--row
+  )::before {
+  inset-block-end: 0;
+  inset-inline: 0;
+  block-size: var(--fennevia-space-3);
+}
+
+#fennevia-shell-frame-host
+  .fennevia-layout-node--container:has(
+    > .fennevia-layout-container--column
+  )::before {
+  inset-inline-end: 0;
+  inset-block: 0;
+  inline-size: var(--fennevia-space-3);
+}
+
 #fennevia-shell-frame-host [data-fennevia-window-drag-region] {
   -moz-window-dragging: drag;
 }
@@ -960,15 +1001,6 @@
   flex-direction: column;
 }
 
-#fennevia-shell-frame-host
-  .fennevia-layout-node:has(.fennevia-window-controls-dock) {
-  position: sticky;
-  /* Keep pinned descendants above overlapping siblings in this layout. */
-  z-index: 1;
-  inset-inline: 0;
-  min-inline-size: min-content;
-}
-
 #fennevia-shell-frame-host .fennevia-window-controls-dock {
   position: sticky;
   z-index: 1;
@@ -989,11 +1021,13 @@
   flex-direction: column;
 }
 
+#fennevia-shell-frame-host
+  .fennevia-layout-container
+  .fennevia-window-controls-dock {
+  max-inline-size: 100%;
+}
+
 #fennevia-shell-frame-host .fennevia-composable-layout--column,
 #fennevia-shell-frame-host .fennevia-layout-container--column {
   align-items: stretch;
-}
-
-#fennevia-shell-frame-host .fennevia-layout-container--row {
-  min-inline-size: min-content;
 }

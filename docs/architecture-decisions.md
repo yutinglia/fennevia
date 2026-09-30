@@ -4201,7 +4201,8 @@ support is implied.
 **Status:** Owner-requested follow-ups for 0.19.0-beta.1, 2026-10-01. Refines
 ADR-074's presentation while retaining its saved layout and editor.
 The panel-wide window-control dock placement is superseded by ADR-092;
-download and bookmark behavior remains current.
+the panel-wide side overflow policy is superseded by ADR-094. Download and
+bookmark behavior remains current.
 
 The downloads launcher subscribes to the existing anonymous, per-window
 Downloads adapter. Active downloads render a weighted progress ring; unknown
@@ -4237,6 +4238,8 @@ the Firefox 157 release validation record.
 
 **Status:** Accepted by direct owner follow-up on 2026-10-01 after the
 0.19.0-beta.1 release. Supersedes only ADR-091's panel-wide dock placement.
+ADR-094 supersedes the containing-node pinning/minimum-width mechanism below;
+the saved-parent, order, alignment, and adjacent-group policy remains current.
 
 The owner places window controls alongside other tools in the same custom Row.
 Extracting them into a panel-wide dock changed their vertical alignment and
@@ -4301,3 +4304,32 @@ No dependency, network service, resource mapping, observer, diagnostic payload,
 or general preference editor is added. Existing shared Customize ownership,
 pref observers, native adoption policy, and health/fallback remain authoritative.
 Source pins and validation: `docs/research/firefox-157-settings-transfer.md`.
+
+## ADR-094: Scope overflow and customize scrolling to the configured container
+
+**Status:** Accepted by direct owner follow-up on 2026-10-01, unreleased.
+Supersedes ADR-091's panel-wide horizontal side overflow and ADR-092's sticky,
+minimum-content-width ancestors. Retains the configured window-control group.
+
+A wide tool Row must not make its sibling address launcher and Tabs part of
+one horizontal side-panel scroller. Each Row/Column owns its bounded overflow:
+Rows scroll horizontally, Columns scroll vertically and constrain their inline
+extent. The fixed base flow remains a scroll owner for its direct children.
+Natural sizing and explicit Expanded sizing retain their existing meaning;
+wrappers do not acquire a second independent scrolling model.
+
+Window-control groups remain inline-sticky inside their actual scroll owner,
+with local wrapping limits. Their containing nodes no longer force a larger
+minimum width or pin entire subtrees. A pointer-transparent, bounded no-drag
+band at each container's scrollbar edge reuses ADR-083's existing pattern;
+it is outside the scrolling content and introduces no observer or timer.
+
+Customize's existing single animation-frame loop targets the receiving
+Row/Column. Cached insertion midpoints compensate for that container's scroll
+and for ancestor movement. Stop, drag end, customization exit, and disposal
+retain the existing cleanup path and clear the current scroll target.
+
+No preference/schema migration, native DOM mutation, new Firefox API,
+dependency, data flow, logging, or recovery policy is introduced. Evidence,
+including reproduction with the owner's local redacted layout, is in
+`docs/research/firefox-157-scoped-container-scroll.md`.

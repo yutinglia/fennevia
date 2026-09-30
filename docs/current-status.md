@@ -1,6 +1,6 @@
 # Current Project Status
 
-> Snapshot: 2026-10-01. This status review includes ADR-074 through ADR-091 and
+> Snapshot: 2026-10-01. This status review includes ADR-074 through ADR-094 and
 > the `0.19.0-beta.1` version identity, alongside the public
 > `v0.19.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
@@ -20,6 +20,12 @@ configured window controls outside panel scrolling, enables horizontal side
 scrolling, and fixes disabled bookmark actions becoming visible after middle
 click. Focused Firefox 157 fixtures cover these states, customization, and
 nested side-dock placement; archive evidence is in the release record.
+
+Unreleased source adds configured window-control alignment (ADR-092), portable
+settings import/export (ADR-093), and scrolling confined to each overflowing
+Row/Column (ADR-094). A wide tool Row no longer moves its sibling address and
+Tabs areas. See [the scoped-scroll evidence](research/firefox-157-scoped-container-scroll.md).
+These changes do not reuse the release's one-time manual-test exception.
 
 The released Firefox 155 follow-up fixes the changed native suggestion-pick
 arguments and hands asynchronous search-mode rows to Firefox with the draft
@@ -56,7 +62,7 @@ and unknown-dialog/error fallback remain intact. See
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
 | Post-MVP shell work | Included through `v0.19.0-beta.1`: ADR-064 through ADR-091, including the widget editor, layout, narrow-window, drag, address, Firefox 157 panel/dialog, and download progress follow-ups. |
 | Latest released follow-up | ADR-091: progress rings in both download widgets, window controls outside panel scrolling, horizontal side overflow, and correct bookmark action visibility during middle-click opening. |
-| Current source follow-up | Released ADR-085 through ADR-090: Firefox 155 suggestion execution/search-mode handoff, tab-drag scrolling, Firefox 157 Nova panel opacity, background hover exit classification, and native-dialog focus cleanup. Physical cross-application pointer and representative-provider matrices remain pending. |
+| Current source follow-up | Unreleased ADR-092 through ADR-094: configured window-control alignment, portable settings import/export, and scrolling confined to each Row/Column. Daily-profile visual and physical-input confirmation remain pending. |
 | Earlier source follow-up        | The Firefox 154.0.1 Urlbar-coverage correction gates blocked permission children behind Firefox's parent visibility envelope; direct confirmation of the owner's original transition remains pending. |
 | Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; the automated Firefox 154.0.1 release matrix passed while manual visual rows remain pending |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; the `0.18.0-beta.1` Firefox 154.0.1 provider-contract, production-panel, failure-injection, normalized-query-boundary, and release probes passed; the literal fresh-profile first-zero-prefix and representative-provider matrices remain pending                                                |
