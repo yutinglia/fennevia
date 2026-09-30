@@ -56,7 +56,8 @@ enable, and uninstall. `FenneviaSetup.exe` is unsigned, so Windows may warn.
 A dedicated Firefox profile is strongly recommended.
 
 Validation and remaining limits are recorded in
-[`docs/research/firefox-157-0.19.0-beta.1-release-validation.md`](https://github.com/yutinglia/fennevia/blob/v0.19.0-beta.1/docs/research/firefox-157-0.19.0-beta.1-release-validation.md).
+[`docs/research/firefox-157-0.19.0-beta.1-release-validation.md`](https://github.com/yutinglia/fennevia/blob/main/docs/research/firefox-157-0.19.0-beta.1-release-validation.md),
+including the public asset digests and post-publication recovery evidence.
 The publication workflow verifies exact dependencies, ordinary tests,
 deterministic double packaging, Unicode extraction, and remote asset digests
 before publishing. Physical mouse/user-site, assistive-technology, device,

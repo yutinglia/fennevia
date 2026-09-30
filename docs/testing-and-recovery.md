@@ -39,13 +39,18 @@ the release contract for subsequent versions.
 
 ## 1. Current validated baseline
 
-As of 2026-08-28:
+As of 2026-10-01:
 
-- package: public `0.18.0-beta.1` prerelease;
-- tested Firefox: 153.0.4 release, Build ID `20260810162159`; 154.0 release,
+- package: public `0.19.0-beta.1` prerelease;
+- current-package Firefox 157.0 release, Build ID `20260924084938`;
+- historical tested Firefox: 153.0.4 release, Build ID `20260810162159`; 154.0 release,
   Build ID `20260812182057`; and 154.0.1 release, Build ID `20260824154132`;
-- installer gate: Firefox 153+ after an explicit warning that only 153 and 154
-  are tested (ADR-048);
+- installer gate: Firefox 153+ after an explicit warning that only 153, 154,
+  and 157 have tested evidence (ADR-048);
+- `0.19.0-beta.1` automated lifecycle, failure recovery, SessionStore,
+  performance controls, focused feature probes, and exact archive evidence:
+  `docs/research/firefox-157-0.19.0-beta.1-release-validation.md`; manual/hardware
+  rows remain `not run` under the explicit one-time exception above;
 - first real stock-stable transition: owner-confirmed ordinary runtime on
   Firefox 154.0; full update-workflow mass matrix `not run`; see
   `docs/research/firefox-154-stable-transition.md`;
@@ -1720,7 +1725,7 @@ created -> mounted -> healthy -> active
 any live state -> disposed
 ```
 
-Current package `0.18.0-beta.1` performs the sole production activation only after
+Current package `0.19.0-beta.1` performs the sole production activation only after
 the health phase requires:
 
 - exact frame identity and placement;

@@ -5,17 +5,21 @@
 ## Environment and release boundary
 
 - Date: 2026-10-01, direct owner request to push and release.
-- Candidate: `0.19.0-beta.1`, intended annotated tag `v0.19.0-beta.1`.
+- Release: `0.19.0-beta.1`, annotated tag `v0.19.0-beta.1`.
 - Implementation commit: `b8dae69`; base `dabff2d`.
+- Final annotated tag source: `41e5b140b62619299d46a492c5e7d0bc9ee95dc2`,
+  including [PR #123](https://github.com/yutinglia/fennevia/pull/123)'s explicit
+  approval record; its Windows CI run `36756598629` and CodeQL checks passed.
 - Windows x64, stock Firefox 157.0 release, BuildID `20260924084938`;
   official release source `fdd757a2e09c9471cddf383e64e631e4ce178499`.
 - A new marker-owned copied program and disposable development profile are
   isolated from daily Firefox. Only synthetic local fixtures are exercised.
 - Node 24.18.0/npm 11.16.0 from the installed nvm-windows runtime, selected
   per command. No global runtime switch or separate Node installation.
-- Status: release preparation; no tag or public release yet. Rows below are
-  updated only when observed. Firefox 153/154 evidence is historical; their
-  complete current-candidate matrices are not rerun.
+- Status: [public prerelease](https://github.com/yutinglia/fennevia/releases/tag/v0.19.0-beta.1),
+  published at `2026-09-30T18:25:19Z` (2026-10-01 in Asia/Taipei).
+  Rows below are updated only when observed. Firefox 153/154 evidence is
+  historical; their complete current-package matrices are not rerun.
 
 ## Changes and earlier evidence
 
@@ -78,8 +82,8 @@ it now also covers direct root children. Neither failure is a shipped result.
 | Three enabled performance starts and disabled controls when needed | Three enabled and three disabled starts complete; investigation and metrics below. |
 | Deterministic archive / Unicode extraction / exact package lifecycle | `fe9a879` clean preflight passes with existing verified dependencies/project gates reused; double archive matches, both PowerShell verifiers pass, and extracted-package disable/repair/enable lifecycle passes. |
 | GitHub Windows CI and reviewed merge | Windows CI run `36755164762` and all CodeQL checks pass at `87ee2209bc6e1becc0f6d2a4666b5be36e0648dd`; [PR #122](https://github.com/yutinglia/fennevia/pull/122) merged normally as `c52c229076347ec0be873ecdfb44b665882a7384`. |
-| Annotated tag / fail-closed publication / independent public download | Pending. |
-| Public archive recovery and final cleanup | Pending. |
+| Annotated tag / fail-closed publication / independent public download | Annotated tag resolves to `41e5b140b62619299d46a492c5e7d0bc9ee95dc2`. Both jobs of [Release run 36757541789](https://github.com/yutinglia/fennevia/actions/runs/36757541789) pass; independently downloaded ZIP and checksum match remote asset digests, and strict PowerShell 7/5.1 verification passes. |
+| Public archive recovery and final cleanup | Fresh marker-owned Firefox 157 program/profile pair: public-package Install, hard-disable with missing frontend, native cold start, Update repair, Enable, normal/second/private lifecycle, Uninstall, and stock startup all pass. Both checked test targets were removed; zero Firefox processes remain. |
 
 The first clean preflight produced identical archives with SHA-256
 `98c1c994b87e59709256f9ef327802e7a1a6c0d1d39d0b6d0fe9ea078d327202`.
@@ -121,6 +125,46 @@ The final installed Update preview reports `already-current` with zero planned
 or applied mutations. The marker-owned profile and copied program were then
 uninstalled and removed through their checked helpers; zero Firefox processes
 remain. Candidate archives and privacy-safe test evidence are retained.
+
+The annotated-tag rehearsal at `41e5b140b62619299d46a492c5e7d0bc9ee95dc2`
+passes with verified dependencies/project gates explicitly reused, two identical
+archives, Unicode extraction, and strict PowerShell 7/5.1 verification. Its
+local ZIP SHA-256 is
+`ae1e516052d0d0cd327799fe4ce8d4f682153bb91c92699285e0fb9d7f3d12b7`.
+This is a local compiler output, not the independently downloaded public digest.
+
+### Published assets
+
+The GitHub-hosted publication workflow reran full dependency installation,
+ordinary verification, deterministic packaging, and extraction verification in
+each of its two jobs. It verified draft asset digests before publishing, then
+downloaded and verified the public assets. A separate local
+`gh release download` retrieved the published ZIP and checksum:
+
+- ZIP: `fennevia-0.19.0-beta.1-windows.zip`, 1,426,662 bytes, SHA-256
+  `eb24fdf822cf0d42e4a5a26002f1c9047c8e6988f1a59a02965a793233c31f33`.
+- Checksum file SHA-256:
+  `0762fec4a0d5e7897910b687889201d22fee24b3655ac3ffbdc7046bb8104b77`.
+- Manifest source commit: `41e5b140b62619299d46a492c5e7d0bc9ee95dc2`;
+  package-manifest SHA-256 remains
+  `05df76818b8cc6bce235521f965f84005933505cbfb636f197d65195f9d0a492`.
+- Unicode-path extraction and strict PowerShell 7/5.1 verification pass for all
+  39 files. Comparing inventory hashes with the local tag rehearsal finds only
+  `FenneviaSetup.exe` differs, along with its enclosing release manifest. The
+  local/framework and GitHub/Roslyn compiler distinction is documented by
+  ADR-049; installed runtime files match exactly. No claim is made that the
+  entire local ZIP is byte-identical to the public ZIP.
+
+The downloaded public archive was installed into a fresh marker-owned copied
+Firefox 157 program and disposable profile after clean-environment verification
+and an exact dry-run plan check. The release recovery harness passed missing
+frontend hard-disable, zero-host native cold start, exact Update repair, Enable,
+and complete normal/second/private lifecycle with no unexpected first-party
+script errors. A separately checked Uninstall then passed stock startup with
+zero project records or owned-file residue. The profile and copied program were
+removed through their marker-checked helpers after WhatIf review and resolved
+path-boundary checks. Both removals succeeded and no Firefox process remained.
+Daily Firefox was not changed. No open Dependabot pull requests were present.
 
 ### Performance observations
 

@@ -57,17 +57,17 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-08-28, public prerelease package `0.18.0-beta.1` is published
-for Windows x64. Validated evidence is Firefox 153.0.4 BuildID 20260810162159,
-Firefox 154.0 BuildID 20260812182057, and Firefox 154.0.1 BuildID
-20260824154132.
+As of 2026-10-01, public prerelease package `0.19.0-beta.1` is published
+for Windows x64, with current-package Firefox 157.0 BuildID 20260924084938
+validation. Historical evidence remains Firefox 153.0.4 BuildID 20260810162159,
+Firefox 154.0 BuildID 20260812182057, and Firefox 154.0.1 BuildID 20260824154132.
 The installer accepts Firefox 153 and newer after an explicit warning that only
-153 and 154 are tested. See
+153, 154, and 157 have tested evidence. See
 `docs/research/firefox-154-stable-transition.md` and ADR-048.
 
-The unreleased 2026-09-30 Firefox 157 follow-up (ADR-088) corrects Nova's
+The released Firefox 157 follow-up (ADR-088) corrects Nova's
 translucent-toolbar alpha leaking into floating panels. Production panel and
-Urlbar probes pass; release support metadata is unchanged. Evidence and the
+Urlbar probes pass; release metadata includes Firefox 157. Evidence and the
 remaining validation priorities: `docs/research/firefox-157-compatibility.md`.
 The 2026-10-01 ADR-089 follow-up corrects inactive-window hover exit
 classification; eight real-window/synthetic-pointer cases pass. Physical
@@ -78,9 +78,9 @@ Eight native accept/cancel cases, including unsaved-tab close, pass on 157.0;
 see `docs/research/firefox-157-native-dialogs.md` for the narrow owner-approved
 policy and remaining checks.
 
-Release preparation (2026-10-01): `0.19.0-beta.1` includes ADR-085 through
-ADR-091 and adds Firefox 157.0 compatibility metadata. Publication remains
-pending the release gates in
+Release (2026-10-01): `0.19.0-beta.1` includes ADR-085 through ADR-091 and adds
+Firefox 157.0 compatibility metadata. Automated release evidence and the
+owner-approved one-time manual/hardware validation exception are recorded in
 `docs/research/firefox-157-0.19.0-beta.1-release-validation.md`.
 
 Completed:

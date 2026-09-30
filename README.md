@@ -13,8 +13,9 @@ floating edge panels that stay hidden until you need them.
 > [!WARNING]
 > Fennevia is a public **prerelease**, not a stable daily-driver product. It runs
 > privileged code and depends on unsupported Firefox internals. The published archive has been
-> tested only with Firefox **153** and **154**. Later Firefox versions may
-> break the shell. If you confirm install on a newer version, there is **no
+> tested with Firefox **157**; Firefox **153** and **154** retain historical
+> evidence. Later Firefox versions may break the shell. If you confirm install
+> on a newer version, there is **no
 > promise** that everything will work. Use a dedicated Firefox profile, and
 > keep the downloaded release archive so you can disable or remove it later.
 > Fennevia follows the current stock Firefox **Release** channel. It does not
@@ -171,22 +172,25 @@ fallback; this is an accepted safety behavior rather than a custom prompt.
 ## Current release
 
 The current public prerelease is
-[`v0.18.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.18.0-beta.1).
+[`v0.19.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.19.0-beta.1).
 It follows
-[`v0.17.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.17.0-beta.1).
+[`v0.18.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.18.0-beta.1).
 Its tested environment is intentionally narrow:
 
 | Requirement      | Tested value                                         |
 | ---------------- | ---------------------------------------------------- |
 | Operating system | Windows x64                                          |
-| Firefox          | Stock Firefox 153.0.4, 154.0, and 154.0.1, release channel |
-| Firefox Build ID | `20260810162159` / `20260812182057` / `20260824154132` |
-| Package          | `fennevia-0.18.0-beta.1-windows.zip`                 |
+| Firefox          | Stock Firefox 157.0, release channel                 |
+| Firefox Build ID | `20260924084938`                                    |
+| Package          | `fennevia-0.19.0-beta.1-windows.zip`                  |
+
+Firefox 153.0.4, 154.0, and 154.0.1 retain historical validation; their full
+matrices were not rerun for this package.
 
 Install, update, repair, and re-enable reject Firefox older than 153. Firefox
 153, 154, and newer majors may be installed after the installer warning: only
-153 and 154 are tested, later versions may break the shell, and confirming
-install does not promise that everything will work. Disable and uninstall
+153, 154, and 157 have tested evidence, later versions may break the shell, and
+confirming install does not promise that everything will work. Disable and uninstall
 remain available for recovery. Linux, macOS, Firefox ESR, Beta, and Nightly
 are not supported by this release.
 
@@ -284,17 +288,17 @@ and Firefox 154 provider-contract, production-panel, failure-injection, and
 release probes, while its representative provider matrix remains
 pending.
 
-The unreleased source now includes a Firefox 155.0.1 compatibility fix for
+The release includes a Firefox 155.0.1 compatibility fix for
 suggestion execution and asynchronous search-mode handoff. Corrected Urlbar
 probes pass on 155.0.1 and 154.0.1; the 155 core-feature, lifecycle, and recovery
 audit also passes. Search-mode entries use Firefox's complete native address
-bar with the draft preserved. These changes are not in the published
-`v0.18.0-beta.1` archive. See the [Firefox 155 investigation](docs/research/firefox-155-compatibility.md)
+bar with the draft preserved. These changes are included in the published
+`v0.19.0-beta.1` archive. See the [Firefox 155 investigation](docs/research/firefox-155-compatibility.md)
 for the tested scope and remaining release checks.
 
-The unreleased source also corrects Firefox 157 Nova's nearly transparent
+The release also corrects Firefox 157 Nova's nearly transparent
 floating backgrounds. Panel-color opacity and native Urlbar production probes
-pass on 157.0; the public package and its support boundary remain unchanged.
+pass on 157.0, now included in the package's tested-major metadata.
 See the [Firefox 157 investigation](docs/research/firefox-157-compatibility.md)
 and [native-dialog follow-up](docs/research/firefox-157-native-dialogs.md)
 for remaining theme, native-UI, security-warning, and release checks.
@@ -306,19 +310,20 @@ release transitional focus holds on close. Eight native accept/cancel cases,
 including unsaved-tab close, pass on 157.0; error and unknown-dialog fallback
 remain intact.
 
-These source follow-ups are being prepared as `0.19.0-beta.1`, with Firefox
-157.0 added to candidate compatibility metadata. See the
+These follow-ups are published in `0.19.0-beta.1`. See the
 [release validation record](docs/research/firefox-157-0.19.0-beta.1-release-validation.md)
-for publication status; the public download below remains `0.18.0-beta.1`.
+for exact archive evidence and the owner-approved one-time exception for
+remaining manual/hardware checks, which remain recorded as `not run`.
 
-The candidate also adds download progress rings, keeps window controls visible
-while narrow panels scroll, enables horizontal side scrolling, and fixes hidden
+The release also adds download progress rings to both the launcher and status
+widget, keeps window controls visible while narrow panels scroll, enables
+horizontal side scrolling, and fixes hidden
 bookmark actions becoming visible during middle-click opening (ADR-091).
 
-The `0.18.0-beta.1` release reran the complete automated lifecycle, recovery,
+The `0.19.0-beta.1` release reran the complete automated lifecycle, recovery,
 performance-control, deterministic-archive, extracted-package installer,
 independently downloaded public-package verification, and public-package
-recovery matrix on Firefox 154.0.1. The remaining real-Firefox visual,
+recovery matrix on Firefox 157.0. The remaining real-Firefox visual,
 assistive-technology, account/device, popup-placement, complete customize,
 first-paint, GUI installer, literal fresh-profile first-zero-prefix, and
 representative Urlbar-provider rows are still pending. The main remaining work
@@ -349,14 +354,14 @@ the wizard.
 
 Download both files from the same GitHub Release:
 
-- `fennevia-0.18.0-beta.1-windows.zip`
-- `fennevia-0.18.0-beta.1-windows.zip.sha256`
+- `fennevia-0.19.0-beta.1-windows.zip`
+- `fennevia-0.19.0-beta.1-windows.zip.sha256`
 
 Before extracting the ZIP, run this in PowerShell from the download directory:
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.18.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.18.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.19.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.19.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 
