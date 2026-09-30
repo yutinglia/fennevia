@@ -13,7 +13,7 @@ collision system, glass token set, or window-global coordination layer.
 ## Current status
 
 The owner requested publication of `0.19.0-beta.1` on 2026-10-01. This candidate
-includes ADR-085 through ADR-090, with Firefox 157.0 compatibility metadata;
+includes ADR-085 through ADR-091, with Firefox 157.0 compatibility metadata;
 release gates/publication are tracked in
 `docs/research/firefox-157-0.19.0-beta.1-release-validation.md`.
 

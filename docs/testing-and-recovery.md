@@ -2210,3 +2210,21 @@ Do not:
   beyond the exact recorded evidence;
 - claim a feature placeholder is a completed feature;
 - paste sensitive values into shared evidence.
+
+### Firefox 157 launcher and narrow-panel regressions (ADR-091)
+
+In the marker-owned lifecycle harness, `--ui-controls-probe` checks weighted
+download progress, unknown size, pause, zero, full, and completed states; the
+localized button description; disabled bookmark action opacity; all three
+configured window controls at both extremes of a narrow Top scroller; and
+horizontal reachability of both side panels. All temporary layout preferences,
+owned DOM/style fixtures, and synthetic Downloads list entries are restored.
+The fixture does not start a network transfer or log download metadata.
+
+Release interaction checks additionally cover customization entry/exit without
+duplicate controls, moving window controls to other panels or nested containers,
+side-dock wrapping, keyboard focus and native actions, native Downloads popup
+hold, PUBLIC/PRIVATE separation and disposal. The fixed dock belongs to its
+existing edge surface and must still hide with that surface. Disabled bookmark
+actions remain hidden off hover/focus; the selected row retains ordinary focus
+and keyboard access after the open guard is released.

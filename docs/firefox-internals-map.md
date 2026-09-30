@@ -184,6 +184,13 @@ contract, and privacy analysis.
 
 ### Downloads
 
+ADR-091's launcher ring consumes the existing aggregate snapshot below; it adds
+no native symbol or view. Its Firefox 157 behavior references are
+[`indicator.js`](https://github.com/mozilla-firefox/firefox/blob/fdd757a2e09c9471cddf383e64e631e4ce178499/browser/components/downloads/content/indicator.js),
+[`indicator.css`](https://github.com/mozilla-firefox/firefox/blob/fdd757a2e09c9471cddf383e64e631e4ce178499/browser/themes/shared/downloads/indicator.css), and
+[`DownloadsCommon.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/fdd757a2e09c9471cddf383e64e631e4ce178499/browser/components/downloads/DownloadsCommon.sys.mjs).
+Fennevia does not import their indicator controller or adopt the native ring.
+
 Issue #32 verified the following dependencies on Firefox 153.0.4 release, build
 ID `20260810162159`, official tag `FIREFOX_153_0_4_RELEASE`, commit
 `c178247e1dfea52241a6b18b18cf3a00f8da935c`, on Windows 11 25H2. The complete

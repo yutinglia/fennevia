@@ -155,3 +155,14 @@
   padding: 0;
   color: var(--fennevia-glass-muted);
 }
+#fennevia-shell-frame-host .fennevia-download-indicator {
+  inline-size: 20px;
+  block-size: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+#fennevia-shell-frame-host .fennevia-download-indicator__track {
+  opacity: 0.3;
+}

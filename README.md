@@ -311,6 +311,10 @@ These source follow-ups are being prepared as `0.19.0-beta.1`, with Firefox
 [release validation record](docs/research/firefox-157-0.19.0-beta.1-release-validation.md)
 for publication status; the public download below remains `0.18.0-beta.1`.
 
+The candidate also adds download progress rings, keeps window controls visible
+while narrow panels scroll, enables horizontal side scrolling, and fixes hidden
+bookmark actions becoming visible during middle-click opening (ADR-091).
+
 The `0.18.0-beta.1` release reran the complete automated lifecycle, recovery,
 performance-control, deterministic-archive, extracted-package installer,
 independently downloaded public-package verification, and public-package

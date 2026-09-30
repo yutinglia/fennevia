@@ -4185,3 +4185,38 @@ Firefox 157 source pins, probe evidence and exact remaining checks belong in
 `docs/research/firefox-157-native-dialogs.md`. Eight real native accept/cancel
 cases pass, including unsaved-tab close. No broader modal or cross-platform
 support is implied.
+
+## ADR-091: Download launcher progress and fixed window controls in scrolling panels
+
+**Status:** Owner-requested follow-ups for 0.19.0-beta.1, 2026-10-01. Refines
+ADR-074's presentation while retaining its saved layout and editor.
+
+The downloads launcher subscribes to the existing anonymous, per-window
+Downloads adapter. Active downloads render a weighted progress ring; unknown
+size renders a static segmented ring. No active downloads restores the icon.
+The Downloads status widget reuses the same icon with its existing subscription.
+Its localized accessible name includes active count and known percentage or
+unknown-size description. There is no animation, polling, byte-count metadata,
+independent native view, or completion popup. Activation retains the native
+Downloads handoff and shared popup hold. Firefox 157's `indicator.js`,
+`indicator.css`, and `DownloadsCommon.sys.mjs` at
+`fdd757a2e09c9471cddf383e64e631e4ce178499` are behavior references only; the SVG
+and styles are independently authored from the existing project contract.
+
+Outside customization, each panel renders its configured window-control items
+once in a non-scrolling dock: inline-end for horizontal panels and block-end for
+side panels. Configured traversal order, panel membership, action bridge,
+health identity, and cleanup remain intact. The editor renders the saved tree;
+leaving it returns those controls to the dock. No native nodes move, no extra
+window observer or control instance is introduced, and each surface retains
+its existing hide/reveal policy. Removed controls are not silently recreated.
+Nested rows contribute their minimum content width to the side scroller, and
+columns start at a reachable inline edge instead of centering clipped overflow.
+
+Bookmark guards still disable actions during a pending open. Disabled styling
+dims the new-tab glyph instead of overriding the button's hover/focus visibility.
+This prevents hidden actions becoming visible after middle-click while keeping
+keyboard access. No new Firefox internal dependency, schema, dependency,
+production logging, or data flow is introduced. Real-engine regressions live
+in `tests/firefox-ui-controls-probe.mjs`; results and remaining limits are in
+the Firefox 157 release validation record.

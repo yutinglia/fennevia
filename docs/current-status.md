@@ -1,6 +1,6 @@
 # Current Project Status
 
-> Snapshot: 2026-10-01. This status review includes ADR-074 through ADR-090 and
+> Snapshot: 2026-10-01. This status review includes ADR-074 through ADR-091 and
 > the `0.18.0-beta.1` version identity, alongside the public
 > `v0.18.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
@@ -10,10 +10,16 @@ READMEs remain user-facing, while the master plan, shell roadmap, architecture,
 and testing documents retain the complete engineering contract.
 
 Release candidate `0.19.0-beta.1` is now being prepared at the owner's request.
-It includes ADR-085 through ADR-090 and adds Firefox 157.0 to candidate installer
+It includes ADR-085 through ADR-091 and adds Firefox 157.0 to candidate installer
 metadata; the public release below remains unchanged until publication.
 Candidate gates and exact archive evidence are tracked in
 [the 157 release record](research/firefox-157-0.19.0-beta.1-release-validation.md).
+
+ADR-091 adds progress rings to the Downloads launcher and status widget, keeps
+configured window controls outside panel scrolling, enables horizontal side
+scrolling, and fixes disabled bookmark actions becoming visible after middle
+click. Focused Firefox 157 fixtures cover these states, customization, and
+nested side-dock placement; final archive gates remain pending.
 
 The unreleased Firefox 155 follow-up fixes the changed native suggestion-pick
 arguments and hands asynchronous search-mode rows to Firefox with the draft

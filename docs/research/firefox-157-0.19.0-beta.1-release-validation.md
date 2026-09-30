@@ -39,13 +39,39 @@ flow, or third-party implementation is introduced. Firefox retains prompt
 actions, permissions, security delays, native ownership, and fail-open recovery.
 The owner-requested dialog policy refinement is recorded in ADR-090.
 
+The owner added ADR-091 follow-ups before publication: download-launcher progress,
+bookmark middle-click icon visibility, fixed window controls during narrow-panel
+scrolling, and horizontal side scrolling. The focused Firefox 157 fixture passes
+six download states, two Top scroll positions, both side scrollers, and hidden
+disabled bookmark actions, with fixture restoration. This measures rendered DOM
+and computed styles, not a physical mouse or assistive-technology session.
+The expanded final fixture also passes customization entry/exit, no duplicate
+controls, and all three controls moved into a nested side Row at 110px width.
+Both the launcher and Downloads status widget render the same weighted ring.
+The final source ordinary gate passed 467 tests with 88.88% line / 95.99%
+function coverage, static PowerShell, dependency audit, and all 14 production
+artifacts. After sharing the ring with the status widget, typecheck, lint, and
+the 11 affected frontend source-contract tests passed again.
+
+Current source artifact SHA-256 values:
+
+- ShellApp: `fe02c8045151b62c9008011729354f09c17d7d2400a1546c421b741d4abf56d9`.
+- ShellStyles: `d635e47d1e5bba1f9391254b8bcfa36274679062235ba61dc5ea3feacf74d7ca`.
+- BridgeBoundary: `2702eddbc00282ba55aeaf330058015bc092295ab51ababdd868aef0f8e9dc47`.
+
+An initial dock build correctly failed open because its moved controls lacked
+their configured layout health identities. The dock now renders each identity
+and action exactly once; the existing health check is unchanged. A test-only
+side fixture initially assumed every saved layout has a single base container;
+it now also covers direct root children. Neither failure is a shipped result.
+
 ## Release checks
 
 | Check | Result |
 | --- | --- |
-| Clean committed preflight, exact dependencies, local verification | Pending. |
-| PowerShell 5.1 fixed-list suite for candidate metadata | Pending. |
-| Three cold starts / full lifecycle / Browser Toolbox | Pending. |
+| Clean committed preflight, exact dependencies, local verification | Passed at `e727424` before ADR-091; final candidate rerun pending. |
+| PowerShell 5.1 fixed-list suite for candidate metadata | Passed at `e727424`; final candidate rerun pending. |
+| Three cold starts / full lifecycle / Browser Toolbox | First ADR-091 full lifecycle and Toolbox pass; subsequent recovery starts pending. |
 | Frontend, bridge, safe-start, entry/runtime failure recovery | Pending. |
 | SessionStore process restart / fail-open / cleanup | Pending. |
 | Native providers, production Urlbar, tab drag, color, hover, dialog probes | Pending. |
@@ -54,6 +80,17 @@ The owner-requested dialog policy refinement is recorded in ADR-090.
 | GitHub Windows CI and reviewed merge | Pending. |
 | Annotated tag / fail-closed publication / independent public download | Pending. |
 | Public archive recovery and final cleanup | Pending. |
+
+The first clean preflight produced identical archives with SHA-256
+`98c1c994b87e59709256f9ef327802e7a1a6c0d1d39d0b6d0fe9ea078d327202`.
+This is an earlier candidate, not a public-release checksum. Frontend recovery
+passed; all six missing-bridge capability injections passed, but the bridge
+suite's final restored lifecycle found Bottom visible after OS window-state
+changes. That final-state failure is being investigated; it is not recorded as
+a passing suite and no production behavior is inferred from it.
+The next full lifecycle passed; a bounded test-only trace observed only window
+size-state events and all four surfaces hidden after restoration. The failure
+has not yet recurred; no guessed production fix was made for this observation.
 
 The Windows workflow is run directly locally; `act` is not used because no
 workflow, container, runner, or CI orchestration changes are made. GitHub-hosted

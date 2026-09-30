@@ -1,5 +1,8 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
+  import { untrack } from "svelte";
+
+  import type { BrowserDownloadsStateAdapter } from "../../../app/download-state";
   import {
     isPopupBrowserToolAction,
     type BrowserToolAction,
@@ -9,11 +12,12 @@
     EdgeName,
     EdgeShellController,
   } from "../../../app/edge-surfaces";
-  import { translate, type MessageKey } from "../../../app/i18n";
+  import { countLabel, translate, type MessageKey } from "../../../app/i18n";
   import type { FenneviaLocale } from "../../../app/locale-state";
   import type { ProjectWidgetId } from "../../../app/toolbar-widgets-state";
   import { resolveBrowserToolHost } from "../../browser-tool-host";
   import FirefoxIcon, { type FirefoxIconName } from "../../FirefoxIcon.svelte";
+  import DownloadProgressIcon from "../downloads/DownloadProgressIcon.svelte";
 
   type BrowserToolProjectId = Extract<
     ProjectWidgetId,
@@ -28,6 +32,7 @@
   type Props = Readonly<{
     browserTools?: BrowserToolsStateAdapter;
     customizeOpen: boolean;
+    downloads: BrowserDownloadsStateAdapter;
     edge: EdgeName;
     id: BrowserToolProjectId;
     localeId: FenneviaLocale;
@@ -38,6 +43,24 @@
   }>;
 
   const props: Props = $props();
+  let downloadState = $state(untrack(() => props.downloads.snapshot()));
+  $effect(() => {
+    if (props.id !== "show-downloads") return;
+    downloadState = props.downloads.snapshot();
+    const unsubscribe = props.downloads.subscribe((state) => {
+      downloadState = state;
+    });
+    return () => {
+      unsubscribe();
+    };
+  });
+  let downloadMode = $derived(
+    props.id === "show-downloads" &&
+      downloadState.phase === "ready" &&
+      downloadState.activeCount > 0
+      ? downloadState.progressMode
+      : "none",
+  );
   let snapshot = $derived(props.browserTools?.snapshot());
   let action: BrowserToolAction | null = $derived(
     props.id === "application-menu"
@@ -91,6 +114,24 @@
               ? snapshot?.downloads
               : snapshot?.translate,
   );
+  let accessibleLabel = $derived.by(() => {
+    const label = translate(props.localeId, labelKey);
+    if (downloadMode === "none") return label;
+    const count = countLabel(
+      props.localeId,
+      downloadState.activeCount,
+      downloadState.countOverflow && downloadState.activeCount === 999,
+      "downloads.activeOne",
+      "downloads.activeOther",
+    );
+    const progress =
+      downloadMode === "determinate"
+        ? translate(props.localeId, "downloads.detailOverall", {
+            percent: downloadState.aggregatePercent ?? 0,
+          })
+        : translate(props.localeId, "downloads.detailIndeterminate");
+    return `${label}: ${count}; ${progress}`;
+  });
 
   const activate = async (event: MouseEvent): Promise<void> => {
     if (props.customizeOpen) {
@@ -130,7 +171,7 @@
 
 <button
   aria-haspopup={props.id === "application-menu" ? "menu" : undefined}
-  aria-label={translate(props.localeId, labelKey)}
+  aria-label={accessibleLabel}
   class="fennevia-control fennevia-browser-tools__button fennevia-layout-control"
   data-fennevia-browser-tool={props.id === "show-downloads"
     ? "downloads"
@@ -140,8 +181,15 @@
   disabled={props.customizeOpen || !available}
   onclick={(event) => void activate(event)}
   tabindex={props.customizeOpen ? -1 : undefined}
-  title={translate(props.localeId, labelKey)}
+  title={accessibleLabel}
   type="button"
 >
-  <FirefoxIcon name={icon} />
+  {#if props.id === "show-downloads"}
+    <DownloadProgressIcon
+      mode={downloadMode}
+      percent={downloadState.aggregatePercent}
+    />
+  {:else}
+    <FirefoxIcon name={icon} />
+  {/if}
 </button>

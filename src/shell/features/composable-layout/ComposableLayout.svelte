@@ -43,6 +43,8 @@
   import FirefoxToolbarWidget from "./FirefoxToolbarWidget.svelte";
   import LayoutDragPreview from "./LayoutDragPreview.svelte";
   import ProjectWidget from "./ProjectWidget.svelte";
+  import WindowControlsDock from "./WindowControlsDock.svelte";
+  import { isWindowControlNode } from "./window-control-layout";
   import { resolveLayoutDragPreview } from "./layout-drag-preview";
   import { localizeLayoutNodeLabel, zoneDisplayName } from "../../locale-ui";
 
@@ -600,7 +602,9 @@
   parentPath: readonly number[],
   direction: ToolbarLayoutDirection,
 )}
-  {#each children as node, index (node.instanceId)}
+  {#each children
+    .map((node, index) => ({ node, index }))
+    .filter(({ node }) => props.customizeOpen || !isWindowControlNode(node)) as { node, index } (node.instanceId)}
     {@render renderDropSlot(pathKey(parentPath), index, direction)}
     {@const path = [...parentPath, index]}
     {@const isBaseContainer = node.instanceId === baseContainerInstanceId}
@@ -817,41 +821,54 @@
 {/snippet}
 
 <div
-  bind:this={root}
-  aria-label={props.customizeOpen
-    ? translate(props.localeId, "customize.panelLayoutAria", {
-        zone: zoneDisplayName(props.localeId, props.edge),
-      })
-    : undefined}
-  class="fennevia-composable-layout"
-  class:fennevia-composable-layout--column={rootDirection === "column"}
-  class:fennevia-composable-layout--row={rootDirection === "row"}
-  data-fennevia-composable-layout={props.edge}
-  data-fennevia-layout-drag-active={activeDrag ? true : undefined}
-  data-fennevia-focus-fallback=""
-  data-fennevia-layout-drop={dropPreview?.parentKey === "root"
-    ? String(dropPreview.index)
-    : undefined}
-  data-fennevia-window-drag-region=""
-  ondragleave={handleDragLeave}
-  ondragover={(event) =>
-    handleDragOver(event, rootDropParentPath, rootDirection)}
-  ondrop={(event) => handleDrop(event, rootDropParentPath, rootDirection)}
-  role={props.customizeOpen ? "group" : "presentation"}
-  tabindex="-1"
+  class="fennevia-layout-surface"
+  class:fennevia-layout-surface--column={rootDirection === "column"}
 >
-  {#if props.customizeOpen && nodes.length === 0 && dropPreview?.parentKey !== "root"}
-    <button
-      class="fennevia-layout-container__placeholder fennevia-layout-container__placeholder--root"
-      data-fennevia-empty-panel-drop-target=""
-      onclick={selectEmptyPanel}
-      onfocus={selectEmptyPanel}
-      type="button"
-      >{translate(props.localeId, "customize.emptyPanelDrop")}</button
-    >
-  {/if}
-  {@render renderNodes(nodes, [], rootDirection)}
-  <output aria-live="polite" class="fennevia-layout-announcement"
-    >{announcement}</output
+  <div
+    bind:this={root}
+    aria-label={props.customizeOpen
+      ? translate(props.localeId, "customize.panelLayoutAria", {
+          zone: zoneDisplayName(props.localeId, props.edge),
+        })
+      : undefined}
+    class="fennevia-composable-layout"
+    class:fennevia-composable-layout--column={rootDirection === "column"}
+    class:fennevia-composable-layout--row={rootDirection === "row"}
+    data-fennevia-composable-layout={props.edge}
+    data-fennevia-layout-drag-active={activeDrag ? true : undefined}
+    data-fennevia-focus-fallback=""
+    data-fennevia-layout-drop={dropPreview?.parentKey === "root"
+      ? String(dropPreview.index)
+      : undefined}
+    data-fennevia-window-drag-region=""
+    ondragleave={handleDragLeave}
+    ondragover={(event) =>
+      handleDragOver(event, rootDropParentPath, rootDirection)}
+    ondrop={(event) => handleDrop(event, rootDropParentPath, rootDirection)}
+    role={props.customizeOpen ? "group" : "presentation"}
+    tabindex="-1"
   >
+    {#if props.customizeOpen && nodes.length === 0 && dropPreview?.parentKey !== "root"}
+      <button
+        class="fennevia-layout-container__placeholder fennevia-layout-container__placeholder--root"
+        data-fennevia-empty-panel-drop-target=""
+        onclick={selectEmptyPanel}
+        onfocus={selectEmptyPanel}
+        type="button"
+        >{translate(props.localeId, "customize.emptyPanelDrop")}</button
+      >
+    {/if}
+    {@render renderNodes(nodes, [], rootDirection)}
+    <output aria-live="polite" class="fennevia-layout-announcement"
+      >{announcement}</output
+    >
+  </div>
+  {#if !props.customizeOpen}
+    <WindowControlsDock
+      {nodes}
+      localeId={props.localeId}
+      onFatalError={props.onFatalError}
+      windowControls={props.windowControls}
+    />
+  {/if}
 </div>

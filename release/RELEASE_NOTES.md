@@ -7,6 +7,15 @@ This release restores floating-panel backgrounds on Firefox 157 and fixes
 panel dismissal and native-dialog transitions. It also includes the previously
 unreleased Firefox 155 address-bar and tab-interaction improvements.
 
+- **Download widget progress.** The launcher and status widget show aggregate
+  progress in a ring, a segmented
+  ring for unknown size, and a localized accessible description. Clicking still
+  opens Firefox's native Downloads panel.
+- **Narrow-window access.** Keep configured window controls outside scrolling
+  panel content and allow horizontal scrolling in narrow side panels.
+- **Bookmark action visibility.** Middle-click opening no longer makes every
+  row's hidden new-tab action visible while actions are temporarily disabled.
+
 - **Visible floating backgrounds on Firefox 157.** Nova's translucent toolbar
   color no longer multiplies panel transparency. One opaque native panel-color
   base feeds Fennevia's existing opacity, custom-color, and accessibility paths.

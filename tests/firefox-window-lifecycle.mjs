@@ -8,6 +8,7 @@ import process from "node:process";
 import { runUrlbarCompatibilityProbe } from "./firefox-urlbar-compatibility-probe.mjs";
 import { runTabDragScrollProbe } from "./firefox-tab-drag-scroll-probe.mjs";
 import { runPanelStyleProbe } from "./firefox-panel-style-probe.mjs";
+import { runUiControlsProbe } from "./firefox-ui-controls-probe.mjs";
 import { runBackgroundPanelProbe } from "./firefox-background-panel-probe.mjs";
 import { runNativeDialogProbe } from "./firefox-native-dialog-probe.mjs";
 
@@ -110,6 +111,7 @@ function parseArguments(argv) {
     urlbarSuggestionsProbe: false,
     tabDragScrollProbe: false,
     panelStyleProbe: false,
+    uiControlsProbe: false,
     backgroundPanelProbe: false,
     nativeDialogProbe: false,
   };
@@ -204,6 +206,10 @@ function parseArguments(argv) {
       result.panelStyleProbe = true;
       continue;
     }
+    if (argument === "--ui-controls-probe") {
+      result.uiControlsProbe = true;
+      continue;
+    }
     if (argument === "--background-panel-probe") {
       result.backgroundPanelProbe = true;
       continue;
@@ -248,6 +254,7 @@ function parseArguments(argv) {
       result.urlbarSuggestionsProbe,
       result.tabDragScrollProbe,
       result.panelStyleProbe,
+      result.uiControlsProbe,
       result.backgroundPanelProbe,
       result.nativeDialogProbe,
       result.sessionRestore !== null,
@@ -276,6 +283,7 @@ function parseArguments(argv) {
       result.urlbarSuggestionsProbe ||
       result.tabDragScrollProbe ||
       result.panelStyleProbe ||
+      result.uiControlsProbe ||
       result.backgroundPanelProbe ||
       result.nativeDialogProbe ||
       result.sessionRestore !== null)
@@ -6702,6 +6710,19 @@ function assertNativeUiPolicies(result) {
 }
 
 async function exerciseWindowStatePolicy(client) {
+  await client.execute(`
+    const events = [];
+    const types = ['pointerover', 'pointerout', 'focusin', 'focusout', 'blur', 'focus', 'sizemodechange'];
+    const listener = event => {
+      if (events.length >= 40) return;
+      const candidate = event.target?.closest?.('[data-fennevia-edge]')?.getAttribute('data-fennevia-edge');
+      events.push({ type: event.type, phase: event.eventPhase,
+        edge: ['top', 'bottom', 'left', 'right'].includes(candidate) ? candidate : null,
+        active: Services.focus.activeWindow === window });
+    };
+    for (const type of types) window.addEventListener(type, listener, true);
+    window.__fenneviaWindowStateTestTrace = { events, types, listener };
+  `);
   const initialResult = await client.request("WebDriver:GetWindowRect", {});
   const initial = initialResult.value ?? initialResult;
   const target = {
@@ -6784,15 +6805,26 @@ async function exerciseWindowStatePolicy(client) {
       minimizeState.active &&
       minimizeState.styleRuleCount === 10;
   } finally {
-    await client.request("WebDriver:SetWindowRect", initial);
-    const restoreState = await inspect();
-    restored =
-      restoreState.windowState === restoreState.windowStateNormal &&
-      restoreState.active &&
-      restoreState.browserGeometryPreserved &&
-      restoreState.styleRuleCount === 10 &&
-      restoreState.nativeCloseHidden &&
-      restoreState.projectWindowControlsPresent;
+    try {
+      await client.request("WebDriver:SetWindowRect", initial);
+      const restoreState = await inspect();
+      restored =
+        restoreState.windowState === restoreState.windowStateNormal &&
+        restoreState.active &&
+        restoreState.browserGeometryPreserved &&
+        restoreState.styleRuleCount === 10 &&
+        restoreState.nativeCloseHidden &&
+        restoreState.projectWindowControlsPresent;
+    } finally {
+      const trace = await client.execute(`
+        const trace = window.__fenneviaWindowStateTestTrace;
+        for (const type of trace.types) window.removeEventListener(type, trace.listener, true);
+        delete window.__fenneviaWindowStateTestTrace;
+        return { events: trace.events, visible: [...document.querySelectorAll('[data-fennevia-surface-root]')]
+          .map(root => ({ edge: root.getAttribute('data-fennevia-edge'), visible: root.getAttribute('data-fennevia-visible') === 'true' })) };
+      `);
+      console.log(`windowStateTestTrace=${JSON.stringify(trace)}`);
+    }
   }
   return { maximized, minimized, resized, restored };
 }
@@ -8448,6 +8480,7 @@ async function run() {
     if (
       options.tabDragScrollProbe ||
       options.panelStyleProbe ||
+      options.uiControlsProbe ||
       options.backgroundPanelProbe ||
       options.nativeDialogProbe
     ) {
@@ -8459,9 +8492,13 @@ async function run() {
           )
         : options.backgroundPanelProbe
           ? await runBackgroundPanelProbe(client, originalHandle)
-          : options.panelStyleProbe
-            ? await runPanelStyleProbe(client)
-            : await runTabDragScrollProbe(client);
+          : options.uiControlsProbe
+            ? await runUiControlsProbe(client, (diagnostic) =>
+                console.log(`uiControlsObserved=${JSON.stringify(diagnostic)}`),
+              )
+            : options.panelStyleProbe
+              ? await runPanelStyleProbe(client)
+              : await runTabDragScrollProbe(client);
       const postProbeEvidence = await collectEvidence(client);
       assert.equal(postProbeEvidence.firstPartyScriptErrorCount, 0);
       assert.equal(
@@ -8478,16 +8515,18 @@ async function run() {
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
-        `${options.nativeDialogProbe ? "nativeDialogEvidence" : options.backgroundPanelProbe ? "backgroundPanelEvidence" : options.panelStyleProbe ? "panelStyleEvidence" : "tabDragScrollEvidence"}=${JSON.stringify(probeEvidence)}`,
+        `${options.nativeDialogProbe ? "nativeDialogEvidence" : options.backgroundPanelProbe ? "backgroundPanelEvidence" : options.uiControlsProbe ? "uiControlsEvidence" : options.panelStyleProbe ? "panelStyleEvidence" : "tabDragScrollEvidence"}=${JSON.stringify(probeEvidence)}`,
       );
       console.log(
         options.nativeDialogProbe
           ? "PASS: native dialog fixture actions and lifecycle observations."
           : options.backgroundPanelProbe
             ? "PASS: inactive-window panel pointer exit and event propagation."
-            : options.panelStyleProbe
-              ? "PASS: floating panel background opacity."
-              : "PASS: tab drag scrolling, stationary preview, native scroll ownership and terminal cleanup.",
+            : options.uiControlsProbe
+              ? "PASS: download indicator, disabled bookmark icons, window controls and side scrolling."
+              : options.panelStyleProbe
+                ? "PASS: floating panel background opacity."
+                : "PASS: tab drag scrolling, stationary preview, native scroll ownership and terminal cleanup.",
       );
       return;
     }

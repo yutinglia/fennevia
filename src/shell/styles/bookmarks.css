@@ -285,7 +285,12 @@
   display: none;
 }
 
-#fennevia-shell-frame-host .fennevia-bookmarks button:disabled {
+#fennevia-shell-frame-host
+  .fennevia-bookmarks
+  button:disabled:not(.fennevia-bookmarks__new-tab),
+#fennevia-shell-frame-host
+  .fennevia-bookmarks__new-tab:disabled
+  .fennevia-firefox-icon {
   opacity: 0.52;
 }
 
