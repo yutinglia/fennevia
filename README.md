@@ -92,6 +92,17 @@ and leaves the required Customize button in Top; **Reset layout** restores the
 new Fennevia default. At least one Customize widget must remain on an enabled
 panel, and valid saved layouts are never silently replaced.
 
+## Settings backup (unreleased)
+
+In **Customize > Panels > Settings backup**, export a JSON backup or import one
+to review and replace all Fennevia layout, panel, appearance, and interaction
+settings. The file contains toolbar extension references, without browsing or
+extension data. Missing widgets keep their positions; importing does not install
+extensions. Cancel leaves settings intact, and a concurrent settings edit
+invalidates the preview. The earlier diagnostic layout-only export is not this
+versioned all-settings format. This feature is not in the published
+`0.19.0-beta.1` archive.
+
 ## Screenshot showcase
 
 These owner-supplied runtime captures show the `v0.18.0-beta.1` layout and its

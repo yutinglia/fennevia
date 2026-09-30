@@ -14,6 +14,7 @@
 }
 
 #fennevia-shell-frame-host .fennevia-composable-layout {
+  container-type: inline-size;
   flex: 1 1 auto;
   padding: var(--fennevia-space-2);
   overflow: auto;
@@ -959,21 +960,33 @@
   flex-direction: column;
 }
 
-#fennevia-shell-frame-host .fennevia-window-controls-dock {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  align-self: flex-start;
-  gap: var(--fennevia-space-2);
-  padding: var(--fennevia-space-2);
+#fennevia-shell-frame-host
+  .fennevia-layout-node:has(.fennevia-window-controls-dock) {
+  position: sticky;
+  /* Keep pinned descendants above overlapping siblings in this layout. */
+  z-index: 1;
+  inset-inline: 0;
+  min-inline-size: min-content;
 }
 
-#fennevia-shell-frame-host
-  .fennevia-layout-surface--column
-  > .fennevia-window-controls-dock {
-  max-inline-size: 100%;
+#fennevia-shell-frame-host .fennevia-window-controls-dock {
+  position: sticky;
+  z-index: 1;
+  inset-inline: 0;
+  display: flex;
+  flex: 0 0 auto;
   flex-wrap: wrap;
-  align-self: flex-end;
+  min-inline-size: 0;
+  max-inline-size: 100cqi;
+  align-items: center;
+  align-self: center;
+  gap: var(--fennevia-space-2);
+  background: var(--fennevia-glass-surface);
+  border-radius: var(--fennevia-control-radius);
+}
+
+#fennevia-shell-frame-host .fennevia-window-controls-dock--column {
+  flex-direction: column;
 }
 
 #fennevia-shell-frame-host .fennevia-composable-layout--column,

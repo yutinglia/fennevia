@@ -4200,6 +4200,8 @@ support is implied.
 
 **Status:** Owner-requested follow-ups for 0.19.0-beta.1, 2026-10-01. Refines
 ADR-074's presentation while retaining its saved layout and editor.
+The panel-wide window-control dock placement is superseded by ADR-092;
+download and bookmark behavior remains current.
 
 The downloads launcher subscribes to the existing anonymous, per-window
 Downloads adapter. Active downloads render a weighted progress ring; unknown
@@ -4230,3 +4232,72 @@ keyboard access. No new Firefox internal dependency, schema, dependency,
 production logging, or data flow is introduced. Real-engine regressions live
 in `tests/firefox-ui-controls-probe.mjs`; results and remaining limits are in
 the Firefox 157 release validation record.
+
+## ADR-092: Keep pinned window controls in their configured layout container
+
+**Status:** Accepted by direct owner follow-up on 2026-10-01 after the
+0.19.0-beta.1 release. Supersedes only ADR-091's panel-wide dock placement.
+
+The owner places window controls alongside other tools in the same custom Row.
+Extracting them into a panel-wide dock changed their vertical alignment and
+moved side-panel controls to the bottom. Ordinary rendering must retain the
+saved parent, order, padding, and Row/Column direction, as customization does.
+
+Group only consecutive window-control siblings at their original position.
+Use inline-axis CSS sticky positioning for the group and its containing layout
+nodes. Ancestors retain their minimum content extent, so a narrow control-only
+Row can stay visible while another Row overflows. Pinning has no block-axis
+inset: a side-panel Row remains at its configured height. The group inherits
+the existing control size and spacing, centers in a Row, and may wrap when the
+scroller is narrower than the controls. A local stacking level keeps the
+controls above overlapping scrolled siblings; existing panel, popup, and
+inspector stacking remains unchanged.
+
+No preference migration, native DOM move, new observer, geometry callback,
+timer, window-control adapter, or duplicate control is introduced. Customize
+mode renders the original individual items. Surface reveal/hide, native
+actions, activation health, and fail-open keep their existing owners.
+
+Focused Firefox geometry, pointer hit testing, scrolling, and restoration
+evidence is recorded in
+`docs/research/firefox-157-window-control-row-alignment.md`.
+
+## ADR-093: User-initiated portable Fennevia settings files
+
+**Status:** Accepted by direct owner request and scope confirmation on
+2026-10-01: export/import all Fennevia layout, appearance, panel, and interaction
+settings. This explicitly extends ADR-045's profile-local persistence exception
+to user-selected local JSON files. No browsing data or arbitrary preference
+access is authorized.
+
+Customize > Panels contains a dedicated Settings backup section. Export writes
+the effective values of the three existing customize preferences, under the
+closed `fennevia-settings` version-1 envelope. Import reads at most 64 KiB of
+UTF-8, validates the existing bounded schemas and retained Customize access,
+then requires an inline replacement confirmation. The default focus is Cancel;
+Escape cancels the preview and returns focus to Import. Confirmation also
+returns focus there. English and Traditional Chinese use the existing catalog.
+
+File pickers remain Firefox-owned. Paths, raw JSON, and native widget identifiers
+stay in `src/firefox/settings/`; the frontend receives fixed status values,
+counts, and a single-use opaque preview token. Exports contain toolbar widget
+references but no adoption authority: the receiving profile recomputes adoption
+against CustomizableUI's actual placed/unused inventory. `getWidget(id)` alone
+is insufficient because Firefox can wrap arbitrary XUL IDs. Missing references
+remain in the layout without installing extensions or moving arbitrary DOM.
+
+Before applying, compare the three current preferences with their pre-selection
+snapshot. Changed settings invalidate the preview. Apply runs synchronously,
+restoring prior preference presence/values and exact native sibling order on
+failure. A rollback failure propagates to the existing fail-open boundary.
+The operation is not a crash-atomic Firefox preference transaction. Export
+reserves a unique sibling temporary file exclusively, writes/flushed bytes,
+then moves it to the destination; overwrite requires the native picker's Replace
+result. Clean up owned temporary files and invalidate pending selection/read
+callbacks on cancellation or disposal. A native picker already open has no
+cancel API; its late result is ignored.
+
+No dependency, network service, resource mapping, observer, diagnostic payload,
+or general preference editor is added. Existing shared Customize ownership,
+pref observers, native adoption policy, and health/fallback remain authoritative.
+Source pins and validation: `docs/research/firefox-157-settings-transfer.md`.

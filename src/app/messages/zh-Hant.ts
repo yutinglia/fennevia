@@ -129,6 +129,31 @@ export const zhHant: { readonly [K in keyof typeof en]: string } = {
   "customize.colorWindow": "視窗背景",
   "customize.columnDropArea": "直欄放置區",
   "customize.cleanPanels": "清空所有面板",
+  "customize.settings.heading": "設定備份",
+  "customize.settings.help":
+    "以 JSON 檔案儲存或還原 Fennevia 的布局、面板、外觀與互動設定，不包含瀏覽資料。",
+  "customize.settings.export": "匯出設定",
+  "customize.settings.import": "匯入設定",
+  "customize.settings.confirmTitle": "要取代 Fennevia 設定嗎？",
+  "customize.settings.confirmDescription":
+    "此檔案包含 {count} 個 widget 的布局，以及面板、外觀與互動設定。匯入後會取代目前的 Fennevia 設定。",
+  "customize.settings.missing":
+    "此處有 {count} 個 Firefox 工具按鈕尚不可用，仍會保留其位置；匯入不會安裝擴充套件。",
+  "customize.settings.cancel": "取消",
+  "customize.settings.apply": "取代設定",
+  "customize.settings.working": "處理中…",
+  "customize.settings.exported": "設定已匯出。",
+  "customize.settings.imported": "設定已匯入。",
+  "customize.settings.cancelled": "已取消，設定未變更。",
+  "customize.settings.invalid":
+    "此檔案不是有效的 Fennevia 設定備份，設定未變更。",
+  "customize.settings.unsupported": "尚不支援此備份的格式版本，設定未變更。",
+  "customize.settings.too-large": "設定檔超過 64 KiB 大小限制，設定未變更。",
+  "customize.settings.unavailable": "此視窗目前無法使用設定匯入／匯出。",
+  "customize.settings.busy": "另一個設定匯入／匯出作業仍在進行。",
+  "customize.settings.changed":
+    "開啟檔案期間，設定已被變更。請重新匯入檔案以再次確認。",
+  "customize.settings.failed": "無法完成此作業，原有的 Fennevia 設定已保留。",
   "customize.cleanPanelsCancel": "取消",
   "customize.cleanPanelsConfirm": "確認清空",
   "customize.cleanPanelsConfirmDescription":

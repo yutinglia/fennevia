@@ -1302,6 +1302,21 @@ accepted artifacts. The fixed-list suite also passed under Windows PowerShell
 dragging, normal/second/private windows, and Browser Console rows remain `not
 run`. Plan: `plans/016-urlbar-editing-and-container-padding.md`.
 
+## Unreleased owner follow-ups
+
+### ADR-093 settings backup — unreleased implementation
+
+The owner's 2026-10-01 scope confirmation covers all Fennevia layout, panel,
+appearance and interaction settings. Customize > Panels now offers a bounded,
+versioned local JSON export and a validated import preview with explicit
+replacement confirmation. Native file selection, raw data and widget references
+stay in the privileged bridge; cancellation, concurrent edits, missing widgets,
+rollback and disposal have dedicated checks. The existing rendering path also
+requires real widget inventory membership before exposing a saved ID as an
+action. Plan: `plans/018-settings-import-export.md`; source pins and development
+results: `docs/research/firefox-157-settings-transfer.md`. This does not change
+the published version or reuse its release-matrix exception.
+
 ## Deferred work
 
 The following require separate plans and issues:

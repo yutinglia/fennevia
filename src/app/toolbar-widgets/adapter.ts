@@ -12,6 +12,12 @@ import {
   reduceBrowserToolbarWidgetsState,
 } from "./state.ts";
 import { copyToolbarWidgetsEditOperation } from "./validation.ts";
+import {
+  copySettingsTransferRequest,
+  copySettingsTransferResult,
+  type SettingsTransferRequest,
+  type SettingsTransferResult,
+} from "../settings-transfer.ts";
 
 export function createBrowserToolbarWidgetsStateAdapter(
   bridge: BrowserToolbarWidgetsBridge,
@@ -84,6 +90,17 @@ export function createBrowserToolbarWidgetsStateAdapter(
   };
 
   return Object.freeze({
+    async transferSettings(
+      request: SettingsTransferRequest,
+    ): Promise<SettingsTransferResult> {
+      const validated = copySettingsTransferRequest(request);
+      const active = requireBridge();
+      if (typeof active.transferSettings !== "function")
+        return { status: "unavailable" };
+      return copySettingsTransferResult(
+        await active.transferSettings(validated),
+      );
+    },
     dispose(): boolean {
       if (disposed) {
         return false;
