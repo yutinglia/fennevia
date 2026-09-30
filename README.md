@@ -292,6 +292,29 @@ bar with the draft preserved. These changes are not in the published
 `v0.18.0-beta.1` archive. See the [Firefox 155 investigation](docs/research/firefox-155-compatibility.md)
 for the tested scope and remaining release checks.
 
+The unreleased source also corrects Firefox 157 Nova's nearly transparent
+floating backgrounds. Panel-color opacity and native Urlbar production probes
+pass on 157.0; the public package and its support boundary remain unchanged.
+See the [Firefox 157 investigation](docs/research/firefox-157-compatibility.md)
+and [native-dialog follow-up](docs/research/firefox-157-native-dialogs.md)
+for remaining theme, native-UI, security-warning, and release checks.
+The same follow-up corrects background hover exits being ignored when their
+coordinates still lie inside a panel. Foreground/background boundary probes
+pass; physical mouse movement across another application awaits confirmation.
+Known independent native confirmations also keep resting chrome hidden and
+release transitional focus holds on close. Eight native accept/cancel cases,
+including unsaved-tab close, pass on 157.0; error and unknown-dialog fallback
+remain intact.
+
+These source follow-ups are being prepared as `0.19.0-beta.1`, with Firefox
+157.0 added to candidate compatibility metadata. See the
+[release validation record](docs/research/firefox-157-0.19.0-beta.1-release-validation.md)
+for publication status; the public download below remains `0.18.0-beta.1`.
+
+The candidate also adds download progress rings, keeps window controls visible
+while narrow panels scroll, enables horizontal side scrolling, and fixes hidden
+bookmark actions becoming visible during middle-click opening (ADR-091).
+
 The `0.18.0-beta.1` release reran the complete automated lifecycle, recovery,
 performance-control, deterministic-archive, extracted-package installer,
 independently downloaded public-package verification, and public-package

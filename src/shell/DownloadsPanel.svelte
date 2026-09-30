@@ -12,6 +12,7 @@
     type FenneviaLocale,
   } from "../app/locale-state";
   import FirefoxIcon, { type FirefoxIconName } from "./FirefoxIcon.svelte";
+  import DownloadProgressIcon from "./features/downloads/DownloadProgressIcon.svelte";
 
   type Props = Readonly<{
     downloads: BrowserDownloadsStateAdapter;
@@ -189,7 +190,12 @@
 >
   <div aria-live="polite" class="fennevia-downloads__summary">
     <span aria-hidden="true" class="fennevia-downloads__summary-icon">
-      <FirefoxIcon name="download" />
+      <DownloadProgressIcon
+        mode={current.phase === "ready" && current.activeCount > 0
+          ? current.progressMode
+          : "none"}
+        percent={current.aggregatePercent}
+      />
     </span>
     <span class="fennevia-downloads__summary-copy">
       <strong data-fennevia-download-summary="">{summary.title}</strong>

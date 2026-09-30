@@ -102,6 +102,7 @@
   <BrowserToolWidget
     browserTools={props.browserTools}
     customizeOpen={props.customizeOpen}
+    downloads={props.downloads}
     edge={props.edge}
     id={props.id}
     localeId={props.localeId}

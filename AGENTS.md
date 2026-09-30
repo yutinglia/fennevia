@@ -51,6 +51,10 @@ of inventing a new architecture.
   support promise.
 - Do not add branches, polyfills, or compatibility hacks for old Firefox
   versions unless an issue explicitly requires them.
+- The `0.19.0-beta.1` release candidate adds Windows x64 Firefox 157.0 BuildID
+  `20260924084938` to compatibility metadata. Its release matrix and publication
+  state are tracked in `docs/research/firefox-157-0.19.0-beta.1-release-validation.md`;
+  historical 153/154 evidence is not a new current-candidate rerun.
 - Firefox internal APIs are intentionally used, but those dependencies must be
   concentrated in the runtime and `src/firefox/` bridge layers.
 - Do not claim Linux, macOS, ESR, Beta, or Nightly support without real evidence

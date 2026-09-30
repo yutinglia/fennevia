@@ -1,87 +1,70 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 
-This is Fennevia `0.18.0-beta.1`, the ninth public Windows x64 prerelease.
-It follows [`v0.17.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.17.0-beta.1).
+Fennevia `0.19.0-beta.1` is a Windows x64 prerelease following
+[`v0.18.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.18.0-beta.1).
 
-Validated compatibility remains intentionally narrow: stock Firefox 153.0.4
-BuildID 20260810162159, Firefox 154.0 BuildID 20260812182057, and Firefox
-154.0.1 BuildID 20260824154132 on Windows x64. Firefox 153 and newer may be
-installed after the explicit warning that later versions can break the shell;
-confirming install does not promise that everything will work. ESR, Beta,
-Nightly, Linux, and macOS remain outside this package's support scope.
+This release restores floating-panel backgrounds on Firefox 157 and fixes
+panel dismissal and native-dialog transitions. It also includes the previously
+unreleased Firefox 155 address-bar and tab-interaction improvements.
 
-Review `INSTALL.md` and `RELEASE-MANIFEST.json` inside the archive, use a
-dedicated Firefox profile, and verify the separately published SHA-256 file.
-In PowerShell, compare its first field with:
+- **Download widget progress.** The launcher and status widget show aggregate
+  progress in a ring, a segmented
+  ring for unknown size, and a localized accessible description. Clicking still
+  opens Firefox's native Downloads panel.
+- **Narrow-window access.** Keep configured window controls outside scrolling
+  panel content and allow horizontal scrolling in narrow side panels.
+- **Bookmark action visibility.** Middle-click opening no longer makes every
+  row's hidden new-tab action visible while actions are temporarily disabled.
+
+- **Visible floating backgrounds on Firefox 157.** Nova's translucent toolbar
+  color no longer multiplies panel transparency. One opaque native panel-color
+  base feeds Fennevia's existing opacity, custom-color, and accessibility paths.
+- **Background panels hide reliably.** Pointer exits release the shared hover
+  hold when Firefox is behind another application, even if exit coordinates
+  still fall inside a panel. Closing a background surface does not restore
+  focus into Firefox. Foreground mutation-noise protection remains intact.
+- **Native confirmations without revealing resting chrome.** Known tab,
+  content, and window dialogs—including unsaved-tab close—remain Firefox-owned
+  while the original toolbar stays hidden and custom surfaces are suppressed.
+  Transitional focus and pending handoffs cannot latch native reveal afterward.
+  Intentional native access, unknown dialogs, and failures retain fallback.
+- **Firefox 155+ address execution.** Adapt to Firefox's current suggestion-pick
+  contract and preserve the draft when handing asynchronous search-mode results
+  to the full native address bar. Firefox continues to own providers and actions.
+- **Better tab interaction.** Keep pinned tabs accessible during overflow,
+  restrict pin/audio actions to primary clicks, preserve middle-click close,
+  and add progressive drag-edge scrolling with visible native scrollbars and
+  updated insertion previews. Ignore stale blocked permission icons.
+
+Current release validation targets stock Firefox 157.0 BuildID
+`20260924084938` on Windows x64. Firefox 153.0.4, 154.0, and 154.0.1 retain
+historical validation; their full matrices are not newly rerun. The installer
+allows Firefox 153+ after its explicit compatibility warning and now records
+157 among tested majors. This does not promise compatibility with every newer
+Firefox release. Linux, macOS, ESR, Beta, and Nightly are outside this scope.
+
+Download the ZIP and matching checksum, then compare the first checksum field
+with:
 
 ```powershell
-(Get-FileHash -Algorithm SHA256 .\fennevia-0.18.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+(Get-FileHash -Algorithm SHA256 .\fennevia-0.19.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 ```
 
-The main changes since `v0.17.0-beta.1` are:
+Read `INSTALL.md` and `RELEASE-MANIFEST.json` inside the archive. Installation
+requires no Node.js or npm. Keep the exact ZIP for update, hard-disable, repair,
+enable, and uninstall. `FenneviaSetup.exe` is unsigned, so Windows may warn.
+A dedicated Firefox profile is strongly recommended.
 
-- **Firefox-like address editing.** The compact launcher continues to show
-  Firefox's trimmed committed value, while opening the centered editor uses
-  Firefox's bounded `untrimmedValue`. A normal HTTPS page therefore restores
-  its `https://` prefix at the useful editing moment without inventing URL
-  parsing, persistence, or a parallel navigation source. Native suggestions
-  continue through Firefox's normalized Urlbar value, preserving its trimming
-  and `startQuery()` contract while the custom editor remains untrimmed.
-- **A balanced four-edge default.** Fresh and reset layouts now match the
-  owner's current composition: navigation and browser actions in Top, an
-  address/status Row aligned with expanded Tabs on the tabs side, expanded
-  Bookmarks opposite it, and centered Download status in Bottom. Valid saved
-  version-2 layouts remain user-owned and are not silently replaced.
-- **Container padding and launcher spacing.** Row and Column containers gain
-  one optional bounded Standard content-padding preset. The default parent Row
-  owns the address launcher's horizontal alignment with Tabs while the launcher
-  retains comfortable tokenized vertical space; the centered address panel is
-  unchanged.
-- **Clearer, safer customization.** Customize mode now places a dark,
-  pointer-blocking project-owned backdrop over website content. The floating
-  widget inspector fades and yields hit testing during a widget drag so it
-  cannot cover the intended drop target.
-- **Draggable narrow Top scrollbars.** A bounded no-drag guard covers the Top
-  panel's scrollbar lane when horizontal overflow appears. The thumb and track
-  remain usable while adjacent empty Top chrome still drags the Firefox window.
-- **Updated project showcase.** The bilingual READMEs include the current
-  owner-supplied layout/customization captures and a stylized Fennevia hero;
-  media provenance and generated-output records are included in the source.
+Validation and remaining limits are recorded in
+[`docs/research/firefox-157-0.19.0-beta.1-release-validation.md`](https://github.com/yutinglia/fennevia/blob/v0.19.0-beta.1/docs/research/firefox-157-0.19.0-beta.1-release-validation.md).
+The publication workflow verifies exact dependencies, ordinary tests,
+deterministic double packaging, Unicode extraction, and remote asset digests
+before publishing. Physical mouse/user-site, assistive-technology, device,
+complete provider/permission, first-paint, and GUI/UAC matrices are not inferred
+from automated fixtures.
 
-Fennevia's safety-oriented Firefox API bridge remains the only route from the
-Svelte interface to privileged Firefox internals. It validates capabilities
-and boundary values, exposes bounded snapshots plus narrow actions, and keeps
-native objects out of widgets and serializable state. Firefox continues to own
-tabs, bookmarks, downloads, certificates, permissions, security prompts,
-extension installation, native menus, Urlbar providers and execution, and
-window commands. Startup or runtime failure returns to the retained native
-interface instead of deleting it.
-
-The candidate passed the ordinary `npm run verify` gate with 435/435 Node
-tests, the complete fixed-list suite under PowerShell 7 and Windows PowerShell
-5.1, deterministic generated artifacts, dependency review, and the production
-artifact scan. Release publication independently repeats exact dependency
-installation, verification, deterministic double packaging, strict
-Unicode/space extraction, checksum validation, and remote asset digest checks.
-Package-specific Firefox 154.0.1 lifecycle, recovery, and extracted-package
-results are recorded in
-`docs/research/firefox-154-0.18.0-beta.1-release-validation.md`.
-
-Remaining real-Firefox visual, assistive-technology, account/device,
-popup-placement, complete customize, first-paint, GUI/UAC installer, Firefox
-153 rerun, and representative Urlbar-provider rows are stated explicitly in
-the validation record; they are not inferred from focused or static tests.
-
-The customization preferences store only bounded, versioned, allowlisted
-layout and style values. They do not store URLs, titles, browsing text, popup
-state, or arbitrary CSS. This release adds no dependency, content-accessible
-resource mapping, remote runtime service, telemetry, or automatic updater.
-
-The annotated release tag identifies the corresponding source. The archive's
-`RELEASE-MANIFEST.json` records the complete source commit and preferred-source
-URL; `INSTALL.md` contains install, update, hard-disable, repair, enable,
-uninstall, and Firefox-update recovery commands.
-
-Fennevia relies on unsupported privileged Firefox internals and has not
-completed an independent security audit. This is an experimental prerelease,
-not a stable daily-driver or long-term-support promise.
+No dependency, content-accessible resource, remote executable asset, telemetry,
+or updater is added. Firefox retains security prompts, permission decisions,
+and native recovery. This remains an experimental prerelease using unsupported
+privileged Firefox internals, with no independent security-audit or stable
+support claim.

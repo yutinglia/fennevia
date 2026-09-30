@@ -303,6 +303,11 @@ For each edge:
   and verify keyboard reveal and Escape restoration still work (the 2026-09-09
   component regression tests pass; real Firefox/Windows confirmation is
   `not run`);
+- ADR-089's inactive-window null-destination exit must reach the shared
+  window-leave delay even when its point remains inside a visible panel.
+  The matching foreground event retains ADR-067's mutation-noise protection.
+  The eight-case 157 production probe passes; physical cross-application
+  pointer movement and taskbar behavior still need owner confirmation;
 - disposal during a pending hide or hold.
 
 ### Corners and collisions
@@ -1666,6 +1671,11 @@ Validate:
 - Downloads management, notification, and safety;
 - permission, authentication, certificate, file picker, notification, find bar,
   and dialog UI;
+- ADR-090 known tab/content/window dialogs and unsaved-tab close must retain
+  hidden resting native chrome, visible native accept/cancel buttons, and
+  suppressed custom surfaces while open; either outcome must resume the shell
+  without a stale native focus hold. Intentional native access, unknown modal
+  fallback, and failures still reveal native UI;
 - browser fullscreen, DOM fullscreen, customize mode, DevTools, Browser Toolbox,
   and OS window controls;
 - hard disable and uninstall from a broken active package.
@@ -1964,6 +1974,51 @@ Firefox 153.0.4 milestone tests did not require routine startup-cache clearing.
 
 ## 12. Real Firefox harnesses
 
+The focused `--native-dialog-probe` mode exercises native tab/content/window
+confirmations and actual beforeunload tab close, each with accept and cancel.
+It checks native button availability, unchanged hidden-toolbox layout, custom
+surface suppression, results, and clean restoration. It requests an ignored
+unhandled-prompt policy and BiDi session capability so Marionette does not
+autoaccept beforeunload; commands still use the existing Marionette client.
+Only synthetic fixture tabs are created. The test temporarily sets
+`dom.require_user_interaction_for_beforeunload=false` in the marker-owned
+profile and restores the prior user-value state in `finally`; security-button
+delays are awaited. Only fixture cleanup may skip a second beforeunload prompt.
+A random console marker identifies bounded fixed stages and boolean evidence;
+no prompt text, titles, URLs, input, or window-global hook is recorded. Nothing
+is installed into production. Run with the panel-style command below, replacing
+`--panel-style-probe` with `--native-dialog-probe`. Evidence and remaining
+physical/theme/accessibility checks: `docs/research/firefox-157-native-dialogs.md`.
+
+The focused `--background-panel-probe` mode uses a second marker-owned browser
+window for real foreground/background activation and synthetic pointer events
+on all four panels. It checks delayed background hide, foreground geometry
+noise protection, ordinary in-window exits, unchanged activation, and bounded
+capture/target/bubble observations. Each run has a random session marker and
+returns only fixed phases, edge names, event phase numbers, and booleans.
+Listeners and the fixture window are removed in `finally`; no probe is added
+to the installed package. This does not simulate another application's OS
+window or replace the physical mouse/taskbar checks above. Run it using the
+same `--firefox` and `--profile` arguments as the panel-style command below,
+replacing `--panel-style-probe` with `--background-panel-probe`.
+
+The focused `--panel-style-probe` mode reproduces the Firefox 157 Nova alpha
+regression and checks the installed production backgrounds in light/dark
+Fennevia schemes, customized opacity/color, translucent native color tokens,
+and missing tokens. It touches only the marker-owned test preference and
+project frame, restores both in `finally`, and returns fixed case names, alpha
+numbers, build metadata, and a cleanup boolean. It does not capture page pixels
+or replace OS forced-colors/reduced-transparency and built-in-theme visual
+validation. Before/after results and remaining 157 checks are in
+`docs/research/firefox-157-compatibility.md`.
+
+```powershell
+node .\tests\firefox-window-lifecycle.mjs `
+  --firefox '<FIREFOX_PROGRAM>\firefox.exe' `
+  --profile '<FENNEVIA_DEV_PROFILE>' `
+  --panel-style-probe
+```
+
 The current integration harnesses include:
 
 ```powershell
@@ -2155,3 +2210,21 @@ Do not:
   beyond the exact recorded evidence;
 - claim a feature placeholder is a completed feature;
 - paste sensitive values into shared evidence.
+
+### Firefox 157 launcher and narrow-panel regressions (ADR-091)
+
+In the marker-owned lifecycle harness, `--ui-controls-probe` checks weighted
+download progress, unknown size, pause, zero, full, and completed states; the
+localized button description; disabled bookmark action opacity; all three
+configured window controls at both extremes of a narrow Top scroller; and
+horizontal reachability of both side panels. All temporary layout preferences,
+owned DOM/style fixtures, and synthetic Downloads list entries are restored.
+The fixture does not start a network transfer or log download metadata.
+
+Release interaction checks additionally cover customization entry/exit without
+duplicate controls, moving window controls to other panels or nested containers,
+side-dock wrapping, keyboard focus and native actions, native Downloads popup
+hold, PUBLIC/PRIVATE separation and disposal. The fixed dock belongs to its
+existing edge surface and must still hide with that surface. Disabled bookmark
+actions remain hidden off hover/focus; the selected row retains ordinary focus
+and keyboard access after the open guard is released.

@@ -25,10 +25,7 @@ const CUSTOMIZE_STYLE_PROPERTIES = Object.freeze([
 ]);
 
 const HEX_COLOR_PATTERN = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/u;
-const DEFAULT_PANEL_SURFACE =
-  "var(--panel-background-color, var(--toolbar-background-color))";
-const DEFAULT_TOOLBAR_SURFACE =
-  "var(--toolbar-background-color, var(--panel-background-color))";
+const DEFAULT_PANEL_SURFACE = "var(--fennevia-panel-base)";
 const DEFAULT_GLASS_BLUR_PX = 18;
 const DEFAULT_GLASS_RADIUS_PX = 4;
 const DEFAULT_FONT_SIZE_PX = 12;
@@ -132,7 +129,7 @@ export function applyCustomizeStyle(
     );
     frame.style.setProperty(
       "--fennevia-glass-tint",
-      `color-mix(in srgb, ${DEFAULT_TOOLBAR_SURFACE} ${tintOpacity}%, transparent)`,
+      `color-mix(in srgb, ${DEFAULT_PANEL_SURFACE} ${tintOpacity}%, transparent)`,
     );
   }
   const text = hexToRgbComponents(style.text);

@@ -964,7 +964,8 @@ proof are recorded in
 **Status:** Accepted and validated on Firefox 153.0.4;
 Fennevia-initiated host-anchored popup reveal carved by ADR-042;
 first-paint pending hide added by ADR-050 without moving this gate;
-toolbox-doorhanger reveal clause superseded by ADR-056
+toolbox-doorhanger reveal clause superseded by ADR-056;
+known independent-dialog toolbar reveal superseded by owner-approved ADR-090
 
 After every ADR-021 health and required-capability check succeeds, the fixed
 production initializer performs the explicit `healthy -> active` transition.
@@ -1919,6 +1920,9 @@ Evidence: `docs/research/firefox-153-startup-native-hide.md`.
 
 **Status:** Accepted for the Firefox 153/154 Windows prerelease boundary;
 amends ADR-026's default color values and ADR-045's empty-style CSS defaults
+
+ADR-088 supersedes the surface/tint source and alpha composition below after
+the Firefox 157 Nova transition. The other token mappings remain in force.
 
 Keep the existing `--fennevia-*` token names on `#fennevia-shell-frame-host`.
 Change only their default values so an empty customize style follows Firefox's
@@ -2925,6 +2929,8 @@ review, validation, and pending real-browser rows are recorded in
 `docs/research/firefox-154-shell-interaction-second-follow-up.md`.
 
 ## ADR-067: Keep pointer-origin tab select held until a geometric pointer exit
+
+ADR-089 narrows the null-destination geometry exception below to active windows.
 
 **Status:** Accepted for the project-owner correction on 2026-08-23; Firefox 154
 source review and focused automation are the required gate; the real Firefox
@@ -4101,3 +4107,116 @@ bridge contract, preference, or data flow is introduced. The focused Firefox
 155 fixture checks actual hit-test targets, scrollbar styles, scrolling,
 reordering, and cleanup; physical OS drag validation remains separate. See
 `docs/research/firefox-155-tab-drag-scroll.md` for evidence and limitations.
+
+## ADR-088: Give floating panels their own background opacity
+
+**Status:** Accepted implementation for the direct 2026-09-30 compatibility
+request. Supersedes only ADR-051's surface/tint source and alpha composition.
+
+Firefox 157 Nova changes the toolbar color into an overlay with 40% light or
+20% dark alpha. Multiplying that alpha by Fennevia's glass mix makes independent
+floating backgrounds almost disappear. Prefer Firefox's panel color for both
+glass variants, with the toolbar token and existing literal light/dark color
+as fallbacks. One project-frame `--fennevia-panel-base` normalizes source alpha
+to one with relative `rgb()` before the existing Fennevia opacity is applied.
+Customized opacity with an empty color uses that same base. Explicit custom
+colors and forced-colors remain authoritative.
+
+This may modestly change the default tint hue on older builds, in exchange for
+using the native token intended for floating panels. It adds no version branch,
+native DOM/style mutation, preference, observer, timer, dependency, or logging.
+The existing near-solid and accessibility paths continue to consume the shared
+glass tokens. Source pins, real-engine before/after alpha measurements, restored
+test fixtures, and remaining visual checks are recorded in
+`docs/research/firefox-157-compatibility.md`.
+
+## ADR-089: Release background hover holds even when exit coordinates remain inside a panel
+
+**Status:** Accepted implementation for the owner's 2026-09-30/10-01 follow-up.
+Refines ADR-067's window-level null-destination geometry exception only.
+
+When Firefox is already behind another application, hovering its exposed edge
+can reveal a panel without activating Firefox. Moving into the covering window
+can leave coordinates inside Firefox's panel rectangle. The old geometry
+exception drops that exit, and no second window blur is required to occur.
+
+The existing window-level pointer-out fallback now applies the geometry
+exception only while `isChromeWindowActive()` is true (document-focus fallback
+for callers without that adapter). A background null-destination exit releases
+the pointer holds through the existing shared window-leave timer. Foreground
+tab-select mutation noise, focus/keyboard/popup holds, drag ownership, and the
+previous no-background-focus-restoration rule remain intact. No new listener,
+timer, preference, native dependency, or production diagnostic is introduced.
+
+The Firefox 157 fixture reproduced all four edges remaining `pointer-revealed`
+before the change. Afterward, eight foreground/background cases pass, including
+capture/target/bubble delivery, delayed background hide, retained foreground
+noise protection, normal in-window exit, and unchanged window activation.
+These use real chrome-window focus with synthetic pointer events; actual
+cross-application mouse movement/taskbar behavior awaits owner confirmation.
+The source pin and bounded test-only evidence are in
+`docs/research/firefox-157-compatibility.md`. This is not established as a new
+Firefox 157 regression; the broad geometry exception predates this release.
+
+## ADR-090: Keep healthy resting chrome hidden behind independent native dialogs
+
+**Status:** Owner-requested policy refinement, 2026-10-01. The owner explicitly
+asked to keep original Firefox chrome hidden while displaying popup alerts,
+following the report that it sometimes remains visible after a prompt closes.
+This supersedes ADR-032's unconditional native-toolbar reveal for known
+window/tab/content dialogs only; native prompt ownership and fail-open remain.
+
+The existing WindowShell environment observer continues to suppress all custom
+surfaces while Firefox's `#window-modal-dialog` or `browser[tabDialogShowing]`
+is open. Those independent native dialog containers remain Firefox-owned,
+visible, focusable, and unchanged. NativeUi can retain its healthy resting
+toolbar layout during that interval. An already deliberately revealed native
+toolbar/sidebar, unknown modal fallback, customize mode, DOM fullscreen, and
+any health failure retain complete native fallback. No security notification
+anchor, permission decision, anti-clickjacking delay, or prompt button changes.
+
+Dialog-time native focus restoration must not become a new persistent reveal
+hold. Pause clears pending native-handoff callbacks; focus events during the
+dialog cannot acquire a new hold. On close, only a previously intentional
+native reveal can reacquire its still-current native focus. The existing
+observers, timers, controller, and native access paths remain the owners.
+
+Firefox 157 source pins, probe evidence and exact remaining checks belong in
+`docs/research/firefox-157-native-dialogs.md`. Eight real native accept/cancel
+cases pass, including unsaved-tab close. No broader modal or cross-platform
+support is implied.
+
+## ADR-091: Download launcher progress and fixed window controls in scrolling panels
+
+**Status:** Owner-requested follow-ups for 0.19.0-beta.1, 2026-10-01. Refines
+ADR-074's presentation while retaining its saved layout and editor.
+
+The downloads launcher subscribes to the existing anonymous, per-window
+Downloads adapter. Active downloads render a weighted progress ring; unknown
+size renders a static segmented ring. No active downloads restores the icon.
+The Downloads status widget reuses the same icon with its existing subscription.
+Its localized accessible name includes active count and known percentage or
+unknown-size description. There is no animation, polling, byte-count metadata,
+independent native view, or completion popup. Activation retains the native
+Downloads handoff and shared popup hold. Firefox 157's `indicator.js`,
+`indicator.css`, and `DownloadsCommon.sys.mjs` at
+`fdd757a2e09c9471cddf383e64e631e4ce178499` are behavior references only; the SVG
+and styles are independently authored from the existing project contract.
+
+Outside customization, each panel renders its configured window-control items
+once in a non-scrolling dock: inline-end for horizontal panels and block-end for
+side panels. Configured traversal order, panel membership, action bridge,
+health identity, and cleanup remain intact. The editor renders the saved tree;
+leaving it returns those controls to the dock. No native nodes move, no extra
+window observer or control instance is introduced, and each surface retains
+its existing hide/reveal policy. Removed controls are not silently recreated.
+Nested rows contribute their minimum content width to the side scroller, and
+columns start at a reachable inline edge instead of centering clipped overflow.
+
+Bookmark guards still disable actions during a pending open. Disabled styling
+dims the new-tab glyph instead of overriding the button's hover/focus visibility.
+This prevents hidden actions becoming visible after middle-click while keeping
+keyboard access. No new Firefox internal dependency, schema, dependency,
+production logging, or data flow is introduced. Real-engine regressions live
+in `tests/firefox-ui-controls-probe.mjs`; results and remaining limits are in
+the Firefox 157 release validation record.

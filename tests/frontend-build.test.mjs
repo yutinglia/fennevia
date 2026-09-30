@@ -994,7 +994,7 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(addressPopup, /<FirefoxIcon name="open-in-new" \/>/u);
   assert.match(bookmarks, /<FirefoxIcon name="loading" \/>/u);
   assert.match(bookmarks, /<FirefoxIcon name="error" \/>/u);
-  assert.match(downloads, /<FirefoxIcon name="download" \/>/u);
+  assert.match(downloads, /<DownloadProgressIcon/u);
   assert.match(
     downloads,
     /<FirefoxIcon name=\{presentations\[item\.state\]\.icon\} \/>/u,

@@ -213,7 +213,7 @@ try {
         -RepositoryRoot $repositoryRoot `
         -OutputDirectory (Join-Path $canonicalTestRoot "release output") `
         -SourceCommit "0123456789abcdef0123456789abcdef01234567" `
-        -ExpectedTag "v0.18.0-beta.1" `
+        -ExpectedTag "v0.19.0-beta.1" `
         -TestAllowDirtySource
     Remove-Module FenneviaRelease -ErrorAction SilentlyContinue
     Import-Module (Join-Path $repositoryRoot "scripts\lib\FenneviaInstaller.psm1") -Force
@@ -290,7 +290,7 @@ try {
     Write-TestFile -Path (Join-Path $registeredTarget.ProgramRoot "application.ini") -Content ($newerIni + [Environment]::NewLine)
     $enableOn154 = Invoke-FenneviaPackageAction -Action Enable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot -DryRun
     Assert-Equal -Actual $enableOn154.CompatibilityKind -Expected "tested" -Message "Enable on Firefox 154.0 must be classified as tested."
-    Assert-True -Condition ($enableOn154.FirefoxSupportWarning -match "153 and 154") -Message "Enable plans must carry the tested-version support warning."
+    Assert-True -Condition ($enableOn154.FirefoxSupportWarning -match "153, 154, and 157") -Message "Enable plans must carry the tested-version support warning."
     $enabledOn154 = Invoke-FenneviaPackageAction -Action Enable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot
     Assert-True -Condition $enabledOn154.Applied -Message "Enable must succeed on owner-confirmed Firefox 154.0."
     [void] (Invoke-FenneviaPackageAction -Action Disable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot)
@@ -318,9 +318,9 @@ try {
     }
     Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $unsupportedTarget.ProgramRoot ".fennevia"))) -Message "Unsupported-build rejection must occur before any installer mutation."
 
-    $newerTarget = New-TestFirefoxTarget -Name "untested-newer" -Version "155.0" -BuildId "20260901000000" -RegisterProfile
+    $newerTarget = New-TestFirefoxTarget -Name "untested-newer" -Version "158.0" -BuildId "20261020000000" -RegisterProfile
     $newerPlan = Invoke-FenneviaPackageAction -Action Install -FirefoxPath $newerTarget.FirefoxPath -ProfilePath $newerTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot -DryRun
-    Assert-Equal -Actual $newerPlan.CompatibilityKind -Expected "untested-newer" -Message "Firefox 155 must be installable as untested-newer."
+    Assert-Equal -Actual $newerPlan.CompatibilityKind -Expected "untested-newer" -Message "Firefox 158 must be installable as untested-newer."
     Assert-True -Condition ($newerPlan.FirefoxSupportWarning -match "does not promise") -Message "Untested Firefox plans must warn that confirming install is not a working promise."
     $newerInstall = Invoke-FenneviaPackageAction -Action Install -FirefoxPath $newerTarget.FirefoxPath -ProfilePath $newerTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot
     Assert-True -Condition $newerInstall.Applied -Message "Install must apply on Firefox newer than the tested majors after the relaxed gate."

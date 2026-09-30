@@ -9,6 +9,12 @@ passes and the explicit real-Firefox/manual visual rows remain pending. This
 plan was created before code changes from a direct project-owner request.
 Unchecked real-Firefox rows are not passed.
 
+The owner's 2026-10-01 narrow-window follow-up refines runtime presentation in
+ADR-091: configured window-control items render once in each panel's fixed dock,
+while customization retains the stored tree and positions. Other controls stay
+in the panel scroller, and nested rows can overflow side panels horizontally.
+The containing surface's shared reveal/hide behavior is unchanged.
+
 The owner requested a large expansion of Fennevia customize mode:
 
 - treat browser controls, Firefox toolbar actions, window controls, and the

@@ -12,6 +12,25 @@ collision system, glass token set, or window-global coordination layer.
 
 ## Current status
 
+The owner requested publication of `0.19.0-beta.1` on 2026-10-01. This candidate
+includes ADR-085 through ADR-091, with Firefox 157.0 compatibility metadata;
+release gates/publication are tracked in
+`docs/research/firefox-157-0.19.0-beta.1-release-validation.md`.
+
+Unreleased 2026-09-30 follow-up: ADR-088 gives floating panel backgrounds one
+opaque panel-color base before applying their configured opacity. This fixes
+the reproduced Firefox 157 Nova regression; production panel and Urlbar probes
+pass. See `docs/research/firefox-157-compatibility.md` for native-theme,
+security-warning, and release follow-up. Published support metadata is unchanged.
+ADR-089 (2026-10-01) also limits the pointer-exit geometry exception to active
+windows. Eight foreground/background production cases pass; physical hover
+across another application remains pending.
+ADR-090 keeps healthy resting native chrome hidden during known independent
+dialogs and releases transitional focus holds. Eight real native accept/cancel
+cases, including beforeunload, pass on 157.0; see
+`docs/research/firefox-157-native-dialogs.md`. Unknown modal and failure fallback
+remain intact.
+
 Validated baseline as of 2026-08-28:
 
 - public package `0.18.0-beta.1` prerelease on Windows x64;

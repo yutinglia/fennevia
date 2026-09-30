@@ -1,20 +1,22 @@
 #fennevia-shell-frame-host {
-  --fennevia-glass-surface: color-mix(
-    in srgb,
-    var(
+  /* Firefox toolbar colors may be translucent overlays (Nova). Floating
+   * surfaces need a panel color with opacity controlled only by Fennevia. */
+  --fennevia-panel-base: rgb(
+    from
+      var(
         --panel-background-color,
         var(--toolbar-background-color, light-dark(#ffffff, rgb(66 65 77)))
       )
-      94%,
+      r g b / 1
+  );
+  --fennevia-glass-surface: color-mix(
+    in srgb,
+    var(--fennevia-panel-base) 94%,
     transparent
   );
   --fennevia-glass-tint: color-mix(
     in srgb,
-    var(
-        --toolbar-background-color,
-        var(--panel-background-color, light-dark(#f9f9fb, rgb(43 42 51)))
-      )
-      82%,
+    var(--fennevia-panel-base) 82%,
     transparent
   );
   --fennevia-glass-text: var(
