@@ -69,15 +69,15 @@ it now also covers direct root children. Neither failure is a shipped result.
 
 | Check | Result |
 | --- | --- |
-| Clean committed preflight, exact dependencies, local verification | Passed at `e727424` before ADR-091; final candidate rerun pending. |
-| PowerShell 5.1 fixed-list suite for candidate metadata | Passed at `e727424`; final candidate rerun pending. |
-| Three cold starts / full lifecycle / Browser Toolbox | First ADR-091 full lifecycle and Toolbox pass; subsequent recovery starts pending. |
-| Frontend, bridge, safe-start, entry/runtime failure recovery | Pending. |
-| SessionStore process restart / fail-open / cleanup | Pending. |
-| Native providers, production Urlbar, tab drag, color, hover, dialog probes | Pending. |
-| Three enabled performance starts and disabled controls when needed | Pending. |
-| Deterministic archive / Unicode extraction / exact package lifecycle | Pending. |
-| GitHub Windows CI and reviewed merge | Pending. |
+| Clean committed preflight, exact dependencies, local verification | Full preflight passes at `e727424`; final UI passes local verification and affected follow-up checks. Clean ADR-091 packaging rehearsal passes at `fe9a879` with dependency install/project verification explicitly reused. |
+| PowerShell 5.1 fixed-list suite for candidate metadata | Passed locally at `e727424` and in the current Windows CI gate; final extracted tree also passes the 5.1 verifier. |
+| Three cold starts / full lifecycle / Browser Toolbox | Passed Toolbox lifecycle and the repeated complete bridge, safe-start, frontend, and extracted-package recovery lifecycles, including normal/second/private windows and cleanup. |
+| Frontend, bridge, safe-start, entry/runtime failure recovery | Missing/throwing bundle, all six bridge injections, complete/broken-package safe start, missing Bootstrap entry, and missing WindowManager dependency pass with exact restoration. |
+| SessionStore process restart / fail-open / cleanup | All four phases pass after updating test-only module imports. |
+| Native providers, production Urlbar, tab drag, color, hover, dialog probes | All six focused modes pass on the final artifacts; UI-controls fixture also passes its expanded cases. |
+| Three enabled performance starts and disabled controls when needed | Three enabled and three disabled starts complete; investigation and metrics below. |
+| Deterministic archive / Unicode extraction / exact package lifecycle | `fe9a879` clean preflight passes with existing verified dependencies/project gates reused; double archive matches, both PowerShell verifiers pass, and extracted-package disable/repair/enable lifecycle passes. |
+| GitHub Windows CI and reviewed merge | Windows CI and all CodeQL checks pass at `2d28e03`; latest evidence-commit and merge status is linked from [PR #122](https://github.com/yutinglia/fennevia/pull/122). |
 | Annotated tag / fail-closed publication / independent public download | Pending. |
 | Public archive recovery and final cleanup | Pending. |
 
@@ -105,6 +105,49 @@ restored preparation, restart, lazy-tab, fail-open, and exact preference/state
 cleanup; all four phases passed. No production SessionStore implementation
 or compatibility branch was added; the temporary import probe was removed.
 
+The ADR-091 archive at `fe9a8795ae0997bc472b627b8e02260330d5160f` has SHA-256
+`a54d2474b7ca03699add50c32a28ab9e74a5b2ac36cefea34ee5fb77226148a6`.
+Its strict extraction contains 39 files and package-manifest SHA-256
+`05df76818b8cc6bce235521f965f84005933505cbfb636f197d65195f9d0a492`.
+This remains a local candidate checksum, not a public asset digest.
+
+### Performance observations
+
+Windows 11 Pro 10.0.26200 x64, Intel Core i7-13700K, 8 GiB RAM, Balanced
+power plan; same copied Firefox 157/profile and exact candidate runtime bytes.
+No local verification/build jobs ran during the six measurements.
+
+| Run | Spawn to active (ms) | Five-second CPU (ms) | Edge p95 (ms) | Five-cycle memory delta (MiB / %) |
+| --- | ---: | ---: | ---: | ---: |
+| Enabled 1 | 1161 | 1604.856 | 18.293 | 81.438 / 12.411 |
+| Enabled 2 | 1433 | 1004.165 | 18.347 | 97.980 / 14.892 |
+| Enabled 3 | 1591 | 915.781 | 19.922 | 101.336 / 15.202 |
+| Disabled 1 | 1322 (native ready) | 1947.145 | Not applicable | Not applicable |
+| Disabled 2 | 1468 (native ready) | 1922.526 | Not applicable | Not applicable |
+| Disabled 3 | 1389 (native ready) | 1761.864 | Not applicable | Not applicable |
+
+Enabled startup median is 1433 ms; all edge p95 values are below 50 ms. Memory
+growth exceeds 64 MiB but remains below the joint 20% investigation threshold
+in all three runs; process count returns to the pre-cycle count of 11 and all
+five windows dispose their hosts/bridges. This is not a zero-growth claim.
+The enabled idle median of 1004.165 ms exceeds the absolute 500 ms threshold,
+so three hard-disabled controls were run. Their median is higher at 1922.526
+ms, with zero Fennevia records/hosts. This points to shared Firefox/profile
+startup activity rather than evidence of Fennevia-specific idle overhead;
+it is not a precise causal CPU attribution. Enable was restored in `finally`.
+
+The fatal-bootstrap test mode now permits an intentionally absent Bootstrap
+entry in its target preflight, alongside the already permitted missing
+WindowManager dependency. Both missing-module runs produce one caught fatal
+record and retain native UI. Normal harness modes still require both modules.
+Each exact installed file hash was checked before removal and after restoration.
+Affected harness lint and all three SessionStore contract tests pass.
+
+Exact-package Uninstall passed its reviewed plan, followed by stock Firefox
+startup with zero Fennevia records or owned-file residue. Reinstall from the
+same verified extraction then passed a complete normal/second/private lifecycle
+with no unexpected first-party exceptions and deterministic cleanup.
+
 The Windows workflow is run directly locally; `act` is not used because no
 workflow, container, runner, or CI orchestration changes are made. GitHub-hosted
 checks remain authoritative for merge and publication.
@@ -117,9 +160,17 @@ are not OS mouse sessions. Full page light/dark dialog visuals, accessibility
 and hardware/high-DPI/forced-colors checks, accounts, language switching,
 representative extension/provider and permission-device matrices, first-paint
 watchdog visuals, GUI double-click/UAC/registered daily-profile installs, and
-all non-Windows/non-stable channels are not run. These limits follow the
-existing experimental Windows prerelease boundary and are not passed claims.
-The archive is not a stable or cross-platform support promise.
+all non-Windows/non-stable channels are not run. These are not passed claims.
+The archive is not a stable or cross-platform support promise. Unsupported
+platform/channel rows do not expand this Windows stable candidate's scope.
+
+AGENTS.md §8.2 and ADR-039 require the applicable release mass-test matrices
+before tagging/publication. The unrun manual/hardware/GUI rows therefore still
+need evidence or an explicit project-owner exception for this prerelease,
+recorded in current normative documents. Earlier prerelease limitations do not
+silently waive that requirement. The owner has requested push/release; no new
+exception has yet been inferred from that request. Tagging/publication remains
+pending this gate after completion of the available automated checks.
 
 ## Reproduction
 
@@ -135,6 +186,14 @@ pwsh -NoProfile -File tests/firefox-bridge-recovery.Tests.ps1 -FirefoxPath $fire
 pwsh -NoProfile -File tests/firefox-shell-recovery.Tests.ps1 -FirefoxPath $firefox -ProfilePath $profile
 pwsh -NoProfile -File tests/firefox-session-restore.ps1 -FirefoxPath $firefox -ProfilePath $profile
 pwsh -NoProfile -File tests/firefox-release-recovery.ps1 -FirefoxPath $firefox -ProfilePath $profile -PackageRoot $package
+node tests/firefox-window-lifecycle.mjs --firefox $firefox --profile $profile --ui-controls-probe
+node tests/firefox-window-lifecycle.mjs --firefox $firefox --profile $profile --performance-baseline
+# Three control starts while this same marker-owned installation is hard-disabled:
+node tests/firefox-window-lifecycle.mjs --firefox $firefox --profile $profile --performance-stock-baseline
+# After marker/manifest/hash-checked removal of each test target, restored in finally:
+node tests/firefox-window-lifecycle.mjs --firefox $firefox --profile $profile --expect-fail-open
+# Following an ownership-checked Uninstall:
+node tests/firefox-window-lifecycle.mjs --firefox $firefox --profile $profile --expect-stock
 ```
 
 Lifecycle modes additionally used for individual rows will be recorded with

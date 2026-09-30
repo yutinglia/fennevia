@@ -397,7 +397,6 @@ async function validateTarget(
 
   const requiredArtifacts = [
     "chrome/fennevia/chrome.manifest",
-    "chrome/fennevia/content/Bootstrap.sys.mjs",
     "chrome/fennevia/content/firefox/BridgeBoundary.sys.mjs",
     "chrome/fennevia/content/runtime/Logger.sys.mjs",
     "chrome/fennevia/content/runtime/Runtime.sys.mjs",
@@ -412,6 +411,7 @@ async function validateTarget(
   }
   if (!expectFailOpen && !expectStock) {
     requiredArtifacts.push(
+      "chrome/fennevia/content/Bootstrap.sys.mjs",
       "chrome/fennevia/content/runtime/WindowManager.sys.mjs",
       "chrome/fennevia/content/shell/ShellStyles.sys.mjs",
       "chrome/fennevia/content/shell/THIRD_PARTY_NOTICES.txt",
