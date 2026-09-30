@@ -8,6 +8,10 @@ import {
 import { createFirefoxToolbarWidgetsBridge } from "../src/firefox/toolbar-widgets.ts";
 import { resolvePinnedBuiltinIconUrl } from "../src/firefox/toolbar-widgets/support.ts";
 import { createDefaultToolbarStyle } from "../src/app/toolbar-widgets-state.ts";
+import {
+  createComposableCustomizeLayout,
+  serializeComposableCustomizeLayout,
+} from "../src/firefox/customize-layout.ts";
 
 const BROWSER_URI = "chrome://browser/content/browser.xhtml";
 const EXTENSION_ICON_URL =
@@ -2830,6 +2834,39 @@ test("private windows exclude non-private extensions from the palette", () => {
       !snapshot.palette.some((entry) => entry.label === "Addons Extension"),
     );
     assert.ok(snapshot.palette.some((entry) => entry.label === "Print"));
+  } finally {
+    disposePair(pair);
+  }
+});
+
+test("a saved native DOM ID outside the widget inventory stays non-interactive", () => {
+  const native = createNativeWindow();
+  native.targets.set("navigator-toolbox", native.historyNode);
+  native.window.CustomizableUI.getWidget = (id) => ({ id, provider: "xul" });
+  native.setPrefValue(
+    "fennevia.customize.layout",
+    serializeComposableCustomizeLayout(
+      createComposableCustomizeLayout({
+        top: [
+          {
+            type: "item",
+            target: { source: "project", id: "customize-shell" },
+          },
+          {
+            type: "item",
+            target: { source: "firefox", id: "navigator-toolbox" },
+          },
+        ],
+      }),
+    ),
+  );
+  const pair = createController(native);
+  try {
+    const widget =
+      pair.controller.toolbarWidgets.snapshot().layout.top[1].widget;
+    assert.equal(widget.missing, true);
+    assert.equal(widget.disabled, true);
+    assert.equal(widget.handle, "");
   } finally {
     disposePair(pair);
   }

@@ -858,7 +858,29 @@ index, detailed tables, linked research records, and tests:
 | Tests                                     | Unit, static, or dev-profile smoke coverage              |
 | Replacement or removal plan               | How dependency could be reduced later                    |
 
-## 10. Test-only SessionStore release imports
+## 10. Settings file transfer and test-only dependencies
+
+### Settings file selection and local I/O (ADR-093)
+
+Firefox 157 source pin: `fdd757a2e09c9471cddf383e64e631e4ce178499`.
+The optional settings-transfer service validates these capabilities at use time;
+unavailability does not join shell activation health.
+
+| Dependency | Source and use |
+| --- | --- |
+| `Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker)`, `init(window.browsingContext, title, modeOpen/modeSave)`, `appendFilter`, `defaultExtension/defaultString`, `open(callback)`, `returnOK/returnCancel/returnReplace`, `file.path` | [`widget/nsIFilePicker.idl`](https://github.com/mozilla-firefox/firefox/blob/fdd757a2e09c9471cddf383e64e631e4ce178499/widget/nsIFilePicker.idl); caller reference [`browser/components/places/content/places.js`](https://github.com/mozilla-firefox/firefox/blob/fdd757a2e09c9471cddf383e64e631e4ce178499/browser/components/places/content/places.js). Native UI selects the path; late callbacks are invalidated, since there is no picker cancel method. |
+| `window.IOUtils.read({maxBytes})`, `writeUTF8({mode,flush})`, `move({noOverwrite})`, `remove({ignoreAbsent})` | [`dom/chrome-webidl/IOUtils.webidl`](https://github.com/mozilla-firefox/firefox/blob/fdd757a2e09c9471cddf383e64e631e4ce178499/dom/chrome-webidl/IOUtils.webidl). Bounded read, exclusive temporary-file ownership, confirmed replacement and cleanup. |
+| `Services.prefs.prefHasUserValue`, existing `getStringPref/setStringPref/clearUserPref` | [`modules/libpref/nsIPrefBranch.idl`](https://github.com/mozilla-firefox/firefox/blob/fdd757a2e09c9471cddf383e64e631e4ce178499/modules/libpref/nsIPrefBranch.idl). Capture and restore absence versus explicit values for only the three existing customize preferences. |
+| Existing CustomizableUI `areas`, `getWidgetIdsInArea`, `getUnusedWidgets(gNavToolbox.palette)`, `getPlacementOfWidget`, `addWidgetToArea`, `removeWidgetFromArea` | [`CustomizableUI.sys.mjs`](https://github.com/mozilla-firefox/firefox/blob/fdd757a2e09c9471cddf383e64e631e4ce178499/browser/components/customizableui/CustomizableUI.sys.mjs). Inventory membership is required; `getWidgetProvider` can fall back to XUL for an arbitrary ID. The imported ownership ledger is ignored. |
+
+`window.crypto.randomUUID`, `TextEncoder`, and fatal UTF-8 `TextDecoder` provide
+opaque tokens, temporary names and byte/encoding validation. No new observer or
+mapping is introduced. The regression's component registrar/factory replacement
+and fixture paths exist only in the marker-owned test process, restore in
+`finally`, and are not shipped. Details and limits:
+`docs/research/firefox-157-settings-transfer.md`.
+
+### SessionStore imports
 
 The Firefox 157 release harness imports SessionStore and TabStateFlusher from
 `moz-src:///browser/components/sessionstore/SessionStore.sys.mjs` and

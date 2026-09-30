@@ -137,6 +137,35 @@ export const en = {
   "customize.colorWindow": "Window background",
   "customize.columnDropArea": "Column drop area",
   "customize.cleanPanels": "Clean all panels",
+  "customize.settings.heading": "Settings backup",
+  "customize.settings.help":
+    "Save or restore your Fennevia layout, panels, appearance, and interaction settings as a JSON file. Browsing data is not included.",
+  "customize.settings.export": "Export settings",
+  "customize.settings.import": "Import settings",
+  "customize.settings.confirmTitle": "Replace Fennevia settings?",
+  "customize.settings.confirmDescription":
+    "This file contains a layout with {count} widgets, plus panel, appearance, and interaction settings. Importing replaces your current Fennevia settings.",
+  "customize.settings.missing":
+    "{count} referenced Firefox widgets are unavailable here. Their positions will be kept; extensions are not installed by importing.",
+  "customize.settings.cancel": "Cancel",
+  "customize.settings.apply": "Replace settings",
+  "customize.settings.working": "Working…",
+  "customize.settings.exported": "Settings exported.",
+  "customize.settings.imported": "Settings imported.",
+  "customize.settings.cancelled": "Cancelled. Your settings were not changed.",
+  "customize.settings.invalid":
+    "This file is not a valid Fennevia settings backup. Your settings were not changed.",
+  "customize.settings.unsupported":
+    "This backup uses an unsupported format version. Your settings were not changed.",
+  "customize.settings.too-large":
+    "The settings file exceeds the 64 KiB limit. Your settings were not changed.",
+  "customize.settings.unavailable":
+    "Settings transfer is unavailable in this window.",
+  "customize.settings.busy": "Another settings transfer is still running.",
+  "customize.settings.changed":
+    "Your settings changed while the file was open. Import the file again to review it.",
+  "customize.settings.failed":
+    "The operation could not be completed. Your Fennevia settings were preserved.",
   "customize.cleanPanelsCancel": "Cancel",
   "customize.cleanPanelsConfirm": "Clean panels",
   "customize.cleanPanelsConfirmDescription":

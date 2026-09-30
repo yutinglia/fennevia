@@ -709,6 +709,36 @@ adopted ids, then persists a tree containing only Top Customize. Fennevia never
 writes any other CustomizableUI state and never edits placements the user made
 natively.
 
+ADR-093 records the owner's explicit 2026-10-01 request to extend the same
+closed settings scope to user-selected local backup files. Customize > Panels
+exports effective layout, panel, appearance, and interaction values as branded,
+versioned UTF-8 JSON (64 KiB maximum); import validates all three schemas and
+retained Customize access before a separate replacement confirmation. The
+backup includes native/extension toolbar references, but no browsing content,
+profile paths, bootstrap flags, arbitrary preferences, or extension data.
+Raw IDs, file paths, file contents and the validated draft remain privileged;
+the UI receives only counts, fixed statuses and an opaque single-use token.
+File contents are data, never executable code, CSS, resource mappings or URLs.
+
+The imported adoption ledger confers no authority. Only the receiving profile's
+existing owned IDs and actual CustomizableUI placed/unused inventory permit
+native adoption. Excluded core controls and special generated IDs are rejected;
+an arbitrary XUL wrapper is insufficient. Missing references stay unavailable,
+without installation or network activity. Before applying, a snapshot check
+rejects concurrent preference edits. Partial failures restore prior preference
+presence/values and native placement order; failed rollback propagates to
+fail-open. This is synchronous rollback, not crash-atomic preference storage.
+
+Firefox owns open/save selection and overwrite confirmation. Export exclusively
+creates a unique sibling temporary file, writes flushed contents, then moves it
+to the destination, permitting overwrite only on the picker's Replace result.
+Only successfully reserved temporary files are cleaned up. Imports read no more
+than 65,537 bytes to detect the 64 KiB bound. Cancelling or disposing invalidates
+the draft and pending callbacks; an already open native picker may finish but
+cannot cause subsequent settings writes. No selected path/content is logged or
+sent through frontend state, DOM datasets, clipboard, telemetry or the network.
+This owner-approved local-file exception changes no other privacy restriction.
+
 ADR-047/ADR-074–ADR-076 and ADR-078 add a frontend-only customize session: HTML5
 `dataTransfer` on
 project-owned nodes may carry the MIME `application/x-fennevia-toolbar-widget`

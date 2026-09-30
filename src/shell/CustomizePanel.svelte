@@ -34,6 +34,7 @@
     type CustomizePaletteCategory,
   } from "./features/customize/customize-palette";
   import CustomizePanelsSection from "./features/customize/CustomizePanelsSection.svelte";
+  import CustomizeSettingsSection from "./features/customize/CustomizeSettingsSection.svelte";
   import CustomizeStyleSection from "./features/customize/CustomizeStyleSection.svelte";
   import CustomizeTabList, {
     type CustomizeTabId,
@@ -87,9 +88,7 @@
       paletteCategory,
     ),
   );
-  let groupedPalette = $derived(
-    groupCustomizePaletteEntries(filteredPalette),
-  );
+  let groupedPalette = $derived(groupCustomizePaletteEntries(filteredPalette));
   let addZoneLabel: ToolbarZoneName = $state("top");
   let addZoneName = $derived(zoneDisplayName(localeId, addZoneLabel));
 
@@ -149,9 +148,7 @@
 
   const resetLayout = () => void runEdit({ revision, type: "reset-layout" });
 
-  const paletteCategoryLabel = (
-    category: CustomizePaletteCategory,
-  ): string => {
+  const paletteCategoryLabel = (category: CustomizePaletteCategory): string => {
     switch (category) {
       case "feature":
         return t("customize.paletteCategoryFeature");
@@ -350,7 +347,8 @@
             >
               <option value="top">{zoneDisplayName(localeId, "top")}</option>
               <option value="left">{zoneDisplayName(localeId, "left")}</option>
-              <option value="right">{zoneDisplayName(localeId, "right")}</option>
+              <option value="right">{zoneDisplayName(localeId, "right")}</option
+              >
               <option value="bottom"
                 >{zoneDisplayName(localeId, "bottom")}</option
               >
@@ -505,6 +503,11 @@
         id="fennevia-customize-tabpanel-panels"
         role="tabpanel"
       >
+        <CustomizeSettingsSection
+          {localeId}
+          toolbarWidgets={props.toolbarWidgets}
+          onFatalError={props.onFatalError}
+        />
         <CustomizePanelsSection
           allowMultiplePlacements={snapshot.allowMultiplePlacements}
           customized={snapshot.panelsCustomized}

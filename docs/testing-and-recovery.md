@@ -2248,3 +2248,28 @@ disposal. Pinned controls belong to their existing edge surface and must still
 hide with that surface. Disabled bookmark
 actions remain hidden off hover/focus; the selected row retains ordinary focus
 and keyboard access after the open guard is released.
+
+### Portable settings backup (ADR-093)
+
+`node tests/firefox-window-lifecycle.mjs --firefox $firefox --profile $profile
+--settings-transfer-probe` uses a marker-owned Firefox copy/profile. It verifies
+the native picker constructor, then replaces only its selection factory with a
+test fixture while exercising actual Customize buttons, bridge, local I/O,
+preferences and native inventory. Cover export/no preference mutation, malformed
+file rejection, preview-before-write, missing widget references, Cancel/Escape
+and focus restoration, applying all settings, export round-trip, stale-preview
+rejection, native-picker cancellation and restoration. Restore exact prior
+preferences, picker registration and owned files in `finally`. Never return
+paths, file contents or native widget identifiers in test evidence.
+
+Unit checks additionally cover UTF-8/schema/size/version bounds, excluded native
+controls, untrusted adoption, arbitrary XUL wrappers, explicit overwrite,
+single-use preview tokens, missing capabilities, pending selection/read/write
+disposal, preference and native placement rollback, and fatal rollback failure.
+
+Release checks additionally require real OS open/save/cancel/overwrite dialogs,
+read-only/unwritable destinations, locked preferences, second/private windows,
+installed/missing extension adoption, keyboard and screen-reader announcements,
+narrow/high-DPI/system-color layouts, and disposal while a picker is open.
+Automated selection is not evidence that the OS picker GUI was exercised.
+Record those rows individually and keep prior release waivers out of later work.

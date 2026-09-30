@@ -1236,6 +1236,57 @@ test("adapter invoke validates handle, host, and bridge result", async () => {
   }
 });
 
+test("settings transfer validates the bridge boundary and disposal", async () => {
+  const unsupported = createBrowserToolbarWidgetsStateAdapter(
+    createFakeBridge().bridge,
+  );
+  assert.deepEqual(
+    await unsupported.transferSettings({ type: "export", title: "Export" }),
+    { status: "unavailable" },
+  );
+  unsupported.dispose();
+  await assert.rejects(
+    unsupported.transferSettings({ type: "cancel" }),
+    /STATE_DISPOSED/u,
+  );
+  let received;
+  let response = { status: "exported", path: "private" };
+  const fake = createFakeBridge({
+    async transferSettings(request) {
+      received = request;
+      return response;
+    },
+  });
+  const adapter = createBrowserToolbarWidgetsStateAdapter(fake.bridge);
+  try {
+    assert.deepEqual(
+      await adapter.transferSettings({
+        type: "export",
+        title: "Export",
+        path: "private",
+      }),
+      { status: "exported" },
+    );
+    assert.deepEqual(received, { type: "export", title: "Export" });
+    response = {
+      status: "ready",
+      token: "invalid",
+      widgetCount: 1,
+      missingCount: 0,
+    };
+    await assert.rejects(
+      adapter.transferSettings({ type: "prepare-import", title: "Import" }),
+      /FENNEVIA_SETTINGS_TRANSFER/u,
+    );
+    await assert.rejects(
+      adapter.transferSettings({ type: "arbitrary-operation" }),
+      /FENNEVIA_SETTINGS_TRANSFER/u,
+    );
+  } finally {
+    adapter.dispose();
+  }
+});
+
 test("adapter dispose is deterministic and idempotent", async () => {
   const fake = createFakeBridge();
   const adapter = createBrowserToolbarWidgetsStateAdapter(fake.bridge);

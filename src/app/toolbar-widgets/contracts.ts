@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
+import type {
+  SettingsTransferRequest,
+  SettingsTransferResult,
+} from "../settings-transfer.ts";
 
 import {
   edgeInteractionBounds,
@@ -542,6 +546,9 @@ export type ToolbarWidgetsPopupEvent = Readonly<{
 }>;
 
 export type BrowserToolbarWidgetsBridge = Readonly<{
+  transferSettings?: (
+    request: SettingsTransferRequest,
+  ) => Promise<SettingsTransferResult>;
   edit: (operation: ToolbarWidgetsEditOperation) => Promise<boolean>;
   invoke: (
     handle: string,
@@ -563,6 +570,9 @@ export type BrowserToolbarWidgetsState = Readonly<{
 }>;
 
 export type BrowserToolbarWidgetsStateAdapter = Readonly<{
+  transferSettings: (
+    request: SettingsTransferRequest,
+  ) => Promise<SettingsTransferResult>;
   dispose: () => boolean;
   edit: (operation: ToolbarWidgetsEditOperation) => Promise<boolean>;
   invoke: (

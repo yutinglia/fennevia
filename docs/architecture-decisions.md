@@ -4261,3 +4261,43 @@ actions, activation health, and fail-open keep their existing owners.
 Focused Firefox geometry, pointer hit testing, scrolling, and restoration
 evidence is recorded in
 `docs/research/firefox-157-window-control-row-alignment.md`.
+
+## ADR-093: User-initiated portable Fennevia settings files
+
+**Status:** Accepted by direct owner request and scope confirmation on
+2026-10-01: export/import all Fennevia layout, appearance, panel, and interaction
+settings. This explicitly extends ADR-045's profile-local persistence exception
+to user-selected local JSON files. No browsing data or arbitrary preference
+access is authorized.
+
+Customize > Panels contains a dedicated Settings backup section. Export writes
+the effective values of the three existing customize preferences, under the
+closed `fennevia-settings` version-1 envelope. Import reads at most 64 KiB of
+UTF-8, validates the existing bounded schemas and retained Customize access,
+then requires an inline replacement confirmation. The default focus is Cancel;
+Escape cancels the preview and returns focus to Import. Confirmation also
+returns focus there. English and Traditional Chinese use the existing catalog.
+
+File pickers remain Firefox-owned. Paths, raw JSON, and native widget identifiers
+stay in `src/firefox/settings/`; the frontend receives fixed status values,
+counts, and a single-use opaque preview token. Exports contain toolbar widget
+references but no adoption authority: the receiving profile recomputes adoption
+against CustomizableUI's actual placed/unused inventory. `getWidget(id)` alone
+is insufficient because Firefox can wrap arbitrary XUL IDs. Missing references
+remain in the layout without installing extensions or moving arbitrary DOM.
+
+Before applying, compare the three current preferences with their pre-selection
+snapshot. Changed settings invalidate the preview. Apply runs synchronously,
+restoring prior preference presence/values and exact native sibling order on
+failure. A rollback failure propagates to the existing fail-open boundary.
+The operation is not a crash-atomic Firefox preference transaction. Export
+reserves a unique sibling temporary file exclusively, writes/flushed bytes,
+then moves it to the destination; overwrite requires the native picker's Replace
+result. Clean up owned temporary files and invalidate pending selection/read
+callbacks on cancellation or disposal. A native picker already open has no
+cancel API; its late result is ignored.
+
+No dependency, network service, resource mapping, observer, diagnostic payload,
+or general preference editor is added. Existing shared Customize ownership,
+pref observers, native adoption policy, and health/fallback remain authoritative.
+Source pins and validation: `docs/research/firefox-157-settings-transfer.md`.

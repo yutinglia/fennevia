@@ -9,6 +9,7 @@ import { runUrlbarCompatibilityProbe } from "./firefox-urlbar-compatibility-prob
 import { runTabDragScrollProbe } from "./firefox-tab-drag-scroll-probe.mjs";
 import { runPanelStyleProbe } from "./firefox-panel-style-probe.mjs";
 import { runUiControlsProbe } from "./firefox-ui-controls-probe.mjs";
+import { runSettingsTransferProbe } from "./firefox-settings-transfer-probe.mjs";
 import { runBackgroundPanelProbe } from "./firefox-background-panel-probe.mjs";
 import { runNativeDialogProbe } from "./firefox-native-dialog-probe.mjs";
 
@@ -112,6 +113,7 @@ function parseArguments(argv) {
     tabDragScrollProbe: false,
     panelStyleProbe: false,
     uiControlsProbe: false,
+    settingsTransferProbe: false,
     backgroundPanelProbe: false,
     nativeDialogProbe: false,
   };
@@ -210,6 +212,10 @@ function parseArguments(argv) {
       result.uiControlsProbe = true;
       continue;
     }
+    if (argument === "--settings-transfer-probe") {
+      result.settingsTransferProbe = true;
+      continue;
+    }
     if (argument === "--background-panel-probe") {
       result.backgroundPanelProbe = true;
       continue;
@@ -255,6 +261,7 @@ function parseArguments(argv) {
       result.tabDragScrollProbe,
       result.panelStyleProbe,
       result.uiControlsProbe,
+      result.settingsTransferProbe,
       result.backgroundPanelProbe,
       result.nativeDialogProbe,
       result.sessionRestore !== null,
@@ -284,6 +291,7 @@ function parseArguments(argv) {
       result.tabDragScrollProbe ||
       result.panelStyleProbe ||
       result.uiControlsProbe ||
+      result.settingsTransferProbe ||
       result.backgroundPanelProbe ||
       result.nativeDialogProbe ||
       result.sessionRestore !== null)
@@ -8457,24 +8465,33 @@ async function run() {
       options.tabDragScrollProbe ||
       options.panelStyleProbe ||
       options.uiControlsProbe ||
+      options.settingsTransferProbe ||
       options.backgroundPanelProbe ||
       options.nativeDialogProbe
     ) {
-      const probeEvidence = options.nativeDialogProbe
-        ? await runNativeDialogProbe(client, (diagnostic) =>
+      const probeEvidence = options.settingsTransferProbe
+        ? await runSettingsTransferProbe(client, (diagnostic) =>
             console.log(
-              `nativeDialogDiagnostics=${JSON.stringify(diagnostic)}`,
+              `settingsTransferObserved=${JSON.stringify(diagnostic)}`,
             ),
           )
-        : options.backgroundPanelProbe
-          ? await runBackgroundPanelProbe(client, originalHandle)
-          : options.uiControlsProbe
-            ? await runUiControlsProbe(client, (diagnostic) =>
-                console.log(`uiControlsObserved=${JSON.stringify(diagnostic)}`),
-              )
-            : options.panelStyleProbe
-              ? await runPanelStyleProbe(client)
-              : await runTabDragScrollProbe(client);
+        : options.nativeDialogProbe
+          ? await runNativeDialogProbe(client, (diagnostic) =>
+              console.log(
+                `nativeDialogDiagnostics=${JSON.stringify(diagnostic)}`,
+              ),
+            )
+          : options.backgroundPanelProbe
+            ? await runBackgroundPanelProbe(client, originalHandle)
+            : options.uiControlsProbe
+              ? await runUiControlsProbe(client, (diagnostic) =>
+                  console.log(
+                    `uiControlsObserved=${JSON.stringify(diagnostic)}`,
+                  ),
+                )
+              : options.panelStyleProbe
+                ? await runPanelStyleProbe(client)
+                : await runTabDragScrollProbe(client);
       const postProbeEvidence = await collectEvidence(client);
       assert.equal(postProbeEvidence.firstPartyScriptErrorCount, 0);
       assert.equal(
@@ -8491,18 +8508,20 @@ async function run() {
       }
       await waitForProcessExit(child, PROCESS_EXIT_TIMEOUT_MS);
       console.log(
-        `${options.nativeDialogProbe ? "nativeDialogEvidence" : options.backgroundPanelProbe ? "backgroundPanelEvidence" : options.uiControlsProbe ? "uiControlsEvidence" : options.panelStyleProbe ? "panelStyleEvidence" : "tabDragScrollEvidence"}=${JSON.stringify(probeEvidence)}`,
+        `${options.settingsTransferProbe ? "settingsTransferEvidence" : options.nativeDialogProbe ? "nativeDialogEvidence" : options.backgroundPanelProbe ? "backgroundPanelEvidence" : options.uiControlsProbe ? "uiControlsEvidence" : options.panelStyleProbe ? "panelStyleEvidence" : "tabDragScrollEvidence"}=${JSON.stringify(probeEvidence)}`,
       );
       console.log(
-        options.nativeDialogProbe
-          ? "PASS: native dialog fixture actions and lifecycle observations."
-          : options.backgroundPanelProbe
-            ? "PASS: inactive-window panel pointer exit and event propagation."
-            : options.uiControlsProbe
-              ? "PASS: download indicator, disabled bookmark icons, window controls and side scrolling."
-              : options.panelStyleProbe
-                ? "PASS: floating panel background opacity."
-                : "PASS: tab drag scrolling, stationary preview, native scroll ownership and terminal cleanup.",
+        options.settingsTransferProbe
+          ? "PASS: settings UI export, preview, cancel, apply, round-trip, stale-state rejection and restoration."
+          : options.nativeDialogProbe
+            ? "PASS: native dialog fixture actions and lifecycle observations."
+            : options.backgroundPanelProbe
+              ? "PASS: inactive-window panel pointer exit and event propagation."
+              : options.uiControlsProbe
+                ? "PASS: download indicator, disabled bookmark icons, window controls and side scrolling."
+                : options.panelStyleProbe
+                  ? "PASS: floating panel background opacity."
+                  : "PASS: tab drag scrolling, stationary preview, native scroll ownership and terminal cleanup.",
       );
       return;
     }

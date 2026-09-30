@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { createToolbarWidgetPopupActions } from "./popup-actions.ts";
+import { createSettingsTransfer } from "../settings/transfer.ts";
 import {
   copyToolbarStyleSnapshot,
   copyShellPanelConfigSnapshot,
@@ -798,12 +799,17 @@ export function createFirefoxToolbarWidgetsBridge({
   const widgetSnapshotForMissing = (
     customizableUi: NativeRecord,
     widgetId: string,
+    readPresentation = true,
   ): ToolbarWidgetSnapshot => {
-    const wrapper = readWrapper(customizableUi, widgetId);
+    const wrapper = readPresentation
+      ? readWrapper(customizableUi, widgetId)
+      : null;
     const isExtension =
       wrapper?.webExtension === true ||
       isExtensionWidgetId(customizableUi, widgetId);
-    const presentationNode = readPresentationNode(widgetId);
+    const presentationNode = readPresentation
+      ? readPresentationNode(widgetId)
+      : null;
     const label = resolveWidgetLabel(
       customizableUi,
       widgetId,
@@ -898,6 +904,17 @@ export function createFirefoxToolbarWidgetsBridge({
     customizableUi: NativeRecord,
     widgetId: string,
   ): Readonly<{ node: NativeRecord | null; widget: ToolbarWidgetSnapshot }> => {
+    // Persisted/imported IDs may outlive their widgets. Never turn an arbitrary
+    // native DOM ID into an action merely because Firefox can wrap it as XUL.
+    if (
+      !readPlacedWidgetIds(customizableUi).includes(widgetId) &&
+      !readUnusedWidgetIds(customizableUi).includes(widgetId)
+    ) {
+      return Object.freeze({
+        node: null,
+        widget: widgetSnapshotForMissing(customizableUi, widgetId, false),
+      });
+    }
     const ownerWindow = requireWindow();
     const node = getDocumentElementById(ownerWindow, widgetId);
     if (!isNativeNode(node) || !isNodeConnected(node)) {
@@ -2258,7 +2275,21 @@ export function createFirefoxToolbarWidgetsBridge({
     }
   };
 
+  const settingsTransfer = createSettingsTransfer({
+    getWindow: requireWindow,
+    getSettings: () => ({
+      layout: resolveComposableLayout(),
+      style: persistedStyle,
+      panels: persistedPanels ?? createDefaultShellPanelConfig(),
+    }),
+    onChanged: () => {
+      loadPersistedState();
+      publishSnapshotIfChanged();
+    },
+  });
+
   const publicBridge: BrowserToolbarWidgetsBridge = Object.freeze({
+    transferSettings: settingsTransfer.transfer,
     edit,
 
     invoke,
@@ -2382,6 +2413,7 @@ export function createFirefoxToolbarWidgetsBridge({
         return false;
       }
       disposed = true;
+      settingsTransfer.dispose();
       popupActions.dispose();
       detachCustomizableUiListener();
       detachPrefObserver();
