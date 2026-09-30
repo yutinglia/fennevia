@@ -1309,6 +1309,16 @@ proven without blocking every development change. Owner approval is required
 for safety-rule changes so speed cannot silently erode the privileged-code
 baseline.
 
+**Dated exception, 2026-10-01:** The project owner explicitly approved
+`0.19.0-beta.1` publication after successful CI while the remaining
+manual/hardware matrix rows remain `not run`. The scope is assistive technology,
+high-DPI/system colors, device/account/extension coverage, GUI/UAC, and physical
+cross-application pointer scenarios, as itemized in
+`docs/research/firefox-157-0.19.0-beta.1-release-validation.md`. This applies only
+to this Windows stable prerelease. Automated release verification still gates
+publication; no safety, privacy, fail-open, native-UI ownership, or future
+release requirement is relaxed, and unrun checks are not recorded as passing.
+
 ## ADR-040: Use a PowerShell console for release and development install
 
 **Status:** Accepted for issue #57; the "not a graphical installer" clause and

@@ -77,7 +77,7 @@ it now also covers direct root children. Neither failure is a shipped result.
 | Native providers, production Urlbar, tab drag, color, hover, dialog probes | All six focused modes pass on the final artifacts; UI-controls fixture also passes its expanded cases. |
 | Three enabled performance starts and disabled controls when needed | Three enabled and three disabled starts complete; investigation and metrics below. |
 | Deterministic archive / Unicode extraction / exact package lifecycle | `fe9a879` clean preflight passes with existing verified dependencies/project gates reused; double archive matches, both PowerShell verifiers pass, and extracted-package disable/repair/enable lifecycle passes. |
-| GitHub Windows CI and reviewed merge | Windows CI and all CodeQL checks pass at `2d28e03`; latest evidence-commit and merge status is linked from [PR #122](https://github.com/yutinglia/fennevia/pull/122). |
+| GitHub Windows CI and reviewed merge | Windows CI run `36755164762` and all CodeQL checks pass at `87ee2209bc6e1becc0f6d2a4666b5be36e0648dd`; [PR #122](https://github.com/yutinglia/fennevia/pull/122) merged normally as `c52c229076347ec0be873ecdfb44b665882a7384`. |
 | Annotated tag / fail-closed publication / independent public download | Pending. |
 | Public archive recovery and final cleanup | Pending. |
 
@@ -110,6 +110,17 @@ The ADR-091 archive at `fe9a8795ae0997bc472b627b8e02260330d5160f` has SHA-256
 Its strict extraction contains 39 files and package-manifest SHA-256
 `05df76818b8cc6bce235521f965f84005933505cbfb636f197d65195f9d0a492`.
 This remains a local candidate checksum, not a public asset digest.
+
+The final pre-tag candidate at `87ee2209bc6e1becc0f6d2a4666b5be36e0648dd`
+also passes double-archive equality, Unicode extraction, and strict PowerShell
+7/5.1 verification of all 39 files. Its 1,426,150-byte ZIP SHA-256 is
+`a1e6b85170566ca06fc6bf0e8ca5a17273706e628b42796f4f61d3d677ecc855`;
+the package-manifest digest above is unchanged. This rehearsal explicitly
+reused verified dependencies and project gates. It is not the public digest.
+The final installed Update preview reports `already-current` with zero planned
+or applied mutations. The marker-owned profile and copied program were then
+uninstalled and removed through their checked helpers; zero Firefox processes
+remain. Candidate archives and privacy-safe test evidence are retained.
 
 ### Performance observations
 
@@ -164,13 +175,17 @@ all non-Windows/non-stable channels are not run. These are not passed claims.
 The archive is not a stable or cross-platform support promise. Unsupported
 platform/channel rows do not expand this Windows stable candidate's scope.
 
-AGENTS.md §8.2 and ADR-039 require the applicable release mass-test matrices
-before tagging/publication. The unrun manual/hardware/GUI rows therefore still
-need evidence or an explicit project-owner exception for this prerelease,
-recorded in current normative documents. Earlier prerelease limitations do not
-silently waive that requirement. The owner has requested push/release; no new
-exception has yet been inferred from that request. Tagging/publication remains
-pending this gate after completion of the available automated checks.
+On 2026-10-01, after reviewing the completed changes, candidate ZIP, automated
+Firefox 157 evidence, and remaining manual/hardware/GUI limitations, the owner
+explicitly approved: “核准本次預覽版例外，CI 通過後發布” (approve this prerelease
+exception and publish after CI passes). This one-time approval covers the
+unrun assistive-technology, high-DPI/system-color, device/account/extension,
+GUI/UAC, and physical cross-application pointer rows described above. It is
+recorded in AGENTS.md §8.2, ADR-039, and `docs/testing-and-recovery.md` before
+tagging. These rows remain `not run`; the approval does not establish stable,
+cross-platform, or physical-interaction validation. Safety, privacy, fail-open,
+and native-UI ownership remain unchanged. Publication still requires the
+successful automated release workflow and verified public assets.
 
 ## Reproduction
 

@@ -285,6 +285,16 @@ Before a release tag or publication, run the complete matrices in
 run. Those matrices exist to prove the shipped package, not to slow every
 development iteration.
 
+For `0.19.0-beta.1` only, the project owner explicitly approved publication
+after CI passes on 2026-10-01 while the remaining manual/hardware rows stay
+`not run`: assistive technology, high-DPI/system colors, device/account/extension
+coverage, GUI/UAC, and physical cross-application pointer scenarios. The exact
+limits and completed automated evidence are recorded in
+`docs/research/firefox-157-0.19.0-beta.1-release-validation.md`. This is a
+one-time validation exception, not a passed-test claim or a waiver for later
+releases. Safety, privacy, fail-open, native-UI ownership, and the Windows
+stable support boundary remain unchanged.
+
 The lists below are the release and mass-test contract. During rapid
 development they are not a per-issue Definition of Done. Record unrun rows
 honestly as `not run`.
