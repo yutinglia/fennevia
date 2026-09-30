@@ -27,6 +27,16 @@ Safety, privacy, fail-open, and native-UI ownership rules remain in force.
 Updating or relaxing them requires explicit project-owner approval. See
 ADR-039.
 
+On 2026-10-01 the owner explicitly approved the `0.19.0-beta.1` prerelease
+after successful CI with the remaining manual/hardware checks recorded as
+`not run`. This one-time exception covers assistive technology, high-DPI/system
+colors, device/account/extension coverage, GUI/UAC, and physical
+cross-application pointer scenarios. The exact unrun rows and completed
+automated evidence are in
+`docs/research/firefox-157-0.19.0-beta.1-release-validation.md`. It does not
+change safety, privacy, fail-open, native-UI ownership, platform support, or
+the release contract for subsequent versions.
+
 ## 1. Current validated baseline
 
 As of 2026-08-28:
