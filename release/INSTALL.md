@@ -4,7 +4,7 @@
 
 This archive contains a prebuilt Fennevia package. Ordinary installation does
 not require Node.js or npm. Fennevia runs privileged code and relies on Firefox
-internals. It has been tested only with Firefox 153 and 154. Later Firefox
+internals. It has been tested on Windows with Firefox 153, 154, and 157. Later Firefox
 versions may break the shell. If you confirm install on a newer version, there
 is no promise that everything will work. Keep this archive for later recovery.
 
@@ -102,7 +102,7 @@ Fennevia bundle.
 If Firefox removed one complete side of an otherwise valid installation, the
 exact original release may preview `Repair`. Repair never adopts partial
 residue, a different release, or modified files. Repair and enable reject
-Firefox older than 153. Firefox 153, 154, and newer majors may proceed after
+Firefox older than 153. Firefox 153 and newer majors may proceed after
 the testing warning; confirming that warning is not a support promise.
 
 If exactly one valid ownership record survives but the exact old release is no

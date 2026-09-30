@@ -9,6 +9,12 @@ This page is the short, current answer to “how far along is Fennevia?” The r
 READMEs remain user-facing, while the master plan, shell roadmap, architecture,
 and testing documents retain the complete engineering contract.
 
+Release candidate `0.19.0-beta.1` is now being prepared at the owner's request.
+It includes ADR-085 through ADR-090 and adds Firefox 157.0 to candidate installer
+metadata; the public release below remains unchanged until publication.
+Candidate gates and exact archive evidence are tracked in
+[the 157 release record](research/firefox-157-0.19.0-beta.1-release-validation.md).
+
 The unreleased Firefox 155 follow-up fixes the changed native suggestion-pick
 arguments and hands asynchronous search-mode rows to Firefox with the draft
 preserved. Corrected Urlbar production probes pass on 155.0.1 and 154.0.1; the

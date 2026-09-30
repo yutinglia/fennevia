@@ -306,6 +306,11 @@ release transitional focus holds on close. Eight native accept/cancel cases,
 including unsaved-tab close, pass on 157.0; error and unknown-dialog fallback
 remain intact.
 
+These source follow-ups are being prepared as `0.19.0-beta.1`, with Firefox
+157.0 added to candidate compatibility metadata. See the
+[release validation record](docs/research/firefox-157-0.19.0-beta.1-release-validation.md)
+for publication status; the public download below remains `0.18.0-beta.1`.
+
 The `0.18.0-beta.1` release reran the complete automated lifecycle, recovery,
 performance-control, deterministic-archive, extracted-package installer,
 independently downloaded public-package verification, and public-package

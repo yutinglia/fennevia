@@ -78,6 +78,11 @@ Eight native accept/cancel cases, including unsaved-tab close, pass on 157.0;
 see `docs/research/firefox-157-native-dialogs.md` for the narrow owner-approved
 policy and remaining checks.
 
+Release preparation (2026-10-01): `0.19.0-beta.1` includes ADR-085 through
+ADR-090 and adds Firefox 157.0 compatibility metadata. Publication remains
+pending the release gates in
+`docs/research/firefox-157-0.19.0-beta.1-release-validation.md`.
+
 Completed:
 
 - #2 and #17: safe development environment and privileged-code security
