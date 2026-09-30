@@ -594,7 +594,7 @@ test("edge panels touch the trigger gutter, coordinate native drags, and float v
   assert.match(composableLayout, /data-fennevia-layout-container/u);
   assert.match(
     composableLayout,
-    /class:fennevia-layout-container--padded=\{node\.padding === "standard"\}/u,
+    /class:fennevia-layout-container--padded=\{node\.padding ===\s*"standard"\}/u,
   );
   assert.match(composableLayout, /data-fennevia-layout-wrapper/u);
   assert.match(composableLayout, /baseContainerInstanceId/u);

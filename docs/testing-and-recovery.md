@@ -2232,14 +2232,19 @@ In the marker-owned lifecycle harness, `--ui-controls-probe` checks weighted
 download progress, unknown size, pause, zero, full, and completed states; the
 localized button description; disabled bookmark action opacity; all three
 configured window controls at both extremes of a narrow Top scroller; and
-horizontal reachability of both side panels. All temporary layout preferences,
+horizontal reachability of both side panels. The Row-alignment regression also
+checks controls at the start, middle, and end of a custom padded Row in Top,
+Left, and Right: same-parent membership, matching vertical centers, visible
+bounds, pointer hit testing, and movement of the other widgets when scrolled.
+All temporary layout preferences,
 owned DOM/style fixtures, and synthetic Downloads list entries are restored.
 The fixture does not start a network transfer or log download metadata.
 
 Release interaction checks additionally cover customization entry/exit without
 duplicate controls, moving window controls to other panels or nested containers,
-side-dock wrapping, keyboard focus and native actions, native Downloads popup
-hold, PUBLIC/PRIVATE separation and disposal. The fixed dock belongs to its
-existing edge surface and must still hide with that surface. Disabled bookmark
+control-group wrapping, retained custom Row/Column placement, keyboard focus
+and native actions, native Downloads popup hold, PUBLIC/PRIVATE separation and
+disposal. Pinned controls belong to their existing edge surface and must still
+hide with that surface. Disabled bookmark
 actions remain hidden off hover/focus; the selected row retains ordinary focus
 and keyboard access after the open guard is released.

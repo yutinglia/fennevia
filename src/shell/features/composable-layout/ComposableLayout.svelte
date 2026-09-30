@@ -44,7 +44,10 @@
   import LayoutDragPreview from "./LayoutDragPreview.svelte";
   import ProjectWidget from "./ProjectWidget.svelte";
   import WindowControlsDock from "./WindowControlsDock.svelte";
-  import { isWindowControlNode } from "./window-control-layout";
+  import {
+    collectAdjacentWindowControls,
+    isWindowControlNode,
+  } from "./window-control-layout";
   import { resolveLayoutDragPreview } from "./layout-drag-preview";
   import { localizeLayoutNodeLabel, zoneDisplayName } from "../../locale-ui";
 
@@ -602,220 +605,237 @@
   parentPath: readonly number[],
   direction: ToolbarLayoutDirection,
 )}
-  {#each children
-    .map((node, index) => ({ node, index }))
-    .filter(({ node }) => props.customizeOpen || !isWindowControlNode(node)) as { node, index } (node.instanceId)}
-    {@render renderDropSlot(pathKey(parentPath), index, direction)}
-    {@const path = [...parentPath, index]}
-    {@const isBaseContainer = node.instanceId === baseContainerInstanceId}
-    {@const structuralItem = isStructuralItem(node)}
-    {@const dragPreviewKind = structuralItem
-      ? "space"
-      : node.type === "item"
-        ? "control"
-        : "layout"}
-    {@const dragPreviewSize = resolveToolbarWidgetDragPreviewSize(
-      dragPreviewKind,
-      direction,
-    )}
-    <div
-      aria-label={props.customizeOpen && !isBaseContainer
-        ? nodeLabel(node)
-        : undefined}
-      class="fennevia-layout-node"
-      class:fennevia-layout-node--base={isBaseContainer}
-      class:fennevia-layout-node--container={node.type === "container"}
-      class:fennevia-layout-node--expanded={node.type === "wrapper" &&
-        node.kind === "expanded"}
-      class:fennevia-layout-node--editing={props.customizeOpen &&
-        !isBaseContainer}
-      class:fennevia-layout-node--special={structuralItem}
-      class:fennevia-layout-node--wrapper={node.type === "wrapper"}
-      data-fennevia-layout-instance={node.instanceId}
-      data-fennevia-layout-node=""
-      data-fennevia-layout-node-type={node.type}
-      data-fennevia-layout-selected={props.selectedInstanceId ===
-      node.instanceId
-        ? true
-        : undefined}
-      data-fennevia-layout-source={activeDrag?.type === "layout-node" &&
-      activeDrag.instanceId === node.instanceId
-        ? true
-        : undefined}
-      data-fennevia-layout-special-kind={structuralItem && node.type === "item"
-        ? node.widget.kind
-        : undefined}
-      data-fennevia-layout-path={pathKey(path)}
-      draggable={props.customizeOpen && !isBaseContainer}
-      ondragend={() => {
-        clearDropFeedback();
-        clearToolbarWidgetDrag();
-      }}
-      ondragstart={(event) => beginDrag(event, node, direction)}
-      onkeydown={(event) => handleNodeKeydown(event, node, path, direction)}
-      onpointerdown={(event) => {
-        if (event.button === 0) {
-          event.stopPropagation();
-          selectNode(node);
-          event.currentTarget
-            .querySelector<HTMLButtonElement>(
-              ":scope > [data-fennevia-layout-keyboard-selector]",
-            )
-            ?.focus({ preventScroll: true });
-        }
-      }}
-      role={props.customizeOpen && !isBaseContainer ? "group" : "presentation"}
-      tabindex="-1"
-    >
-      {#if props.customizeOpen && !isBaseContainer}
-        <button
-          aria-controls={props.selectedInstanceId === node.instanceId
-            ? `fennevia-widget-inspector-${node.instanceId}`
-            : undefined}
-          aria-expanded={props.selectedInstanceId === node.instanceId}
-          aria-label={translate(props.localeId, "customize.editNodeWithHint", {
-            label: nodeLabel(node),
-          })}
-          class="fennevia-layout-node__keyboard-selector"
-          data-fennevia-layout-keyboard-selector=""
-          onclick={() => focusInspector(node)}
-          onfocus={() => selectNode(node)}
-          type="button"
-        ></button>
-      {/if}
-
-      {#if props.customizeOpen && !isBaseContainer}
-        <div
-          aria-hidden="true"
-          class="fennevia-layout-drag-image"
-          data-fennevia-layout-drag-image={dragPreviewKind}
-          lang={props.localeId}
-          style:--fennevia-drag-preview-block={`${dragPreviewSize.blockSize}px`}
-          style:--fennevia-drag-preview-inline={`${dragPreviewSize.inlineSize}px`}
-        >
-          <span class="fennevia-layout-drag-image__icon">
-            {dragPreviewKind === "space" ? "·" : "⋮⋮"}
-          </span>
-          <span class="fennevia-layout-drag-image__label"
-            >{nodeLabel(node)}</span
-          >
-        </div>
-      {/if}
-
-      {#if props.customizeOpen && !isBaseContainer && (node.type !== "item" || structuralItem)}
-        <span
-          aria-hidden="true"
-          class="fennevia-layout-node__structure-label"
-          data-fennevia-layout-structure-label="">{nodeLabel(node)}</span
-        >
-      {/if}
-
-      {#if node.type === "container"}
-        <div
-          aria-label={props.customizeOpen
-            ? node.direction === "row"
-              ? translate(props.localeId, "customize.rowDropArea")
-              : translate(props.localeId, "customize.columnDropArea")
-            : undefined}
-          class="fennevia-layout-container"
-          class:fennevia-layout-container--column={node.direction === "column"}
-          class:fennevia-layout-container--padded={node.padding === "standard"}
-          class:fennevia-layout-container--row={node.direction === "row"}
-          data-fennevia-layout-container={node.direction}
-          data-fennevia-layout-base={isBaseContainer
-            ? node.direction
-            : undefined}
-          data-fennevia-layout-drop={dropPreview?.parentKey === pathKey(path)
-            ? String(dropPreview.index)
-            : undefined}
-          data-fennevia-window-drag-region=""
-          ondragover={(event) => handleDragOver(event, path, node.direction)}
-          ondrop={(event) => handleDrop(event, path, node.direction)}
-          role={props.customizeOpen ? "group" : "presentation"}
-        >
-          {#if props.customizeOpen && node.children.length === 0 && dropPreview?.parentKey !== pathKey(path)}
-            <span class="fennevia-layout-container__placeholder"
-              >{translate(props.localeId, "customize.emptyPanelDrop")}</span
-            >
-          {/if}
-          {@render renderNodes(node.children, path, node.direction)}
-        </div>
-      {:else if node.type === "wrapper"}
-        <div
-          aria-label={props.customizeOpen
-            ? translate(props.localeId, "customize.wrapperDropArea", {
+  {#each children as node, index (node.instanceId)}
+    {#if !props.customizeOpen && isWindowControlNode(node)}
+      <WindowControlsDock
+        {direction}
+        nodes={collectAdjacentWindowControls(children, index)}
+        localeId={props.localeId}
+        onFatalError={props.onFatalError}
+        windowControls={props.windowControls}
+      />
+    {:else}
+      {@render renderDropSlot(pathKey(parentPath), index, direction)}
+      {@const path = [...parentPath, index]}
+      {@const isBaseContainer = node.instanceId === baseContainerInstanceId}
+      {@const structuralItem = isStructuralItem(node)}
+      {@const dragPreviewKind = structuralItem
+        ? "space"
+        : node.type === "item"
+          ? "control"
+          : "layout"}
+      {@const dragPreviewSize = resolveToolbarWidgetDragPreviewSize(
+        dragPreviewKind,
+        direction,
+      )}
+      <div
+        aria-label={props.customizeOpen && !isBaseContainer
+          ? nodeLabel(node)
+          : undefined}
+        class="fennevia-layout-node"
+        class:fennevia-layout-node--base={isBaseContainer}
+        class:fennevia-layout-node--container={node.type === "container"}
+        class:fennevia-layout-node--expanded={node.type === "wrapper" &&
+          node.kind === "expanded"}
+        class:fennevia-layout-node--editing={props.customizeOpen &&
+          !isBaseContainer}
+        class:fennevia-layout-node--special={structuralItem}
+        class:fennevia-layout-node--wrapper={node.type === "wrapper"}
+        data-fennevia-layout-instance={node.instanceId}
+        data-fennevia-layout-node=""
+        data-fennevia-layout-node-type={node.type}
+        data-fennevia-layout-selected={props.selectedInstanceId ===
+        node.instanceId
+          ? true
+          : undefined}
+        data-fennevia-layout-source={activeDrag?.type === "layout-node" &&
+        activeDrag.instanceId === node.instanceId
+          ? true
+          : undefined}
+        data-fennevia-layout-special-kind={structuralItem &&
+        node.type === "item"
+          ? node.widget.kind
+          : undefined}
+        data-fennevia-layout-path={pathKey(path)}
+        draggable={props.customizeOpen && !isBaseContainer}
+        ondragend={() => {
+          clearDropFeedback();
+          clearToolbarWidgetDrag();
+        }}
+        ondragstart={(event) => beginDrag(event, node, direction)}
+        onkeydown={(event) => handleNodeKeydown(event, node, path, direction)}
+        onpointerdown={(event) => {
+          if (event.button === 0) {
+            event.stopPropagation();
+            selectNode(node);
+            event.currentTarget
+              .querySelector<HTMLButtonElement>(
+                ":scope > [data-fennevia-layout-keyboard-selector]",
+              )
+              ?.focus({ preventScroll: true });
+          }
+        }}
+        role={props.customizeOpen && !isBaseContainer
+          ? "group"
+          : "presentation"}
+        tabindex="-1"
+      >
+        {#if props.customizeOpen && !isBaseContainer}
+          <button
+            aria-controls={props.selectedInstanceId === node.instanceId
+              ? `fennevia-widget-inspector-${node.instanceId}`
+              : undefined}
+            aria-expanded={props.selectedInstanceId === node.instanceId}
+            aria-label={translate(
+              props.localeId,
+              "customize.editNodeWithHint",
+              {
                 label: nodeLabel(node),
-              })
-            : undefined}
-          class="fennevia-layout-wrapper"
-          class:fennevia-layout-wrapper--center={node.kind === "center"}
-          class:fennevia-layout-wrapper--column={direction === "column"}
-          class:fennevia-layout-wrapper--expanded={node.kind === "expanded"}
-          class:fennevia-layout-wrapper--padding={node.kind === "padding"}
-          class:fennevia-layout-wrapper--row={direction === "row"}
-          data-fennevia-layout-drop={dropPreview?.parentKey === pathKey(path)
-            ? String(dropPreview.index)
-            : undefined}
-          data-fennevia-layout-wrapper={node.kind}
-          data-fennevia-window-drag-region=""
-          ondragover={node.children.length === 0
-            ? (event) => handleDragOver(event, path, direction)
-            : undefined}
-          ondrop={node.children.length === 0
-            ? (event) => handleDrop(event, path, direction)
-            : undefined}
-          role={props.customizeOpen ? "group" : "presentation"}
-        >
-          {#if props.customizeOpen && node.children.length === 0 && dropPreview?.parentKey !== pathKey(path)}
-            <span class="fennevia-layout-container__placeholder"
-              >{translate(props.localeId, "customize.emptyPanelDrop")}</span
+              },
+            )}
+            class="fennevia-layout-node__keyboard-selector"
+            data-fennevia-layout-keyboard-selector=""
+            onclick={() => focusInspector(node)}
+            onfocus={() => selectNode(node)}
+            type="button"
+          ></button>
+        {/if}
+
+        {#if props.customizeOpen && !isBaseContainer}
+          <div
+            aria-hidden="true"
+            class="fennevia-layout-drag-image"
+            data-fennevia-layout-drag-image={dragPreviewKind}
+            lang={props.localeId}
+            style:--fennevia-drag-preview-block={`${dragPreviewSize.blockSize}px`}
+            style:--fennevia-drag-preview-inline={`${dragPreviewSize.inlineSize}px`}
+          >
+            <span class="fennevia-layout-drag-image__icon">
+              {dragPreviewKind === "space" ? "·" : "⋮⋮"}
+            </span>
+            <span class="fennevia-layout-drag-image__label"
+              >{nodeLabel(node)}</span
             >
-          {/if}
-          {@render renderNodes(node.children, path, direction)}
-        </div>
-      {:else}
-        <div
-          class="fennevia-layout-node__content"
-          data-fennevia-layout-node-content=""
-          inert={props.customizeOpen}
-        >
-          {#if node.projectId}
-            <ProjectWidget
-              addressPopup={props.addressPopup}
-              bookmarks={props.bookmarks}
-              browserTools={props.browserTools}
-              canEdit={props.state?.snapshot.canEdit ?? false}
-              customizeOpen={props.customizeOpen}
-              {direction}
-              downloads={props.downloads}
-              edge={props.edge}
-              id={node.projectId}
-              localeId={props.localeId}
-              navigation={props.navigation}
-              onDismiss={props.onDismiss}
-              onFatalError={props.onFatalError}
-              onOpenAddress={props.onOpenAddress}
-              onRevealProject={props.onRevealProject}
-              onSetCustomizeOpen={props.onSetCustomizeOpen}
-              shell={props.shell}
-              tabs={props.tabs}
-              widgetStyle={node.style}
-              windowControls={props.windowControls}
-              windowKind={props.windowKind}
-            />
-          {:else}
-            <FirefoxToolbarWidget
-              customizeOpen={props.customizeOpen}
-              edge={props.edge}
-              localeId={props.localeId}
-              shell={props.shell}
-              toolbarWidgets={props.toolbarWidgets}
-              widget={node.widget}
-            />
-          {/if}
-        </div>
-      {/if}
-    </div>
+          </div>
+        {/if}
+
+        {#if props.customizeOpen && !isBaseContainer && (node.type !== "item" || structuralItem)}
+          <span
+            aria-hidden="true"
+            class="fennevia-layout-node__structure-label"
+            data-fennevia-layout-structure-label="">{nodeLabel(node)}</span
+          >
+        {/if}
+
+        {#if node.type === "container"}
+          <div
+            aria-label={props.customizeOpen
+              ? node.direction === "row"
+                ? translate(props.localeId, "customize.rowDropArea")
+                : translate(props.localeId, "customize.columnDropArea")
+              : undefined}
+            class="fennevia-layout-container"
+            class:fennevia-layout-container--column={node.direction ===
+              "column"}
+            class:fennevia-layout-container--padded={node.padding ===
+              "standard"}
+            class:fennevia-layout-container--row={node.direction === "row"}
+            data-fennevia-layout-container={node.direction}
+            data-fennevia-layout-base={isBaseContainer
+              ? node.direction
+              : undefined}
+            data-fennevia-layout-drop={dropPreview?.parentKey === pathKey(path)
+              ? String(dropPreview.index)
+              : undefined}
+            data-fennevia-window-drag-region=""
+            ondragover={(event) => handleDragOver(event, path, node.direction)}
+            ondrop={(event) => handleDrop(event, path, node.direction)}
+            role={props.customizeOpen ? "group" : "presentation"}
+          >
+            {#if props.customizeOpen && node.children.length === 0 && dropPreview?.parentKey !== pathKey(path)}
+              <span class="fennevia-layout-container__placeholder"
+                >{translate(props.localeId, "customize.emptyPanelDrop")}</span
+              >
+            {/if}
+            {@render renderNodes(node.children, path, node.direction)}
+          </div>
+        {:else if node.type === "wrapper"}
+          <div
+            aria-label={props.customizeOpen
+              ? translate(props.localeId, "customize.wrapperDropArea", {
+                  label: nodeLabel(node),
+                })
+              : undefined}
+            class="fennevia-layout-wrapper"
+            class:fennevia-layout-wrapper--center={node.kind === "center"}
+            class:fennevia-layout-wrapper--column={direction === "column"}
+            class:fennevia-layout-wrapper--expanded={node.kind === "expanded"}
+            class:fennevia-layout-wrapper--padding={node.kind === "padding"}
+            class:fennevia-layout-wrapper--row={direction === "row"}
+            data-fennevia-layout-drop={dropPreview?.parentKey === pathKey(path)
+              ? String(dropPreview.index)
+              : undefined}
+            data-fennevia-layout-wrapper={node.kind}
+            data-fennevia-window-drag-region=""
+            ondragover={node.children.length === 0
+              ? (event) => handleDragOver(event, path, direction)
+              : undefined}
+            ondrop={node.children.length === 0
+              ? (event) => handleDrop(event, path, direction)
+              : undefined}
+            role={props.customizeOpen ? "group" : "presentation"}
+          >
+            {#if props.customizeOpen && node.children.length === 0 && dropPreview?.parentKey !== pathKey(path)}
+              <span class="fennevia-layout-container__placeholder"
+                >{translate(props.localeId, "customize.emptyPanelDrop")}</span
+              >
+            {/if}
+            {@render renderNodes(node.children, path, direction)}
+          </div>
+        {:else}
+          <div
+            class="fennevia-layout-node__content"
+            data-fennevia-layout-node-content=""
+            inert={props.customizeOpen}
+          >
+            {#if node.projectId}
+              <ProjectWidget
+                addressPopup={props.addressPopup}
+                bookmarks={props.bookmarks}
+                browserTools={props.browserTools}
+                canEdit={props.state?.snapshot.canEdit ?? false}
+                customizeOpen={props.customizeOpen}
+                {direction}
+                downloads={props.downloads}
+                edge={props.edge}
+                id={node.projectId}
+                localeId={props.localeId}
+                navigation={props.navigation}
+                onDismiss={props.onDismiss}
+                onFatalError={props.onFatalError}
+                onOpenAddress={props.onOpenAddress}
+                onRevealProject={props.onRevealProject}
+                onSetCustomizeOpen={props.onSetCustomizeOpen}
+                shell={props.shell}
+                tabs={props.tabs}
+                widgetStyle={node.style}
+                windowControls={props.windowControls}
+                windowKind={props.windowKind}
+              />
+            {:else}
+              <FirefoxToolbarWidget
+                customizeOpen={props.customizeOpen}
+                edge={props.edge}
+                localeId={props.localeId}
+                shell={props.shell}
+                toolbarWidgets={props.toolbarWidgets}
+                widget={node.widget}
+              />
+            {/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
   {/each}
   {@render renderDropSlot(pathKey(parentPath), children.length, direction)}
 {/snippet}
@@ -863,12 +883,4 @@
       >{announcement}</output
     >
   </div>
-  {#if !props.customizeOpen}
-    <WindowControlsDock
-      {nodes}
-      localeId={props.localeId}
-      onFatalError={props.onFatalError}
-      windowControls={props.windowControls}
-    />
-  {/if}
 </div>

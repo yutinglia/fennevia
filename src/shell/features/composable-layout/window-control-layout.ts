@@ -10,24 +10,26 @@ export type WindowControlNode = ToolbarLayoutItemSnapshot &
   }>;
 
 export function isWindowControlNode(
-  node: ToolbarLayoutNodeSnapshot,
+  node: ToolbarLayoutNodeSnapshot | undefined,
 ): node is WindowControlNode {
   return (
-    node.type === "item" &&
+    node?.type === "item" &&
     (node.projectId === "minimize-window" ||
       node.projectId === "toggle-maximize-window" ||
       node.projectId === "close-window")
   );
 }
 
-export function collectWindowControls(
+export function collectAdjacentWindowControls(
   nodes: readonly ToolbarLayoutNodeSnapshot[],
+  start: number,
 ): readonly WindowControlNode[] {
-  return nodes.flatMap((node) =>
-    isWindowControlNode(node)
-      ? [node]
-      : node.type === "item"
-        ? []
-        : collectWindowControls(node.children),
-  );
+  if (isWindowControlNode(nodes[start - 1])) return [];
+  const controls: WindowControlNode[] = [];
+  for (let index = start; index < nodes.length; index++) {
+    const node = nodes[index];
+    if (!isWindowControlNode(node)) break;
+    controls.push(node);
+  }
+  return controls;
 }

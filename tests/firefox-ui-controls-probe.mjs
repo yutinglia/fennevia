@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 import assert from "node:assert/strict";
 import { createDefaultComposableCustomizeLayout } from "../src/firefox/customize-layout/migration.ts";
+import { runWindowControlLayoutProbe } from "./firefox-window-control-layout-probe.mjs";
 
 // Test-only fixtures inside the marker-owned browser; return geometry and bounded
 // states, never download metadata or bookmark contents.
 export async function runUiControlsProbe(client, report) {
+  await runWindowControlLayoutProbe(client, report);
   const result = await client.execute(`
     return (async () => {
       const frame = document.getElementById('fennevia-shell-frame-host');

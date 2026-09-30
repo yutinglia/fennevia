@@ -4200,6 +4200,8 @@ support is implied.
 
 **Status:** Owner-requested follow-ups for 0.19.0-beta.1, 2026-10-01. Refines
 ADR-074's presentation while retaining its saved layout and editor.
+The panel-wide window-control dock placement is superseded by ADR-092;
+download and bookmark behavior remains current.
 
 The downloads launcher subscribes to the existing anonymous, per-window
 Downloads adapter. Active downloads render a weighted progress ring; unknown
@@ -4230,3 +4232,32 @@ keyboard access. No new Firefox internal dependency, schema, dependency,
 production logging, or data flow is introduced. Real-engine regressions live
 in `tests/firefox-ui-controls-probe.mjs`; results and remaining limits are in
 the Firefox 157 release validation record.
+
+## ADR-092: Keep pinned window controls in their configured layout container
+
+**Status:** Accepted by direct owner follow-up on 2026-10-01 after the
+0.19.0-beta.1 release. Supersedes only ADR-091's panel-wide dock placement.
+
+The owner places window controls alongside other tools in the same custom Row.
+Extracting them into a panel-wide dock changed their vertical alignment and
+moved side-panel controls to the bottom. Ordinary rendering must retain the
+saved parent, order, padding, and Row/Column direction, as customization does.
+
+Group only consecutive window-control siblings at their original position.
+Use inline-axis CSS sticky positioning for the group and its containing layout
+nodes. Ancestors retain their minimum content extent, so a narrow control-only
+Row can stay visible while another Row overflows. Pinning has no block-axis
+inset: a side-panel Row remains at its configured height. The group inherits
+the existing control size and spacing, centers in a Row, and may wrap when the
+scroller is narrower than the controls. A local stacking level keeps the
+controls above overlapping scrolled siblings; existing panel, popup, and
+inspector stacking remains unchanged.
+
+No preference migration, native DOM move, new observer, geometry callback,
+timer, window-control adapter, or duplicate control is introduced. Customize
+mode renders the original individual items. Surface reveal/hide, native
+actions, activation health, and fail-open keep their existing owners.
+
+Focused Firefox geometry, pointer hit testing, scrolling, and restoration
+evidence is recorded in
+`docs/research/firefox-157-window-control-row-alignment.md`.
