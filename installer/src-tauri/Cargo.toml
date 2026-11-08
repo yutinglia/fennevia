@@ -1,0 +1,19 @@
+[package]
+name = "fennevia-setup"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[build-dependencies]
+tauri-build = "=2.7.4"
+
+[dependencies]
+tauri = { version = "=2.12.5", features = ["custom-protocol"] }
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+fennevia-installer-core = { path = "../crates/installer-core" }
+fennevia-platform-windows = { path = "../crates/platform-windows" }
+rfd = "=0.18.0"
+webview2-com = "=0.39.1"
+windows-core = "=0.62.2"

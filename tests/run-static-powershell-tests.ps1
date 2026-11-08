@@ -13,6 +13,7 @@ $testFiles = @(
     "fennevia-gui.Tests.ps1",
     "installer.Tests.ps1",
     "installer-discovery.Tests.ps1",
+    "installer-locations.Tests.ps1",
     "production-artifacts.Tests.ps1",
     "project-identity.Tests.ps1",
     "release-packaging.Tests.ps1",

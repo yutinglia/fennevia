@@ -1,5 +1,29 @@
 # Installation and Package Lifecycle
 
+New source builds use the Tauri `FenneviaSetup.exe` as their primary GUI. Extract
+the complete package, run it as a standard user, choose Firefox and a profile,
+preview the operation, then confirm. The adjacent release package is verified
+automatically; another extracted package can be selected explicitly. All six
+lifecycle actions use the native worker, rollback and ownership rules described
+below. No PowerShell process is started by the GUI. Build instructions and
+unrun release checks are in `installer/README.md` and
+`docs/research/tauri-installer-release-validation.md`.
+
+The native GUI and `scripts/fennevia.ps1` release console both scan Firefox and
+registered profiles and can explicitly save pairs in
+`%LOCALAPPDATA%/Fennevia/Setup/targets.json`. Reusing a saved pair revalidates it;
+it never restores plan approval or skips default-profile confirmation. Both
+tools can forget records and explicitly clear a corrupt list. The CLI remains
+usable with explicit targets when no saved file exists. Paths are shown only
+on request in the local interface. Saving a pair does not install anything.
+The old WinForms script remains a legacy manual fallback; it is no longer the
+EXE launcher target and does not implement the shared saved-location interface.
+
+The package includes its pinned WebView2 runtime and notices. Missing/changed
+runtime files fail closed without a download. Verify the downloaded ZIP checksum
+and trusted source: manifest hashes detect changes, not publisher identity.
+Disable/Uninstall remain available from ownership when source files are broken.
+
 This document is the normative Windows-first workflow for installing, updating,
 repairing, hard-disabling, re-enabling, and removing Fennevia. Source-tree
 development uses an unregistered marker-owned profile and copied Firefox
@@ -168,12 +192,12 @@ It does not enumerate unrelated profile files or print absolute paths.
 ## 3. Preview and execute
 
 The recommended interactive release entry is `FenneviaSetup.exe` at the extracted
-archive root. It is a WinForms wizard over the same installer contract. From an
+archive root. New builds use the native Tauri GUI over the same lifecycle contract. From an
 extracted release:
 
 1. Double-click `FenneviaSetup.exe`.
 2. Select `firefox.exe` and one registered profile **by name**.
-3. Acknowledge the Firefox 153/154 testing warning when shown.
+3. Acknowledge the Firefox 153/154/157 testing warning when shown.
 4. Confirm the redacted plan. If the program directory is not writable, choose
    **Continue as administrator** and approve the Windows prompt.
 
@@ -189,7 +213,7 @@ Uninstall against an explicitly selected registered profile. A source tree
 offers development setup, update, launch, recovery, and teardown against the
 marker-owned program copy and `fennevia-dev` profile. The console lists
 Firefox builds and registered profile **names** locally, never preselects
-Firefox's default profile, shows the 153/154 testing warning, shows the
+Firefox's default profile, shows the 153/154/157 testing warning, shows the
 redacted plan, and applies only after both acknowledgements with that plan's
 `planSha256`. The interactive host is a native
 TUI: it enters an alternate screen, redraws in place, and accepts keyboard and
@@ -476,24 +500,28 @@ pwsh -NoProfile -File .\scripts\check-production-artifacts.ps1 `
   -InventoryPath .\package-manifest.json
 ```
 
-Maintainers stage an ordinary release into a new empty directory:
+Maintainers build the native distribution, then stage a release from a clean
+checkout into a new empty directory (replace VERSION with package.json):
 
 ```powershell
+npm --prefix installer ci --ignore-scripts
+npm --prefix installer run package:native -- out/native
 pwsh -NoProfile -File .\scripts\build-release.ps1 `
-  -OutputDirectory .\.release
+  -OutputDirectory .\.release -NativeInstallerDirectory .\installer\out\native
 pwsh -NoProfile -File .\scripts\verify-release.ps1 `
-  -PackageRoot .\.release\fennevia-0.18.0-beta.1
+  -PackageRoot .\.release\fennevia-<VERSION>
 ```
 
 Publication requires the complete clean-tree preflight, which runs exact
-dependency installation and `npm run verify`, builds twice, compares ZIP and
-manifest bytes, validates the checksum, and extracts into a Unicode/space path:
+dependency installation, root and installer verification, builds both native
+executables in two separate source/Cargo directories, compares ZIP and manifest bytes,
+validates the checksum, and smoke-tests extraction into a Unicode/space path:
 
 ```powershell
 $output = Join-Path ([IO.Path]::GetTempPath()) "fennevia-release-preflight"
 pwsh -NoProfile -File .\scripts\release-preflight.ps1 `
   -OutputDirectory $output `
-  -ExpectedTag v0.18.0-beta.1 `
+  -ExpectedTag v<VERSION> `
   -RequireAnnotatedTag
 ```
 

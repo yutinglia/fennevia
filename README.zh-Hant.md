@@ -14,6 +14,12 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 ## Fennevia 會改變甚麼
 
+[Tauri 安裝器](installer/README.md) 可掃描、保存 Firefox／Profile 位置、預覽變更，
+並透過原生交易執行安裝、更新、修復、停用、啟用及移除，包含 rollback 與獨立 UAC worker。
+新建置套件內附固定版離線 WebView2；PowerShell 主控台保留獨立備援，也可讀寫相同的
+明確保存位置。此變更不會替換已發布的壓縮檔；UAC、乾淨機器與無障礙人工發行檢查
+尚未執行，詳見[驗證紀錄](docs/research/tauri-installer-release-validation.md)。
+
 在靜止狀態下，Firefox 主要只顯示目前網頁。把滑鼠移到視窗邊緣，或使用鍵盤，即可顯示：
 
 - **上方：**不可停用的基底橫列。明確的新版預設依序放置上一頁、下一頁、重新載入／停止、首頁、Trust、空白的可延展區、Firefox 功能、Fennevia 自訂及專案自有的視窗控制項。
@@ -150,7 +156,7 @@ if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 
 ### 3. 預覽安裝變更
 
-解壓縮 ZIP，在解壓後的 Fennevia 目錄雙擊 `FenneviaSetup.exe`。請自行選擇 `firefox.exe` 與一個已註冊的設定檔**名稱**。Fennevia 不會預先選取 Firefox 預設設定檔。請先閱讀僅測試 153／154 的警告，再檢查遮罩後的變更計劃並確認套用。在較新 Firefox 上確認安裝，並不保證介面能繼續正常運作。若所選 Firefox 程式資料夾無法寫入，請選擇「以系統管理員繼續」並同意 Windows 提示。
+解壓縮 ZIP，在解壓後的 Fennevia 目錄雙擊 `FenneviaSetup.exe`。請自行選擇 `firefox.exe` 與一個已註冊的設定檔**名稱**。Fennevia 不會預先選取 Firefox 預設設定檔。請先閱讀僅測試 153／154／157 的警告，再檢查相對路徑的變更計畫並確認套用。在較新 Firefox 上確認安裝，並不保證介面能繼續正常運作。若所選 Firefox 程式資料夾無法寫入，請使用畫面上的系統管理員接續操作並同意 Windows 提示。
 
 請保留此解壓資料夾。進階使用者仍可使用 PowerShell 主控台：
 

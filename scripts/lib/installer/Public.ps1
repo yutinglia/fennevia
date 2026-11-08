@@ -300,20 +300,49 @@ function Invoke-FenneviaPackageAction {
         [string] $TestDenyTransactionScope = ""
     )
 
-    $plan = New-FenneviaInstallerActionPlan -Action $Action -FirefoxPath $FirefoxPath -ProfilePath $ProfilePath -PackageRoot $PackageRoot -ProfileMode $ProfileMode
-    $planSha256 = Get-FenneviaInstallerPlanSha256 -Plan $plan
-    if (-not [string]::IsNullOrWhiteSpace($ExpectedPlanSha256)) {
-        if ($ExpectedPlanSha256 -cnotmatch "^[0-9a-f]{64}$") {
-            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_PLAN_INVALID" -Message "The expected plan SHA-256 is invalid."
+    $targets = Resolve-FenneviaInstallerTargets -FirefoxPath $FirefoxPath -ProfilePath $ProfilePath -ProfileMode $ProfileMode
+    $locks = New-Object "Collections.Generic.List[object]"
+    try {
+        # Shared with the Rust worker. Acquire in a stable order, then rebuild the
+        # complete plan while holding both locks. Historical tools lack this protocol.
+        $identities = @($targets.ProgramRoot, $targets.ProfileRoot) | ForEach-Object {
+            "target:" + $_.Replace('\', '/').TrimEnd('/').ToLowerInvariant()
+        } | Sort-Object
+        foreach ($identity in $identities) {
+            $name = 'Global\FenneviaInstaller-' + (Get-FenneviaInstallerStringSha256 -Content $identity)
+            $mutex = New-Object Threading.Mutex($false, $name)
+            $acquired = $false
+            try {
+                try { $acquired = $mutex.WaitOne(0) }
+                catch [Threading.AbandonedMutexException] { $acquired = $true }
+                if (-not $acquired) {
+                    Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_BUSY" -Message "Another installer owns a selected target; retry after it finishes."
+                }
+                $locks.Add($mutex)
+            }
+            finally { if (-not $acquired) { $mutex.Dispose() } }
         }
-        if ($planSha256 -cne $ExpectedPlanSha256) {
-            Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_PLAN_CHANGED" -Message "The package or selected target state changed after preview; review a new dry-run plan."
+        $plan = New-FenneviaInstallerActionPlan -Action $Action -FirefoxPath $FirefoxPath -ProfilePath $ProfilePath -PackageRoot $PackageRoot -ProfileMode $ProfileMode
+        $planSha256 = Get-FenneviaInstallerPlanSha256 -Plan $plan
+        if (-not [string]::IsNullOrWhiteSpace($ExpectedPlanSha256)) {
+            if ($ExpectedPlanSha256 -cnotmatch "^[0-9a-f]{64}$") {
+                Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_PLAN_INVALID" -Message "The expected plan SHA-256 is invalid."
+            }
+            if ($planSha256 -cne $ExpectedPlanSha256) {
+                Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_PLAN_CHANGED" -Message "The package or selected target state changed after preview; review a new dry-run plan."
+            }
         }
-    }
-    if ($DryRun -or $plan.Operations.Count -eq 0) {
-        return ConvertTo-FenneviaInstallerPublicResult -Plan $plan -DryRun ([bool] $DryRun) -AppliedMutationCount 0 -PlanSha256 $planSha256
-    }
+        if ($DryRun -or $plan.Operations.Count -eq 0) {
+            return ConvertTo-FenneviaInstallerPublicResult -Plan $plan -DryRun ([bool] $DryRun) -AppliedMutationCount 0 -PlanSha256 $planSha256
+        }
 
-    $mutationCount = Invoke-FenneviaInstallerTransaction -Plan $plan -FailureAfterMutation $TestFailureAfterMutation -TestDenyTransactionScope $TestDenyTransactionScope
-    return ConvertTo-FenneviaInstallerPublicResult -Plan $plan -DryRun $false -AppliedMutationCount $mutationCount -PlanSha256 $planSha256
+        $mutationCount = Invoke-FenneviaInstallerTransaction -Plan $plan -FailureAfterMutation $TestFailureAfterMutation -TestDenyTransactionScope $TestDenyTransactionScope
+        return ConvertTo-FenneviaInstallerPublicResult -Plan $plan -DryRun $false -AppliedMutationCount $mutationCount -PlanSha256 $planSha256
+    }
+    finally {
+        for ($index = $locks.Count - 1; $index -ge 0; $index--) {
+            $locks[$index].ReleaseMutex()
+            $locks[$index].Dispose()
+        }
+    }
 }

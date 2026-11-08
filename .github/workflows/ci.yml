@@ -17,7 +17,7 @@ jobs:
   verify:
     name: Frontend and package gates
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     steps:
       - name: Check out source
@@ -68,3 +68,31 @@ jobs:
       - name: Exercise static PowerShell gates in Windows PowerShell 5.1
         shell: powershell
         run: .\tests\run-static-powershell-tests.ps1
+
+      - name: Install exact installer frontend dependencies without lifecycle scripts
+        working-directory: installer
+        run: npm ci --ignore-scripts --no-fund
+
+      - name: Verify installer frontend and build embedded assets
+        working-directory: installer
+        run: npm run verify
+
+      - name: Configure pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+
+      - name: Verify Rust installer contracts and native build
+        working-directory: installer
+        shell: pwsh
+        run: |
+          cargo fmt --all --check
+          if ($LASTEXITCODE -ne 0) { throw "Rust formatting failed." }
+          cargo clippy --locked --workspace --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw "Rust lint failed." }
+          cargo test --locked --workspace
+          if ($LASTEXITCODE -ne 0) { throw "Installer contract tests failed." }
+          cargo build --locked --workspace
+          if ($LASTEXITCODE -ne 0) { throw "Native installer build failed." }
+          node scripts/dependency-inventory.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Installer dependency inventory failed." }
+          git diff --exit-code -- ../docs/dependency-reviews/tauri-installer-lock-inventory.json
+          if ($LASTEXITCODE -ne 0) { throw "Installer dependency inventory is stale." }

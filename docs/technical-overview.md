@@ -7,6 +7,15 @@ short reviewed progress snapshot, see [Current project status](current-status.md
 
 ## Current engineering status
 
+Installer update, 2026-11-09: new source builds use Tauri/Svelte/Rust for the GUI,
+discovery, preferences and worker transactions, with an offline fixed WebView2.
+The PowerShell console remains independent and shares explicit saved locations.
+See ADR-095–097 and `installer/README.md`. This does not change the published
+package or imply that manual native-installer release gates have passed.
+
+The following milestone overview retains its August release context; the
+current release and subsequent changes are in `docs/current-status.md`.
+
 As of 2026-08-28, Fennevia has a published Windows x64 prerelease,
 `v0.18.0-beta.1`, tested on stock Firefox 153.0.4 release, Build ID
 `20260810162159`, Firefox 154.0 Build ID `20260812182057`, and Firefox 154.0.1
@@ -296,7 +305,8 @@ failed, or disposed state removes the active gate and exposes native Firefox UI.
 - A branded Firefox fork, Inno/NSIS/MSI product installer, automatic update
   channel, or commercial support product. The PowerShell console in
   `scripts/fennevia.ps1` remains the development TUI. ADR-049 adds a
-  release-only WinForms wizard; it is not a Program Files product installer.
+  native Tauri release interface in new builds; the legacy WinForms script is
+  retained as a manual fallback. Neither is a general Program Files product installer.
 - An unrestricted CSS editor or unbounded geometry/layout-expression builder.
 - Pixel-for-pixel reproduction of Firefox, `my-firefox-custom`, Arc, Edge, or
   another browser.

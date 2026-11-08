@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'NativeDistribution.ps1')
 
 $script:ReleaseSchemaVersion = 1
 $script:ReleasePackageId = "fennevia"
@@ -117,12 +118,15 @@ function ConvertTo-FenneviaReleaseRelativePath {
         throw "Release-relative paths must not be empty."
     }
     $normalizedPath = $Path.Replace("\", "/").Trim("/")
+    # The fixed Microsoft runtime has this exact directory. Its members still
+    # require the pinned native inventory; Firefox/ownership syntax is unchanged.
+    $syntaxPath = $normalizedPath.Replace('WebView2/Trust Protection Lists/', 'WebView2/TrustProtectionLists/')
     if (
         [IO.Path]::IsPathRooted($Path) -or
         $normalizedPath -match "(^|/)\.\.?(?:/|$)" -or
         $normalizedPath.Contains(":") -or
         $normalizedPath.Contains("//") -or
-        $normalizedPath -notmatch "^[A-Za-z0-9._/-]+$"
+        $syntaxPath -notmatch "^[A-Za-z0-9._/-]+$"
     ) {
         throw "Release-relative paths must be normalized ASCII paths without traversal or alternate data streams."
     }
@@ -417,6 +421,9 @@ function Get-FenneviaReleaseSourceEntries {
         [pscustomobject]@{ Source = "scripts/verify-release.ps1"; Destination = "scripts/verify-release.ps1" },
         [pscustomobject]@{ Source = "scripts/gui/FenneviaSetup.cs"; Destination = "scripts/gui/FenneviaSetup.cs" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaConsole.psm1"; Destination = "scripts/lib/FenneviaConsole.psm1" },
+        [pscustomobject]@{ Source = "scripts/lib/FenneviaLocations.psm1"; Destination = "scripts/lib/FenneviaLocations.psm1" },
+        [pscustomobject]@{ Source = "scripts/lib/ConsoleLocations.ps1"; Destination = "scripts/lib/ConsoleLocations.ps1" },
+        [pscustomobject]@{ Source = "scripts/lib/NativeDistribution.ps1"; Destination = "scripts/lib/NativeDistribution.ps1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaGui.psm1"; Destination = "scripts/lib/FenneviaGui.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaTui.psm1"; Destination = "scripts/lib/FenneviaTui.psm1" },
         [pscustomobject]@{ Source = "scripts/lib/FenneviaInstaller.psm1"; Destination = "scripts/lib/FenneviaInstaller.psm1" },
@@ -743,6 +750,9 @@ function Test-FenneviaReleaseTree {
         "scripts/verify-release.ps1",
         "scripts/gui/FenneviaSetup.cs",
         "scripts/lib/FenneviaConsole.psm1",
+        "scripts/lib/FenneviaLocations.psm1",
+        "scripts/lib/ConsoleLocations.ps1",
+        "scripts/lib/NativeDistribution.ps1",
         "scripts/lib/FenneviaGui.psm1",
         "scripts/lib/FenneviaTui.psm1",
         "scripts/lib/FenneviaInstaller.psm1",
@@ -758,6 +768,9 @@ function Test-FenneviaReleaseTree {
     $expectedPaths = New-Object "Collections.Generic.HashSet[string]" ([StringComparer]::OrdinalIgnoreCase)
     foreach ($path in $expectedStaticPaths) {
         [void] $expectedPaths.Add($path)
+    }
+    if (Test-Path -LiteralPath (Join-Path $canonicalRoot 'INSTALLER-MANIFEST.json')) {
+        foreach ($path in @(Get-FenneviaNativeDistributionPaths -Root $canonicalRoot)) { [void] $expectedPaths.Add($path) }
     }
     foreach ($file in @($packageManifest.files)) {
         $scope = [string] $file.scope
@@ -1260,6 +1273,8 @@ function New-FenneviaReleaseArtifacts {
 
         [string] $ExpectedTag = "",
 
+        [string] $NativeInstallerDirectory = "",
+
         [switch] $TestAllowDirtySource
     )
 
@@ -1318,9 +1333,21 @@ function New-FenneviaReleaseArtifacts {
         Copy-Item -LiteralPath $entry.SourcePath -Destination $destinationPath
     }
 
-    New-FenneviaSetupExecutable `
-        -SourcePath (Join-FenneviaReleaseRootPath -Root $treeRoot -RelativePath "scripts/gui/FenneviaSetup.cs") `
-        -OutputPath (Join-FenneviaReleaseRootPath -Root $treeRoot -RelativePath "FenneviaSetup.exe")
+    if ([string]::IsNullOrWhiteSpace($NativeInstallerDirectory)) {
+        # Retained for legacy fixtures and explicit PowerShell-only package builds.
+        New-FenneviaSetupExecutable `
+            -SourcePath (Join-FenneviaReleaseRootPath -Root $treeRoot -RelativePath "scripts/gui/FenneviaSetup.cs") `
+            -OutputPath (Join-FenneviaReleaseRootPath -Root $treeRoot -RelativePath "FenneviaSetup.exe")
+    } else {
+        $nativeRoot = ConvertTo-FenneviaReleaseCanonicalPath $NativeInstallerDirectory
+        $nativePaths = @(Get-FenneviaNativeDistributionPaths -Root $nativeRoot)
+        if (@(Get-FenneviaReleaseTreeFiles -PackageRoot $nativeRoot).Count -ne $nativePaths.Count) { throw 'The native installer input has extra files.' }
+        foreach ($path in $nativePaths) {
+            $target = Join-FenneviaReleaseRootPath -Root $treeRoot -RelativePath $path
+            [void] [IO.Directory]::CreateDirectory((Split-Path -Parent $target))
+            Copy-Item -LiteralPath (Join-FenneviaReleaseRootPath -Root $nativeRoot -RelativePath $path) -Destination $target
+        }
+    }
 
     $releaseFiles = @(
         Get-FenneviaReleaseTreeFiles -PackageRoot $treeRoot |

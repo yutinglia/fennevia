@@ -1,0 +1,15 @@
+[package]
+name = "fennevia-platform-windows"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+fennevia-installer-core = { path = "../installer-core" }
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true
+winreg = "=0.56.0"

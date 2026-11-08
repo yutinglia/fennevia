@@ -4333,3 +4333,117 @@ No preference/schema migration, native DOM mutation, new Firefox API,
 dependency, data flow, logging, or recovery policy is introduced. Evidence,
 including reproduction with the owner's local redacted layout, is in
 `docs/research/firefox-157-scoped-container-scroll.md`.
+
+## ADR-095: Tauri GUI 與 Rust 安裝核心，PowerShell 保留手動備援
+
+**Status:** Accepted for implementation，2026-11-08；2026-11-09 實作中，尚未發行。直接擁有者需求確認新 GUI
+不使用 PowerShell、保存 Firefox／Profile 位置，並考慮未來 Linux。
+目前 ADR-049 仍描述已發布的 PowerShell WinForms GUI；此決策不把它標為已取代。
+
+選用 Tauri 2、Svelte 5 與 Rust。新 GUI、掃描、預覽、安裝及 UAC worker
+不呼叫或內嵌 PowerShell；保留現有 CLI/TUI 作為可獨立執行的手動備援。
+Rust core 與 Windows 平台 adapter 分離，UI 不提權，封閉的原生 worker
+執行必要的完整雙根交易。未來 Linux 需另案提供實際平台與 Firefox 證據。
+
+此選擇移植現有安裝行為而非另訂安裝格式：保留 manifest、ownership、journal、
+預覽同意、路徑限制、hash 驗證、rollback、精確移除與 fail-open 復原要求。
+新舊引擎必須通過雙向操作與共同契約測試。跨引擎計畫不能沿用先前的操作同意。
+
+本機偏好只保存明確選擇的 Firefox／Profile 路徑組合，可忘記且每次重驗；
+保存不是安裝授權。新資料流、IPC、依賴與 WebView2 離線部署須在實作時一併
+更新安全、發行與來源文件，不放寬日誌或安全規則。
+
+選擇理由、替代方案、官方來源、分階段退出條件及完整驗收：
+`plans/019-native-gui-installer.md`。待實際交付再記錄取代 ADR-049 的範圍；
+不將本次規劃視為發布或新平台驗證。
+
+初步實作與驗證範圍見 `docs/research/tauri-installer-initial-validation.md`。
+後續原生交易與 IPC 的實作決策及限制見 ADR-096；初次驗證紀錄保留原本時間點。
+
+## ADR-096: 原生交易、單次確認與按需 UAC worker
+
+**Status:** Accepted for development，2026-11-09；直接擁有者要求繼續實作交易、rollback 與 UAC。
+此決策不宣告 P4／P6 全部完成，也不放寬 ADR-095 的正式發行條件。
+後續 ADR-097 取代本節末尾的 development-only、staging ACL 與尚未封裝限制；
+下方保留這個增量當時的理由與驗證範圍。
+
+使用固定 sibling Rust worker 執行完整雙根交易，GUI 保持一般使用者權限。
+renderer 僅送單次 approval token、digest、明確確認及是否接續 UAC；host 保存
+實際 request，worker 重新驗證目標 file identity、來源、ownership 與計畫。
+兩個目標鎖採排序後的 `Global\FenneviaInstaller-<SHA256>`，identity 為
+`target:` 加上小寫、正斜線的絕對根目錄。新版 PowerShell 備援共用相同協定；
+歷史腳本不受此鎖約束。不同 serializer 的 ownership 比較先做完整 schema 驗證
+再正規化資料；兩個根目錄的實際 ownership bytes 仍必須一致。
+
+每個根目錄有 private staging、flushed backup／journal，現有檔案與空目錄以
+handle rename 暫存，失敗依反序復原，保留原物件的 ACL。新建、重新命名採
+已開啟 parent handle 的相對操作，另驗證 final path，拒絕 reparse、alias 與
+mutating hardlink。Windows 實作依官方 [NtSetInformationFile](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwsetinformationfile)
+及 [FILE_RENAME_INFORMATION](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information)
+契約；使用 windows-sys 宣告，沒有複製第三方實作。
+
+以 SID-only、本機、單次 nonce、64 KiB 上限的 named pipe 取代磁碟上的提權
+request。雙向驗證 PID／固定映像位置與原 SID，拒絕換帳號；GUI／worker EXE
+持續開啟並拒絕 write/delete sharing。命令列只有 nonce，沒有完整目標路徑。
+正常執行已完整 rollback 且確認 program root 無法寫入後，才提供使用者點選的
+UAC continuation，使用 Windows `runas` 啟動同一 worker，不啟動提權 WebView。
+
+完成 mutation／rollback 後先寫 `result.json`，等 GUI acknowledgement 再清理
+備份並送最終結果。沒有 acknowledgement 就保留 journal；最後回覆遺失仍顯示
+未知結果、阻擋 session 重試，重新開啟後須檢查狀態。沒有自動刪除殘留捷徑。
+
+完整 release-container verifier 尚未移植，因此來源寫入只開放既有 marker-owned
+開發 Profile 與 disposable Firefox copy；合法既有 ownership 仍可 Disable／Uninstall。
+新建開發檔案保留 staging private ACL；正式 Program Files 權限策略、發行 manifest
+映像驗證、fixed offline WebView2、實際 UAC／GUI 操作與 Firefox 發行矩陣仍是退出條件。
+證據與未執行列見 `docs/research/tauri-installer-transactions-validation.md`。
+
+## ADR-097: 原生發行安裝器、離線 runtime 與共用位置保存
+
+**Status:** Accepted，2026-11-09。擁有者要求完成可用的 Tauri 安裝器，並追加
+PowerShell 掃描／記住位置、同步文件及檢查通過後直接推送 main。這是實作整合，
+不是公開 release publication 或人工測試豁免。ADR-049 的 WinForms EXE 啟動方式
+由新 source build 的原生 EXE 取代；已發布 ZIP 與歷史證據不修改。
+
+完整 `RELEASE-MANIFEST.json` 驗證加入原生引擎：來源身分、exact inventory、
+每個檔案 hash／size、privileged artifact policy、Firefox x64 PE 與 Release channel。
+來源樹仍限開發標記；驗證過的 release container 可使用明確選取的 registered
+Profile 或現有合法 ownership。Disable／Uninstall 不依賴完整 source。新檔案在
+rename 後繼承目的地 ACL；原物件以 rename 保留 ACL 供 rollback，staging 仍 private。
+
+新包包含 GUI、worker、固定 WebView2 157.0.4341.42 x64、262 筆原生檔案 inventory
+與完整 notices。GUI 編入 worker SHA-256；runtime 的 257 筆檔案 hash 編入兩個 EXE。
+只有建置工具可下載固定 CAB，執行時缺件直接拒絕。Microsoft 官方 runtime 的
+`Trust Protection Lists` 目錄空白僅在 release-container 路徑與 exact pinned inventory
+中允許，不修改 Firefox 安裝／ownership 相對路徑規則。不新增廣泛 DLL allowlist。
+雜湊不是發布者簽章，使用者仍需信任來源與核對 ZIP checksum。
+
+WebView 先隱藏載入空白文件，再透過官方 API 關閉這個 app 的 reputation checking、
+autofill 與 password saving，成功後才載入嵌入 UI。Wry 0.57.1 在內部建立環境選項，
+Tauri 2.12.5 沒有公開 custom crash reporting option，因此 vendoring MIT
+`webview2-com` 0.39.1，唯一實作改動將該預設值設為 true，阻止 crash dump 上傳
+Microsoft。保留上游 MIT license、來源與 patch record；未實作自訂 uploader。
+不使用 Microsoft 不支援於 production 的 Chromium flags，也不變更 OS SmartScreen。
+未宣稱關閉所有 OS/runtime diagnostics；網路擷取與乾淨機器人工測試仍未執行。
+選項依 [Microsoft environment contract](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/winrt/microsoft_web_webview2_core/corewebview2environmentoptions)
+及 [WebView2 privacy](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/data-privacy)。
+待 upstream 暴露選項後移除此單點 patch，保留 regression test。
+
+PowerShell release console 新增 per-user/per-machine registry views 與常見路徑掃描，
+明確選取後詢問保存；與 GUI 共用 schema 1、十組／64 KiB 上限、SID-only DACL、
+user mutex、revision CAS 與 atomic replace。保存不帶 plan、憑證或預設 Profile 同意；
+每次重驗，損壞資料必須明確清除。沒有 saved file 仍可手動選擇或用 scripted targets。
+worker 不讀偏好，舊 WinForms 保留手動備援但不新增同一套偏好 UI。
+
+worker 以同一驗證 pipe 傳送固定 phase/count，GUI 只讀取該 bounded snapshot。
+進度遺失不取消交易；authoritative result／ACK／receipt 語意維持 ADR-096。
+UI 同步 dispatch 不能在 Wry UI callback 內等待；privacy 設定完成後移至 blocking
+task dispatch navigation，frontend-ready IPC 才算通過啟動 smoke。
+
+工具鏈／lockfiles 固定，原生建置使用 CRT static、PE reproducible 與來源路徑 remap；
+release preflight 以兩個 source／Cargo target 目錄建立並比較 ZIP。Tauri 明確啟用
+custom-protocol production context，避免 codegen 把本機 config_parent 編入 EXE；
+打包時掃描原生 binary 的 ASCII／UTF-16 本機建置路徑，發現即拒絕。精確來源、授權、advisory
+與驗證限制見 dependency review 及 `tauri-installer-release-validation.md`。
+無 Node/Rust/PowerShell GUI runtime 依賴；Linux、簽章、公開 release 與未跑的
+人工 UAC／硬體矩陣仍不可宣稱已完成。

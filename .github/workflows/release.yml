@@ -30,7 +30,7 @@ jobs:
   verify:
     name: Rehearse exact release
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
 
     steps:
       - name: Check out the annotated tag
@@ -44,6 +44,9 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+
+      - name: Configure pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal
 
       - name: Verify annotated tag and reproduce package twice
         shell: pwsh
@@ -59,7 +62,7 @@ jobs:
     if: github.event_name == 'push' || inputs.publish == true
     needs: verify
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     permissions:
       contents: write
     env:
@@ -77,6 +80,9 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+
+      - name: Configure pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal
 
       - name: Re-run complete release preflight
         shell: pwsh

@@ -18,3 +18,8 @@ profile/chrome/fennevia/**/*.css text eol=lf
 profile/chrome/fennevia/**/*.js text eol=lf
 profile/chrome/fennevia/**/*.mjs text eol=lf
 profile/chrome/fennevia/**/*.txt text eol=lf
+# Native byte pins, lock hashes and notices must survive checkout/archive unchanged.
+installer/** text=auto eol=lf
+# Preserve whitespace in upstream source and license texts verbatim.
+installer/vendor/** -whitespace
+installer/licenses/** -whitespace

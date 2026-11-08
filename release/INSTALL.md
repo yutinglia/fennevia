@@ -21,7 +21,8 @@ is no promise that everything will work. Keep this archive for later recovery.
    ```
 
 3. Extract the ZIP to a local directory. Review `RELEASE-MANIFEST.json`, this
-   file, `LICENSE`, and `THIRD_PARTY_NOTICES.md`.
+   file, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `INSTALLER-NOTICES.txt` and
+   `WEBVIEW2-LICENSE.txt`. The last two apply to packages with the native GUI.
 4. Close every Firefox, Browser Console, and Browser Toolbox process using the
    selected program or profile.
 5. Explicitly identify `firefox.exe` and one Firefox profile. Fennevia never
@@ -43,9 +44,21 @@ $profile = '<FIREFOX_PROFILE>'
 ## Preview, install, and update
 
 The recommended interactive entry is `FenneviaSetup.exe` in this directory.
+This is the native Tauri GUI in newly built packages. It uses the bundled fixed
+WebView2 runtime offline; keep the whole extracted directory together. It needs
+no Node.js, Rust, .NET or PowerShell. Review the included Microsoft WebView2
+license terms before use. A missing runtime fails closed without downloading it.
 Select `firefox.exe` and one registered profile **by name**, acknowledge the
-Firefox 153/154 testing warning, then confirm the redacted plan. If the program
-folder is not writable, choose **Continue as administrator**.
+Firefox 153/154/157 testing warning, then confirm the relative-path plan. The
+selected default profile requires a separate confirmation. If an attempt rolls
+back because the program folder needs administrator access, choose **Continue
+with Windows administrator approval**. Only the native worker is elevated;
+the GUI stays at normal privilege. The GUI never starts Firefox automatically.
+
+Use **Save these locations** to remember the pair locally. On later runs choose
+the saved pair, recheck it and preview again. The saved file is shared with the
+PowerShell console, not with other Windows accounts. Forgetting removes only
+the preference record, never Firefox or a profile.
 
 The PowerShell console remains available:
 
@@ -54,11 +67,18 @@ pwsh -NoProfile -File .\scripts\fennevia.ps1
 ```
 
 The console lists local Firefox builds and registered profile **names**, never
-preselects Firefox's default profile, shows the Firefox 153/154 testing
+preselects Firefox's default profile, shows the Firefox 153/154/157 testing
 warning, shows the redacted plan, and applies only after both confirmations.
 The interactive host redraws in place and accepts
 mouse clicks; it does not require Node.js. If stdin is redirected,
 use the scripted commands below.
+
+The console scans per-user/per-machine Firefox registry entries and common
+installation folders. After target selection it offers to remember the pair;
+later runs offer saved pairs first. The saved-locations menu can forget records
+or explicitly clear a corrupt list. Windows PowerShell 5.1 can also run
+`powershell -NoProfile -File .\scripts\fennevia.ps1`. Scripted invocations below
+continue to accept explicit targets without reading saved choices.
 
 Always preview the complete relative-path plan first:
 

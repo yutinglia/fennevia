@@ -1,0 +1,1293 @@
+{
+  "version": "157.0.4341.42",
+  "architecture": "x64",
+  "source": "https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/b7b22a57-b321-483e-9855-d260b076f1a7/Microsoft.WebView2.FixedVersionRuntime.157.0.4341.42.x64.cab",
+  "sha256": "cedaf8f3d12202c8803bdbae727b01c1be34540b78e8f0a10c6b401c2a8be97d",
+  "files": [
+    {
+      "path": "WebView2/157.0.4341.42.manifest",
+      "sha256": "f7f116af28ca0ce8acde323dc997a830650250960dbf51e7106afba8a15b4f33",
+      "size": 226
+    },
+    {
+      "path": "WebView2/AdSelectionAttestationsPreloaded/ad-selection-attestations.dat",
+      "sha256": "dc94c97fb9437a5137a1d47b376e212732a15cb1266148792b94da6fa9939d17",
+      "size": 63
+    },
+    {
+      "path": "WebView2/AdSelectionAttestationsPreloaded/manifest.json",
+      "sha256": "e92ad2a1a517ec4c6db1538513b0a529966249182b3a571fab3941ea3eff5ff0",
+      "size": 128
+    },
+    {
+      "path": "WebView2/concrt140.dll",
+      "sha256": "f734b6b29d0a6c6f57b3c188fefd758935cd211fabcf220eb64ea6402f0e520c",
+      "size": 384264
+    },
+    {
+      "path": "WebView2/copilot_overlay_images_100_percent.pak",
+      "sha256": "3e11d07e0829c1d8547915f351370e775d3c18958df60a8b7b2ddf817df27d08",
+      "size": 8684
+    },
+    {
+      "path": "WebView2/copilot_overlay_images_200_percent.pak",
+      "sha256": "09f33744da33ec4290d78c830b76e6ff09e1611016dea2090f871b75f5fa8364",
+      "size": 23614
+    },
+    {
+      "path": "WebView2/copilot_overlay_unscaled_images.pak",
+      "sha256": "7a8bf84c03de5113410d6f3b5a98ef9fd2a12407df72446e2f16fd916f3747af",
+      "size": 38789
+    },
+    {
+      "path": "WebView2/Copilot.dat",
+      "sha256": "d79e27858722fcb4c2db9a7fa6bb4fb958eb90c2ab12fd35370be8c05dee7878",
+      "size": 8192
+    },
+    {
+      "path": "WebView2/copilotapp.exe",
+      "sha256": "72fe4d2fc50043a3969f6b6668eb4fa3e07035a37bd532ff28fcd16b59d7f160",
+      "size": 4669256
+    },
+    {
+      "path": "WebView2/d3dcompiler_47.dll",
+      "sha256": "62bb83a86df04dd90d6caea12e17e35d61b3ad6e7abb67ec556b11e3992dc311",
+      "size": 4763952
+    },
+    {
+      "path": "WebView2/dual_engine_adapter_x64.dll",
+      "sha256": "17e7c52b20cc65555e71f3063a8f73b52645be01e69de9a4bb00cae33e8112a9",
+      "size": 5687496
+    },
+    {
+      "path": "WebView2/dxcompiler.dll",
+      "sha256": "c9812c72326d3e696198f26238459fdd2306e08281d5044449b6563a5a688310",
+      "size": 20537672
+    },
+    {
+      "path": "WebView2/EBWebView/x64/EmbeddedBrowserWebView.dll",
+      "sha256": "761c94fc6bba7dfc5579fd314766179744312ac48d698ad5027fb67a0575a9f3",
+      "size": 9101640
+    },
+    {
+      "path": "WebView2/EBWebView/x86/EmbeddedBrowserWebView.dll",
+      "sha256": "3f09b5c4cd15f25cbe19e60b5b5ddc83618bfb7062c6176ee9383715f9165176",
+      "size": 5835592
+    },
+    {
+      "path": "WebView2/edge_feedback/camera_mf_trace.wprp",
+      "sha256": "3f2eb6455f54365c27829f85dd64ca0bafaa8577a6c8e79a54a6dd4c67df6470",
+      "size": 24910
+    },
+    {
+      "path": "WebView2/edge_feedback/mf_trace.wprp",
+      "sha256": "79a228f8f85310c27c292055d9e0e9b827c319c2472b4ba5b40e88851bc4b4f3",
+      "size": 12735
+    },
+    {
+      "path": "WebView2/Edge.dat",
+      "sha256": "aad5a84356ee96f3d6ca9742b23b6124eafba558f6d60ceed6c3067dac459c81",
+      "size": 12288
+    },
+    {
+      "path": "WebView2/EdgeWebView.dat",
+      "sha256": "482297326005fcb6e961e9b3e327e4cbb151901e7ca55cbe2bf982823bc06934",
+      "size": 8192
+    },
+    {
+      "path": "WebView2/eventlog_provider.dll",
+      "sha256": "2e854945fa5854673b09bbd1dc9c3a97b4f5ec8bee0e65262ef1818aca7274a1",
+      "size": 16200
+    },
+    {
+      "path": "WebView2/Extensions/external_extensions.json",
+      "sha256": "a68cafd7d78d5c671c2560656653f2a4d83ab66d87a8728356a88fb1f477b3e6",
+      "size": 99
+    },
+    {
+      "path": "WebView2/ffmpeg.dll",
+      "sha256": "186920d5843e84963de456d104f9cf59261944119ea32fdaecd24cd53b8bbeb7",
+      "size": 3112776
+    },
+    {
+      "path": "WebView2/icudtl.dat",
+      "sha256": "8fa69fc9ebcce09fa8ffac89afcf8088e8f70a177fa90d80a90668f5389f2579",
+      "size": 12409424
+    },
+    {
+      "path": "WebView2/Installer/copilot_setup.exe",
+      "sha256": "fc495d8fe161e15450e8aad0741317ab8764a406ddd95af44dbf187c774b5bf7",
+      "size": 105288
+    },
+    {
+      "path": "WebView2/learning_tools.dll",
+      "sha256": "f7ab6a5f34bc6252eb702f0066cf20cae62464182852a84621a0dd3abb49a2a5",
+      "size": 1311048
+    },
+    {
+      "path": "WebView2/Locales/af.pak",
+      "sha256": "8586f62ed79730bbc25f4d0f6594b9b0c19a17a3ea7394701dc14db54a7020e7",
+      "size": 1115727
+    },
+    {
+      "path": "WebView2/Locales/am.pak",
+      "sha256": "aebafb5f1a6ac5fa897cecb3273f444e9e27064b13fd537d45b2a6912072a465",
+      "size": 1647726
+    },
+    {
+      "path": "WebView2/Locales/ar.pak",
+      "sha256": "c6f69d3fb4725f2b3a9670575df3b2e97d4413ba422cb03480b2f077013c0bbc",
+      "size": 1709125
+    },
+    {
+      "path": "WebView2/Locales/as.pak",
+      "sha256": "11b58965f04e23d38e1c2537fc45b14accaf9c455598fe515201570e7413c0dc",
+      "size": 2435813
+    },
+    {
+      "path": "WebView2/Locales/az.pak",
+      "sha256": "e36181c4558fca9480d53e96adfc3b6bc45e9535e8fd31bf1874c40ad4d6cdbc",
+      "size": 1284692
+    },
+    {
+      "path": "WebView2/Locales/bg.pak",
+      "sha256": "bbe147bce70d85f7760dc6214215dccb9cae8aa2fb17884d97a1737630f2aa56",
+      "size": 1922878
+    },
+    {
+      "path": "WebView2/Locales/bn-IN.pak",
+      "sha256": "b7af8934db3300abce3728b3592525b058d0a1d3be5fd5820a7fc2f7ce2fcdc5",
+      "size": 2519189
+    },
+    {
+      "path": "WebView2/Locales/bs.pak",
+      "sha256": "8101cd6ff1781fbbfb862a14777c540877ed83db6a4983d94bce5d8fa041768c",
+      "size": 1192982
+    },
+    {
+      "path": "WebView2/Locales/ca-Es-VALENCIA.pak",
+      "sha256": "b479429438dd8f9b2a6f9b5381804fa30696e42a051acf8ce404e6901d5bb496",
+      "size": 1251388
+    },
+    {
+      "path": "WebView2/Locales/ca.pak",
+      "sha256": "e9f748f29c6dd4b437bdd660ccb2a0a83ed8eaab0c7ebf5d342ccd91c0f1d26f",
+      "size": 1252873
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_af.pak",
+      "sha256": "bb8f5d12adf138b3449683f888daa0f4106c1c0061c1d9fdb865c9936805e34e",
+      "size": 65146
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_am.pak",
+      "sha256": "cc9661927ea2be5a53af2f012602ef55a92168e44bf8219d58185fdaf3d9af28",
+      "size": 95236
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ar.pak",
+      "sha256": "c434c8a1f0fac6da71c6d43abd209138c0953ea6f138f476bca0ed7fdf6bef96",
+      "size": 92138
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_as.pak",
+      "sha256": "0a00e7562273001132a96fbc024bdc4a7982d047e173e1453ebfe5d739f19948",
+      "size": 142024
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_az.pak",
+      "sha256": "948ae2f6b7d64723dac844bcc94fbd6b736d7a1062e86dd69a95fd7e048e3552",
+      "size": 73213
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_bg.pak",
+      "sha256": "fa1180621c6fc32f2cceac625f10dcce9904cb574a3cc6bfee9e5cbbff359d4e",
+      "size": 108089
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_bn-IN.pak",
+      "sha256": "44d15853842fff2a74ae20e9fccdd0bb5a90f3ce194e7340893747467935f591",
+      "size": 148441
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_bs.pak",
+      "sha256": "0e40830b5fd5a20221f87cb676c054e5d0e45e56738cfcfab0a146abd2792904",
+      "size": 67772
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ca-Es-VALENCIA.pak",
+      "sha256": "9a52058ff1cfe560a084896551cf79872ba9769fa98c54832a3e184dd9769612",
+      "size": 71410
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ca.pak",
+      "sha256": "039401c52dcf8f25784f494498d88805c92e99dacf249d6e6ba3ae1192f177a3",
+      "size": 71197
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_cs.pak",
+      "sha256": "ef56f10e6a7b3d1bb3057a530b64a06d19f2707d88f601872ec7762ed8c685c7",
+      "size": 69351
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_cy.pak",
+      "sha256": "2549d09e533060119426576db1eacc353741a7861782caaec9ddb847643faf94",
+      "size": 69492
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_da.pak",
+      "sha256": "ea1a7b4cab084bc2f5a257f49f79fea3e5679a59406d833d37d60a5b9f987af2",
+      "size": 64674
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_de.pak",
+      "sha256": "2d915e94591405f6f2a1c9849badc28c98574e6563936fe4edc676f397652566",
+      "size": 72199
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_el.pak",
+      "sha256": "8eaac40e6e726eed5dee253a0282ec7fddf2caf960ef7ca41483d5521c5b6c94",
+      "size": 122440
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_en-GB.pak",
+      "sha256": "47682acf4339c504d2abb007484219bd1da494fc42211d17330db8f4e4a17e74",
+      "size": 59559
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_en-US.pak",
+      "sha256": "7948538e0d95a831fbcde3940530ce5fd94a07296feba5e2daf53582edf21c29",
+      "size": 58915
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_es-419.pak",
+      "sha256": "783ea13a108e3fbcf1839faa94a367a61d77d352ba73a9729de8e6359f1e37c3",
+      "size": 69694
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_es.pak",
+      "sha256": "df4e4e0693e40ef19d701b16af898109cbd9b7356a88aa75bad2239e4dc98325",
+      "size": 69499
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_et.pak",
+      "sha256": "2a02e20905a46d8b7cd4fbf9f2f0cc56c5f3b74d1a3d642f8fc325107b45ae13",
+      "size": 63511
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_eu.pak",
+      "sha256": "8b970b54dd1850e30a5212b477a0427bcd65ba7c407166102591dd039955c004",
+      "size": 65472
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_fa.pak",
+      "sha256": "36a97abbe8477f8842b3ed0f71900251414cf324d1900979afbfb8d57b3a36bd",
+      "size": 101734
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_fi.pak",
+      "sha256": "3b8e9b9daebe9c2b60e49fa0564d7222650013b4b9b64d1ac33520ae85835d1e",
+      "size": 67003
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_fil.pak",
+      "sha256": "0bdcf1125e87ca0800aabd2a58e67f84c59bfeb7292004dc99b3b7e41d6edc7e",
+      "size": 72906
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_fr-CA.pak",
+      "sha256": "a9c812eb026a5722b11372abba86e1df7fc32de17b6bdfa9638371decc91cf4f",
+      "size": 76767
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_fr.pak",
+      "sha256": "d9388d2deae27179bc3dddd05df07f55949a56d8fef00e651e39dfa2c59daf01",
+      "size": 76254
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ga.pak",
+      "sha256": "adfd45848e693bf5494fe09b1edb6886059f7427146b6537cce20ac5d746b5d6",
+      "size": 76241
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_gd.pak",
+      "sha256": "1ad3764c0ea48184ede7a6cf5bb1279786a04dbad92c75df7decef8fd1ba98ee",
+      "size": 78049
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_gl.pak",
+      "sha256": "f8e8924698a29131beb607c078a72c487c226557ee824f8935e18845587ea894",
+      "size": 67942
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_gu.pak",
+      "sha256": "9aa7bbbe191bf2df8fefad54aa08b6201b5048ade2eca87a243e03299e25bd67",
+      "size": 143617
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_he.pak",
+      "sha256": "17fe236f6685259c9dee847c6adb81f051d79400e0f7674b6061ba4bd094ec9c",
+      "size": 82452
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_hi.pak",
+      "sha256": "c4211fac89c0bec68dd5e983d699d2ad742e245396b21ef50e3d29227caf9fb8",
+      "size": 140509
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_hr.pak",
+      "sha256": "0d79eb5438a2cb89fa3638719cc29b30f0432c14ad7cee1b6a28bd81a7aff610",
+      "size": 68307
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_hu.pak",
+      "sha256": "c949678748013a4ef3ab6f73bc2690258198d58bf00fe045ca363a4ba908c758",
+      "size": 73209
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_id.pak",
+      "sha256": "6a2f248abaa5e36daf2f4c3c317dd080fe60dec40ae79eda585f8e8eb747f9a1",
+      "size": 64794
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_is.pak",
+      "sha256": "ce49d165a47915aa2f77efb6f1fadca0d21caf08309047936a2d922ec3e46e08",
+      "size": 68834
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_it.pak",
+      "sha256": "665e0e6c32ecc6624f37e14c2a8cd74cc8c773d97a13e87262a36af61503b766",
+      "size": 69334
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ja.pak",
+      "sha256": "f229e806a4a2f7b421099bb33f66e78fdca7b5be21a8b3288424bc3c86752775",
+      "size": 83922
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ka.pak",
+      "sha256": "45c2addaa8fa280fc45ea78573a93e3fa3c77774d8c9728b1eadb16805f84d21",
+      "size": 151395
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_kk.pak",
+      "sha256": "da2b1454d10e76a6e9fcbd3c72d7727b7c9468d93581ceafbc1277f7f5258393",
+      "size": 111364
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_km.pak",
+      "sha256": "c13dfd4994c6813d219b7d546e8589377bd796efb6d0a3b74853123986e6c15f",
+      "size": 152458
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_kn.pak",
+      "sha256": "021e0a61a9a7348f349d9509d77b26b9cee378e5608b22b916c73798d99bbde8",
+      "size": 154694
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ko.pak",
+      "sha256": "d6387370937867462f68ec2f3a01f23e7caa9d4c849a5b992ca5ecd141a3da63",
+      "size": 72391
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_kok.pak",
+      "sha256": "f5994278543eac462addba04126b0e558573918801a8b921ee132c6c77a63d64",
+      "size": 134068
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_lb.pak",
+      "sha256": "81b75007bb60d2c55c1a5083dee8a1d6a8c33fead40f034b71a0a75b2d6522c0",
+      "size": 70062
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_lo.pak",
+      "sha256": "cc14c8014336a82193bff8c24b47e8395fd3200e759ebde0bb9766a12ffc04c1",
+      "size": 138001
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_lt.pak",
+      "sha256": "38cffdd32697b45ee97a0094baa7c22bc34e57f0b88e2cefb4c4076e128220a1",
+      "size": 72376
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_lv.pak",
+      "sha256": "986ae68a6dc87c0402c1488beb2feec30d56a8c87d780a7e011d1143384f5f60",
+      "size": 69766
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_mi.pak",
+      "sha256": "6c779a7cfa782373d47d7c1ee405b33d4e455420442aa65fe653fec4a2c175d6",
+      "size": 70655
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_mk.pak",
+      "sha256": "00d06d475f8db8fe170bab13f6ee95d9e0e5cf495442a9c52f3afe566ca12b09",
+      "size": 109574
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ml.pak",
+      "sha256": "498478d66ab4f3c02ee784fa240584967e45b988d7f7436bc7a2110e06e41b42",
+      "size": 171695
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_mr.pak",
+      "sha256": "779aaf14974dac1a98ef43ebe245d25d3372c5ad366013d77fa5749c2a273d67",
+      "size": 144167
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ms.pak",
+      "sha256": "c6f5c164e2602b6f5af594934c98a69c0e901015299c78790722d18cf7779448",
+      "size": 67133
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_mt.pak",
+      "sha256": "774a426489448c16732166c314dd7032c54ad71e522fb468876a4580a933dc47",
+      "size": 72750
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_nb.pak",
+      "sha256": "8d6116dfd810352a35dec5c41b5c3b777ce9d1dad21719eac983611a6b5154c9",
+      "size": 63046
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ne.pak",
+      "sha256": "3fc43bd5d8cc3713ac2c8a3a618861dfae3c131ea79ff03d7cf49bcaf74582f3",
+      "size": 148077
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_nl.pak",
+      "sha256": "460e3aa7fdd6f0a92b7502ba6e9acbaaedd9949098eefe0ca07b24b449b616a0",
+      "size": 67852
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_nn.pak",
+      "sha256": "e37738d76d4408796ff73dc91856c00fb45aefb3d895545df875269b3cc34be0",
+      "size": 62910
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_or.pak",
+      "sha256": "aea510a92ac10b211ffb43a89af30f410fc4c0e7553b1bd71be193d1160040d6",
+      "size": 154625
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_pa.pak",
+      "sha256": "eb5e20b60508483964666b355129fe60ebb5800ae43a187fb37a17b5c5333479",
+      "size": 147300
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_pl.pak",
+      "sha256": "7b35141f4b097225074d6dd00a806bdf614429832dd2f91c84b73ff3963d7c65",
+      "size": 74745
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_pt-BR.pak",
+      "sha256": "65760bd8c39cbffbf476bdf85c322bf51e270745905da41fff9dea857cfd6bd2",
+      "size": 68144
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_pt-PT.pak",
+      "sha256": "ad9932eeb91f7f11ef4f25fc94aa64e82d1b516dcec0ca0d80b9c08624be8d4c",
+      "size": 70393
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_qu.pak",
+      "sha256": "0f0edc68456da7d6dc333519ed82d45ea4a32da6b69637bd39eb0f76b10769ba",
+      "size": 70343
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ro.pak",
+      "sha256": "0ffe89e889cbf0ab5be943a5dbd49652b03eba3ff9ce419ceb382cf7b64b59a6",
+      "size": 71308
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ru.pak",
+      "sha256": "f0c921f6e1bd24dbc2d59a09a40eb38c5199139e15698baeb41449c575429045",
+      "size": 109668
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_sk.pak",
+      "sha256": "7e767b80228df07a3fc608beabe7828d2a5bc86c28bf0bc94c993f9c4a61d071",
+      "size": 70851
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_sl.pak",
+      "sha256": "4aed5501a436ef491ca2f4c03c551248d2779383434c1a80f5383bdef6d8856e",
+      "size": 68529
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_sq.pak",
+      "sha256": "5468ec79ffd1fe061a474f893a99c303cb8a0ecb0b8262e819eb8bb6b6ba80f5",
+      "size": 70422
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_sr-Cyrl-BA.pak",
+      "sha256": "41279cc7914738e1dc3c458cbfbdedae462617daf7b6830c2c895e79fdfdea50",
+      "size": 105506
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_sr-Latn-RS.pak",
+      "sha256": "9b8e748a9177e0610b1d495e8dab1575a17441971f669ee25dacd046a932cba7",
+      "size": 68509
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_sr.pak",
+      "sha256": "d5e4351a7e6fa0de0835ee2b70daf4c3daa6db9b9409cf0775654cd9f75fe066",
+      "size": 107122
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_sv.pak",
+      "sha256": "994bbbd33ae6d3ebb965e238e4501b1cb9884a74e4f90789c3bc1bf24529b55c",
+      "size": 64169
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ta.pak",
+      "sha256": "1a3ba4b649dc3ffc117e3268b3443745cbb03be34e4ac54309d4c6e4430fa09a",
+      "size": 166804
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_te.pak",
+      "sha256": "736ff48354a0547c5a0eb0d1bf963b9bfa8182e21dc6b9514dbfed1e551306a1",
+      "size": 153625
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_th.pak",
+      "sha256": "fe8d0b144387f51aa1b8086bec1bbb530514b4c4f4687cb05e480a20485d4cf9",
+      "size": 135615
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_tr.pak",
+      "sha256": "6641b863e72dd88acacc1e25e2f32f5148bbeb5ca1f250bc8b29d18e2d4c03f0",
+      "size": 69912
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_tt.pak",
+      "sha256": "741f6371471adb83219ab05daffd626dd39cc3ce1b76340f86c184cbd34fb74e",
+      "size": 106543
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ug.pak",
+      "sha256": "28ae6415ab9dcd15bcd508758edcd85808c10eb24eab7cd02df14186df1eada7",
+      "size": 107750
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_uk.pak",
+      "sha256": "fa614d412559ef6f5231711cdc52f5aff47c07f11d3af6f2774dbe3768235ce5",
+      "size": 105962
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_ur.pak",
+      "sha256": "779bd5201171955eca1adbe2afad7bec7621e569763d4099186347f8808cbc1a",
+      "size": 103928
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_vi.pak",
+      "sha256": "36f1cbf378d90cdc677fbb2b0efdbe7847afc483b95452dc7637ecf2ed985d7d",
+      "size": 80039
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_zh-CN.pak",
+      "sha256": "7e44c5cf76985e8300e8b9d234dbfaf86691541a2b1aa4473ac2cd4a1d3a3f58",
+      "size": 55950
+    },
+    {
+      "path": "WebView2/Locales/copilot_overlay_strings_zh-TW.pak",
+      "sha256": "3a81761eb4d6300008e8fb67462051c8399c4a05b9fd6f9c0a758843715bb7e3",
+      "size": 58162
+    },
+    {
+      "path": "WebView2/Locales/cs.pak",
+      "sha256": "f0ad91914f178f3d1ce45056dc17434583de5767e317c5e848f9274b735e802c",
+      "size": 1245668
+    },
+    {
+      "path": "WebView2/Locales/cy.pak",
+      "sha256": "f13c1096450bc3440f1f39b4df383869c56f99bc082a09c21348f775297b87dc",
+      "size": 1233061
+    },
+    {
+      "path": "WebView2/Locales/da.pak",
+      "sha256": "35e75715a205ea7249e8628fb91fdb7f09d4e772d58f3985bf6ef9028d510055",
+      "size": 1118394
+    },
+    {
+      "path": "WebView2/Locales/de.pak",
+      "sha256": "ca6b4cc751260cce28804b7c5b4722dd32b5cd60a4c4f9fde97add0d23f4ab8d",
+      "size": 1247474
+    },
+    {
+      "path": "WebView2/Locales/el.pak",
+      "sha256": "04ade6f4f24fd8c6ef283bed18363d7a3460555f839f333180f85ce944cdd1f5",
+      "size": 2125136
+    },
+    {
+      "path": "WebView2/Locales/en-GB.pak",
+      "sha256": "6b409c684a8b3593a05fc284437f48fab78125bd56424279b597eec7950367f7",
+      "size": 1016852
+    },
+    {
+      "path": "WebView2/Locales/en-US.pak",
+      "sha256": "2a733fb3bc4ed0f566c8377c457a940b9d58ae3d4eea1058e1fe4910bb254dbe",
+      "size": 997522
+    },
+    {
+      "path": "WebView2/Locales/es-419.pak",
+      "sha256": "c334740a7a879cbe28fb083c4f4ab5978fb376cac86fde16bfa2924f8357a105",
+      "size": 1237562
+    },
+    {
+      "path": "WebView2/Locales/es.pak",
+      "sha256": "f2c6133432e41ea4892f228acc001906f94bb4774cd0594ff53b399ab53b6075",
+      "size": 1238203
+    },
+    {
+      "path": "WebView2/Locales/et.pak",
+      "sha256": "95786b3306b23349d3eda8be8030cccb5864236b8cc12d8d75f661dd3e3f00cc",
+      "size": 1106519
+    },
+    {
+      "path": "WebView2/Locales/eu.pak",
+      "sha256": "69a243391a57f7bbb05565e35373257c60010bd38b87185fede4a2e1bc3ba8a7",
+      "size": 1149928
+    },
+    {
+      "path": "WebView2/Locales/fa.pak",
+      "sha256": "81ad9a4bea78c73e2cf3fa96abb32c2609f7f207b6ec832e6615c3c5ce3b42bc",
+      "size": 1733049
+    },
+    {
+      "path": "WebView2/Locales/fi.pak",
+      "sha256": "5c9c9337c16f620a4e2f2b4d0cb68ce8cf941e8eb57d5e917580c8badb88c446",
+      "size": 1155269
+    },
+    {
+      "path": "WebView2/Locales/fil.pak",
+      "sha256": "c43b88eeede877d8da6cbe7cc8208ceec8482e21c202a4c571c5308db29d62d8",
+      "size": 1247051
+    },
+    {
+      "path": "WebView2/Locales/fr-CA.pak",
+      "sha256": "9deb11b65fe2eb2f217ccdf7e4d4d56a806661fdbad22e758839d062d8a6534c",
+      "size": 1330980
+    },
+    {
+      "path": "WebView2/Locales/fr.pak",
+      "sha256": "bafdafc9d60c8e8f61da7b69fde7ba59d53c7a10a561af257672a2396f502986",
+      "size": 1319056
+    },
+    {
+      "path": "WebView2/Locales/ga.pak",
+      "sha256": "d0480db1ae01adbcd36bf5ab967b617d7d38b79c5bdc5f241f42b9dc11b97429",
+      "size": 1325858
+    },
+    {
+      "path": "WebView2/Locales/gd.pak",
+      "sha256": "c24d71758480d6b871356656c313d50d4a606b8bc2e5505a572a3cc5c901716a",
+      "size": 1400807
+    },
+    {
+      "path": "WebView2/Locales/gl.pak",
+      "sha256": "77226c99f39ab79f59db64ef5ac01eca1827ca30b5e412a3fb6270c1726aa78a",
+      "size": 1185852
+    },
+    {
+      "path": "WebView2/Locales/gu.pak",
+      "sha256": "e7e7e076a38aa43cb7acc8735510ff26068eaadcdd28148becc16ed8527a9349",
+      "size": 2387528
+    },
+    {
+      "path": "WebView2/Locales/he.pak",
+      "sha256": "03115d5a0363c429493bb2d1e14cbe56cc5601a8ae99d02bed49212d0f53c207",
+      "size": 1439092
+    },
+    {
+      "path": "WebView2/Locales/hi.pak",
+      "sha256": "79bdbee9977b052f772a779f028e398d9b3b937a871fe70b3894e61684216efb",
+      "size": 2379665
+    },
+    {
+      "path": "WebView2/Locales/hr.pak",
+      "sha256": "0536ca8af090ed9f27e3c28694fce49a746a28b678b1c56c964529d1518caa8a",
+      "size": 1208742
+    },
+    {
+      "path": "WebView2/Locales/hu.pak",
+      "sha256": "1aea26e3d63579beab71d57a3b251e1ef7f7bcc06b283122364efc265f43c344",
+      "size": 1277929
+    },
+    {
+      "path": "WebView2/Locales/id.pak",
+      "sha256": "d2d92cafe791700f27164d24d0902bb3834bcfdb1a48e6569938aff877d51469",
+      "size": 1092219
+    },
+    {
+      "path": "WebView2/Locales/is.pak",
+      "sha256": "74749bf8358f17a5a794cde6250bcb5b78bec2d0f43a7c9c5c2a994f13ad1918",
+      "size": 1173140
+    },
+    {
+      "path": "WebView2/Locales/it.pak",
+      "sha256": "c170b638f6e5f28727f90bb1bc6b9d82c9072dc53d937171c18f048880dd44c9",
+      "size": 1219953
+    },
+    {
+      "path": "WebView2/Locales/ja.pak",
+      "sha256": "941d6396f8ec2873fdd65b249b77cd61638a2741591258d9f0a17860d5477efa",
+      "size": 1425076
+    },
+    {
+      "path": "WebView2/Locales/ka.pak",
+      "sha256": "93ddcb53bfac6b110e0a2f3cfca65c57a194756fb1c4f12e941f7ecab51501cc",
+      "size": 2663440
+    },
+    {
+      "path": "WebView2/Locales/kk.pak",
+      "sha256": "998d45eb11721395e0b74ac152428739fa23b46a9f02736856f9d84140ee6ec0",
+      "size": 1884042
+    },
+    {
+      "path": "WebView2/Locales/km.pak",
+      "sha256": "7b9fce2ec1747813503467a16e60b31857a86aa56fd02ac3e497d302170dd621",
+      "size": 2565617
+    },
+    {
+      "path": "WebView2/Locales/kn.pak",
+      "sha256": "b4ca12ab8daeb60f5d226db9c7e44d5605ff83fbac2828e010595aa8ed0792dc",
+      "size": 2670998
+    },
+    {
+      "path": "WebView2/Locales/ko.pak",
+      "sha256": "7b669d82b069baa4725cf78073c7fb640a3af1e639df5d21d06e5e2117e849e4",
+      "size": 1199451
+    },
+    {
+      "path": "WebView2/Locales/kok.pak",
+      "sha256": "cf1304c3bde357eb72842adbd850ccef21972c2d0b5c9e4457bff610cfbc0b65",
+      "size": 2301158
+    },
+    {
+      "path": "WebView2/Locales/lb.pak",
+      "sha256": "fbbfcedc517a2a53e85302e81f935a217fff958e555039065f0099e509996007",
+      "size": 1204518
+    },
+    {
+      "path": "WebView2/Locales/lo.pak",
+      "sha256": "5309ea1afe4bf4e44ffb082f8924c4c1441cf97e75711baaf5ab5fd93d2df141",
+      "size": 2329609
+    },
+    {
+      "path": "WebView2/Locales/lt.pak",
+      "sha256": "fd4b3ec14df78df266b9b4d3377378f11a53bb99b4971475a24966142920e0fd",
+      "size": 1263780
+    },
+    {
+      "path": "WebView2/Locales/lv.pak",
+      "sha256": "927861ecfdff01238ea07ef9fff65cb41f987206c273944301c1dbb12f755608",
+      "size": 1230732
+    },
+    {
+      "path": "WebView2/Locales/mi.pak",
+      "sha256": "5af20ee5782c6fc0af90993b497e49f39ed623a278d2cbc0591d7cbe4471550a",
+      "size": 1204238
+    },
+    {
+      "path": "WebView2/Locales/mk.pak",
+      "sha256": "5ee9166899f35848885e2ffe99402540994f236169f77827343173a050a131a9",
+      "size": 1919137
+    },
+    {
+      "path": "WebView2/Locales/ml.pak",
+      "sha256": "6dfe4baac1d4d498249f13817b658cc52bda8f6d6f7163b278df29c6d546382c",
+      "size": 2926233
+    },
+    {
+      "path": "WebView2/Locales/mr.pak",
+      "sha256": "1b1ee5ee687c3ac0f09f72dd07e1e4c3d7eba96e4733239d999e7c8a0a6245ff",
+      "size": 2406946
+    },
+    {
+      "path": "WebView2/Locales/ms.pak",
+      "sha256": "90f9fba37d893a6555d7a2a2d899c14bba245776cfecc6f117b81586ae7d1664",
+      "size": 1127370
+    },
+    {
+      "path": "WebView2/Locales/mt.pak",
+      "sha256": "cf88fa8dbc4a541b5ade31b71abaf77c3a2a3e96d837b1086160e4a47c0b85df",
+      "size": 1283574
+    },
+    {
+      "path": "WebView2/Locales/nb.pak",
+      "sha256": "430cc321d51037ab35485269b0a31cb40d37ec32a187a142634b5dc33b6dab8a",
+      "size": 1087030
+    },
+    {
+      "path": "WebView2/Locales/ne.pak",
+      "sha256": "0539f50bcd30d4b0e4236824224b48630bde9292ae7b8d0975e3e1cc6ce8d8c1",
+      "size": 2552976
+    },
+    {
+      "path": "WebView2/Locales/nl.pak",
+      "sha256": "4d0d74d9355322b242f98f6016903b9e9ab45d1a73b5a1e6771dffb86a46d73c",
+      "size": 1164925
+    },
+    {
+      "path": "WebView2/Locales/nn.pak",
+      "sha256": "0705d44c9963567be1917be1e783f463359b86110c36f97514bfec3475977abb",
+      "size": 1091591
+    },
+    {
+      "path": "WebView2/Locales/or.pak",
+      "sha256": "d62f09c171e81093909234ce7e05680e7af32e602dba6e0a00c79523c67652c4",
+      "size": 2653527
+    },
+    {
+      "path": "WebView2/Locales/pa.pak",
+      "sha256": "d468159492eab8209222cd1c9c42ecb04ce2ade68872e3dd1e17e18f48357819",
+      "size": 2427008
+    },
+    {
+      "path": "WebView2/Locales/pl.pak",
+      "sha256": "b1804f8a0ac7656b3f13c459f2dae1c90b272370ce7b13581440c2c15c3e9d72",
+      "size": 1293840
+    },
+    {
+      "path": "WebView2/Locales/pt-BR.pak",
+      "sha256": "da21ceac7e4ef97816d87f0f39cca214161e94756eb666597af721d70c16b3d5",
+      "size": 1196474
+    },
+    {
+      "path": "WebView2/Locales/pt-PT.pak",
+      "sha256": "76c728b85065369594561b1d0487342f6aaf4d595e98ee0df26a626b621920ec",
+      "size": 1235082
+    },
+    {
+      "path": "WebView2/Locales/qu.pak",
+      "sha256": "23ab863853a0f8812481cc77dd4ecd3406b2a05fe610a4331de96110dc9c266e",
+      "size": 1238112
+    },
+    {
+      "path": "WebView2/Locales/ro.pak",
+      "sha256": "93a794ad347141cb6e4772044e2384b9491503f572c0f001479fce191482a1e9",
+      "size": 1248839
+    },
+    {
+      "path": "WebView2/Locales/ru.pak",
+      "sha256": "bcb6d7440830b2a7570bb85b16d2e1321e6f7efcec8eefcc8c20434f513975c3",
+      "size": 1962195
+    },
+    {
+      "path": "WebView2/Locales/sk.pak",
+      "sha256": "11e1dea4ee341cbd642213c75f5b9fae9405b4ddff9b6a0ddcca6b0aaefe5346",
+      "size": 1269684
+    },
+    {
+      "path": "WebView2/Locales/sl.pak",
+      "sha256": "12dad4003e293f89e9ca30a84a48fc952cc7bb648c94a1542b0e46c014ee0bf2",
+      "size": 1203782
+    },
+    {
+      "path": "WebView2/Locales/sq.pak",
+      "sha256": "d7ab6457af24e6237513b7bd013a97ecd8a55ae7a192f425bd2b9d13cd199b60",
+      "size": 1225497
+    },
+    {
+      "path": "WebView2/Locales/sr-Cyrl-BA.pak",
+      "sha256": "4f07aee3c82b555b39f0e4a4812bbf9338bbee8a82423fbc2d8c1ead43a6b0dc",
+      "size": 1857247
+    },
+    {
+      "path": "WebView2/Locales/sr-Latn-RS.pak",
+      "sha256": "2b50193ac5cdb24ed3a1fbe9691d607e47e60884b5ba5c372589e3463ed0a497",
+      "size": 1198290
+    },
+    {
+      "path": "WebView2/Locales/sr.pak",
+      "sha256": "b2c5d29f9f3747ca851cf63284fb2b0a6dd45a8e384a871b8014f9a5861ab067",
+      "size": 1875689
+    },
+    {
+      "path": "WebView2/Locales/sv.pak",
+      "sha256": "93f213360e83986c0c0972ccbfe7c0f50e345f9657fd7617e30be5a98fbd3d79",
+      "size": 1118707
+    },
+    {
+      "path": "WebView2/Locales/ta.pak",
+      "sha256": "b22ec396f3041b816f4938157f02532c9f8f667531022095b0e64f4cceaeceab",
+      "size": 2911768
+    },
+    {
+      "path": "WebView2/Locales/te.pak",
+      "sha256": "9040cf505216e9b10b912a9cb90f07c2594ebe7076bf05c641d91085f0070010",
+      "size": 2631257
+    },
+    {
+      "path": "WebView2/Locales/th.pak",
+      "sha256": "cb920097cc9dc09575c2a0e8d46ef25a0c669d9d364354e58c8bdbd12bb102f0",
+      "size": 2304268
+    },
+    {
+      "path": "WebView2/Locales/tr.pak",
+      "sha256": "b1c0d788083f5b55b8c38de60b8a714f44cecb499acc1fe7f62d0017eadd2fef",
+      "size": 1200102
+    },
+    {
+      "path": "WebView2/Locales/tt.pak",
+      "sha256": "8930e4de72cf2f0edd361b80dea2ae152df977da53a45e28ab124e5b33c128e7",
+      "size": 1890935
+    },
+    {
+      "path": "WebView2/Locales/ug.pak",
+      "sha256": "32f87ab7646f2dae6561f19fca4cce62dca8c98b37a49f262a924656387a4083",
+      "size": 1831086
+    },
+    {
+      "path": "WebView2/Locales/uk.pak",
+      "sha256": "a7371106ce98da91d1fa6823041cfed695fec4444dd2e26695b12c29faedf859",
+      "size": 1925868
+    },
+    {
+      "path": "WebView2/Locales/ur.pak",
+      "sha256": "5fbccce78ff68191609a12371aa2637801c00090e578bffd85ea81afaef25eec",
+      "size": 1751794
+    },
+    {
+      "path": "WebView2/Locales/vi.pak",
+      "sha256": "9d7bb2bbd201bdccb54c1a11fa0816482bd8f7da621557bb1cdefc0d6b53c4ee",
+      "size": 1372868
+    },
+    {
+      "path": "WebView2/Locales/zh-CN.pak",
+      "sha256": "a1d16a8f29c373ebc8da19e324f5f8bc0b3927778ccddddb3bfca596d4dd189e",
+      "size": 956035
+    },
+    {
+      "path": "WebView2/Locales/zh-TW.pak",
+      "sha256": "8840247219ddcedd7850bd749901ed3c4cd855a91b55282dd89ebf2c81f8b4bb",
+      "size": 989283
+    },
+    {
+      "path": "WebView2/MEIPreload/manifest.json",
+      "sha256": "44844cf3dde6e80087ae0e6bf0d9326d7ef7d23326d24ac83af0850be26923d2",
+      "size": 238
+    },
+    {
+      "path": "WebView2/MEIPreload/preloaded_data.pb",
+      "sha256": "c6070a157b4e28d16fbccbd233e93846ddb070c85e1a1bc64469b7a5f1424fad",
+      "size": 8254
+    },
+    {
+      "path": "WebView2/microsoft_shell_integration.dll",
+      "sha256": "ca10f0d52f9e22f6d8a9cbfde7ffed9cc0bada866c025ede100b007c113d743d",
+      "size": 463688
+    },
+    {
+      "path": "WebView2/mip_core_gn.dll",
+      "sha256": "38c77b9bc66d413a236d74e8c093651293abb46b5fbaa5e2e99d29ff47e3e763",
+      "size": 8603464
+    },
+    {
+      "path": "WebView2/mscopilot.exe",
+      "sha256": "fac6896e184a3a54d5fe984ab7d4f0c7b1b9a260a6502225f769967335e97037",
+      "size": 4629320
+    },
+    {
+      "path": "WebView2/msedge_100_percent.pak",
+      "sha256": "d77fe2ba03a24a246cb72c886211bf9d729ff4b5f490a27ab512a1876d8ecfca",
+      "size": 1175016
+    },
+    {
+      "path": "WebView2/msedge_200_percent.pak",
+      "sha256": "acf93e45d209a0694499559d4eb903a56ac456ed68127955c80f08896fce1570",
+      "size": 1865133
+    },
+    {
+      "path": "WebView2/msedge_elf.dll",
+      "sha256": "006d5a36265f05bff90646e9dd2d5ff921f0325cced7eed6a7d2c7e81201e950",
+      "size": 4068168
+    },
+    {
+      "path": "WebView2/msedge_wer.dll",
+      "sha256": "b2773d0ef69365460d086abd5df6c32852ee1865c64f6202917f3d082ead8972",
+      "size": 125768
+    },
+    {
+      "path": "WebView2/msedge.dll",
+      "sha256": "9f3773d5f287cdb958e08ef0aeaaa44280dcd150ceacf8327ff17475ba38f20b",
+      "size": 357748040
+    },
+    {
+      "path": "WebView2/msedge.dll.sig",
+      "sha256": "725c7f1ee80debf11a3f6aa24ad4a82c377ab15f2ef0f20a5fb02b87e9bf2f61",
+      "size": 1389
+    },
+    {
+      "path": "WebView2/msedgewebview2.exe",
+      "sha256": "51b4cd503d669d8f7f6ff6e9e22effeebd28cce11262ddec815972a424474533",
+      "size": 4532552
+    },
+    {
+      "path": "WebView2/msedgewebview2.exe.sig",
+      "sha256": "592f746468713f69b93b58b8f0b46ee063ed88cf68441b40c818f0ddacf23d04",
+      "size": 1389
+    },
+    {
+      "path": "WebView2/mspdf.dll",
+      "sha256": "dfa1401742052922136780bc841d737c4356e4e5c1e2fbc4c313525d54549e18",
+      "size": 18895688
+    },
+    {
+      "path": "WebView2/msvcp140_codecvt_ids.dll",
+      "sha256": "18593eea4a4f50a8168d31c4e395ea10f3fe33eb92f18a982a3ff970b7e24eb1",
+      "size": 41224
+    },
+    {
+      "path": "WebView2/msvcp140.dll",
+      "sha256": "82f56b081e606d02059fb9f6f5187606bf961a9de2151a22edbe9b7402107963",
+      "size": 653576
+    },
+    {
+      "path": "WebView2/notification_helper.exe",
+      "sha256": "9988b36955506f7cdb651adc6b046ab4deeef8a64ff8c327c7ed83a10d3e5afc",
+      "size": 2903368
+    },
+    {
+      "path": "WebView2/oneauth.dll",
+      "sha256": "4021ce2507eb00d3174b8e8e7a016782a1f8492ab993d464e21943bf97ae80d0",
+      "size": 6674248
+    },
+    {
+      "path": "WebView2/oneds.dll",
+      "sha256": "f025d2515a8d51d6fb64cbd33ac51373ad88006e3eec8d422b41f4e2e4deea4e",
+      "size": 3552584
+    },
+    {
+      "path": "WebView2/onnxruntime.dll",
+      "sha256": "9f49e9f1c3da7e5aa7d042f5e1ae7d6b6aa6609c6ddf2a0cda4c02160251880e",
+      "size": 11260744
+    },
+    {
+      "path": "WebView2/onramp.dll",
+      "sha256": "c897d57fdf1e85f101c8b53c6ee1abb44504638159b71fab0b40bd00f9492cea",
+      "size": 474440
+    },
+    {
+      "path": "WebView2/PdfPreview/PdfPreviewHandler.dll",
+      "sha256": "5077f3025f143ee799535d2daaf5b7afc1b78dd2feab906141b227ee291a3910",
+      "size": 261448
+    },
+    {
+      "path": "WebView2/platform_experiences_helper.exe",
+      "sha256": "98251e345f3c11217b7ebd75fd44cee103af1d08617e9090d5f011a269a4ae8b",
+      "size": 3222344
+    },
+    {
+      "path": "WebView2/prefs_enclave_x64.dll",
+      "sha256": "e9e9fa3c35b65f93aaab0220ffb5f93b55508c06410727ca9dcd877e6ae8b4db",
+      "size": 116456
+    },
+    {
+      "path": "WebView2/resources.pak",
+      "sha256": "b7dd97d0c7ab668d603f374e614eb2d3c0ec6dea5a7676b8d4717840769a54c0",
+      "size": 34062108
+    },
+    {
+      "path": "WebView2/show_third_party_software_licenses.bat",
+      "sha256": "3e867e263b64592b2dad5c334b6aa46d0bb46a20aa0db01c5ff08c707c3e148d",
+      "size": 270
+    },
+    {
+      "path": "WebView2/telclient.dll",
+      "sha256": "1d33dfe0fd07ae7030504a7839301fb2b4ee4086b646c0791b6749501dd415fc",
+      "size": 4119368
+    },
+    {
+      "path": "WebView2/textInputMethod.sccd",
+      "sha256": "f88664c021237bbc0299b5ae3f5686b915e3007bf2902be8186ad847476447bf",
+      "size": 18615
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/manifest.json",
+      "sha256": "de864bf0ab8abacfba536d4e9764eca658f903bd2457f955e128c4ee181c7e58",
+      "size": 132
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/Advertising",
+      "sha256": "231be4e0be45f588b161634c816b9a5a49f530c0dcb55461d37715a94482dca1",
+      "size": 19889
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/Analytics",
+      "sha256": "bba2063d20d70f4ab06dc2ae04c2564cc2b8c631b6dab68248957dbdf107fdd2",
+      "size": 4036
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/CompatExceptions",
+      "sha256": "5b462316a51c918d0bae95959bf827cb9c72bbd84ffb0e43b750aa91fbf3ba53",
+      "size": 689
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/Content",
+      "sha256": "9a63f38e22b8573cbd47a4ef7b67ccb0934b87239e075c5cfafc7a1014e340c6",
+      "size": 4486
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/Cryptomining",
+      "sha256": "bdee796bf07922c152d770cd5928955f1b12c12515c4db6fc0ab8d2ad0c44c4e",
+      "size": 552
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/Entities",
+      "sha256": "f6e93c83d9e3cfdff064535647cee76fc85aa1c86fd22a93dcf3d2c377346d94",
+      "size": 69999
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/Fingerprinting",
+      "sha256": "05b29240a28bb75b4535d558edc510eb92df0ac27e9502498b99cdbc576b8298",
+      "size": 1113
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/LICENSE",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "size": 35147
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/Other",
+      "sha256": "2b4a47b82cbe70e34407c7df126a24007aff8b45d5716db384d27cc1f3b30707",
+      "size": 34
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/Social",
+      "sha256": "4955c3e7f56641a4ae0ce9c79b4ceee4b21733b0f6dedc980bf8d822a792eba2",
+      "size": 754
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Mu/TransparentAdvertisers",
+      "sha256": "d2cd0bef5f45daf490c53e705d6f67dfe12390c72a00efa6f5117432bd8edb8c",
+      "size": 105
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Sigma/Advertising",
+      "sha256": "5c62ee354070033dba1bad40dcde115a81db45943b2274fae7059a5aa5c61d33",
+      "size": 21511
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Sigma/Analytics",
+      "sha256": "d303be86132f8d7131941d41736694c2e29647ebaeccb38c0976fe66616ec8af",
+      "size": 3349
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Sigma/Content",
+      "sha256": "70c295600066e9d3feeacd6bfc735bbcac6243694e4259477822d3db252729e1",
+      "size": 5938
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Sigma/Cryptomining",
+      "sha256": "696e930706b5d391eb8778f73b0627ffc2be7f6c9a3e7659170d9d37fc4a97b5",
+      "size": 32
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Sigma/Entities",
+      "sha256": "a5409d2c6a8cbd9339a95a5e09fcaedd4546a49d47fc4ebeda2d8749cfc66987",
+      "size": 131834
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Sigma/Fingerprinting",
+      "sha256": "5306139881e81eebffd97de016130fdbb04e3ae976d94ad7a74e5dee63fbafcd",
+      "size": 2307
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Sigma/LICENSE",
+      "sha256": "44071e0fcffb9a9a32e8fa7010bb18dbc41afd0b176f81bf700b15b638a88a51",
+      "size": 66
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Sigma/Other",
+      "sha256": "2b4a47b82cbe70e34407c7df126a24007aff8b45d5716db384d27cc1f3b30707",
+      "size": 34
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Sigma/Social",
+      "sha256": "28ac79097cf67587a228fdfe4746a1a9b31dae94d5a63bb3fcaa82443d69e7af",
+      "size": 3434
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/Sigma/Staging",
+      "sha256": "f90f4cb0976a046e93978971b58fba24bc93b0129e8612fdd0e5646a1bebed22",
+      "size": 1361
+    },
+    {
+      "path": "WebView2/Trust Protection Lists/trust_protection_lists.bin",
+      "sha256": "bfceac1ea10e376b91e2e158d4cd90b4f25882567a2dfb774c3350b0d44496ed",
+      "size": 241960
+    },
+    {
+      "path": "WebView2/unified_copilot_telemetry.dll",
+      "sha256": "83009ea2c699e9c712bc100eb40643ae4b6128b274a5cfa648395c958f40190f",
+      "size": 1790280
+    },
+    {
+      "path": "WebView2/v8_context_snapshot.bin",
+      "sha256": "7762651e640d5a9140b5a7763426d7bfbc155dbdc0ea0978f0745b622e129b55",
+      "size": 770184
+    },
+    {
+      "path": "WebView2/vccorlib140.dll",
+      "sha256": "da378410b420bd2a60cded9e9a2d21c29042091381fdce4ea7d5bd3fccc3ab3e",
+      "size": 360712
+    },
+    {
+      "path": "WebView2/vcruntime140_1.dll",
+      "sha256": "496bec473167f684335ada6889357baa3517213b2afef979253366197e4398ce",
+      "size": 60168
+    },
+    {
+      "path": "WebView2/vcruntime140.dll",
+      "sha256": "953e96dc70e05a280960cde15fdc74a8959ac6a5c057dd59431ef9222bf2a6a1",
+      "size": 188680
+    },
+    {
+      "path": "WebView2/vk_swiftshader_icd.json",
+      "sha256": "32d83ff113fef532a9f97e0d2831f8656628ab1c99e9060f0332b1532839afd9",
+      "size": 106
+    },
+    {
+      "path": "WebView2/vk_swiftshader.dll",
+      "sha256": "dbbb13d99dbdfcaff5986dee77eaf8117237e9d2e44fe862cd73ad2436261cfa",
+      "size": 4563272
+    },
+    {
+      "path": "WebView2/vulkan-1.dll",
+      "sha256": "6cce59665ab0404bad8afe72b3e4d24a8fcaa4a720b4a08e42eafe5de92aa636",
+      "size": 975176
+    },
+    {
+      "path": "WebView2/wdag.dll",
+      "sha256": "fdc89dfa492d8ec009a5656ccaef31235c22c6977bd5d1c33a83912705a0ec08",
+      "size": 251208
+    },
+    {
+      "path": "WebView2/webview2_integration.dll",
+      "sha256": "386eb62516d0445a256126fee3f3cd62b712e4910e76d8b6fc7e5806a077b41b",
+      "size": 31560
+    },
+    {
+      "path": "WebView2/WidevineCdm/_platform_specific/win_x64/widevinecdm.dll",
+      "sha256": "a15f46671ee890caf158c7476c250e76102fcb0c87e65b1b54f68da80bbb6601",
+      "size": 22716072
+    },
+    {
+      "path": "WebView2/WidevineCdm/_platform_specific/win_x64/widevinecdm.dll.sig",
+      "sha256": "60c5a14948c2b009caf58c552316d2e7c6e0458fa00af4aa2e110565f6538fba",
+      "size": 1389
+    },
+    {
+      "path": "WebView2/WidevineCdm/LICENSE",
+      "sha256": "20de375707692099b3132084695377ce5fec0aec05813dedcce094b8eda44386",
+      "size": 473
+    },
+    {
+      "path": "WebView2/WidevineCdm/manifest.json",
+      "sha256": "dca3cd7a673d0776a085c0b8958a85bdd8392923db21a0b55f4d37210f752322",
+      "size": 1002
+    }
+  ]
+}

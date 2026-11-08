@@ -216,35 +216,25 @@ function Get-FenneviaFirefoxProgramCandidates {
     param()
 
     $candidates = New-Object "Collections.Generic.List[string]"
-    $registryKeys = @(
-        "HKLM:\SOFTWARE\Mozilla\Mozilla Firefox",
-        "HKLM:\SOFTWARE\WOW6432Node\Mozilla\Mozilla Firefox",
-        "HKCU:\SOFTWARE\Mozilla\Mozilla Firefox"
-    )
-    foreach ($registryKey in $registryKeys) {
-        if (-not (Test-Path -LiteralPath $registryKey)) {
-            continue
-        }
-        $registryValues = Get-ItemProperty -LiteralPath $registryKey -ErrorAction SilentlyContinue
-        if ($null -eq $registryValues) {
-            continue
-        }
-        $currentVersion = $null
-        $versionProperty = $registryValues.PSObject.Properties["CurrentVersion"]
-        if ($null -ne $versionProperty) {
-            $currentVersion = [string] $versionProperty.Value
-        }
-        if ([string]::IsNullOrWhiteSpace($currentVersion)) {
-            continue
-        }
-        $mainKey = Join-Path $registryKey "$currentVersion\Main"
-        $mainValues = Get-ItemProperty -LiteralPath $mainKey -ErrorAction SilentlyContinue
-        if ($null -eq $mainValues) {
-            continue
-        }
-        $pathProperty = $mainValues.PSObject.Properties["PathToExe"]
-        if ($null -ne $pathProperty -and -not [string]::IsNullOrWhiteSpace([string] $pathProperty.Value)) {
-            $candidates.Add([string] $pathProperty.Value)
+    foreach ($hive in @([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryHive]::CurrentUser)) {
+        foreach ($view in @([Microsoft.Win32.RegistryView]::Registry64, [Microsoft.Win32.RegistryView]::Registry32)) {
+            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey($hive, $view)
+            try {
+                $key = $base.OpenSubKey('SOFTWARE\Mozilla\Mozilla Firefox')
+                if ($null -eq $key) { continue }
+                try {
+                    $versions = @($key.GetSubKeyNames())
+                    if ($versions.Count -gt 256) { throw 'Firefox registry discovery exceeds its limit.' }
+                    foreach ($version in $versions) {
+                        $main = $key.OpenSubKey("$version\Main")
+                        if ($null -eq $main) { continue }
+                        try {
+                            $candidate = $main.GetValue('PathToExe', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+                            if ($candidate -is [string] -and -not [string]::IsNullOrWhiteSpace($candidate)) { $candidates.Add($candidate) }
+                        } finally { $main.Dispose() }
+                    }
+                } finally { $key.Dispose() }
+            } finally { $base.Dispose() }
         }
     }
 
@@ -252,6 +242,10 @@ function Get-FenneviaFirefoxProgramCandidates {
     $candidates.Add((Join-Path $env:ProgramFiles "Mozilla Firefox\firefox.exe"))
     if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) {
         $candidates.Add((Join-Path $programFilesX86 "Mozilla Firefox\firefox.exe"))
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+        $candidates.Add((Join-Path $env:LOCALAPPDATA 'Mozilla Firefox\firefox.exe'))
+        $candidates.Add((Join-Path $env:LOCALAPPDATA 'Programs\Mozilla Firefox\firefox.exe'))
     }
 
     $resolved = New-Object "Collections.Generic.List[object]"

@@ -33,6 +33,7 @@
     "A dedicated Firefox profile is strongly recommended; Linux, macOS, ESR, Beta, and Nightly are not supported by this release.",
     "Fennevia uses unsupported Firefox internals and has not completed an independent security audit.",
     "Firefox updates may remove program-directory files; keep the exact release ZIP for verified repair, update, disable, and uninstall operations.",
-    "The release GUI launcher is unsigned; Windows SmartScreen may warn before FenneviaSetup.exe runs."
+    "The native GUI and worker are unsigned; Windows SmartScreen may warn before FenneviaSetup.exe runs. Keep the complete extracted package and review the bundled WebView2 terms.",
+    "Native installer UAC acceptance/cancellation, clean-machine and accessibility/hardware checks remain not run; see docs/research/tauri-installer-release-validation.md before publishing a new release."
   ]
 }

@@ -202,14 +202,15 @@ try {
         }
     }
 
-    Invoke-FenneviaConsole -PackageRoot $releaseRoot -Reader (New-TestAnswerReader -Answers @("install", "candidate:0", "work", "no", "quit")) -Hooks $hooks
+    $hooks['GetSavedLocations'] = { [pscustomobject]@{ Value = [pscustomobject]@{ schemaVersion = 1; targets = @() }; Revision = 'absent' } }
+    Invoke-FenneviaConsole -PackageRoot $releaseRoot -Reader (New-TestAnswerReader -Answers @("install", "candidate:0", "work", "no", "no", "quit")) -Hooks $hooks
     Assert-Equal -Actual $script:InvokeCount -Expected 0 -Message "Rejecting Firefox support acknowledgement must not apply a package mutation."
     Assert-True -Condition (@($script:Written | Where-Object { $_ -match "event=console.cancelled action=install reason=firefox-support-unacknowledged" }).Count -gt 0) -Message "Declining the Firefox support warning should emit firefox-support-unacknowledged."
     Assert-True -Condition (@($script:Written | Where-Object { $_ -match "event=console.firefox-support-warning" }).Count -gt 0) -Message "Install must show the Firefox support warning before confirmation."
     Assert-True -Condition (@($script:Written | Where-Object { $_ -match "C:\\hidden" }).Count -eq 0) -Message "Console output must not disclose injected absolute paths."
 
     $script:Written.Clear()
-    Invoke-FenneviaConsole -PackageRoot $releaseRoot -Reader (New-TestAnswerReader -Answers @("install", "candidate:0", "work", "yes", "no", "quit")) -Hooks $hooks
+    Invoke-FenneviaConsole -PackageRoot $releaseRoot -Reader (New-TestAnswerReader -Answers @("install", "candidate:0", "work", "no", "yes", "no", "quit")) -Hooks $hooks
     Assert-Equal -Actual $script:InvokeCount -Expected 0 -Message "Rejecting the plan after support acknowledgement must not apply a package mutation."
     Assert-True -Condition (@($script:Written | Where-Object { $_ -match "event=console.cancelled action=install reason=confirmation-required" }).Count -gt 0) -Message "Declining the plan should emit confirmation-required."
 
@@ -237,7 +238,7 @@ try {
             Backups = @()
         }
     }
-    Invoke-FenneviaConsole -PackageRoot $releaseRoot -Reader (New-TestAnswerReader -Answers @("install", "candidate:0", "work", "yes", "yes", "quit")) -Hooks $hooks
+    Invoke-FenneviaConsole -PackageRoot $releaseRoot -Reader (New-TestAnswerReader -Answers @("install", "candidate:0", "work", "no", "yes", "yes", "quit")) -Hooks $hooks
     Assert-Equal -Actual $script:InvokeCount -Expected 1 -Message "Confirming the plan should apply exactly once."
     Assert-Equal -Actual $script:LastRequest.ExpectedPlanSha256 -Expected ("c" * 64) -Message "Apply must reuse the displayed plan digest."
     Assert-Equal -Actual $script:LastRequest.ProfileMode -Expected "Registered" -Message "Release console actions must stay in Registered mode."

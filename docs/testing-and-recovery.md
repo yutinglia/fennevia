@@ -1,5 +1,48 @@
 # Testing and Recovery
 
+The Tauri installer adds a separate Windows gate: run
+`npm --prefix installer run verify`, then in `installer/` run
+`cargo fmt --all --check`, `cargo clippy --locked --workspace --all-targets -- -D warnings`,
+`cargo test --locked --workspace`, and `cargo build --locked --workspace`.
+Build the frontend before Cargo because the native host embeds its output.
+CI installs the pinned Rust toolchain and runs these checks in the existing
+Windows job. `npm --prefix installer run smoke:native` is an additional local
+native-WebView frontend-ready IPC and authenticated, non-mutating worker IPC check,
+not a substitute for interaction tests.
+Existing root/frontend/PowerShell tests remain required.
+
+The native transaction tests execute all six lifecycle actions on disposable
+synthetic roots, inject faults after each operation and between replacement
+renames, and compare the original file/directory tree after rollback. They also
+exercise stale plans, hardlink rejection, unacknowledged-result retention,
+single-use consent, profile locks, and two-way PowerShell 5.1/7 lifecycle actions
+with shared writer locks. These cross-engine tests require both PowerShell
+versions in the Windows development/CI environment; the GUI and worker do not.
+
+Additional gates cover full release inventories, fixed runtime hashes, Firefox
+x64/channel rejection, shared saved-location restart and CAS behavior in PS 5.1/7,
+and real copied-Firefox file transactions. Build with `npm --prefix installer run
+package:native`, then pass the resulting `FenneviaSetup.exe` to
+`installer/scripts/smoke-native.mjs`. Release preflight builds native binaries in
+two separate source/target directories and compares the complete ZIP and manifests.
+Never publish with `TestAllowDirtySource`; that switch is only for local fixtures.
+
+Native UAC accept/cancel/different-account flows, exhaustive renderer permission
+attacks, killed-worker/power-loss recovery, physical disk-full and ACL-race
+injection, running/restarting real Firefox, clean-machine launch, network capture,
+screen-reader/DPI/keyboard flows and the complete release matrix remain unrun
+gates. Current evidence is in `docs/research/tauri-installer-release-validation.md`;
+initial and transaction-only records remain historical. No release publication
+or new Firefox compatibility evidence is implied by installer file tests.
+
+For unknown results, reopen and inspect before forming new consent. Preserve
+`.fennevia-transaction-*` folders when present. `journal.json` describes original
+file snapshots and planned operations; `backup-*.bin` stores content snapshots,
+`undo-*.bin` and `directory-*` may retain original filesystem objects, and
+`result.json`, when present, records committed/rolled-back state before cleanup.
+Never infer successful rollback from a missing final GUI response. Both engines
+block residual transactions; do not delete their folders to bypass that guard.
+
 This document defines the **current** test and recovery contract for Fennevia.
 Exact historical command output, first causal failures, and milestone-specific
 Firefox evidence remain in `docs/research/`. Do not rewrite those records when a

@@ -71,6 +71,36 @@ text preserved at the named notice path.
 - Update/removal record:
   `docs/dependency-reviews/frontend-toolchain-2026-08-15.md`.
 
+## Native installer dependencies
+
+The native installer uses a separate locked Rust and npm graph. Its binaries
+contain selected Tauri, Windows bindings, serialization, hashing and other crate
+code; the embedded frontend contains Svelte and Tauri API code. These are bundled
+components, not Firefox runtime dependencies. Exact published-source revisions,
+checksums, licenses, license-file hashes and review limitations are in
+`docs/dependency-reviews/tauri-installer-2026-11-09.md` and
+`docs/dependency-reviews/tauri-installer-lock-inventory.json`.
+`installer/scripts/notices.mjs` assembles `INSTALLER-NOTICES.txt` with native
+crate notices, Rust bundled-library notices, frontend licenses and the Microsoft
+WebView2 SDK notice. Source links identify exact crate versions and the Fennevia
+commit for modified source. Supplements in `installer/licenses/` preserve
+upstream license text omitted from published crate archives.
+
+`installer/vendor/webview2-com` adapts the MIT-licensed crate 0.39.1 from
+`wravery/webview2-rs` commit `edc2caf886175ccaebe86078c9cfe1ae2a187328`,
+Copyright (c) 2021 Bill Avery. The sole implementation change sets custom crash
+reporting on by default to prevent crash dumps uploading to Microsoft. Original
+source, copyright and license are retained; `FENNEVIA-PATCH.md` records removal.
+
+New Windows packages bundle Microsoft WebView2 Fixed Version Runtime
+157.0.4341.42 x64, unmodified. `installer/runtime/webview2.json` pins the official
+CAB URL, SHA-256 and every distributed file. `WEBVIEW2-LICENSE.txt` accompanies
+the package; the runtime is redistributed only with this application under those
+Microsoft terms, not relicensed as MPL. Its upstream third-party credits remain
+available through its included credits launcher. The statically linked WebView2
+SDK loader is 1.0.3800.47, covered by the bundled BSD-3-Clause Microsoft license
+and SDK third-party notice. Provenance and hashes are in the dependency review.
+
 ## Build-only dependencies
 
 The remaining resolved npm packages execute only on development and CI hosts;

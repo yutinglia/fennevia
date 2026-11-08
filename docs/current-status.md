@@ -1,6 +1,6 @@
 # Current Project Status
 
-> Snapshot: 2026-10-01. This status review includes ADR-074 through ADR-094 and
+> Snapshot: 2026-11-09. This status review includes ADR-074 through ADR-097 and
 > the `0.19.0-beta.1` version identity, alongside the public
 > `v0.19.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
@@ -8,6 +8,14 @@
 This page is the short, current answer to “how far along is Fennevia?” The root
 READMEs remain user-facing, while the master plan, shell roadmap, architecture,
 and testing documents retain the complete engineering contract.
+
+The unreleased native installer migration (ADR-095–097) now implements Tauri
+discovery/saved locations, six native lifecycle transactions, rollback, a UAC
+worker, fixed offline WebView2 packaging and shared saved locations in the
+independent PowerShell console. New builds use the native EXE; the published
+archive is unchanged. Automated evidence and remaining manual UAC/clean-machine/
+accessibility release gates are in the
+[installer validation record](research/tauri-installer-release-validation.md).
 
 Public prerelease `0.19.0-beta.1` includes ADR-085 through ADR-091 and adds
 Firefox 157.0 to installer compatibility metadata. The owner explicitly

@@ -975,6 +975,16 @@ Tabs areas stationary during horizontal tool scrolling. The public release remai
 `0.19.0-beta.1`; these changes carry development evidence, not a new release
 claim or inherited manual-test exception.
 
+### Native GUI installer follow-up
+
+2026-11-08：擁有者要求先規劃 GUI 安裝器，掃描並保存 Firefox／Profile 位置，
+新 GUI 完全不使用 PowerShell，既有腳本保留手動備援。為未來 Linux 選用
+Tauri 2、Svelte 與 Rust；第一階段仍只有 Windows x64。計畫與移植驗收見
+`plans/019-native-gui-installer.md`、ADR-095–097。已實作一般 release-container
+安裝、六種交易、rollback、UAC worker、fixed WebView2 封裝與 PowerShell 共用位置保存。
+人工 UAC／乾淨機器／無障礙與完整發行矩陣尚未執行，見新驗證紀錄；
+不改變已發布版本或平台支援聲明。
+
 ## 7. Target repository layout
 
 ```text

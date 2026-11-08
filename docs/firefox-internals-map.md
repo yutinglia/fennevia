@@ -1,5 +1,30 @@
 # Firefox Internals Boundary Map
 
+ADR-095–097's Rust installer reuses the installation dependencies listed
+below: the current user's Mozilla registry entries, `application.ini`,
+`profiles.ini`, `installs.ini`, `defaults/pref`, and the Fennevia AutoConfig
+preference. Its implementations are
+`installer/crates/installer-core/src/discovery.rs`, `planning.rs`, and
+`installer/crates/platform-windows/src/registry.rs`. It does not add a Firefox
+runtime API, launch Firefox, read browsing databases, or infer a program/profile
+association. Release installation also checks the x64 PE machine header and the
+literal `app.update.channel` assignment in `defaults/pref/channel-prefs.js`;
+it never evaluates the JavaScript. Source template:
+`browser/app/profile/channel-prefs.js`, Git blob
+`eed6e634c2b3863c44dc3affa3cd74d3e3bc3139` in the official Firefox repository,
+inspected 2026-11-09. The local copied-Firefox fixture is 155.0.1 BuildID
+20260903215306; file-transaction validation is not shell compatibility evidence.
+Discovery alone is not support evidence. The native worker
+checks the OS process snapshot for any `firefox.exe` and holds the selected
+profile's `parent.lock` during transactions. The filename and Windows exclusive
+read/write sharing behavior were checked against `toolkit/profile/nsProfileLock.cpp`
+at upstream commit `6be5ec2fff811284b3ed164cf7ae944a26341869`, using the
+[official source](https://github.com/mozilla-firefox/firefox/blob/6be5ec2fff811284b3ed164cf7ae944a26341869/toolkit/profile/nsProfileLock.cpp).
+The installer never truncates or deletes a pre-existing lock file; it removes
+only a new lock it created. This is source and synthetic-lock evidence, not a
+real Firefox restart/race validation. No browsing databases or process command
+lines are read.
+
 This is the current Firefox 153.0.4 ownership and dependency inventory, not a
 stable API list. The supported release tag is `FIREFOX_153_0_4_RELEASE` at
 `c178247e1dfea52241a6b18b18cf3a00f8da935c`, build

@@ -409,6 +409,22 @@ function ConvertFrom-FenneviaInstallerOwnershipJson {
     }
 }
 
+function Test-FenneviaInstallerOwnershipEquivalent {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string] $Left, [Parameter(Mandatory)][string] $Right)
+
+    # Validate both records before comparing their canonical data. Paired roots
+    # still require byte-identical records; only serializer whitespace/order varies.
+    $normalized = @($Left, $Right) | ForEach-Object {
+        $data = ConvertFrom-FenneviaInstallerOwnershipJson -Content $_
+        ConvertTo-FenneviaInstallerOwnershipJson -InstallationId $data.InstallationId `
+            -PackageVersion $data.PackageVersion -State $data.State `
+            -SourceManifestSha256 $data.SourceManifestSha256 -Files $data.Files `
+            -CreatedDirectories $data.CreatedDirectories
+    }
+    return $normalized[0] -ceq $normalized[1]
+}
+
 function Read-FenneviaInstallerOwnershipSide {
     [CmdletBinding()]
     param(

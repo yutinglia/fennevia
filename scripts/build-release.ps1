@@ -9,7 +9,9 @@ param(
 
     [string] $SourceCommit = "",
 
-    [string] $ExpectedTag = ""
+    [string] $ExpectedTag = "",
+
+    [string] $NativeInstallerDirectory = ""
 )
 
 Set-StrictMode -Version Latest
@@ -23,13 +25,20 @@ else {
     [IO.Path]::GetFullPath((Join-Path $repositoryRoot $OutputDirectory))
 }
 $modulePath = Join-Path $PSScriptRoot "lib\FenneviaRelease.psm1"
+if ([string]::IsNullOrWhiteSpace($NativeInstallerDirectory)) {
+    $NativeInstallerDirectory = Join-Path $repositoryRoot 'installer/out/native'
+}
+if (-not (Test-Path -LiteralPath (Join-Path $NativeInstallerDirectory 'INSTALLER-MANIFEST.json'))) {
+    throw 'Build the native installer first: npm --prefix installer run package:native -- <empty-output-directory>. Pass that directory with -NativeInstallerDirectory.'
+}
 Import-Module $modulePath -Force
 try {
     $result = New-FenneviaReleaseArtifacts `
         -RepositoryRoot $repositoryRoot `
         -OutputDirectory $resolvedOutput `
         -SourceCommit $SourceCommit `
-        -ExpectedTag $ExpectedTag
+        -ExpectedTag $ExpectedTag `
+        -NativeInstallerDirectory $NativeInstallerDirectory
     Write-Output "event=release.build"
     Write-Output "version=$($result.Version)"
     Write-Output "tag=$($result.Tag)"

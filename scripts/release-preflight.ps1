@@ -102,9 +102,14 @@ Push-Location $canonicalRepository
 try {
     if (-not $SkipDependencyInstall) {
         Invoke-FenneviaReleaseCommand -FilePath "npm" -Arguments @("ci", "--ignore-scripts", "--no-fund") -FailureMessage "The exact dependency installation failed."
+        Invoke-FenneviaReleaseCommand -FilePath "npm" -Arguments @('--prefix', 'installer', 'ci', '--ignore-scripts', '--no-fund') -FailureMessage 'Installer dependency installation failed.'
     }
     if (-not $SkipProjectVerification) {
         Invoke-FenneviaReleaseCommand -FilePath "npm" -Arguments @("run", "verify") -FailureMessage "The project verification suite failed."
+        Invoke-FenneviaReleaseCommand -FilePath "npm" -Arguments @('--prefix', 'installer', 'run', 'verify') -FailureMessage 'Installer verification failed.'
+    }
+    else {
+        Invoke-FenneviaReleaseCommand -FilePath "npm" -Arguments @('--prefix', 'installer', 'run', 'build') -FailureMessage 'Installer embedded asset build failed.'
     }
 }
 finally {
@@ -121,8 +126,35 @@ Import-Module $modulePath -Force
 try {
     $firstOutput = Join-Path $canonicalOutput "first"
     $secondOutput = Join-Path $canonicalOutput "second"
-    $first = New-FenneviaReleaseArtifacts -RepositoryRoot $canonicalRepository -OutputDirectory $firstOutput -SourceCommit $sourceCommit -ExpectedTag $tag
-    $second = New-FenneviaReleaseArtifacts -RepositoryRoot $canonicalRepository -OutputDirectory $secondOutput -SourceCommit $sourceCommit -ExpectedTag $tag
+    $nativeFirst = Join-Path $canonicalOutput 'native-first'
+    $nativeSecond = Join-Path $canonicalOutput 'native-second'
+    # A second checkout path catches embedded source paths as well as timestamps.
+    $sourceArchive = Join-Path $canonicalOutput 'second-source.zip'
+    $secondSource = Join-Path $canonicalOutput 'second-source'
+    Invoke-FenneviaReleaseCommand -FilePath 'git' -Arguments @('-C', $canonicalRepository, 'archive', '--format=zip', "--output=$sourceArchive", $sourceCommit) -FailureMessage 'Second source archive failed.'
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [IO.Compression.ZipFile]::ExtractToDirectory($sourceArchive, $secondSource)
+    $secondInstaller = Join-Path $secondSource 'installer'
+    Invoke-FenneviaReleaseCommand -FilePath 'npm' -Arguments @('--prefix', $secondInstaller, 'ci', '--ignore-scripts', '--no-fund') -FailureMessage 'Second installer dependencies failed.'
+    Invoke-FenneviaReleaseCommand -FilePath 'npm' -Arguments @('--prefix', $secondInstaller, 'run', 'build') -FailureMessage 'Second embedded frontend failed.'
+    $originalTarget = $env:CARGO_TARGET_DIR
+    Push-Location (Join-Path $canonicalRepository 'installer')
+    try {
+        $env:CARGO_TARGET_DIR = Join-Path $canonicalOutput 'cargo-first'
+        Invoke-FenneviaReleaseCommand -FilePath 'node' -Arguments @('scripts/prepare-distribution.mjs', $nativeFirst) -FailureMessage 'First native build failed.'
+        $env:CARGO_TARGET_DIR = Join-Path $canonicalOutput 'cargo-second'
+        $runtimePin = Get-Content -Raw (Join-Path $canonicalRepository 'installer/runtime/webview2.json') | ConvertFrom-Json
+        $cabName = "webview2-$($runtimePin.version)-x64.cab"
+        [void] [IO.Directory]::CreateDirectory((Join-Path $secondInstaller '.cache'))
+        Copy-Item -LiteralPath (Join-Path $canonicalRepository "installer/.cache/$cabName") -Destination (Join-Path $secondInstaller ".cache/$cabName")
+        # The second packaging process independently verifies the copied CAB.
+        Push-Location $secondInstaller
+        try {
+            Invoke-FenneviaReleaseCommand -FilePath 'node' -Arguments @('scripts/prepare-distribution.mjs', $nativeSecond) -FailureMessage 'Second native build failed.'
+        } finally { Pop-Location }
+    } finally { $env:CARGO_TARGET_DIR = $originalTarget; Pop-Location }
+    $first = New-FenneviaReleaseArtifacts -RepositoryRoot $canonicalRepository -OutputDirectory $firstOutput -SourceCommit $sourceCommit -ExpectedTag $tag -NativeInstallerDirectory $nativeFirst
+    $second = New-FenneviaReleaseArtifacts -RepositoryRoot $canonicalRepository -OutputDirectory $secondOutput -SourceCommit $sourceCommit -ExpectedTag $tag -NativeInstallerDirectory $nativeSecond
     if ($first.ArchiveSha256 -cne $second.ArchiveSha256) {
         throw "Two clean release builds produced different ZIP bytes."
     }
@@ -144,6 +176,7 @@ try {
     if (-not $extracted.Passed) {
         throw "The extracted release tree failed strict validation."
     }
+    Invoke-FenneviaReleaseCommand -FilePath 'node' -Arguments @((Join-Path $canonicalRepository 'installer/scripts/smoke-native.mjs'), (Join-Path $extractedPackage 'FenneviaSetup.exe')) -FailureMessage 'The extracted native installer smoke failed.'
 }
 finally {
     Remove-Module FenneviaRelease -ErrorAction SilentlyContinue

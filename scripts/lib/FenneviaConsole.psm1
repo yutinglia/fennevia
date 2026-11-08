@@ -5,6 +5,8 @@
 Set-StrictMode -Version Latest
 
 Import-Module (Join-Path $PSScriptRoot "FenneviaTui.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "FenneviaLocations.psm1") -Force
+. (Join-Path $PSScriptRoot "ConsoleLocations.ps1")
 
 function Get-FenneviaConsoleKind {
     [CmdletBinding()]
@@ -37,6 +39,7 @@ function Get-FenneviaConsoleMenuItems {
             [pscustomobject]@{ Id = "disable"; Label = "Disable" },
             [pscustomobject]@{ Id = "enable"; Label = "Enable" },
             [pscustomobject]@{ Id = "uninstall"; Label = "Uninstall" },
+            [pscustomobject]@{ Id = "locations"; Label = "Choose again / forget saved locations" },
             [pscustomobject]@{ Id = "quit"; Label = "Quit" }
         )
     }
@@ -272,6 +275,10 @@ function Initialize-FenneviaConsoleHooks {
     if (-not $resolved.ContainsKey("GetCandidates")) {
         $resolved["GetCandidates"] = { Get-FenneviaFirefoxProgramCandidates }
     }
+    if (-not $resolved.ContainsKey('GetSavedLocations')) { $resolved['GetSavedLocations'] = { Get-FenneviaSavedLocations } }
+    if (-not $resolved.ContainsKey('SaveLocation')) { $resolved['SaveLocation'] = { param($FirefoxPath, $ProfilePath, $Revision) Save-FenneviaLocation -FirefoxPath $FirefoxPath -ProfilePath $ProfilePath -Revision $Revision } }
+    if (-not $resolved.ContainsKey('ForgetLocation')) { $resolved['ForgetLocation'] = { param($Id, $Revision) Remove-FenneviaSavedLocation -Id $Id -Revision $Revision } }
+    if (-not $resolved.ContainsKey('ClearSavedLocations')) { $resolved['ClearSavedLocations'] = { Clear-FenneviaSavedLocations -Confirmed } }
     if (-not $resolved.ContainsKey("GetProfileChoices")) {
         $resolved["GetProfileChoices"] = { Get-FenneviaInstallerRegisteredProfileChoices }
     }
@@ -626,6 +633,11 @@ function Ensure-FenneviaConsoleReleaseTargets {
     )
 
     if ([string]::IsNullOrWhiteSpace([string] $Session.FirefoxPath)) {
+        $Session.LocationCancelled = $false
+        Select-FenneviaConsoleSavedLocation -Session $Session -Hooks $Hooks -Reader $Reader
+        if ($Session.LocationCancelled) { return $false }
+    }
+    if ([string]::IsNullOrWhiteSpace([string] $Session.FirefoxPath)) {
         $candidates = @(Invoke-FenneviaConsoleHook -Hooks $Hooks -Name "GetCandidates")
         Invoke-FenneviaConsoleHook -Hooks $Hooks -Name "Write" -Arguments @(, (ConvertTo-FenneviaInstallerProgramCandidateLines -Candidates $candidates))
         $Session.FirefoxPath = Resolve-FenneviaConsoleFirefoxSelection -Candidates $candidates -Reader $Reader
@@ -641,6 +653,7 @@ function Ensure-FenneviaConsoleReleaseTargets {
         }
         $Session.ProfilePath = $selection.Path
         $Session.ProfileName = $selection.Name
+        Save-FenneviaConsoleLocation -Session $Session -Hooks $Hooks -Reader $Reader
     }
     return $true
 }
@@ -770,6 +783,11 @@ function Invoke-FenneviaConsole {
         }
 
         switch ($choice) {
+            'locations' {
+                $session.FirefoxPath = ''
+                $session.ProfilePath = ''
+                Select-FenneviaConsoleSavedLocation -Session $session -Hooks $resolvedHooks -Reader $Reader -Manage
+            }
             "status" {
                 if ($kind -eq "Release") {
                     if (-not (Ensure-FenneviaConsoleReleaseTargets -Session $session -Hooks $resolvedHooks -Reader $Reader)) {

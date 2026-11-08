@@ -24,6 +24,15 @@ floating edge panels that stay hidden until you need them.
 
 ## What Fennevia changes
 
+The [Tauri installer](installer/README.md) scans and remembers Firefox/profile
+locations, previews changes, and implements install, update, repair, disable,
+enable and uninstall with rollback and a separate UAC worker. New source builds
+bundle a fixed offline WebView2 runtime. The PowerShell console remains an
+independent backup and shares the explicitly saved locations. This migration
+does not replace the already published archive; manual UAC/clean-machine and
+accessibility release checks remain recorded as not run in the
+[validation record](docs/research/tauri-installer-release-validation.md).
+
 At rest, Firefox mostly shows the current page. Move the pointer to an edge, or
 use the keyboard, to reveal:
 
@@ -387,7 +396,7 @@ Do not continue if the checksum does not match.
 
 Extract the ZIP and double-click `FenneviaSetup.exe` in the extracted Fennevia
 directory. Select `firefox.exe` and one registered profile **by name**. Fennevia
-never preselects Firefox's default profile. Review the Firefox 153/154 testing
+never preselects Firefox's default profile. Review the Firefox 153/154/157 testing
 warning, then the redacted plan, then confirm. Confirming install on a newer
 Firefox is not a promise that the shell will keep working. If the selected
 Firefox program folder is not writable, choose **Continue as administrator**

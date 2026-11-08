@@ -21,6 +21,10 @@ English.
   into each release archive. The recommended entry is `FenneviaSetup.exe`.
 - [Complete package lifecycle](installation.md) — detailed install, update,
   repair, disable, enable, uninstall, rollback, and interrupted-operation rules.
+- [Native installer build and use](../installer/README.md) — Tauri, offline
+  WebView2, saved Firefox/profile locations and independent PowerShell backup.
+- [Native installer validation](research/tauri-installer-release-validation.md)
+  — automated evidence and unrun manual release gates for ADR-095–097.
 - [Security policy](../SECURITY.md) — supported security-reporting scope and how
   to report a vulnerability privately.
 

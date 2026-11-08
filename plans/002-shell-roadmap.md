@@ -1329,6 +1329,13 @@ the published version or reuse its release-matrix exception.
 
 ## Deferred work
 
+2026-11-08 GUI 安裝器工作已獨立規劃於 `plans/019-native-gui-installer.md`
+（ADR-095）：Tauri／Svelte／Rust、Firefox 與 Profile 掃描及位置保存，
+PowerShell 保留手動備援。現已實作 release-container 安裝、六種原生交易、rollback、
+UAC worker、fixed WebView2 封裝與 PowerShell 共用位置保存（ADR-097）。人工發行
+驗收仍依 `docs/research/tauri-installer-release-validation.md` 記錄；不增加 shell
+功能或 Linux 支援承諾。
+
 The following require separate plans and issues:
 
 - the complete real-Firefox Urlbar provider/search-mode matrix and any future

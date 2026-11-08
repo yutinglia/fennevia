@@ -1,0 +1,20 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "installer",
+  "description": "Only the local installer window may access bounded target commands.",
+  "windows": ["main"],
+  "permissions": [
+    "allow-frontend-ready",
+    "allow-scan-targets",
+    "allow-pick-target",
+    "allow-save-target",
+    "allow-forget-target",
+    "allow-clear-targets",
+    "allow-inspect-targets",
+    "allow-pick-package",
+    "allow-bundled-package",
+    "allow-preview-action",
+    "allow-apply-action",
+    "allow-installation-progress"
+  ]
+}

@@ -1,5 +1,94 @@
 # Security and Privacy
 
+## Tauri installer boundary (ADR-095–097)
+
+The new `installer/` application is a separate, unprivileged Windows desktop
+process. Its Svelte bundle is not installed in Firefox. Only explicit commands
+for target discovery, native picking, remembering/forgetting locations,
+inspection, preview, bounded phase/count progress, and single-use apply are exposed to the single local `main`
+window. The app manifest enumerates custom commands and the capability grants
+only those commands. It has no general shell, filesystem, HTTP, updater, or
+remote-window permission. Navigation is restricted to its embedded document;
+new windows are denied. An elevated GUI process is rejected before creating a
+WebView. Only the fixed native worker can perform a transaction or request UAC.
+
+The user may explicitly remember at most ten executable/profile pairs in
+`%LOCALAPPDATA%/Fennevia/Setup/targets.json` (64 KiB, schema version 1).
+The file contains only random identifiers and local absolute target paths.
+It does not retain profile names, default status, browsing data, package paths,
+operation history, plan consent, or administrator credentials. Each use
+revalidates the target; missing targets remain removable. Native selection
+results stay behind random backend tokens. Showing a path is an explicit local
+UI choice, never a logging exception or an external transmission.
+
+Preference storage uses a current-user-only protected DACL, rejects reparse
+ancestors, writes a new same-directory private temporary file, atomically
+replaces the destination, and checks the previous revision under a user mutex.
+Corrupt/unknown data is not automatically overwritten. Explicit forgetting or
+clearing removes preference records only. Scanning does not create preference
+files. Failed saves and file errors cross IPC only as closed path-free codes.
+
+Package previews validate manifest fields, inventory, hashes, artifact policy,
+and existing ownership; their operations contain relative paths only. The
+core `executable` field remains false: a digest alone is never execution authority.
+An eligible host review additionally carries a single-use approval token. The
+backend retains the request, expiry, selected roots, volume/file identities,
+Firefox identity-file hash, source, action and digest. Apply accepts no caller
+operation list. Scan, target/package changes and new previews invalidate consent.
+
+Source-tree mutation still requires marked disposable Firefox and development
+profiles. Verified release containers additionally allow explicitly selected
+registered profiles or valid existing ownership. Exact release inventory, all
+file hashes, source metadata, artifact policy, x64 PE header and release-channel
+Firefox 153+ are checked before mutation and again under locks. Default profiles
+require additional consent. Disable/Uninstall use valid existing ownership
+without requiring a working source package. No source-tree bypass is added.
+
+The worker revalidates everything, refuses any running `firefox.exe`, holds a
+profile lock, and takes both per-target global mutexes before rebuilding the plan.
+The current PowerShell CLI shares these locks; historical releases do not.
+Handles validate final paths and regular file/link status, deny target replacement,
+and address creates/renames relative to opened parent directories. Aliased short
+names and substituted drives fail closed. Hardlinks are rejected for mutations;
+immutable read-only image handles may have multiple links (Cargo debug builds).
+Both roots use same-volume private staging, flushed backup/journal files, and an
+undo stack. Existing files and removed empty directories are stashed by rename,
+preserving their security descriptors for rollback. New installed files inherit
+their destination directory ACL after rename; staging and saved preferences stay
+private. An ACL failure triggers undo. Cleanup is nonrecursive and limited to
+recorded transaction items.
+
+IPC uses a one-shot SID-only, local named pipe, bounded 64 KiB messages, random
+nonce, 15-minute expiry, exact peer PID/image and same-SID validation. The GUI and
+worker images remain open without write/delete sharing throughout the exchange.
+Only the nonce appears in argv. The worker never reads GUI preferences. A normal
+attempt must roll back and establish program-folder access denial before the GUI
+offers explicit UAC continuation. It cannot elevate the WebView or switch users.
+The distributed GUI embeds its exact worker SHA-256. Both executables verify the
+native distribution inventory, and the fixed runtime is checked against a
+compiled inventory. These checks are not code signing: the downloaded package
+must come from a trusted source, with its separately obtained ZIP checksum.
+
+Both native and PowerShell preference writers share schema, private ACL, mutex
+and optimistic revision checks. Neither worker reads these preferences. The
+WebView opens blank and hidden; before local UI load it disables reputation
+checking, autofill and password saving for this app only. The minimally patched
+MIT `webview2-com` crate sets custom crash reporting on, preventing WebView2 crash
+dumps from uploading to Microsoft. No dump uploader is implemented. Incognito
+WebView storage is used; the OS/runtime can still create local crash diagnostics.
+This does not disable Windows telemetry or system-wide SmartScreen. Runtime
+diagnostic behavior and unrun network-capture checks are documented in ADR-097
+and the dependency review. No network content, runtime download or updater is
+part of the GUI flow.
+
+Commit/rollback writes a durable `result.json` receipt before waiting for GUI
+acknowledgement. Missing acknowledgement retains journals and blocks both engines.
+After acknowledgement the worker cleans up and sends a final result. A lost final
+reply is still unknown to the GUI, which blocks retries in that session and directs
+the user to reopen and inspect. Closing the GUI cannot kill an accepted worker.
+No complete paths or browsing data enter diagnostics. See ADR-096, plan 019, and
+the transaction validation record for implemented and untested scope.
+
 ## 1. Scope and status
 
 Fennevia executes system-principal code in Firefox browser chrome. A defect or

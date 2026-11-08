@@ -307,7 +307,7 @@ function New-FenneviaInstallerInstallPlan {
             -SourceManifestSha256 $Package.ManifestSha256 `
             -Files $desiredFiles `
             -CreatedDirectories $OwnershipPair.Data.CreatedDirectories
-        if ($desiredContent -cne $OwnershipPair.Content) {
+        if (-not (Test-FenneviaInstallerOwnershipEquivalent -Left $desiredContent -Right $OwnershipPair.Content)) {
             Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REQUIRES_UPDATE" -Message "A different Fennevia package is already installed; use the Update action."
         }
         return New-FenneviaInstallerInternalPlan -Action Install -Targets $Targets -Package $Package -OwnershipPair $OwnershipPair -Status "already-installed" -State $OwnershipPair.Data.State -Operations @()
@@ -409,7 +409,7 @@ function New-FenneviaInstallerUpdatePlan {
         -SourceManifestSha256 $Package.ManifestSha256 `
         -Files $desiredFiles `
         -CreatedDirectories $createdDirectories
-    if ($ownershipContent -cne $OwnershipPair.Content) {
+    if (-not (Test-FenneviaInstallerOwnershipEquivalent -Left $ownershipContent -Right $OwnershipPair.Content)) {
         $ownershipHash = Get-FenneviaInstallerStringSha256 -Content $ownershipContent
         $existingOwnershipHash = Get-FenneviaInstallerStringSha256 -Content $OwnershipPair.Content
         foreach ($scope in @("program", "profile")) {
@@ -465,7 +465,7 @@ function New-FenneviaInstallerRepairPlan {
         -SourceManifestSha256 $Package.ManifestSha256 `
         -Files $desiredFiles `
         -CreatedDirectories $survivor.Data.CreatedDirectories
-    if ($desiredOwnershipContent -cne $survivor.Content) {
+    if (-not (Test-FenneviaInstallerOwnershipEquivalent -Left $desiredOwnershipContent -Right $survivor.Content)) {
         Throw-FenneviaInstallerError -Code "FENNEVIA_INSTALL_REPAIR_SOURCE_MISMATCH" -Message "The current package source does not exactly match the surviving ownership manifest. Restore that exact source or perform a clean reviewed reinstall instead of reconstructing ownership."
     }
 
