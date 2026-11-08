@@ -110,6 +110,7 @@ test("shell composition and CSS retain explicit module ownership", async () => {
     '@import "./toolbar.css";',
     '@import "./composable-layout.css";',
     '@import "./customize.css";',
+    '@import "./local-extensions.css";',
     '@import "./window-controls.css";',
     '@import "./responsive-accessibility.css";',
   ]);

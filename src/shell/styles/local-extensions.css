@@ -1,0 +1,33 @@
+#fennevia-shell-frame-host [data-fennevia-local-extensions] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#fennevia-shell-frame-host [data-fennevia-local-extensions] .extension-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+#fennevia-shell-frame-host [data-fennevia-local-extensions] .extension-row {
+  border-block-end: 1px solid currentColor;
+  padding-block: 0.5rem 0.75rem;
+}
+#fennevia-shell-frame-host [data-fennevia-local-extensions] .extension-row p {
+  margin-block: 0.25rem 0.5rem;
+}
+#fennevia-shell-frame-host
+  [data-fennevia-local-extensions]
+  .extension-row
+  span {
+  margin-inline-start: 0.5rem;
+}
+#fennevia-shell-frame-host [data-fennevia-local-extensions] output {
+  display: block;
+  min-height: 1.5em;
+  margin-block: 0.5rem;
+}
+#fennevia-shell-frame-host [data-fennevia-local-extensions] h5 {
+  font: inherit;
+  font-weight: 600;
+  margin-block: 0.75rem 0.25rem;
+}

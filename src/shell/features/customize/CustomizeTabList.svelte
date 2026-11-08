@@ -6,6 +6,7 @@
     "panels",
     "interaction",
     "appearance",
+    "extensions",
   ] as const;
 
   export type CustomizeTabId = (typeof customizeTabIds)[number];

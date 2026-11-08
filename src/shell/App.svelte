@@ -3,6 +3,7 @@
   import { onDestroy, tick } from "svelte";
 
   import type { AddressPopupController } from "../app/address-popup";
+  import type { LocalExtensionsBridge } from "../app/local-extensions";
   import type { BrowserBookmarksStateAdapter } from "../app/bookmark-state";
   import type { BrowserToolsStateAdapter } from "../app/browser-tools-state";
   import type { CustomizeSessionController } from "../app/customize-session";
@@ -43,6 +44,7 @@
   import EdgeProgressLight from "./surfaces/EdgeProgressLight.svelte";
 
   type Props = Readonly<{
+    localExtensions?: LocalExtensionsBridge;
     addressPopup?: AddressPopupController;
     bookmarks?: BrowserBookmarksStateAdapter;
     browserTools?: BrowserToolsStateAdapter;
@@ -487,6 +489,7 @@
 
     {#if props.toolbarWidgets}
       <CustomizePanel
+        localExtensions={props.localExtensions}
         customizeSession={props.customizeSession}
         {localeId}
         onClose={() => setCustomizeOpen(false)}

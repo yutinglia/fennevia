@@ -1,5 +1,30 @@
 # Firefox Internals Boundary Map
 
+## ADR-098 local extension boundary (2026-11-09)
+
+Pinned source: Firefox 159.0.1 release Git
+`6181e6b5f28a8fbae1d5c3ef6f6626b5a2180213`, Windows x64 BuildID `20261102144711`.
+All dependencies below are isolated in `src/firefox/local-extensions/` or its facade.
+
+| Dependency | Contract used / source path |
+| --- | --- |
+| `AddonManager.readyPromise`, `getAddonByID`, `installTemporaryAddon`, addon listeners | `toolkit/mozapps/extensions/AddonManager.sys.mjs`; `internal/XPIInstall.sys.mjs`. Temporary reinstallation, no atomic same-ID condition or cancellation. |
+| Addon wrapper `id`, `sourceURI`, `temporarilyInstalled`, `appDisabled`, `enable`, `disable`, `uninstall` | `internal/XPIDatabase.sys.mjs`. Retain returned wrapper plus source/generation proof; re-fetch before mutations. |
+| `onInstalling`, `onInstalled`, `onDisabled`, `onEnabled`, `onUninstalled` | Native notifications, not veto hooks; external changes invalidate restart intent. |
+| `ExtensionData.loadManifest`, `type`, `id`, `manifest`, `errors`, `getRequiredPermissions`, `getRequestedPermissions`, `manifestOptionalPermissions` | `toolkit/components/extensions/Extension.sys.mjs`; preflight only, no extension startup or optional grant. |
+| `IOUtils` exists/stat/readUTF8/writeUTF8/copy/makeDirectory/getChildren/remove/computeHexDigest | `dom/chrome-webidl/IOUtils.webidl`; bounded copies and SHA-256 inventory, atomic registry write with expected raw content check. |
+| `nsIFile.fileSize`, `target`, `normalize`, `parent`, `isFile`, `isDirectory`; `PathUtils` | `xpcom/io/nsIFile.idl`, `nsLocalFileWin.cpp`. fileSize triggers ResolveAndStat; isFile/isDirectory do not. Check each ancestor, explicitly handle drive root spelling. |
+| `nsIZipReader.open/findEntries/getEntry/test/close` | `modules/libjar/nsIZipReader.idl`; bounded root-manifest archive inspection, no extraction. |
+| `nsIFilePicker` modeOpen/modeGetFolder/returnOK | Native picker; disposed selections ignore late callback. |
+| `AsyncShutdown.profileBeforeChange.addBlocker/removeBlocker` | `toolkit/modules/AsyncShutdown.sys.mjs`; drain process work before profile shutdown, no additional native uninstall. |
+| `Services.appinfo.inSafeMode`, `policies.isAllowed("xpinstall")`, `xpinstall.enabled` | Refuse new work when unavailable/policy-disabled. Native installation still enforces its own compatibility rules. |
+| `Services.env.get("SystemDrive")`, `dirsvc.get("ProfD")`, uuid/io/prefs | Restrict locations; preference `fennevia.localExtensions.enabled` defaults false; existing `fennevia.safeStart` blocks restoration. |
+| `openTrustedLinkIn` | Fixed `about:addons` or `about:debugging#/runtime/this-firefox` handoff only. |
+
+No Firefox symbol is patched. API absence disables this optional feature. Current
+[runtime evidence and limits](research/firefox-159-local-extension-implementation.md)
+do not establish cross-platform or full Firefox 159 shell support.
+
 ADR-095–097's Rust installer reuses the installation dependencies listed
 below: the current user's Mozilla registry entries, `application.ini`,
 `profiles.ini`, `installs.ini`, `defaults/pref`, and the Fennevia AutoConfig

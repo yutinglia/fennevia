@@ -1,4 +1,94 @@
 export const en = {
+  "customize.tab.extensions": "Local extensions",
+  "localExtensions.heading": "Local extensions",
+  "localExtensions.help":
+    "Import a Firefox-compatible folder or XPI/ZIP to keep using it after restart. Fennevia keeps a local copy. Signed extensions can use Firefox’s normal installation.",
+  "localExtensions.addFile": "Add file…",
+  "localExtensions.addFolder": "Add folder…",
+  "localExtensions.addEnable": "Add and enable",
+  "localExtensions.disableAll": "Disable all",
+  "localExtensions.empty": "No local extensions added yet.",
+  "localExtensions.enable": "Enable / retry",
+  "localExtensions.disable": "Disable",
+  "localExtensions.reload": "Reload",
+  "localExtensions.updateFile": "Update from file…",
+  "localExtensions.updateFolder": "Update from folder…",
+  "localExtensions.update": "Update and enable",
+  "localExtensions.remove": "Remove",
+  "localExtensions.cancel": "Cancel",
+  "localExtensions.version": "Version: ",
+  "localExtensions.confirmHelp":
+    "Only add extensions from authors you trust. This copy will run now and after future restarts using Firefox’s temporary-install mechanism. It does not receive Firefox’s usual signed-install prompt. Avoid installing the same extension through another tool at the same time.",
+  "localExtensions.removeHelp":
+    "Remove this managed copy and stop restoring it? Firefox may erase the extension’s settings and permissions. Your original download is kept.",
+  "localExtensions.required": "Requested access and data declarations",
+  "localExtensions.optional": "May request later — not granted here",
+  "localExtensions.none": "None declared.",
+  "localExtensions.site": "Websites: ",
+  "localExtensions.data": "Data declaration: ",
+  "localExtensions.otherPermission": "Permission: ",
+  "localExtensions.native": "Firefox extension manager",
+  "localExtensions.debugging": "Firefox debugging",
+  "localExtensions.working": "Working…",
+  "localExtensions.starting": "Reading local extension settings…",
+  "localExtensions.unavailable":
+    "Local extension management is unavailable in this window. Use Firefox’s native extension tools.",
+  "localExtensions.private": "Manage local extensions from a normal window.",
+  "localExtensions.recovery":
+    "The saved registry could not be read safely. Automatic loading is stopped; the existing data was kept.",
+  "localExtensions.done": "Completed.",
+  "localExtensions.cancelled": "Cancelled.",
+  "localExtensions.busy":
+    "Another extension operation is running. Try again when it finishes.",
+  "localExtensions.invalid":
+    "Choose a valid Firefox extension with manifest.json at its root.",
+  "localExtensions.unsupported-location":
+    "Move the source to an ordinary folder on the Windows system drive. Network drives, links and other volumes are not supported yet.",
+  "localExtensions.too-large":
+    "The extension exceeds the import limits. See the local extension guide.",
+  "localExtensions.missing-id":
+    "This extension needs an author-provided Firefox ID to survive restarts. Ask the author for a Firefox build.",
+  "localExtensions.incompatible":
+    "Firefox could not accept this extension. Ask the author for a compatible build.",
+  "localExtensions.conflict":
+    "Another installation uses this extension ID. Automatic loading has stopped; manage the conflict in Firefox.",
+  "localExtensions.changed":
+    "The extension or saved settings changed. Select the source again to review it.",
+  "localExtensions.corrupt":
+    "The managed copy is missing or changed. Select a valid source to update it.",
+  "localExtensions.failed":
+    "The operation failed. Check Firefox’s extension tools, then retry.",
+  "localExtensions.partial":
+    "Only part of the operation completed. Loading is stopped; review the entry and Firefox’s manager before retrying.",
+  "localExtensions.interrupted":
+    "The previous load did not finish. It will wait for an explicit retry.",
+  "localExtensions.state.disabled": "Disabled",
+  "localExtensions.state.waiting": "Waiting for startup",
+  "localExtensions.state.loading": "Loading…",
+  "localExtensions.state.loaded": "Loaded",
+  "localExtensions.state.conflict": "Installation conflict",
+  "localExtensions.state.corrupt": "Copy missing or changed",
+  "localExtensions.state.failed": "Load failed",
+  "localExtensions.state.interrupted":
+    "Previous load unfinished — retry required",
+  "localExtensions.permission.storage": "Store extension data",
+  "localExtensions.permission.tabs": "Read browser tab information",
+  "localExtensions.permission.bookmarks": "Read and change bookmarks",
+  "localExtensions.permission.history": "Read and change browsing history",
+  "localExtensions.permission.downloads": "Manage downloads",
+  "localExtensions.permission.cookies": "Access website cookies",
+  "localExtensions.permission.webRequest": "Observe network requests",
+  "localExtensions.permission.webRequestBlocking":
+    "Block or change network requests",
+  "localExtensions.permission.scripting": "Run scripts on permitted websites",
+  "localExtensions.permission.nativeMessaging":
+    "Communicate with installed native applications",
+  "localExtensions.permission.clipboardRead": "Read clipboard contents",
+  "localExtensions.permission.clipboardWrite": "Write to the clipboard",
+  "localExtensions.permission.declarativeNetRequest":
+    "Filter network requests using rules",
+  "localExtensions.permission.privacy": "Change browser privacy settings",
+  "localExtensions.permission.proxy": "Control proxy settings",
   "address.close": "Close",
   "address.closeAria": "Close address and search",
   "address.empty": "Enter an address or search.",

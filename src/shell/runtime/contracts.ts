@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { AddressPopupController } from "../../app/address-popup";
+import type { LocalExtensionsBridge } from "../../app/local-extensions";
 import type {
   BrowserBookmarksBridge,
   BrowserBookmarksStateAdapter,
@@ -78,6 +79,7 @@ export type ShellWindowKind = "normal" | "private";
 export type EdgeMountTargets = Readonly<Record<EdgeName, Element>>;
 
 export type MountOptions = Readonly<{
+  localExtensions?: LocalExtensionsBridge;
   bookmarks: BrowserBookmarksBridge;
   browserTools: BrowserToolsBridge;
   downloads: BrowserDownloadsBridge;

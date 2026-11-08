@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { CustomizeSessionController } from "../app/customize-session";
+  import type { LocalExtensionsBridge } from "../app/local-extensions";
+  import LocalExtensionsSection from "./features/local-extensions/LocalExtensionsSection.svelte";
   import {
     clearToolbarWidgetDrag,
     createToolbarWidgetDropEdit,
@@ -43,6 +45,7 @@
   import ToolbarWidgetGlyph from "./ToolbarWidgetGlyph.svelte";
 
   type Props = Readonly<{
+    localExtensions?: LocalExtensionsBridge;
     customizeSession?: CustomizeSessionController;
     localeId?: FenneviaLocale;
     onClose: () => void;
@@ -484,6 +487,16 @@
             </ul>
           {/if}
         </section>
+      </div>
+    {:else if selectedTab === "extensions"}
+      <div
+        class="fennevia-customize__tabpanel"
+        data-fennevia-customize-tabpanel="extensions"
+        role="tabpanel"
+        id="fennevia-customize-tabpanel-extensions"
+        aria-labelledby="fennevia-customize-tab-extensions"
+      >
+        <LocalExtensionsSection {localeId} bridge={props.localExtensions} />
       </div>
     {:else if selectedTab === "guide"}
       <div

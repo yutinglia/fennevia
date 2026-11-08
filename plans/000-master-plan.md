@@ -985,6 +985,17 @@ Tauri 2、Svelte 與 Rust；第一階段仍只有 Windows x64。計畫與移植�
 人工 UAC／乾淨機器／無障礙與完整發行矩陣尚未執行，見新驗證紀錄；
 不改變已發布版本或平台支援聲明。
 
+### Local extension loader — implemented, unreleased
+
+2026-11-09：擁有者要求參考舊專案，讓使用者加入別人提供的本機 WebExtension，
+重啟後繼續使用。研究後建議匯入版本化副本並自動暫時載入，避免依賴下載位置；
+研究見 `docs/research/local-extension-loading-options-2026-11-09.md`。
+`plans/020-local-extension-loader.md` 與 ADR-098 已實作管理 UI、受管副本、
+權限預覽及啟用／停用／更新／移除。擁有者明確接受同 ID 競爭限制，
+generic loader 仍禁止。Firefox 159.0.1 聚焦驗證見
+`docs/research/firefox-159-local-extension-implementation.md`；操作見
+`docs/local-extensions.md`。未發布新版，不擴張完整支援聲明。
+
 ## 7. Target repository layout
 
 ```text

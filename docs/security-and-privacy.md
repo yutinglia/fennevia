@@ -185,6 +185,47 @@ and reveal/suspension/failure immediately restores the independent native path.
 
 ## 4. Privileged-code rules
 
+### Owner-approved local WebExtension exception (ADR-098, 2026-11-09)
+
+The owner approved plan 020 and explicitly accepted the native same-ID race
+limitation demonstrated in `docs/research/firefox-159-local-extension-feasibility.md`.
+Fennevia may import explicitly selected Firefox-compatible local extensions into
+a bounded profile-owned data directory outside Chrome Registry mappings, persist
+their fixed IDs, consented metadata, hashes and enabled intent, and restore them
+through Firefox's temporary-addon API. User code runs only in Firefox's extension
+runtime; no privileged user-code import, script discovery, network update, signing
+bypass, private-access grant, or installer deletion-scope change is authorized.
+
+The dedicated confirmation must identify the extension and requested/optional
+permissions and explain restart restoration. It is Fennevia's local trust decision,
+not an imitation of Firefox's normal signed-install prompt. Local names/versions
+and permission descriptions may reach the owned UI as bounded text; source paths,
+raw IDs, native handles and errors may not. No such data enters logs or Sync/export.
+
+Known foreign same-ID installations must be rejected. Observed external activity
+invalidates pending intent and stops retries. The owner accepts that a native
+installation already in flight cannot be cancelled or committed conditionally and
+may replace a concurrently installed same-ID addon. Detection is not an atomic
+non-overwrite guarantee. Never uninstall, restore or mutate a foreign installation
+to compensate. Only a still-current, proven service-owned result may be disabled.
+The remaining generic-loader prohibition below continues to apply.
+
+Persistence is limited to `ProfD/fennevia/local-extensions`: a root owner marker,
+schema-1 registry, UUID entry/generation directories, sealed file inventories and
+local payload copies. No Chrome Registry mapping exposes this data. Bounds are
+24 registered entries, 24 pending previews, one pending update per entry, 512 KiB
+registry, 256 KiB manifest, 4,096 nodes/16 levels, 16 MiB per member, 64 MiB archive
+and 128 MiB expanded contents per copy. Copies accept only ordinary SystemDrive
+paths, with ancestor resolution and digest rechecks. These are path-based checks,
+not an OS sandbox against a malicious same-user filesystem writer.
+
+On update failure retain old and pending copies with interrupted state; no automatic
+retry. Unknown or corrupt disk state is preserved for manual recovery, never swept
+recursively without ownership/inventory checks. Original source paths are not saved.
+Disable keeps native data; explicit uninstall may clear it. No third-party storage
+read/write or global keepStorage/keepUuid changes are introduced. Normal shutdown
+drains work through AsyncShutdown and delegates temporary-addon cleanup to Firefox.
+
 - Treat every installed runtime module and generated frontend bundle as
   system-principal code.
 - Do not use `eval`, `Function`, string-generated modules, arbitrary dynamic
@@ -1202,7 +1243,8 @@ Firefox remains responsible for:
 - authentication prompts;
 - TLS/certificate warnings;
 - identity and permission panels;
-- extension installation;
+- extension installation, except the narrowly approved local temporary-install
+  trust flow in ADR-098; all normal signed-install/security prompts stay native;
 - download reputation, malware, and executable warnings;
 - file pickers;
 - protected-content/device prompts;

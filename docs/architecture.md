@@ -1,5 +1,26 @@
 # Architecture
 
+## Managed local WebExtensions (ADR-098, unreleased)
+
+`src/firefox/local-extensions.ts` lazily owns one optional process service;
+`local-extensions/native.ts` owns Firefox APIs and bounded disk copies,
+`service.ts` owns serialized operations, consent, ownership and recovery checkpoints,
+and `model.ts` validates the stored schema. Bootstrap only wires the facade to the
+existing WindowManager and runtime stop. The first normal window starts restoration;
+private windows receive no management bridge. Failure does not block shell health.
+
+The per-window bridge exposes bounded text, states and revision-scoped opaque
+tokens, never paths, addon IDs or native objects. Customize's dedicated section
+uses the existing panel/focus lifecycle. `src/app/local-extensions.ts` defines the
+ordinary-data contract; no Svelte component invokes privileged APIs.
+
+Copies and schema-1 registry live under profile `fennevia/local-extensions`, outside
+the chrome package and all resource mappings. Explicit confirmation precedes native
+temporary installation. A pending update keeps the old generation until success;
+incomplete work waits for explicit retry. Removal delegates addon data handling to
+Firefox. See [usage/recovery](local-extensions.md) and
+[current evidence](research/firefox-159-local-extension-implementation.md).
+
 ## 1. System boundary
 
 This project is neither a Gecko embedder nor a Firefox source fork. Stock Firefox continues to own the process model, browser windows, content processes, tabs, networking, security model, web-content isolation, and session persistence.

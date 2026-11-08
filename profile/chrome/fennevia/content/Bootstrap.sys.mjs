@@ -32,16 +32,33 @@ const logger = createRuntimeLogger({
   consoleService: Services.console,
   appInfo: Services.appinfo,
 });
+const { createFirefoxLocalExtensionsRuntime } = ChromeUtils.importESModule(
+  "chrome://fennevia/content/firefox/BridgeBoundary.sys.mjs",
+);
+const localExtensions = createFirefoxLocalExtensionsRuntime(
+  (error, firefoxSymbol) =>
+    logger.error({
+      event: "local-extensions.failed",
+      phase: "local-extensions",
+      code: "FENNEVIA_LOCAL_EXTENSION_FAILED",
+      firefoxSymbol,
+      error,
+    }),
+);
 const runtimeState = startProcessRuntime({
   services: Services,
   privateBrowsingUtils: PrivateBrowsingUtils,
   logger,
   createWindowManager,
+  stopServices(phase) {
+    return localExtensions.stop(phase === "application-shutdown");
+  },
   initializeWindow(context) {
     return initializeWindowShell({
       context,
       logger,
       appInfo: Services.appinfo,
+      localExtensions: localExtensions.forWindow(context),
     });
   },
 });

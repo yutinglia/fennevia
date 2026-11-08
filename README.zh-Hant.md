@@ -14,6 +14,12 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 ## Fennevia 會改變甚麼
 
+目前原始碼另提供 **自訂 → 本機擴充套件**：加入 Firefox 相容資料夾或 XPI／ZIP，
+確認權限後保存副本並在重啟恢復，支援啟用、停用、更新及移除。
+這仍是原生暫時安裝，具有已記錄的生命週期與同 ID 競爭限制。
+詳見[操作說明](docs/local-extensions.md)及[聚焦驗證](docs/research/firefox-159-local-extension-implementation.md)。
+此功能尚未發布，不更改現有版本的支援矩陣。
+
 [Tauri 安裝器](installer/README.md) 可掃描、保存 Firefox／Profile 位置、預覽變更，
 並透過原生交易執行安裝、更新、修復、停用、啟用及移除，包含 rollback 與獨立 UAC worker。
 新建置套件內附固定版離線 WebView2；PowerShell 主控台保留獨立備援，也可讀寫相同的

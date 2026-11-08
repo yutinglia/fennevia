@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { Script } from "node:vm";
 
 import { readShellStyles } from "./support/shell-styles.mjs";
 
@@ -1166,7 +1167,8 @@ test("the installed frontend is one IIFE, one style module, and one notice", asy
   assert.match(bundle, /data-fennevia-action/u);
   assert.doesNotMatch(bundle, /[\r\n]/u);
   assert.doesNotMatch(bundle, /[ \t]+$/u);
-  assert.doesNotMatch(bundle, /\b(?:import|export)\s/u);
+  // Parse as a classic script: words in localized copy are not ESM syntax.
+  assert.doesNotThrow(() => new Script(bundle));
   assert.doesNotMatch(bundle, /\bimport\s*\(/u);
   assert.doesNotMatch(
     bundle,

@@ -24,6 +24,14 @@ floating edge panels that stay hidden until you need them.
 
 ## What Fennevia changes
 
+Source builds include **Customize → Local extensions**: add a Firefox-compatible
+folder or XPI/ZIP, review access, and keep a managed copy restored after restart.
+Enable, disable, update and remove it from the same page. This unreleased feature
+uses native temporary installation, with lifecycle and same-ID concurrency limits.
+See the [guide](docs/local-extensions.md) and
+[focused Firefox 159 validation](docs/research/firefox-159-local-extension-implementation.md).
+The published support matrix remains unchanged.
+
 The [Tauri installer](installer/README.md) scans and remembers Firefox/profile
 locations, previews changes, and implements install, update, repair, disable,
 enable and uninstall with rollback and a separate UAC worker. New source builds

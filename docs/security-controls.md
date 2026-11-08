@@ -1,5 +1,23 @@
 # Operational Security Controls
 
+## Local WebExtension controls — ADR-098
+
+Implemented, with focused Windows Firefox 159.0.1 evidence:
+explicit preview/consent before execution; fixed author ID; bounded managed copies
+outside mappings; native WebExtension runtime only; registry/inventory validation;
+SystemDrive and ancestor checks; one serialized process queue; revision-scoped
+window tokens; no private-window management; interrupted update recovery; proven
+wrapper/source ownership before disable/remove; deterministic listener/picker drain.
+Known conflicts stop restoration. Owner-approved same-ID in-flight installation
+race remains; this is not atomic exclusion or a same-user OS sandbox.
+
+Evidence: `tests/local-extensions.test.mjs`,
+`tests/firefox-local-extensions-runtime.mjs`, `tests/firefox-local-extensions-ui.mjs`
+and [record](research/firefox-159-local-extension-implementation.md).
+No dependency, content mapping, runtime network client, signing bypass, privileged
+user-code import, third-party storage access or installer deletion expansion.
+Full hardware, third-party-extension and release matrices remain not run.
+
 This document turns `docs/security-and-privacy.md` into current review records,
 required evidence, and testable gates. It is a project security baseline, not a
 formal audit or penetration test.

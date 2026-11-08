@@ -1,5 +1,33 @@
 # Testing and Recovery
 
+## Local extensions (ADR-098, unreleased)
+
+Ordinary gate: `node --test tests/local-extensions.test.mjs`, then root
+`npm run verify` and Windows PowerShell 5.1 static suite. The state-machine tests
+cover consent/cancel, registry validation, conflicts/races, interrupted updates,
+late completion, external changes, disposal and restart intent.
+
+Focused real-Firefox commands and results are in
+[Firefox 159 implementation validation](research/firefox-159-local-extension-implementation.md).
+Use fresh marker-owned profiles and an unmodified marker-owned program copy for
+each harness; never substitute a normal profile. The test transport starts only
+that program, permits chrome automation only in that child environment, uses
+loopback Marionette and restores test picker factories. Test fixtures do not ship.
+
+At release additionally verify cold AutoConfig restoration, second normal/private
+windows, safe start, Troubleshoot Mode, native fallback, simultaneous native
+installs, interrupted I/O and shutdown, unknown/corrupt registry recovery, no Console
+exceptions, native picker, both locales, keyboard/focus, narrow/high-DPI/forced
+colors and third-party lifecycle compatibility. Keep each unrun row explicit;
+focused fixture evidence does not replace the full release matrix.
+
+Recovery: disable automatic restoration with `fennevia.localExtensions.enabled=false`
+before restart; use native Firefox management for active addons. Interrupted updates
+keep the old generation for explicit retry. Corrupt state is preserved; stop Firefox
+and back up the dedicated `fennevia/local-extensions` directory before manually
+moving it aside and re-adding trusted packages. Never repair by editing Firefox
+addon databases or storage. See [user instructions](local-extensions.md).
+
 The Tauri installer adds a separate Windows gate: run
 `npm --prefix installer run verify`, then in `installer/` run
 `cargo fmt --all --check`, `cargo clippy --locked --workspace --all-targets -- -D warnings`,

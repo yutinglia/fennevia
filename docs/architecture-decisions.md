@@ -4447,3 +4447,52 @@ custom-protocol production context，避免 codegen 把本機 config_parent 編�
 與驗證限制見 dependency review 及 `tauri-installer-release-validation.md`。
 無 Node/Rust/PowerShell GUI runtime 依賴；Linux、簽章、公開 release 與未跑的
 人工 UAC／硬體矩陣仍不可宣稱已完成。
+
+
+## ADR-098: User-selected managed local WebExtensions with native temporary restoration
+
+**Status:** Accepted by explicit owner instruction on 2026-11-09; implemented, unreleased.
+
+The owner approved plan 020 for consumers importing extensions supplied by others,
+then explicitly accepted the demonstrated same-ID concurrency limitation. This
+narrowly supersedes plan 004's blanket local-extension prohibition and the generic
+registry prohibition only for this bounded feature. ADR-002's privileged userscript
+ban, ADR-012's runtime-network ban and normal native security ownership remain.
+
+Import a folder or XPI/ZIP into versioned, profile-owned copies outside all Chrome
+Registry mappings. Require an author-provided stable Gecko ID. Present native
+manifest-derived permissions for explicit local trust consent. Store bounded
+registry state, payload integrity digests and incomplete-work checkpoints; no
+source path, third-party storage, Sync/export or network updater. Use one optional
+process service, the existing normal-window-ready signal and a restricted per-window
+bridge. Private-only startup waits. Failures must not block shell health or fallback.
+Disable uses native disable; removal uses native uninstall and may clear addon data.
+Normal shutdown adds no uninstall. Signed packages keep Firefox's native route.
+
+Firefox 159.0.1 BuildID 20261102144711 preserved MV2/MV3 fixture storage, UUIDs and
+optional grants over two complete process restarts, but replayed onInstalled and
+never onStartup. Concurrent same-ID installs both succeeded and the latter replaced
+the former; onInstalling cannot veto this path. Reject known conflicts, serialize
+our work, invalidate intent on observed foreign activity, and stop retries. The
+owner accepts the remaining non-cancellable race window. Never claim atomic
+non-overwrite, mutate a foreign installation to recover, or patch XPI internals.
+
+Sources, exact reproduction, first harness compatibility error and limitations:
+[Firefox 159 feasibility](research/firefox-159-local-extension-feasibility.md).
+No old-project or external-loader code is copied. Implementation must update the
+internals map, recovery contract and generated artifacts and pass normal CI checks.
+
+The implementation accepts only ordinary paths on Windows SystemDrive. Per-ancestor
+nsIFile.fileSize/target validation rejects resolved reparse paths; no scripted
+drive-type capability has been established for other volumes. Hash inventories
+detect changes but do not provide an OS sandbox against a same-user file-system
+attacker. Files remain outside Chrome Registry and installer-owned package roots.
+
+An update checkpoint preserves the old payload plus one pending generation. Only
+native success commits new metadata. Interrupted entries wait for explicit retry;
+retry restores the old copy and cleans the pending copy after success. Partial
+cleanup preserves unknown/corrupt files rather than expanding deletion ownership.
+AsyncShutdown.profileBeforeChange drains already pending work; normal shutdown
+does not add per-addon uninstall. The runtime's ordinary stop disables proven-owned
+items and the optional service never participates in shell health requirements.
+Validation: [implementation record](research/firefox-159-local-extension-implementation.md).

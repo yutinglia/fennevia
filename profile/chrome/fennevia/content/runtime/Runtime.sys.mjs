@@ -8,6 +8,7 @@ export function createProcessRuntime({
   windowManager,
   logger,
   registerStartupNativeHide = defaultRegisterStartupNativeHide,
+  stopServices = () => undefined,
 }) {
   if (
     typeof services?.obs?.addObserver !== "function" ||
@@ -52,6 +53,26 @@ export function createProcessRuntime({
         event: "startup-native-hide.cleanup-failed",
         phase,
         code: "FENNEVIA_STARTUP_NATIVE_HIDE_CLEANUP_FAILED",
+        error,
+      });
+    }
+  };
+
+  const disposeServices = (phase) => {
+    try {
+      Promise.resolve(stopServices(phase)).catch((error) =>
+        logger.error({
+          event: "runtime.optional-cleanup-failed",
+          phase,
+          code: "FENNEVIA_OPTIONAL_CLEANUP_FAILED",
+          error,
+        }),
+      );
+    } catch (error) {
+      logger.error({
+        event: "runtime.optional-cleanup-failed",
+        phase,
+        code: "FENNEVIA_OPTIONAL_CLEANUP_FAILED",
         error,
       });
     }
@@ -112,6 +133,7 @@ export function createProcessRuntime({
         return snapshot();
       } catch (error) {
         state = "failed";
+        disposeServices("runtime-start-failed");
         disposeStartupNativeHide("runtime-start");
         try {
           windowManager.stop();
@@ -152,6 +174,7 @@ export function createProcessRuntime({
       }
 
       state = "stopping";
+      disposeServices(phase);
       if (shutdownObserverRegistered) {
         try {
           services.obs.removeObserver(shutdownObserver, SHUTDOWN_TOPIC);
@@ -205,6 +228,7 @@ export function startProcessRuntime({
   createWindowManager,
   initializeWindow,
   registerStartupNativeHide,
+  stopServices,
   targetGlobal = globalThis,
 }) {
   if (typeof createWindowManager !== "function") {
@@ -234,6 +258,7 @@ export function startProcessRuntime({
     windowManager,
     logger,
     ...(registerStartupNativeHide ? { registerStartupNativeHide } : {}),
+    ...(stopServices ? { stopServices } : {}),
   });
   const state = {
     publicState: null,

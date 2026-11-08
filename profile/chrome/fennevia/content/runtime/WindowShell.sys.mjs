@@ -1161,6 +1161,7 @@ const getProductionAppMounts = (mountPoints) => {
 };
 
 const mountProductionShell = ({
+  localExtensions,
   browserWindow,
   buildId,
   contextId,
@@ -1471,6 +1472,7 @@ const mountProductionShell = ({
       targets,
       tabs: tabsBridge.tabs,
       toolbarWidgets: toolbarWidgetsBridge?.toolbarWidgets,
+      localExtensions,
       urlbarCoverage: urlbarCoverageBridge.urlbarCoverage,
       urlbarSuggestions: urlbarSuggestionsBridge.urlbarSuggestions,
       locale: localeApi,
@@ -1830,6 +1832,7 @@ const getProductionCapabilities = ({ mountPoints, windowKind }) => {
 };
 
 export function createWindowShellLifecycle({
+  localExtensions,
   context,
   logger,
   appInfo,
@@ -2040,6 +2043,7 @@ export function createWindowShellLifecycle({
 
             phase = "shell-mount";
             const mountResult = mountShell({
+              localExtensions,
               addCleanup: (callback) => cleanup.add(callback),
               browserWindow: context.window,
               buildId: appInfo.appBuildID,
@@ -2256,11 +2260,17 @@ export function createWindowShellLifecycle({
   return Object.freeze(lifecycle);
 }
 
-export async function initializeWindowShell({ context, logger, appInfo }) {
+export async function initializeWindowShell({
+  context,
+  logger,
+  appInfo,
+  localExtensions,
+}) {
   const lifecycle = createWindowShellLifecycle({
     context,
     logger,
     appInfo,
+    localExtensions,
     mountShell: mountProductionShell,
     checkHealth: checkProductionShell,
     getRequiredCapabilities: getProductionCapabilities,
