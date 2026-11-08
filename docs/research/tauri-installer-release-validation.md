@@ -136,6 +136,20 @@ frontend/worker smoke. This hash identifies that local preflight source commit,
 not the older published release or any later documentation-only rebuild.
 The ordinary release workflow retains full verification and annotated-tag gates.
 
+Hosted-runner follow-up: [GitHub's administrative-privileges documentation](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#administrative-privileges)
+states that Windows runners run as administrators with UAC disabled. The GUI
+rejects elevated startup before creating a WebView, including smoke mode.
+Preflight now reports `nativeSmokeStatus=not-run` with
+`reason=elevated-build-host` on that token instead of starting an elevated GUI.
+The earlier local unelevated smoke evidence remains valid; this exclusion is not
+a GUI/UAC pass or an extension of the previous release's manual-test exception.
+No release tag or publication workflow was dispatched for this follow-up.
+The changed preflight parsed successfully; release-workflow and release-packaging
+PowerShell suites passed, and native frontend/worker smoke passed again on the
+local unelevated token. `act -l` confirmed Windows job selection, but the Linux
+Docker runner cannot validate Windows token/WebView behavior. The elevated-host
+branch was not executed locally; it is not recorded as a runtime pass.
+
 The following manual rows remain not run:
 
 - Secure-desktop UAC accept, cancel, different-account credentials and

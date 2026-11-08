@@ -25,6 +25,11 @@ and real copied-Firefox file transactions. Build with `npm --prefix installer ru
 package:native`, then pass the resulting `FenneviaSetup.exe` to
 `installer/scripts/smoke-native.mjs`. Release preflight builds native binaries in
 two separate source/target directories and compares the complete ZIP and manifests.
+It runs extracted native smoke only with an unelevated Windows token. Elevated
+build hosts, including GitHub-hosted Windows runners, report
+`nativeSmokeStatus=not-run` and `reason=elevated-build-host`; the GUI continues to
+reject elevated startup. This build-environment exclusion does not waive the
+unelevated GUI, real UAC or other manual release gates below.
 Never publish with `TestAllowDirtySource`; that switch is only for local fixtures.
 
 Native UAC accept/cancel/different-account flows, exhaustive renderer permission

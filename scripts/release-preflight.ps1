@@ -176,7 +176,22 @@ try {
     if (-not $extracted.Passed) {
         throw "The extracted release tree failed strict validation."
     }
-    Invoke-FenneviaReleaseCommand -FilePath 'node' -Arguments @((Join-Path $canonicalRepository 'installer/scripts/smoke-native.mjs'), (Join-Path $extractedPackage 'FenneviaSetup.exe')) -FailureMessage 'The extracted native installer smoke failed.'
+    # Hosted Windows runners are administrators with UAC disabled. The GUI must
+    # keep rejecting elevated tokens; do not turn that guard off for CI smoke.
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    try {
+        $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+        $elevatedBuildHost = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    }
+    finally { $identity.Dispose() }
+    $nativeSmokeStatus = 'not-run'
+    if ($elevatedBuildHost) {
+        Write-Output 'event=native.smoke status=not-run reason=elevated-build-host'
+    }
+    else {
+        Invoke-FenneviaReleaseCommand -FilePath 'node' -Arguments @((Join-Path $canonicalRepository 'installer/scripts/smoke-native.mjs'), (Join-Path $extractedPackage 'FenneviaSetup.exe')) -FailureMessage 'The extracted native installer smoke failed.'
+        $nativeSmokeStatus = 'passed'
+    }
 }
 finally {
     Remove-Module FenneviaRelease -ErrorAction SilentlyContinue
@@ -194,4 +209,5 @@ Write-Output "tag=$tag"
 Write-Output "sourceCommit=$sourceCommit"
 Write-Output "archive=$($first.ArchiveName)"
 Write-Output "archiveSha256=$($first.ArchiveSha256)"
+Write-Output "nativeSmokeStatus=$nativeSmokeStatus"
 Write-Output "firstOutput=first"

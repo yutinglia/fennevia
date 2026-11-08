@@ -55,7 +55,10 @@ pwsh -NoProfile -File scripts/build-release.ps1 -OutputDirectory .release `
 
 `scripts/release-preflight.ps1` additionally builds in two independent Cargo
 source and Cargo target directories and compares manifests and ZIP bytes. It requires a clean
-checkout. It does not publish a release. The old C#/WinForms launcher is retained
+checkout. Extracted GUI/worker smoke runs only from an unelevated token; elevated
+build hosts report `nativeSmokeStatus=not-run` without weakening the GUI guard.
+The manual GUI/UAC release gates still apply. It does not publish a release.
+The old C#/WinForms launcher is retained
 only for legacy fixtures/explicit fallback packaging, not the default release.
 
 The GUI grants only bounded custom commands to the local window. Paths remain

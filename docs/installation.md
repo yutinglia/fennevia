@@ -525,6 +525,12 @@ pwsh -NoProfile -File .\scripts\release-preflight.ps1 `
   -RequireAnnotatedTag
 ```
 
+Native frontend/worker smoke requires an unelevated token. On elevated build
+hosts (including GitHub-hosted Windows runners), preflight reports
+`nativeSmokeStatus=not-run` and `reason=elevated-build-host`. It still verifies
+both archive builds and extracted inventories. This does not waive the manual
+GUI/UAC release gates; never disable the GUI's elevated-startup guard for CI.
+
 The output directory must be empty and the Git tree must be clean. The tag must
 be an annotated tag resolving to `HEAD`. The tag-triggered GitHub workflow
 repeats this preflight, creates a draft with only the ZIP and checksum, compares
