@@ -12,11 +12,11 @@ collision system, glass token set, or window-global coordination layer.
 
 ## Current status
 
-The owner requested publication of `0.19.0-beta.1` on 2026-10-01. This release
-includes ADR-085 through ADR-091, with Firefox 157.0 compatibility metadata;
-release gates, publication, and the one-time approved validation exception are
+The owner requested publication of `0.20.0-beta.1`, published on 2026-11-09.
+This release adds ADR-092 through ADR-098 and Firefox 159.0.1 compatibility metadata;
+release gates, publication, and its separately approved validation exception are
 tracked in
-`docs/research/firefox-157-0.19.0-beta.1-release-validation.md`.
+`docs/research/firefox-159-0.20.0-beta.1-release-validation.md`.
 
 Released Firefox 157 follow-up: ADR-088 gives floating panel backgrounds one
 opaque panel-color base before applying their configured opacity. This fixes
@@ -32,10 +32,11 @@ cases, including beforeunload, pass on 157.0; see
 `docs/research/firefox-157-native-dialogs.md`. Unknown modal and failure fallback
 remain intact.
 
-Validated baseline as of 2026-10-01:
+Validated baseline as of 2026-11-09:
 
-- public package `0.19.0-beta.1` prerelease on Windows x64;
-- current-package Firefox 157.0 BuildID 20260924084938 validation; historical
+- public package `0.20.0-beta.1` prerelease on Windows x64;
+- Firefox 159.0.1 BuildID 20261102144711 automated validation; historical
+  Firefox 157.0 BuildID 20260924084938,
   Firefox 153.0.4 BuildID 20260810162159, 154.0 BuildID 20260812182057,
   and 154.0.1 BuildID 20260824154132 evidence; installer accepts 153+
   after an explicit warning (ADR-048);
@@ -1324,10 +1325,10 @@ stay in the privileged bridge; cancellation, concurrent edits, missing widgets,
 rollback and disposal have dedicated checks. The existing rendering path also
 requires real widget inventory membership before exposing a saved ID as an
 action. Plan: `plans/018-settings-import-export.md`; source pins and development
-results: `docs/research/firefox-157-settings-transfer.md`. This does not change
-the published version or reuse its release-matrix exception.
+results: `docs/research/firefox-157-settings-transfer.md`. This is included in
+`0.20.0-beta.1` with its separately approved release-matrix exception.
 
-### Local extension loader — 0.20.0-beta.1 candidate
+### Local extension loader — released in 0.20.0-beta.1
 
 2026-11-09：`plans/020-local-extension-loader.md` 規劃使用原生 temporary-addon
 API，在正常啟動時恢復使用者明確授權的本機 WebExtension。擁有者澄清目標是
@@ -1338,7 +1339,7 @@ ADR-098 已記錄擁有者對同 ID 競爭限制的批准；程序共用服務�
 確認／取消及焦點驗證通過；完整 release matrix 未執行，詳見
 `docs/research/firefox-159-local-extension-implementation.md`。
 不新增通用 `.uc.js` loader 或簽章政策變更。實作 `837a5f9` 已推送 main，
-Windows CI 與 CodeQL 通過。依擁有者後續要求，準備包含 ADR-092–098 的
+Windows CI 與 CodeQL 通過。依擁有者後續要求，已發布包含 ADR-092–098 的
 `0.20.0-beta.1`；發布與剩餘驗證見
 `docs/research/firefox-159-0.20.0-beta.1-release-validation.md`。
 

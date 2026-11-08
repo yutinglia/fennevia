@@ -12,7 +12,7 @@ floating edge panels that stay hidden until you need them.
 
 > [!WARNING]
 > Fennevia is a public **prerelease**, not a stable daily-driver product. It runs
-> privileged code and depends on unsupported Firefox internals. The current candidate has automated
+> privileged code and depends on unsupported Firefox internals. The current release has automated
 > evidence on Firefox **159**; Firefox **153**, **154** and **157** retain historical
 > evidence. Later Firefox versions may break the shell. If you confirm install
 > on a newer version, there is **no
@@ -24,22 +24,22 @@ floating edge panels that stay hidden until you need them.
 
 ## What Fennevia changes
 
-Source builds include **Customize → Local extensions**: add a Firefox-compatible
+Version 0.20 includes **Customize → Local extensions**: add a Firefox-compatible
 folder or XPI/ZIP, review access, and keep a managed copy restored after restart.
-Enable, disable, update and remove it from the same page. This candidate feature
+Enable, disable, update and remove it from the same page. This feature
 uses native temporary installation, with lifecycle and same-ID concurrency limits.
 See the [guide](docs/local-extensions.md) and
 [focused Firefox 159 validation](docs/research/firefox-159-local-extension-implementation.md).
-It is included in the 0.20.0-beta.1 candidate described below.
+It is included in the 0.20.0-beta.1 prerelease described below.
 
 The [Tauri installer](installer/README.md) scans and remembers Firefox/profile
 locations, previews changes, and implements install, update, repair, disable,
-enable and uninstall with rollback and a separate UAC worker. New source builds
-bundle a fixed offline WebView2 runtime. The PowerShell console remains an
-independent backup and shares the explicitly saved locations. This migration
-does not replace the already published archive; manual UAC/clean-machine and
-accessibility release checks remain recorded as not run in the
-[validation record](docs/research/tauri-installer-release-validation.md).
+enable and uninstall with rollback and a separate UAC worker. The 0.20 release
+bundles a fixed offline WebView2 runtime. The PowerShell console remains an
+independent backup and shares the explicitly saved locations. Manual UAC/clean-machine
+and accessibility release checks remain recorded as not run under the approved
+one-release exception in the
+[validation record](docs/research/firefox-159-0.20.0-beta.1-release-validation.md).
 
 At rest, Firefox mostly shows the current page. Move the pointer to an edge, or
 use the keyboard, to reveal:
@@ -109,7 +109,7 @@ and leaves the required Customize button in Top; **Reset layout** restores the
 new Fennevia default. At least one Customize widget must remain on an enabled
 panel, and valid saved layouts are never silently replaced.
 
-## Settings backup (0.20 candidate)
+## Settings backup
 
 In **Customize > Panels > Settings backup**, export a JSON backup or import one
 to review and replace all Fennevia layout, panel, appearance, and interaction
@@ -118,7 +118,7 @@ extension data. Missing widgets keep their positions; importing does not install
 extensions. Cancel leaves settings intact, and a concurrent settings edit
 invalidates the preview. The earlier diagnostic layout-only export is not this
 versioned all-settings format. This feature is included in the
-`0.20.0-beta.1` candidate.
+`0.20.0-beta.1` prerelease.
 
 ## Screenshot showcase
 
@@ -197,11 +197,10 @@ interface when a feature is unsupported or recovery is needed.
 The current Firefox 154 AMO install flow may use that complete native-chrome
 fallback; this is an accepted safety behavior rather than a custom prompt.
 
-## Current release candidate
+## Current release
 
-This source prepares **`0.20.0-beta.1`**, following
-[`v0.19.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.19.0-beta.1).
-Publication and remaining manual checks are tracked in the
+**[`v0.20.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.20.0-beta.1)**
+was published on 2026-11-09 (Taipei). Publication and remaining manual checks are tracked in the
 [release validation record](docs/research/firefox-159-0.20.0-beta.1-release-validation.md).
 Its automated browser evidence is intentionally narrow:
 
@@ -223,7 +222,7 @@ remain available for recovery. Linux, macOS, Firefox ESR, Beta, and Nightly
 are not supported by this release.
 
 Fennevia is developed against the latest stock Firefox stable release available
-at implementation time. The 159 row above is automated evidence for this candidate,
+at implementation time. The 159 row above is automated evidence for this release,
 not a promise to keep every old release working indefinitely. A future Firefox
 stable update may require a new Fennevia build; unsupported channels and old
 compatibility branches are intentionally outside the product scope.
@@ -348,7 +347,7 @@ widget, keeps window controls visible while narrow panels scroll, enables
 horizontal side scrolling, and fixes hidden
 bookmark actions becoming visible during middle-click opening (ADR-091).
 
-The `0.20.0-beta.1` candidate keeps window controls aligned in their configured Row and
+The `0.20.0-beta.1` release keeps window controls aligned in their configured Row and
 scopes scrolling to the overflowing Row/Column, so scrolling a wide tool Row
 does not move the address or tabs beside it. It also includes portable settings
 import/export, native Windows installation and local extension management.

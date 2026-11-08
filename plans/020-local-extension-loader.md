@@ -4,10 +4,11 @@
 
 ## 1. 狀態與目標
 
-日期：2026-11-09。狀態：**已實作並推送 main，準備 0.20.0-beta.1**。
+日期：2026-11-09。狀態：**已實作、推送 main，並發布 0.20.0-beta.1**。
 擁有者已批准本計畫與下述競爭限制，並後續要求 commit、push main、release。
 實作 commit：`837a5f9`，Windows CI 與 CodeQL 已通過。
 發布與剩餘驗證見 [`0.20 發布紀錄`](../docs/research/firefox-159-0.20.0-beta.1-release-validation.md)。
+擁有者已核准本次人工驗證例外；發布後要求停止額外測試，留待自行實測。
 
 追蹤：[功能 #127](https://github.com/yutinglia/fennevia/issues/127)。
 

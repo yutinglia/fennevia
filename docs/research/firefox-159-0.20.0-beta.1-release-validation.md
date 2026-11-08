@@ -1,12 +1,14 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 
-# Firefox 159 — Fennevia 0.20.0-beta.1 release candidate
+# Firefox 159 — Fennevia 0.20.0-beta.1 release validation
 
 ## Status and source
 
 Preparation started 2026-11-09 after the owner explicitly requested commit,
 push to main, then release. Feature implementation `837a5f900f84b930d902fab075c2eed90503745e`
-is on main. No release tag or public artifact exists yet for this candidate.
+is on main. The prerelease was published on 2026-11-09 at 07:29:46 Taipei
+(2026-11-08 23:29:46 UTC) from annotated tag `v0.20.0-beta.1`, source
+`1ca65b4d3a4ee5a9624c6ccaa0eeb664737adde7`.
 The previous prerelease's one-time manual-test exception does not apply here;
 the owner supplied a separate explicit decision for this candidate below.
 
@@ -35,14 +37,14 @@ by the owner before implementation; that approval does not waive release tests.
 - Firefox 159 chrome automation uses `MOZ_REMOTE_ALLOW_SYSTEM_ACCESS=1` only
   in test subprocess environments. It is not a product preference or global change.
 
-## Evidence so far
+## Recorded evidence
 
 | Gate | Observed result |
 | --- | --- |
 | Feature ordinary gate | Passed at implementation tree: 510 tests, 89.45% lines / 95.95% functions, root verify, PS7/5.1, deterministic build, production scan. |
 | Versioned candidate ordinary gate | Passed again after I/O correction and 0.20 metadata: root verify (510 tests, 89.45% lines / 95.95% functions), PS7/5.1 static suites, dependency audit, deterministic build, production scan and installer frontend verify. |
 | Native installer frontend / Rust | `npm --prefix installer run verify`, `cargo fmt --all --check`, locked clippy with warnings denied, and all 42 locked workspace tests passed again after the version bump. |
-| Main CI / CodeQL | Passed for implementation `837a5f9` (CI `42528214776`, CodeQL `42528214729`) and exact candidate `90f51b3` (Windows CI `42531591043`, CodeQL `42531590805`). |
+| Main CI / CodeQL | Passed for implementation `837a5f9`, candidate `90f51b3`, and final tag source `1ca65b4` (Windows CI `42532852133`, CodeQL `42532851983`). |
 | Firefox full lifecycle + Browser Toolbox | Passed again on the versioned candidate after the I/O fix: normal/second/private windows, owned XHTML hosts, content-only activation, native reveal/fallback, resize/maximize/minimize/fullscreen/customize, excluded tab, cleanup and no unexpected first-party script errors. |
 | Local extension runtime and UI | Passed; see [feature evidence](firefox-159-local-extension-implementation.md). |
 | Frontend/bridge/safe-start/runtime recovery, SessionStore | Passed: missing/throwing frontend, all bridge failure cases, shell recovery, safe start/fatal bootstrap, persisted tabs/lazy restoration and fail-open, with exact baseline restoration. |
@@ -52,7 +54,8 @@ by the owner before implementation; that approval does not waive release tests.
 | Exact candidate double native/package build and extracted archive | Passed at clean source `90f51b3556ea2929a4230e35d0a4398eb602862a`; independent source/target builds, identical ZIP/manifests, Unicode extraction, exact hashes, PS7/5.1 verifiers and native frontend/worker smoke. |
 | Extracted native installer file transactions | Passed on a separate pristine Firefox 159 copy: Install 26, unchanged Update 0, Disable/Enable 3 each, missing-file Update 1, missing-program-side Repair 4, Uninstall 26; original file inventory restored. |
 | Extracted browser recovery / stock return | Passed: exact archive update, missing frontend hard-disable, update/repair while disabled, stock cold start, re-enable and full normal/second/private lifecycle, uninstall and stock cold start with zero project records or owned-file residue. |
-| Annotated tag / publication / independent public download | Not run. |
+| Annotated tag / publication | Passed: release workflow `42533496365` completed both exact-tag rehearsal and publication jobs, including independent source/target double builds, remote digests and hosted public-download verification. |
+| Independent local public download | ZIP and checksum match GitHub asset digests; checksum contents, exact source identity and PS7 strict 304-file inventory passed. The owner then requested stopping further tests; PS5.1 was interrupted without a recorded result, native IPC and public-package browser recovery were not run locally. |
 
 Commands use the existing `tests/firefox-window-lifecycle.mjs --browser-toolbox`
 and recovery/probe wrappers listed in `docs/testing-and-recovery.md`, passing only
@@ -157,6 +160,31 @@ authenticated worker IPC smoke from the unelevated local token.
 These hashes describe this local candidate, not a public artifact or a future
 tag with additional documentation. Publication requires the workflow's own
 exact-tag rebuild and independent public-download verification.
+
+## Published package and owner-directed stop
+
+- [Public prerelease](https://github.com/yutinglia/fennevia/releases/tag/v0.20.0-beta.1).
+- [Release workflow](https://github.com/yutinglia/fennevia/actions/runs/42533496365):
+  both jobs passed; exact-tag rehearsal took 10m58s and publication 13m03s.
+- Final source [Windows CI](https://github.com/yutinglia/fennevia/actions/runs/42532852133)
+  and [CodeQL](https://github.com/yutinglia/fennevia/actions/runs/42532851983) passed.
+- Public ZIP: `fennevia-0.20.0-beta.1-windows.zip`, 729,839,756 bytes.
+- ZIP SHA-256: `833f4f96dcfa2f59589eab03796c3d88abae8c2daa39309fc49bb22201d06e59`.
+- Checksum-file SHA-256:
+  `14089d40be2eced7528d3278b3e4ea0bfe5fe0f852d726f3f02ee4ac52967327` (101 bytes).
+- Local independent download matched both GitHub asset digests and the checksum
+  contents. Unicode-path extraction identified tag source `1ca65b4`; the shipped
+  PS7 strict verifier passed all 304 files with package-manifest SHA-256
+  `a7ffe09c223b8e7a8d451fdeabe3b574a263c1405e6ec4fd9fd61628b23d851d`.
+
+After publication, the owner explicitly instructed: “pause, no need test it,
+i will test it later, finish jobs for now first”. The running local verification
+was stopped at that point. PS5.1 produced no completed result; local public-EXE
+IPC smoke and public-package Firefox recovery/install/uninstall were **not run**.
+Earlier exact-candidate evidence remains valid for its stated source and archive;
+it is not relabeled as a public-archive rerun. The workflow's own public-download
+digest verification completed before this stop. Remaining testing is deferred
+to the owner; only publication documentation and tracking are completed afterward.
 
 ## Remaining manual and hardware gates
 

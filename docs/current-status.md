@@ -1,8 +1,7 @@
 # Current Project Status
 
 > Snapshot: 2026-11-09. Current source includes ADR-074 through ADR-098 and
-> prepares `0.20.0-beta.1`, alongside the previous public
-> `v0.19.0-beta.1` prerelease.
+> public prerelease `v0.20.0-beta.1` is published.
 > Historical research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
@@ -11,22 +10,26 @@ and testing documents retain the complete engineering contract.
 
 The owner requested commit, main push, then release after approving the local
 extension same-ID race limitation. Implementation `837a5f9` is on main with
-passing Windows CI and CodeQL. The `0.20.0-beta.1` candidate combines ADR-092–098:
+passing Windows CI and CodeQL. The published `0.20.0-beta.1` combines ADR-092–098:
 local WebExtension import/restore/management, portable settings, scoped scrolling,
 configured controls and the native installer. Automated browser validation now
 covers Firefox 159.0.1 BuildID `20261102144711`; older builds retain historical
 evidence. Publication and unrun manual gates are tracked in
-[the candidate record](research/firefox-159-0.20.0-beta.1-release-validation.md).
+[the release record](research/firefox-159-0.20.0-beta.1-release-validation.md).
+Exact tag source `1ca65b4` passed Windows CI, CodeQL and release workflow
+`42533496365`. Independent local public-download hashes and the PS7 strict
+inventory passed. The owner then requested stopping additional tests and will
+test later; remaining local public-package checks are not claimed as passed.
 
-The unreleased native installer migration (ADR-095–097) now implements Tauri
+The released native installer migration (ADR-095–097) implements Tauri
 discovery/saved locations, six native lifecycle transactions, rollback, a UAC
 worker, fixed offline WebView2 packaging and shared saved locations in the
-independent PowerShell console. New builds use the native EXE; the published
-archive is unchanged. Automated evidence and remaining manual UAC/clean-machine/
+independent PowerShell console. The 0.20 archive uses the native EXE.
+Automated evidence and remaining manual UAC/clean-machine/
 accessibility release gates are in the
 [installer validation record](research/tauri-installer-release-validation.md).
 
-Public prerelease `0.19.0-beta.1` includes ADR-085 through ADR-091 and adds
+Previous public prerelease `0.19.0-beta.1` includes ADR-085 through ADR-091 and adds
 Firefox 157.0 to installer compatibility metadata. The owner explicitly
 approved a one-time exception for remaining manual/hardware checks, which stay
 `not run`; automated release gates and exact archive evidence are tracked in
@@ -38,11 +41,11 @@ scrolling, and fixes disabled bookmark actions becoming visible after middle
 click. Focused Firefox 157 fixtures cover these states, customization, and
 nested side-dock placement; archive evidence is in the release record.
 
-Unreleased source adds configured window-control alignment (ADR-092), portable
+The 0.20 release adds configured window-control alignment (ADR-092), portable
 settings import/export (ADR-093), and scrolling confined to each overflowing
 Row/Column (ADR-094). A wide tool Row no longer moves its sibling address and
 Tabs areas. See [the scoped-scroll evidence](research/firefox-157-scoped-container-scroll.md).
-These changes do not reuse the release's one-time manual-test exception.
+The owner separately approved the 0.20 one-time manual-test exception.
 
 The released Firefox 155 follow-up fixes the changed native suggestion-pick
 arguments and hands asynchronous search-mode rows to Firefox with the draft
@@ -73,17 +76,17 @@ and unknown-dialog/error fallback remain intact. See
 
 | Area                            | Current state                                                                                                                                                                                                                                                                                          |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Public release | `v0.19.0-beta.1`, Windows x64 prerelease |
-| Tested Firefox | Current package: stock Firefox 157.0 BuildID `20260924084938`, release channel. Firefox 153.0.4/154.0/154.0.1 evidence is historical. |
-| Installer compatibility gate | Firefox 153 and newer after an explicit warning; 153, 154, and 157 have tested evidence. |
+| Public release | `v0.20.0-beta.1`, Windows x64 prerelease |
+| Tested Firefox | Firefox 159.0.1 BuildID `20261102144711`, release channel. Firefox 153/154/157 evidence is historical; see the release record for candidate/public-package distinctions. |
+| Installer compatibility gate | Firefox 153 and newer after an explicit warning; 153, 154, 157, and 159 have tested evidence. |
 | Core four-edge MVP              | Implemented and released                                                                                                                                                                                                                                                                               |
-| Post-MVP shell work | Included through `v0.19.0-beta.1`: ADR-064 through ADR-091, including the widget editor, layout, narrow-window, drag, address, Firefox 157 panel/dialog, and download progress follow-ups. |
-| Latest released follow-up | ADR-091: progress rings in both download widgets, window controls outside panel scrolling, horizontal side overflow, and correct bookmark action visibility during middle-click opening. |
-| Current source follow-up | Unreleased ADR-092 through ADR-094: configured window-control alignment, portable settings import/export, and scrolling confined to each Row/Column. Daily-profile visual and physical-input confirmation remain pending. |
+| Post-MVP shell work | Included through `v0.20.0-beta.1`: ADR-064 through ADR-098, including widget editing, layout, Firefox compatibility, local extensions and native installation. |
+| Latest released follow-up | ADR-098: import, preview, manage and restore local Firefox-compatible WebExtensions after restart. |
+| Other 0.20 additions | ADR-092 through ADR-097: configured controls, portable settings, independent Row/Column scrolling and the native installer. Manual UAC, visual and physical-input confirmation remain pending. |
 | Earlier source follow-up        | The Firefox 154.0.1 Urlbar-coverage correction gates blocked permission children behind Firefox's parent visibility envelope; direct confirmation of the owner's original transition remains pending. |
 | Latest widget-system follow-up  | ADR-074 composes every edge from bounded recursive widgets; ADR-075 adds projected dragging, palette discovery, and closed per-instance variants; ADR-076 moves controls into one floating inspector; ADR-077 adds configurable panel dodge and correct horizontal feature sizing; ADR-078 adds a feature-first paired palette and optional layout Guide; ADR-080 adds retained-floor and ultra-compact four-panel reflow; the automated Firefox 154.0.1 release matrix passed while manual visual rows remain pending |
 | Native Urlbar result projection | Included since `v0.12.0-beta.1`; the `0.18.0-beta.1` Firefox 154.0.1 provider-contract, production-panel, failure-injection, normalized-query-boundary, and release probes passed; the literal fresh-profile first-zero-prefix and representative-provider matrices remain pending                                                |
-| Real-Firefox validation | `v0.19.0-beta.1` automated Firefox 157 lifecycle, recovery, SessionStore, performance controls, focused UI, deterministic archive, and public-package checks are recorded in the 157 release record. Remaining manual/hardware rows are not run under the explicit one-time owner approval. |
+| Real-Firefox validation | Firefox 159 lifecycle, recovery, SessionStore, performance controls, focused UI and exact candidate recovery passed. Public-package hashes and PS7 inventory passed; further local public-package tests were stopped at the owner's request. Manual/hardware rows remain not run under the explicit 0.20 exception. |
 | Stability claim                 | Experimental prerelease; not a stable daily-driver or long-term-support promise                                                                                                                                                                                                                        |
 
 ## Implemented product surface
@@ -575,9 +578,9 @@ following remain explicitly pending in the current plans and testing document:
   window dragging, normal/second/private windows, high-DPI/forced-colors, and
   Browser Console evidence;
 - a complete recorded real double-click, UAC, and system-Firefox installation
-  matrix for the WinForms release wizard.
+  matrix for the native Tauri installer.
 
-Accordingly, `v0.19.0-beta.1` should be described as an implemented experimental
+Accordingly, `v0.20.0-beta.1` should be described as an implemented experimental
 prerelease with validation debt, not as a stable product. The largest remaining
 risk is Firefox-internal compatibility and real-environment coverage rather
 than absence of the core shell.

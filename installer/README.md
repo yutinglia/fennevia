@@ -86,6 +86,6 @@ PowerShell for cross-engine fixtures; neither shipping executable does so.
 Current evidence and unrun manual release checks are in
 [`tauri-installer-release-validation.md`](../docs/research/tauri-installer-release-validation.md).
 Initial and transaction-only records describe earlier increments. The first
-native-installer release candidate is `0.20.0-beta.1`; publication and current
+native-installer public prerelease is `0.20.0-beta.1`; publication and current
 browser evidence are tracked in
 [`Firefox 159 release validation`](../docs/research/firefox-159-0.20.0-beta.1-release-validation.md).

@@ -42,10 +42,10 @@ of inventing a new architecture.
   behavior.
 - Initial support targets the latest Firefox stable available during
   implementation and a Windows-first development environment.
-- Current candidate `0.20.0-beta.1` has automated Windows x64 Firefox 159.0.1
+- Current public prerelease `0.20.0-beta.1` has automated Windows x64 Firefox 159.0.1
   BuildID `20261102144711` evidence. Publication and remaining manual gates are
   tracked in `docs/research/firefox-159-0.20.0-beta.1-release-validation.md`.
-  Public prerelease `0.19.0-beta.1` has Windows x64 Firefox 157.0 BuildID
+  Previous prerelease `0.19.0-beta.1` has Windows x64 Firefox 157.0 BuildID
   `20260924084938` evidence. Firefox 153.0.4 BuildID
   `20260810162159`, Firefox 154.0 BuildID `20260812182057`, and Firefox 154.0.1
   BuildID `20260824154132` retain historical evidence. The installer accepts

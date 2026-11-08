@@ -57,12 +57,13 @@ Firefox-owned.
 
 ## 2. Current baseline
 
-As of 2026-10-01, public prerelease package `0.19.0-beta.1` is published
-for Windows x64, with current-package Firefox 157.0 BuildID 20260924084938
-validation. Historical evidence remains Firefox 153.0.4 BuildID 20260810162159,
+As of 2026-11-09, public prerelease package `0.20.0-beta.1` is published
+for Windows x64, with Firefox 159.0.1 BuildID 20261102144711 automated
+validation. Historical evidence remains Firefox 157.0 BuildID 20260924084938,
+Firefox 153.0.4 BuildID 20260810162159,
 Firefox 154.0 BuildID 20260812182057, and Firefox 154.0.1 BuildID 20260824154132.
 The installer accepts Firefox 153 and newer after an explicit warning that only
-153, 154, and 157 have tested evidence. See
+153, 154, 157, and 159 have tested evidence. See
 `docs/research/firefox-154-stable-transition.md` and ADR-048.
 
 The released Firefox 157 follow-up (ADR-088) corrects Nova's
@@ -964,16 +965,16 @@ prior preference state, exact package bytes, and no transaction marker.
 Evidence: ADR-035 and
 `docs/research/firefox-153-session-restore-rehearsal.md`.
 
-### Unreleased owner follow-ups
+### Owner follow-ups released in 0.20
 
-Unreleased owner follow-ups on 2026-10-01 retain window controls in their saved
+Owner follow-ups on 2026-10-01 retain window controls in their saved
 Row/Column while pinning them during horizontal scrolling (ADR-092), and add
 portable backups of the three existing Fennevia customize preferences
 (ADR-093, `plans/018-settings-import-export.md`). ADR-094 scopes overflow and
 customize autoscroll to the receiving Row/Column, keeping sibling address and
-Tabs areas stationary during horizontal tool scrolling. The public release remains
-`0.19.0-beta.1`; these changes carry development evidence, not a new release
-claim or inherited manual-test exception.
+Tabs areas stationary during horizontal tool scrolling. These changes are included
+in `0.20.0-beta.1`, with a separate owner-approved manual-test exception recorded
+in `docs/research/firefox-159-0.20.0-beta.1-release-validation.md`.
 
 ### Native GUI installer follow-up
 
@@ -983,9 +984,9 @@ Tauri 2、Svelte 與 Rust；第一階段仍只有 Windows x64。計畫與移植�
 `plans/019-native-gui-installer.md`、ADR-095–097。已實作一般 release-container
 安裝、六種交易、rollback、UAC worker、fixed WebView2 封裝與 PowerShell 共用位置保存。
 人工 UAC／乾淨機器／無障礙與完整發行矩陣尚未執行，見新驗證紀錄；
-不改變已發布版本或平台支援聲明。
+已隨 `0.20.0-beta.1` 發布；本次人工驗證例外不擴張平台支援聲明。
 
-### Local extension loader — 0.20.0-beta.1 candidate
+### Local extension loader — released in 0.20.0-beta.1
 
 2026-11-09：擁有者要求參考舊專案，讓使用者加入別人提供的本機 WebExtension，
 重啟後繼續使用。研究後建議匯入版本化副本並自動暫時載入，避免依賴下載位置；
@@ -995,7 +996,7 @@ Tauri 2、Svelte 與 Rust；第一階段仍只有 Windows x64。計畫與移植�
 generic loader 仍禁止。Firefox 159.0.1 聚焦驗證見
 `docs/research/firefox-159-local-extension-implementation.md`；操作見
 `docs/local-extensions.md`。實作 `837a5f9` 已推送 main，Windows CI 與 CodeQL 通過。
-擁有者後續要求發布，現準備 `0.20.0-beta.1`，一併包含 ADR-092–098；
+擁有者後續要求發布，`0.20.0-beta.1` 已發布，一併包含 ADR-092–098；
 Firefox 159 自動化矩陣、封裝與人工驗證邊界見
 `docs/research/firefox-159-0.20.0-beta.1-release-validation.md`。
 

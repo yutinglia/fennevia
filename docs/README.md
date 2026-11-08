@@ -28,7 +28,7 @@ English.
 - [Local extensions](local-extensions.md) — import trusted Firefox-compatible
   folders/XPI/ZIP files, review access, manage restoration, and recover safely.
 - [0.20.0-beta.1 release validation](research/firefox-159-0.20.0-beta.1-release-validation.md)
-  — Firefox 159 evidence, exact candidate packaging and remaining release gates.
+  — Firefox 159 evidence, published package and remaining validation limits.
 - [Security policy](../SECURITY.md) — supported security-reporting scope and how
   to report a vulnerability privately.
 
@@ -104,9 +104,9 @@ Read these before changing code or current documentation:
   ADR-053 feature-first source boundaries, compatibility facades, and fixed
   installer implementation inventory.
 
-Current source prepares `0.20.0-beta.1`, including local extension management
+Current public prerelease is `0.20.0-beta.1`, including local extension management
 (ADR-098), native installation (ADR-095–097), portable settings and scoped
-scrolling. The previous public release is `v0.19.0-beta.1`. The candidate has
+scrolling. The previous public release is `v0.19.0-beta.1`. The release has
 automated Windows x64 Firefox 159.0.1 BuildID `20261102144711` evidence; see its
 release record for exact checks and unrun manual rows. Firefox 153/154/157 evidence
 is historical and does not establish current-package compatibility on those builds.
