@@ -52,7 +52,7 @@ No production recovery rule was loosened to make the harness pass.
   native distribution. This is actual native execution, not browser emulation.
 - Two independent Cargo target builds produced byte-identical native inventories.
   Release preflight additionally now rebuilds from a second archived source path.
-  Final source-path/ZIP preflight results are recorded below when available.
+  The final source-path/ZIP preflight passed as recorded below.
 - Cargo audit 0.22.2: no vulnerabilities; two informational non-Windows dependency
   warnings. npm audit: two low affected entries for the existing build-only
   deepmerge issue. Exact scope and limitations are in the dependency review.
@@ -118,6 +118,25 @@ The earlier build occupied about 728 MB extracted; final size/checksum are
 reported by the generated artifacts, not a fixed product promise.
 
 ## Not run / release gates
+
+Final clean-source preflight on commit
+`5038e49dae15153b38fbd18f3e90e14477c0f856` passed:
+
+```text
+pwsh -NoProfile -File scripts/release-preflight.ps1 -OutputDirectory <EMPTY_OUTPUT> -SkipDependencyInstall -SkipProjectVerification
+```
+
+The skip flags reused the already passed local root/frontend gates and exact
+installed dependencies. The second archived source installed its own locked
+frontend dependencies; both native builds used fresh Cargo target directories.
+Native inventory, both full ZIPs and release manifests matched. ZIP SHA-256:
+`fb4869e30be0c5361945acd6ebde1ea4ae64ba666ff8a53201fe07d1aac5975f`.
+Extraction into a Unicode/space path passed strict verification and the actual
+frontend/worker smoke. This hash identifies that local preflight source commit,
+not the older published release or any later documentation-only rebuild.
+The ordinary release workflow retains full verification and annotated-tag gates.
+
+The following manual rows remain not run:
 
 - Secure-desktop UAC accept, cancel, different-account credentials and
   Program Files ACL/race scenarios on physical targets.

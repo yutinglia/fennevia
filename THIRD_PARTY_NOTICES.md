@@ -43,6 +43,12 @@ text preserved at the named notice path.
 
 ## Material included in the distributed runtime
 
+The native installer's small geometric F icon is original project material,
+generated deterministically by `installer/scripts/generate-icon.mjs` under
+MPL-2.0. No external image, font or icon library is used. Reproduction and
+provenance are recorded in `docs/media/PROVENANCE.md`; this does not add a
+separate trademark license.
+
 ### Svelte 5.56.9 runtime subset
 
 - Classification: compiler-selected third-party runtime code bundled into a

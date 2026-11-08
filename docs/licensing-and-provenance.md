@@ -153,9 +153,11 @@ commits.
 
 MPL-2.0 does not grant rights to contributor trademarks, service marks, or
 logos. The software license therefore does not grant a right to imply project
-endorsement or use Fennevia branding as a trademark. No separate logo/icon
-license exists because the repository currently distributes no project logo or
-icon asset. On 2026-08-27, the owner explicitly approved one generated README
+endorsement or use Fennevia branding as a trademark. The native installer now
+generates an original geometric F application icon from project source under
+the existing MPL-2.0 license; it introduces no separate logo license or trademark
+policy. Its source and reproduction hash are in `docs/media/PROVENANCE.md`.
+On 2026-08-27, the owner explicitly approved one generated README
 hero and six owner-provided runtime captures as project documentation media,
 not as a logo or trademark registration; their dedicated provenance is in
 `docs/media/PROVENANCE.md` and `THIRD_PARTY_NOTICES.md`. Any future brand asset

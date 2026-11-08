@@ -103,3 +103,20 @@ To remove this media set, remove both README references, the seven PNG files,
 this record, and the matching root notice entry in one change. The older
 project-authored `fennevia-overview.svg` remains independently removable and is
 not an input to this media set.
+
+## Native installer application icon — 2026-11-09
+
+The authorized native-installer implementation includes an original 32×32
+geometric F application icon. Codex authored the pixel-generation code in
+`installer/scripts/generate-icon.mjs`; no external icon, font, raster or
+reference image was copied. It uses the existing MPL-2.0 project license,
+without changing trademark policy or creating a standalone logo license.
+
+Reproduce with `node scripts/generate-icon.mjs` from `installer/`. The generated
+`src-tauri/icons/icon.ico` is build output embedded into the native executable,
+not a hand-edited committed binary. SHA-256:
+`4ce74ab6bce7e15b20a928c088da65853d5f2849dfeb9e4a8113bdfdd3a6f281`.
+The generator is recorded in source commit
+`5038e49dae15153b38fbd18f3e90e14477c0f856`. Update or remove it through that
+source and regenerate the native executable; keep this record as historical
+provenance if its design changes.
