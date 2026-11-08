@@ -1319,6 +1319,17 @@ to this Windows stable prerelease. Automated release verification still gates
 publication; no safety, privacy, fail-open, native-UI ownership, or future
 release requirement is relaxed, and unrun checks are not recorded as passing.
 
+**Dated exception, 2026-11-09:** After reviewing the `0.20.0-beta.1` candidate,
+passing CI/CodeQL, Firefox 159 automation, independent identical package builds
+and extracted-package recovery, the owner explicitly answered
+“核准本次例外並發布”. Publication may proceed after final CI with the remaining
+manual/hardware/UAC, clean-machine/network-capture, physical interruption/ACL,
+accessibility/DPI/input and real-account/extension/permission/early-network
+matrices in `docs/research/firefox-159-0.20.0-beta.1-release-validation.md` still
+marked `not run`. This is a separate exception for that release only. Product
+safety, privacy, fail-open, native-UI ownership and Windows stable scope remain
+unchanged; automated verification and exact-tag publication checks still apply.
+
 ## ADR-040: Use a PowerShell console for release and development install
 
 **Status:** Accepted for issue #57; the "not a graphical installer" clause and

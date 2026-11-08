@@ -7,7 +7,8 @@
 Preparation started 2026-11-09 after the owner explicitly requested commit,
 push to main, then release. Feature implementation `837a5f900f84b930d902fab075c2eed90503745e`
 is on main. No release tag or public artifact exists yet for this candidate.
-The previous prerelease's one-time manual-test exception does not apply here.
+The previous prerelease's one-time manual-test exception does not apply here;
+the owner supplied a separate explicit decision for this candidate below.
 
 Release follow-up `a7b45da` corrects the I/O lifetime issue below. Package, npm
 locks, native workspace/lock and Tauri identities are now `0.20.0-beta.1`.
@@ -41,14 +42,16 @@ by the owner before implementation; that approval does not waive release tests.
 | Feature ordinary gate | Passed at implementation tree: 510 tests, 89.45% lines / 95.95% functions, root verify, PS7/5.1, deterministic build, production scan. |
 | Versioned candidate ordinary gate | Passed again after I/O correction and 0.20 metadata: root verify (510 tests, 89.45% lines / 95.95% functions), PS7/5.1 static suites, dependency audit, deterministic build, production scan and installer frontend verify. |
 | Native installer frontend / Rust | `npm --prefix installer run verify`, `cargo fmt --all --check`, locked clippy with warnings denied, and all 42 locked workspace tests passed again after the version bump. |
-| Main CI / CodeQL | Passed for `837a5f9`: Windows CI `42528214776`, CodeQL `42528214729`. |
+| Main CI / CodeQL | Passed for implementation `837a5f9` (CI `42528214776`, CodeQL `42528214729`) and exact candidate `90f51b3` (Windows CI `42531591043`, CodeQL `42531590805`). |
 | Firefox full lifecycle + Browser Toolbox | Passed again on the versioned candidate after the I/O fix: normal/second/private windows, owned XHTML hosts, content-only activation, native reveal/fallback, resize/maximize/minimize/fullscreen/customize, excluded tab, cleanup and no unexpected first-party script errors. |
 | Local extension runtime and UI | Passed; see [feature evidence](firefox-159-local-extension-implementation.md). |
 | Frontend/bridge/safe-start/runtime recovery, SessionStore | Passed: missing/throwing frontend, all bridge failure cases, shell recovery, safe start/fatal bootstrap, persisted tabs/lazy restoration and fail-open, with exact baseline restoration. |
 | Focused native/Urlbar/layout probes | Passed: provider/results, suggestions/execution/search-mode handoff, tab drag scroll, ten light/dark opacity cases, scoped Row/Column scrolling and configured controls, settings transfer, eight background and eight native dialog cases. |
 | Repeated performance | Three enabled starts and three hard-disabled controls passed; numeric observations below. |
 | Local extension cold AutoConfig restore | Passed after the process-global I/O correction: normal and immediate-quit modes, three processes each, later-window operations after closing the original window, restoration and persistent removal. |
-| Exact candidate double native/package build and extracted archive | Not run yet. |
+| Exact candidate double native/package build and extracted archive | Passed at clean source `90f51b3556ea2929a4230e35d0a4398eb602862a`; independent source/target builds, identical ZIP/manifests, Unicode extraction, exact hashes, PS7/5.1 verifiers and native frontend/worker smoke. |
+| Extracted native installer file transactions | Passed on a separate pristine Firefox 159 copy: Install 26, unchanged Update 0, Disable/Enable 3 each, missing-file Update 1, missing-program-side Repair 4, Uninstall 26; original file inventory restored. |
+| Extracted browser recovery / stock return | Passed: exact archive update, missing frontend hard-disable, update/repair while disabled, stock cold start, re-enable and full normal/second/private lifecycle, uninstall and stock cold start with zero project records or owned-file residue. |
 | Annotated tag / publication / independent public download | Not run. |
 
 Commands use the existing `tests/firefox-window-lifecycle.mjs --browser-toolbox`
@@ -117,19 +120,81 @@ run; their median is comparable at 1683.285 ms with zero Fennevia records/hosts.
 This supports shared Firefox startup activity, not precise CPU attribution.
 Enable was restored in `finally`. These numbers precede the I/O lifetime fix.
 
+## Exact candidate package
+
+Clean source: `90f51b3556ea2929a4230e35d0a4398eb602862a`, pushed to main.
+Command:
+
+```text
+pwsh -NoProfile -File scripts/release-preflight.ps1 -OutputDirectory <EMPTY_TASK_OUTPUT> -ExpectedTag v0.20.0-beta.1 -SkipDependencyInstall -SkipProjectVerification
+```
+
+The flags reuse the already verified local dependencies and candidate project
+gates above. Both native builds still ran independently, from different source
+and Cargo target directories, with four build jobs. Preflight built both full
+packages, compared their complete bytes and manifests, checked checksums,
+extracted into a Unicode/space path, and passed native frontend-ready and
+authenticated worker IPC smoke from the unelevated local token.
+
+- ZIP: `fennevia-0.20.0-beta.1-windows.zip`, 729,837,927 bytes.
+- SHA-256: `3eeb0df3e921b9c3d50b3db593b19c34922bb325c529d24686c1f106b23c9e40`.
+- Strict extracted inventory: 304 files; both PowerShell 7 and 5.1 pass.
+- Package manifest SHA-256:
+  `a7ffe09c223b8e7a8d451fdeabe3b574a263c1405e6ec4fd9fd61628b23d851d`.
+- The Rust `release-transaction` example used this exact extracted package and
+  independently unpacked, Mozilla-signed pristine Firefox 159.0.1 input. Its
+  complete copied-program lifecycle restored the original file inventory.
+- Shipping PowerShell CLI update, `tests/firefox-release-recovery.ps1`, shipping
+  uninstall and `tests/firefox-window-lifecycle.mjs --expect-stock` all passed
+  with the exact Unicode-path extraction and the marked development pair.
+  The first CLI invocation incorrectly supplied the library-only `PackageRoot`
+  parameter and was rejected before mutation; the corrected invocation uses the
+  shipped script's own package root. No installer code change was needed.
+- The Windows jobs were executed directly. Workflows/runner orchestration are
+  unchanged; Linux Docker/act cannot establish Windows ACL/registry/PS5.1/MSVC/
+  WebView2 behavior, so no publication or privileged workflow ran in act.
+
+These hashes describe this local candidate, not a public artifact or a future
+tag with additional documentation. Publication requires the workflow's own
+exact-tag rebuild and independent public-download verification.
+
 ## Remaining manual and hardware gates
 
-Not run: secure-desktop UAC acceptance/cancellation/different-account credentials;
-clean Windows without build tools; physical power loss/disk-full/worker interruption;
-screen reader, high DPI/system colors and physical cross-application pointer flows;
-real user-account/provider/third-party-extension compatibility and full permissions
-matrix. Automated fixtures cannot establish these results.
+Not run:
 
-Publication remains gated by the repository's current release contract. No waiver
-is inferred from the owner's general release request. Any explicit owner decision
-about unrun rows must be recorded in the current normative documents before tagging.
+- Secure-desktop UAC acceptance/cancellation/different-account credentials and
+  physical Program Files ACL/race scenarios.
+- Clean Windows without build tools; isolated-network capture and exhaustive
+  renderer/capability attack attempts.
+- Physical power loss/disk-full/forced worker interruption at every transaction
+  stage. Automated rollback and immediate browser quit do not establish these.
+- Screen reader, 100/150/200% DPI, system colors/forced colors, multilingual
+  physical keyboard/mouse, native file-dialog interaction and cross-application
+  pointer flows; first-paint/watchdog visual confirmation and complete customize
+  and popup-placement matrices.
+- Real user accounts/devices/providers/third-party extensions, full permissions
+  matrix, literal fresh-profile first-zero-prefix query, DNR/dynamic scripts/menus
+  and earliest-network-request lifecycle coverage.
+
+Automated fixtures cannot establish these results. Non-Windows and non-release
+Firefox channels remain outside support scope, not newly passed or supported.
+
+On 2026-11-09, after reviewing the completed candidate and the unrun rows above,
+the owner explicitly answered **“核准本次例外並發布”** (approve this exception and
+publish). The question included the exact unrun scope, linked AGENTS §8.2 and
+this record, and specified publication after final CI. This is an explicit
+one-release exception for `0.20.0-beta.1`, not inferred from the earlier general
+release request and not reused from 0.19. All unrun rows remain `not run`.
+AGENTS §8.2, ADR-039 and the current testing contract record the same decision
+before tagging. Product safety, privacy, fail-open, native UI ownership and
+Windows stable support boundaries remain unchanged.
 
 An earlier attempt to batch-delete this task's disposable profiles was rejected by
 automatic approval review with only `blocked by policy`. No bypass was attempted;
 those isolated targets remain. The retained stock copy is reused for this release
 verification with a fresh profile. This is not an installation in a daily profile.
+After the shutdown fix passed, automatic approval review also rejected removal of
+six new temporary diagnostic scripts/logs in the ignored task-artifact directory
+with the same `blocked by policy` result. No alternative deletion method was used.
+No temporary diagnostic code is in the production source or release inventory;
+the retained regression harnesses are test-only.

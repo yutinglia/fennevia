@@ -30,7 +30,7 @@ by another tool can still be replaced by an already-started Firefox operation.
 Only trust packages from authors you trust. Signing policy and private access are
 unchanged; signed packages can still use Firefox's normal installation.
 
-Current candidate validation targets stock Firefox **159.0.1**, BuildID
+Automated validation covers stock Firefox **159.0.1**, BuildID
 `20261102144711`, on Windows x64. Firefox 153/154/157 evidence is historical.
 The installer accepts release-channel Firefox 153+ with its explicit compatibility
 warning. This is not a stable, cross-platform or all-extensions compatibility
@@ -52,6 +52,8 @@ archive for recovery, and use a dedicated Firefox profile.
 Exact release evidence and remaining test limits:
 [Firefox 159 validation](https://github.com/yutinglia/fennevia/blob/main/docs/research/firefox-159-0.20.0-beta.1-release-validation.md).
 See also the [local extension guide](https://github.com/yutinglia/fennevia/blob/main/docs/local-extensions.md).
-Manual UAC, clean-machine, accessibility, hardware and third-party-account checks
-are not inferred from automated fixtures. Fennevia continues to use unsupported
+The owner explicitly approved a one-release exception for remaining manual UAC,
+clean-machine, physical interruption, accessibility/DPI/input and real-account,
+extension/permission/early-network checks. Those rows remain **not run**; automated
+fixtures do not establish those results. Fennevia continues to use unsupported
 privileged Firefox internals and has not completed an independent security audit.

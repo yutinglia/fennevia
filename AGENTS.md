@@ -300,6 +300,17 @@ one-time validation exception, not a passed-test claim or a waiver for later
 releases. Safety, privacy, fail-open, native-UI ownership, and the Windows
 stable support boundary remain unchanged.
 
+For `0.20.0-beta.1` only, on 2026-11-09 the project owner explicitly answered
+“核准本次例外並發布” after reviewing the candidate, passing CI/CodeQL, automated
+Firefox 159 evidence, identical independent builds and extracted-package recovery.
+Publication may proceed after final CI with the remaining manual/hardware/UAC,
+clean-machine/network-capture, physical interruption/ACL, accessibility/DPI/input,
+and real-account/extension/permission/early-network matrices still marked `not run`.
+The exact scope is `docs/research/firefox-159-0.20.0-beta.1-release-validation.md`.
+This is a new, one-release validation exception, not an extension of the 0.19
+exception or a passed-test claim. Safety, privacy, fail-open, native-UI ownership
+and the Windows stable support boundary remain unchanged.
+
 The lists below are the release and mass-test contract. During rapid
 development they are not a per-issue Definition of Done. Record unrun rows
 honestly as `not run`.

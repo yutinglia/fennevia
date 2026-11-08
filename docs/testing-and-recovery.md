@@ -126,9 +126,26 @@ automated evidence are in
 change safety, privacy, fail-open, native-UI ownership, platform support, or
 the release contract for subsequent versions.
 
+On 2026-11-09 the owner separately approved the `0.20.0-beta.1` prerelease
+exception: “核准本次例外並發布”, conditional on final CI passing. The candidate's
+completed automated evidence and exact unrun manual/hardware/UAC, clean-machine,
+network-capture, physical interruption/ACL, accessibility/DPI/input and real
+account/extension/permission/early-network rows are recorded in
+`docs/research/firefox-159-0.20.0-beta.1-release-validation.md`. Those rows stay
+`not run`. This exception applies only to that release and does not relax product
+safety/privacy/fail-open/native-UI rules or create new platform support.
+
 ## 1. Current validated baseline
 
-As of 2026-10-01:
+As of 2026-11-09 the `0.20.0-beta.1` candidate has automated Windows x64 Firefox
+159.0.1 BuildID `20261102144711` evidence, passing main CI/CodeQL, independent
+identical native/package builds, extracted native IPC and complete copied-target
+recovery. See the 159 release record for exact source/package hashes, publication
+state, performance observations and the explicitly approved unrun rows. The
+installer's tested-major metadata now includes 153, 154, 157 and 159; older builds
+retain historical evidence rather than a current-candidate rerun.
+
+Historical public baseline, 2026-10-01:
 
 - package: public `0.19.0-beta.1` prerelease;
 - current-package Firefox 157.0 release, Build ID `20260924084938`;
