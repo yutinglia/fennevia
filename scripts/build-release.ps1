@@ -28,6 +28,9 @@ $modulePath = Join-Path $PSScriptRoot "lib\FenneviaRelease.psm1"
 if ([string]::IsNullOrWhiteSpace($NativeInstallerDirectory)) {
     $NativeInstallerDirectory = Join-Path $repositoryRoot 'installer/out/native'
 }
+elseif (-not [IO.Path]::IsPathRooted($NativeInstallerDirectory)) {
+    $NativeInstallerDirectory = [IO.Path]::GetFullPath((Join-Path $repositoryRoot $NativeInstallerDirectory))
+}
 if (-not (Test-Path -LiteralPath (Join-Path $NativeInstallerDirectory 'INSTALLER-MANIFEST.json'))) {
     throw 'Build the native installer first: npm --prefix installer run package:native -- <empty-output-directory>. Pass that directory with -NativeInstallerDirectory.'
 }
