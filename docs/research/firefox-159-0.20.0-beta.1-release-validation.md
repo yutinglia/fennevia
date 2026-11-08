@@ -9,6 +9,12 @@ push to main, then release. Feature implementation `837a5f900f84b930d902fab075c2
 is on main. No release tag or public artifact exists yet for this candidate.
 The previous prerelease's one-time manual-test exception does not apply here.
 
+Release follow-up `a7b45da` corrects the I/O lifetime issue below. Package, npm
+locks, native workspace/lock and Tauri identities are now `0.20.0-beta.1`.
+The regenerated dependency inventory changes only lock hashes for those local
+version fields; no third-party crate, npm dependency, runtime pin or license
+inventory changes in this candidate.
+
 This candidate includes local WebExtension management (ADR-098), plus the earlier
 unreleased main changes: portable settings, scoped container scrolling, configured
 window controls, and native Tauri installer with fixed offline WebView2.
@@ -33,9 +39,10 @@ by the owner before implementation; that approval does not waive release tests.
 | Gate | Observed result |
 | --- | --- |
 | Feature ordinary gate | Passed at implementation tree: 510 tests, 89.45% lines / 95.95% functions, root verify, PS7/5.1, deterministic build, production scan. |
-| Native installer frontend / Rust | `npm --prefix installer run verify`, `cargo fmt --all --check`, locked clippy with warnings denied, and locked workspace tests passed on the implementation source. |
+| Versioned candidate ordinary gate | Passed again after I/O correction and 0.20 metadata: root verify (510 tests, 89.45% lines / 95.95% functions), PS7/5.1 static suites, dependency audit, deterministic build, production scan and installer frontend verify. |
+| Native installer frontend / Rust | `npm --prefix installer run verify`, `cargo fmt --all --check`, locked clippy with warnings denied, and all 42 locked workspace tests passed again after the version bump. |
 | Main CI / CodeQL | Passed for `837a5f9`: Windows CI `42528214776`, CodeQL `42528214729`. |
-| Firefox full lifecycle + Browser Toolbox | Passed: normal/second/private windows, owned XHTML hosts, content-only activation, native reveal/fallback, resize/maximize/minimize/fullscreen/customize, excluded tab, cleanup and no unexpected first-party script errors. |
+| Firefox full lifecycle + Browser Toolbox | Passed again on the versioned candidate after the I/O fix: normal/second/private windows, owned XHTML hosts, content-only activation, native reveal/fallback, resize/maximize/minimize/fullscreen/customize, excluded tab, cleanup and no unexpected first-party script errors. |
 | Local extension runtime and UI | Passed; see [feature evidence](firefox-159-local-extension-implementation.md). |
 | Frontend/bridge/safe-start/runtime recovery, SessionStore | Passed: missing/throwing frontend, all bridge failure cases, shell recovery, safe start/fatal bootstrap, persisted tabs/lazy restoration and fail-open, with exact baseline restoration. |
 | Focused native/Urlbar/layout probes | Passed: provider/results, suggestions/execution/search-mode handoff, tab drag scroll, ten light/dark opacity cases, scoped Row/Column scrolling and configured controls, settings transfer, eight background and eight native dialog cases. |
@@ -76,6 +83,16 @@ confirmed import; automatic restore, first-window close and removal in a second
 window; third startup with removal preserved. No manual Bootstrap import or
 second service was used. The correction is limited to the process facade and
 generated bridge; the earlier full-shell evidence is explicitly before this fix.
+
+The first full-shell rerun failed to connect because the early startup harness
+had persisted its temporary Marionette port in `prefs.js` while restoring only
+`user.js`. The observed port was 2839 while the lifecycle harness expected 2828.
+That test-only preference was restored through Firefox; the startup harness now
+reads the existing bounded port and does not change either preference file.
+No product setting or connection timeout was changed for this correction.
+The corrected transport harness then passed the complete lifecycle/Toolbox run
+and three more immediate-quit/restore/later-window/removal processes on the
+installed `0.20.0-beta.1` candidate.
 
 ## Performance observations
 

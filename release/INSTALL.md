@@ -4,7 +4,8 @@
 
 This archive contains a prebuilt Fennevia package. Ordinary installation does
 not require Node.js or npm. Fennevia runs privileged code and relies on Firefox
-internals. It has been tested on Windows with Firefox 153, 154, and 157. Later Firefox
+internals. Automated browser checks cover Firefox 159.0.1 on Windows x64;
+153, 154, and 157 retain historical evidence. Later Firefox
 versions may break the shell. If you confirm install on a newer version, there
 is no promise that everything will work. Keep this archive for later recovery.
 
@@ -40,6 +41,29 @@ Keep path values local. Do not paste them into issues or logs:
 $firefox = '<FIREFOX_PROGRAM>\firefox.exe'
 $profile = '<FIREFOX_PROFILE>'
 ```
+
+## Use local extensions
+
+After installation, open **Customize → Local extensions**. Choose a Firefox-compatible
+folder or XPI/ZIP with a root `manifest.json` and a fixed author-provided Gecko ID,
+review the requested access, and confirm. Fennevia keeps a managed copy and restores
+enabled entries at normal startup; moving the original download does not affect it.
+Use the same page to disable, reload, explicitly update or remove an entry.
+
+The first version accepts ordinary paths on the Windows system drive only.
+Chrome CRX packages and Chrome-only APIs are not converted. This uses Firefox's
+temporary addon runtime: `runtime.onInstalled` may repeat and an extension may
+reopen its welcome page or reset its own data. Known same-ID conflicts are rejected,
+but another tool's simultaneous installation can still be replaced by an already
+started Firefox operation. Trust the author before adding a package. Signing policy,
+blocklists and private access remain Firefox-owned; signed XPI packages can use
+Firefox's normal permanent installation.
+
+To stop automatic restoration before startup, set the profile preference
+`fennevia.localExtensions.enabled` to `false` while Firefox is closed. Disable or
+remove active entries through the management page or Firefox. Preserve corrupt
+managed state for inspection; do not edit Firefox's addon databases or storage.
+Further instructions: https://github.com/yutinglia/fennevia/blob/main/docs/local-extensions.md.
 
 ## Preview, install, and update
 

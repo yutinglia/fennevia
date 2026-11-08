@@ -213,7 +213,7 @@ try {
         -RepositoryRoot $repositoryRoot `
         -OutputDirectory (Join-Path $canonicalTestRoot "release output") `
         -SourceCommit "0123456789abcdef0123456789abcdef01234567" `
-        -ExpectedTag "v0.19.0-beta.1" `
+        -ExpectedTag "v0.20.0-beta.1" `
         -TestAllowDirtySource
     Remove-Module FenneviaRelease -ErrorAction SilentlyContinue
     Import-Module (Join-Path $repositoryRoot "scripts\lib\FenneviaInstaller.psm1") -Force
@@ -290,7 +290,7 @@ try {
     Write-TestFile -Path (Join-Path $registeredTarget.ProgramRoot "application.ini") -Content ($newerIni + [Environment]::NewLine)
     $enableOn154 = Invoke-FenneviaPackageAction -Action Enable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot -DryRun
     Assert-Equal -Actual $enableOn154.CompatibilityKind -Expected "tested" -Message "Enable on Firefox 154.0 must be classified as tested."
-    Assert-True -Condition ($enableOn154.FirefoxSupportWarning -match "153, 154, and 157") -Message "Enable plans must carry the tested-version support warning."
+    Assert-True -Condition ($enableOn154.FirefoxSupportWarning -match "153, 154, 157, and 159") -Message "Enable plans must carry the tested-version support warning."
     $enabledOn154 = Invoke-FenneviaPackageAction -Action Enable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot
     Assert-True -Condition $enabledOn154.Applied -Message "Enable must succeed on owner-confirmed Firefox 154.0."
     [void] (Invoke-FenneviaPackageAction -Action Disable -FirefoxPath $registeredTarget.FirefoxPath -ProfilePath $registeredTarget.ProfileRoot -ProfileMode Registered -PackageRoot $release.PackageRoot)

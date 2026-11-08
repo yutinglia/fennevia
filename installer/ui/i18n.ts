@@ -64,7 +64,7 @@ export const en = {
     "Applying changes… Keep this window open. If a step fails, the installer will restore the previous files.",
   confirmChanges: "I confirm the selected locations and reviewed changes.",
   writeWarning:
-    "Close all Firefox windows first. Windows x64 Firefox stable 153+ is accepted; tested majors are 153, 154 and 157. Other versions may break.",
+    "Close all Firefox windows first. Windows x64 Firefox stable 153+ is accepted; tested majors are 153, 154, 157 and 159. Other versions may break.",
   elevationHint:
     "The previous attempt was rolled back. The Firefox program folder requires administrator access. Confirm again to open Windows UAC.",
   outcomes: {
@@ -190,7 +190,7 @@ export const zh: typeof en = {
     "正在執行變更，請保持視窗開啟。如果步驟失敗，安裝器會還原原有檔案。",
   confirmChanges: "我已確認所選位置，並檢閱上述變更。",
   writeWarning:
-    "請先關閉所有 Firefox 視窗。接受 Windows x64 Firefox 正式版 153 以上；目前只有 153、154 與 157 的驗證證據，其他版本可能無法運作。",
+    "請先關閉所有 Firefox 視窗。接受 Windows x64 Firefox 正式版 153 以上；目前只有 153、154、157 與 159 的驗證證據，其他版本可能無法運作。",
   elevationHint:
     "前一次操作已還原。Firefox 程式資料夾需要管理員權限；再次確認後才會開啟 Windows UAC。",
   outcomes: {

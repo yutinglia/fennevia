@@ -12,8 +12,8 @@ floating edge panels that stay hidden until you need them.
 
 > [!WARNING]
 > Fennevia is a public **prerelease**, not a stable daily-driver product. It runs
-> privileged code and depends on unsupported Firefox internals. The published archive has been
-> tested with Firefox **157**; Firefox **153** and **154** retain historical
+> privileged code and depends on unsupported Firefox internals. The current candidate has automated
+> evidence on Firefox **159**; Firefox **153**, **154** and **157** retain historical
 > evidence. Later Firefox versions may break the shell. If you confirm install
 > on a newer version, there is **no
 > promise** that everything will work. Use a dedicated Firefox profile, and
@@ -26,11 +26,11 @@ floating edge panels that stay hidden until you need them.
 
 Source builds include **Customize → Local extensions**: add a Firefox-compatible
 folder or XPI/ZIP, review access, and keep a managed copy restored after restart.
-Enable, disable, update and remove it from the same page. This unreleased feature
+Enable, disable, update and remove it from the same page. This candidate feature
 uses native temporary installation, with lifecycle and same-ID concurrency limits.
 See the [guide](docs/local-extensions.md) and
 [focused Firefox 159 validation](docs/research/firefox-159-local-extension-implementation.md).
-The published support matrix remains unchanged.
+It is included in the 0.20.0-beta.1 candidate described below.
 
 The [Tauri installer](installer/README.md) scans and remembers Firefox/profile
 locations, previews changes, and implements install, update, repair, disable,
@@ -109,7 +109,7 @@ and leaves the required Customize button in Top; **Reset layout** restores the
 new Fennevia default. At least one Customize widget must remain on an enabled
 panel, and valid saved layouts are never silently replaced.
 
-## Settings backup (unreleased)
+## Settings backup (0.20 candidate)
 
 In **Customize > Panels > Settings backup**, export a JSON backup or import one
 to review and replace all Fennevia layout, panel, appearance, and interaction
@@ -117,8 +117,8 @@ settings. The file contains toolbar extension references, without browsing or
 extension data. Missing widgets keep their positions; importing does not install
 extensions. Cancel leaves settings intact, and a concurrent settings edit
 invalidates the preview. The earlier diagnostic layout-only export is not this
-versioned all-settings format. This feature is not in the published
-`0.19.0-beta.1` archive.
+versioned all-settings format. This feature is included in the
+`0.20.0-beta.1` candidate.
 
 ## Screenshot showcase
 
@@ -197,33 +197,33 @@ interface when a feature is unsupported or recovery is needed.
 The current Firefox 154 AMO install flow may use that complete native-chrome
 fallback; this is an accepted safety behavior rather than a custom prompt.
 
-## Current release
+## Current release candidate
 
-The current public prerelease is
+This source prepares **`0.20.0-beta.1`**, following
 [`v0.19.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.19.0-beta.1).
-It follows
-[`v0.18.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.18.0-beta.1).
-Its tested environment is intentionally narrow:
+Publication and remaining manual checks are tracked in the
+[release validation record](docs/research/firefox-159-0.20.0-beta.1-release-validation.md).
+Its automated browser evidence is intentionally narrow:
 
 | Requirement      | Tested value                                         |
 | ---------------- | ---------------------------------------------------- |
 | Operating system | Windows x64                                          |
-| Firefox          | Stock Firefox 157.0, release channel                 |
-| Firefox Build ID | `20260924084938`                                    |
-| Package          | `fennevia-0.19.0-beta.1-windows.zip`                  |
+| Firefox          | Stock Firefox 159.0.1, release channel                |
+| Firefox Build ID | `20261102144711`                                     |
+| Package          | `fennevia-0.20.0-beta.1-windows.zip`                   |
 
-Firefox 153.0.4, 154.0, and 154.0.1 retain historical validation; their full
+Firefox 153.0.4, 154.0, 154.0.1, and 157.0 retain historical validation; their full
 matrices were not rerun for this package.
 
 Install, update, repair, and re-enable reject Firefox older than 153. Firefox
 153, 154, and newer majors may be installed after the installer warning: only
-153, 154, and 157 have tested evidence, later versions may break the shell, and
+153, 154, 157, and 159 have tested evidence, later versions may break the shell, and
 confirming install does not promise that everything will work. Disable and uninstall
 remain available for recovery. Linux, macOS, Firefox ESR, Beta, and Nightly
 are not supported by this release.
 
 Fennevia is developed against the latest stock Firefox stable release available
-at implementation time. The 153/154 rows above are evidence for this package,
+at implementation time. The 159 row above is automated evidence for this candidate,
 not a promise to keep every old release working indefinitely. A future Firefox
 stable update may require a new Fennevia build; unsupported channels and old
 compatibility branches are intentionally outside the product scope.
@@ -348,10 +348,10 @@ widget, keeps window controls visible while narrow panels scroll, enables
 horizontal side scrolling, and fixes hidden
 bookmark actions becoming visible during middle-click opening (ADR-091).
 
-Unreleased `main` keeps window controls aligned in their configured Row and
+The `0.20.0-beta.1` candidate keeps window controls aligned in their configured Row and
 scopes scrolling to the overflowing Row/Column, so scrolling a wide tool Row
 does not move the address or tabs beside it. It also includes portable settings
-import/export. These follow-ups do not change the published release version.
+import/export, native Windows installation and local extension management.
 
 The `0.19.0-beta.1` release reran the complete automated lifecycle, recovery,
 performance-control, deterministic-archive, extracted-package installer,
@@ -387,14 +387,14 @@ the wizard.
 
 Download both files from the same GitHub Release:
 
-- `fennevia-0.19.0-beta.1-windows.zip`
-- `fennevia-0.19.0-beta.1-windows.zip.sha256`
+- `fennevia-0.20.0-beta.1-windows.zip`
+- `fennevia-0.20.0-beta.1-windows.zip.sha256`
 
 Before extracting the ZIP, run this in PowerShell from the download directory:
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.19.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.19.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.20.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.20.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 
@@ -404,7 +404,7 @@ Do not continue if the checksum does not match.
 
 Extract the ZIP and double-click `FenneviaSetup.exe` in the extracted Fennevia
 directory. Select `firefox.exe` and one registered profile **by name**. Fennevia
-never preselects Firefox's default profile. Review the Firefox 153/154/157 testing
+never preselects Firefox's default profile. Review the Firefox 153/154/157/159 testing
 warning, then the redacted plan, then confirm. Confirming install on a newer
 Firefox is not a promise that the shell will keep working. If the selected
 Firefox program folder is not writable, choose **Continue as administrator**

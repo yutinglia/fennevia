@@ -42,8 +42,22 @@ assert.equal(profileMarker.profileName, "fennevia-dev");
 assert.equal(programMarker.owner, "fennevia");
 assert.equal(programMarker.purpose, "firefox-identity-regression");
 assert.equal(programMarker.state, "ready");
-const preferences = path.join(profile, "user.js");
-const original = await readFile(preferences, "utf8");
+// Use the profile's existing test transport port without changing preferences.
+let port = 2828;
+for (const leaf of ["prefs.js", "user.js"]) {
+  let text;
+  try {
+    text = await readFile(path.join(profile, leaf), "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") continue;
+    throw error;
+  }
+  const values = [
+    ...text.matchAll(/^user_pref\("marionette\.port",\s*(\d+)\);$/gm),
+  ];
+  if (values.length) port = Number(values.at(-1)[1]);
+}
+const session = (run) => openSession(firefox, profile, run, port);
 const fixture = await mkdtemp(
   path.join(profile, "fennevia-release-local-fixture-"),
 );
@@ -71,16 +85,11 @@ const setup = `
     await wait(()=>find('add-folder')&&!find('add-folder').disabled);
   };
 `;
-try {
-  await writeFile(
-    preferences,
-    original + '\nuser_pref("marionette.port", 2839);\n',
-  );
-  await openSession(firefox, profile, async (client) => {
-    const result = await execute(
-      client,
-      setup +
-        `
+await session(async (client) => {
+  const result = await execute(
+    client,
+    setup +
+      `
       if(await AddonManager.getAddonByID(id))throw new Error('FENNEVIA_STARTUP_CONFLICT');
       await panel();
       const registrar=Components.manager.QueryInterface(Ci.nsIComponentRegistrar);
@@ -101,31 +110,31 @@ try {
         return {installed:true,autoConfigActive:true};
       }finally{registrar.unregisterFactory(cid,factory);registrar.registerFactory(prior,'',contract,null);}
     `,
-    );
-    assert.deepEqual(result, { installed: true, autoConfigActive: true });
-    console.log(JSON.stringify({ boot: 1, ...result }));
+  );
+  assert.deepEqual(result, { installed: true, autoConfigActive: true });
+  console.log(JSON.stringify({ boot: 1, ...result }));
+});
+await session(async (client) => {
+  // The service is initialized by the first normal window. Operations in a
+  // later window must still complete after that original DOM global dies.
+  await execute(client, setup + "return true;");
+  const originalWindow = await client.request("WebDriver:GetWindowHandle");
+  const created = await client.request("WebDriver:NewWindow", {
+    focus: true,
+    private: false,
+    type: "window",
   });
-  await openSession(firefox, profile, async (client) => {
-    // The service is initialized by the first normal window. Operations in a
-    // later window must still complete after that original DOM global dies.
-    await execute(client, setup + "return true;");
-    const originalWindow = await client.request("WebDriver:GetWindowHandle");
-    const created = await client.request("WebDriver:NewWindow", {
-      focus: true,
-      private: false,
-      type: "window",
-    });
-    const second = created.value ?? created;
-    await client.request("WebDriver:SwitchToWindow", {
-      handle: originalWindow.value ?? originalWindow,
-    });
-    await client.request("WebDriver:CloseWindow");
-    await client.request("WebDriver:SwitchToWindow", { handle: second.handle });
-    await client.request("Marionette:SetContext", { value: "chrome" });
-    const result = await execute(
-      client,
-      setup +
-        `
+  const second = created.value ?? created;
+  await client.request("WebDriver:SwitchToWindow", {
+    handle: originalWindow.value ?? originalWindow,
+  });
+  await client.request("WebDriver:CloseWindow");
+  await client.request("WebDriver:SwitchToWindow", { handle: second.handle });
+  await client.request("Marionette:SetContext", { value: "chrome" });
+  const result = await execute(
+    client,
+    setup +
+      `
       if(!${interrupt})await wait(async()=>!!(await AddonManager.getAddonByID(id))?.isActive);
       await panel();
       const addon=await AddonManager.getAddonByID(id);
@@ -141,30 +150,25 @@ try {
       document.querySelector('[data-fennevia-customize-close]').click();
       return {restored:!!addon?.temporarilyInstalled,interrupted:!!entry.interrupted,removed:true,autoConfigActive:true};
     `,
-    );
-    assert.equal(result.restored || (interrupt && result.interrupted), true);
-    assert.equal(result.removed, true);
-    assert.equal(result.autoConfigActive, true);
-    console.log(
-      JSON.stringify({ boot: 2, firstWindowClosed: true, ...result }),
-    );
-  });
-  await openSession(firefox, profile, async (client) => {
-    const result = await execute(
-      client,
-      setup +
-        `
+  );
+  assert.equal(result.restored || (interrupt && result.interrupted), true);
+  assert.equal(result.removed, true);
+  assert.equal(result.autoConfigActive, true);
+  console.log(JSON.stringify({ boot: 2, firstWindowClosed: true, ...result }));
+});
+await session(async (client) => {
+  const result = await execute(
+    client,
+    setup +
+      `
       await panel();
       document.querySelector('[data-fennevia-customize-close]').click();
       return {removalPersisted:!(await AddonManager.getAddonByID(id)),autoConfigActive:true};
     `,
-    );
-    assert.deepEqual(result, {
-      removalPersisted: true,
-      autoConfigActive: true,
-    });
-    console.log(JSON.stringify({ boot: 3, ...result }));
+  );
+  assert.deepEqual(result, {
+    removalPersisted: true,
+    autoConfigActive: true,
   });
-} finally {
-  await writeFile(preferences, original);
-}
+  console.log(JSON.stringify({ boot: 3, ...result }));
+});

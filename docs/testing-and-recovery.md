@@ -18,8 +18,9 @@ loopback Marionette and restores test picker factories. Test fixtures do not shi
 <MARKED_PROFILE>` additionally requires an installed, disposable marker-owned
 pair. It confirms import through the actual shell, restarts through AutoConfig
 without manually importing Bootstrap, removes the fixture through confirmation,
-and checks that removal survives a third process. It restores `user.js` exactly
-and leaves its bounded source fixture in the disposable profile for inspection.
+and checks that removal survives a third process. It reads the existing test
+transport port without changing preferences, and leaves its bounded source fixture
+in the disposable profile for inspection.
 The second process closes the original browser window and performs removal from
 a later window. Add `--interrupt-install` to request shutdown immediately after
 the native addon appears, before waiting for the UI transaction to settle; the

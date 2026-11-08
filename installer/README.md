@@ -12,7 +12,7 @@ Its adjacent release source is verified automatically. Select a Firefox build
 and profile, optionally save the pair, preview the relative-path changes, then
 confirm. Nothing is silently selected or installed. Close all Firefox processes.
 Default profiles require extra confirmation. Firefox stable 153+ is accepted
-with a warning; only 153/154/157 retain recorded browser compatibility evidence.
+with a warning; only 153/154/157/159 retain recorded browser compatibility evidence.
 Source-tree writes remain restricted to marked development targets.
 
 Saving persists only local paths and random IDs, at most ten pairs, in the
@@ -85,5 +85,7 @@ PowerShell for cross-engine fixtures; neither shipping executable does so.
 
 Current evidence and unrun manual release checks are in
 [`tauri-installer-release-validation.md`](../docs/research/tauri-installer-release-validation.md).
-Initial and transaction-only records describe earlier increments. This change
-does not publish a new version or replace the existing release archive.
+Initial and transaction-only records describe earlier increments. The first
+native-installer release candidate is `0.20.0-beta.1`; publication and current
+browser evidence are tracked in
+[`Firefox 159 release validation`](../docs/research/firefox-159-0.20.0-beta.1-release-validation.md).

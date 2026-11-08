@@ -204,11 +204,12 @@ export async function waitForFixture(client, version, boots) {
   }
 }
 
-export async function openSession(firefox, profile, run) {
+export async function openSession(firefox, profile, run, port = PORT) {
+  assert.ok(Number.isInteger(port) && port > 0 && port <= 65535);
   const server = net.createServer();
   await new Promise((resolve, reject) => {
     server.once("error", reject);
-    server.listen(PORT, "127.0.0.1", resolve);
+    server.listen(port, "127.0.0.1", resolve);
   });
   await new Promise((resolve) => server.close(resolve));
   const child = spawn(
@@ -235,7 +236,7 @@ export async function openSession(firefox, profile, run) {
       if (child.exitCode !== null)
         throw new Error("FENNEVIA_LOCAL_SPIKE_EARLY_EXIT");
       try {
-        client = await MarionetteClient.connect(PORT);
+        client = await MarionetteClient.connect(port);
         break;
       } catch {
         await delay(200);

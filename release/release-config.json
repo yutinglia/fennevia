@@ -24,16 +24,22 @@
       "version": "157.0",
       "buildId": "20260924084938",
       "channel": "release"
+    },
+    {
+      "version": "159.0.1",
+      "buildId": "20261102144711",
+      "channel": "release"
     }
   ],
-  "compatibilityRecord": "docs/research/firefox-157-0.19.0-beta.1-release-validation.md",
+  "compatibilityRecord": "docs/research/firefox-159-0.20.0-beta.1-release-validation.md",
   "knownLimitations": [
-    "This Windows x64 prerelease is validated on stock Firefox 157.0 build 20260924084938; Firefox 153.0.4, 154.0, and 154.0.1 retain their recorded historical validation, not a new current-release matrix.",
+    "This Windows x64 prerelease has automated stock Firefox 159.0.1 build 20261102144711 evidence; Firefox 153.0.4, 154.0, 154.0.1, and 157.0 retain historical validation, not a current-release rerun. Manual and hardware limits remain explicit in the compatibility record.",
     "Firefox 153 and newer may be installed after an explicit warning acknowledgement. Later versions can break the shell, and confirming install does not promise that everything will work.",
     "A dedicated Firefox profile is strongly recommended; Linux, macOS, ESR, Beta, and Nightly are not supported by this release.",
     "Fennevia uses unsupported Firefox internals and has not completed an independent security audit.",
     "Firefox updates may remove program-directory files; keep the exact release ZIP for verified repair, update, disable, and uninstall operations.",
     "The native GUI and worker are unsigned; Windows SmartScreen may warn before FenneviaSetup.exe runs. Keep the complete extracted package and review the bundled WebView2 terms.",
-    "Native installer UAC acceptance/cancellation, clean-machine and accessibility/hardware checks remain not run; see docs/research/tauri-installer-release-validation.md before publishing a new release."
+    "Native installer UAC acceptance/cancellation, clean-machine and accessibility/hardware checks remain not run; see docs/research/tauri-installer-release-validation.md before publishing a new release.",
+    "Local extensions use native temporary installation, can repeat runtime.onInstalled, require a fixed Gecko ID and ordinary system-drive paths, and cannot exclude replacement by an already-started same-ID concurrent install."
   ]
 }

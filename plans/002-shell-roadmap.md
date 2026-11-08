@@ -1327,7 +1327,7 @@ action. Plan: `plans/018-settings-import-export.md`; source pins and development
 results: `docs/research/firefox-157-settings-transfer.md`. This does not change
 the published version or reuse its release-matrix exception.
 
-### Local extension loader — implemented, unreleased
+### Local extension loader — 0.20.0-beta.1 candidate
 
 2026-11-09：`plans/020-local-extension-loader.md` 規劃使用原生 temporary-addon
 API，在正常啟動時恢復使用者明確授權的本機 WebExtension。擁有者澄清目標是
@@ -1337,7 +1337,10 @@ ADR-098 已記錄擁有者對同 ID 競爭限制的批准；程序共用服務�
 及 Customize 管理入口已實作。Firefox 159.0.1 重啟、更新、ZIP、junction、
 確認／取消及焦點驗證通過；完整 release matrix 未執行，詳見
 `docs/research/firefox-159-local-extension-implementation.md`。
-不新增通用 `.uc.js` loader 或簽章政策變更，尚未發布新版。
+不新增通用 `.uc.js` loader 或簽章政策變更。實作 `837a5f9` 已推送 main，
+Windows CI 與 CodeQL 通過。依擁有者後續要求，準備包含 ADR-092–098 的
+`0.20.0-beta.1`；發布與剩餘驗證見
+`docs/research/firefox-159-0.20.0-beta.1-release-validation.md`。
 
 ## Deferred work
 

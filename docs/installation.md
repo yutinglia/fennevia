@@ -197,7 +197,7 @@ extracted release:
 
 1. Double-click `FenneviaSetup.exe`.
 2. Select `firefox.exe` and one registered profile **by name**.
-3. Acknowledge the Firefox 153/154/157 testing warning when shown.
+3. Acknowledge the Firefox 153/154/157/159 testing warning when shown.
 4. Confirm the redacted plan. If the program directory is not writable, choose
    **Continue as administrator** and approve the Windows prompt.
 
@@ -213,7 +213,7 @@ Uninstall against an explicitly selected registered profile. A source tree
 offers development setup, update, launch, recovery, and teardown against the
 marker-owned program copy and `fennevia-dev` profile. The console lists
 Firefox builds and registered profile **names** locally, never preselects
-Firefox's default profile, shows the 153/154/157 testing warning, shows the
+Firefox's default profile, shows the 153/154/157/159 testing warning, shows the
 redacted plan, and applies only after both acknowledgements with that plan's
 `planSha256`. The interactive host is a native
 TUI: it enters an alternate screen, redraws in place, and accepts keyboard and

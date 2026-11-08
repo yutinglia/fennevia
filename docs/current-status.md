@@ -1,13 +1,22 @@
 # Current Project Status
 
-> Snapshot: 2026-11-09. This status review includes ADR-074 through ADR-097 and
-> the `0.19.0-beta.1` version identity, alongside the public
+> Snapshot: 2026-11-09. Current source includes ADR-074 through ADR-098 and
+> prepares `0.20.0-beta.1`, alongside the previous public
 > `v0.19.0-beta.1` prerelease.
 > Historical research records and milestone ADR context remain unchanged.
 
 This page is the short, current answer to “how far along is Fennevia?” The root
 READMEs remain user-facing, while the master plan, shell roadmap, architecture,
 and testing documents retain the complete engineering contract.
+
+The owner requested commit, main push, then release after approving the local
+extension same-ID race limitation. Implementation `837a5f9` is on main with
+passing Windows CI and CodeQL. The `0.20.0-beta.1` candidate combines ADR-092–098:
+local WebExtension import/restore/management, portable settings, scoped scrolling,
+configured controls and the native installer. Automated browser validation now
+covers Firefox 159.0.1 BuildID `20261102144711`; older builds retain historical
+evidence. Publication and unrun manual gates are tracked in
+[the candidate record](research/firefox-159-0.20.0-beta.1-release-validation.md).
 
 The unreleased native installer migration (ADR-095–097) now implements Tauri
 discovery/saved locations, six native lifecycle transactions, rollback, a UAC

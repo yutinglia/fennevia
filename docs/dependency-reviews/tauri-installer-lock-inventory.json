@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "target": "x86_64-pc-windows-msvc",
   "reviewStatus": "windows-distribution-reviewed-see-tauri-installer-2026-11-09",
-  "cargoLockSha256": "4b4182b21ded5bb839c3f2b15ee3a81606d102d6ba23f61ecc95cea3025354f2",
-  "npmLockSha256": "82d259ef97f593ad6329e0d2314e51da55c0316342e23b57d8cc30715eed4add",
+  "cargoLockSha256": "cbc48ac52464d529e9b2ae86ad8317ffb1bc9cc64cf1b8029532f671c7ab0a27",
+  "npmLockSha256": "608cfcafdb85eb5728ba989155501a992eef430d05ebc6bef650a000f184a096",
   "crates": [
     {
       "name": "adler2",

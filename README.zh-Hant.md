@@ -9,7 +9,7 @@ _這是呈現 Fennevia 模組化瀏覽器介面的原創品牌主視覺；下方
 Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為中心的瀏覽器介面。它讓網頁保持在畫面主體，並把瀏覽器控制項放到四個平時隱藏、需要時才浮現的邊緣面板。
 
 > [!WARNING]
-> Fennevia 是公開的**預發行版本**，不是穩定的日常使用產品。它會執行高權限程式碼，並依賴 Firefox 不保證穩定的內部介面。目前公開套件已在 Firefox **157** 上驗證，**153** 與 **154** 則保留歷史紀錄。較新的 Firefox 可能會讓介面故障。若你在較新版本上確認安裝，**不保證**所有功能都能正常運作。請使用專用 Firefox 設定檔，並保留下載的發行壓縮檔，以便之後停用或移除。
+> Fennevia 是公開的**預發行版本**，不是穩定的日常使用產品。它會執行高權限程式碼，並依賴 Firefox 不保證穩定的內部介面。目前候選版本已在 Firefox **159** 完成自動化驗證，**153**、**154** 與 **157** 則保留歷史紀錄。較新的 Firefox 可能會讓介面故障。若你在較新版本上確認安裝，**不保證**所有功能都能正常運作。請使用專用 Firefox 設定檔，並保留下載的發行壓縮檔，以便之後停用或移除。
 > Fennevia 跟隨目前最新的原版 Firefox **Release** channel；不打算長期維護所有歷史 Firefox 版本，也不以 ESR、Beta 或 Nightly 為目標。
 
 ## Fennevia 會改變甚麼
@@ -18,7 +18,7 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 確認權限後保存副本並在重啟恢復，支援啟用、停用、更新及移除。
 這仍是原生暫時安裝，具有已記錄的生命週期與同 ID 競爭限制。
 詳見[操作說明](docs/local-extensions.md)及[聚焦驗證](docs/research/firefox-159-local-extension-implementation.md)。
-此功能尚未發布，不更改現有版本的支援矩陣。
+此功能列入 0.20.0-beta.1 候選版，發布狀態見下方紀錄。
 
 [Tauri 安裝器](installer/README.md) 可掃描、保存 Firefox／Profile 位置、預覽變更，
 並透過原生交易執行安裝、更新、修復、停用、啟用及移除，包含 rollback 與獨立 UAC worker。
@@ -48,9 +48,9 @@ Fennevia 是一個為**原版 Firefox**製作、實驗性且以網頁內容為�
 
 自訂模式會讓空白但已啟用的面板保持為完整放置目標；拖曳時顯示精確插入預覽，並標示每個可編輯 widget。選取 widget 時只會開啟一個浮動設定面板，移動、移除、wrapper 與樣式控制不會堆滿畫面；拖曳 widget 期間，這個設定面板會淡出並讓出指標命中，不會蓋住下方落點。「清空所有面板」會先要求確認、把採用的 Firefox widget 放回原處，並在上方保留必要的自訂按鈕；「重設版面」則還原新版 Fennevia 預設。至少一個已啟用面板必須保留自訂按鈕，有效的既有版面不會被默默覆寫。
 
-## 設定備份（尚未發布）
+## 設定備份（0.20 候選版）
 
-在 **自訂 > 面板 > 設定備份** 可匯出 JSON，或匯入後先查看摘要，再確認取代所有 Fennevia 布局、面板、外觀與互動設定。備份包含工具列擴充套件參照，不含瀏覽資料或擴充套件資料；缺少的元件保留位置，匯入不會安裝擴充套件。取消不會更動設定，預覽期間若其他視窗修改設定則須重新匯入。先前供除錯使用的純布局匯出檔與此完整設定格式不同。此功能尚未包含於公開的 `0.19.0-beta.1` 套件。
+在 **自訂 > 面板 > 設定備份** 可匯出 JSON，或匯入後先查看摘要，再確認取代所有 Fennevia 布局、面板、外觀與互動設定。備份包含工具列擴充套件參照，不含瀏覽資料或擴充套件資料；缺少的元件保留位置，匯入不會安裝擴充套件。取消不會更動設定，預覽期間若其他視窗修改設定則須重新匯入。先前供除錯使用的純布局匯出檔與此完整設定格式不同。此功能包含於 `0.20.0-beta.1` 候選版。
 
 ## 畫面展示
 
@@ -88,22 +88,22 @@ Fennevia 不會讓每個 widget 直接存取 Firefox 的高權限內部物件。
 
 安全提示、權限、憑證、擴充套件安裝、下載安全、DevTools、完整原生網址列，以及自訂視窗按鈕背後的視窗指令仍由 Firefox 負責。原生標題列按鈕節點會保留，以便失敗時立刻復原。遇到不支援的功能或需要復原時，Fennevia 可以重新顯示完整的 Firefox 原生介面。
 
-## 目前版本
+## 目前候選版本
 
-目前公開預發行版本是 [`v0.19.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.19.0-beta.1)，接續 [`v0.18.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.18.0-beta.1)。測試範圍刻意限制得很窄：
+目前原始碼準備 **`0.20.0-beta.1`**，接續 [`v0.19.0-beta.1`](https://github.com/yutinglia/fennevia/releases/tag/v0.19.0-beta.1)。發布狀態與剩餘人工檢查見[發行驗證紀錄](docs/research/firefox-159-0.20.0-beta.1-release-validation.md)。自動化驗證範圍刻意限制得很窄：
 
 | 要求             | 已測試值                                               |
 | ---------------- | ------------------------------------------------------ |
 | 作業系統         | Windows x64                                            |
-| Firefox          | 原版 Firefox 157.0，Release channel                  |
-| Firefox Build ID | `20260924084938`                                     |
-| 套件             | `fennevia-0.19.0-beta.1-windows.zip`                   |
+| Firefox          | 原版 Firefox 159.0.1，Release channel                  |
+| Firefox Build ID | `20261102144711`                                     |
+| 套件             | `fennevia-0.20.0-beta.1-windows.zip`                   |
 
-Firefox 153.0.4、154.0 與 154.0.1 保留歷史驗證紀錄；此次套件沒有重跑這些版本的完整矩陣。
+Firefox 153.0.4、154.0、154.0.1 與 157.0 保留歷史驗證紀錄；此次套件沒有重跑這些版本的完整矩陣。
 
-Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用。153、154 以及更新的主版本可在安裝程式警告後安裝：目前 153、154 與 157 有測試紀錄，較新版本可能故障，確認安裝並不保證一切都能運作。Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta 及 Nightly。
+Firefox 153 以前的版本會被拒絕安裝、更新、修復及重新啟用。153、154 以及更新的主版本可在安裝程式警告後安裝：目前 153、154、157 與 159 有測試紀錄，較新版本可能故障，確認安裝並不保證一切都能運作。Firefox 更新後仍可使用停用及移除功能進行復原。此版本不支援 Linux、macOS、Firefox ESR、Beta 及 Nightly。
 
-Fennevia 會以開發當下最新的原版 Firefox stable release 為主要目標。上方的 157 是此套件的實際驗證證據，不代表專案承諾永遠維持每個舊版相容。未來 Firefox stable 更新可能需要新版 Fennevia；不支援的 channel 與歷史相容分支刻意不在產品範圍內。
+Fennevia 會以開發當下最新的原版 Firefox stable release 為主要目標。上方的 159 是候選套件的自動化驗證證據，不代表專案承諾永遠維持每個舊版相容。未來 Firefox stable 更新可能需要新版 Fennevia；不支援的 channel 與歷史相容分支刻意不在產品範圍內。
 
 安裝預先建置的發行版**不需要** Node.js、npm，也不需要自行編譯 Firefox。
 
@@ -147,14 +147,14 @@ Fennevia 已經超越首個四邊介面 MVP。目前預發行版亦包括 Fennev
 
 從同一個 GitHub Release 下載：
 
-- `fennevia-0.19.0-beta.1-windows.zip`
-- `fennevia-0.19.0-beta.1-windows.zip.sha256`
+- `fennevia-0.20.0-beta.1-windows.zip`
+- `fennevia-0.20.0-beta.1-windows.zip.sha256`
 
 解壓縮前，在下載目錄開啟 PowerShell 並執行：
 
 ```powershell
-$expected = (Get-Content -Raw .\fennevia-0.19.0-beta.1-windows.zip.sha256).Split()[0]
-$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.19.0-beta.1-windows.zip).Hash.ToLowerInvariant()
+$expected = (Get-Content -Raw .\fennevia-0.20.0-beta.1-windows.zip.sha256).Split()[0]
+$actual = (Get-FileHash -Algorithm SHA256 .\fennevia-0.20.0-beta.1-windows.zip).Hash.ToLowerInvariant()
 if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 ```
 
@@ -162,7 +162,7 @@ if ($actual -cne $expected) { throw "Fennevia release checksum mismatch." }
 
 ### 3. 預覽安裝變更
 
-解壓縮 ZIP，在解壓後的 Fennevia 目錄雙擊 `FenneviaSetup.exe`。請自行選擇 `firefox.exe` 與一個已註冊的設定檔**名稱**。Fennevia 不會預先選取 Firefox 預設設定檔。請先閱讀僅測試 153／154／157 的警告，再檢查相對路徑的變更計畫並確認套用。在較新 Firefox 上確認安裝，並不保證介面能繼續正常運作。若所選 Firefox 程式資料夾無法寫入，請使用畫面上的系統管理員接續操作並同意 Windows 提示。
+解壓縮 ZIP，在解壓後的 Fennevia 目錄雙擊 `FenneviaSetup.exe`。請自行選擇 `firefox.exe` 與一個已註冊的設定檔**名稱**。Fennevia 不會預先選取 Firefox 預設設定檔。請先閱讀153／154／157／159 的測試範圍警告，再檢查相對路徑的變更計畫並確認套用。在較新 Firefox 上確認安裝，並不保證介面能繼續正常運作。若所選 Firefox 程式資料夾無法寫入，請使用畫面上的系統管理員接續操作並同意 Windows 提示。
 
 請保留此解壓資料夾。進階使用者仍可使用 PowerShell 主控台：
 
