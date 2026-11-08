@@ -38,26 +38,29 @@ export function createFirefoxLocalExtensionsRuntime(
       if (stopped || failed || context.isPrivate) return undefined;
       try {
         if (!service) {
-          const port = createNativeLocalExtensionPort(context.window);
+          // DOM APIs captured from a browser window still create promises in
+          // that window's global. Use this system module's process global so
+          // closing the first window cannot strand pending filesystem work.
+          const port = createNativeLocalExtensionPort(globalThis);
           service = createLocalExtensionService(port, report);
-          const environment = context.window as {
-            ChromeUtils: {
-              importESModule(uri: string): {
-                AsyncShutdown: {
-                  profileBeforeChange: {
-                    addBlocker(
-                      name: string,
-                      blocker: () => Promise<void>,
-                    ): void;
-                    removeBlocker(blocker: () => Promise<void>): void;
-                  };
-                };
+          const environment = globalThis as unknown as {
+            IOUtils?: {
+              profileBeforeChange?: {
+                addBlocker(name: string, blocker: () => Promise<void>): void;
+                removeBlocker(blocker: () => Promise<void>): void;
               };
             };
           };
-          const phase = environment.ChromeUtils.importESModule(
-            "resource://gre/modules/AsyncShutdown.sys.mjs",
-          ).AsyncShutdown.profileBeforeChange;
+          const phase = environment.IOUtils?.profileBeforeChange;
+          if (
+            !phase ||
+            typeof phase.addBlocker !== "function" ||
+            typeof phase.removeBlocker !== "function"
+          )
+            throw new LocalExtensionError(
+              "unavailable",
+              "IOUtils.profileBeforeChange",
+            );
           const blocker = () => stop(true);
           phase.addBlocker("Fennevia local extension cleanup", blocker);
           removeBlocker = () => phase.removeBlocker(blocker);

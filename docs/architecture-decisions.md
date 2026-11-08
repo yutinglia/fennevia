@@ -4492,7 +4492,12 @@ An update checkpoint preserves the old payload plus one pending generation. Only
 native success commits new metadata. Interrupted entries wait for explicit retry;
 retry restores the old copy and cleans the pending copy after success. Partial
 cleanup preserves unknown/corrupt files rather than expanding deletion ownership.
-AsyncShutdown.profileBeforeChange drains already pending work; normal shutdown
+Release correction (2026-11-09): the original implementation's
+AsyncShutdown.profileBeforeChange hook is superseded by IOUtils.profileBeforeChange.
+The service uses its system module global for native APIs: copying window.IOUtils
+into a plain object does not change the DOM promise's owning global. The actual
+AutoConfig startup/early-quit probe exposed stranded work after that window died.
+The IOUtils-owned barrier drains work before its final flush; normal shutdown
 does not add per-addon uninstall. The runtime's ordinary stop disables proven-owned
 items and the optional service never participates in shell health requirements.
 Validation: [implementation record](research/firefox-159-local-extension-implementation.md).

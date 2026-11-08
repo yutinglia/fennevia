@@ -14,6 +14,18 @@ each harness; never substitute a normal profile. The test transport starts only
 that program, permits chrome automation only in that child environment, uses
 loopback Marionette and restores test picker factories. Test fixtures do not ship.
 
+`node tests/firefox-local-extensions-startup.mjs --firefox <COPIED_FIREFOX> --profile
+<MARKED_PROFILE>` additionally requires an installed, disposable marker-owned
+pair. It confirms import through the actual shell, restarts through AutoConfig
+without manually importing Bootstrap, removes the fixture through confirmation,
+and checks that removal survives a third process. It restores `user.js` exactly
+and leaves its bounded source fixture in the disposable profile for inspection.
+The second process closes the original browser window and performs removal from
+a later window. Add `--interrupt-install` to request shutdown immediately after
+the native addon appears, before waiting for the UI transaction to settle; the
+next boot must restore it or retain an explicit interrupted checkpoint, never
+hang on an orphaned window-global I/O promise.
+
 At release additionally verify cold AutoConfig restoration, second normal/private
 windows, safe start, Troubleshoot Mode, native fallback, simultaneous native
 installs, interrupted I/O and shutdown, unknown/corrupt registry recovery, no Console

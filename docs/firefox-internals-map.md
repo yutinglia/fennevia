@@ -16,7 +16,7 @@ All dependencies below are isolated in `src/firefox/local-extensions/` or its fa
 | `nsIFile.fileSize`, `target`, `normalize`, `parent`, `isFile`, `isDirectory`; `PathUtils` | `xpcom/io/nsIFile.idl`, `nsLocalFileWin.cpp`. fileSize triggers ResolveAndStat; isFile/isDirectory do not. Check each ancestor, explicitly handle drive root spelling. |
 | `nsIZipReader.open/findEntries/getEntry/test/close` | `modules/libjar/nsIZipReader.idl`; bounded root-manifest archive inspection, no extraction. |
 | `nsIFilePicker` modeOpen/modeGetFolder/returnOK | Native picker; disposed selections ignore late callback. |
-| `AsyncShutdown.profileBeforeChange.addBlocker/removeBlocker` | `toolkit/modules/AsyncShutdown.sys.mjs`; drain process work before profile shutdown, no additional native uninstall. |
+| `IOUtils.profileBeforeChange.addBlocker/removeBlocker` | `xpcom/ioutils/IOUtils.cpp` `CreateJSPromise` / `EventQueue::SetShutdownHooks`; use the system module global, not a browser-window DOM global, and drain work on IOUtils's own barrier before its final flush. No additional native uninstall. |
 | `Services.appinfo.inSafeMode`, `policies.isAllowed("xpinstall")`, `xpinstall.enabled` | Refuse new work when unavailable/policy-disabled. Native installation still enforces its own compatibility rules. |
 | `Services.env.get("SystemDrive")`, `dirsvc.get("ProfD")`, uuid/io/prefs | Restrict locations; preference `fennevia.localExtensions.enabled` defaults false; existing `fennevia.safeStart` blocks restoration. |
 | `openTrustedLinkIn` | Fixed `about:addons` or `about:debugging#/runtime/this-firefox` handoff only. |

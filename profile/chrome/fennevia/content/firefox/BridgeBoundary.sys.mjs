@@ -4916,9 +4916,11 @@ function ti(e) {
 		forWindow(e) {
 			if (!(i || r || e.isPrivate)) try {
 				if (!n) {
-					n = ei($r(e.window), t);
-					let r = e.window.ChromeUtils.importESModule("resource://gre/modules/AsyncShutdown.sys.mjs").AsyncShutdown.profileBeforeChange, i = () => s(!0);
-					r.addBlocker("Fennevia local extension cleanup", i), o = () => r.removeBlocker(i);
+					n = ei($r(globalThis), t);
+					let e = globalThis.IOUtils?.profileBeforeChange;
+					if (!e || typeof e.addBlocker != "function" || typeof e.removeBlocker != "function") throw new U("unavailable", "IOUtils.profileBeforeChange");
+					let r = () => s(!0);
+					e.addBlocker("Fennevia local extension cleanup", r), o = () => e.removeBlocker(r);
 				}
 				return n.session(e.window, !1, e.signal);
 			} catch (e) {
